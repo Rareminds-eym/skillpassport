@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { XMarkIcon, UserPlusIcon, DocumentArrowUpIcon, ArrowDownTrayIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../../../lib/supabaseClient'
 import Papa from 'papaparse'
+import userApiService from '../../../services/userApiService'
 
 // Validated row interface for enhanced preview
 interface ValidatedStudent {
@@ -53,7 +54,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const [createdStudentPassword, setCreatedStudentPassword] = useState<string | null>(null)
   const [createdStudentEmail, setCreatedStudentEmail] = useState<string | null>(null)
-  
+
   const [formData, setFormData] = useState<StudentFormData>({
     name: '',
     email: '',
@@ -123,7 +124,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     const userStr = localStorage.getItem('user')
     let isCollegeContext = false
     let userRole = null
-    
+
     try {
       const userData = JSON.parse(userStr || '{}')
       const collegeId = userData.collegeId || null
@@ -155,7 +156,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         ['Arjun Reddy', 'arjun.reddy@school.com', '919876503456', '919876543298', '2012-12-10', 'Male', 'ENR2024103', 'REG2024103', '3', 'ADM2024103', 'SC', 'Sports', '8', 'C', '2024-25', 'B+', 'Mumbai', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=33', 'Venkatesh Reddy', '919877654323', 'venkatesh.reddy@parent.com', 'Father', 'Tower B 1502 Oberoi Heights Goregaon East', 'Mumbai', 'Maharashtra', 'India', '400063']
       ]
     }
-    
+
     const csv = sampleData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
@@ -214,13 +215,13 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       // Get current user from localStorage (custom auth - same as teacher onboarding)
       const userEmail = localStorage.getItem('userEmail')
       const userStr = localStorage.getItem('user')
-      
+
       console.log('Current user from localStorage:', { userEmail, user: userStr })
-      
+
       if (!userEmail) {
         throw new Error('You are not logged in. Please login and try again.')
       }
-      
+
       // Get schoolId or collegeId from localStorage
       let schoolId = null
       let collegeId = null
@@ -233,7 +234,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       } catch (e) {
         console.warn('Could not parse user data from localStorage')
       }
-      
+
       // If collegeId not in localStorage but user is college_admin, fetch from database
       if (!collegeId && userRole === 'college_admin' && userEmail) {
         console.log('🔍 Fetching collegeId from database for college admin:', userEmail)
@@ -242,74 +243,68 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           .select('id')
           .ilike('deanEmail', userEmail)
           .single()
-        
+
         if (college?.id) {
           collegeId = college.id
           console.log('✅ Found collegeId:', collegeId)
         }
       }
-      
+
       console.log('✅ User authenticated:', userEmail, 'School ID:', schoolId, 'College ID:', collegeId, 'Role:', userRole)
 
-      // Call the create-student Edge Function using direct fetch for better error handling
-      console.log('Calling create-student Edge Function with data:', {
+      // Call Cloudflare Worker via userApiService
+      console.log('Calling create-student via userApiService with data:', {
         name: formData.name,
         email: formData.email,
         contactNumber: formData.contactNumber
       })
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/create-student`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'apikey': supabaseAnonKey
-        },
-        body: JSON.stringify({
-          userEmail: userEmail,
-          schoolId: schoolId, // Send schoolId from localStorage (for school admins)
-          collegeId: collegeId, // Send collegeId from localStorage (for college admins)
-          student: {
-            name: formData.name.trim(),
-            email: formData.email.trim().toLowerCase(),
-            contactNumber: formData.contactNumber.trim(),
-            dateOfBirth: formData.dateOfBirth || null,
-            gender: formData.gender || null,
-            enrollmentNumber: formData.enrollmentNumber.trim() || null,
-            rollNumber: formData.rollNumber.trim() || null,
-            category: formData.category || null,
-            quota: formData.quota || null,
-            guardianName: formData.guardianName.trim() || null,
-            guardianPhone: formData.guardianPhone.trim() || null,
-            guardianEmail: formData.guardianEmail.trim() || null,
-            guardianRelation: formData.guardianRelation.trim() || null,
-            address: formData.address.trim() || null,
-            city: formData.city.trim() || null,
-            state: formData.state.trim() || null,
-            country: formData.country || 'India',
-            pincode: formData.pincode.trim() || null,
-            district: formData.district.trim() || null,
-            university: formData.university.trim() || null,
-            bloodGroup: formData.bloodGroup || null,
-            approval_status: 'approved',
-            student_type: 'educator_added',
-            documents: formData.documents.map(file => ({
-              name: file.name,
-              size: file.size,
-              type: file.type
-            }))
-          }
-        })
-      })
+      if (!token) {
+        throw new Error('No authentication token available')
+      }
 
-      const data = await response.json()
+      const data = await userApiService.createStudent({
+        userEmail: userEmail,
+        schoolId: schoolId, // Send schoolId from localStorage (for school admins)
+        collegeId: collegeId, // Send collegeId from localStorage (for college admins)
+        student: {
+          name: formData.name.trim(),
+          email: formData.email.trim().toLowerCase(),
+          contactNumber: formData.contactNumber.trim(),
+          dateOfBirth: formData.dateOfBirth || null,
+          gender: formData.gender || null,
+          enrollmentNumber: formData.enrollmentNumber.trim() || null,
+          rollNumber: formData.rollNumber.trim() || null,
+          category: formData.category || null,
+          quota: formData.quota || null,
+          guardianName: formData.guardianName.trim() || null,
+          guardianPhone: formData.guardianPhone.trim() || null,
+          guardianEmail: formData.guardianEmail.trim() || null,
+          guardianRelation: formData.guardianRelation.trim() || null,
+          address: formData.address.trim() || null,
+          city: formData.city.trim() || null,
+          state: formData.state.trim() || null,
+          country: formData.country || 'India',
+          pincode: formData.pincode.trim() || null,
+          district: formData.district.trim() || null,
+          university: formData.university.trim() || null,
+          bloodGroup: formData.bloodGroup || null,
+          approval_status: 'approved',
+          student_type: 'educator_added',
+          documents: formData.documents.map(file => ({
+            name: file.name,
+            size: file.size,
+            type: file.type
+          }))
+        }
+      }, token)
       console.log('Edge Function Response:', JSON.stringify(data, null, 2))
 
       // Check if operation failed
-      if (!response.ok || !data?.success) {
+      if (!data?.success) {
         console.error('Function returned error:', data)
         throw new Error(data?.error || data?.details || 'Failed to create student')
       }
@@ -320,16 +315,16 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
       // Show success message without password
       const successMsg = `✅ Student "${formData.name}" added successfully!`
-      
+
       setSuccess(successMsg)
       setError(null)
-      
+
       // Call onSuccess and close modal after a brief delay
       onSuccess?.()
       setTimeout(() => {
         onClose()
       }, 1500)
-      
+
       console.log('✅ Student created successfully!')
     } catch (err: any) {
       setError(err.message || 'Failed to create student. Please try again.')
@@ -368,13 +363,13 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       const maxSize = 5 * 1024 * 1024 // 5MB
       return validTypes.includes(file.type) && file.size <= maxSize
     })
-    
+
     if (validFiles.length !== files.length) {
       setError('Some files were rejected. Only PDF, JPG, PNG files under 5MB are allowed.')
     }
-    
-    setFormData(prev => ({ 
-      ...prev, 
+
+    setFormData(prev => ({
+      ...prev,
       documents: [...prev.documents, ...validFiles].slice(0, 5) // Max 5 files
     }))
   }
@@ -435,7 +430,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           let schoolId: string | null = null
           let collegeId: string | null = null
           let userRole: string | null = null
-          
+
           try {
             const userData = JSON.parse(userStr || '{}')
             schoolId = userData.schoolId || null
@@ -458,7 +453,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               .select('id')
               .ilike('deanEmail', userEmail)
               .single()
-            
+
             if (college?.id) {
               collegeId = college.id
               console.log('✅ Found collegeId:', collegeId)
@@ -468,7 +463,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           // If schoolId not in localStorage, fetch from database
           if (!schoolId && !collegeId && userEmail) {
             console.log('🔍 DEBUG: Fetching schoolId from database for user:', userEmail)
-            
+
             // Check school_educators table
             const { data: educatorData, error: educatorError } = await supabase
               .from('school_educators')
@@ -481,7 +476,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               console.log('🔍 DEBUG: Found schoolId from school_educators:', schoolId)
             } else {
               console.log('🔍 DEBUG: No educator found, checking users table...')
-              
+
               // Check users.organizationId
               const { data: userData, error: userError } = await supabase
                 .from('users')
@@ -498,16 +493,16 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
           // Collect unique class combinations from CSV
           const classesToCheck = new Map<string, { grade: string; section: string }>()
-          ;(results.data as any[]).forEach((student) => {
-            const grade = student.grade || student.class
-            const section = student.section || student.division
-            if (grade && section) {
-              const key = `${grade}-${section}`
-              if (!classesToCheck.has(key)) {
-                classesToCheck.set(key, { grade, section })
+            ; (results.data as any[]).forEach((student) => {
+              const grade = student.grade || student.class
+              const section = student.section || student.division
+              if (grade && section) {
+                const key = `${grade}-${section}`
+                if (!classesToCheck.has(key)) {
+                  classesToCheck.set(key, { grade, section })
+                }
               }
-            }
-          })
+            })
 
           console.log('🔍 DEBUG: Classes to check from CSV:', Array.from(classesToCheck.entries()))
           console.log('🔍 DEBUG: School ID:', schoolId)
@@ -516,10 +511,10 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           // Check which classes exist in database and store their IDs (only for schools)
           const existingClasses = new Set<string>()
           const classIdMap = new Map<string, string>() // Map of "grade-section" to class_id
-          
+
           if (schoolId && classesToCheck.size > 0) {
             console.log('🔍 DEBUG: Checking classes in database for school:', schoolId)
-            
+
             const { data: classes, error: classError } = await supabase
               .from('school_classes')
               .select('id, grade, section, name, academic_year')
@@ -568,9 +563,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             const grade = student.grade || student.class
             const section = student.section || student.division
             let schoolClassId: string | null = null
-            
+
             console.log(`🔍 DEBUG Row ${rowNum}: grade="${grade}", section="${section}", student.grade="${student.grade}", student.section="${student.section}"`)
-            
+
             if (grade && section) {
               const classKey = `${grade}-${section}`
               const exists = existingClasses.has(classKey)
@@ -643,7 +638,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         complete: async (results) => {
           try {
             const students: any[] = results.data as any[]
-            
+
             if (students.length === 0) {
               setError('CSV file contains no valid data')
               setLoading(false)
@@ -653,7 +648,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             // Get userEmail and schoolId FIRST (moved up)
             const userEmail = localStorage.getItem('userEmail')
             const userStr = localStorage.getItem('user')
-            
+
             if (!userEmail) {
               setError('You are not logged in. Please login and try again.')
               setLoading(false)
@@ -679,7 +674,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 .select('id')
                 .ilike('deanEmail', userEmail)
                 .single()
-              
+
               if (college?.id) {
                 collegeId = college.id
               }
@@ -727,7 +722,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
             students.forEach((student, index) => {
               const rowNum = index + 2 // +2 because index starts at 0 and there's a header row
-              
+
               // Validate required fields
               if (!student.name || !student.name.trim()) {
                 errors.push(`Row ${rowNum}: Name is required`)
@@ -758,7 +753,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               // Get grade and section
               const grade = student.grade || student.class || null
               const section = student.section || student.division || null
-              
+
               // Look up the class ID
               let schoolClassId: string | null = null
               if (grade && section) {
@@ -825,27 +820,32 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
             for (let i = 0; i < validStudents.length; i += BATCH_SIZE) {
               const batch = validStudents.slice(i, i + BATCH_SIZE)
-              
+
               const batchPromises = batch.map(async ({ row, data }) => {
                 try {
-                  const response = await fetch(`${supabaseUrl}/functions/v1/create-student`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${supabaseAnonKey}`,
-                      'apikey': supabaseAnonKey
-                    },
-                    body: JSON.stringify({
-                      userEmail: userEmail,
-                      schoolId: schoolId,
-                      collegeId: collegeId,
-                      student: data
-                    })
-                  })
+                  const response = await userApiService.createStudent({
+                    userEmail: userEmail,
+                    schoolId: schoolId,
+                    collegeId: collegeId,
+                    student: data
+                  },
+                    (await supabase.auth.getSession()).data.session?.access_token
+                  )
 
-                  const result = await response.json()
+                  // Map response to match expected format if needed, or adjust check below
+                  // userApiService returns { success: true, data: ... } or { success: false, error: ... }
+                  // The existing code expects 'response' object with .ok and .json()
+                  // We need to adapt the check below.
 
-                  if (!response.ok || !result?.success) {
+                  // Since we can't easily change the downstream code in this block without replacing more lines,
+                  // let's mock the response object or adjust the check.
+                  // Actually, let's adjust the check in the next block.
+
+                  // Wait, I can replace the whole block including the check.
+
+                  const result = response; // userApiService returns the result object directly
+
+                  if (!result?.success) {
                     const errorMsg = result?.error || 'Failed to create student'
                     processingErrors.push(`Row ${row}: ${errorMsg}`)
                     return false
@@ -866,7 +866,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
             // Display results
             setUploadProgress(null)
-            
+
             if (successCount > 0 && failureCount === 0) {
               setSuccess(`✅ Successfully imported ${successCount} student${successCount > 1 ? 's' : ''}!`)
               setError(null)
@@ -921,22 +921,20 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           <div className="flex space-x-2 mb-6">
             <button
               onClick={() => setMode('manual')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md ${
-                mode === 'manual'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md ${mode === 'manual'
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               <UserPlusIcon className="h-5 w-5 inline mr-2" />
               Manual Entry
             </button>
             <button
               onClick={() => setMode('csv')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md ${
-                mode === 'csv'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md ${mode === 'csv'
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               <DocumentArrowUpIcon className="h-5 w-5 inline mr-2" />
               CSV Upload
@@ -954,7 +952,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
                 <div className="ml-3 flex-1">
                   <p className="text-sm font-medium text-green-800 whitespace-pre-line">{success}</p>
-                  
+
 
                 </div>
               </div>
@@ -1044,11 +1042,10 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     type="text"
                     value={formData.rollNumber}
                     onChange={(e) => handleInputChange('rollNumber', e.target.value)}
-                    className={`w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-                      formData.rollNumber && !validateRollNumber(formData.rollNumber)
-                        ? 'border-red-300 focus:ring-red-500'
-                        : 'border-gray-300 focus:ring-primary-500'
-                    }`}
+                    className={`w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 ${formData.rollNumber && !validateRollNumber(formData.rollNumber)
+                      ? 'border-red-300 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-primary-500'
+                      }`}
                     placeholder="ROLL2024001"
                   />
                   {formData.rollNumber && !validateRollNumber(formData.rollNumber) && (
@@ -1287,7 +1284,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     Upload Documents
                     <span className="text-xs text-gray-500 ml-1">(PDF, JPG, PNG - Max 5MB each, up to 5 files)</span>
                   </label>
-                  
+
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-gray-400 transition-colors">
                     <div className="text-center">
                       <DocumentArrowUpIcon className="mx-auto h-8 w-8 text-gray-400" />
@@ -1351,7 +1348,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   const userStr = localStorage.getItem('user')
                   let isCollegeContext = false
                   let userRole = null
-                  
+
                   try {
                     const userData = JSON.parse(userStr || '{}')
                     const collegeId = userData.collegeId || null
@@ -1405,7 +1402,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     </ul>
                   )
                 })()}
-                
+
                 {/* Download Sample CSV Button */}
                 <button
                   onClick={downloadSampleCSV}
@@ -1420,7 +1417,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                       const collegeId = userData.collegeId || null
                       const userRole = userData.role || null
                       isCollegeContext = !!(collegeId || userRole === 'college_admin')
-                    } catch (e) {}
+                    } catch (e) { }
                     return isCollegeContext ? 'Download University CSV Template' : 'Download School CSV Template'
                   })()}
                 </button>
@@ -1539,8 +1536,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                                   <td className="px-2 py-2 text-gray-500 font-medium">{student.rowNumber}</td>
                                   <td className="px-2 py-2">
                                     {hasProfilePicture ? (
-                                      <img 
-                                        src={student.data.profilepicture} 
+                                      <img
+                                        src={student.data.profilepicture}
                                         alt={student.data.name}
                                         className="w-8 h-8 rounded-full object-cover border border-gray-200"
                                         onError={(e) => {
@@ -1577,8 +1574,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                                     )}
                                   </td>
                                   <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
-                                    {student.data.grade && student.data.section 
-                                      ? `${student.data.grade}-${student.data.section}` 
+                                    {student.data.grade && student.data.section
+                                      ? `${student.data.grade}-${student.data.section}`
                                       : <span className="text-gray-400">-</span>}
                                   </td>
                                   <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{student.data.collegeschoolname || '-'}</td>
@@ -1660,8 +1657,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                                     )}
                                   </td>
                                   <td className="px-2 py-2 text-gray-600">
-                                    {student.data.grade && student.data.section 
-                                      ? `${student.data.grade}-${student.data.section}` 
+                                    {student.data.grade && student.data.section
+                                      ? `${student.data.grade}-${student.data.section}`
                                       : <span className="text-gray-400">-</span>}
                                   </td>
                                   <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
@@ -1725,7 +1722,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 <>
                   <UserPlusIcon className="h-4 w-4 mr-1" />
                   {mode === 'manual' ? 'Add Student' : (
-                    showEnhancedPreview && validatedStudents.length > 0 
+                    showEnhancedPreview && validatedStudents.length > 0
                       ? `Import ${validatedStudents.filter(s => s.isValid).length} Valid Student${validatedStudents.filter(s => s.isValid).length !== 1 ? 's' : ''}`
                       : 'Upload CSV'
                   )}

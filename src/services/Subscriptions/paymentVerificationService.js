@@ -5,8 +5,7 @@
 
 import { supabase } from '../../lib/supabaseClient';
 import { checkAuthentication } from '../authService';
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+import paymentsApiService from '../../paymentsApiService';
 
 // Cache for verification results (5 minutes TTL)
 const verificationCache = new Map();
@@ -56,29 +55,15 @@ export const verifyPaymentSignature = async (paymentData) => {
 
     // Get auth token for authenticated requests (optional - Edge Function will verify via order)
     const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const token = session?.access_token;
 
-    // Call Supabase Edge Function to verify payment signature
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/verify-payment`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(paymentData),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Verification failed' }));
-      return {
-        success: false,
-        verified: false,
-        error: errorData.error || 'Payment verification failed',
-        errorCode: 'VERIFICATION_FAILED'
-      };
-    }
-
-    const result = await response.json();
+    // Call Cloudflare Worker via paymentsApiService
+    const result = await paymentsApiService.verifyPayment({
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      orderId: razorpay_order_id // Ensure consistent naming if needed by worker
+    }, token);
 
     // Cache the result
     verificationCache.set(cacheKey, {

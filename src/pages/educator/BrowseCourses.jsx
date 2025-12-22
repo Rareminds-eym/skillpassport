@@ -53,19 +53,41 @@ const BrowseCourses = () => {
 
       // Fetch courses with status Active or Upcoming (students shouldn't see Drafts)
       // Also exclude deleted courses
-      let query = supabase
+      const { data, error } = await supabase
         .from('courses')
         .select('*')
         .in('status', ['Active', 'Upcoming'])
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
-      const { data, error } = await query;
-
       if (error) throw error;
 
-      console.log('📚 Fetched courses for students:', data?.length || 0);
-      setCourses(data || []);
+      // Get unique educator IDs to fetch their names from users table
+      const educatorIds = [...new Set((data || []).map(c => c.educator_id).filter(Boolean))];
+      
+      let educatorMap = {};
+      if (educatorIds.length > 0) {
+        const { data: educators } = await supabase
+          .from('users')
+          .select('id, firstName, lastName')
+          .in('id', educatorIds);
+        
+        if (educators) {
+          educatorMap = educators.reduce((acc, edu) => {
+            acc[edu.id] = `${edu.firstName || ''} ${edu.lastName || ''}`.trim();
+            return acc;
+          }, {});
+        }
+      }
+
+      // Map educator name from the fetched data
+      const coursesWithEducatorName = (data || []).map(course => ({
+        ...course,
+        educator_name: course.educator_id ? educatorMap[course.educator_id] || null : null
+      }));
+
+      console.log('📚 Fetched courses for students:', coursesWithEducatorName?.length || 0);
+      setCourses(coursesWithEducatorName);
 
       // Ensure loader displays for at least 1 second
       const elapsedTime = Date.now() - startTime;
@@ -359,38 +381,38 @@ const BrowseCourses = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
                 whileHover={{ y: -8, transition: { duration: 0.2 } }}
+                onClick={() => handleCourseClick(course)}
+                className="cursor-pointer"
               >
-                <Card className="h-full hover:shadow-lg transition-all duration-200 border border-gray-200 overflow-hidden group">
-                  {/* Course Thumbnail */}
-                  {course.thumbnail && (
-                    <div className="h-40 overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative">
-                      {(course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
-                        <motion.img
-                          src={course.thumbnail}
-                          alt={course.title}
-                          className="w-full h-full object-cover"
-                          whileHover={{ scale: 1.05 }}
-                          transition={{ duration: 0.3 }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <BookOpen className="h-16 w-16 text-white opacity-90" />
-                        </div>
-                      )}
-                      {/* NEW Badge */}
-                      {isNewCourse(course.created_at) && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="absolute top-2 left-2"
-                        >
-                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                            NEW
-                          </Badge>
-                        </motion.div>
-                      )}
-                    </div>
-                  )}
+                <Card className="h-full hover:shadow-lg transition-all duration-200 border border-gray-200 overflow-hidden group flex flex-col">
+                  {/* Course Thumbnail - Always show with default placeholder */}
+                  <div className="h-40 overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative flex-shrink-0">
+                    {course.thumbnail && (course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
+                      <motion.img
+                        src={course.thumbnail}
+                        alt={course.title}
+                        className="w-full h-full object-cover"
+                        whileHover={{ scale: 1.05 }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-400 to-purple-500">
+                        <BookOpen className="h-16 w-16 text-white opacity-90" />
+                      </div>
+                    )}
+                    {/* NEW Badge */}
+                    {isNewCourse(course.created_at) && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute top-2 left-2"
+                      >
+                        <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                          NEW
+                        </Badge>
+                      </motion.div>
+                    )}
+                  </div>
 
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between mb-2">
@@ -398,18 +420,13 @@ const BrowseCourses = () => {
                         <Badge className={`${getStatusColor(course.status)} border`}>
                           {course.status}
                         </Badge>
-                        {!course.thumbnail && isNewCourse(course.created_at) && (
-                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 font-semibold">
-                            NEW
-                          </Badge>
-                        )}
                       </div>
                       <span className="text-xs font-medium text-gray-500">{course.code}</span>
                     </div>
                     <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
                   </CardHeader>
 
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 flex-grow flex flex-col">
                     <p className="text-sm text-gray-600 line-clamp-3">{course.description}</p>
 
                     <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -425,7 +442,7 @@ const BrowseCourses = () => {
 
                     {/* Educator Info */}
                     {course.educator_name && (
-                      <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                      <div className="flex items-center gap-2 pt-2 border-t border-gray-100 mt-auto">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
                           {course.educator_name.charAt(0).toUpperCase()}
                         </div>
@@ -435,13 +452,6 @@ const BrowseCourses = () => {
                         </div>
                       </div>
                     )}
-
-                    <Button
-                      onClick={() => handleCourseClick(course)}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
-                    >
-                      View Course Details
-                    </Button>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -458,34 +468,34 @@ const BrowseCourses = () => {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3 }}
+                onClick={() => handleCourseClick(course)}
+                className="cursor-pointer"
               >
                 <Card className="hover:shadow-lg transition-all duration-200 border-0">
                   <CardContent className="p-6">
                     <div className="flex flex-col lg:flex-row gap-6">
-                      {/* Thumbnail */}
-                      {course.thumbnail && (
-                        <div className="w-full lg:w-48 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative">
-                          {(course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
-                            <img
-                              src={course.thumbnail}
-                              alt={course.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <BookOpen className="h-12 w-12 text-white opacity-90" />
-                            </div>
-                          )}
-                          {/* NEW Badge */}
-                          {isNewCourse(course.created_at) && (
-                            <div className="absolute top-2 left-2">
-                              <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                                NEW
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      {/* Thumbnail - Always show with default placeholder */}
+                      <div className="w-full lg:w-48 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative">
+                        {course.thumbnail && (course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
+                          <img
+                            src={course.thumbnail}
+                            alt={course.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-400 to-purple-500">
+                            <BookOpen className="h-12 w-12 text-white opacity-90" />
+                          </div>
+                        )}
+                        {/* NEW Badge */}
+                        {isNewCourse(course.created_at) && (
+                          <div className="absolute top-2 left-2">
+                            <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                              NEW
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
 
                       {/* Course Info */}
                       <div className="flex-1">
@@ -496,11 +506,6 @@ const BrowseCourses = () => {
                               <Badge className={`${getStatusColor(course.status)} border`}>
                                 {course.status}
                               </Badge>
-                              {!course.thumbnail && isNewCourse(course.created_at) && (
-                                <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 font-semibold">
-                                  NEW
-                                </Badge>
-                              )}
                             </div>
                             <p className="text-sm text-gray-500">Course Code: {course.code}</p>
                           </div>
@@ -508,7 +513,7 @@ const BrowseCourses = () => {
 
                         <p className="text-gray-600 mb-4 line-clamp-2">{course.description}</p>
 
-                        <div className="flex items-center gap-6 text-sm text-gray-600 mb-4">
+                        <div className="flex items-center gap-6 text-sm text-gray-600">
                           <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4" />
                             <span>{course.duration}</span>
@@ -526,13 +531,6 @@ const BrowseCourses = () => {
                             </div>
                           )}
                         </div>
-
-                        <Button
-                          onClick={() => handleCourseClick(course)}
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                        >
-                          View Course Details
-                        </Button>
                       </div>
                     </div>
                   </CardContent>

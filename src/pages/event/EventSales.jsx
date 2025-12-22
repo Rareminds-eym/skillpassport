@@ -31,6 +31,8 @@ import Header from '../../layouts/Header';
 import FlipClockCountdown from '@leenguyen/react-flip-clock-countdown';
 import '@leenguyen/react-flip-clock-countdown/dist/index.css';
 import StudentPlanCard from './components/StudentPlanCard';
+import paymentsApiService from '../../services/paymentsApiService';
+import userApiService from '../../services/userApiService';
 
 // Role types that use institution pricing tiers (not individual plans)
 const ADMIN_ROLES = ['school-admin', 'college-admin', 'university-admin', 'educator', 'recruiter'];
@@ -142,7 +144,7 @@ const SelectedRoleBadge = memo(({ role, onChangeRole }) => (
           <span className="text-xs sm:text-sm text-gray-500 hidden sm:inline truncate">{role.desc}</span>
         </div>
       </div>
-      <button 
+      <button
         onClick={onChangeRole}
         className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline transition-colors flex-shrink-0"
       >
@@ -291,7 +293,7 @@ const getStepContent = (roleId) => {
 // Get initial form state based on role
 const getInitialFormState = (roleId) => {
   const common = { email: '', phone: '', address: '', city: '', state: '', pincode: '' };
-  
+
   switch (roleId) {
     case 'school-admin':
       return { ...common, school_name: '', school_type: '', principal_name: '', registration_number: '', website: '' };
@@ -357,7 +359,7 @@ function EventSales() {
           .lte('start_date', now)
           .gte('end_date', now)
           .single();
-        
+
         if (!error && data) {
           setPromoEvent(data);
         }
@@ -371,18 +373,18 @@ function EventSales() {
   // Countdown timer
   useEffect(() => {
     if (!promoEvent?.end_date) return;
-    
+
     const updateCountdown = () => {
       const now = new Date().getTime();
       const endTime = new Date(promoEvent.end_date).getTime();
       const diff = endTime - now;
-      
+
       if (diff <= 0) {
         setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         setPromoEvent(null); // Promotion ended
         return;
       }
-      
+
       setCountdown({
         days: Math.floor(diff / (1000 * 60 * 60 * 24)),
         hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
@@ -390,7 +392,7 @@ function EventSales() {
         seconds: Math.floor((diff % (1000 * 60)) / 1000)
       });
     };
-    
+
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
@@ -426,7 +428,7 @@ function EventSales() {
   // Group tiers by student count range for better display
   const groupedTiers = useMemo(() => {
     if (!studentTiers.length) return [];
-    
+
     const groups = {};
     studentTiers.forEach(tier => {
       const key = `${tier.min_students}-${tier.max_students}`;
@@ -439,7 +441,7 @@ function EventSales() {
       }
       groups[key].tiers.push(tier);
     });
-    
+
     // Sort groups by min_students and sort tiers within each group by plan type
     const planOrder = { 'Basic-Cost': 1, 'Professional': 2, 'Entreprise': 3 };
     return Object.values(groups)
@@ -542,13 +544,13 @@ function EventSales() {
       // Step 3: Only email, name, and phone are mandatory
       const emailRegex = /\S+@\S+\.\S+/;
       const phoneRegex = /^\d{10}$/;
-      
+
       // Check mandatory fields: email and phone
       const emailValid = form.email?.trim() && emailRegex.test(form.email);
       const phoneValid = form.phone?.trim() && phoneRegex.test(form.phone.replace(/\D/g, ''));
-      
+
       if (!emailValid || !phoneValid) return false;
-      
+
       // Check name field based on role
       let nameValid = false;
       switch (role?.id) {
@@ -564,9 +566,9 @@ function EventSales() {
         default:
           nameValid = !!form.full_name?.trim();
       }
-      
+
       if (!nameValid) return false;
-      
+
       // Check student count for admin roles
       if (isAdminRole && studentTier) {
         const count = parseInt(studentCount, 10) || 0;
@@ -575,7 +577,7 @@ function EventSales() {
         const isUnlimited = maxStudents >= 99999;
         return count >= minStudents && (isUnlimited || count <= maxStudents);
       }
-      
+
       return true;
     }
     return true;
@@ -608,22 +610,22 @@ function EventSales() {
     if (isAdminRole && studentTier) {
       const capacityLabel = role?.id === 'recruiter' ? 'candidates' : 'students';
       const count = parseInt(studentCount) || 0;
-      
+
       // Regular price per student
       const regularPricePerStudent = parseFloat(studentTier.price) || 0;
-      
+
       // Check if ESFE pricing is active
       const hasEsfePrice = isPromoActive && studentTier.esfe_active && studentTier.esfe_price;
-      
+
       // ESFE price per student (use esfe_price column directly)
       const esfePricePerStudent = hasEsfePrice ? parseFloat(studentTier.esfe_price) || 0 : regularPricePerStudent;
-      
+
       // Calculate totals
       const originalTotal = Math.round(regularPricePerStudent * count);
       const displayTotal = Math.round(esfePricePerStudent * count);
-      
-      return { 
-        name: `${studentTier.tier_name} Plan`, 
+
+      return {
+        name: `${studentTier.tier_name} Plan`,
         price: displayTotal,
         originalPrice: hasEsfePrice ? originalTotal : null,
         isEsfe: hasEsfePrice,
@@ -634,13 +636,13 @@ function EventSales() {
         capacityLabel
       };
     }
-    
+
     // Student role pricing (individual, no multiplier)
     if (isStudentRole && studentTier) {
       const hasEsfePrice = isPromoActive && studentTier.esfe_active && studentTier.esfe_price;
       const displayPrice = hasEsfePrice ? parseFloat(studentTier.esfe_price) : parseFloat(studentTier.price);
       const originalPrice = parseFloat(studentTier.price);
-      
+
       return {
         name: `${studentTier.tier_name} Plan`,
         price: displayPrice,
@@ -650,17 +652,17 @@ function EventSales() {
         duration: studentTier.duration || 'year'
       };
     }
-    
+
     if (plan) return { name: plan.name, price: parseInt(plan.price), duration: plan.duration };
     return null;
   }, [isAdminRole, isStudentRole, studentTier, plan, role?.id, isPromoActive, studentCount]);
 
   const handlePayment = async () => {
     if (loading || !currentPricing) return;
-    
+
     // Clear any previous errors
     setPaymentError(null);
-    
+
     // Check if Razorpay is ready (preloaded)
     if (!razorpayReady || !window.Razorpay) {
       setPaymentError('Payment gateway is loading. Please wait a moment and try again.');
@@ -673,13 +675,13 @@ function EventSales() {
         return;
       }
     }
-    
+
     setLoading(true);
-    
+
     // Detect mobile for logging
     const isMobile = isMobileDevice();
     console.log(`💳 Payment initiated on ${isMobile ? 'MOBILE' : 'DESKTOP'} device`);
-    
+
     try {
       // Prepare role_details JSON
       const roleDetails = { ...form };
@@ -718,34 +720,18 @@ function EventSales() {
       const { data: reg, error: err } = await supabase.from('event_registrations').insert(registrationData).select().single();
       if (err) throw err;
 
-      // Create order via Edge Function (uses server-side Razorpay credentials)
-      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const orderResponse = await fetch(`${SUPABASE_URL}/functions/v1/create-event-order`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'apikey': SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({
-          amount: currentPricing.price * 100, // Amount in paise
-          currency: 'INR',
-          registrationId: reg.id,
-          planName: currentPricing.name,
-          userEmail: form.email,
-          userName: getDisplayName(),
-          origin: window.location.origin, // Send origin for dev/prod detection
-        }),
+      // Create order via Cloudflare Worker (uses server-side Razorpay credentials)
+      const orderData = await paymentsApiService.createEventOrder({
+        amount: currentPricing.price * 100, // Amount in paise
+        currency: 'INR',
+        registrationId: reg.id,
+        planName: currentPricing.name,
+        userEmail: form.email,
+        userName: getDisplayName(),
+        origin: window.location.origin, // Send origin for dev/prod detection
       });
 
-      if (!orderResponse.ok) {
-        const errorData = await orderResponse.json();
-        throw new Error(errorData.error || 'Failed to create order');
-      }
-
-      const orderData = await orderResponse.json();
-      console.log('💳 Razorpay: Order created via Edge Function', orderData.id);
+      console.log('💳 Razorpay: Order created via Cloudflare Worker', orderData.id);
 
       // Store registration data for use in callbacks
       const regId = reg.id;
@@ -765,10 +751,10 @@ function EventSales() {
         currency: orderData.currency,
         name: 'Skill Passport',
         description: pricingName,
-        prefill: { 
-          name: displayName, 
-          email: userEmail, 
-          contact: userPhone 
+        prefill: {
+          name: displayName,
+          email: userEmail,
+          contact: userPhone
         },
         theme: { color: '#3B82F6' },
         // Mobile-specific: Use redirect mode for better compatibility
@@ -780,11 +766,11 @@ function EventSales() {
         timeout: 300, // 5 minutes timeout
         handler: async (res) => {
           console.log('✅ Payment successful:', res.razorpay_payment_id);
-          
+
           // Update payment status using stored regId
-          await supabase.from('event_registrations').update({ 
-            razorpay_payment_id: res.razorpay_payment_id, 
-            payment_status: 'completed' 
+          await supabase.from('event_registrations').update({
+            razorpay_payment_id: res.razorpay_payment_id,
+            payment_status: 'completed'
           }).eq('id', regId);
 
           // Create user account after successful payment
@@ -793,20 +779,18 @@ function EventSales() {
             const firstName = nameParts[0];
             const lastName = nameParts.slice(1).join(' ') || '';
 
-            const userResponse = await supabase.functions.invoke('create-event-user', {
-              body: {
-                email: userEmail,
-                firstName,
-                lastName,
-                role: userRole,
-                phone: userPhone,
-                registrationId: regId,
-                metadata: {
-                  institution: institutionName,
-                  plan: pricingName,
-                  eventName,
-                  ...savedRoleDetails
-                }
+            const userResponse = await userApiService.createEventUser({
+              email: userEmail,
+              firstName,
+              lastName,
+              role: userRole,
+              phone: userPhone,
+              registrationId: regId,
+              metadata: {
+                institution: institutionName,
+                plan: pricingName,
+                eventName,
+                ...savedRoleDetails
               }
             });
 
@@ -823,14 +807,14 @@ function EventSales() {
             navigate(`/register/plans/success?id=${regId}&plan=${encodeURIComponent(pricingName)}`);
           }
         },
-        modal: { 
+        modal: {
           ondismiss: () => {
             console.log('❌ Payment modal dismissed');
             setLoading(false);
             setPaymentError(null);
             // Update registration status to cancelled using stored regId
-            supabase.from('event_registrations').update({ 
-              payment_status: 'cancelled' 
+            supabase.from('event_registrations').update({
+              payment_status: 'cancelled'
             }).eq('id', regId);
             navigate(`/register/plans/failure?error=cancelled&plan=${encodeURIComponent(pricingName)}`);
           },
@@ -844,14 +828,14 @@ function EventSales() {
       // Create and open Razorpay checkout immediately
       // CRITICAL: This must happen synchronously after options creation for mobile
       const rzp = new window.Razorpay(razorpayOptions);
-      
+
       // Add error handler for payment failures
       rzp.on('payment.failed', function (response) {
         console.error('❌ Payment failed:', response.error);
         setLoading(false);
         setPaymentError(`Payment failed: ${response.error.description || 'Unknown error'}`);
         // Update registration status
-        supabase.from('event_registrations').update({ 
+        supabase.from('event_registrations').update({
           payment_status: 'failed',
           payment_error: response.error.description || 'Payment failed'
         }).eq('id', regId);
@@ -859,7 +843,7 @@ function EventSales() {
 
       // Open the checkout - this should happen as quickly as possible after user click
       rzp.open();
-      
+
     } catch (e) {
       console.error('Payment error:', e);
       setLoading(false);
@@ -1118,10 +1102,10 @@ function EventSales() {
                         }
                       }
                     `}</style>
-                    
+
                     {/* Base Gradient - Consistent Blue */}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgb(30, 78, 216) 0%, rgb(59, 130, 246) 100%)' }} />
-                    
+
                     {/* Subtle Geometric Shapes */}
                     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 200" preserveAspectRatio="xMidYMid slice">
                       <defs>
@@ -1133,7 +1117,7 @@ function EventSales() {
                       <ellipse cx="700" cy="30" rx="150" ry="100" fill="url(#shape1)" />
                       <ellipse cx="50" cy="180" rx="120" ry="80" fill="url(#shape1)" />
                     </svg>
-                    
+
                     {/* Content */}
                     <div className="relative z-10 px-3 sm:px-6 py-4 sm:py-5 text-white text-center">
                       {/* Badge + Heading - Stack on mobile, row on desktop */}
@@ -1145,7 +1129,7 @@ function EventSales() {
                           {promoEvent?.banner_text || 'ESFE Event Special Pricing!'}
                         </h2>
                       </div>
-                      
+
                       {/* Flip Clock Countdown */}
                       <div className="flex flex-col items-center">
                         <span className="text-[10px] sm:text-[11px] text-white/70 uppercase tracking-widest font-medium mb-2 sm:mb-3">
@@ -1155,19 +1139,19 @@ function EventSales() {
                           <FlipClockCountdown
                             to={new Date(promoEvent.end_date)}
                             labels={['DAYS', 'HOURS', 'MIN', 'SEC']}
-                            labelStyle={{ 
-                              fontSize: 10, 
-                              fontWeight: 600, 
-                              textTransform: 'uppercase', 
+                            labelStyle={{
+                              fontSize: 10,
+                              fontWeight: 600,
+                              textTransform: 'uppercase',
                               color: 'rgba(255,255,255,0.7)',
                               letterSpacing: '0.03em'
                             }}
-                            digitBlockStyle={{ 
-                              width: 32, 
-                              height: 44, 
-                              fontSize: 22, 
+                            digitBlockStyle={{
+                              width: 32,
+                              height: 44,
+                              fontSize: 22,
                               fontWeight: 700,
-                              backgroundColor: '#1e293b', 
+                              backgroundColor: '#1e293b',
                               color: '#fff',
                               borderRadius: 5
                             }}
@@ -1181,14 +1165,14 @@ function EventSales() {
                     </div>
                   </div>
                 )}
-                
+
                 <div className="text-center mb-6 sm:mb-8">
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
                     {role?.id === 'recruiter' ? 'Select Candidate Capacity' : 'Select Student Count'}
                   </h2>
                   <p className="text-gray-500 mt-1 sm:mt-2 text-sm sm:text-base">
-                    {role?.id === 'recruiter' 
-                      ? 'Choose based on your hiring volume' 
+                    {role?.id === 'recruiter'
+                      ? 'Choose based on your hiring volume'
                       : 'Choose based on your institution size'}
                   </p>
                 </div>
@@ -1202,19 +1186,18 @@ function EventSales() {
                     <div className="flex justify-center overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
                       <div className="inline-flex bg-gray-100 rounded-full p-1 sm:p-1.5 gap-0.5 sm:gap-1 shadow-inner min-w-max">
                         {groupedTiers.map((group, index) => {
-                          const label = group.max === 99999 
-                            ? `${group.min}+` 
+                          const label = group.max === 99999
+                            ? `${group.min}+`
                             : `${group.min}-${group.max}`;
                           const isActive = selectedTierGroupIndex === index;
                           return (
                             <button
                               key={`${group.min}-${group.max}`}
                               onClick={() => setSelectedTierGroupIndex(index)}
-                              className={`px-3 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                                isActive
+                              className={`px-3 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap ${isActive
                                   ? 'bg-white text-blue-600 shadow-md'
                                   : 'text-gray-600 hover:text-gray-900'
-                              }`}
+                                }`}
                               style={isActive ? { color: 'rgb(30, 78, 216)' } : {}}
                             >
                               <span className="flex items-center gap-1 sm:gap-2">
@@ -1236,43 +1219,42 @@ function EventSales() {
                           // Only show ESFE pricing if promotion is active
                           const hasEsfePrice = isPromoActive && tier.esfe_active && tier.esfe_price;
                           const displayPrice = hasEsfePrice ? tier.esfe_price : tier.price;
-                          
+
                           // Get tier-specific features
                           const tierFeatures = tier.features || (
-                            tier.tier_name === 'Basic-Cost' 
+                            tier.tier_name === 'Basic-Cost'
                               ? [`${groupedTiers[selectedTierGroupIndex].max === 99999 ? '2000+' : groupedTiers[selectedTierGroupIndex].min + '-' + groupedTiers[selectedTierGroupIndex].max} students`, 'Basic analytics', 'Email support', 'Multi-college support']
                               : tier.tier_name === 'Professional'
                                 ? [`${groupedTiers[selectedTierGroupIndex].max === 99999 ? '2000+' : groupedTiers[selectedTierGroupIndex].min + '-' + groupedTiers[selectedTierGroupIndex].max} students`, 'Advanced analytics', 'Priority support', 'All features']
                                 : [`${groupedTiers[selectedTierGroupIndex].max === 99999 ? '2000+' : groupedTiers[selectedTierGroupIndex].min + '-' + groupedTiers[selectedTierGroupIndex].max} students`, 'Enterprise analytics', '24/7 support', 'All features']
                           );
-                          
+
                           return (
                             <button
                               key={tier.id}
                               onClick={() => setStudentTier(tier)}
-                              className={`relative flex flex-col p-4 sm:p-6 rounded-xl sm:rounded-2xl border-2 text-center transition-all duration-300 ${
-                                isSelected
+                              className={`relative flex flex-col p-4 sm:p-6 rounded-xl sm:rounded-2xl border-2 text-center transition-all duration-300 ${isSelected
                                   ? 'border-blue-500 bg-blue-50/50 shadow-xl shadow-blue-500/15 sm:scale-[1.02]'
                                   : isRecommended
                                     ? 'border-blue-300 bg-white hover:border-blue-400 hover:shadow-lg shadow-md'
                                     : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
-                              }`}
+                                }`}
                             >
                               {/* Recommended Badge */}
                               {isRecommended && (
-                                <div 
+                                <div
                                   className="absolute -top-2.5 sm:-top-3 left-1/2 -translate-x-1/2 px-3 sm:px-4 py-0.5 sm:py-1 text-white text-[10px] sm:text-xs font-semibold rounded-full shadow-md"
                                   style={{ backgroundColor: 'rgb(30, 78, 216)' }}
                                 >
                                   Recommended
                                 </div>
                               )}
-                              
+
                               {/* Plan Name */}
                               <h3 className={`text-lg sm:text-xl font-bold mb-2 sm:mb-4 ${isRecommended ? 'text-blue-600' : 'text-gray-800'}`}>
                                 {tier.tier_name}
                               </h3>
-                              
+
                               {/* ESFE Special Badge */}
                               {hasEsfePrice && (
                                 <div className="mb-2 sm:mb-3">
@@ -1281,7 +1263,7 @@ function EventSales() {
                                   </span>
                                 </div>
                               )}
-                              
+
                               {/* Price Section */}
                               <div className="mb-3 sm:mb-4">
                                 {/* Original price with strikethrough when ESFE is active */}
@@ -1304,7 +1286,7 @@ function EventSales() {
                                   </div>
                                 )}
                               </div>
-                              
+
                               {/* Features - Hidden on mobile for compact view */}
                               <div className="hidden sm:block space-y-3 mb-6 text-left flex-grow">
                                 {tierFeatures.slice(0, 4).map((feature, i) => (
@@ -1314,14 +1296,13 @@ function EventSales() {
                                   </div>
                                 ))}
                               </div>
-                              
+
                               {/* Select Button */}
-                              <div 
-                                className={`w-full py-2 sm:py-3 px-3 sm:px-4 rounded-lg sm:rounded-xl font-semibold text-sm sm:text-base transition-all ${
-                                  isSelected
+                              <div
+                                className={`w-full py-2 sm:py-3 px-3 sm:px-4 rounded-lg sm:rounded-xl font-semibold text-sm sm:text-base transition-all ${isSelected
                                     ? 'text-white shadow-md'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
+                                  }`}
                                 style={isSelected ? { backgroundColor: 'rgb(30, 78, 216)' } : {}}
                               >
                                 {isSelected ? (
@@ -1356,9 +1337,9 @@ function EventSales() {
                         }
                       }
                     `}</style>
-                    
+
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgb(30, 78, 216) 0%, rgb(59, 130, 246) 100%)' }} />
-                    
+
                     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 200" preserveAspectRatio="xMidYMid slice">
                       <defs>
                         <linearGradient id="shape1-student" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -1369,7 +1350,7 @@ function EventSales() {
                       <ellipse cx="700" cy="30" rx="150" ry="100" fill="url(#shape1-student)" />
                       <ellipse cx="50" cy="180" rx="120" ry="80" fill="url(#shape1-student)" />
                     </svg>
-                    
+
                     <div className="relative z-10 px-3 sm:px-6 py-4 sm:py-5 text-white text-center">
                       <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 mb-3 sm:mb-4">
                         <span className="px-3 sm:px-4 py-1 sm:py-1.5 bg-emerald-500 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider shadow-md whitespace-nowrap">
@@ -1379,7 +1360,7 @@ function EventSales() {
                           {promoEvent?.banner_text || 'ESFE Event Special Pricing!'}
                         </h2>
                       </div>
-                      
+
                       <div className="flex flex-col items-center">
                         <span className="text-[10px] sm:text-[11px] text-white/70 uppercase tracking-widest font-medium mb-2 sm:mb-3">
                           Offer Ends In
@@ -1388,19 +1369,19 @@ function EventSales() {
                           <FlipClockCountdown
                             to={new Date(promoEvent.end_date)}
                             labels={['DAYS', 'HOURS', 'MIN', 'SEC']}
-                            labelStyle={{ 
-                              fontSize: 10, 
-                              fontWeight: 600, 
-                              textTransform: 'uppercase', 
+                            labelStyle={{
+                              fontSize: 10,
+                              fontWeight: 600,
+                              textTransform: 'uppercase',
                               color: 'rgba(255,255,255,0.7)',
                               letterSpacing: '0.03em'
                             }}
-                            digitBlockStyle={{ 
-                              width: 32, 
-                              height: 44, 
-                              fontSize: 22, 
+                            digitBlockStyle={{
+                              width: 32,
+                              height: 44,
+                              fontSize: 22,
                               fontWeight: 700,
-                              backgroundColor: '#1e293b', 
+                              backgroundColor: '#1e293b',
                               color: '#fff',
                               borderRadius: 5
                             }}
@@ -1414,12 +1395,12 @@ function EventSales() {
                     </div>
                   </div>
                 )}
-                
+
                 <div className="text-center mb-6">
                   <h2 className="text-2xl font-bold text-gray-900">{getStepContent(role?.id).step2.heading}</h2>
                   <p className="text-gray-500 mt-1">{getStepContent(role?.id).step2.subtitle}</p>
                 </div>
-                
+
                 {tiersLoading ? (
                   <div className="flex justify-center py-12">
                     <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -1464,12 +1445,12 @@ function EventSales() {
                 {isAdminRole ? 'Enter your institution information' : getStepContent(role?.id).step3.subtitle}
               </p>
             </div>
-            
+
             {/* Form Fields First */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4 mb-6">
               {renderFormFields()}
             </div>
-            
+
             {/* Student Count Input - Modern Compact Design */}
             {isAdminRole && studentTier && (() => {
               const hasEsfePrice = isPromoActive && studentTier.esfe_active && studentTier.esfe_price;
@@ -1478,7 +1459,7 @@ function EventSales() {
               const count = parseInt(studentCount) || 0;
               const totalPrice = Math.round(pricePerStudent * count);
               const originalTotalPrice = Math.round(originalPricePerStudent * count);
-              
+
               const minStudents = studentTier.min_students;
               const maxStudents = studentTier.max_students;
               const isUnlimited = maxStudents === 99999;
@@ -1487,15 +1468,14 @@ function EventSales() {
               const isValidCount = count >= minStudents && (isUnlimited || count <= maxStudents);
               const hasError = count > 0 && !isValidCount;
               const capacityLabel = role?.id === 'recruiter' ? 'candidates' : 'students';
-              
+
               return (
-                <div className={`rounded-2xl border-2 transition-all duration-300 ${
-                  hasError 
-                    ? 'bg-red-50 border-red-200' 
+                <div className={`rounded-2xl border-2 transition-all duration-300 ${hasError
+                    ? 'bg-red-50 border-red-200'
                     : isValidCount && count > 0
                       ? hasEsfePrice ? 'bg-emerald-50 border-emerald-200' : 'bg-blue-50 border-blue-200'
                       : 'bg-white border-gray-100'
-                }`}>
+                  }`}>
                   {/* Header with inline range info */}
                   <div className="px-4 sm:px-5 py-3 border-b border-gray-100/50">
                     <div className="flex items-center justify-between">
@@ -1518,7 +1498,7 @@ function EventSales() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Input and Result Row */}
                   <div className="px-4 sm:px-5 py-4">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -1531,11 +1511,10 @@ function EventSales() {
                           placeholder="Enter count"
                           min={minStudents}
                           max={isUnlimited ? undefined : maxStudents}
-                          className={`w-full h-12 px-4 text-lg font-bold rounded-xl border-2 outline-none transition-all ${
-                            hasError 
-                              ? 'border-red-300 bg-white text-red-600 focus:border-red-400 focus:ring-2 focus:ring-red-100' 
+                          className={`w-full h-12 px-4 text-lg font-bold rounded-xl border-2 outline-none transition-all ${hasError
+                              ? 'border-red-300 bg-white text-red-600 focus:border-red-400 focus:ring-2 focus:ring-red-100'
                               : 'border-gray-200 bg-white text-gray-900 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
-                          }`}
+                            }`}
                         />
                         {hasError && (
                           <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -1543,7 +1522,7 @@ function EventSales() {
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Multiplication sign and price */}
                       {count > 0 && (
                         <div className="flex items-center justify-center gap-2 sm:gap-3">
@@ -1557,28 +1536,26 @@ function EventSales() {
                             </div>
                           </div>
                           <span className="text-gray-400 text-lg">=</span>
-                          
+
                           {/* Total */}
-                          <div className={`px-4 py-2 rounded-xl font-bold text-lg sm:text-xl ${
-                            hasError 
-                              ? 'bg-red-100 text-red-600' 
-                              : hasEsfePrice 
-                                ? 'bg-emerald-100 text-emerald-700' 
+                          <div className={`px-4 py-2 rounded-xl font-bold text-lg sm:text-xl ${hasError
+                              ? 'bg-red-100 text-red-600'
+                              : hasEsfePrice
+                                ? 'bg-emerald-100 text-emerald-700'
                                 : 'bg-blue-100 text-blue-700'
-                          }`}>
+                            }`}>
                             ₹{totalPrice.toLocaleString()}
                           </div>
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Error or Success Message */}
                     {count > 0 && (
-                      <div className={`mt-3 text-center text-sm font-medium ${
-                        hasError ? 'text-red-600' : hasEsfePrice ? 'text-emerald-600' : 'text-blue-600'
-                      }`}>
+                      <div className={`mt-3 text-center text-sm font-medium ${hasError ? 'text-red-600' : hasEsfePrice ? 'text-emerald-600' : 'text-blue-600'
+                        }`}>
                         {hasError ? (
-                          isBelowMin 
+                          isBelowMin
                             ? `⚠ Need at least ${minStudents.toLocaleString()} ${capacityLabel}`
                             : `⚠ Maximum ${maxStudents.toLocaleString()} ${capacityLabel} for this plan`
                         ) : (
@@ -1666,7 +1643,7 @@ function EventSales() {
                   )}
                 </div>
               </div>
-              
+
               {/* ESFE Special Badge in Order Summary */}
               {currentPricing.isEsfe && (
                 <div className="mb-4 p-3 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl">
@@ -1676,7 +1653,7 @@ function EventSales() {
                   </div>
                 </div>
               )}
-              
+
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-gray-500">Name</span><span className="font-medium">{getDisplayName()}</span></div>
                 {getInstitutionName() && (
@@ -1760,8 +1737,8 @@ function EventSales() {
         {paymentError && (
           <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-sm text-red-600 text-center">{paymentError}</p>
-            <button 
-              onClick={() => setPaymentError(null)} 
+            <button
+              onClick={() => setPaymentError(null)}
               className="mt-2 w-full text-xs text-red-500 hover:text-red-700 underline"
             >
               Dismiss

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import userApiService from './userApiService';
 
 // ==================== INTERVIEW CRUD OPERATIONS ====================
 
@@ -195,7 +196,7 @@ export const updateInterviewStatus = async (
 ) => {
   try {
     const updates: any = { status };
-    
+
     // If completing, set completed_date
     if (status === 'completed') {
       updates.completed_date = new Date().toISOString();
@@ -339,7 +340,7 @@ export const sendReminder = async (interviewId: string, recipientEmail?: string,
     // Get interview details if email/name not provided
     let email = recipientEmail;
     let name = recipientName;
-    
+
     if (!email || !name) {
       const { data: interview, error } = await getInterviewById(interviewId);
       if (error || !interview) {
@@ -353,23 +354,21 @@ export const sendReminder = async (interviewId: string, recipientEmail?: string,
       return { data: null, error: 'Recipient email and name are required' };
     }
 
-    // Call the Edge Function
-    
-    const { data, error } = await supabase.functions.invoke('send-interview-reminder', {
-      body: {
+    // Call the Cloudflare Worker via userApiService
+
+    try {
+      const data = await userApiService.sendInterviewReminder({
         interviewId,
         recipientEmail: email,
         recipientName: name
-      }
-    });
+      });
 
-    if (error) {
-      console.error('Edge Function error:', error);
+      return { data, error: null };
+    } catch (error) {
+      console.error('Interview reminder error:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
-      throw error;
+      return { data: null, error };
     }
-    
-    return { data, error: null };
   } catch (error) {
     console.error('Error sending reminder:', error);
     console.error('Error message:', error?.message);
@@ -386,16 +385,16 @@ export const sendReminder = async (interviewId: string, recipientEmail?: string,
 export const getInterviewStatistics = async () => {
   try {
     const { data: allInterviews, error } = await getInterviews();
-    
+
     if (error) throw error;
 
     const now = new Date();
     const upcoming = allInterviews?.filter(
       i => new Date(i.date) > now && i.status !== 'completed' && i.status !== 'cancelled'
     ) || [];
-    
+
     const completed = allInterviews?.filter(i => i.status === 'completed') || [];
-    
+
     const pendingScorecards = completed.filter(
       i => !i.scorecard || !i.scorecard.overall_rating
     );
