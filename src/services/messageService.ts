@@ -848,7 +848,7 @@ export class MessageService {
             .from('college_lecturers')
             .select('user_id, userId')
             .or(`user_id.eq.${userId},userId.eq.${userId}`)
-            .or(`collegeId.eq.${conversation.college_id},college_id.eq.${conversation.college_id}`)
+            .eq('collegeId', conversation.college_id)
             .single();
           
           if (!collegeAdminError && collegeAdmin) {
