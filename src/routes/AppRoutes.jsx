@@ -139,6 +139,7 @@ const AssessmentPlatform = lazy(() => import("../pages/student/AssessmentPlatfor
 const AssessmentTestPage = lazy(() => import("../pages/student/AssessmentTestPage"));
 const AssessmentResults = lazy(() => import("../pages/student/AssessmentResults"));
 const AssessmentStart = lazy(() => import("../pages/student/AssessmentStart"));
+const DynamicAssessment = lazy(() => import("../pages/student/DynamicAssessment"));
 
 // Educator pages
 const EducatorDashboard = lazy(() => import("../pages/educator/Dashboard"));
@@ -338,6 +339,10 @@ const MessageCenter = lazy(() =>
 const CircularsFeedback = lazy(() =>
   import("../pages/admin/schoolAdmin/CircularsFeedback")
 );
+const StudentMessages = lazy(() =>
+  import("../pages/admin/schoolAdmin/StudentCommunication")
+);
+
 // skill && Curriculum Management
 const SkillCurricular = lazy(() =>
   import("../pages/admin/schoolAdmin/SkillCurricular")
@@ -559,6 +564,7 @@ const AppRoutes = () => {
             path="communication/circulars"
             element={<CircularsFeedback />}
           />
+          <Route path="communication/messages-student" element={<StudentMessages />} />
           {/* Skill & Curriculum Manament*/}
           <Route path="skills/clubs" element={<SkillCurricular />} />
           <Route path="skills/badges" element={<SkillBadges />} />
@@ -666,6 +672,7 @@ const AppRoutes = () => {
           <Route path="assessment/test" element={<AssessmentTest />} />
           <Route path="assessment/result" element={<AssessmentResult />} />
           <Route path="assessment/platform" element={<AssessmentStart />} />
+          <Route path="assessment/dynamic" element={<DynamicAssessment />} />
           <Route path="assessment/start" element={<TestProvider><AssessmentTestPage /></TestProvider>} />
           <Route path="assessment/results" element={<TestProvider><AssessmentResults /></TestProvider>} />
 

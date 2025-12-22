@@ -12,7 +12,7 @@ import {
 import { UserPlusIcon } from 'lucide-react';
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/admin/Pagination';
-import StudentProfileDrawer from '@/components/admin/components/StudentProfileDrawer';
+import StudentProfileDrawer from '@/components/shared/StudentProfileDrawer';
 import CareerPathDrawer from '@/components/admin/components/CareerPathDrawer';
 import AddStudentModal from '../../../components/educator/modals/Addstudentmodal';
 import { useStudents } from '../../../hooks/useAdminStudents';
@@ -890,6 +890,7 @@ const StudentDataAdmission = () => {
           setShowDrawer(false);
           setSelectedStudent(null);
         }}
+        userRole="college_admin"
       />
 
       {/* Career Path Drawer */}

@@ -227,109 +227,127 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
   onToggleSelect?: (studentId: string) => void;
 }) => {
   return (
-    <div className={`bg-white border rounded-lg p-4 hover:shadow-md transition-shadow ${
-      isSelected ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200'
-    }`}>
-      {/* Checkbox */}
+    <div 
+      className={`bg-white border rounded-lg p-4 hover:shadow-md transition-all duration-200 flex flex-col h-full relative group ${
+        isSelected ? 'border-primary-500 ring-2 ring-primary-200 bg-primary-50/30' : 'border-gray-200 hover:border-gray-300'
+      }`}
+    >
+      {/* Professional Checkbox - Top Right Corner */}
       {onToggleSelect && (
-        <div className="flex items-start mb-3">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={() => onToggleSelect(student.id)}
-            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mt-1"
-          />
+        <div className="absolute top-3 right-3 z-10">
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onToggleSelect(student.id)}
+              className="sr-only peer"
+            />
+            <div className={`
+              w-5 h-5 rounded border-2 transition-all duration-200 flex items-center justify-center
+              ${isSelected 
+                ? 'bg-primary-600 border-primary-600' 
+                : 'bg-white border-gray-300 hover:border-primary-400 group-hover:border-gray-400'
+              }
+            `}>
+              {isSelected && (
+                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+          </label>
         </div>
       )}
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <h3 className="font-medium text-gray-900">{student.name}</h3>
-          <p className="text-sm text-gray-500">{student.dept}</p>
-          <p className="text-xs text-gray-400">{student.college} • {student.location}</p>
-        </div>
-        <div className="flex flex-col items-end">
-          <div className="flex items-center mb-1">
-            <StarIcon className="h-4 w-4 text-yellow-400 fill-current" />
-            <span className="text-sm font-medium text-gray-700 ml-1">{student.ai_score_overall}</span>
+      
+      {/* Content that can grow */}
+      <div className="flex-1">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3 pr-8">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-gray-900 truncate">{student.name}</h3>
+            <p className="text-sm text-gray-500 truncate">{student.dept}</p>
+            <p className="text-xs text-gray-400 truncate">{student.college} • {student.location}</p>
           </div>
-          <BadgeComponent badges={student.badges} />
+          <div className="flex flex-col items-end ml-3 flex-shrink-0">
+            <div className="flex items-center mb-1">
+              <StarIcon className="h-4 w-4 text-yellow-400 fill-current" />
+              <span className="text-sm font-medium text-gray-700 ml-1">{student.ai_score_overall}</span>
+            </div>
+            <BadgeComponent badges={student.badges} />
+          </div>
         </div>
-      </div>
 
-      {/* Skills */}
-      <div className="mb-3">
-        <div className="flex flex-wrap gap-1">
-          {student.skills.slice(0, 5).map((skill, index: number) => {
-            const label = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
-            if (!label) return null;
-            return (
-              <span
-                key={index}
-                className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
-              >
-                {label}
-              </span>
-            );
-          })}
-          {student.skills.length > 5 && (
-            <span className="text-xs text-gray-500">+{student.skills.length - 5} more</span>
+        {/* Skills */}
+        <div className="mb-3">
+          <div className="flex flex-wrap gap-1">
+            {student.skills.slice(0, 5).map((skill, index: number) => {
+              const label = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
+              if (!label) return null;
+              return (
+                <span
+                  key={index}
+                  className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
+                >
+                  {label}
+                </span>
+              );
+            })}
+            {student.skills.length > 5 && (
+              <span className="text-xs text-gray-500">+{student.skills.length - 5} more</span>
+            )}
+          </div>
+        </div>
+
+        {/* Evidence snippets */}
+        <div className="mb-4 space-y-1">
+          {student.hackathon && (
+            <p className="text-xs text-gray-600">
+              🏆 Rank #{student.hackathon.rank} in {student.hackathon.event_id}
+            </p>
+          )}
+          {student.internship && (
+            <p className="text-xs text-gray-600">
+              💼 {student.internship.org} ({student.internship.rating}⭐)
+            </p>
+          )}
+          {student.projects && student.projects.length > 0 && (
+            <p className="text-xs text-gray-600">
+              🔬 {student.projects[0].title}
+            </p>
           )}
         </div>
       </div>
 
-      {/* Evidence snippets */}
-      <div className="mb-4 space-y-1">
-        {student.hackathon && (
-          <p className="text-xs text-gray-600">
-            🏆 Rank #{student.hackathon.rank} in {student.hackathon.event_id}
-          </p>
-        )}
-        {student.internship && (
-          <p className="text-xs text-gray-600">
-            💼 {student.internship.org} ({student.internship.rating}⭐)
-          </p>
-        )}
-        {student.projects && student.projects.length > 0 && (
-          <p className="text-xs text-gray-600">
-            🔬 {student.projects[0].title}
-          </p>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-500">
-          Updated {new Date(student.last_updated).toLocaleDateString()}
-        </span>
-        <div className="flex flex-wrap gap-2">
+      {/* Actions - Always at bottom */}
+      <div className="flex items-center justify-end mt-auto pt-2 border-t border-gray-100">
+        <div className="flex gap-2 flex-nowrap">
           <button
             onClick={() => onViewProfile(student)}
-            className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+            className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-colors whitespace-nowrap"
             disabled={!onViewProfile}
           >
-            <EyeIcon className="h-3 w-3 mr-1" />
+            <EyeIcon className="h-3 w-3 mr-1.5" />
             View
           </button>
           <button
             onClick={() => onMessage(student)}
-            className="inline-flex items-center px-2 py-1 border border-green-300 rounded text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100"
+            className="inline-flex items-center px-3 py-1.5 border border-green-300 rounded-md text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-400 transition-colors whitespace-nowrap"
           >
-            <ChatBubbleLeftRightIcon className="h-3 w-3 mr-1" />
+            <ChatBubbleLeftRightIcon className="h-3 w-3 mr-1.5" />
             Message
           </button>
           <button
             onClick={() => onEdit(student)}
-            className="inline-flex items-center px-2 py-1 border border-blue-300 rounded text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
+            className="inline-flex items-center px-3 py-1.5 border border-blue-300 rounded-md text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 transition-colors whitespace-nowrap"
           >
-            <PencilSquareIcon className="h-3 w-3 mr-1" />
+            <PencilSquareIcon className="h-3 w-3 mr-1.5" />
             Edit
           </button>
           <button
             onClick={() => onDelete(student)}
-            className="inline-flex items-center px-2 py-1 border border-red-300 rounded text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100"
+            className="inline-flex items-center px-3 py-1.5 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 transition-colors whitespace-nowrap"
           >
-            <TrashIcon className="h-3 w-3 mr-1" />
+            <TrashIcon className="h-3 w-3 mr-1.5" />
             Delete
           </button>
         </div>
@@ -375,12 +393,13 @@ const StudentsPage = () => {
     maxScore: 100
   });
 
-  // Get educator's school information
-  const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
+  // Get educator's school/college information
+  const { school: educatorSchool, college: educatorCollege, educatorType, loading: schoolLoading } = useEducatorSchool();
 
-  // Fetch students filtered by educator's school
+  // Fetch students filtered by educator's school or college
   const { students, loading, error, refetch } = useStudents({ 
-    schoolId: educatorSchool?.id 
+    schoolId: educatorSchool?.id,
+    collegeId: educatorCollege?.id
   });
 
   // Reset to page 1 when filters or search change
@@ -1032,7 +1051,7 @@ const StudentsPage = () => {
           {/* Results */}
           <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
                 {(loading || schoolLoading) && <div className="text-sm text-gray-500">Loading students...</div>}
                 {error && <div className="text-sm text-red-600">{error}</div>}
                 {!loading && !schoolLoading && paginatedStudents.map((student) => (
@@ -1054,11 +1073,13 @@ const StudentsPage = () => {
                         ? 'No students match your current filters'
                         : educatorSchool 
                           ? `No students found in ${educatorSchool.name}`
-                          : 'No students found.'}
+                          : educatorCollege
+                            ? `No students found in ${educatorCollege.name}`
+                            : 'No students found.'}
                     </p>
                     <p className="text-xs text-gray-400 mt-2">
-                      {educatorSchool 
-                        ? 'Students are filtered by your assigned school.'
+                      {educatorSchool || educatorCollege
+                        ? `Students are filtered by your assigned ${educatorType === 'school' ? 'school' : 'college'}.`
                         : 'Try adjusting your search terms or filters.'}
                     </p>
                     {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
