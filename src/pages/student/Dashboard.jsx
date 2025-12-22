@@ -1,89 +1,76 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useLocation } from "react-router-dom";
-import { motion } from "motion/react";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/Students/components/ui/card";
-import { Button } from "../../components/Students/components/ui/button";
-import { Badge } from "../../components/Students/components/ui/badge";
-import { LampContainer } from "../../components/Students/components/ui/lamp";
-import {
-  TrendingUp,
-  CheckCircle,
-  Star,
-  ExternalLink,
-  Edit,
-  Calendar,
-  Award,
-  Eye,
-  QrCode,
-  Medal,
-  Briefcase,
-  MapPin,
-  Clock,
-  Building2,
-  Sparkles,
-  Target,
-  BookOpen,
-  Trophy,
-  ChevronRight,
-  Link,
-  Github,
-  Presentation,
-  Video,
-  File,
-  FileText,
-  ClipboardList,
-  GraduationCap,
-  PresentationIcon,
-  Rocket,
-  Cpu,
-  Users2,
-  Lightbulb,
-  BarChart3,
-} from "lucide-react";
-import {
-  ChartBarIcon,
-  RectangleStackIcon,
+    ChartBarIcon,
+    RectangleStackIcon,
 } from "@heroicons/react/24/outline";
 import {
-  suggestions,
-  educationData,
-  trainingData,
-  experienceData,
-  technicalSkills,
-  softSkills,
-} from "../../components/Students/data/mockData";
-import {
-  EducationEditModal,
-  TrainingEditModal,
-  ExperienceEditModal,
-  SkillsEditModal,
-  ProjectsEditModal,
-  CertificatesEditModal,
-} from "../../components/Students/components/ProfileEditModals";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
-import { useOpportunities } from "../../hooks/useOpportunities";
-import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
-import { useAIRecommendations } from "../../hooks/useAIRecommendations";
-import { supabase } from "../../lib/supabaseClient";
-import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
-import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
+    BarChart3,
+    BookOpen,
+    Briefcase,
+    Building2,
+    Calendar,
+    CheckCircle,
+    ChevronRight,
+    ClipboardList,
+    Clock,
+    Cpu,
+    ExternalLink,
+    Github,
+    GraduationCap,
+    Lightbulb,
+    MapPin,
+    Medal,
+    PresentationIcon,
+    Rocket,
+    Sparkles,
+    Star,
+    TrendingUp,
+    Users2
+} from "lucide-react";
+import { motion } from "motion/react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Toaster } from "react-hot-toast";
+import { useLocation, useNavigate } from "react-router-dom";
 import CareerAIToolsGrid from "../../components/shared/CareerAIToolsGrid";
 import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
-import RecentUpdatesCard from "../../components/Students/components/RecentUpdatesCard";
-import { useStudentAchievements } from "../../hooks/useStudentAchievements";
-import { useNavigate } from "react-router-dom";
-import { useStudentLearning } from "../../hooks/useStudentLearning";
-import { useStudentCertificates } from "../../hooks/useStudentCertificates";
-import { useStudentProjects } from "../../hooks/useStudentProjects";
 import AnalyticsView from "../../components/Students/components/AnalyticsView";
-import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
+import {
+    CertificatesEditModal,
+    EducationEditModal,
+    ExperienceEditModal,
+    ProjectsEditModal,
+    SkillsEditModal,
+    TrainingEditModal,
+} from "../../components/Students/components/ProfileEditModals";
 import TrainingRecommendations from "../../components/Students/components/TrainingRecommendations";
+import { Badge } from "../../components/Students/components/ui/badge";
+import { Button } from "../../components/Students/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from "../../components/Students/components/ui/card";
+import { LampContainer } from "../../components/Students/components/ui/lamp";
+import {
+    educationData,
+    experienceData,
+    softSkills,
+    suggestions,
+    technicalSkills,
+    trainingData,
+} from "../../components/Students/data/mockData";
+import { useAIRecommendations } from "../../hooks/useAIRecommendations";
+import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
+import { useOpportunities } from "../../hooks/useOpportunities";
+import { useStudentAchievements } from "../../hooks/useStudentAchievements";
+import { useStudentCertificates } from "../../hooks/useStudentCertificates";
+import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
+import { useStudentLearning } from "../../hooks/useStudentLearning";
+import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
+import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
+import { useStudentProjects } from "../../hooks/useStudentProjects";
+import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
+import { supabase } from "../../lib/supabaseClient";
 import { calculateEmployabilityScore } from "../../utils/employabilityCalculator";
 // Debug utilities removed for production cleanliness
 
@@ -141,6 +128,13 @@ const StudentDashboard = () => {
   // Use authenticated student data instead of localStorage
   // Get user email from localStorage or context (customize as needed)
   const userEmail = localStorage.getItem("userEmail");
+
+  // Debug: Log userEmail to help with troubleshooting
+  useEffect(() => {
+    console.log('📧 Dashboard userEmail:', userEmail);
+    console.log('📧 localStorage userEmail:', localStorage.getItem("userEmail"));
+    console.log('📧 All localStorage keys:', Object.keys(localStorage));
+  }, [userEmail]);
 
   // Use the same hook as ProfileEditSection for fetching and updating
   const {
