@@ -8,10 +8,10 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export interface Env {
-  SUPABASE_URL: string;
-  SUPABASE_ANON_KEY: string;
+  VITE_SUPABASE_URL: string;
+  VITE_SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
-  OPENROUTER_API_KEY: string;
+  VITE_OPENROUTER_API_KEY: string;
   EMBEDDING_SERVICE_URL?: string; // Optional: defaults to https://embedings.onrender.com
 }
 
@@ -105,12 +105,12 @@ async function authenticateUser(request: Request, env: Env): Promise<{ user: any
   if (!authHeader) return null;
 
   const token = authHeader.replace('Bearer ', '');
-  const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !user) return null;
 
-  const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+  const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
 
@@ -657,9 +657,9 @@ async function streamCareerResponse(params: StreamParams): Promise<Response> {
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
+            'Authorization': `Bearer ${env.VITE_OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': env.SUPABASE_URL || '',
+            'HTTP-Referer': env.VITE_SUPABASE_URL || '',
             'X-Title': 'Career AI Assistant'
           },
           body: JSON.stringify({
@@ -815,7 +815,7 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
   }
 
   const safeLimit = Math.min(Math.max(1, limit), RECOMMEND_CONFIG.MAX_RECOMMENDATIONS);
-  const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
   // Get student profile
   const { data: student, error: studentError } = await supabase
@@ -992,7 +992,7 @@ async function handleGenerateEmbedding(request: Request, env: Env): Promise<Resp
     console.log(`Generated embedding with ${embedding.length} dimensions`);
 
     // Update the record in Supabase
-    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
     const { error: updateError } = await supabase
       .from(table)
@@ -1462,9 +1462,9 @@ async function handleAnalyzeAssessment(request: Request, env: Env): Promise<Resp
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${env.VITE_OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': env.SUPABASE_URL || '',
+        'HTTP-Referer': env.VITE_SUPABASE_URL || '',
         'X-Title': 'Assessment Analyzer'
       },
       body: JSON.stringify({
@@ -1591,9 +1591,9 @@ ${resumeText.slice(0, 15000)}
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${env.VITE_OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': env.SUPABASE_URL || '',
+        'HTTP-Referer': env.VITE_SUPABASE_URL || '',
         'X-Title': 'Resume Parser'
       },
       body: JSON.stringify({
@@ -1659,14 +1659,14 @@ export default {
     const path = url.pathname;
 
     // Validate environment
-    if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
       return jsonResponse({ error: 'Server configuration error' }, 500);
     }
 
     try {
       // Route requests
       if (path === '/chat' || path === '/career-ai-chat') {
-        if (!env.OPENROUTER_API_KEY) {
+        if (!env.VITE_OPENROUTER_API_KEY) {
           return jsonResponse({ error: 'AI service not configured' }, 500);
         }
         return await handleCareerChat(request, env);
@@ -1681,14 +1681,14 @@ export default {
       }
 
       if (path === '/parse-resume') {
-        if (!env.OPENROUTER_API_KEY) {
+        if (!env.VITE_OPENROUTER_API_KEY) {
           return jsonResponse({ error: 'AI service not configured' }, 500);
         }
         return await handleParseResume(request, env);
       }
 
       if (path === '/analyze-assessment') {
-        if (!env.OPENROUTER_API_KEY) {
+        if (!env.VITE_OPENROUTER_API_KEY) {
           return jsonResponse({ error: 'AI service not configured' }, 500);
         }
         return await handleAnalyzeAssessment(request, env);

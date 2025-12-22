@@ -12,14 +12,12 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export interface Env {
-  SUPABASE_URL: string;
-  SUPABASE_ANON_KEY: string;
+  VITE_SUPABASE_URL: string;
+  VITE_SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
-  RAZORPAY_KEY_ID: string;
+  VITE_RAZORPAY_KEY_ID: string;
   RAZORPAY_KEY_SECRET: string;
-  RAZORPAY_WEBHOOK_SECRET: string;
-  TEST_RAZORPAY_KEY_ID?: string;
-  TEST_RAZORPAY_KEY_SECRET?: string;
+  RAZORPAY_WEBHOOK_SECRET?: string;
 }
 
 const corsHeaders = {
