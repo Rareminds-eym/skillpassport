@@ -3,15 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import { 
   Send,
-  Briefcase, 
-  Target, 
-  BookOpen, 
-  FileText,
-  GraduationCap,
-  TrendingUp,
-  Users,
-  Lightbulb,
-  Plus,
   Mic,
   Paperclip,
   X,
@@ -27,6 +18,7 @@ import { useAIFeedback, AIFeedback } from '../hooks/useAIFeedback';
 import { ConversationSidebar } from './ConversationSidebar';
 import { EnhancedMessage, SimpleMessage } from './EnhancedMessage';
 import { EnhancedAIResponse } from '../types/interactive';
+import CareerAIToolsGrid from '../../../components/shared/CareerAIToolsGrid';
 
 interface Message {
   id: string;
@@ -353,17 +345,6 @@ const CareerAssistant: React.FC = () => {
     await loadConversation(id);
   };
 
-  const quickActions = [
-    { id: 'jobs', label: 'Find Jobs', icon: Briefcase, prompt: 'What jobs match my skills and experience?', color: 'bg-amber-100 hover:bg-amber-200 text-amber-700', iconBg: 'bg-amber-200' },
-    { id: 'skills', label: 'Skill Gap Analysis', icon: Target, prompt: 'Analyze my skill gaps for my target career', color: 'bg-blue-100 hover:bg-blue-200 text-blue-700', iconBg: 'bg-blue-200' },
-    { id: 'interview', label: 'Interview Prep', icon: BookOpen, prompt: 'Help me prepare for upcoming interviews', color: 'bg-green-100 hover:bg-green-200 text-green-700', iconBg: 'bg-green-200' },
-    { id: 'resume', label: 'Resume Review', icon: FileText, prompt: 'Review my resume and suggest improvements', color: 'bg-purple-100 hover:bg-purple-200 text-purple-700', iconBg: 'bg-purple-200' },
-    { id: 'learning', label: 'Learning Path', icon: GraduationCap, prompt: 'Create a learning roadmap for my career goals', color: 'bg-pink-100 hover:bg-pink-200 text-pink-700', iconBg: 'bg-pink-200' },
-    { id: 'career', label: 'Career Guidance', icon: TrendingUp, prompt: 'What career paths are best suited for me?', color: 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700', iconBg: 'bg-indigo-200' },
-    { id: 'network', label: 'Networking Tips', icon: Users, prompt: 'Give me networking strategies for my field', color: 'bg-teal-100 hover:bg-teal-200 text-teal-700', iconBg: 'bg-teal-200' },
-    { id: 'advice', label: 'Career Advice', icon: Lightbulb, prompt: 'I need career advice and guidance', color: 'bg-orange-100 hover:bg-orange-200 text-orange-700', iconBg: 'bg-orange-200' },
-  ];
-
 
   return (
     <div className="flex h-full min-h-0 bg-white">
@@ -409,30 +390,9 @@ const CareerAssistant: React.FC = () => {
                 </motion.p>
               </div>
 
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {quickActions.map((action, index) => (
-                  <motion.button
-                    key={action.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleQuickAction(action.prompt, action.label)}
-                    className={`${action.color} rounded-2xl p-6 text-left transition-all duration-200 shadow-sm hover:shadow-md group relative overflow-hidden`}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className={`${action.iconBg} w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                        <action.icon className="w-6 h-6" />
-                      </div>
-                      <Plus className="w-5 h-5 opacity-50 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                    <h3 className="font-semibold text-base mb-1">{action.label}</h3>
-                  </motion.button>
-                ))}
-              </motion.div>
+              <CareerAIToolsGrid onAction={handleQuickAction} variant="full" animated={true} />
 
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-center text-sm text-gray-500">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-center text-sm text-gray-500 mt-8">
                 💡 Click a card above or type your question below to get started
               </motion.div>
             </motion.div>
@@ -441,28 +401,7 @@ const CareerAssistant: React.FC = () => {
               {selectedChips.length === 0 && messages.length > 0 && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
                   <p className="text-sm text-gray-500 mb-3 text-center">Quick Actions:</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {quickActions.map((action, index) => (
-                      <motion.button
-                        key={action.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.05 * index }}
-                        whileHover={{ scale: 1.02, y: -2 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => handleQuickAction(action.prompt, action.label)}
-                        className={`${action.color} rounded-xl p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className={`${action.iconBg} w-10 h-10 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                            <action.icon className="w-5 h-5" />
-                          </div>
-                          <Plus className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                        <h3 className="font-semibold text-sm">{action.label}</h3>
-                      </motion.button>
-                    ))}
-                  </div>
+                  <CareerAIToolsGrid onAction={handleQuickAction} variant="compact" animated={true} />
                 </motion.div>
               )}
 
