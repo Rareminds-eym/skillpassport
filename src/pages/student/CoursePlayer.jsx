@@ -180,6 +180,9 @@ const CoursePlayer = () => {
         return;
       }
 
+      // Check if all lessons in the course are now completed
+      await checkAndUpdateCourseCompletion();
+
       // Update student streak after completing lesson
       try {
         const response = await fetch(`http://localhost:3001/api/streaks/${user.id}/complete`, {
@@ -199,6 +202,48 @@ const CoursePlayer = () => {
       }
     } catch (error) {
       console.error('Error in markLessonCompleted:', error);
+    }
+  };
+
+  // Check if all lessons are completed and update course_enrollments.completed_at
+  const checkAndUpdateCourseCompletion = async () => {
+    if (!user?.id || !courseId || !course) return;
+
+    try {
+      // Get total lessons count
+      const totalLessons = course.modules?.reduce((acc, module) => acc + (module.lessons?.length || 0), 0) || 0;
+      if (totalLessons === 0) return;
+
+      // Get completed lessons count from database
+      const { count: completedCount, error: countError } = await supabase
+        .from('student_course_progress')
+        .select('*', { count: 'exact', head: true })
+        .eq('student_id', user.id)
+        .eq('course_id', courseId)
+        .eq('status', 'completed');
+
+      if (countError) {
+        console.error('Error checking completion:', countError);
+        return;
+      }
+
+      // If all lessons are completed, update course_enrollments.completed_at
+      if (completedCount >= totalLessons) {
+        const { error: updateError } = await supabase
+          .from('course_enrollments')
+          .update({ completed_at: new Date().toISOString() })
+          .eq('student_id', user.id)
+          .eq('course_id', courseId)
+          .is('completed_at', null); // Only update if not already completed
+
+        if (updateError) {
+          console.error('Error updating course completion:', updateError);
+        } else {
+          console.log('🎉 Course marked as completed!');
+        }
+      }
+    } catch (error) {
+      console.error('Error in checkAndUpdateCourseCompletion:', error);
     }
   };
 
