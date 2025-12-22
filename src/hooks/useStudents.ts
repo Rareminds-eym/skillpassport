@@ -391,6 +391,7 @@ function mapToUICandidate(row: StudentRow): UICandidate {
 interface UseStudentsOptions {
   schoolId?: string | null;
   collegeId?: string | null;
+  classIds?: string[]; // Add class IDs for filtering
 }
 
 export function useStudents(options?: UseStudentsOptions) {
@@ -399,6 +400,7 @@ export function useStudents(options?: UseStudentsOptions) {
   const [error, setError] = useState<string | null>(null)
   const schoolId = options?.schoolId
   const collegeId = options?.collegeId
+  const classIds = options?.classIds
 
   const fetchStudents = async () => {
     setLoading(true)
@@ -564,10 +566,15 @@ export function useStudents(options?: UseStudentsOptions) {
         `)
         .eq('is_deleted', false)
 
-      // Apply school or college filter
-      if (schoolId) {
+      // Apply filtering logic
+      if (classIds && classIds.length > 0) {
+        // For school educators: filter by assigned class IDs
+        query = query.in('school_class_id', classIds)
+      } else if (schoolId) {
+        // Fallback: filter by school ID (for admins or when no class assignments)
         query = query.eq('school_id', schoolId)
       } else if (collegeId) {
+        // For college educators: filter by college ID
         query = query.eq('college_id', collegeId)
       }
 
@@ -590,9 +597,8 @@ export function useStudents(options?: UseStudentsOptions) {
     let isMounted = true
     const wrappedFetch = async () => {
       if (!isMounted) return
-      // Only fetch if we have a schoolId or collegeId (when filtering is expected)
-      // Skip the fetch if either is explicitly expected but not yet loaded
-      if (options !== undefined && !schoolId && !collegeId) {
+      // Only fetch if we have filtering criteria
+      if (options !== undefined && !schoolId && !collegeId && (!classIds || classIds.length === 0)) {
         return
       }
       await fetchStudents()
@@ -602,7 +608,7 @@ export function useStudents(options?: UseStudentsOptions) {
       isMounted = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId, collegeId])
+  }, [schoolId, collegeId, classIds])
 
   const stats = useMemo(() => ({ count: data.length }), [data])
 

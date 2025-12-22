@@ -25,6 +25,7 @@ interface EducatorSchoolData {
   school: School | null;
   college: College | null;
   educatorType: 'school' | 'college' | null;
+  assignedClassIds: string[]; // Add assigned class IDs
   loading: boolean;
   error: string | null;
 }
@@ -37,6 +38,7 @@ export function useEducatorSchool(): EducatorSchoolData {
   const [school, setSchool] = useState<School | null>(null);
   const [college, setCollege] = useState<College | null>(null);
   const [educatorType, setEducatorType] = useState<'school' | 'college' | null>(null);
+  const [assignedClassIds, setAssignedClassIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,6 +84,21 @@ export function useEducatorSchool(): EducatorSchoolData {
           setSchool(schoolData as School);
           setCollege(null);
           setEducatorType('school');
+
+          // Fetch assigned class IDs for this educator
+          const { data: classAssignments, error: classError } = await supabase
+            .from('school_educator_class_assignments')
+            .select('class_id')
+            .eq('educator_id', schoolEducatorData.id);
+
+          if (classError) {
+            console.warn('Failed to fetch class assignments:', classError);
+            setAssignedClassIds([]);
+          } else {
+            const classIds = classAssignments?.map(assignment => assignment.class_id) || [];
+            setAssignedClassIds(classIds);
+          }
+          
           return;
         }
 
@@ -123,12 +140,14 @@ export function useEducatorSchool(): EducatorSchoolData {
         setSchool(null);
         setCollege(null);
         setEducatorType(null);
+        setAssignedClassIds([]);
 
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch educator information');
         setSchool(null);
         setCollege(null);
         setEducatorType(null);
+        setAssignedClassIds([]);
       } finally {
         setLoading(false);
       }
@@ -137,5 +156,5 @@ export function useEducatorSchool(): EducatorSchoolData {
     fetchEducatorInfo();
   }, [user?.email, user?.id]);
 
-  return { school, college, educatorType, loading, error };
+  return { school, college, educatorType, assignedClassIds, loading, error };
 }

@@ -64,10 +64,10 @@ const Analytics = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Get educator's school
-  const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
+  // Get educator's school information with class assignments
+  const { school: educatorSchool, college: educatorCollege, educatorType, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
-  // Get analytics data from hook - filtered by school
+  // Get analytics data from hook - filtered by school and class assignments
   const {
     loading,
     refreshing,
@@ -84,7 +84,12 @@ const Analytics = () => {
     fetchAnalyticsData,
     exportAsCSV,
     exportAsPDF,
-  } = useAnalytics({ schoolId: educatorSchool?.id });
+  } = useAnalytics({ 
+    schoolId: educatorSchool?.id,
+    collegeId: educatorCollege?.id,
+    educatorType,
+    assignedClassIds
+  });
 
   useEffect(() => {
     setTotalPages(Math.ceil(leaderboard.length / itemsPerPage));

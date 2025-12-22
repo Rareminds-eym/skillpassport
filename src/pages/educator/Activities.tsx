@@ -548,31 +548,57 @@ const Activities = () => {
   });
   const [sortBy, setSortBy] = useState('date_desc');
 
-  // Get educator's school information
-  const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
+  // Get educator's school information with class assignments
+  const { school: educatorSchool, college: educatorCollege, educatorType, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
   useEffect(() => {
     // Wait for school data before fetching activities
-    if (schoolLoading || !educatorSchool) return;
+    if (schoolLoading || (!educatorSchool && !educatorCollege)) return;
     fetchActivities();
-  }, [educatorSchool, schoolLoading]);
+  }, [educatorSchool, educatorCollege, assignedClassIds, schoolLoading]);
 
   const fetchActivities = async () => {
-    if (!educatorSchool?.id) return;
+    if (!educatorSchool?.id && !educatorCollege?.id) return;
     
     setLoading(true);
     try {
-      // Fetch student data filtered by school
-      const { data: students } = await supabase
-        .from('students')
-        .select('id, name, user_id')
-        .eq('school_id', educatorSchool.id)
-        .eq('is_deleted', false);
+      let students;
+      
+      if (educatorType === 'school' && educatorSchool) {
+        // For school educators, filter by assigned classes
+        if (assignedClassIds.length > 0) {
+          const { data } = await supabase
+            .from('students')
+            .select('id, name, user_id')
+            .eq('school_id', educatorSchool.id)
+            .in('school_class_id', assignedClassIds)
+            .eq('is_deleted', false);
+          students = data;
+        } else {
+          // Fallback for admins or educators without class assignments
+          const { data } = await supabase
+            .from('students')
+            .select('id, name, user_id')
+            .eq('school_id', educatorSchool.id)
+            .eq('is_deleted', false);
+          students = data;
+        }
+      } else if (educatorType === 'college' && educatorCollege) {
+        // For college educators, filter by college
+        const { data } = await supabase
+          .from('students')
+          .select('id, name, user_id')
+          .eq('college_id', educatorCollege.id)
+          .eq('is_deleted', false);
+        students = data;
+      } else {
+        students = [];
+      }
       
       // Create a mapping of user_id to student name
-      const studentMap = {};
-      const studentIds = new Set();
-      students?.forEach(student => {
+      const studentMap: Record<string, string> = {};
+      const studentIds = new Set<string>();
+      students?.forEach((student: any) => {
         studentMap[student.user_id] = student.name || `Student ${student.id.substring(0, 8)}`;
         studentIds.add(student.user_id);
       });
@@ -1133,7 +1159,11 @@ const Activities = () => {
                 <div className="text-sm text-gray-500">Loading activities...</div>
               </div>
             ) : viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className={`grid grid-cols-1 gap-4 ${
+                showFilters 
+                  ? 'md:grid-cols-2' 
+                  : 'md:grid-cols-2 lg:grid-cols-3'
+              }`}>
                 {filteredAndSortedActivities.length === 0 ? (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500">
