@@ -293,34 +293,52 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
         const questionId = key.replace(`${aptitudePrefix}_`, '');
         const question = aptitudeQuestions.find(q => q.id === questionId);
         if (question) {
-          const isCorrect = value === question.correct;
+          // For high school/middle school: rating-based questions (no correct answers)
+          // For after12: MCQ questions with correct answers
+          const isRatingQuestion = question.type === 'rating' || !question.correct;
 
-          // Debug first 3 comparisons to see the issue
-          if (debugCount < 3) {
-            console.log(`[APTITUDE DEBUG ${debugCount + 1}]`, {
+          let answerData;
+          if (isRatingQuestion) {
+            // High school/middle school: extract rating value and task type
+            answerData = {
               questionId,
-              studentAnswer: value,
-              studentAnswerType: typeof value,
-              correctAnswer: question.correct,
-              correctAnswerType: typeof question.correct,
-              isCorrect,
-              strictEqual: value === question.correct,
-              looseEqual: value == question.correct,
-              subtype: question.subtype
-            });
-            debugCount++;
-          }
+              question: question.text,
+              rating: value, // 1-4 scale for ease/enjoyment
+              taskType: question.taskType || question.task_type, // verbal, numerical, abstract
+              type: question.type
+            };
+            // Group by task_type for high school aptitude
+            const taskCategory = (question.taskType || question.task_type || 'verbal').toLowerCase();
+            if (aptitudeAnswers[taskCategory]) {
+              aptitudeAnswers[taskCategory].push(answerData);
+            }
+          } else {
+            // After12: MCQ with correct/incorrect answers
+            const isCorrect = value === question.correct;
 
-          const answerData = {
-            questionId,
-            question: question.text,
-            studentAnswer: value,
-            correctAnswer: question.correct,
-            isCorrect,
-            subtype: question.subtype
-          };
-          if (aptitudeAnswers[question.subtype]) {
-            aptitudeAnswers[question.subtype].push(answerData);
+            // Debug first 3 comparisons to see the issue
+            if (debugCount < 3) {
+              console.log(`[APTITUDE DEBUG ${debugCount + 1}]`, {
+                questionId,
+                studentAnswer: value,
+                correctAnswer: question.correct,
+                isCorrect,
+                subtype: question.subtype
+              });
+              debugCount++;
+            }
+
+            answerData = {
+              questionId,
+              question: question.text,
+              studentAnswer: value,
+              correctAnswer: question.correct,
+              isCorrect,
+              subtype: question.subtype
+            };
+            if (aptitudeAnswers[question.subtype]) {
+              aptitudeAnswers[question.subtype].push(answerData);
+            }
           }
         }
       }
@@ -429,22 +447,48 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   });
 
   // Calculate aptitude scores
+  // For rating-based questions (high school): calculate average rating
+  // For MCQ questions (after12): calculate correct/total
+  const calculateAptitudeScore = (answers) => {
+    if (answers.length === 0) return { correct: 0, total: 0 };
+
+    // Check if these are rating questions
+    if (answers[0]?.rating !== undefined) {
+      // High school: average rating (1-4 scale)
+      const avgRating = answers.reduce((sum, a) => sum + (a.rating || 0), 0) / answers.length;
+      const percentage = (avgRating / 4) * 100; // Convert to percentage
+      return {
+        averageRating: avgRating,
+        total: answers.length,
+        percentage: Math.round(percentage)
+      };
+    } else {
+      // After12: correct/total (unchanged logic)
+      return {
+        correct: answers.filter(a => a.isCorrect).length,
+        total: answers.length
+      };
+    }
+  };
+
   const aptitudeScores = {
-    verbal: { correct: aptitudeAnswers.verbal.filter(a => a.isCorrect).length, total: aptitudeAnswers.verbal.length },
-    numerical: { correct: aptitudeAnswers.numerical.filter(a => a.isCorrect).length, total: aptitudeAnswers.numerical.length },
-    abstract: { correct: aptitudeAnswers.abstract.filter(a => a.isCorrect).length, total: aptitudeAnswers.abstract.length },
-    spatial: { correct: aptitudeAnswers.spatial.filter(a => a.isCorrect).length, total: aptitudeAnswers.spatial.length },
-    clerical: { correct: aptitudeAnswers.clerical.filter(a => a.isCorrect).length, total: aptitudeAnswers.clerical.length }
+    verbal: calculateAptitudeScore(aptitudeAnswers.verbal),
+    numerical: calculateAptitudeScore(aptitudeAnswers.numerical),
+    abstract: calculateAptitudeScore(aptitudeAnswers.abstract),
+    spatial: calculateAptitudeScore(aptitudeAnswers.spatial),
+    clerical: calculateAptitudeScore(aptitudeAnswers.clerical)
   };
 
   // DEBUG: Log assessment data
   console.log('=== ASSESSMENT DEBUG ===');
   console.log('Grade Level:', gradeLevel);
   console.log('Total answers keys:', Object.keys(answers).length);
-  console.log('First 5 answer keys:', Object.keys(answers).slice(0, 5));
+  console.log('First 5 answer keys:');
+  Object.keys(answers).slice(0, 5).forEach(key => console.log('  -', key));
   console.log('Expected RIASEC prefix:', riasecPrefix);
   console.log('Expected Aptitude prefix:', getSectionPrefix('aptitude'));
   console.log('RIASEC answers extracted:', Object.keys(riasecAnswers).length);
+  console.log('RIASEC answer keys:', Object.keys(riasecAnswers));
   console.log('Aptitude answers extracted:', {
     verbal: aptitudeAnswers.verbal.length,
     numerical: aptitudeAnswers.numerical.length,
@@ -799,9 +843,17 @@ You MUST use this mapping to calculate scores precisely:
 ## Strengths & Character Responses:
 ${JSON.stringify(assessmentData.bigFiveAnswers, null, 2)}
 
-## Aptitude Sampling (if available):
+## Aptitude Sampling (Rating-Based Self-Assessment):
 ${JSON.stringify(assessmentData.aptitudeAnswers, null, 2)}
 Pre-calculated scores: ${JSON.stringify(assessmentData.aptitudeScores, null, 2)}
+
+**APTITUDE SCORING FOR HIGH SCHOOL:**
+High school aptitude is based on self-assessment ratings (1-4 scale) for ease and enjoyment of tasks:
+- Each task type (verbal, numerical, abstract) has multiple rating questions
+- Scores show averageRating (1-4 scale) and percentage (0-100%)
+- Higher ratings indicate stronger aptitude in that area
+- Use these ratings to identify top cognitive strengths for the aptitudeStrengths field
+- For the "scores" field in the response, convert ratings to a percentage format
 
 ## Career Pathways Responses:
 ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
@@ -818,13 +870,13 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
   },
   "aptitude": {
     "scores": {
-      "Verbal": {"correct": 0, "total": 0, "percentage": 0},
-      "Numerical": {"correct": 0, "total": 0, "percentage": 0},
-      "Abstract": {"correct": 0, "total": 0, "percentage": 0}
+      "Verbal": {"averageRating": 0, "total": 0, "percentage": 0},
+      "Numerical": {"averageRating": 0, "total": 0, "percentage": 0},
+      "Abstract": {"averageRating": 0, "total": 0, "percentage": 0}
     },
-    "topStrengths": ["2-3 cognitive strengths with specific implications for their studies"],
+    "topStrengths": ["2-3 cognitive strengths based on highest ratings (e.g., 'Strong analytical reasoning shown by high numerical task ratings')"],
     "overallScore": 0,
-    "cognitiveProfile": "How they think, learn, and solve problems - connect to academic success"
+    "cognitiveProfile": "How they think, learn, and solve problems based on their self-assessed task preferences"
   },
   "bigFive": {
     "O": 3.5, "C": 3.2, "E": 3.8, "A": 4.0, "N": 2.5,

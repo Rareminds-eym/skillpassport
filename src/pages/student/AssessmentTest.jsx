@@ -905,13 +905,25 @@ const AssessmentTest = () => {
 
             // Prepare question banks for Gemini analysis
             // Use database questions if available, otherwise fallback to hardcoded
+            // IMPORTANT: Section names must match grade level
+            const getSectionId = (baseSection) => {
+                if (gradeLevel === 'middle') {
+                    const map = { 'riasec': 'middle_interest_explorer', 'bigfive': 'middle_strengths_character', 'knowledge': 'middle_learning_preferences' };
+                    return map[baseSection] || baseSection;
+                } else if (gradeLevel === 'highschool') {
+                    const map = { 'riasec': 'hs_interest_explorer', 'aptitude': 'hs_aptitude_sampling', 'bigfive': 'hs_strengths_character', 'knowledge': 'hs_learning_preferences' };
+                    return map[baseSection] || baseSection;
+                }
+                return baseSection; // after12 uses default section names
+            };
+
             const questionBanks = {
-                riasecQuestions: getQuestionsForSection('riasec'),
-                aptitudeQuestions: getQuestionsForSection('aptitude'),
-                bigFiveQuestions: getQuestionsForSection('bigfive'),
+                riasecQuestions: getQuestionsForSection(getSectionId('riasec')),
+                aptitudeQuestions: getQuestionsForSection(getSectionId('aptitude')),
+                bigFiveQuestions: getQuestionsForSection(getSectionId('bigfive')),
                 workValuesQuestions: getQuestionsForSection('values'),
                 employabilityQuestions: getQuestionsForSection('employability'),
-                streamKnowledgeQuestions: { [studentStream]: getQuestionsForSection('knowledge') }
+                streamKnowledgeQuestions: { [studentStream]: getQuestionsForSection(getSectionId('knowledge')) }
             };
 
             // Analyze with Gemini AI - this is required, no fallback
