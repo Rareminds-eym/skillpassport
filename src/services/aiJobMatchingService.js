@@ -3,8 +3,6 @@
  * Uses Claude AI to match student profiles with job opportunities
  */
 
-import { callClaude, isClaudeConfigured } from './claudeService';
-
 // Cache for AI responses (simple in-memory cache)
 const matchCache = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -21,7 +19,7 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     // Get student identifier for logging and caching
     const studentId = studentProfile?.id || studentProfile?.email || studentProfile?.profile?.email || 'unknown';
     const studentEmail = studentProfile?.email || studentProfile?.profile?.email || 'unknown@email.com';
-    
+
     console.log({
       id: studentId,
       email: studentEmail,
@@ -33,11 +31,11 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       hasNestedProfile: !!studentProfile?.profile,
       nestedProfileKeys: studentProfile?.profile ? Object.keys(studentProfile.profile) : []
     });
-    
+
     // Create cache key specific to this student and opportunities
     const opportunitiesHash = opportunities.map(o => o.id).sort().join(',');
     const cacheKey = `${studentId}_${opportunitiesHash}_${topN}`;
-    
+
     // Check cache
     const cached = matchCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -60,7 +58,7 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
 
     // Extract student profile data
     const studentData = extractStudentData(studentProfile);
-    
+
     // Debug: Log extracted student data
     console.log({
       name: studentData.name,
@@ -73,7 +71,7 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       experience_count: studentData.experience.length,
       certificates_count: studentData.certificates.length
     });
-    
+
     // Prepare opportunities data for AI analysis
     // Note: skills_required, requirements, responsibilities are JSONB fields from database
     const opportunitiesData = opportunities.map(opp => ({
@@ -95,82 +93,104 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       deadline: opp.deadline
     }));
 
-    // Create AI prompt
-    const prompt = createMatchingPrompt(studentData, opportunitiesData, topN);
+    // Call backend API for job matching
+    const API_URL = import.meta.env.VITE_CAREER_API_URL || 'https://career-api.rareminds.workers.dev';
 
-    // Call Claude API using centralized service
-    const systemPrompt = 'You are an expert career counselor and job matching AI. Your task is to analyze student profiles and match them with the most suitable job opportunities based on their skills, education, training, and experience.';
+    // Get auth token (assuming supabase client is available or we can get session)
+    // Since this is a service file, we might need to import supabase or pass token
+    // For now, we'll try to get it from local storage or assume public access if protected by RLS on backend
+    // But wait, the backend requires authentication.
 
-    const aiContent = await callClaude(prompt, {
-      systemPrompt,
-      maxTokens: 2000,
-      temperature: 0.7,
-      cacheKey: cacheKey // Use same cache key for consistency
-    });
+    // We need to import supabase client here to get the session
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    console.log('✅ Claude job matching response received');
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
 
-    // Extract JSON from AI response
-    const matches = parseAIResponse(aiContent);
-
-    // Safety check: If AI returned no matches, create basic matches from available opportunities
-    if (!matches || matches.length === 0) {
-      const fallbackMatches = opportunities.slice(0, topN).map((opp, idx) => ({
-        job_id: opp.id,
-        job_title: opp.job_title || opp.title,
-        company_name: opp.company_name || opp.company,
-        match_score: 50 - (idx * 5), // Decreasing scores: 50, 45, 40
-        match_reason: `This is an available opportunity in ${opp.department || 'your field'}. Consider applying to gain experience and expand your skills.`,
-        key_matching_skills: studentData.technical_skills.slice(0, 3).map(s => s.name),
-        skills_gap: [],
-        recommendation: 'Review the job requirements and consider this as a learning opportunity.'
-      }));
-      
-      // Enrich with opportunity data
-      const enrichedFallbackMatches = fallbackMatches.map(match => {
-        const fullOpportunity = opportunities.find(opp => opp.id === match.job_id);
-        return {
-          ...match,
-          opportunity: fullOpportunity
-        };
-      });
-      
-      
-      // Cache fallback matches too
-      matchCache.set(cacheKey, {
-        matches: enrichedFallbackMatches,
-        timestamp: Date.now()
-      });
-      
-      return enrichedFallbackMatches;
+    if (!token) {
+      console.warn('⚠️ No auth token found for job matching');
+      // Depending on requirements, we might throw or return empty
+      // throw new Error('Authentication required');
     }
 
-    // Enrich matches with full opportunity data
+    console.log('🤖 Calling career-api for job matching...');
+
+    const response = await fetch(`${API_URL}/match-jobs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        studentProfile,
+        opportunities: opportunitiesData,
+        topN
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Server error: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to match jobs');
+    }
+
+    const matches = result.matches || [];
+    console.log(`✅ Received ${matches.length} matches from API`);
+
+    // Enrich matches with full opportunity data (since API might return partial data)
     const enrichedMatches = matches.map(match => {
       const fullOpportunity = opportunities.find(opp => opp.id === match.job_id);
       return {
         ...match,
         opportunity: fullOpportunity
       };
-    }).filter(match => match.opportunity); // Filter out any matches without opportunity data
+    }).filter(match => match.opportunity);
 
-    // Warning: Check for cross-field matching (low scores might indicate database issue)
-    const averageScore = enrichedMatches.reduce((sum, m) => sum + m.match_score, 0) / enrichedMatches.length;
-    if (averageScore < 40) {
-    }
-
-    
     // Cache the results
     matchCache.set(cacheKey, {
       matches: enrichedMatches,
       timestamp: Date.now()
     });
-    
+
     return enrichedMatches;
 
   } catch (error) {
     console.error('❌ AI Job Matching Error:', error);
-    throw error;
+
+    // Fallback to local basic matching if API fails
+    console.log('⚠️ Using fallback local matching...');
+
+    // Extract student data locally for fallback
+    const studentData = extractStudentData(studentProfile);
+
+    const fallbackMatches = opportunities.slice(0, topN).map((opp, idx) => ({
+      job_id: opp.id,
+      job_title: opp.job_title || opp.title,
+      company_name: opp.company_name || opp.company,
+      match_score: 50 - (idx * 5),
+      match_reason: `This is an available opportunity in ${opp.department || 'your field'}. (Fallback match)`,
+      key_matching_skills: studentData.technical_skills.slice(0, 3).map(s => s.name),
+      skills_gap: [],
+      recommendation: 'Review the job requirements.'
+    }));
+
+    const enrichedFallbackMatches = fallbackMatches.map(match => {
+      const fullOpportunity = opportunities.find(opp => opp.id === match.job_id);
+      return {
+        ...match,
+        opportunity: fullOpportunity
+      };
+    });
+
+    return enrichedFallbackMatches;
   }
 }
 
@@ -181,7 +201,7 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
  */
 function extractStudentData(studentProfile) {
   const profile = studentProfile?.profile || {};
-  
+
   // Debug log the raw profile structure
   console.log({
     hasProfile: !!studentProfile?.profile,
@@ -193,7 +213,7 @@ function extractStudentData(studentProfile) {
     courseValue: profile.course,
     branchField: profile.branch_field
   });
-  
+
   // Extract technical skills from various possible field names
   let technicalSkills = [];
   if (Array.isArray(profile.technicalSkills)) {
@@ -206,16 +226,16 @@ function extractStudentData(studentProfile) {
     technicalSkills = profile.skill;
   } else if (typeof profile.skill === 'string' && profile.skill) {
     // Handle single skill string - split by comma or treat as one skill
-    technicalSkills = profile.skill.includes(',') 
-      ? profile.skill.split(',').map(s => s.trim()) 
+    technicalSkills = profile.skill.includes(',')
+      ? profile.skill.split(',').map(s => s.trim())
       : [profile.skill];
   }
-  
+
   // Also add course as a skill if it exists
   if (profile.course && typeof profile.course === 'string') {
     technicalSkills.push(profile.course);
   }
-  
+
   // Extract soft skills
   let softSkills = [];
   if (Array.isArray(profile.softSkills)) {
@@ -223,28 +243,28 @@ function extractStudentData(studentProfile) {
   } else if (Array.isArray(profile.soft_skills)) {
     softSkills = profile.soft_skills;
   }
-  
+
   return {
     name: studentProfile.name || profile.name || 'Student',
     department: studentProfile.department || profile.branch_field || profile.department,
     university: studentProfile.university || profile.university,
     year_of_passing: studentProfile.year_of_passing || profile.year_of_passing,
     cgpa: studentProfile.cgpa || profile.cgpa,
-    
+
     // Technical Skills
     technical_skills: technicalSkills.map(skill => ({
       name: skill.name || skill.skill_name || skill,
       level: skill.level || skill.proficiency || 3,
       category: skill.category || skill.type || 'General'
     })),
-    
+
     // Soft Skills
     soft_skills: softSkills.map(skill => ({
       name: skill.name || skill.skill_name || skill,
       level: skill.level || 3,
       type: skill.type || 'General'
     })),
-    
+
     // Education
     education: (profile.education || []).map(edu => ({
       degree: edu.degree,
@@ -255,7 +275,7 @@ function extractStudentData(studentProfile) {
       level: edu.level,
       status: edu.status
     })),
-    
+
     // Training/Courses
     training: (profile.training || []).map(train => ({
       course: train.course,
@@ -264,7 +284,7 @@ function extractStudentData(studentProfile) {
       start_date: train.start_date,
       end_date: train.end_date
     })),
-    
+
     // Experience
     experience: (profile.experience || []).map(exp => ({
       role: exp.role,
@@ -275,7 +295,7 @@ function extractStudentData(studentProfile) {
       start_date: exp.start_date,
       end_date: exp.end_date
     })),
-    
+
     // Projects
     projects: (profile.projects || []).map(proj => ({
       name: proj.name || proj.title,
@@ -283,7 +303,7 @@ function extractStudentData(studentProfile) {
       technologies: proj.technologies || proj.tech || [],
       link: proj.link || proj.url
     })),
-    
+
     // Certificates
     certificates: (profile.certificates || []).map(cert => ({
       name: cert.name || cert.title,
@@ -303,10 +323,10 @@ function extractStudentData(studentProfile) {
  */
 function formatJSONBField(field, type = 'array') {
   if (!field) return 'Not specified';
-  
+
   // If it's already a string, return it
   if (typeof field === 'string') return field;
-  
+
   // If it's an array
   if (Array.isArray(field)) {
     if (field.length === 0) return 'None';
@@ -320,7 +340,7 @@ function formatJSONBField(field, type = 'array') {
       return String(item);
     }).join(', ');
   }
-  
+
   // If it's an object
   if (typeof field === 'object' && field !== null) {
     // Convert object to readable format
@@ -328,7 +348,7 @@ function formatJSONBField(field, type = 'array') {
       .map(([key, value]) => `${key}: ${value}`)
       .join(', ');
   }
-  
+
   // Fallback to JSON.stringify for complex structures
   return JSON.stringify(field);
 }
@@ -552,7 +572,7 @@ Return ONLY a valid JSON array with exactly ${topN} matches, ordered by match sc
  */
 function parseAIResponse(aiContent) {
   try {
-    
+
     // Try to find JSON array in the response
     const jsonMatch = aiContent.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
@@ -562,7 +582,7 @@ function parseAIResponse(aiContent) {
     }
 
     const matches = JSON.parse(jsonMatch[0]);
-    
+
     // Validate structure
     if (!Array.isArray(matches)) {
       console.error('❌ Parsed content is not an array');

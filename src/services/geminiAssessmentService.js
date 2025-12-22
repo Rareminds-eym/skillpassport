@@ -6,12 +6,11 @@
  * Requirements: 4.1, 5.2, 6.3
  */
 
-import { 
+import {
   getRecommendedCourses,
   getRecommendedCoursesByType,
-  getCoursesForMultipleSkillGaps 
+  getCoursesForMultipleSkillGaps
 } from './courseRecommendationService';
-import { callClaude, isClaudeConfigured } from './claudeService';
 
 /**
  * Call Claude API with the given prompt
@@ -105,20 +104,20 @@ const validateResults = (results) => {
 const addCourseRecommendations = async (assessmentResults) => {
   try {
     console.log('=== Adding Course Recommendations ===');
-    
+
     // Get recommended platform courses separated by skill type (Requirement 4.1)
     // This ensures both technical and soft skills courses are fetched independently
     let coursesByType = { technical: [], soft: [] };
     let platformCourses = [];
-    
+
     try {
       // Fetch courses by type - this ensures we get both technical and soft skills
       coursesByType = await getRecommendedCoursesByType(assessmentResults, 5);
       console.log(`Found ${coursesByType.technical.length} technical and ${coursesByType.soft.length} soft skill courses`);
-      
+
       // Also get combined recommendations for backward compatibility
       platformCourses = [...coursesByType.technical, ...coursesByType.soft];
-      
+
       // If by-type fetch returned nothing, fall back to combined fetch
       if (platformCourses.length === 0) {
         platformCourses = await getRecommendedCourses(assessmentResults);
@@ -174,42 +173,63 @@ const addCourseRecommendations = async (assessmentResults) => {
  * @param {Object} sectionTimings - Time spent on each section in seconds
  * @returns {Promise<Object>} - AI-analyzed results
  */
+/**
+ * Analyze assessment results using Career API (Cloudflare Worker)
+ * @param {Object} answers - All answers from the assessment
+ * @param {string} stream - Student's selected stream (cs, bca, bba, dm, animation)
+ * @param {Object} questionBanks - All question banks for reference
+ * @param {Object} sectionTimings - Time spent on each section in seconds
+ * @returns {Promise<Object>} - AI-analyzed results
+ */
 export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks, sectionTimings = {}) => {
-  // Check for Claude API
-  if (!isClaudeConfigured()) {
-    throw new Error('Claude API key not configured. Please add VITE_CLAUDE_API_KEY to your .env file.');
-  }
-
-  // Prepare the assessment data
-  const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings);
-  const prompt = buildAnalysisPrompt(assessmentData);
-
-  // Use Claude AI for assessment analysis
-  console.log('🤖 Using Claude API for assessment analysis...');
-  
   try {
-    const claudeResponse = await callClaudeAssessment(prompt);
-    
-    const jsonMatch = claudeResponse.match(/```json\n?([\s\S]*?)\n?```/) ||
-      claudeResponse.match(/\{[\s\S]*\}/);
+    const API_URL = import.meta.env.VITE_CAREER_API_URL || 'https://career-api.rareminds.workers.dev';
 
-    if (!jsonMatch) {
-      throw new Error('Invalid response format from Claude AI');
+    // Get current session for auth token
+    const { data: { session } } = await import('../lib/supabase').then(m => m.supabase.auth.getSession());
+    const token = session?.access_token;
+
+    if (!token) {
+      throw new Error('Authentication required for assessment analysis');
     }
 
-    const jsonStr = jsonMatch[1] || jsonMatch[0];
-    const parsedResults = JSON.parse(jsonStr);
-    console.log('✅ Claude assessment analysis successful');
-    
+    // Prepare the assessment data
+    const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings);
+
+    console.log('🤖 Sending assessment data to backend for analysis...');
+
+    const response = await fetch(`${API_URL}/analyze-assessment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ assessmentData })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Server error: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success || !result.data) {
+      throw new Error('Invalid response from server');
+    }
+
+    console.log('✅ Assessment analysis successful via backend');
+    const parsedResults = result.data;
+
     const { isValid, missingFields } = validateResults(parsedResults);
     if (!isValid) {
-      console.warn('Claude response has missing fields:', missingFields);
+      console.warn('Backend response has missing fields:', missingFields);
     }
-    
+
     const resultsWithCourses = await addCourseRecommendations(parsedResults);
     return resultsWithCourses;
   } catch (error) {
-    console.error('❌ Claude assessment analysis failed:', error.message);
+    console.error('❌ Assessment analysis failed:', error.message);
     throw new Error(`Assessment analysis failed: ${error.message}. Please try again.`);
   }
 };
