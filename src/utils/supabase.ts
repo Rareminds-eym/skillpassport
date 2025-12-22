@@ -4,7 +4,14 @@ import { Student } from '../types/student';
 const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
 
+// Note: For most use cases, prefer importing supabase from '../lib/supabaseClient'
+// which has full auth configuration. This client is for specific utility functions.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
   global: {
     headers: {
       'Accept': 'application/json',

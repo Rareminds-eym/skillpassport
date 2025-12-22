@@ -36,13 +36,21 @@ export const SupabaseAuthProvider = ({ children }) => {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('SupabaseAuth state changed:', event);
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
-        loadUserProfile(session.user.id);
-      } else {
+      
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Load/refresh user profile on sign in or token refresh
+        if (session?.user) {
+          loadUserProfile(session.user.id);
+        }
+      } else if (event === 'SIGNED_OUT') {
         setUserProfile(null);
+      } else if (event === 'USER_UPDATED' && session?.user) {
+        // Refresh profile when user is updated
+        loadUserProfile(session.user.id);
       }
     });
 
