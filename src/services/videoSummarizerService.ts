@@ -1,16 +1,17 @@
 import { supabase } from '../lib/supabaseClient';
 
 // ==================== API URL CONFIGURATION ====================
-// Use Cloudflare Worker if configured, otherwise fall back to Supabase Edge Functions
 const WORKER_URL = import.meta.env.VITE_COURSE_API_URL;
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!WORKER_URL) {
+  console.warn('⚠️ VITE_COURSE_API_URL not configured. Video Summarizer will fail.');
+}
 
 const getApiUrl = (endpoint: string) => {
-  if (WORKER_URL) {
-    return `${WORKER_URL}/${endpoint}`;
+  if (!WORKER_URL) {
+    throw new Error('VITE_COURSE_API_URL environment variable is required');
   }
-  return `${SUPABASE_URL}/functions/v1/${endpoint}`;
+  return `${WORKER_URL}/${endpoint}`;
 };
 
 // ==================== INTERFACES ====================
@@ -155,23 +156,22 @@ export async function processVideo(
 ): Promise<VideoSummary> {
   const POLL_INTERVAL_MS = 3000;
   const MAX_POLL_TIME_MS = 300000;
-  
+
   console.log('[VideoSummarizer] Starting enhanced video processing:', request.videoUrl);
   onProgress?.('Connecting to AI service...', 5);
-  
+
   const { data: { session } } = await supabase.auth.getSession();
-  
+
   try {
     onProgress?.('Starting video analysis...', 10);
-    
+
     const response = await fetch(
       getApiUrl('ai-video-summarizer'),
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
-          ...(WORKER_URL ? {} : { 'apikey': SUPABASE_ANON_KEY }),
+          'Authorization': `Bearer ${session?.access_token || ''}`,
         },
         body: JSON.stringify({
           ...request,
@@ -180,7 +180,7 @@ export async function processVideo(
         }),
       }
     );
-    
+
     if (!response.ok && response.status !== 202) {
       let errorMessage = 'Failed to start video processing';
       let errorDetails = '';
@@ -195,25 +195,25 @@ export async function processVideo(
     }
 
     const data = await response.json();
-    
+
     if (data.processing_status === 'completed') {
       onProgress?.('Complete!', 100);
       return transformVideoSummary(data);
     }
-    
+
     const jobId = data.id;
     onProgress?.('Processing started...', 15);
-    
+
     const startTime = Date.now();
     let pollCount = 0;
-    
+
     while (Date.now() - startTime < MAX_POLL_TIME_MS) {
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
       pollCount++;
-      
+
       const elapsed = Date.now() - startTime;
       const estimatedProgress = Math.min(15 + (elapsed / MAX_POLL_TIME_MS) * 80, 90);
-      
+
       const steps = [
         'Downloading media...',
         'Transcribing with AI...',
@@ -226,14 +226,14 @@ export async function processVideo(
       ];
       const stepIndex = Math.floor(pollCount / 2) % steps.length;
       onProgress?.(steps[stepIndex], estimatedProgress);
-      
+
       const { status, summary } = await checkProcessingStatus(jobId);
-      
+
       if (status === 'completed' && summary) {
         onProgress?.('Complete!', 100);
         return summary;
       }
-      
+
       if (status === 'failed') {
         const { data: failedRecord } = await supabase
           .from('video_summaries')
@@ -243,14 +243,14 @@ export async function processVideo(
         const dbError = failedRecord?.error_message || 'Video processing failed (no details available)';
         throw new Error(`Processing failed\n\nDatabase error_message: ${dbError}`);
       }
-      
+
       if (status === 'not_found') {
         throw new Error('Processing job not found');
       }
     }
-    
+
     throw new Error('Processing is taking longer than expected. Please try again later.');
-    
+
   } catch (error: any) {
     if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
       throw new Error('Connection issue. Please check your internet and try again.');
@@ -319,7 +319,7 @@ export function formatTimestamp(seconds: number): string {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
-  
+
   if (hrs > 0) {
     return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }

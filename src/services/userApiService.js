@@ -1,20 +1,24 @@
 /**
  * User API Service
  * Connects to Cloudflare Worker for user management API calls
- * Falls back to Supabase edge functions if worker URL not configured
  */
 
 const WORKER_URL = import.meta.env.VITE_USER_API_URL;
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const getBaseUrl = () => WORKER_URL || `${SUPABASE_URL}/functions/v1`;
-const isUsingWorker = () => !!WORKER_URL;
+if (!WORKER_URL) {
+  console.warn('⚠️ VITE_USER_API_URL not configured. User API calls will fail.');
+}
+
+const getBaseUrl = () => {
+  if (!WORKER_URL) {
+    throw new Error('VITE_USER_API_URL environment variable is required');
+  }
+  return WORKER_URL;
+};
 
 const getAuthHeaders = (token) => {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  if (!isUsingWorker() && SUPABASE_ANON_KEY) headers['apikey'] = SUPABASE_ANON_KEY;
   return headers;
 };
 
@@ -57,11 +61,11 @@ export async function createTeacher(teacherData, token) {
 /**
  * Reset user password (admin function)
  */
-export async function resetPassword({ userId, newPassword }, token) {
+export async function resetPassword({ userId, newPassword, action, email, otp }, token) {
   const response = await fetch(`${getBaseUrl()}/reset-password`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ userId, newPassword }),
+    body: JSON.stringify({ userId, newPassword, action, email, otp }),
   });
 
   if (!response.ok) {
@@ -114,5 +118,4 @@ export default {
   createEventUser,
   sendInterviewReminder,
   resetPassword,
-  isUsingWorker,
 };

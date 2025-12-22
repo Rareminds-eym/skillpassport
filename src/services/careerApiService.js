@@ -1,20 +1,24 @@
 /**
  * Career API Service
  * Connects to Cloudflare Worker for career-related API calls
- * Falls back to Supabase edge functions if worker URL not configured
  */
 
 const WORKER_URL = import.meta.env.VITE_CAREER_API_URL;
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const getBaseUrl = () => WORKER_URL || `${SUPABASE_URL}/functions/v1`;
-const isUsingWorker = () => !!WORKER_URL;
+if (!WORKER_URL) {
+  console.warn('⚠️ VITE_CAREER_API_URL not configured. Career API calls will fail.');
+}
+
+const getBaseUrl = () => {
+  if (!WORKER_URL) {
+    throw new Error('VITE_CAREER_API_URL environment variable is required');
+  }
+  return WORKER_URL;
+};
 
 const getAuthHeaders = (token) => {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  if (!isUsingWorker() && SUPABASE_ANON_KEY) headers['apikey'] = SUPABASE_ANON_KEY;
   return headers;
 };
 
@@ -29,8 +33,7 @@ export async function sendCareerChatMessage(
   onError
 ) {
   try {
-    const endpoint = isUsingWorker() ? '/chat' : '/career-ai-chat';
-    const response = await fetch(`${getBaseUrl()}${endpoint}`, {
+    const response = await fetch(`${getBaseUrl()}/chat`, {
       method: 'POST',
       headers: getAuthHeaders(token),
       body: JSON.stringify({ conversationId, message, selectedChips }),
@@ -86,8 +89,7 @@ export async function sendCareerChatMessage(
  * Get job recommendations for a student
  */
 export async function getRecommendations(studentId, { forceRefresh = false, limit = 20 } = {}) {
-  const endpoint = isUsingWorker() ? '/recommend-opportunities' : '/recommend-opportunities';
-  const response = await fetch(`${getBaseUrl()}${endpoint}`, {
+  const response = await fetch(`${getBaseUrl()}/recommend-opportunities`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ studentId, forceRefresh, limit }),
@@ -121,8 +123,7 @@ export async function healthCheck() {
  * Generate embedding for text and store in database
  */
 export async function generateEmbedding({ text, table, id, type = 'opportunity' }) {
-  const endpoint = '/generate-embedding';
-  const response = await fetch(`${getBaseUrl()}${endpoint}`, {
+  const response = await fetch(`${getBaseUrl()}/generate-embedding`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ text, table, id, type }),
@@ -141,5 +142,4 @@ export default {
   getRecommendations,
   generateEmbedding,
   healthCheck,
-  isUsingWorker,
 };

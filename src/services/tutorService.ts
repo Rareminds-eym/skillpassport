@@ -1,32 +1,28 @@
 import { supabase } from '../lib/supabaseClient';
 
 // ==================== API URL CONFIGURATION ====================
-// Use Cloudflare Worker if configured, otherwise fall back to Supabase Edge Functions
 const WORKER_URL = import.meta.env.VITE_COURSE_API_URL;
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!WORKER_URL) {
+  console.warn('⚠️ VITE_COURSE_API_URL not configured. AI Tutor will fail.');
+}
 
 const getApiUrl = (endpoint: string) => {
-  if (WORKER_URL) {
-    return `${WORKER_URL}/${endpoint}`;
+  if (!WORKER_URL) {
+    throw new Error('VITE_COURSE_API_URL environment variable is required');
   }
-  return `${SUPABASE_URL}/functions/v1/${endpoint}`;
+  return `${WORKER_URL}/${endpoint}`;
 };
 
 const getApiHeaders = (token?: string) => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  
-  // Add Supabase API key if using Supabase functions
-  if (!WORKER_URL && SUPABASE_ANON_KEY) {
-    headers['apikey'] = SUPABASE_ANON_KEY;
-  }
-  
+
   return headers;
 };
 
@@ -90,12 +86,12 @@ export interface StreamChunk {
  */
 export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamChunk, void, unknown> {
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-  
+
   if (sessionError) {
     console.error('Session error:', sessionError);
     throw new Error('Authentication error. Please try logging in again.');
   }
-  
+
   if (!session?.access_token) {
     console.error('No session or access token found');
     throw new Error('Please log in to use the AI Tutor');
@@ -140,12 +136,12 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
         currentEventType = line.slice(7).trim();
         continue;
       }
-      
+
       if (line.startsWith('data: ')) {
         const data = line.slice(6);
         try {
           const parsed = JSON.parse(data);
-          
+
           // Handle reasoning events (from grok/reasoning models)
           if (currentEventType === 'reasoning' && parsed.reasoning) {
             yield { type: 'reasoning', reasoning: parsed.reasoning };
@@ -157,10 +153,10 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
           // Handle done event with conversation info
           else if (parsed.conversationId) {
             (sendMessage as any).lastConversationId = parsed.conversationId;
-            yield { 
-              type: 'done', 
+            yield {
+              type: 'done',
               conversationId: parsed.conversationId,
-              messageId: parsed.messageId 
+              messageId: parsed.messageId
             };
           }
         } catch {
@@ -264,7 +260,7 @@ export async function getConversation(conversationId: string): Promise<Conversat
 export async function getSuggestedQuestions(lessonId: string): Promise<string[]> {
   try {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
+
     if (sessionError) {
       console.error('Session error in getSuggestedQuestions:', sessionError);
       return getDefaultSuggestions();

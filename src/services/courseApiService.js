@@ -1,16 +1,20 @@
 /**
  * Course API Service
  * Connects to Cloudflare Worker for course-related API calls
- * Falls back to Supabase edge functions if worker URL not configured
  */
 
 const WORKER_URL = import.meta.env.VITE_COURSE_API_URL;
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Use Cloudflare Worker if configured, otherwise fall back to Supabase
-const getBaseUrl = () => WORKER_URL || `${SUPABASE_URL}/functions/v1`;
-const isUsingWorker = () => !!WORKER_URL;
+if (!WORKER_URL) {
+  console.warn('⚠️ VITE_COURSE_API_URL not configured. Course API calls will fail.');
+}
+
+const getBaseUrl = () => {
+  if (!WORKER_URL) {
+    throw new Error('VITE_COURSE_API_URL environment variable is required');
+  }
+  return WORKER_URL;
+};
 
 /**
  * Get auth headers for API calls
@@ -19,16 +23,11 @@ const getAuthHeaders = (token) => {
   const headers = {
     'Content-Type': 'application/json',
   };
-  
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  
-  // Add Supabase API key if using Supabase functions
-  if (!isUsingWorker() && SUPABASE_ANON_KEY) {
-    headers['apikey'] = SUPABASE_ANON_KEY;
-  }
-  
+
   return headers;
 };
 
@@ -107,11 +106,11 @@ export async function sendAiTutorMessage({ conversationId, courseId, lessonId, m
         if (line.startsWith('event: ')) {
           const eventType = line.slice(7);
           const dataLine = lines[lines.indexOf(line) + 1];
-          
+
           if (dataLine?.startsWith('data: ')) {
             try {
               const data = JSON.parse(dataLine.slice(6));
-              
+
               if (eventType === 'token' && data.content) {
                 onToken?.(data.content);
               } else if (eventType === 'done') {
@@ -211,5 +210,4 @@ export default {
   getAiTutorProgress,
   updateAiTutorProgress,
   summarizeVideo,
-  isUsingWorker,
 };

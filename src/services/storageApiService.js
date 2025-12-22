@@ -1,21 +1,25 @@
 /**
  * Storage API Service
  * Connects to Cloudflare Worker for file storage API calls
- * Falls back to Supabase edge functions if worker URL not configured
  */
 
 const WORKER_URL = import.meta.env.VITE_STORAGE_API_URL;
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const getBaseUrl = () => WORKER_URL || `${SUPABASE_URL}/functions/v1`;
-const isUsingWorker = () => !!WORKER_URL;
+if (!WORKER_URL) {
+  console.warn('⚠️ VITE_STORAGE_API_URL not configured. Storage API calls will fail.');
+}
+
+const getBaseUrl = () => {
+  if (!WORKER_URL) {
+    throw new Error('VITE_STORAGE_API_URL environment variable is required');
+  }
+  return WORKER_URL;
+};
 
 const getAuthHeaders = (token, isFormData = false) => {
   const headers = {};
   if (!isFormData) headers['Content-Type'] = 'application/json';
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  if (!isUsingWorker() && SUPABASE_ANON_KEY) headers['apikey'] = SUPABASE_ANON_KEY;
   return headers;
 };
 
@@ -158,5 +162,4 @@ export default {
   confirmUpload,
   getFileUrl,
   listFiles,
-  isUsingWorker,
 };

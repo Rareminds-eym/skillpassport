@@ -1,22 +1,19 @@
 /**
  * Streak API Service
  * Communicates with the streak-api Cloudflare Worker
- * Falls back to Backend/server.js if worker URL not configured
  */
 
 const STREAK_API_URL = import.meta.env.VITE_STREAK_API_URL;
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
-function getBaseUrl() {
-    if (STREAK_API_URL) {
-        return STREAK_API_URL;
-    }
-    // Fall back to Express backend
-    return `${BACKEND_URL}/api/streaks`;
+if (!STREAK_API_URL) {
+    console.warn('⚠️ VITE_STREAK_API_URL not configured. Streak API calls will fail.');
 }
 
-function isUsingWorker() {
-    return !!STREAK_API_URL;
+function getBaseUrl() {
+    if (!STREAK_API_URL) {
+        throw new Error('VITE_STREAK_API_URL environment variable is required');
+    }
+    return STREAK_API_URL;
 }
 
 async function getAuthToken() {
@@ -41,9 +38,8 @@ function getAuthHeaders(token) {
  */
 export async function getStudentStreak(studentId, token) {
     const authToken = token || await getAuthToken();
-    const endpoint = isUsingWorker() ? `/${studentId}` : `/${studentId}`;
 
-    const response = await fetch(`${getBaseUrl()}${endpoint}`, {
+    const response = await fetch(`${getBaseUrl()}/${studentId}`, {
         method: 'GET',
         headers: getAuthHeaders(authToken),
     });
@@ -61,9 +57,8 @@ export async function getStudentStreak(studentId, token) {
  */
 export async function completeStreak(studentId, token) {
     const authToken = token || await getAuthToken();
-    const endpoint = isUsingWorker() ? `/${studentId}/complete` : `/${studentId}/complete`;
 
-    const response = await fetch(`${getBaseUrl()}${endpoint}`, {
+    const response = await fetch(`${getBaseUrl()}/${studentId}/complete`, {
         method: 'POST',
         headers: getAuthHeaders(authToken),
     });
@@ -81,11 +76,8 @@ export async function completeStreak(studentId, token) {
  */
 export async function getNotificationHistory(studentId, limit = 10, token) {
     const authToken = token || await getAuthToken();
-    const endpoint = isUsingWorker()
-        ? `/${studentId}/notifications?limit=${limit}`
-        : `/${studentId}/notifications?limit=${limit}`;
 
-    const response = await fetch(`${getBaseUrl()}${endpoint}`, {
+    const response = await fetch(`${getBaseUrl()}/${studentId}/notifications?limit=${limit}`, {
         method: 'GET',
         headers: getAuthHeaders(authToken),
     });
@@ -103,9 +95,8 @@ export async function getNotificationHistory(studentId, limit = 10, token) {
  */
 export async function processStreak(studentId, token) {
     const authToken = token || await getAuthToken();
-    const endpoint = isUsingWorker() ? `/${studentId}/process` : `/${studentId}/process`;
 
-    const response = await fetch(`${getBaseUrl()}${endpoint}`, {
+    const response = await fetch(`${getBaseUrl()}/${studentId}/process`, {
         method: 'POST',
         headers: getAuthHeaders(authToken),
     });
@@ -135,5 +126,4 @@ export default {
     getNotificationHistory,
     processStreak,
     healthCheck,
-    isUsingWorker,
 };
