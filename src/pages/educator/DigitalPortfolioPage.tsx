@@ -198,12 +198,14 @@ const DigitalPortfolioPage = () => {
     maxScore: 100
   });
 
-  // Get educator's school information
-  const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
+  // Get educator's school/college information
+  const { school: educatorSchool, college: educatorCollege, educatorType, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
-  // Fetch students filtered by educator's school
+  // Fetch students filtered by educator's assigned classes or institution
   const { students, loading, error } = useStudents({ 
-    schoolId: educatorSchool?.id 
+    schoolId: educatorSchool?.id,
+    collegeId: educatorCollege?.id,
+    classIds: educatorType === 'school' ? assignedClassIds : undefined
   });
 
   // Reset to page 1 when filters or search change
@@ -236,21 +238,41 @@ const DigitalPortfolioPage = () => {
   }, [students]);
 
   const departmentOptions = React.useMemo(() => {
-    const deptCounts = {};
-    students.forEach(student => {
-      if (student.dept) {
-        const normalized = student.dept.toLowerCase();
-        deptCounts[normalized] = (deptCounts[normalized] || 0) + 1;
-      }
-    });
-    return Object.entries(deptCounts)
-      .map(([dept, count]) => ({
-        value: dept,
-        label: dept,
-        count
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [students]);
+    if (educatorType === 'school') {
+      // For school educators, show branch/subject options
+      const branchCounts = {};
+      students.forEach(student => {
+        const branch = student.branch_field || student.course_name;
+        if (branch) {
+          const normalized = branch.toLowerCase();
+          branchCounts[normalized] = (branchCounts[normalized] || 0) + 1;
+        }
+      });
+      return Object.entries(branchCounts)
+        .map(([branch, count]) => ({
+          value: branch,
+          label: branch,
+          count
+        }))
+        .sort((a, b) => b.count - a.count);
+    } else {
+      // For college educators, show department/course options
+      const deptCounts = {};
+      students.forEach(student => {
+        if (student.dept) {
+          const normalized = student.dept.toLowerCase();
+          deptCounts[normalized] = (deptCounts[normalized] || 0) + 1;
+        }
+      });
+      return Object.entries(deptCounts)
+        .map(([dept, count]) => ({
+          value: dept,
+          label: dept,
+          count
+        }))
+        .sort((a, b) => b.count - a.count);
+    }
+  }, [students, educatorType]);
 
   const badgeOptions = React.useMemo(() => {
     const badgeCounts = {};
@@ -302,9 +324,16 @@ const DigitalPortfolioPage = () => {
     }
 
     if (filters.departments.length > 0) {
-      result = result.filter(student =>
-        student.dept && filters.departments.includes(student.dept.toLowerCase())
-      );
+      result = result.filter(student => {
+        if (educatorType === 'school') {
+          // For school students, check branch_field or course_name
+          const branch = (student.branch_field || student.course_name)?.toLowerCase();
+          return branch && filters.departments.includes(branch);
+        } else {
+          // For college students, check dept
+          return student.dept && filters.departments.includes(student.dept.toLowerCase());
+        }
+      });
     }
 
     if (filters.badges.length > 0) {
@@ -523,7 +552,7 @@ const DigitalPortfolioPage = () => {
                   />
                 </FilterSection>
 
-                <FilterSection title="Department">
+                <FilterSection title={educatorType === 'school' ? 'Subject/Branch' : 'Department'}>
                   <CheckboxGroup
                     options={departmentOptions}
                     selectedValues={filters.departments}
@@ -618,11 +647,13 @@ const DigitalPortfolioPage = () => {
                     ? 'No portfolios match your current filters'
                     : educatorSchool 
                       ? `No student portfolios available in ${educatorSchool.name}`
-                      : 'No student portfolios available'}
+                      : educatorCollege
+                        ? `No student portfolios available in ${educatorCollege.name}`
+                        : 'No student portfolios available'}
                 </p>
-                {educatorSchool && (
+                {(educatorSchool || educatorCollege) && (
                   <p className="text-xs text-gray-400 mb-4">
-                    Portfolios are filtered by your assigned school.
+                    Portfolios are filtered by your assigned {educatorType === 'school' ? 'school' : 'college'}.
                   </p>
                 )}
                 {activeFilterCount > 0 && (
@@ -637,7 +668,11 @@ const DigitalPortfolioPage = () => {
             ) : (
               <>
                 {viewMode === 'grid' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                  <div className={`grid grid-cols-1 gap-4 ${
+                    showFilters 
+                      ? 'md:grid-cols-1 lg:grid-cols-2' // 2 columns when filters are open
+                      : 'md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3' // 3 columns when filters are closed
+                  }`}>
                     {paginatedStudents.map((student) => (
                       <PortfolioCard
                         key={student.id}
