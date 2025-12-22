@@ -72,18 +72,27 @@ export async function sendCareerChatMessage(
       buffer = lines.pop() || '';
 
       for (const line of lines) {
+        if (line.trim() === '') continue; // Skip empty lines
+        
         if (line.startsWith('event: ')) {
-          const eventType = line.slice(7);
-          const dataLineIndex = lines.indexOf(line) + 1;
-          const dataLine = lines[dataLineIndex];
-
-          if (dataLine?.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(dataLine.slice(6));
-              if (eventType === 'token' && data.content) onToken?.(data.content);
-              else if (eventType === 'done') onDone?.(data);
-              else if (eventType === 'error') onError?.(new Error(data.error));
-            } catch { /* skip */ }
+          const eventType = line.slice(7).trim();
+          continue; // Process next line for data
+        }
+        
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            
+            // Handle different event types based on data structure
+            if (data.content) {
+              onToken?.(data.content);
+            } else if (data.conversationId || data.messageId || data.intent) {
+              onDone?.(data);
+            } else if (data.error) {
+              onError?.(new Error(data.error));
+            }
+          } catch (parseError) {
+            console.warn('Failed to parse SSE data:', line, parseError);
           }
         }
       }
