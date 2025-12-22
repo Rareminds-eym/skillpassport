@@ -396,13 +396,13 @@ const StudentsPage = () => {
   });
 
   // Get educator's school/college information
-  const { school: educatorSchool, college: educatorCollege, educatorType, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
+  const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
   // Fetch students filtered by educator's assigned classes or institution
   const { students, loading, error, refetch } = useStudents({ 
     schoolId: educatorSchool?.id,
     collegeId: educatorCollege?.id,
-    classIds: educatorType === 'school' ? assignedClassIds : undefined
+    classIds: educatorType === 'school' && educatorRole !== 'admin' ? assignedClassIds : undefined
   });
 
   // Reset to page 1 when filters or search change
@@ -1214,7 +1214,9 @@ const StudentsPage = () => {
                 {!loading && !schoolLoading && paginatedStudents.length === 0 && !error && (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500">
-                      {searchQuery || filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0
+                      {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                        ? 'You have not been assigned to any classes yet'
+                        : searchQuery || filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0
                         ? 'No students match your current filters'
                         : educatorSchool 
                           ? `No students found in ${educatorSchool.name}`
@@ -1223,9 +1225,11 @@ const StudentsPage = () => {
                             : 'No students found.'}
                     </p>
                     <p className="text-xs text-gray-400 mt-2">
-                      {educatorSchool || educatorCollege
-                        ? `Students are filtered by your assigned ${educatorType === 'school' ? 'school' : 'college'}.`
-                        : 'Try adjusting your search terms or filters.'}
+                      {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                        ? 'Please contact your school administrator to assign you to classes.'
+                        : educatorSchool || educatorCollege
+                          ? `Students are filtered by your assigned ${educatorType === 'school' ? 'school' : 'college'}.`
+                          : 'Try adjusting your search terms or filters.'}
                     </p>
                     {(filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0) && (
                       <button

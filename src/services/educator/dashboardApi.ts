@@ -65,6 +65,45 @@ async function getAuthenticatedEducator() {
     };
   }
 
+  // Check if they are an educator in the users table (college_educator, school_educator, etc.)
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (!userError && userData && userData.role) {
+    const userRole = userData.role as string;
+    
+    // Handle college_educator role
+    if (userRole === 'college_educator') {
+      return { 
+        user, 
+        educatorData: { 
+          id: userData.id, 
+          school_id: userData.organizationId, // Use organizationId as college/school ID
+          role: 'educator'
+        }, 
+        educatorType: 'college' as const,
+        assignedClassIds: [] // College educators see all college students
+      };
+    }
+    
+    // Handle school_educator role
+    if (userRole === 'school_educator') {
+      return { 
+        user, 
+        educatorData: { 
+          id: userData.id, 
+          school_id: userData.organizationId, // Use organizationId as school ID
+          role: 'educator'
+        }, 
+        educatorType: 'school' as const,
+        assignedClassIds: [] // For now, let them see all school students
+      };
+    }
+  }
+
   throw new Error('Educator not registered with any school or college. Please contact your administrator.');
 }
 
@@ -105,6 +144,21 @@ export const dashboardApi = {
     try {
       const { user, educatorData, educatorType, assignedClassIds } = await getAuthenticatedEducator();
 
+      // Check if educator has no class assignments (and is not admin)
+      if (educatorType === 'school' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
+        // Educators with no class assignments should see no students
+        return {
+          totalStudents: 0,
+          activeStudents: 0,
+          pendingActivities: 0,
+          verifiedActivities: 0,
+          totalActivities: 0,
+          verificationRate: 0,
+          recentActivitiesCount: 0,
+          totalMentorNotes: 0,
+        };
+      }
+
       let studentsQuery = supabase
         .from('students')
         .select('id, user_id')
@@ -112,11 +166,15 @@ export const dashboardApi = {
 
       // Apply filtering based on educator type and role
       if (educatorType === 'school') {
-        studentsQuery = studentsQuery.eq('school_id', educatorData.school_id);
-        
-        // If educator has assigned classes (not admin), filter by those classes
-        if (assignedClassIds.length > 0) {
-          studentsQuery = studentsQuery.in('school_class_id', assignedClassIds);
+        // For school educators, check if they have class assignments
+        if (educatorData.role === 'admin') {
+          // School admins can see all students in their school
+          studentsQuery = studentsQuery.eq('school_id', educatorData.school_id);
+        } else if (assignedClassIds.length > 0) {
+          // Regular educators can only see students in their assigned classes
+          studentsQuery = studentsQuery
+            .eq('school_id', educatorData.school_id)
+            .in('school_class_id', assignedClassIds);
         }
       } else if (educatorType === 'college') {
         studentsQuery = studentsQuery.eq('college_id', educatorData.school_id);
@@ -213,6 +271,12 @@ export const dashboardApi = {
     try {
       const { user, educatorData, educatorType, assignedClassIds } = await getAuthenticatedEducator();
 
+      // Check if educator has no class assignments (and is not admin)
+      if (educatorType === 'school' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
+        // Educators with no class assignments should see no students
+        return [];
+      }
+
       let studentsQuery = supabase
         .from('students')
         .select('id, user_id, name')
@@ -220,11 +284,15 @@ export const dashboardApi = {
 
       // Apply filtering based on educator type and role
       if (educatorType === 'school') {
-        studentsQuery = studentsQuery.eq('school_id', educatorData.school_id);
-        
-        // If educator has assigned classes (not admin), filter by those classes
-        if (assignedClassIds.length > 0) {
-          studentsQuery = studentsQuery.in('school_class_id', assignedClassIds);
+        // For school educators, check if they have class assignments
+        if (educatorData.role === 'admin') {
+          // School admins can see all students in their school
+          studentsQuery = studentsQuery.eq('school_id', educatorData.school_id);
+        } else if (assignedClassIds.length > 0) {
+          // Regular educators can only see students in their assigned classes
+          studentsQuery = studentsQuery
+            .eq('school_id', educatorData.school_id)
+            .in('school_class_id', assignedClassIds);
         }
       } else if (educatorType === 'college') {
         studentsQuery = studentsQuery.eq('college_id', educatorData.school_id);
@@ -650,6 +718,15 @@ export const dashboardApi = {
     try {
       const { educatorData, educatorType, assignedClassIds } = await getAuthenticatedEducator();
 
+      // Check if educator has no class assignments (and is not admin)
+      if (educatorType === 'school' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
+        // Educators with no class assignments should see no students
+        return {
+          skillParticipation: [],
+          skillDistribution: [],
+        };
+      }
+
       let studentsQuery = supabase
         .from('students')
         .select('id, user_id')
@@ -657,11 +734,15 @@ export const dashboardApi = {
 
       // Apply filtering based on educator type and role
       if (educatorType === 'school') {
-        studentsQuery = studentsQuery.eq('school_id', educatorData.school_id);
-        
-        // If educator has assigned classes (not admin), filter by those classes
-        if (assignedClassIds.length > 0) {
-          studentsQuery = studentsQuery.in('school_class_id', assignedClassIds);
+        // For school educators, check if they have class assignments
+        if (educatorData.role === 'admin') {
+          // School admins can see all students in their school
+          studentsQuery = studentsQuery.eq('school_id', educatorData.school_id);
+        } else if (assignedClassIds.length > 0) {
+          // Regular educators can only see students in their assigned classes
+          studentsQuery = studentsQuery
+            .eq('school_id', educatorData.school_id)
+            .in('school_class_id', assignedClassIds);
         }
       } else if (educatorType === 'college') {
         studentsQuery = studentsQuery.eq('college_id', educatorData.school_id);

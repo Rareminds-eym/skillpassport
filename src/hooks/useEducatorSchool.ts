@@ -25,6 +25,7 @@ interface EducatorSchoolData {
   school: School | null;
   college: College | null;
   educatorType: 'school' | 'college' | null;
+  educatorRole: string | null; // Add educator role
   assignedClassIds: string[]; // Add assigned class IDs
   loading: boolean;
   error: string | null;
@@ -38,6 +39,7 @@ export function useEducatorSchool(): EducatorSchoolData {
   const [school, setSchool] = useState<School | null>(null);
   const [college, setCollege] = useState<College | null>(null);
   const [educatorType, setEducatorType] = useState<'school' | 'college' | null>(null);
+  const [educatorRole, setEducatorRole] = useState<string | null>(null);
   const [assignedClassIds, setAssignedClassIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +61,7 @@ export function useEducatorSchool(): EducatorSchoolData {
           .select(`
             id,
             school_id,
+            role,
             schools!school_educators_school_id_fkey (
               id,
               name,
@@ -84,19 +87,25 @@ export function useEducatorSchool(): EducatorSchoolData {
           setSchool(schoolData as School);
           setCollege(null);
           setEducatorType('school');
+          setEducatorRole(schoolEducatorData.role || null);
 
-          // Fetch assigned class IDs for this educator
-          const { data: classAssignments, error: classError } = await supabase
-            .from('school_educator_class_assignments')
-            .select('class_id')
-            .eq('educator_id', schoolEducatorData.id);
+          // Fetch assigned class IDs for this educator (only if not admin)
+          if (schoolEducatorData.role !== 'admin') {
+            const { data: classAssignments, error: classError } = await supabase
+              .from('school_educator_class_assignments')
+              .select('class_id')
+              .eq('educator_id', schoolEducatorData.id);
 
-          if (classError) {
-            console.warn('Failed to fetch class assignments:', classError);
-            setAssignedClassIds([]);
+            if (classError) {
+              console.warn('Failed to fetch class assignments:', classError);
+              setAssignedClassIds([]);
+            } else {
+              const classIds = classAssignments?.map(assignment => assignment.class_id) || [];
+              setAssignedClassIds(classIds);
+            }
           } else {
-            const classIds = classAssignments?.map(assignment => assignment.class_id) || [];
-            setAssignedClassIds(classIds);
+            // Admins don't need class assignments - they see all students
+            setAssignedClassIds([]);
           }
           
           return;
@@ -133,6 +142,8 @@ export function useEducatorSchool(): EducatorSchoolData {
           setCollege(collegeData as College);
           setSchool(null);
           setEducatorType('college');
+          setEducatorRole('lecturer');
+          setAssignedClassIds([]);
           return;
         }
 
@@ -140,6 +151,7 @@ export function useEducatorSchool(): EducatorSchoolData {
         setSchool(null);
         setCollege(null);
         setEducatorType(null);
+        setEducatorRole(null);
         setAssignedClassIds([]);
 
       } catch (err) {
@@ -147,6 +159,7 @@ export function useEducatorSchool(): EducatorSchoolData {
         setSchool(null);
         setCollege(null);
         setEducatorType(null);
+        setEducatorRole(null);
         setAssignedClassIds([]);
       } finally {
         setLoading(false);
@@ -156,5 +169,5 @@ export function useEducatorSchool(): EducatorSchoolData {
     fetchEducatorInfo();
   }, [user?.email, user?.id]);
 
-  return { school, college, educatorType, assignedClassIds, loading, error };
+  return { school, college, educatorType, educatorRole, assignedClassIds, loading, error };
 }
