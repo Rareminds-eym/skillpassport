@@ -437,6 +437,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
              name: "Verifications",
             path: "/college-admin/students/verifications",
             icon: ChartPieIcon,
+          },
+          {
+             name: "Communication",
+            path: "/college-admin/students/communication",
+            icon: BellIcon,
           }
         ],
       },
