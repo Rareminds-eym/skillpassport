@@ -5,7 +5,7 @@
 
 import { supabase } from '../../lib/supabaseClient';
 import { checkAuthentication } from '../authService';
-import paymentsApiService from '../../paymentsApiService';
+import paymentsApiService from '../paymentsApiService';
 
 // Cache for verification results (5 minutes TTL)
 const verificationCache = new Map();

@@ -191,7 +191,7 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
     const API_URL = import.meta.env.VITE_CAREER_API_URL || 'https://career-api.rareminds.workers.dev';
 
     // Get current session for auth token
-    const { data: { session } } = await import('../lib/supabase').then(m => m.supabase.auth.getSession());
+    const { data: { session } } = await import('../lib/supabaseClient').then(m => m.supabase.auth.getSession());
     const token = session?.access_token;
 
     if (!token) {
