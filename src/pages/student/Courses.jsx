@@ -60,6 +60,14 @@ const Courses = () => {
     }
   }, []);
 
+  // Fetch courses when search, filter, or sort changes
+  useEffect(() => {
+    // Skip initial load (handled by the effect above)
+    if (hasFetchedCoursesRef.current) {
+      fetchCourses();
+    }
+  }, [debouncedSearch, filterStatus, sortBy]);
+
   // Separate effect for enrollments - only when user email changes
   useEffect(() => {
     const currentEmail = user?.email;
@@ -150,7 +158,7 @@ const Courses = () => {
       setLoading(false);
       isFetchingRef.current = false;
     }
-  }, []);
+  }, [debouncedSearch, filterStatus, sortBy, initialLoad]);
 
   const fetchEnrollments = useCallback(async () => {
     const email = userEmailRef.current;

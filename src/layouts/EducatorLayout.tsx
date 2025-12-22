@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Header from "../components/educator/Header";
 import Sidebar from "../components/educator/Sidebar";
-import StudentProfileDrawer from "../components/educator/components/StudentProfileDrawer";
+import StudentProfileDrawer from "../components/shared/StudentProfileDrawer";
 import FloatingEducatorAIButton from "../components/FloatingEducatorAIButton";
+import { useEducatorSchool } from "../hooks/useEducatorSchool";
 
 const EducatorLayout: React.FC = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -11,6 +12,9 @@ const EducatorLayout: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [showStudentDrawer, setShowStudentDrawer] = useState(false);
   const location = useLocation();
+  
+  // Get educator information to determine type
+  const { school: educatorSchool, college: educatorCollege, educatorType } = useEducatorSchool();
 
   useEffect(() => {
     setShowMobileMenu(false);
@@ -92,6 +96,9 @@ const EducatorLayout: React.FC = () => {
         student={selectedStudent}
         isOpen={showStudentDrawer}
         onClose={handleCloseStudentDrawer}
+        userRole={educatorType === 'school' ? 'school_educator' : 'college_educator'}
+        schoolId={educatorSchool?.id}
+        collegeId={educatorCollege?.id}
       />
       
       {/* Floating AI Button */}
