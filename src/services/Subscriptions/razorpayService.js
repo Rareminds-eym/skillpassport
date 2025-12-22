@@ -5,7 +5,7 @@
 
 import { supabase } from '../../lib/supabaseClient';
 import { getRazorpayKeyId, getRazorpayKeyMode } from '../../config/payment';
-import paymentsApiService from '../../paymentsApiService';
+import paymentsApiService from '../paymentsApiService';
 
 const DEMO_MODE = false; // Production mode with Cloudflare Workers
 
