@@ -1,15 +1,22 @@
 name = "career-api"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
 
 [vars]
 # These will be overridden by secrets in production
 
 # Add secrets via: wrangler secret put SECRET_NAME
 # Required secrets:
-# - SUPABASE_URL
-# - SUPABASE_ANON_KEY
+# - VITE_SUPABASE_URL
+# - VITE_SUPABASE_ANON_KEY
 # - SUPABASE_SERVICE_ROLE_KEY
-# - OPENROUTER_API_KEY
+# - VITE_OPENROUTER_API_KEY
 # Optional secrets:
 # - EMBEDDING_SERVICE_URL (defaults to https://embedings.onrender.com)
+
+# Example commands to set secrets:
+# wrangler secret put VITE_SUPABASE_URL
+# wrangler secret put VITE_SUPABASE_ANON_KEY
+# wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+# wrangler secret put VITE_OPENROUTER_API_KEY

@@ -1,6 +1,41 @@
 # Career API Cloudflare Worker
 
-AI-powered career guidance and job matching service.
+AI-powered career guidance and job matching service. Converted from Supabase Edge Functions to Cloudflare Workers with a modular architecture.
+
+## Project Structure
+
+```
+src/
+├── index.ts                    # Main entry point with routing
+├── types/
+│   ├── career-ai.ts            # Type definitions
+│   └── index.ts                # Barrel export
+├── utils/
+│   ├── auth.ts                 # Authentication utilities
+│   ├── cors.ts                 # CORS headers
+│   ├── rate-limit.ts           # Rate limiting
+│   └── index.ts                # Barrel export
+├── ai/
+│   ├── conversation-phase.ts   # Phase management
+│   ├── guardrails.ts           # Safety checks (prompt injection, PII)
+│   ├── intent-detection.ts     # Intent detection with patterns
+│   ├── memory.ts               # Conversation memory & compression
+│   ├── riasec.ts               # RIASEC interpretation
+│   ├── index.ts                # Barrel export
+│   └── prompts/
+│       ├── chain-of-thought.ts     # Zero-shot CoT framework
+│       ├── enhanced-system-prompt.ts # Main prompt builder
+│       ├── few-shot.ts             # Few-shot examples
+│       ├── prompt-helpers.ts       # XML context builders
+│       └── verification.ts         # Self-verification checklist
+└── context/
+    ├── assessment.ts           # Assessment context builder
+    ├── courses.ts              # Course context builder
+    ├── opportunities.ts        # Opportunities fetcher
+    ├── progress.ts             # Career progress builder
+    ├── student.ts              # Student context builder
+    └── index.ts                # Barrel export
+```
 
 ## Endpoints
 
@@ -8,7 +43,7 @@ AI-powered career guidance and job matching service.
 |----------|--------|-------------|
 | `/chat` | POST | Career AI chat with streaming responses |
 | `/recommend-opportunities` | POST | Get job recommendations based on student profile |
-| `/generate-embedding` | POST | Generate text embeddings for semantic search |
+| `/health` | GET | Health check |
 
 ## Environment Variables
 
