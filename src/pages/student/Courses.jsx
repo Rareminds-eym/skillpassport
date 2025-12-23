@@ -39,6 +39,7 @@ const Courses = () => {
   const coursesPerPage = 6;
   const [activeTab, setActiveTab] = useState('courses'); // 'courses' or 'progress'
   const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
+  const [enrollmentProgress, setEnrollmentProgress] = useState({}); // Track progress per course
   
   // Refs to prevent duplicate fetches and track initialization
   const isFetchingRef = useRef(false);
@@ -165,12 +166,31 @@ const Courses = () => {
       if (result.success && result.data) {
         const enrolledIds = new Set(result.data.map(enrollment => enrollment.course_id));
         setEnrolledCourseIds(enrolledIds);
+        
+        // Track progress for each enrolled course
+        const progressMap = {};
+        result.data.forEach(enrollment => {
+          progressMap[enrollment.course_id] = {
+            progress: enrollment.progress || 0,
+            lastModuleIndex: enrollment.last_module_index || 0,
+            lastLessonIndex: enrollment.last_lesson_index || 0,
+            status: enrollment.status
+          };
+        });
+        setEnrollmentProgress(progressMap);
+        
         console.log('📝 Student enrolled in courses:', enrolledIds.size);
       }
     } catch (error) {
       console.error('Error fetching enrollments:', error);
     }
   }, []);
+
+  // Check if course has resumable progress
+  const hasResumableProgress = (courseId) => {
+    const progress = enrollmentProgress[courseId];
+    return progress && progress.progress > 0 && progress.progress < 100;
+  };
 
   // Check if a course is new (posted within last 24 hours)
   const isNewCourse = (createdAt) => {
@@ -527,7 +547,17 @@ const Courses = () => {
                     )}
                     {/* Badges */}
                     <div className="absolute top-2 left-2 flex gap-2">
-                      {enrolledCourseIds.has(course.course_id) && (
+                      {hasResumableProgress(course.course_id) ? (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                        >
+                          <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-lg font-semibold px-3 py-1 flex items-center gap-1">
+                            <Play className="w-3 h-3" />
+                            Resume ({enrollmentProgress[course.course_id]?.progress}%)
+                          </Badge>
+                        </motion.div>
+                      ) : enrolledCourseIds.has(course.course_id) && (
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
@@ -665,7 +695,12 @@ const Courses = () => {
                         )}
                         {/* Badges */}
                         <div className="absolute top-2 left-2 flex gap-2">
-                          {enrolledCourseIds.has(course.course_id) && (
+                          {hasResumableProgress(course.course_id) ? (
+                            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-lg font-semibold px-3 py-1 flex items-center gap-1">
+                              <Play className="w-3 h-3" />
+                              Resume ({enrollmentProgress[course.course_id]?.progress}%)
+                            </Badge>
+                          ) : enrolledCourseIds.has(course.course_id) && (
                             <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
                               Enrolled
                             </Badge>

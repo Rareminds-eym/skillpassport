@@ -14,15 +14,18 @@ import {
     Video,
     X
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AITutorPanel, VideoLearningPanel } from '../../components/ai-tutor';
+import RestoreProgressModal from '../../components/student/courses/RestoreProgressModal';
 import { Badge } from '../../components/Students/components/ui/badge';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
 import { useAuth } from '../../context/AuthContext';
+import { useSessionRestore } from '../../hooks/useSessionRestore';
 import { supabase } from '../../lib/supabaseClient';
 import { courseEnrollmentService } from '../../services/courseEnrollmentService';
+import { courseProgressService } from '../../services/courseProgressService';
 import { fileService } from '../../services/fileService';
 
 const CoursePlayer = () => {
@@ -60,9 +63,27 @@ const CoursePlayer = () => {
   const [lessonResources, setLessonResources] = useState([]);
   const [lessonStartTime, setLessonStartTime] = useState(null);
   const [accumulatedTime, setAccumulatedTime] = useState(0);
+  
+  // Video progress tracking refs
+  const videoRef = useRef(null);
+  const videoSaveTimeoutRef = useRef(null);
+  const lastSavedVideoPositionRef = useRef(0);
 
   // Check if user is a student (for progress tracking)
   const isStudent = user?.role === 'student';
+
+  // Session restore hook - only for students
+  const {
+    restorePoint,
+    showRestoreModal,
+    isLoading: restoreLoading,
+    shouldAutoRestore,
+    handleRestore,
+    handleStartFresh,
+    dismissModal,
+    saveRestorePoint,
+    getLastAccessedText
+  } = useSessionRestore(user?.id, courseId, { enabled: isStudent });
 
   // Enroll student and load existing progress (only for students)
   useEffect(() => {
@@ -122,6 +143,163 @@ const CoursePlayer = () => {
     if (!currentModule.lessons || !currentModule.lessons[currentLessonIndex]) return null;
     return currentModule.lessons[currentLessonIndex];
   };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VIDEO PROGRESS TRACKING HANDLERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Save video position to database
+  const saveVideoPosition = useCallback(async (position, duration) => {
+    if (!isStudent || !user?.id || !courseId) return;
+    const currentLesson = getCurrentLesson();
+    if (!currentLesson) return;
+
+    await courseProgressService.saveVideoPosition(
+      user.id,
+      courseId,
+      currentLesson.id,
+      Math.floor(position),
+      Math.floor(duration)
+    );
+    lastSavedVideoPositionRef.current = position;
+  }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex]);
+
+  // Load saved video position when lesson changes
+  useEffect(() => {
+    if (!isStudent || !user?.id || !courseId) return;
+    const currentLesson = getCurrentLesson();
+    if (!currentLesson) return;
+
+    const loadVideoPosition = async () => {
+      const saved = await courseProgressService.getVideoPosition(user.id, courseId, currentLesson.id);
+      if (saved && saved.video_position_seconds > 0 && !saved.video_completed) {
+        lastSavedVideoPositionRef.current = Math.max(0, saved.video_position_seconds - 2);
+      } else {
+        lastSavedVideoPositionRef.current = 0;
+      }
+    };
+
+    loadVideoPosition();
+  }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex]);
+
+  // Video event handlers
+  const handleVideoLoadedMetadata = useCallback(() => {
+    if (videoRef.current && lastSavedVideoPositionRef.current > 0) {
+      videoRef.current.currentTime = lastSavedVideoPositionRef.current;
+      console.log('📹 Restored video position to:', lastSavedVideoPositionRef.current);
+    }
+  }, []);
+
+  const handleVideoTimeUpdate = useCallback(() => {
+    if (!videoRef.current || !isStudent) return;
+    
+    const video = videoRef.current;
+    const position = video.currentTime;
+    const duration = video.duration;
+
+    // Debounced save during playback (every 5 seconds of progress)
+    if (videoSaveTimeoutRef.current) {
+      clearTimeout(videoSaveTimeoutRef.current);
+    }
+
+    videoSaveTimeoutRef.current = setTimeout(() => {
+      if (!video.paused && position > lastSavedVideoPositionRef.current + 3) {
+        saveVideoPosition(position, duration);
+      }
+    }, 5000);
+
+    // Check for completion (90%)
+    if (duration > 0 && position / duration >= 0.9) {
+      const currentLesson = getCurrentLesson();
+      if (currentLesson) {
+        courseProgressService.markVideoCompleted(user.id, courseId, currentLesson.id);
+      }
+    }
+  }, [isStudent, user?.id, courseId, saveVideoPosition]);
+
+  const handleVideoPause = useCallback(() => {
+    if (!videoRef.current || !isStudent) return;
+    saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
+  }, [isStudent, saveVideoPosition]);
+
+  const handleVideoSeeked = useCallback(() => {
+    if (!videoRef.current || !isStudent) return;
+    saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
+  }, [isStudent, saveVideoPosition]);
+
+  const handleVideoEnded = useCallback(() => {
+    if (!isStudent || !user?.id || !courseId) return;
+    const currentLesson = getCurrentLesson();
+    if (currentLesson) {
+      courseProgressService.markVideoCompleted(user.id, courseId, currentLesson.id);
+    }
+  }, [isStudent, user?.id, courseId]);
+
+  // Save video position on page unload
+  useEffect(() => {
+    if (!isStudent) return;
+
+    const handleBeforeUnload = () => {
+      if (videoRef.current && videoRef.current.currentTime > 0) {
+        saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && videoRef.current) {
+        saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (videoSaveTimeoutRef.current) {
+        clearTimeout(videoSaveTimeoutRef.current);
+      }
+    };
+  }, [isStudent, saveVideoPosition]);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SESSION RESTORE HANDLING
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Handle restore from modal
+  const onRestoreConfirm = useCallback(() => {
+    const point = handleRestore();
+    if (point) {
+      setCurrentModuleIndex(point.lastModuleIndex);
+      setCurrentLessonIndex(point.lastLessonIndex);
+      // Video position will auto-restore via handleVideoLoadedMetadata
+      console.log('📍 Restored to Module', point.lastModuleIndex + 1, 'Lesson', point.lastLessonIndex + 1);
+    }
+  }, [handleRestore]);
+
+  // Auto-restore for high progress
+  useEffect(() => {
+    if (shouldAutoRestore && restorePoint && course) {
+      setCurrentModuleIndex(restorePoint.lastModuleIndex);
+      setCurrentLessonIndex(restorePoint.lastLessonIndex);
+      console.log('📍 Auto-restored to last position');
+    }
+  }, [shouldAutoRestore, restorePoint, course]);
+
+  // Save restore point when lesson changes
+  useEffect(() => {
+    if (!isStudent || !user?.id || !courseId || !course) return;
+    const currentLesson = getCurrentLesson();
+    if (!currentLesson) return;
+
+    saveRestorePoint(
+      currentModuleIndex,
+      currentLessonIndex,
+      currentLesson.id,
+      videoRef.current?.currentTime || 0
+    );
+  }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex, course, saveRestorePoint]);
 
   // Save time spent on lesson (only for students)
   const saveTimeSpent = async (additionalSeconds) => {
@@ -721,6 +899,19 @@ const CoursePlayer = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      {/* Session Restore Modal */}
+      {isStudent && (
+        <RestoreProgressModal
+          isOpen={showRestoreModal}
+          restorePoint={restorePoint}
+          courseName={course?.title}
+          onRestore={onRestoreConfirm}
+          onStartFresh={handleStartFresh}
+          onClose={dismissModal}
+          lastAccessedText={getLastAccessedText()}
+        />
+      )}
+
       {/* Top Navigation Bar */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -905,12 +1096,18 @@ const CoursePlayer = () => {
                         ) : (
                           <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
                             <video
+                              ref={videoRef}
                               id="lesson-video-player"
                               src={lessonVideoUrl}
                               className="w-full h-full"
                               controls
                               controlsList="nodownload"
                               title={currentLesson.title}
+                              onLoadedMetadata={handleVideoLoadedMetadata}
+                              onTimeUpdate={handleVideoTimeUpdate}
+                              onPause={handleVideoPause}
+                              onSeeked={handleVideoSeeked}
+                              onEnded={handleVideoEnded}
                               onError={(e) => {
                                 console.error('Video load error:', e);
                                 console.log('Failed video URL:', lessonVideoUrl);

@@ -50,13 +50,19 @@ export const courseEnrollmentService = {
         }
       }
 
-      // Check if already enrolled
+      // Check if already enrolled - use maybeSingle to avoid 406 error
       const { data: existingEnrollment, error: checkError } = await supabase
         .from('course_enrollments')
         .select('*')
         .eq('student_id', studentData.id)
         .eq('course_id', courseId)
-        .single();
+        .maybeSingle();
+
+      // If error occurred, throw it
+      if (checkError) {
+        console.error('Error checking enrollment:', checkError);
+        throw checkError;
+      }
 
       // If enrollment exists, return it
       if (existingEnrollment) {
@@ -68,13 +74,7 @@ export const courseEnrollmentService = {
         };
       }
 
-      // If error is anything other than "not found", throw it
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking enrollment:', checkError);
-        throw checkError;
-      }
-
-      // If we reach here, student is not enrolled yet (PGRST116 = not found)
+      // If we reach here, student is not enrolled yet
 
       // We'll set total_lessons to 0 initially and update it when the student first accesses the course
       const totalLessons = 0;
@@ -145,13 +145,13 @@ export const courseEnrollmentService = {
 
       if (studentError) throw studentError;
 
-      // Get enrollment
+      // Get enrollment - use maybeSingle to avoid 406 error
       const { data: enrollment, error: enrollError } = await supabase
         .from('course_enrollments')
         .select('*')
         .eq('student_id', studentData.id)
         .eq('course_id', courseId)
-        .single();
+        .maybeSingle();
 
       if (enrollError) throw enrollError;
       if (!enrollment) throw new Error('Enrollment not found');
@@ -216,9 +216,9 @@ export const courseEnrollmentService = {
         .select('*')
         .eq('student_id', studentData.id)
         .eq('course_id', courseId)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
 
       return {
         success: true,
