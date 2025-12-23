@@ -18,6 +18,8 @@ import {
 } from "../../../hooks/useNotifications";
 import { useAuth } from "../../../context/AuthContext";
 
+import { useNavigate } from "react-router-dom";
+
 interface NotificationPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -32,9 +34,11 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
   studentEmail,
 }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Use email from props, auth user, or fallback
-const userIdToUse = user?.id || user?.user_id || null;
+  // Prefer email to resolve to Profile ID, otherwise fallback to user ID
+  const userIdToUse = studentEmail || user?.email || user?.id || null;
 
   // 🔍 DEBUG: Log panel initialization and props
   useEffect(() => {
@@ -83,6 +87,60 @@ const userIdToUse = user?.id || user?.user_id || null;
 
     prevIdsRef.current = currentIds;
   }, [notifications]);
+
+  const handleNotificationClick = (notification: any) => {
+    // Mark as read
+    if (!notification.read) {
+      markRead(notification.id);
+    }
+
+    // Navigate based on type
+    switch (notification.type) {
+      case "new_message":
+      case "message_reply":
+        // Extract conversation ID if available in metadata, or just go to messages
+        // For now, just go to messages page
+        navigate("/student/messages");
+        break;
+        
+      case "course_added":
+      case "course_updated":
+      case "assignment_submitted":
+      case "class_activity_pending":
+      case "student_achievement":
+      case "new_student_enrolled":
+        navigate("/student/courses");
+        break;
+        
+      case "new_opportunity":
+      case "opportunity_closed":
+      case "offer_accepted":
+      case "offer_declined":
+      case "offer_created":
+      case "offer_withdrawn":
+      case "offer_expiring":
+      case "candidate_shortlisted":
+      case "new_application":
+        navigate("/student/opportunities");
+        break;
+        
+      case "interview_scheduled":
+      case "interview_rescheduled":
+      case "interview_completed":
+      case "interview_reminder":
+      case "pipeline_stage_changed":
+      case "candidate_rejected":
+        navigate("/student/applications");
+        break;
+        
+      default:
+        // Default fallback
+        break;
+    }
+    
+    // Close panel
+    onClose();
+  };
 
   const filteredNotifications = notifications.filter((n) => {
     switch (selectedFilter) {
@@ -135,6 +193,8 @@ const userIdToUse = user?.id || user?.user_id || null;
     console.log('📋 filteredNotifications:', filteredNotifications);
     console.log('🔢 filtered count:', filteredNotifications?.length ?? 0);
     console.log('🔢 total count:', notifications?.length ?? 0);
+    console.log('📋 All Notification Types:', notifications.map(n => n.type));
+    console.log('📋 All Notification IDs:', notifications.map(n => n.id));
     console.groupEnd();
   }, [selectedFilter, filteredNotifications, notifications]);
 
@@ -344,7 +404,8 @@ const userIdToUse = user?.id || user?.user_id || null;
             {filteredNotifications.map((n) => (
               <li
                 key={n.id}
-                className={`px-5 py-4 hover:bg-gray-50 transition-all duration-300 group relative ${
+                onClick={() => handleNotificationClick(n)}
+                className={`px-5 py-4 hover:bg-gray-50 transition-all duration-300 group relative cursor-pointer ${
                   !n.read ? "bg-blue-50/50" : ""
                 } ${newNotificationIds.has(n.id) ? "animate-pulse bg-green-50 border-l-4 border-green-400" : ""}`}
               >
@@ -363,7 +424,8 @@ const userIdToUse = user?.id || user?.user_id || null;
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
                         {!n.read && (
                           <button 
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent triggering the row click
                               console.log('🔵 Mark read clicked for notification:', n.id);
                               markRead(n.id);
                             }} 
