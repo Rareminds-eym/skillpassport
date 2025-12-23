@@ -41,17 +41,13 @@ const FloatingAIButton: React.FC = () => {
         onMouseEnter={() => setIsTooltipVisible(true)}
         onMouseLeave={() => setIsTooltipVisible(false)}
         className="relative flex items-center justify-center transition-all duration-300"
-        style={{ width: '150px', height: '100px' }}
+        style={{ width: '200px', height: '200px' }}
       >
         <img 
           src="/ai.gif" 
           alt="Career AI" 
           className="drop-shadow-lg"
-          style={{ 
-            width: '150px', 
-            height: '100px',
-            objectFit: 'contain'
-          }}
+          style={{ width: '200px', height: '200px' }}
         />
       </motion.button>
     </div>
