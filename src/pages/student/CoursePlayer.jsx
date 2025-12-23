@@ -1,30 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '../../components/Students/components/ui/card';
-import { Button } from '../../components/Students/components/ui/button';
-import { Badge } from '../../components/Students/components/ui/badge';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  BookOpen,
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle,
-  Circle,
-  Clock,
-  Award,
-  Menu,
-  X,
-  FileText,
-  Video,
-  Image,
-  Link as LinkIcon,
-  Youtube
+    Award,
+    BookOpen,
+    CheckCircle,
+    ChevronLeft,
+    ChevronRight,
+    Circle,
+    Clock,
+    FileText,
+    Image,
+    Link as LinkIcon,
+    Menu,
+    Video,
+    X
 } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
-import { motion, AnimatePresence } from 'framer-motion';
-import { courseEnrollmentService } from '../../services/courseEnrollmentService';
-import { useAuth } from '../../context/AuthContext';
-import { fileService } from '../../services/fileService';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AITutorPanel, VideoLearningPanel } from '../../components/ai-tutor';
+import { Badge } from '../../components/Students/components/ui/badge';
+import { Button } from '../../components/Students/components/ui/button';
+import { Card, CardContent } from '../../components/Students/components/ui/card';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
+import { courseEnrollmentService } from '../../services/courseEnrollmentService';
+import { fileService } from '../../services/fileService';
 
 const CoursePlayer = () => {
   const { courseId } = useParams();
@@ -188,7 +187,7 @@ const CoursePlayer = () => {
 
       // Update student streak after completing lesson
       try {
-        const response = await fetch(`http://localhost:3001/api/streaks/${user.id}/complete`, {
+        const response = await fetch(`https://streak-api.dark-mode-d021.workers.dev/${user.id}/complete`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
