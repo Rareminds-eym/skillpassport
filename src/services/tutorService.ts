@@ -1,5 +1,31 @@
 import { supabase } from '../lib/supabaseClient';
 
+// ==================== API URL CONFIGURATION ====================
+const WORKER_URL = import.meta.env.VITE_COURSE_API_URL;
+
+if (!WORKER_URL) {
+  console.warn('⚠️ VITE_COURSE_API_URL not configured. AI Tutor will fail.');
+}
+
+const getApiUrl = (endpoint: string) => {
+  if (!WORKER_URL) {
+    throw new Error('VITE_COURSE_API_URL environment variable is required');
+  }
+  return `${WORKER_URL}/${endpoint}`;
+};
+
+const getApiHeaders = (token?: string) => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return headers;
+};
+
 // ==================== TYPES ====================
 
 export interface ChatMessage {
@@ -60,12 +86,12 @@ export interface StreamChunk {
  */
 export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamChunk, void, unknown> {
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-  
+
   if (sessionError) {
     console.error('Session error:', sessionError);
     throw new Error('Authentication error. Please try logging in again.');
   }
-  
+
   if (!session?.access_token) {
     console.error('No session or access token found');
     throw new Error('Please log in to use the AI Tutor');
@@ -74,14 +100,10 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
   console.log('Sending AI tutor request with token:', session.access_token.substring(0, 20) + '...');
 
   const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-tutor-chat`,
+    getApiUrl('ai-tutor-chat'),
     {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        'Content-Type': 'application/json',
-      },
+      headers: getApiHeaders(session.access_token),
       body: JSON.stringify(request),
     }
   );
@@ -114,12 +136,12 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
         currentEventType = line.slice(7).trim();
         continue;
       }
-      
+
       if (line.startsWith('data: ')) {
         const data = line.slice(6);
         try {
           const parsed = JSON.parse(data);
-          
+
           // Handle reasoning events (from grok/reasoning models)
           if (currentEventType === 'reasoning' && parsed.reasoning) {
             yield { type: 'reasoning', reasoning: parsed.reasoning };
@@ -131,10 +153,10 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
           // Handle done event with conversation info
           else if (parsed.conversationId) {
             (sendMessage as any).lastConversationId = parsed.conversationId;
-            yield { 
-              type: 'done', 
+            yield {
+              type: 'done',
               conversationId: parsed.conversationId,
-              messageId: parsed.messageId 
+              messageId: parsed.messageId
             };
           }
         } catch {
@@ -238,28 +260,17 @@ export async function getConversation(conversationId: string): Promise<Conversat
 export async function getSuggestedQuestions(lessonId: string): Promise<string[]> {
   try {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
+
     if (sessionError) {
       console.error('Session error in getSuggestedQuestions:', sessionError);
       return getDefaultSuggestions();
     }
-    
-    // Build headers - always include apikey, optionally include auth
-    const headers: Record<string, string> = {
-      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-      'Content-Type': 'application/json',
-    };
-    
-    // Only add Authorization if we have a valid session
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`;
-    }
 
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-tutor-suggestions`,
+      getApiUrl('ai-tutor-suggestions'),
       {
         method: 'POST',
-        headers,
+        headers: getApiHeaders(session?.access_token),
         body: JSON.stringify({ lessonId }),
       }
     );
@@ -307,13 +318,10 @@ export async function getCourseProgress(courseId: string): Promise<CourseProgres
   }
 
   const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-tutor-progress?courseId=${courseId}`,
+    getApiUrl(`ai-tutor-progress?courseId=${courseId}`),
     {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-      },
+      headers: getApiHeaders(session.access_token),
     }
   );
 
@@ -339,14 +347,10 @@ export async function updateLessonProgress(
   }
 
   const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-tutor-progress`,
+    getApiUrl('ai-tutor-progress'),
     {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        'Content-Type': 'application/json',
-      },
+      headers: getApiHeaders(session.access_token),
       body: JSON.stringify({ courseId, lessonId, status }),
     }
   );
@@ -406,14 +410,10 @@ export async function submitFeedback(
   }
 
   const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-tutor-feedback`,
+    getApiUrl('ai-tutor-feedback'),
     {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        'Content-Type': 'application/json',
-      },
+      headers: getApiHeaders(session.access_token),
       body: JSON.stringify({ conversationId, messageIndex, rating, feedbackText }),
     }
   );

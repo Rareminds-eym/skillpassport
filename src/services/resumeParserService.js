@@ -3,23 +3,12 @@
  * Handles parsing resumes using Claude AI
  */
 
-import { callClaudeJSON, isClaudeConfigured } from './claudeService';
-
-/**
- * Parse resume text using Claude AI
- * @param {string} resumeText - The extracted text from the resume
- * @returns {Promise<Object>} Parsed resume data in structured format
- */
 export const parseResumeWithAI = async (resumeText) => {
   try {
-    if (!isClaudeConfigured()) {
-      console.log('⚠️ Claude API not configured, using fallback parser');
-      return parseFallback(resumeText);
-    }
-
+    // Call backend API directly
     try {
       const result = await parseWithClaude(resumeText);
-      
+
       const hasData = result && (
         result.education?.length > 0 ||
         result.experience?.length > 0 ||
@@ -27,12 +16,12 @@ export const parseResumeWithAI = async (resumeText) => {
         result.softSkills?.length > 0 ||
         result.projects?.length > 0
       );
-      
+
       if (!hasData) {
         console.log('⚠️ AI returned empty data, using fallback parser');
         return parseFallback(resumeText);
       }
-      
+
       return result;
     } catch (aiError) {
       console.error('❌ AI parsing failed:', aiError.message);
@@ -47,50 +36,54 @@ export const parseResumeWithAI = async (resumeText) => {
 /**
  * Parse resume using Claude AI
  */
+/**
+ * Parse resume using Career API (Cloudflare Worker)
+ */
 const parseWithClaude = async (resumeText) => {
-  const prompt = `Extract information from this resume and return ONLY a valid JSON object.
+  try {
+    const API_URL = import.meta.env.VITE_CAREER_API_URL || 'https://career-api.rareminds.workers.dev';
 
-CRITICAL RULES:
-- name: Extract ONLY the person's full name (2-4 words)
-- DO NOT dump entire resume text into any single field
-- Parse each section into separate array items with unique IDs
+    // Get current session for auth token
+    const { data: { session } } = await import('../lib/supabaseClient').then(m => m.supabase.auth.getSession());
+    const token = session?.access_token;
 
-Return ONLY the JSON object:
-{
-  "name": "",
-  "email": "",
-  "contact_number": "",
-  "college_school_name": "",
-  "university": "",
-  "branch_field": "",
-  "education": [{"id": 1, "degree": "", "department": "", "university": "", "yearOfPassing": "", "cgpa": "", "level": "Bachelor's", "status": "completed"}],
-  "experience": [{"id": 1, "organization": "", "role": "", "duration": "", "description": "", "verified": false}],
-  "projects": [{"id": 1, "title": "", "description": "", "technologies": [], "link": "", "status": "Completed"}],
-  "technicalSkills": [{"id": 1, "name": "", "category": "", "level": 3, "verified": false}],
-  "softSkills": [{"id": 1, "name": "", "level": 3}],
-  "certificates": [{"id": 1, "title": "", "issuer": "", "issuedOn": "", "credentialId": "", "link": ""}],
-  "training": []
-}
+    if (!token) {
+      throw new Error('Authentication required for resume parsing');
+    }
 
-Resume Text:
-"""
-${resumeText}
-"""
-`;
+    const response = await fetch(`${API_URL}/parse-resume`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ resumeText })
+    });
 
-  const parsedData = await callClaudeJSON(prompt, {
-    maxTokens: 4096,
-    temperature: 0.1,
-    useCache: false
-  });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Server error: ${response.status}`);
+    }
 
-  console.log('✅ Claude resume parsing successful');
+    const result = await response.json();
 
-  if (parsedData.name && parsedData.name.length > 100) {
-    parsedData.name = extractNameFromText(parsedData.name);
+    if (!result.success || !result.data) {
+      throw new Error('Invalid response from server');
+    }
+
+    console.log('✅ Resume parsing successful via backend');
+
+    let parsedData = result.data;
+
+    if (parsedData.name && parsedData.name.length > 100) {
+      parsedData.name = extractNameFromText(parsedData.name);
+    }
+
+    return addMetadata(parsedData);
+  } catch (error) {
+    console.error('Backend parsing failed:', error);
+    throw error;
   }
-
-  return addMetadata(parsedData);
 };
 
 /**
@@ -115,7 +108,7 @@ const extractNameFromText = (text) => {
  */
 const addMetadata = (data) => {
   const timestamp = Date.now();
-  
+
   const addIds = (arr, prefix) => {
     return (arr || []).map((item, idx) => ({
       ...item,
@@ -156,15 +149,15 @@ const parseFallback = (resumeText) => {
     certificates: [],
     imported_at: new Date().toISOString()
   };
-  
+
   // Extract email
   const emailMatch = resumeText.match(/[\w.-]+@[\w.-]+\.\w+/);
   result.email = emailMatch?.[0] || '';
-  
+
   // Extract phone
   const phoneMatch = resumeText.match(/(?:\+91\s?)?[\d\s-]{10,}/);
   result.contact_number = phoneMatch?.[0]?.replace(/\s+/g, ' ').trim() || '';
-  
+
   // Extract name from first few lines
   const lines = resumeText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   for (const line of lines.slice(0, 5)) {
@@ -176,7 +169,7 @@ const parseFallback = (resumeText) => {
       }
     }
   }
-  
+
   return addMetadata(result);
 };
 
@@ -205,7 +198,7 @@ export const mergeResumeData = (existingData, parsedData) => {
   arrayFields.forEach(field => {
     const existing = existingData[field] || [];
     const parsed = parsedData[field] || [];
-    
+
     if (parsed.length > 0) {
       // Simple deduplication by checking if item already exists
       const newItems = parsed.filter(newItem => {
@@ -229,13 +222,13 @@ export const mergeResumeData = (existingData, parsedData) => {
           return false;
         });
       });
-      
+
       merged[field] = [...existing, ...newItems];
     }
   });
 
   merged.imported_at = parsedData.imported_at || new Date().toISOString();
-  
+
   return merged;
 };
 
