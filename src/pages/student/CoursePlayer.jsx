@@ -442,9 +442,9 @@ const CoursePlayer = () => {
         .eq('student_id', user.id)
         .eq('course_id', courseId)
         .eq('lesson_id', currentLesson.id)
-        .single();
+        .maybeSingle();
 
-      if (fetchError && fetchError.code !== 'PGRST116') {
+      if (fetchError) {
         console.error('Error fetching lesson progress:', fetchError);
         return;
       }

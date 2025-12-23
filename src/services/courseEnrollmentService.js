@@ -67,6 +67,12 @@ export const courseEnrollmentService = {
       // If enrollment exists, return it
       if (existingEnrollment) {
         console.log('Student already enrolled, returning existing enrollment');
+        // Update last_accessed
+        await supabase
+          .from('course_enrollments')
+          .update({ last_accessed: new Date().toISOString() })
+          .eq('id', existingEnrollment.id);
+        
         return {
           success: true,
           message: 'Already enrolled',
@@ -100,12 +106,31 @@ export const courseEnrollmentService = {
         .select()
         .single();
 
+      // Handle duplicate key error (race condition from React StrictMode)
+      if (enrollError && enrollError.code === '23505') {
+        console.log('Duplicate enrollment detected, fetching existing record');
+        const { data: existingRecord } = await supabase
+          .from('course_enrollments')
+          .select('*')
+          .eq('student_id', studentData.id)
+          .eq('course_id', courseId)
+          .maybeSingle();
+        
+        if (existingRecord) {
+          return {
+            success: true,
+            message: 'Already enrolled',
+            data: existingRecord
+          };
+        }
+      }
+
       if (enrollError) throw enrollError;
 
       // Update course enrollment count
       await supabase.rpc('increment_course_enrollment', {
         course_id_param: courseId
-      });
+      }).catch(() => {}); // Ignore if RPC doesn't exist
 
       return {
         success: true,
