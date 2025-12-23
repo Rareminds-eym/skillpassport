@@ -1468,7 +1468,7 @@ async function handleAnalyzeAssessment(request: Request, env: Env): Promise<Resp
         'X-Title': 'Assessment Analyzer'
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
+        model: 'openai/gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -1597,7 +1597,7 @@ ${resumeText.slice(0, 15000)}
         'X-Title': 'Resume Parser'
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
+        model: 'openai/gpt-4o-mini',
         messages: [
           {
             role: 'system',
