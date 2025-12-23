@@ -80,18 +80,16 @@ const AssessmentStart = () => {
         answersCount: inProgressAttempt.student_answers?.length
       });
       
-      // Navigate with saved data - DO NOT pass preGeneratedQuestions when resuming
-      navigate('/student/assessment/start', { 
+      // Navigate to DynamicAssessment with resume data
+      navigate('/student/assessment/dynamic', { 
         state: { 
           courseId,
           certificateId,
-          certificateName,
+          courseName: certificateName,
           userId: user?.id,
           email: user?.email,
-          useDynamicGeneration,
           level,
           resumeAttempt: inProgressAttempt
-          // Note: Do NOT pass preGeneratedQuestions here - use questions from resumeAttempt
         } 
       });
       return;
@@ -102,55 +100,38 @@ const AssessmentStart = () => {
       try {
         console.log('🎯 Pre-generating questions for:', certificateName);
         
-        // Call backend API to generate questions
-        const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-        const response = await fetch(`${backendUrl}/api/assessment/generate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            courseName: certificateName,
-            level: level,
-            questionCount: 15
-          })
-        });
+        // Use the generateAssessment service which checks database first
+        const { generateAssessment } = await import('../../services/assessmentGenerationService');
+        const assessment = await generateAssessment(certificateName, level, 15, courseId);
         
-        if (!response.ok) {
-          throw new Error('Failed to generate assessment questions');
-        }
+        console.log('✅ Questions loaded, navigating to test...');
         
-        const assessment = await response.json();
-        console.log('✅ Questions generated, navigating to test...');
-        
-        // Navigate with pre-generated questions
-        navigate('/student/assessment/start', { 
+        // Navigate to DynamicAssessment with pre-generated questions
+        navigate('/student/assessment/dynamic', { 
           state: { 
             courseId,
             certificateId,
-            certificateName,
+            courseName: certificateName,
             userId: user?.id,
             email: user?.email,
-            useDynamicGeneration,
             level,
             preGeneratedQuestions: assessment.questions // Pass the questions
           } 
         });
       } catch (error) {
-        console.error('❌ Error generating questions:', error);
-        alert('Failed to generate assessment. Please try again.');
+        console.error('❌ Error loading questions:', error);
+        alert('Failed to load assessment. Please try again.');
         setIsStarting(false);
       }
     } else {
-      // Navigate normally for static questions
-      navigate('/student/assessment/start', { 
+      // Navigate to DynamicAssessment for static questions
+      navigate('/student/assessment/dynamic', { 
         state: { 
           courseId,
           certificateId,
-          certificateName,
+          courseName: certificateName,
           userId: user?.id,
           email: user?.email,
-          useDynamicGeneration,
           level
         } 
       });
