@@ -22,15 +22,33 @@ export const courseEnrollmentService = {
       if (studentError) throw studentError;
       if (!studentData) throw new Error('Student not found');
 
-      // Get course details (only need basic info, not modules)
+      // Get course details with educator name - join directly to users since admin_users.id = users.id
       const { data: courseData, error: courseError } = await supabase
         .from('courses')
-        .select('course_id, title, educator_id, educator_name')
+        .select(`
+          course_id, 
+          title, 
+          educator_id
+        `)
         .eq('course_id', courseId)
         .single();
 
       if (courseError) throw courseError;
       if (!courseData) throw new Error('Course not found');
+
+      // Get educator name separately to avoid complex joins
+      let educatorName = 'Unknown Educator';
+      if (courseData.educator_id) {
+        const { data: educatorData } = await supabase
+          .from('users')
+          .select('firstName, lastName, email')
+          .eq('id', courseData.educator_id)
+          .single();
+        
+        if (educatorData) {
+          educatorName = `${educatorData.firstName || ''} ${educatorData.lastName || ''}`.trim() || educatorData.email || 'Unknown Educator';
+        }
+      }
 
       // Check if already enrolled
       const { data: existingEnrollment, error: checkError } = await supabase
@@ -71,7 +89,7 @@ export const courseEnrollmentService = {
           course_id: courseId,
           course_title: courseData.title,
           educator_id: courseData.educator_id,
-          educator_name: courseData.educator_name,
+          educator_name: educatorName,
           enrolled_at: new Date().toISOString(),
           progress: 0,
           completed_lessons: [],

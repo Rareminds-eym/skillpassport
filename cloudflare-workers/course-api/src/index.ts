@@ -159,12 +159,12 @@ async function authenticateUser(request: Request, env: Env): Promise<{ user: any
   if (!authHeader) return null;
 
   const token = authHeader.replace('Bearer ', '');
-  const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
   
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !user) return null;
 
-  const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+  const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
 
@@ -487,14 +487,14 @@ ${getPhaseInstructions(phase)}`;
 // ==================== AI HELPER FUNCTIONS ====================
 
 async function callAI(env: Env, systemPrompt: string, userPrompt: string): Promise<string> {
-  if (!env.OPENROUTER_API_KEY) throw new Error('AI service not configured');
+  if (!env.VITE_OPENROUTER_API_KEY) throw new Error('AI service not configured');
 
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
+      'Authorization': `Bearer ${env.VITE_OPENROUTER_API_KEY}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': env.SUPABASE_URL || '',
+      'HTTP-Referer': env.VITE_SUPABASE_URL || '',
       'X-Title': 'Course API Worker'
     },
     body: JSON.stringify({
@@ -864,7 +864,7 @@ async function handleAiTutorSuggestions(request: Request, env: Env): Promise<Res
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
-  const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+  const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
   const body = await request.json() as { lessonId?: string };
   const { lessonId } = body;
 
@@ -892,7 +892,7 @@ async function handleAiTutorSuggestions(request: Request, env: Env): Promise<Res
 
   const moduleTitle = module?.title || 'Unknown Module';
 
-  if (!env.OPENROUTER_API_KEY) {
+  if (!env.VITE_OPENROUTER_API_KEY) {
     // Return default questions if AI not configured
     return jsonResponse({
       questions: [
@@ -924,7 +924,7 @@ Return ONLY a JSON array of question strings, like:
 
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
+    headers: { 'Authorization': `Bearer ${env.VITE_OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'openai/gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
@@ -969,8 +969,8 @@ async function handleAiTutorChat(request: Request, env: Env): Promise<Response> 
 
   const auth = await authenticateUser(request, env);
   const studentId = auth?.user?.id || null;
-  const supabase = auth?.supabase || createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
-  const supabaseAdmin = auth?.supabaseAdmin || createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const supabase = auth?.supabase || createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
+  const supabaseAdmin = auth?.supabaseAdmin || createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
   const body = await request.json() as { conversationId?: string; courseId?: string; lessonId?: string; message?: string };
   const { conversationId, courseId, lessonId, message } = body;
@@ -979,7 +979,7 @@ async function handleAiTutorChat(request: Request, env: Env): Promise<Response> 
     return jsonResponse({ error: 'Missing required fields: courseId and message' }, 400);
   }
 
-  if (!env.OPENROUTER_API_KEY) {
+  if (!env.VITE_OPENROUTER_API_KEY) {
     return jsonResponse({ error: 'AI service not configured' }, 500);
   }
 
@@ -1032,9 +1032,9 @@ async function handleAiTutorChat(request: Request, env: Env): Promise<Response> 
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
+            'Authorization': `Bearer ${env.VITE_OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': env.SUPABASE_URL || '',
+            'HTTP-Referer': env.VITE_SUPABASE_URL || '',
             'X-Title': 'AI Course Tutor'
           },
           body: JSON.stringify({
@@ -1118,7 +1118,7 @@ async function handleAiTutorChat(request: Request, env: Env): Promise<Response> 
             try {
               const titleResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
+                headers: { 'Authorization': `Bearer ${env.VITE_OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   model: 'openai/gpt-4o-mini',
                   messages: [{ role: 'user', content: `Generate a short title (max 50 chars) for a tutoring conversation about "${courseContext.courseTitle}" starting with: "${message}"` }],
@@ -1338,7 +1338,7 @@ async function handleAiVideoSummarizer(request: Request, env: Env, ctx: Executio
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
-  const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
   const body = await request.json() as { 
     videoUrl?: string; 
     lessonId?: string; 
