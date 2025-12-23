@@ -32,15 +32,31 @@ const AssessmentStart = () => {
     const checkStatus = async () => {
       if (studentData?.id && certificateName) {
         setCheckingStatus(true);
+        console.log('🔍 Checking assessment status for:', {
+          studentId: studentData.id,
+          courseName: certificateName
+        });
+        
         const result = await checkAssessmentStatus(studentData.id, certificateName);
         
+        console.log('📊 Assessment status result:', result);
+        
         if (result.status === 'in_progress' && result.attempt) {
+          console.log('✅ Found in-progress attempt:', {
+            id: result.attempt.id,
+            currentQuestionIndex: result.attempt.current_question_index,
+            totalQuestions: result.attempt.total_questions,
+            answeredCount: result.attempt.student_answers?.filter(a => a.selected_answer !== null).length,
+            timeRemaining: result.attempt.time_remaining
+          });
           setInProgressAttempt(result.attempt);
         } else if (result.status === 'completed') {
           // Already completed, go back
           alert('You have already completed this assessment');
           navigate('/student/my-learning');
           return;
+        } else {
+          console.log('ℹ️ No in-progress attempt found');
         }
         setCheckingStatus(false);
       } else {
@@ -57,8 +73,14 @@ const AssessmentStart = () => {
     // If there's an in-progress attempt, resume it
     if (inProgressAttempt) {
       console.log('📝 Resuming in-progress assessment from question', inProgressAttempt.current_question_index + 1);
+      console.log('📦 Passing resumeAttempt to test page:', {
+        id: inProgressAttempt.id,
+        currentQuestionIndex: inProgressAttempt.current_question_index,
+        questionsCount: inProgressAttempt.questions?.length,
+        answersCount: inProgressAttempt.student_answers?.length
+      });
       
-      // Navigate with saved data
+      // Navigate with saved data - DO NOT pass preGeneratedQuestions when resuming
       navigate('/student/assessment/start', { 
         state: { 
           courseId,
@@ -68,8 +90,8 @@ const AssessmentStart = () => {
           email: user?.email,
           useDynamicGeneration,
           level,
-          resumeAttempt: inProgressAttempt,
-          preGeneratedQuestions: inProgressAttempt.questions
+          resumeAttempt: inProgressAttempt
+          // Note: Do NOT pass preGeneratedQuestions here - use questions from resumeAttempt
         } 
       });
       return;
@@ -212,6 +234,21 @@ const AssessmentStart = () => {
             )}
           </div>
 
+          {/* Resume Progress Banner */}
+          {inProgressAttempt && (
+            <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4 mb-6">
+              <div className="flex">
+                <CheckCircle className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0" />
+                <div>
+                  <h3 className="text-xs font-semibold text-blue-800 mb-1">Assessment In Progress</h3>
+                  <p className="text-xs text-blue-700">
+                    You have an incomplete assessment. You'll resume from question {inProgressAttempt.current_question_index + 1} of {inProgressAttempt.total_questions}.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Assessment Info */}
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-5 mb-6">
             <h2 className="text-base font-semibold text-gray-900 mb-3">What to Expect:</h2>
@@ -252,10 +289,10 @@ const AssessmentStart = () => {
             </div>
           </div>
 
-          {/* Start Button */}
+          {/* Start/Continue Button */}
           <button
             onClick={handleStartAssessment}
-            disabled={isStarting}
+            disabled={isStarting || checkingStatus}
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             {isStarting ? (
@@ -264,11 +301,19 @@ const AssessmentStart = () => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Starting Assessment...
+                {inProgressAttempt ? 'Resuming Assessment...' : 'Starting Assessment...'}
+              </>
+            ) : checkingStatus ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Checking Status...
               </>
             ) : (
               <>
-                Start Assessment
+                {inProgressAttempt ? 'Continue Assessment' : 'Start Assessment'}
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>

@@ -36,8 +36,15 @@ import {
   getAssignmentStats,
   updateAssignmentStatus
 } from '../../services/assignmentsService';
+import {
+  getStudentExams,
+  getStudentResults,
+  getStudentResultStats,
+  StudentExam,
+  StudentResult
+} from '../../services/studentExamService';
 
-type TabType = 'overview' | 'assignments' | 'timetable' | 'classmates' | 'curriculars';
+type TabType = 'overview' | 'assignments' | 'timetable' | 'classmates' | 'curriculars' | 'exams' | 'results';
 type TimetableViewType = 'week' | 'day';
 
 const DAYS = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -99,6 +106,9 @@ const MyClass: React.FC = () => {
   const [myAchievementsData, setMyAchievementsData] = useState<any[]>([]);
   const [myCertificates, setMyCertificates] = useState<any[]>([]);
   const [attendanceData, setAttendanceData] = useState<Record<string, any>>({});
+  const [exams, setExams] = useState<StudentExam[]>([]);
+  const [results, setResults] = useState<StudentResult[]>([]);
+  const [resultStats, setResultStats] = useState({ totalExams: 0, passed: 0, failed: 0, absent: 0, averagePercentage: 0 });
 
   // Fetch all data
   useEffect(() => {
@@ -239,6 +249,18 @@ const MyClass: React.FC = () => {
 
         if (certificatesData) {
           setMyCertificates(certificatesData);
+        }
+
+        // Fetch exams and results
+        if (studentId) {
+          const [examsData, resultsData, statsData] = await Promise.all([
+            getStudentExams(studentId),
+            getStudentResults(studentId),
+            getStudentResultStats(studentId)
+          ]);
+          setExams(examsData);
+          setResults(resultsData);
+          setResultStats(statsData);
         }
       } catch (error) {
         console.error('Error fetching class data:', error);
@@ -471,7 +493,9 @@ const MyClass: React.FC = () => {
                 { id: 'assignments', label: 'Assigments', icon: ClipboardList },
                 { id: 'timetable', label: 'Timetable', icon: Calendar },
                 { id: 'classmates', label: 'Classmates', icon: Users },
-                {id: 'curriculars', label: 'Co-Curriculars', icon: GraduationCap}
+                { id: 'curriculars', label: 'Co-Curriculars', icon: GraduationCap },
+                { id: 'exams', label: 'Exams', icon: FileText },
+                { id: 'results', label: 'Results', icon: Award }
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -1213,6 +1237,318 @@ const MyClass: React.FC = () => {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Exams Tab */}
+            {activeTab === 'exams' && (
+              <div>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Exam Schedule</h2>
+                  <p className="text-gray-600">View your upcoming and past examinations</p>
+                </div>
+
+                {exams.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Exams Scheduled</h3>
+                    <p className="text-gray-500">Your exam schedule will appear here when available.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Upcoming Exams */}
+                    {exams.filter(exam => new Date(exam.exam_date) >= new Date()).length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <Clock className="w-5 h-5 text-blue-600" />
+                          Upcoming Exams
+                        </h3>
+                        <div className="space-y-3">
+                          {exams
+                            .filter(exam => new Date(exam.exam_date) >= new Date())
+                            .map(exam => (
+                              <div
+                                key={exam.id}
+                                className="bg-white border-2 border-blue-200 rounded-lg p-5 hover:border-blue-300 hover:shadow-md transition-all"
+                              >
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <h4 className="font-bold text-gray-900 text-lg">{exam.subject_name}</h4>
+                                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                                        {exam.type}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-gray-500">{exam.assessment_code}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-sm font-medium text-gray-600">Total Marks</p>
+                                    <p className="text-2xl font-bold text-blue-600">{exam.total_marks}</p>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-gray-400" />
+                                    <div>
+                                      <p className="text-xs text-gray-500">Date</p>
+                                      <p className="text-sm font-medium text-gray-900">
+                                        {new Date(exam.exam_date).toLocaleDateString('en-US', {
+                                          month: 'short',
+                                          day: 'numeric',
+                                          year: 'numeric'
+                                        })}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-gray-400" />
+                                    <div>
+                                      <p className="text-xs text-gray-500">Time</p>
+                                      <p className="text-sm font-medium text-gray-900">
+                                        {exam.start_time} - {exam.end_time}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-gray-400" />
+                                    <div>
+                                      <p className="text-xs text-gray-500">Duration</p>
+                                      <p className="text-sm font-medium text-gray-900">{exam.duration_minutes} mins</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <MapPin className="w-4 h-4 text-gray-400" />
+                                    <div>
+                                      <p className="text-xs text-gray-500">Room</p>
+                                      <p className="text-sm font-medium text-gray-900">{exam.room || 'TBA'}</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {exam.instructions && (
+                                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                                    <p className="text-xs font-medium text-blue-900 mb-1">Instructions:</p>
+                                    <p className="text-sm text-blue-800">{exam.instructions}</p>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Past Exams */}
+                    {exams.filter(exam => new Date(exam.exam_date) < new Date()).length > 0 && (
+                      <div className="mt-8">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-gray-600" />
+                          Past Exams
+                        </h3>
+                        <div className="space-y-3">
+                          {exams
+                            .filter(exam => new Date(exam.exam_date) < new Date())
+                            .map(exam => (
+                              <div
+                                key={exam.id}
+                                className="bg-gray-50 border border-gray-200 rounded-lg p-4 hover:bg-gray-100 transition-colors"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <h4 className="font-semibold text-gray-900">{exam.subject_name}</h4>
+                                      <span className="px-2 py-1 bg-gray-200 text-gray-700 rounded-full text-xs font-medium">
+                                        {exam.type}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                                      <span className="flex items-center gap-1">
+                                        <Calendar className="w-3 h-3" />
+                                        {new Date(exam.exam_date).toLocaleDateString()}
+                                      </span>
+                                      <span>{exam.room}</span>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-sm text-gray-500">Total Marks</p>
+                                    <p className="text-lg font-bold text-gray-700">{exam.total_marks}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Results Tab */}
+            {activeTab === 'results' && (
+              <div>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Exam Results</h2>
+                  <p className="text-gray-600">View your published examination results</p>
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <p className="text-xs text-gray-500 mb-1">Total Exams</p>
+                    <p className="text-2xl font-bold text-gray-900">{resultStats.totalExams}</p>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-xs text-green-600 mb-1">Passed</p>
+                    <p className="text-2xl font-bold text-green-700">{resultStats.passed}</p>
+                  </div>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-xs text-red-600 mb-1">Failed</p>
+                    <p className="text-2xl font-bold text-red-700">{resultStats.failed}</p>
+                  </div>
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                    <p className="text-xs text-orange-600 mb-1">Absent</p>
+                    <p className="text-2xl font-bold text-orange-700">{resultStats.absent}</p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-xs text-blue-600 mb-1">Average</p>
+                    <p className="text-2xl font-bold text-blue-700">{resultStats.averagePercentage}%</p>
+                  </div>
+                </div>
+
+                {results.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Award className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Results Published</h3>
+                    <p className="text-gray-500">Your exam results will appear here once they are published.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {results.map(result => {
+                      const isPassed = !result.is_absent && !result.is_exempt && 
+                        result.marks_obtained !== undefined && 
+                        result.marks_obtained >= result.pass_marks;
+                      const isFailed = !result.is_absent && !result.is_exempt && 
+                        result.marks_obtained !== undefined && 
+                        result.marks_obtained < result.pass_marks;
+
+                      return (
+                        <div
+                          key={result.id}
+                          className={`border-2 rounded-lg p-5 transition-all ${
+                            result.is_absent
+                              ? 'bg-orange-50 border-orange-200'
+                              : isPassed
+                              ? 'bg-green-50 border-green-200'
+                              : isFailed
+                              ? 'bg-red-50 border-red-200'
+                              : 'bg-gray-50 border-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-bold text-gray-900 text-lg">{result.subject_name}</h4>
+                                <span className="px-2 py-1 bg-white/60 text-gray-700 rounded-full text-xs font-medium border border-gray-300">
+                                  {result.type}
+                                </span>
+                                {result.is_absent && (
+                                  <span className="px-2 py-1 bg-orange-200 text-orange-800 rounded-full text-xs font-medium">
+                                    Absent
+                                  </span>
+                                )}
+                                {result.is_exempt && (
+                                  <span className="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs font-medium">
+                                    Exempt
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600">{result.assessment_code}</p>
+                              {result.exam_date && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {new Date(result.exam_date).toLocaleDateString('en-US', {
+                                    month: 'long',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  })}
+                                </p>
+                              )}
+                            </div>
+
+                            {!result.is_absent && !result.is_exempt && (
+                              <div className="text-right">
+                                <p className="text-sm font-medium text-gray-600 mb-1">Score</p>
+                                <div className="flex items-baseline gap-1">
+                                  <p className={`text-3xl font-bold ${
+                                    isPassed ? 'text-green-700' : isFailed ? 'text-red-700' : 'text-gray-700'
+                                  }`}>
+                                    {result.marks_obtained}
+                                  </p>
+                                  <p className="text-lg text-gray-500">/ {result.total_marks}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {!result.is_absent && !result.is_exempt && (
+                            <div className="grid grid-cols-3 gap-4 mb-3">
+                              <div className="bg-white/60 rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-600 mb-1">Percentage</p>
+                                <p className={`text-xl font-bold ${
+                                  isPassed ? 'text-green-700' : isFailed ? 'text-red-700' : 'text-gray-700'
+                                }`}>
+                                  {result.percentage?.toFixed(1)}%
+                                </p>
+                              </div>
+
+                              <div className="bg-white/60 rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-600 mb-1">Grade</p>
+                                <p className={`text-xl font-bold ${
+                                  isPassed ? 'text-green-700' : isFailed ? 'text-red-700' : 'text-gray-700'
+                                }`}>
+                                  {result.grade || 'N/A'}
+                                </p>
+                              </div>
+
+                              <div className="bg-white/60 rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-600 mb-1">Pass Marks</p>
+                                <p className="text-xl font-bold text-gray-700">{result.pass_marks}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {result.remarks && (
+                            <div className="bg-white/60 rounded-lg p-3 border border-gray-200">
+                              <p className="text-xs font-medium text-gray-700 mb-1">Remarks:</p>
+                              <p className="text-sm text-gray-600">{result.remarks}</p>
+                            </div>
+                          )}
+
+                          {!result.is_absent && !result.is_exempt && (
+                            <div className="mt-3 flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                {isPassed ? (
+                                  <>
+                                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                                    <span className="text-sm font-medium text-green-700">Passed</span>
+                                  </>
+                                ) : isFailed ? (
+                                  <>
+                                    <AlertCircle className="w-5 h-5 text-red-600" />
+                                    <span className="text-sm font-medium text-red-700">Failed</span>
+                                  </>
+                                ) : null}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
