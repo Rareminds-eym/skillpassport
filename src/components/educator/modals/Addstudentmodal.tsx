@@ -276,7 +276,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             name: formData.name.trim(),
             email: formData.email.trim().toLowerCase(),
             contactNumber: formData.contactNumber.trim(),
-            dateOfBirth: formData.dateOfBirth || null,
+            dateOfBirth: convertDateFormat(formData.dateOfBirth) || null,
             gender: formData.gender || null,
             enrollmentNumber: formData.enrollmentNumber.trim() || null,
             rollNumber: formData.rollNumber.trim() || null,
@@ -359,6 +359,50 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     if (!rollNumber.trim()) return true // Optional field
     const rollRegex = /^[A-Za-z0-9\-]{3,20}$/
     return rollRegex.test(rollNumber.trim())
+  }
+
+  // Convert date from DD-MM-YYYY or DD/MM/YYYY to YYYY-MM-DD format
+  const convertDateFormat = (dateStr: string): string | null => {
+    if (!dateStr || dateStr.trim() === '') return null
+    
+    const trimmed = dateStr.trim()
+    
+    // If already in YYYY-MM-DD format, return as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed
+    }
+    
+    // Handle DD-MM-YYYY or DD/MM/YYYY format
+    const ddmmyyyyRegex = /^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/
+    const match = trimmed.match(ddmmyyyyRegex)
+    
+    if (match) {
+      const [, day, month, year] = match
+      // Pad day and month with leading zeros if needed
+      const paddedDay = day.padStart(2, '0')
+      const paddedMonth = month.padStart(2, '0')
+      const convertedDate = `${year}-${paddedMonth}-${paddedDay}`
+      
+      // Validate the converted date
+      const dateObj = new Date(convertedDate)
+      if (dateObj.getFullYear() == parseInt(year) && 
+          dateObj.getMonth() == parseInt(month) - 1 && 
+          dateObj.getDate() == parseInt(day)) {
+        return convertedDate
+      }
+    }
+    
+    // If no pattern matches, try to parse as-is and convert
+    try {
+      const dateObj = new Date(trimmed)
+      if (!isNaN(dateObj.getTime())) {
+        return dateObj.toISOString().split('T')[0]
+      }
+    } catch (e) {
+      console.warn('Failed to parse date:', trimmed)
+    }
+    
+    return null
   }
 
   const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -591,6 +635,14 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               console.log(`🔍 DEBUG Row ${rowNum}: Missing grade`)
             }
 
+            // Validate date format if provided
+            if (student.dateofbirth && student.dateofbirth.trim()) {
+              const convertedDate = convertDateFormat(student.dateofbirth)
+              if (!convertedDate) {
+                errors.push('Invalid date format. Use DD-MM-YYYY, DD/MM/YYYY, or YYYY-MM-DD')
+              }
+            }
+
             // Store the schoolClassId in the student data
             student.schoolClassId = schoolClassId
 
@@ -774,7 +826,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   email: student.email.trim().toLowerCase(),
                   contactNumber: student.contactnumber.trim(),
                   alternateNumber: student.alternatenumber?.trim() || null,
-                  dateOfBirth: student.dateofbirth || null,
+                  dateOfBirth: convertDateFormat(student.dateofbirth),
                   gender: student.gender || null,
                   enrollmentNumber: student.enrollmentnumber || null,
                   registrationNumber: student.registrationnumber || null,

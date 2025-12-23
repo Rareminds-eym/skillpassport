@@ -199,8 +199,8 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-              <AcademicCapIcon className="w-6 h-6 text-green-600" />
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <AcademicCapIcon className="w-6 h-6 text-blue-600" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">Start New Conversation</h2>
@@ -225,7 +225,7 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
               placeholder="Search students by name, email, university, branch, or grade..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
@@ -235,7 +235,7 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
             <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-xl">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                   <span className="ml-2 text-sm text-gray-600">Loading students...</span>
                 </div>
               ) : filteredStudents.length === 0 ? (
@@ -252,7 +252,7 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
                   </p>
                   {!searchQuery && (
                     <div className="text-center space-y-3 mt-3">
-                      <p className="text-green-600 text-xs bg-green-50 px-3 py-2 rounded-lg">
+                      <p className="text-blue-600 text-xs bg-blue-50 px-3 py-2 rounded-lg">
                         Contact your school admin if this seems incorrect
                       </p>
                       <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
@@ -270,17 +270,17 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
                     key={student.id}
                     onClick={() => setSelectedStudent(student)}
                     className={`w-full p-4 flex items-center gap-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 ${
-                      selectedStudent?.id === student.id ? 'bg-green-50 border-l-4 border-l-green-600' : ''
+                      selectedStudent?.id === student.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
                     }`}
                   >
-                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                       {student.name?.charAt(0)?.toUpperCase() || 'S'}
                     </div>
                     <div className="flex-1 text-left">
                       <h4 className="font-semibold text-gray-900">{student.name || 'Unnamed Student'}</h4>
                       <p className="text-sm text-gray-600">{student.email}</p>
                       {(student.university || student.branch_field || student.grade) && (
-                        <p className="text-xs text-green-600 mt-1">
+                        <p className="text-xs text-blue-600 mt-1">
                           {student.university && `${student.university}`}
                           {student.branch_field && ` • ${student.branch_field}`}
                           {student.grade && ` • Grade ${student.grade}${student.section ? `-${student.section}` : ''}`}
@@ -288,7 +288,7 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
                       )}
                     </div>
                     {selectedStudent?.id === student.id && (
-                      <div className="w-5 h-5 bg-green-600 rounded-full flex items-center justify-center">
+                      <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
                         <div className="w-2 h-2 bg-white rounded-full" />
                       </div>
                     )}
@@ -308,7 +308,7 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
               placeholder="Enter conversation subject (e.g., Academic Support, Assignment Help)"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               maxLength={100}
             />
             <p className="text-xs text-gray-500">
@@ -318,15 +318,15 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
 
           {/* Selected Student Preview */}
           {selectedStudent && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-              <h4 className="font-semibold text-green-900 mb-2">Selected Student</h4>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <h4 className="font-semibold text-blue-900 mb-2">Selected Student</h4>
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                   {selectedStudent.name?.charAt(0)?.toUpperCase() || 'S'}
                 </div>
                 <div>
-                  <p className="font-medium text-green-900">{selectedStudent.name}</p>
-                  <p className="text-sm text-green-700">{selectedStudent.email}</p>
+                  <p className="font-medium text-blue-900">{selectedStudent.name}</p>
+                  <p className="text-sm text-blue-700">{selectedStudent.email}</p>
                 </div>
               </div>
             </div>
@@ -344,7 +344,7 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
           <button
             onClick={handleCreateConversation}
             disabled={!selectedStudent || !subject.trim() || creating}
-            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {creating ? (
               <>

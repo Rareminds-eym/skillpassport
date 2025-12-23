@@ -574,44 +574,124 @@ const EducatorAssessmentResults: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Get current user's email
+      // Get current user's email and id
       const userEmail = user?.email;
-      if (!userEmail) {
+      const userId = user?.id;
+      if (!userEmail || !userId) {
         setError('User not authenticated');
         setLoading(false);
         return;
       }
 
-      // Find educator by email
-      const { data: educator, error: educatorError } = await supabase
-        .from('school_educators')
-        .select('id, school_id')
-        .eq('email', userEmail)
-        .single();
+      // First check if they are a school educator - try both user_id and email lookup
+      let schoolEducatorData = null;
+      let schoolEducatorError = null;
 
-      if (educatorError || !educator?.school_id) {
-        console.error('Error fetching educator:', educatorError, 'for email:', userEmail);
-        setError('No school associated with your account');
-        setLoading(false);
-        return;
+      // Try lookup by user_id first
+      const { data: educatorByUserId, error: errorByUserId } = await supabase
+        .from('school_educators')
+        .select('id, school_id, role')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!errorByUserId && educatorByUserId) {
+        schoolEducatorData = educatorByUserId;
+      } else {
+        // Fallback to email lookup
+        const { data: educatorByEmail, error: errorByEmail } = await supabase
+          .from('school_educators')
+          .select('id, school_id, role')
+          .eq('email', userEmail)
+          .maybeSingle();
+
+        if (!errorByEmail && educatorByEmail) {
+          schoolEducatorData = educatorByEmail;
+        } else {
+          schoolEducatorError = errorByEmail;
+        }
       }
 
-      const schoolId = educator.school_id;
-      
-      // Get school name separately
-      const { data: schoolData } = await supabase
-        .from('schools')
-        .select('name')
-        .eq('id', schoolId)
-        .single();
-      
-      setSchoolName(schoolData?.name || '');
-
-      // Get students from this school
-      const { data: studentsData, error: studentsError } = await supabase
+      let studentsQuery = supabase
         .from('students')
         .select('user_id, name, email')
-        .eq('school_id', schoolId);
+        .eq('is_deleted', false);
+
+      let schoolId: string | null = null;
+      let schoolName = '';
+
+      if (schoolEducatorData?.school_id) {
+        // School educator
+        schoolId = schoolEducatorData.school_id;
+        
+        // Apply filtering based on educator role and class assignments
+        if (schoolEducatorData.role === 'admin' || schoolEducatorData.role === 'school_admin') {
+          // School admins can see all students in their school
+          studentsQuery = studentsQuery.eq('school_id', schoolId);
+        } else {
+          // Regular educators can only see students in their assigned classes
+          const { data: classAssignments, error: classError } = await supabase
+            .from('school_educator_class_assignments')
+            .select('class_id')
+            .eq('educator_id', schoolEducatorData.id);
+
+          if (!classError && classAssignments && classAssignments.length > 0) {
+            const assignedClassIds = classAssignments.map(assignment => assignment.class_id);
+            studentsQuery = studentsQuery
+              .eq('school_id', schoolId)
+              .in('school_class_id', assignedClassIds);
+          } else {
+            // Educator has no class assignments - return empty results
+            setResults([]);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Get school name
+        const { data: schoolData } = await supabase
+          .from('schools')
+          .select('name')
+          .eq('id', schoolId)
+          .single();
+        
+        schoolName = schoolData?.name || '';
+      } else {
+        // Check if they are a college lecturer
+        const { data: collegeLecturerData, error: collegeLecturerError } = await supabase
+          .from('college_lecturers')
+          .select('id, collegeId')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (collegeLecturerError && collegeLecturerError.code !== 'PGRST116') {
+          throw collegeLecturerError;
+        }
+
+        if (collegeLecturerData?.collegeId) {
+          // College lecturer
+          schoolId = collegeLecturerData.collegeId;
+          studentsQuery = studentsQuery.eq('college_id', schoolId);
+
+          // Get college name
+          const { data: collegeData } = await supabase
+            .from('colleges')
+            .select('name')
+            .eq('id', schoolId)
+            .single();
+          
+          schoolName = collegeData?.name || '';
+        } else {
+          console.error('No educator found for user:', { userId, userEmail });
+          setError('No school or college associated with your account. Please contact your administrator.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      setSchoolName(schoolName);
+
+      // Get students based on the filtered query
+      const { data: studentsData, error: studentsError } = await studentsQuery;
 
       if (studentsError) throw studentsError;
 
@@ -1013,7 +1093,9 @@ const EducatorAssessmentResults: React.FC = () => {
               <p className="text-sm text-gray-500 mb-4">
                 {searchQuery || activeFilterCount > 0
                   ? 'Try adjusting your search or filters'
-                  : 'No student assessments available yet'}
+                  : results.length === 0 && !error
+                    ? 'No students have completed assessments yet, or you may not be assigned to any classes'
+                    : 'No student assessments available yet'}
               </p>
               {activeFilterCount > 0 && (
                 <button

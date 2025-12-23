@@ -386,6 +386,8 @@ const StudentsPage = () => {
   const [filters, setFilters] = useState({
     skills: [],
     courses: [],
+    grades: [], // For school educators
+    sections: [], // For school educators
     badges: [],
     locations: [],
     years: [],
@@ -394,12 +396,13 @@ const StudentsPage = () => {
   });
 
   // Get educator's school/college information
-  const { school: educatorSchool, college: educatorCollege, educatorType, loading: schoolLoading } = useEducatorSchool();
+  const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
-  // Fetch students filtered by educator's school or college
+  // Fetch students filtered by educator's assigned classes or institution
   const { students, loading, error, refetch } = useStudents({ 
     schoolId: educatorSchool?.id,
-    collegeId: educatorCollege?.id
+    collegeId: educatorCollege?.id,
+    classIds: educatorType === 'school' && educatorRole !== 'admin' ? assignedClassIds : undefined
   });
 
   // Reset to page 1 when filters or search change
@@ -432,23 +435,92 @@ const StudentsPage = () => {
       .slice(0, 20);
   }, [students]);
 
+  // Dynamic filter options based on educator type
   const courseOptions = useMemo(() => {
-    const courseCounts = {};
+    if (educatorType === 'school') {
+      // For school educators, show branch/subject options
+      const branchCounts = {};
+      students.forEach(student => {
+        const branch = student.branch_field || student.course_name;
+        if (branch) {
+          const normalizedBranch = branch.toLowerCase();
+          branchCounts[normalizedBranch] = (branchCounts[normalizedBranch] || 0) + 1;
+        }
+      });
+      return Object.entries(branchCounts)
+        .map(([branch, count]) => ({
+          value: branch,
+          label: branch,
+          count
+        }))
+        .sort((a, b) => b.count - a.count);
+    } else {
+      // For college educators, show department/course options
+      const courseCounts = {};
+      students.forEach(student => {
+        const dept = student.dept;
+        if (dept) {
+          const normalizedCourse = dept.toLowerCase();
+          courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
+        }
+      });
+      return Object.entries(courseCounts)
+        .map(([course, count]) => ({
+          value: course,
+          label: course,
+          count
+        }))
+        .sort((a, b) => b.count - a.count);
+    }
+  }, [students, educatorType]);
+
+  // Grade options for school educators
+  const gradeOptions = useMemo(() => {
+    if (educatorType !== 'school') return [];
+    
+    const gradeCounts = {};
     students.forEach(student => {
-      const dept = student.dept;
-      if (dept) {
-        const normalizedCourse = dept.toLowerCase();
-        courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
+      const grade = student.grade || student.class_grade;
+      if (grade) {
+        gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
       }
     });
-    return Object.entries(courseCounts)
-      .map(([course, count]) => ({
-        value: course,
-        label: course,
+    return Object.entries(gradeCounts)
+      .map(([grade, count]) => ({
+        value: grade,
+        label: `Grade ${grade}`,
         count
       }))
-      .sort((a, b) => b.count - a.count);
-  }, [students]);
+      .sort((a, b) => {
+        // Sort numerically if possible, otherwise alphabetically
+        const aNum = parseInt(a.value);
+        const bNum = parseInt(b.value);
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return aNum - bNum;
+        }
+        return a.value.localeCompare(b.value);
+      });
+  }, [students, educatorType]);
+
+  // Section options for school educators
+  const sectionOptions = useMemo(() => {
+    if (educatorType !== 'school') return [];
+    
+    const sectionCounts = {};
+    students.forEach(student => {
+      const section = student.section || student.class_section;
+      if (section) {
+        sectionCounts[section] = (sectionCounts[section] || 0) + 1;
+      }
+    });
+    return Object.entries(sectionCounts)
+      .map(([section, count]) => ({
+        value: section,
+        label: `Section ${section}`,
+        count
+      }))
+      .sort((a, b) => a.value.localeCompare(b.value));
+  }, [students, educatorType]);
 
   const badgeOptions = useMemo(() => {
     const badgeCounts = {};
@@ -489,7 +561,14 @@ const StudentsPage = () => {
   const yearOptions = useMemo(() => {
     const yearCounts = {};
     students.forEach(student => {
-      const year = (student as { year?: string }).year;
+      // Extract year from enrollmentDate or use created year as fallback
+      let year = null;
+      if (student.enrollmentDate) {
+        year = new Date(student.enrollmentDate).getFullYear().toString();
+      } else if (student.updated_at) {
+        year = new Date(student.updated_at).getFullYear().toString();
+      }
+      
       if (year) {
         yearCounts[year] = (yearCounts[year] || 0) + 1;
       }
@@ -497,10 +576,10 @@ const StudentsPage = () => {
     return Object.entries(yearCounts)
       .map(([year, count]) => ({
         value: year,
-        label: year,
+        label: `Academic Year ${year}`,
         count
       }))
-      .sort((a, b) => b.count - a.count);
+      .sort((a, b) => parseInt(b.value) - parseInt(a.value)); // Sort by year descending
   }, [students]);
 
   // Enhanced filter and sort with comprehensive search - WITH LEXICOGRAPHICAL ORDERING
@@ -599,10 +678,35 @@ const StudentsPage = () => {
         }
       }
       
-      // Course/department filters
+      // Course/department/branch filters
       if (filters.courses.length > 0) {
-        const dept = student.dept?.toLowerCase();
-        if (!dept || !filters.courses.includes(dept)) {
+        if (educatorType === 'school') {
+          // For school students, check branch_field or course_name
+          const branch = (student.branch_field || student.course_name)?.toLowerCase();
+          if (!branch || !filters.courses.includes(branch)) {
+            return false;
+          }
+        } else {
+          // For college students, check dept
+          const dept = student.dept?.toLowerCase();
+          if (!dept || !filters.courses.includes(dept)) {
+            return false;
+          }
+        }
+      }
+
+      // Grade filters (school only)
+      if (filters.grades.length > 0) {
+        const grade = student.grade || student.class_grade;
+        if (!grade || !filters.grades.includes(grade)) {
+          return false;
+        }
+      }
+
+      // Section filters (school only)
+      if (filters.sections.length > 0) {
+        const section = student.section || student.class_section;
+        if (!section || !filters.sections.includes(section)) {
           return false;
         }
       }
@@ -624,7 +728,14 @@ const StudentsPage = () => {
       
       // Year filters
       if (filters.years.length > 0) {
-        if (!filters.years.includes((student as { year?: string }).year)) {
+        let studentYear = null;
+        if (student.enrollmentDate) {
+          studentYear = new Date(student.enrollmentDate).getFullYear().toString();
+        } else if (student.updated_at) {
+          studentYear = new Date(student.updated_at).getFullYear().toString();
+        }
+        
+        if (!studentYear || !filters.years.includes(studentYear)) {
           return false;
         }
       }
@@ -681,6 +792,8 @@ const StudentsPage = () => {
     setFilters({
       skills: [],
       courses: [],
+      grades: [],
+      sections: [],
       badges: [],
       locations: [],
       years: [],
@@ -795,7 +908,7 @@ const StudentsPage = () => {
           <div className="inline-flex items-baseline">
             <h1 className="text-xl font-semibold text-gray-900">Students</h1>
             <span className="ml-2 text-sm text-gray-500">
-              ({totalItems} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students)
+              ({totalItems} {searchQuery || filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students)
             </span>
           </div>
         </div>
@@ -818,9 +931,9 @@ const StudentsPage = () => {
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
-            {(filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
+            {(filters.skills.length + filters.courses.length + filters.grades.length + filters.sections.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
-                {filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length}
+                {filters.skills.length + filters.courses.length + filters.grades.length + filters.sections.length + filters.badges.length + filters.locations.length + filters.years.length}
               </span>
             )}
           </button>
@@ -852,7 +965,7 @@ const StudentsPage = () => {
         <div className="text-left">
           <h1 className="text-xl font-semibold text-gray-900">Students</h1>
           <span className="text-sm text-gray-500">
-            {totalItems} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students
+            {totalItems} {searchQuery || filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students
           </span>
         </div>
 
@@ -872,9 +985,9 @@ const StudentsPage = () => {
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
-            {(filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
+            {(filters.skills.length + filters.courses.length + filters.grades.length + filters.sections.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
-                {filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length}
+                {filters.skills.length + filters.courses.length + filters.grades.length + filters.sections.length + filters.badges.length + filters.locations.length + filters.years.length}
               </span>
             )}
           </button>
@@ -925,13 +1038,41 @@ const StudentsPage = () => {
                   />
                 </FilterSection>
 
-                <FilterSection title="Course/Track">
-                  <CheckboxGroup
-                    options={courseOptions}
-                    selectedValues={filters.courses}
-                    onChange={(values) => setFilters({ ...filters, courses: values })}
-                  />
-                </FilterSection>
+                {educatorType === 'school' ? (
+                  <>
+                    <FilterSection title="Subject/Branch">
+                      <CheckboxGroup
+                        options={courseOptions}
+                        selectedValues={filters.courses}
+                        onChange={(values) => setFilters({ ...filters, courses: values })}
+                      />
+                    </FilterSection>
+
+                    <FilterSection title="Grade">
+                      <CheckboxGroup
+                        options={gradeOptions}
+                        selectedValues={filters.grades}
+                        onChange={(values) => setFilters({ ...filters, grades: values })}
+                      />
+                    </FilterSection>
+
+                    <FilterSection title="Section">
+                      <CheckboxGroup
+                        options={sectionOptions}
+                        selectedValues={filters.sections}
+                        onChange={(values) => setFilters({ ...filters, sections: values })}
+                      />
+                    </FilterSection>
+                  </>
+                ) : (
+                  <FilterSection title="Course/Track">
+                    <CheckboxGroup
+                      options={courseOptions}
+                      selectedValues={filters.courses}
+                      onChange={(values) => setFilters({ ...filters, courses: values })}
+                    />
+                  </FilterSection>
+                )}
 
                 <FilterSection title="Verification Badge">
                   <CheckboxGroup
@@ -1051,7 +1192,11 @@ const StudentsPage = () => {
           {/* Results */}
           <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
+              <div className={`grid grid-cols-1 gap-4 items-stretch ${
+                showFilters 
+                  ? 'md:grid-cols-1 lg:grid-cols-2' // 2 columns when filters are open
+                  : 'md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3' // 3 columns when filters are closed
+              }`}>
                 {(loading || schoolLoading) && <div className="text-sm text-gray-500">Loading students...</div>}
                 {error && <div className="text-sm text-red-600">{error}</div>}
                 {!loading && !schoolLoading && paginatedStudents.map((student) => (
@@ -1069,7 +1214,9 @@ const StudentsPage = () => {
                 {!loading && !schoolLoading && paginatedStudents.length === 0 && !error && (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500">
-                      {searchQuery || filters.skills.length > 0 || filters.locations.length > 0
+                      {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                        ? 'You have not been assigned to any classes yet'
+                        : searchQuery || filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0
                         ? 'No students match your current filters'
                         : educatorSchool 
                           ? `No students found in ${educatorSchool.name}`
@@ -1078,11 +1225,13 @@ const StudentsPage = () => {
                             : 'No students found.'}
                     </p>
                     <p className="text-xs text-gray-400 mt-2">
-                      {educatorSchool || educatorCollege
-                        ? `Students are filtered by your assigned ${educatorType === 'school' ? 'school' : 'college'}.`
-                        : 'Try adjusting your search terms or filters.'}
+                      {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                        ? 'Please contact your school administrator to assign you to classes.'
+                        : educatorSchool || educatorCollege
+                          ? `Students are filtered by your assigned ${educatorType === 'school' ? 'school' : 'college'}.`
+                          : 'Try adjusting your search terms or filters.'}
                     </p>
-                    {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
+                    {(filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0) && (
                       <button
                         onClick={handleClearFilters}
                         className="mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium"

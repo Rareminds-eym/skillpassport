@@ -17,7 +17,7 @@ export const useStudentAdminConversations = (studentId, enabled = true) => {
     error,
     refetch
   } = useQuery({
-    queryKey: ['student-admin-conversations', studentId],
+    queryKey: ['student-admin-conversations', studentId || 'none'],
     queryFn: async () => {
       if (!studentId) return [];
       
@@ -95,7 +95,7 @@ export const useStudentAdminConversations = (studentId, enabled = true) => {
 
   // Clear unread count function
   const clearUnreadCount = (conversationId) => {
-    queryClient.setQueryData(['student-admin-conversations', studentId], (oldData) => {
+    queryClient.setQueryData(['student-admin-conversations', studentId || 'none'], (oldData) => {
       if (!oldData) return oldData;
       return oldData.map(conv => 
         conv.id === conversationId 
@@ -135,12 +135,12 @@ export const useStudentAdminMessages = ({
     error,
     refetch
   } = useQuery({
-    queryKey: ['student-admin-messages', conversationId],
+    queryKey: ['student-admin-messages', conversationId || 'none'],
     queryFn: async () => {
       if (!conversationId) return [];
       return await MessageService.getConversationMessages(conversationId, { useCache: true });
     },
-    enabled: !!conversationId && enabled,
+    enabled: !!conversationId && enabled && !!studentId,
     staleTime: 10000, // 10 seconds
     gcTime: 2 * 60 * 1000, // 2 minutes
     refetchInterval: false,

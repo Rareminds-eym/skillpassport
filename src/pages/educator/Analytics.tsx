@@ -64,10 +64,10 @@ const Analytics = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Get educator's school
-  const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
+  // Get educator's school information with class assignments
+  const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
-  // Get analytics data from hook - filtered by school
+  // Get analytics data from hook - filtered by school and class assignments
   const {
     loading,
     refreshing,
@@ -84,7 +84,13 @@ const Analytics = () => {
     fetchAnalyticsData,
     exportAsCSV,
     exportAsPDF,
-  } = useAnalytics({ schoolId: educatorSchool?.id });
+  } = useAnalytics({ 
+    schoolId: educatorSchool?.id,
+    collegeId: educatorCollege?.id,
+    educatorType,
+    educatorRole,
+    assignedClassIds
+  });
 
   useEffect(() => {
     setTotalPages(Math.ceil(leaderboard.length / itemsPerPage));
@@ -729,6 +735,39 @@ const Analytics = () => {
       </div>
 
       {/* Report Content */}
+      {selectedReport === 'summary' && skillSummary.length === 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
+          <div className="text-gray-500 mb-2">No skill data available</div>
+          <div className="text-sm text-gray-400">
+            {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+              ? 'You have not been assigned to any classes yet. Please contact your school administrator to assign you to classes.'
+              : 'No student skill activities found for your assigned classes.'}
+          </div>
+        </div>
+      )}
+
+      {selectedReport === 'attendance' && attendanceData.length === 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
+          <div className="text-gray-500 mb-2">No attendance data available</div>
+          <div className="text-sm text-gray-400">
+            {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+              ? 'You have not been assigned to any classes yet. Please contact your school administrator to assign you to classes.'
+              : 'No attendance records found for your assigned classes.'}
+          </div>
+        </div>
+      )}
+
+      {selectedReport === 'growth' && skillGrowthData.length === 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
+          <div className="text-gray-500 mb-2">No growth data available</div>
+          <div className="text-sm text-gray-400">
+            {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+              ? 'You have not been assigned to any classes yet. Please contact your school administrator to assign you to classes.'
+              : 'No skill growth data found for your assigned classes.'}
+          </div>
+        </div>
+      )}
+
       {selectedReport === 'summary' && skillSummary.length > 0 && (
         <div className="space-y-6">
           {/* Skill Summary Table */}
@@ -786,7 +825,7 @@ const Analytics = () => {
         </div>
       )}
 
-      {selectedReport === 'attendance' && (
+      {selectedReport === 'attendance' && attendanceData.length > 0 && (
         <div className="space-y-6">
           {/* Attendance Chart */}
           {attendanceData.length > 0 && (
@@ -923,7 +962,7 @@ const Analytics = () => {
         </div>
       )}
 
-      {selectedReport === 'growth' && (
+      {selectedReport === 'growth' && skillGrowthData.length > 0 && (
         <div className="space-y-6">
           {/* Growth Line Chart */}
           {skillGrowthData.length > 0 && (
@@ -948,6 +987,16 @@ const Analytics = () => {
             )}
 
             {/* Leaderboard */}
+            {leaderboard.length === 0 && (
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
+                <div className="text-gray-500 mb-2">No leaderboard data available</div>
+                <div className="text-sm text-gray-400">
+                  {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                    ? 'You have not been assigned to any classes yet.'
+                    : 'No student performance data found for your assigned classes.'}
+                </div>
+              </div>
+            )}
             {leaderboard.length > 0 && (
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -1000,6 +1049,16 @@ const Analytics = () => {
       )}
 
       {/* Full Leaderboard */}
+      {leaderboard.length === 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center mt-6">
+          <div className="text-gray-500 mb-2">No student performance data available</div>
+          <div className="text-sm text-gray-400">
+            {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+              ? 'You have not been assigned to any classes yet. Please contact your school administrator to assign you to classes.'
+              : 'No student activities or performance data found for your assigned classes.'}
+          </div>
+        </div>
+      )}
       {leaderboard.length > 0 && (
         <div id="leaderboard-table" className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6 mt-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">

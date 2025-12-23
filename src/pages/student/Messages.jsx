@@ -17,11 +17,13 @@ import {
   Trash2,
   Users,
   GraduationCap,
-  Building2
+  Building2,
+  ChevronDown
 } from 'lucide-react';
 import { useStudentConversations, useStudentMessages } from '../../hooks/useStudentMessages';
 import { useStudentEducatorConversations, useStudentEducatorMessages } from '../../hooks/useStudentEducatorMessages';
 import { useStudentAdminConversations, useStudentAdminMessages, useCreateStudentAdminConversation } from '../../hooks/useStudentAdminMessages';
+import { useStudentCollegeAdminConversations, useStudentCollegeAdminMessages, useCreateStudentCollegeAdminConversation } from '../../hooks/useStudentCollegeAdminMessages';
 import MessageService from '../../services/messageService';
 import { supabase } from '../../lib/supabaseClient';
 import { useMutation } from '@tanstack/react-query';
@@ -35,6 +37,7 @@ import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
 import NewEducatorConversationModal from '../../components/messaging/NewEducatorConversationModal';
 import NewAdminConversationModal from '../../components/messaging/NewAdminConversationModal';
+import NewCollegeAdminConversationModal from '../../components/messaging/NewCollegeAdminConversationModal';
 
 const Messages = () => {
   const queryClient = useQueryClient();
@@ -45,19 +48,26 @@ const Messages = () => {
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showMenu, setShowMenu] = useState(null);
-  // Read tab from URL parameter, default to recruiters
+  // Read tab from URL parameter, default based on available tabs
   const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(
-    tabFromUrl === 'educators' ? 'educators' : 
-    tabFromUrl === 'admin' ? 'admin' : 
-    'recruiters'
-  );
+  const [activeTab, setActiveTab] = useState(() => {
+    // If tab is specified in URL, use it (will be validated later)
+    if (tabFromUrl && ['recruiters', 'educators', 'admin', 'college_admin'].includes(tabFromUrl)) {
+      return tabFromUrl;
+    }
+    // Default to recruiters (always available)
+    return 'recruiters';
+  });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, conversationId: null, contactName: '' });
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const [showNewAdminConversationModal, setShowNewAdminConversationModal] = useState(false);
+  const [showNewCollegeAdminConversationModal, setShowNewCollegeAdminConversationModal] = useState(false);
+  const [showTabDropdown, setShowTabDropdown] = useState(false);
+  const [isTabSwitching, setIsTabSwitching] = useState(false);
   const messagesEndRef = useRef(null);
   const markedAsReadRef = useRef(new Set());
   const menuRef = useRef(null);
+  const tabDropdownRef = useRef(null);
   
   // Get student data - same approach as Applications page
   const { user } = useAuth();
@@ -65,6 +75,41 @@ const Messages = () => {
   const { studentData, loading: loadingStudentData } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id || user?.id;
   const studentName = studentData?.profile?.name || user?.name || 'Student';
+  
+  // Determine available tabs based on student's school_id and university_college_id
+  const hasSchoolId = !!studentData?.school_id;
+  const hasCollegeId = !!studentData?.university_college_id;
+  
+  // Available tabs logic:
+  // - Recruiters: Always available
+  // - Educators: Always available  
+  // - School Admin: Only if student has school_id
+  // - College Admin: Only if student has university_college_id
+  const availableTabs = useMemo(() => {
+    const tabs = ['recruiters', 'educators'];
+    
+    if (hasSchoolId) {
+      tabs.push('admin'); // school admin
+    }
+    
+    if (hasCollegeId) {
+      tabs.push('college_admin');
+    }
+    
+    return tabs;
+  }, [hasSchoolId, hasCollegeId]);
+  
+  // Ensure activeTab is valid for current student
+  useEffect(() => {
+    if (!loadingStudentData && availableTabs.length > 0) {
+      // If current activeTab is not available, switch to first available tab
+      if (!availableTabs.includes(activeTab)) {
+        console.log('🔄 Current tab not available, switching to:', availableTabs[0]);
+        setActiveTab(availableTabs[0]);
+        setSearchParams({ tab: availableTabs[0] }, { replace: true });
+      }
+    }
+  }, [activeTab, availableTabs, loadingStudentData, setSearchParams]);
   
   // Fetch recruiter conversations
   const { 
@@ -99,22 +144,44 @@ const Messages = () => {
     !!studentId && !loadingStudentData
   );
 
+  // Fetch college admin conversations
+  const { 
+    conversations: collegeAdminConversations, 
+    isLoading: loadingCollegeAdminConversations, 
+    refetch: refetchCollegeAdminConversations,
+    clearUnreadCount: clearCollegeAdminUnreadCount
+  } = useStudentCollegeAdminConversations(
+    studentId,
+    !!studentId && !loadingStudentData
+  );
+
   // Create admin conversation hook
   const createAdminConversation = useCreateStudentAdminConversation();
 
+  // Create college admin conversation hook
+  const createCollegeAdminConversation = useCreateStudentCollegeAdminConversation();
+
   // Get current conversations and loading state based on active tab
-  const conversations = activeTab === 'recruiters' ? recruiterConversations : 
-                       activeTab === 'educators' ? educatorConversations : 
-                       adminConversations;
+  const conversations = activeTab === 'recruiters' ? (recruiterConversations || []) : 
+                       activeTab === 'educators' ? (educatorConversations || []) : 
+                       activeTab === 'admin' ? (adminConversations || []) :
+                       activeTab === 'college_admin' ? (collegeAdminConversations || []) :
+                       [];
   const loadingConversations = activeTab === 'recruiters' ? loadingRecruiterConversations : 
                               activeTab === 'educators' ? loadingEducatorConversations : 
-                              loadingAdminConversations;
+                              activeTab === 'admin' ? loadingAdminConversations :
+                              activeTab === 'college_admin' ? loadingCollegeAdminConversations :
+                              false;
   const refetchConversations = activeTab === 'recruiters' ? refetchRecruiterConversations : 
                               activeTab === 'educators' ? refetchEducatorConversations : 
-                              refetchAdminConversations;
+                              activeTab === 'admin' ? refetchAdminConversations :
+                              activeTab === 'college_admin' ? refetchCollegeAdminConversations :
+                              () => {};
   const clearUnreadCount = activeTab === 'recruiters' ? clearRecruiterUnreadCount : 
                           activeTab === 'educators' ? clearEducatorUnreadCount : 
-                          clearAdminUnreadCount;
+                          activeTab === 'admin' ? clearAdminUnreadCount :
+                          activeTab === 'college_admin' ? clearCollegeAdminUnreadCount :
+                          () => {};
   
   // Force refetch on mount if we have a conversation ID in URL
   // This ensures we have fresh data when navigating from Applications page
@@ -189,20 +256,47 @@ const Messages = () => {
     retryAttempts.current = 0; // Also reset retry counter for new URLs
   }, [conversationIdFromUrl]);
 
-  // Handle tab changes from URL parameter
+  // Handle tab changes from URL parameter and trigger data fetch
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
-    if (tabFromUrl === 'educators' && activeTab !== 'educators') {
-      setActiveTab('educators');
+    const newTab = tabFromUrl === 'educators' ? 'educators' : 
+                   tabFromUrl === 'admin' ? 'admin' : 
+                   tabFromUrl === 'college_admin' ? 'college_admin' :
+                   'recruiters';
+    
+    if (newTab !== activeTab) {
+      console.log('🔄 Tab switching from', activeTab, 'to', newTab);
+      setIsTabSwitching(true);
+      setActiveTab(newTab);
       setSelectedConversationId(null); // Clear selection when switching tabs
-    } else if (tabFromUrl === 'admin' && activeTab !== 'admin') {
-      setActiveTab('admin');
-      setSelectedConversationId(null); // Clear selection when switching tabs
-    } else if (!tabFromUrl && activeTab !== 'recruiters') {
-      setActiveTab('recruiters');
-      setSelectedConversationId(null); // Clear selection when switching tabs
+      
+      // Force fetch data for the new tab if we have studentId
+      if (studentId && !loadingStudentData) {
+        console.log('🚀 Triggering fetch for new tab:', newTab);
+        
+        // Trigger appropriate refetch based on new tab - with safety checks
+        let fetchPromise = Promise.resolve();
+        
+        if (newTab === 'recruiters' && refetchRecruiterConversations) {
+          fetchPromise = refetchRecruiterConversations();
+        } else if (newTab === 'educators' && refetchEducatorConversations) {
+          fetchPromise = refetchEducatorConversations();
+        } else if (newTab === 'admin' && refetchAdminConversations) {
+          fetchPromise = refetchAdminConversations();
+        } else if (newTab === 'college_admin' && refetchCollegeAdminConversations) {
+          fetchPromise = refetchCollegeAdminConversations();
+        }
+        
+        // Clear tab switching state after fetch completes
+        fetchPromise.finally(() => {
+          setTimeout(() => setIsTabSwitching(false), 300); // Small delay for smooth UX
+        });
+      } else {
+        setIsTabSwitching(false);
+      }
     }
-  }, [searchParams, activeTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, activeTab, studentId, loadingStudentData]);
   
   // Debug logging - only when there's an issue
   useEffect(() => {
@@ -211,24 +305,42 @@ const Messages = () => {
     }
   }, [studentId, loadingStudentData, userEmail]);
   
-  // Fetch messages for selected conversation (works for all conversation types)
+  // Fetch messages for selected conversation - call all hooks unconditionally
+  const recruiterMessages = useStudentMessages({
+    studentId,
+    conversationId: activeTab === 'recruiters' ? selectedConversationId : null,
+    enabled: activeTab === 'recruiters' && !!selectedConversationId,
+    enableRealtime: true
+  });
+
+  const educatorMessages = useStudentEducatorMessages({
+    studentId,
+    conversationId: activeTab === 'educators' ? selectedConversationId : null,
+    enabled: activeTab === 'educators' && !!selectedConversationId,
+    enableRealtime: true
+  });
+
+  const adminMessages = useStudentAdminMessages({
+    studentId,
+    conversationId: activeTab === 'admin' ? selectedConversationId : null,
+    enabled: activeTab === 'admin' && !!selectedConversationId,
+    enableRealtime: true
+  });
+
+  const collegeAdminMessages = useStudentCollegeAdminMessages({
+    studentId,
+    conversationId: activeTab === 'college_admin' ? selectedConversationId : null,
+    enabled: activeTab === 'college_admin' && !!selectedConversationId,
+    enableRealtime: true
+  });
+
+  // Select the appropriate messages based on active tab
   const { messages, isLoading: loadingMessages, sendMessage, isSending } = 
-    activeTab === 'recruiters' ? useStudentMessages({
-      studentId,
-      conversationId: selectedConversationId,
-      enabled: !!selectedConversationId,
-      enableRealtime: true
-    }) : activeTab === 'educators' ? useStudentEducatorMessages({
-      studentId,
-      conversationId: selectedConversationId,
-      enabled: !!selectedConversationId,
-      enableRealtime: true
-    }) : useStudentAdminMessages({
-      studentId,
-      conversationId: selectedConversationId,
-      enabled: !!selectedConversationId,
-      enableRealtime: true
-    });
+    activeTab === 'recruiters' ? recruiterMessages :
+    activeTab === 'educators' ? educatorMessages :
+    activeTab === 'admin' ? adminMessages :
+    activeTab === 'college_admin' ? collegeAdminMessages :
+    { messages: [], isLoading: false, sendMessage: () => {}, isSending: false };
 
   // Use shared global presence context (no duplicate subscription)
   const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
@@ -407,17 +519,20 @@ const Messages = () => {
   
   // Transform conversations for display based on active tab
   const contacts = useMemo(() => {
-    console.log('🔄 Recalculating contacts memo, conversations:', conversations.length, 'tab:', activeTab);
+    console.log('🔄 Recalculating contacts memo, conversations:', (conversations || []).length, 'tab:', activeTab);
+    
+    // Ensure conversations is always an array
+    const safeConversations = conversations || [];
     
     // First filter out conversations marked for deletion
-    const activeConversations = conversations.filter(conv => !conv._pendingDelete);
+    const activeConversations = safeConversations.filter(conv => !conv._pendingDelete);
     
     // Debug logging
-    const pendingCount = conversations.filter(c => c._pendingDelete).length;
-    console.log(`📊 Conversations: ${conversations.length} total, ${pendingCount} pending delete, ${activeConversations.length} active`);
+    const pendingCount = safeConversations.filter(c => c._pendingDelete).length;
+    console.log(`📊 Conversations: ${safeConversations.length} total, ${pendingCount} pending delete, ${activeConversations.length} active`);
     
     if (pendingCount > 0) {
-      const pendingIds = conversations.filter(c => c._pendingDelete).map(c => c.id);
+      const pendingIds = safeConversations.filter(c => c._pendingDelete).map(c => c.id);
       console.log('❌ Pending delete IDs:', pendingIds);
     }
     
@@ -441,7 +556,7 @@ const Messages = () => {
         }
         
         // Generate avatar URL (no photo column in recruiters table)
-        const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(recruiterName)}&background=EF4444&color=fff`;
+        const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(recruiterName)}&background=3B82F6&color=fff`;
         
         // Format time
         let timeDisplay = 'No messages';
@@ -493,7 +608,7 @@ const Messages = () => {
         
         // Generate avatar URL
         const avatar = educator?.photo_url || 
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=10B981&color=fff`;
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=3B82F6&color=fff`;
         
         // Format time
         let timeDisplay = 'No messages';
@@ -520,8 +635,8 @@ const Messages = () => {
           type: 'educator'
         };
       });
-    } else {
-      // Admin conversations
+    } else if (activeTab === 'admin') {
+      // School admin conversations
       return activeConversations.map(conv => {
         const school = conv.school;
         const schoolName = school?.name || 'School Administration';
@@ -552,6 +667,40 @@ const Messages = () => {
           schoolId: conv.school_id,
           subject: conv.subject,
           type: 'admin'
+        };
+      });
+    } else {
+      // College admin conversations
+      return activeConversations.map(conv => {
+        const college = conv.college;
+        const collegeName = college?.name || 'College Administration';
+        const subject = conv.subject || 'General Discussion';
+        
+        // Generate avatar URL for college
+        const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(collegeName)}&background=3B82F6&color=fff`;
+        
+        // Format time
+        let timeDisplay = 'No messages';
+        if (conv.last_message_at) {
+          try {
+            timeDisplay = formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true });
+          } catch (e) {
+            timeDisplay = conv.last_message_at;
+          }
+        }
+        
+        return {
+          id: conv.id,
+          name: collegeName,
+          role: subject,
+          avatar: avatar,
+          lastMessage: conv.last_message_preview || 'No messages yet',
+          time: timeDisplay,
+          unread: conv.student_unread_count || 0,
+          online: false, // College admin online status not tracked the same way
+          collegeId: conv.college_id,
+          subject: conv.subject,
+          type: 'college_admin'
         };
       });
     }
@@ -622,7 +771,7 @@ const Messages = () => {
           } catch (notifError) {
             // Silent fail
           }
-        } else {
+        } else if (activeTab === 'admin') {
           // Send message to school admin
           // Get a school admin from the school to send the message to
           const { data: schoolAdmin } = await supabase
@@ -649,6 +798,48 @@ const Messages = () => {
           
           // Note: School admin notifications are handled differently since multiple admins can see the message
           // The notification will be sent to all school admins via the RLS policies
+        } else if (activeTab === 'college_admin') {
+          // Send message to college admin
+          // Get a college admin from the college to send the message to
+          const { data: collegeAdmin } = await supabase
+            .from('college_lecturers')
+            .select('id, user_id, userId')
+            .or(`collegeId.eq.${currentChat.collegeId},college_id.eq.${currentChat.collegeId}`)
+            .limit(1)
+            .single();
+          
+          let adminUserId = null;
+          if (collegeAdmin) {
+            adminUserId = collegeAdmin.user_id || collegeAdmin.userId;
+          } else {
+            // Fallback: check if user is college owner
+            const { data: ownerData } = await supabase
+              .from('colleges')
+              .select('created_by')
+              .eq('id', currentChat.collegeId)
+              .single();
+            
+            if (ownerData) {
+              adminUserId = ownerData.created_by;
+            }
+          }
+          
+          if (adminUserId) {
+            await sendMessage({
+              senderId: studentId,
+              senderType: 'student',
+              receiverId: adminUserId,
+              receiverType: 'college_admin',
+              messageText: messageInput,
+              subject: currentChat.subject
+            });
+          } else {
+            console.warn('No college admin found for college:', currentChat.collegeId);
+            throw new Error('No college admin available to receive message');
+          }
+          
+          // Note: College admin notifications are handled differently since multiple admins can see the message
+          // The notification will be sent to all college admins via the RLS policies
         }
         
         setMessageInput('');
@@ -667,7 +858,7 @@ const Messages = () => {
 
   // Auto-scroll to bottom when new messages arrive (with debounce for performance)
   useEffect(() => {
-    if (!messages.length) return;
+    if (!messages || !messages.length) return;
     
     const scrollToBottom = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -690,7 +881,7 @@ const Messages = () => {
   };
 
   // Transform messages for display
-  const displayMessages = messages.map(msg => ({
+  const displayMessages = (messages || []).map(msg => ({
     id: msg.id,
     text: msg.message_text,
     sender: msg.sender_type === 'student' ? 'me' : 'them',
@@ -703,15 +894,18 @@ const Messages = () => {
     if (menuRef.current && !menuRef.current.contains(event.target)) {
       setShowMenu(null);
     }
+    if (tabDropdownRef.current && !tabDropdownRef.current.contains(event.target)) {
+      setShowTabDropdown(false);
+    }
   }, []);
   
   useEffect(() => {
     // Only add listener when menu is open for better performance
-    if (showMenu !== null) {
+    if (showMenu !== null || showTabDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showMenu, handleClickOutside]);
+  }, [showMenu, showTabDropdown, handleClickOutside]);
 
   // Handle delete conversation using mutation
   const handleDeleteConversation = useCallback(async () => {
@@ -854,13 +1048,15 @@ const Messages = () => {
   }, []);
   
   // Show loading state
-  if (loadingConversations || !studentId) {
+  if (loadingConversations || !studentId || isTabSwitching) {
     return (
       <div className="flex h-[calc(100vh-180px)] bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-red-500 animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-500">
-            {!studentId ? 'Loading user data...' : 'Loading conversations...'}
+            {!studentId ? 'Loading user data...' : 
+             isTabSwitching ? 'Switching tabs...' :
+             'Loading conversations...'}
           </p>
         </div>
       </div>
@@ -873,71 +1069,241 @@ const Messages = () => {
       <div className="w-full md:w-96 border-r border-gray-200 flex flex-col">
         {/* Header with Tabs */}
         <div className="p-4 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900 mb-4">Messages</h1>
-          
-          {/* Tabs */}
-          <div className="flex bg-gray-100 rounded-lg p-1 mb-4">
-            <button
-              onClick={() => {
-                setActiveTab('recruiters');
-                setSelectedConversationId(null);
-                setSearchParams({}); // Clear tab parameter for recruiters (default)
-                setSearchParams(prev => ({ ...prev, tab: 'recruiters' }));
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'recruiters'
-                  ? 'bg-white text-red-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              Recruiters
-              {recruiterConversations.length > 0 && (
-                <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full">
-                  {recruiterConversations.length}
-                </span>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-xl font-bold text-gray-900">Messages</h1>
+            
+            <div className="flex items-center gap-2">
+              {/* New Button - Show only for Educators tab */}
+              {activeTab === 'educators' && (
+                <button
+                  onClick={() => setShowNewConversationModal(true)}
+                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                  title="Start new conversation with educator"
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  New
+                </button>
               )}
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('educators');
-                setSelectedConversationId(null);
-                setSearchParams({ tab: 'educators' });
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'educators'
-                  ? 'bg-white text-green-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <GraduationCap className="w-4 h-4" />
-              Educators
-              {educatorConversations.length > 0 && (
-                <span className="bg-green-100 text-green-600 text-xs px-2 py-0.5 rounded-full">
-                  {educatorConversations.length}
-                </span>
+              
+              {/* Tab Dropdown */}
+              <div className="relative" ref={tabDropdownRef}>
+              <button
+                onClick={() => setShowTabDropdown(!showTabDropdown)}
+                className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  {activeTab === 'recruiters' && (
+                    <>
+                      <Users className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-gray-900">Recruiters</span>
+                      {recruiterConversations.length > 0 && (
+                        <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                          {recruiterConversations.length}
+                        </span>
+                      )}
+                    </>
+                  )}
+                  {activeTab === 'educators' && (
+                    <>
+                      <GraduationCap className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-gray-900">Educators</span>
+                      {educatorConversations.length > 0 && (
+                        <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                          {educatorConversations.length}
+                        </span>
+                      )}
+                    </>
+                  )}
+                  {activeTab === 'admin' && (
+                    <>
+                      <Building2 className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-gray-900">School Admin</span>
+                      {adminConversations.length > 0 && (
+                        <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                          {adminConversations.length}
+                        </span>
+                      )}
+                    </>
+                  )}
+                  {activeTab === 'college_admin' && (
+                    <>
+                      <Building2 className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-gray-900">College Admin</span>
+                      {collegeAdminConversations.length > 0 && (
+                        <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                          {collegeAdminConversations.length}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showTabDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {/* Dropdown Menu */}
+              {showTabDropdown && (
+                <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                  <div className="py-1">
+                    {/* Recruiters Tab - Always available */}
+                    <button
+                      onClick={async () => {
+                        console.log('🔄 Switching to recruiters tab');
+                        setIsTabSwitching(true);
+                        setActiveTab('recruiters');
+                        setSelectedConversationId(null);
+                        setSearchParams({ tab: 'recruiters' }, { replace: true });
+                        setShowTabDropdown(false);
+                        
+                        // Force refetch for recruiters tab
+                        if (studentId && !loadingStudentData && refetchRecruiterConversations) {
+                          console.log('🚀 Refetching recruiter conversations');
+                          try {
+                            await refetchRecruiterConversations();
+                          } finally {
+                            setTimeout(() => setIsTabSwitching(false), 300);
+                          }
+                        } else {
+                          setIsTabSwitching(false);
+                        }
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                        activeTab === 'recruiters' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      <Users className={`w-4 h-4 ${activeTab === 'recruiters' ? 'text-blue-600' : 'text-gray-500'}`} />
+                      <div className="flex-1">
+                        <div className="font-medium">Recruiters</div>
+                        <div className="text-xs text-gray-500">Job application messages</div>
+                      </div>
+                      {recruiterConversations.length > 0 && (
+                        <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                          {recruiterConversations.length}
+                        </span>
+                      )}
+                    </button>
+                    
+                    {/* Educators Tab - Always available */}
+                    <button
+                      onClick={async () => {
+                        console.log('🔄 Switching to educators tab');
+                        setIsTabSwitching(true);
+                        setActiveTab('educators');
+                        setSelectedConversationId(null);
+                        setSearchParams({ tab: 'educators' }, { replace: true });
+                        setShowTabDropdown(false);
+                        
+                        // Force refetch for educators tab
+                        if (studentId && !loadingStudentData && refetchEducatorConversations) {
+                          console.log('🚀 Refetching educator conversations');
+                          try {
+                            await refetchEducatorConversations();
+                          } finally {
+                            setTimeout(() => setIsTabSwitching(false), 300);
+                          }
+                        } else {
+                          setIsTabSwitching(false);
+                        }
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                        activeTab === 'educators' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      <GraduationCap className={`w-4 h-4 ${activeTab === 'educators' ? 'text-blue-600' : 'text-gray-500'}`} />
+                      <div className="flex-1">
+                        <div className="font-medium">Educators</div>
+                        <div className="text-xs text-gray-500">Teacher and class messages</div>
+                      </div>
+                      {educatorConversations.length > 0 && (
+                        <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                          {educatorConversations.length}
+                        </span>
+                      )}
+                    </button>
+                    
+                    {/* School Admin Tab - Only if student has school_id */}
+                    {hasSchoolId && (
+                      <button
+                        onClick={async () => {
+                          console.log('🔄 Switching to admin tab');
+                          setIsTabSwitching(true);
+                          setActiveTab('admin');
+                          setSelectedConversationId(null);
+                          setSearchParams({ tab: 'admin' }, { replace: true });
+                          setShowTabDropdown(false);
+                          
+                          // Force refetch for admin tab
+                          if (studentId && !loadingStudentData && refetchAdminConversations) {
+                            console.log('🚀 Refetching admin conversations');
+                            try {
+                              await refetchAdminConversations();
+                            } finally {
+                              setTimeout(() => setIsTabSwitching(false), 300);
+                            }
+                          } else {
+                            setIsTabSwitching(false);
+                          }
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                          activeTab === 'admin' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                      >
+                        <Building2 className={`w-4 h-4 ${activeTab === 'admin' ? 'text-blue-600' : 'text-gray-500'}`} />
+                        <div className="flex-1">
+                          <div className="font-medium">School Admin</div>
+                          <div className="text-xs text-gray-500">School administration messages</div>
+                        </div>
+                        {adminConversations.length > 0 && (
+                          <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                            {adminConversations.length}
+                          </span>
+                        )}
+                      </button>
+                    )}
+                    
+                    {/* College Admin Tab - Only if student has university_college_id */}
+                    {hasCollegeId && (
+                      <button
+                        onClick={async () => {
+                          console.log('🔄 Switching to college_admin tab');
+                          setIsTabSwitching(true);
+                          setActiveTab('college_admin');
+                          setSelectedConversationId(null);
+                          setSearchParams({ tab: 'college_admin' });
+                          setShowTabDropdown(false);
+                          
+                          // Force refetch for college admin tab
+                          if (studentId && !loadingStudentData && refetchCollegeAdminConversations) {
+                            console.log('🚀 Refetching college admin conversations');
+                            try {
+                              await refetchCollegeAdminConversations();
+                            } finally {
+                              setTimeout(() => setIsTabSwitching(false), 300);
+                            }
+                          } else {
+                            setIsTabSwitching(false);
+                          }
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                          activeTab === 'college_admin' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                      >
+                        <Building2 className={`w-4 h-4 ${activeTab === 'college_admin' ? 'text-blue-600' : 'text-gray-500'}`} />
+                        <div className="flex-1">
+                          <div className="font-medium">College Admin</div>
+                          <div className="text-xs text-gray-500">College administration messages</div>
+                        </div>
+                      {collegeAdminConversations.length > 0 && (
+                        <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                          {collegeAdminConversations.length}
+                        </span>
+                      )}
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('admin');
-                setSelectedConversationId(null);
-                setSearchParams({ tab: 'admin' });
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'admin'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Building2 className="w-4 h-4" />
-              School Admin
-              {adminConversations.length > 0 && (
-                <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
-                  {adminConversations.length}
-                </span>
-              )}
-            </button>
+            </div>
+            </div>
           </div>
           
           {/* Search */}
@@ -945,21 +1311,22 @@ const Messages = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder={`Search ${activeTab === 'recruiters' ? 'recruiter' : activeTab === 'educators' ? 'educator' : 'school admin'} conversations...`}
+              placeholder={`Search ${activeTab === 'recruiters' ? 'recruiter' : activeTab === 'educators' ? 'educator' : activeTab === 'admin' ? 'school admin' : 'college admin'} conversations...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 ${
-                activeTab === 'recruiters' ? 'focus:ring-red-500' : 
-                activeTab === 'educators' ? 'focus:ring-green-500' : 
-                'focus:ring-blue-500'
-              } focus:border-transparent text-sm`}
+              className={`w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm`}
             />
           </div>
         </div>
 
         {/* Contacts List */}
         <div className="flex-1 overflow-y-auto">
-          {filteredContacts.length === 0 ? (
+          {isTabSwitching ? (
+            <div className="p-8 text-center">
+              <Loader2 className="w-8 h-8 text-gray-400 animate-spin mx-auto mb-2" />
+              <p className="text-gray-500 text-sm">Loading {activeTab} conversations...</p>
+            </div>
+          ) : filteredContacts.length === 0 ? (
             <div className="p-8 text-center">
               {activeTab === 'recruiters' ? (
                 <>
@@ -974,12 +1341,12 @@ const Messages = () => {
                   <p className="text-gray-400 text-xs mt-2 mb-4">Message your teachers about classes!</p>
                   <button
                     onClick={() => setShowNewConversationModal(true)}
-                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors"
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
                   >
                     Start New Conversation
                   </button>
                 </>
-              ) : (
+              ) : activeTab === 'admin' ? (
                 <>
                   <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-sm">No school admin conversations yet</p>
@@ -991,6 +1358,18 @@ const Messages = () => {
                     Contact School Admin
                   </button>
                 </>
+              ) : (
+                <>
+                  <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 text-sm">No college admin conversations yet</p>
+                  <p className="text-gray-400 text-xs mt-2 mb-4">Contact your college administration!</p>
+                  <button
+                    onClick={() => setShowNewCollegeAdminConversationModal(true)}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    Contact College Admin
+                  </button>
+                </>
               )}
             </div>
           ) : (
@@ -999,7 +1378,7 @@ const Messages = () => {
               key={contact.id}
               className={`relative group flex items-start gap-3 p-4 cursor-pointer hover:bg-gray-50 transition-all duration-200 border-b border-gray-100 ${
                 selectedConversationId === contact.id 
-                  ? (activeTab === 'recruiters' ? 'bg-red-50' : activeTab === 'educators' ? 'bg-green-50' : 'bg-blue-50')
+                  ? 'bg-blue-50'
                   : ''
               }`}
               style={{
@@ -1030,9 +1409,7 @@ const Messages = () => {
                       {contact.time}
                     </span>
                   </div>
-                  <p className={`text-xs mb-1 truncate font-medium ${
-                    activeTab === 'recruiters' ? 'text-red-600' : activeTab === 'educators' ? 'text-green-600' : 'text-blue-600'
-                  }`}>
+                  <p className="text-xs mb-1 truncate font-medium text-blue-600">
                     {contact.role}
                   </p>
                   <div className="flex items-center justify-between">
@@ -1040,9 +1417,7 @@ const Messages = () => {
                       {contact.lastMessage}
                     </p>
                     {contact.unread > 0 && (
-                      <span className={`flex-shrink-0 ml-2 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${
-                        activeTab === 'recruiters' ? 'bg-red-500' : activeTab === 'educators' ? 'bg-green-500' : 'bg-blue-500'
-                      }`}>
+                      <span className="flex-shrink-0 ml-2 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center bg-blue-500">
                         {contact.unread}
                       </span>
                     )}
@@ -1137,7 +1512,7 @@ const Messages = () => {
               )}
               {loadingMessages ? (
                 <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-8 h-8 text-red-500 animate-spin" />
+                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
                 </div>
               ) : displayMessages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
@@ -1153,14 +1528,14 @@ const Messages = () => {
                     <div
                       className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
                         message.sender === 'me'
-                          ? (activeTab === 'recruiters' ? 'bg-red-500 text-white' : activeTab === 'educators' ? 'bg-green-500 text-white' : 'bg-blue-500 text-white')
+                          ? 'bg-blue-500 text-white'
                           : 'bg-white text-gray-900 border border-gray-200'
                       }`}
                     >
                       <p className="text-sm leading-relaxed">{message.text}</p>
                       <div className={`flex items-center gap-1 mt-1 text-xs ${
                         message.sender === 'me' 
-                          ? (activeTab === 'recruiters' ? 'text-red-100' : activeTab === 'educators' ? 'text-green-100' : 'text-blue-100')
+                          ? 'text-blue-100'
                           : 'text-gray-500'
                       }`}>
                         <span>{message.time}</span>
@@ -1209,7 +1584,7 @@ const Messages = () => {
                     onFocus={() => setTyping(true)}
                     onBlur={() => setTyping(false)}
                     placeholder="Type a message..."
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                   <button
                     type="button"
@@ -1222,13 +1597,7 @@ const Messages = () => {
                 <button
                   type="submit"
                   disabled={!messageInput.trim() || isSending}
-                  className={`p-2.5 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-full transition-colors ${
-                    activeTab === 'recruiters' 
-                      ? 'bg-red-500 hover:bg-red-600' 
-                      : activeTab === 'educators'
-                      ? 'bg-green-500 hover:bg-green-600'
-                      : 'bg-blue-500 hover:bg-blue-600'
-                  }`}
+                  className="p-2.5 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-full transition-colors bg-blue-500 hover:bg-blue-600"
                 >
                   {isSending ? (
                     <Loader2 className="w-5 h-5 text-white animate-spin" />
@@ -1243,13 +1612,11 @@ const Messages = () => {
           // Empty State
           <div className="flex-1 flex items-center justify-center bg-gray-50">
             <div className="text-center">
-              <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                activeTab === 'recruiters' ? 'bg-red-100' : activeTab === 'educators' ? 'bg-green-100' : 'bg-blue-100'
-              }`}>
+              <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 bg-blue-100`}>
                 {activeTab === 'recruiters' ? (
-                  <Send className="w-12 h-12 text-red-500" />
+                  <Send className="w-12 h-12 text-blue-500" />
                 ) : activeTab === 'educators' ? (
-                  <GraduationCap className="w-12 h-12 text-green-500" />
+                  <GraduationCap className="w-12 h-12 text-blue-500" />
                 ) : (
                   <Building2 className="w-12 h-12 text-blue-500" />
                 )}
@@ -1409,6 +1776,101 @@ const Messages = () => {
                 errorMessage = 'Conversation created but message failed to send';
               } else if (error.message.includes('permission') || error.message.includes('auth')) {
                 errorMessage = 'You do not have permission to contact school administration';
+              } else {
+                errorMessage = `Error: ${error.message}`;
+              }
+            }
+            
+            toast.error(errorMessage);
+          }
+        }}
+      />
+
+      {/* New College Admin Conversation Modal */}
+      <NewCollegeAdminConversationModal
+        isOpen={showNewCollegeAdminConversationModal}
+        onClose={() => setShowNewCollegeAdminConversationModal(false)}
+        studentId={studentId}
+        onConversationCreated={async ({ collegeId, subject, initialMessage }) => {
+          try {
+            console.log('🚀 Creating college admin conversation with:', { collegeId, subject, initialMessage });
+            const conversation = await MessageService.getOrCreateStudentCollegeAdminConversation(
+              studentId,
+              collegeId,
+              subject
+            );
+            console.log('✅ College admin conversation created:', conversation);
+            
+            // Send the initial message
+            if (initialMessage && initialMessage.trim()) {
+              // Get a college admin from the college to send the message to
+              const { data: collegeAdmin } = await supabase
+                .from('college_lecturers')
+                .select('id, user_id, userId')
+                .or(`collegeId.eq.${collegeId},college_id.eq.${collegeId}`)
+                .limit(1)
+                .single();
+              
+              let adminUserId = null;
+              if (collegeAdmin) {
+                adminUserId = collegeAdmin.user_id || collegeAdmin.userId;
+              } else {
+                // Fallback: check if user is college owner
+                const { data: ownerData } = await supabase
+                  .from('colleges')
+                  .select('created_by')
+                  .eq('id', collegeId)
+                  .single();
+                
+                if (ownerData) {
+                  adminUserId = ownerData.created_by;
+                }
+              }
+              
+              if (adminUserId) {
+                await MessageService.sendMessage(
+                  conversation.id,
+                  studentId,
+                  'student',
+                  adminUserId,
+                  'college_admin',
+                  initialMessage.trim(),
+                  null, // applicationId
+                  null, // opportunityId
+                  null, // classId
+                  subject
+                );
+                console.log('✅ Initial college admin message sent');
+              } else {
+                console.warn('No college admin found for college:', collegeId);
+              }
+            }
+            
+            // Switch to college admin tab and refetch conversations
+            setActiveTab('college_admin');
+            await refetchCollegeAdminConversations();
+            
+            // Select the new conversation
+            setSelectedConversationId(conversation.id);
+            
+            // Force a small delay to ensure UI updates
+            setTimeout(() => {
+              console.log('📝 College admin conversation should now be selected:', conversation.id);
+            }, 100);
+            
+            toast.success('Message sent to college administration!');
+          } catch (error) {
+            console.error('❌ Error creating college admin conversation:', error);
+            
+            // More specific error messages
+            let errorMessage = 'Failed to contact college administration';
+            if (error.message) {
+              if (error.message.includes('conversation')) {
+                errorMessage = 'Could not create conversation with college admin';
+              } else if (error.message.includes('message')) {
+                errorMessage = 'Conversation created but message failed to send';
+              } else if (error.message.includes('permission') || error.message.includes('auth')) {
+                errorMessage = 'You do not have permission to contact college administration';
               } else {
                 errorMessage = `Error: ${error.message}`;
               }

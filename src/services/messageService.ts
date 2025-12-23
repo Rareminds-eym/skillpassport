@@ -13,9 +13,9 @@ export interface Message {
   id: number;
   conversation_id: string;
   sender_id: string;
-  sender_type: 'student' | 'recruiter' | 'educator' | 'school_admin';
+  sender_type: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin';
   receiver_id: string;
-  receiver_type: 'student' | 'recruiter' | 'educator' | 'school_admin';
+  receiver_type: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin';
   message_text: string;
   attachments?: any[];
   application_id?: number;
@@ -33,12 +33,13 @@ export interface Conversation {
   recruiter_id?: string;
   educator_id?: string;
   school_id?: string;
+  college_id?: string;
   application_id?: number;
   opportunity_id?: number;
   class_id?: number;
   subject?: string;
   status: 'active' | 'archived' | 'closed';
-  conversation_type: 'student_recruiter' | 'student_educator' | 'educator_recruiter' | 'student_admin';
+  conversation_type: 'student_recruiter' | 'student_educator' | 'educator_recruiter' | 'student_admin' | 'student_college_admin';
   last_message_at?: string;
   last_message_preview?: string;
   last_message_sender?: string;
@@ -46,6 +47,7 @@ export interface Conversation {
   recruiter_unread_count: number;
   educator_unread_count: number;
   admin_unread_count?: number;
+  college_admin_unread_count?: number;
   created_at: string;
   updated_at: string;
   
@@ -54,10 +56,12 @@ export interface Conversation {
   deleted_by_recruiter?: boolean;
   deleted_by_educator?: boolean;
   deleted_by_admin?: boolean;
+  deleted_by_college_admin?: boolean;
   student_deleted_at?: string;
   recruiter_deleted_at?: string;
   educator_deleted_at?: string;
   admin_deleted_at?: string;
+  college_admin_deleted_at?: string;
   
   // Joined data
   student?: any;
@@ -531,9 +535,10 @@ export class MessageService {
     userId: string,
     userType: 'student' | 'recruiter' | 'educator',
     includeArchived: boolean = false,
-    useCache: boolean = true
+    useCache: boolean = true,
+    conversationType?: string
   ): Promise<Conversation[]> {
-    const cacheKey = `conversations:${userId}:${userType}:${includeArchived}`;
+    const cacheKey = `conversations:${userId}:${userType}:${includeArchived}:${conversationType || 'all'}`;
     
     // Check cache
     if (useCache) {
@@ -553,7 +558,8 @@ export class MessageService {
       userType,
       includeArchived,
       cacheKey,
-      useCache
+      useCache,
+      conversationType
     );
     
     pendingRequests.set(cacheKey, request);
@@ -570,7 +576,8 @@ export class MessageService {
     userType: 'student' | 'recruiter' | 'educator',
     includeArchived: boolean,
     cacheKey: string,
-    useCache: boolean
+    useCache: boolean,
+    conversationType?: string
   ): Promise<Conversation[]> {
     try {
       const column = userType === 'student' ? 'student_id' : userType === 'recruiter' ? 'recruiter_id' : 'educator_id';
@@ -625,6 +632,11 @@ export class MessageService {
         // Silently handle missing column
       }
       
+      // Filter by conversation type if specified
+      if (conversationType) {
+        query = query.eq('conversation_type', conversationType);
+      }
+      
       // Exclude archived conversations by default
       if (!includeArchived) {
         query = query.neq('status', 'archived');
@@ -669,6 +681,11 @@ export class MessageService {
               school_class:school_classes(id, name, grade, section)
             `)
             .eq(column, userId);
+          
+          // Filter by conversation type if specified
+          if (conversationType) {
+            retryQuery = retryQuery.eq('conversation_type', conversationType);
+          }
           
           if (!includeArchived) {
             retryQuery = retryQuery.neq('status', 'archived');
@@ -825,6 +842,44 @@ export class MessageService {
               .update({ student_unread_count: 0 })
               .eq('id', conversationId);
           }
+        } else if (conversation.conversation_type === 'student_college_admin') {
+          // For college admin conversations, we need to check if the user is a college admin
+          const { data: collegeAdmin, error: collegeAdminError } = await supabase
+            .from('college_lecturers')
+            .select('user_id, userId')
+            .or(`user_id.eq.${userId},userId.eq.${userId}`)
+            .eq('collegeId', conversation.college_id)
+            .single();
+          
+          if (!collegeAdminError && collegeAdmin) {
+            // User is a college admin, update college_admin_unread_count
+            await supabase
+              .from('conversations')
+              .update({ college_admin_unread_count: 0 })
+              .eq('id', conversationId);
+          } else {
+            // Check if user is college owner
+            const { data: collegeOwner, error: ownerError } = await supabase
+              .from('colleges')
+              .select('created_by')
+              .eq('id', conversation.college_id)
+              .eq('created_by', userId)
+              .single();
+            
+            if (!ownerError && collegeOwner) {
+              // User is college owner, update college_admin_unread_count
+              await supabase
+                .from('conversations')
+                .update({ college_admin_unread_count: 0 })
+                .eq('id', conversationId);
+            } else if (isStudent) {
+              // User is the student, update student_unread_count
+              await supabase
+                .from('conversations')
+                .update({ student_unread_count: 0 })
+                .eq('id', conversationId);
+            }
+          }
         } else {
           // Handle regular conversations
           const updateField = isStudent ? 'student_unread_count' : 
@@ -927,7 +982,7 @@ export class MessageService {
    */
   static subscribeToUserConversations(
     userId: string,
-    userType: 'student' | 'recruiter' | 'educator' | 'school_admin',
+    userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin',
     onUpdate: (conversation: Conversation) => void
   ) {
     let column: string;
@@ -950,6 +1005,11 @@ export class MessageService {
         // For school admin, we filter by school_id, not user_id
         column = 'school_id';
         filter = `school_id=eq.${userId}`;
+        break;
+      case 'college_admin':
+        // For college admin, we filter by college_id, not user_id
+        column = 'college_id';
+        filter = `college_id=eq.${userId}`;
         break;
       default:
         throw new Error(`Invalid user type: ${userType}`);
@@ -1132,7 +1192,7 @@ export class MessageService {
   static async deleteConversationForUser(
     conversationId: string,
     userId: string,
-    userType: 'student' | 'recruiter' | 'educator' | 'school_admin'
+    userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin'
   ): Promise<void> {
     try {
       let deletedColumn: string;
@@ -1154,6 +1214,10 @@ export class MessageService {
         case 'school_admin':
           deletedColumn = 'deleted_by_admin';
           deletedAtColumn = 'admin_deleted_at';
+          break;
+        case 'college_admin':
+          deletedColumn = 'deleted_by_college_admin';
+          deletedAtColumn = 'college_admin_deleted_at';
           break;
         default:
           throw new Error(`Invalid user type: ${userType}`);
@@ -1181,7 +1245,7 @@ export class MessageService {
   static async restoreConversation(
     conversationId: string,
     userId: string,
-    userType: 'student' | 'recruiter' | 'educator' | 'school_admin'
+    userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin'
   ): Promise<void> {
     try {
       let deletedColumn: string;
@@ -1203,6 +1267,10 @@ export class MessageService {
         case 'school_admin':
           deletedColumn = 'deleted_by_admin';
           deletedAtColumn = 'admin_deleted_at';
+          break;
+        case 'college_admin':
+          deletedColumn = 'deleted_by_college_admin';
+          deletedAtColumn = 'college_admin_deleted_at';
           break;
         default:
           throw new Error(`Invalid user type: ${userType}`);
@@ -1240,6 +1308,80 @@ export class MessageService {
       if (error) throw error;
     } catch (error) {
       console.error('Error permanently deleting conversation:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get or create conversation between student and college admin
+   * For college-related discussions, issues, etc.
+   */
+  static async getOrCreateStudentCollegeAdminConversation(
+    studentId: string,
+    collegeId: string,
+    subject?: string
+  ): Promise<Conversation> {
+    const cacheKey = `student_college_admin:${studentId}:${collegeId}:${subject || 'general'}`;
+    
+    // Deduplicate concurrent requests
+    if (pendingRequests.has(cacheKey)) {
+      return pendingRequests.get(cacheKey)!;
+    }
+
+    const request = this._getOrCreateStudentCollegeAdminConversationInternal(
+      studentId,
+      collegeId,
+      subject
+    );
+    
+    pendingRequests.set(cacheKey, request);
+    
+    try {
+      const result = await request;
+      return result;
+    } finally {
+      pendingRequests.delete(cacheKey);
+    }
+  }
+
+  private static async _getOrCreateStudentCollegeAdminConversationInternal(
+    studentId: string,
+    collegeId: string,
+    subject?: string
+  ): Promise<Conversation> {
+    try {
+      // Use the database function for consistency
+      const { data, error } = await supabase
+        .rpc('get_or_create_student_college_admin_conversation', {
+          p_student_id: studentId,
+          p_college_id: collegeId,
+          p_subject: subject || 'General Discussion'
+        });
+
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        throw new Error('Failed to create student-college_admin conversation');
+      }
+
+      const conversationId = data[0].conversation_id;
+      
+      // Fetch the full conversation details
+      const { data: conversation, error: fetchError } = await supabase
+        .from('conversations')
+        .select(`
+          *,
+          student:students(id, name, email),
+          college:colleges(id, name)
+        `)
+        .eq('id', conversationId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      
+      return conversation;
+    } catch (error) {
+      console.error('Error creating student-college_admin conversation:', error);
       throw error;
     }
   }

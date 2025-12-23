@@ -1486,6 +1486,9 @@ interface Student {
   id: string;
   name: string;
   user_id: string;
+  grade?: string;
+  section?: string;
+  school_class_id?: string;
 }
 
 interface MentorNote {
@@ -1499,8 +1502,8 @@ interface MentorNote {
 }
 
 const MentorNotes = () => {
-  // Get educator's school
-  const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
+  // Get educator's school information with class assignments
+  const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
   // main data
   const [students, setStudents] = useState<Student[]>([]);
@@ -1582,35 +1585,81 @@ const MentorNotes = () => {
   const displayStudents =
     searchTerm.trim() === "" ? filteredStudents.slice(0, 8) : filteredStudents;
 
-  // Load students and notes filtered by school
+  // Load students and notes filtered by educator's assigned classes
   useEffect(() => {
     const loadData = async () => {
-      if (!educatorSchool?.id) return;
+      // Wait for educator school data to be loaded
+      if (schoolLoading || (!educatorSchool && !educatorCollege)) {
+        return;
+      }
 
       try {
         setLoading(true);
+        console.log('🔍 [MentorNotes] Loading students for educator type:', educatorType);
 
-        // Fetch students from educator's school only
-        const { data: schoolStudents, error: studentsError } = await supabase
-          .from("students")
-          .select("id, name, user_id")
-          .eq("school_id", educatorSchool.id)
-          .eq("is_deleted", false)
-          .order("name", { ascending: true });
+        let students: Student[] = [];
+        
+        if (educatorType === 'school' && educatorSchool) {
+          // For school educators, check role and class assignments
+          if (educatorRole === 'admin' || educatorRole === 'school_admin') {
+            // School admins can see all students in their school
+            console.log('👨‍💼 [MentorNotes] Fetching all school students (admin)');
+            const { data: schoolStudents, error: studentsError } = await supabase
+              .from("students")
+              .select("id, name, user_id, grade, section, school_class_id")
+              .eq("school_id", educatorSchool.id)
+              .eq("is_deleted", false)
+              .order("name", { ascending: true });
 
-        if (studentsError) throw studentsError;
-        setStudents(schoolStudents || []);
+            if (studentsError) throw studentsError;
+            students = schoolStudents || [];
+          } else if (assignedClassIds && assignedClassIds.length > 0) {
+            // Regular educators can only see students in their assigned classes
+            console.log('📚 [MentorNotes] Fetching students for assigned classes:', assignedClassIds);
+            const { data: schoolStudents, error: studentsError } = await supabase
+              .from("students")
+              .select("id, name, user_id, grade, section, school_class_id")
+              .eq("school_id", educatorSchool.id)
+              .in("school_class_id", assignedClassIds)
+              .eq("is_deleted", false)
+              .order("name", { ascending: true });
 
-        // Get student IDs for filtering notes
-        const studentIds = (schoolStudents || []).map(s => s.user_id);
+            if (studentsError) throw studentsError;
+            students = schoolStudents || [];
+          } else {
+            // Educators with no class assignments should see no students
+            console.log('❌ [MentorNotes] Educator has no class assignments');
+            students = [];
+          }
+        } else if (educatorType === 'college' && educatorCollege) {
+          // For college educators, filter by college
+          console.log('🎓 [MentorNotes] Fetching college students for college:', educatorCollege.id);
+          const { data: collegeStudents, error: studentsError } = await supabase
+            .from("students")
+            .select("id, name, user_id, grade, section")
+            .eq("college_id", educatorCollege.id)
+            .eq("is_deleted", false)
+            .order("name", { ascending: true });
 
-        if (studentIds.length === 0) {
+          if (studentsError) throw studentsError;
+          students = collegeStudents || [];
+        }
+
+        console.log(`✅ [MentorNotes] Loaded ${students.length} students for ${educatorType} educator`);
+        setStudents(students);
+
+        // Get student user_ids for filtering notes
+        const studentUserIds = students.map(s => s.user_id).filter(Boolean);
+
+        if (studentUserIds.length === 0) {
+          console.log('⚠️ [MentorNotes] No students found, clearing notes');
           setNotes([]);
           return;
         }
 
-        // Fetch notes only for students in this school
-        const { data: schoolNotes, error: notesError } = await supabase
+        // Fetch notes only for students in educator's assigned classes/college
+        console.log('📝 [MentorNotes] Fetching notes for', studentUserIds.length, 'students');
+        const { data: filteredNotes, error: notesError } = await supabase
           .from("mentor_notes")
           .select(`
             id,
@@ -1621,40 +1670,44 @@ const MentorNotes = () => {
             note_date,
             students(name)
           `)
-          .in("student_id", studentIds)
+          .in("student_id", studentUserIds)
           .order("note_date", { ascending: false });
 
         if (notesError) throw notesError;
-        setNotes(schoolNotes || []);
+        console.log(`✅ [MentorNotes] Loaded ${filteredNotes?.length || 0} notes`);
+        setNotes(filteredNotes || []);
 
       } catch (err) {
-        console.error("Error loading mentor data:", err);
+        console.error("❌ [MentorNotes] Error loading mentor data:", err);
       } finally {
         setLoading(false);
       }
     };
 
     loadData();
-  }, [educatorSchool?.id]);
+  }, [educatorSchool?.id, educatorCollege?.id, educatorType, assignedClassIds, schoolLoading]);
 
 
   // -------------------------
-  // helper: refresh notes (filtered by school)
+  // helper: refresh notes (filtered by educator's assigned classes/college)
   // -------------------------
   const refreshNotes = async () => {
-    if (!educatorSchool?.id) return;
+    if ((!educatorSchool && !educatorCollege) || students.length === 0) {
+      setNotes([]);
+      return;
+    }
 
     try {
-      // Get student IDs from this school
-      const studentIds = students.map(s => s.user_id);
+      // Get student user_ids from current filtered students
+      const studentUserIds = students.map(s => s.user_id).filter(Boolean);
       
-      if (studentIds.length === 0) {
+      if (studentUserIds.length === 0) {
         setNotes([]);
         return;
       }
 
-      // Fetch notes only for students in this school
-      const { data: schoolNotes, error } = await supabase
+      // Fetch notes only for students in educator's assigned classes/college
+      const { data: filteredNotes, error } = await supabase
         .from("mentor_notes")
         .select(`
           id,
@@ -1665,14 +1718,14 @@ const MentorNotes = () => {
           note_date,
           students(name)
         `)
-        .in("student_id", studentIds)
+        .in("student_id", studentUserIds)
         .order("note_date", { ascending: false });
 
       if (error) throw error;
-      setNotes(schoolNotes || []);
+      setNotes(filteredNotes || []);
 
       // if current page has no items after refresh, go back a page
-      const lastPage = Math.max(1, Math.ceil((schoolNotes?.length || 0) / pageSize));
+      const lastPage = Math.max(1, Math.ceil((filteredNotes?.length || 0) / pageSize));
       if (page > lastPage) setPage(lastPage);
     } catch (err) {
       console.error("Error refreshing notes:", err);
@@ -1721,8 +1774,8 @@ const MentorNotes = () => {
   // };
   const handleSaveNote = async () => {
     try {
-      if (!educatorSchool?.id) {
-        alert("School information not found!");
+      if (!educatorSchool?.id && !educatorCollege?.id) {
+        alert("School/College information not found!");
         return;
       }
 
@@ -1731,33 +1784,63 @@ const MentorNotes = () => {
         return;
       }
 
-      // Get the educator ID from school_educators table
+      // Get the current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         alert("User not authenticated!");
         return;
       }
 
-      const { data: educator, error: educatorError } = await supabase
-        .from("school_educators")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
+      let payload;
 
-      if (educatorError || !educator) {
-        alert("Educator profile not found!");
+      if (educatorType === 'school') {
+        // Get the educator ID from school_educators table
+        const { data: educator, error: educatorError } = await supabase
+          .from("school_educators")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (educatorError || !educator) {
+          alert("School educator profile not found!");
+          return;
+        }
+
+        payload = {
+          student_id: selectedStudent,
+          mentor_type: "school",
+          school_educator_id: educator.id,
+          college_lecturer_id: null,
+          quick_notes: selectedQuickNotes || [],
+          feedback: feedback || "",
+          action_points: actionPoints || "",
+        };
+      } else if (educatorType === 'college') {
+        // Get the lecturer ID from college_lecturers table
+        const { data: lecturer, error: lecturerError } = await supabase
+          .from("college_lecturers")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (lecturerError || !lecturer) {
+          alert("College lecturer profile not found!");
+          return;
+        }
+
+        payload = {
+          student_id: selectedStudent,
+          mentor_type: "college",
+          school_educator_id: null,
+          college_lecturer_id: lecturer.id,
+          quick_notes: selectedQuickNotes || [],
+          feedback: feedback || "",
+          action_points: actionPoints || "",
+        };
+      } else {
+        alert("Educator type not recognized!");
         return;
       }
-
-      const payload = {
-        student_id: selectedStudent,
-        mentor_type: "school",
-        school_educator_id: educator.id,
-        college_lecturer_id: null,
-        quick_notes: selectedQuickNotes || [],
-        feedback: feedback || "",
-        action_points: actionPoints || "",
-      };
 
       await saveMentorNote(payload);
 
@@ -1990,21 +2073,26 @@ const MentorNotes = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Student</label>
 
             <div
-              onClick={() => setDropdownOpen((v) => !v)}
-              className="w-full border border-gray-300 bg-white rounded-lg px-4 py-3 cursor-pointer flex justify-between items-center hover:border-gray-400 transition-colors"
+              onClick={() => students.length > 0 && setDropdownOpen((v) => !v)}
+              className={`w-full border border-gray-300 bg-white rounded-lg px-4 py-3 flex justify-between items-center transition-colors ${
+                students.length > 0 
+                  ? 'cursor-pointer hover:border-gray-400' 
+                  : 'cursor-not-allowed bg-gray-50 text-gray-400'
+              }`}
               role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === "Enter" && setDropdownOpen((v) => !v)}
+              tabIndex={students.length > 0 ? 0 : -1}
+              onKeyDown={(e) => students.length > 0 && e.key === "Enter" && setDropdownOpen((v) => !v)}
             >
-              <span className="text-gray-700">
-                {selectedStudent ? students.find((s) => s.id === selectedStudent)?.name : "Select Student"}
+              <span className={students.length > 0 ? "text-gray-700" : "text-gray-400"}>
+                {selectedStudent ? students.find((s) => s.id === selectedStudent)?.name : 
+                 students.length === 0 ? "No students available" : "Select Student"}
               </span>
               <svg className={`w-5 h-5 text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </div>
 
-            {dropdownOpen && (
+            {dropdownOpen && students.length > 0 && (
               <div className="absolute z-30 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl">
                 <input
                   type="text"
@@ -2027,6 +2115,15 @@ const MentorNotes = () => {
                         {s.name}
                       </div>
                     ))
+                  ) : students.length === 0 ? (
+                    <div className="px-3 py-4 text-center">
+                      <p className="text-sm text-gray-500 mb-1">No students available</p>
+                      <p className="text-xs text-gray-400">
+                        {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                          ? 'You have not been assigned to any classes yet'
+                          : 'No students found in your assigned classes'}
+                      </p>
+                    </div>
                   ) : (
                      <p className="text-sm text-gray-500 px-3 py-2 text-center">No matching students</p>
                   )}
@@ -2130,7 +2227,8 @@ const MentorNotes = () => {
           <div className="flex items-center gap-3 pt-3">
             <button 
               onClick={handleSaveNote} 
-              className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
+              disabled={students.length === 0 || !selectedStudent}
+              className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               Save Note
             </button>
@@ -2224,8 +2322,15 @@ const MentorNotes = () => {
           ))}
 
           {paginatedNotes.length === 0 && (
-            <div className="col-span-full bg-white p-6 rounded-2xl border border-gray-100 text-center text-gray-500">
-              No notes found.
+            <div className="col-span-full bg-white p-6 rounded-2xl border border-gray-100 text-center">
+              <div className="text-gray-500 mb-2">No notes found.</div>
+              {students.length === 0 && (
+                <div className="text-sm text-gray-400">
+                  {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                    ? 'You need to be assigned to classes before you can add mentor notes.'
+                    : 'Start by adding a note for one of your students above.'}
+                </div>
+              )}
             </div>
           )}
         </div>
