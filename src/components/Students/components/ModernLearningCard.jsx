@@ -83,8 +83,11 @@ const ModernLearningCard = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Inner Colored Card */}
-      <div className={`rounded-2xl p-6 ${isCompleted ? "bg-green-50" : "bg-blue-50"}`}>
+      {/* Colored Left Border */}
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
+      
+      {/* Inner Card - White Background */}
+      <div className="rounded-2xl p-6 bg-white">
         {/* Top Row - Status Badge & Edit */}
         <div className="flex items-center justify-between mb-4">
           {/* Status Badge - Top Left */}
@@ -93,10 +96,10 @@ const ModernLearningCard = ({
               inline-flex items-center px-4 py-2 rounded-full text-sm font-medium
               ${isCompleted 
                 ? "bg-green-100/80 text-green-800" 
-                : "bg-white/80 text-gray-700"}
+                : "bg-blue-100/80 text-blue-800"}
             `}
           >
-            {isCompleted ? "Completed" : "In Progress"}
+            {isCompleted ? "Completed" : "Ongoing"}
           </span>
 
           {/* Edit Button - Only for external courses */}
@@ -153,14 +156,14 @@ const ModernLearningCard = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-600">Progress</span>
-            <span className={`text-lg font-bold ${isCompleted ? "text-green-600" : "text-blue-600"}`}>
+            <span className={`text-lg font-bold ${isCompleted ? "text-blue-600" : "text-blue-600"}`}>
               {progress}%
             </span>
           </div>
-          <div className={`h-2.5 rounded-full overflow-hidden ${isCompleted ? "bg-green-200" : "bg-blue-200"}`}>
+          <div className={`h-2.5 rounded-full overflow-hidden ${isCompleted ? "bg-blue-200" : "bg-blue-200"}`}>
             <div
               className={`h-full rounded-full transition-all duration-500 ease-out ${
-                isCompleted ? "bg-green-500" : "bg-blue-500"
+                isCompleted ? "bg-blue-500" : "bg-blue-500"
               }`}
               style={{ width: `${progress}%` }}
             />
@@ -170,15 +173,16 @@ const ModernLearningCard = ({
 
       {/* Footer Section - Outside the colored card, in white area */}
       <div className="px-3 py-4 flex items-center justify-between">
-        {/* Modules Count with Assessment Button */}
+        {/* Modules Count */}
+        <div className="text-sm text-gray-700">
+          Modules:{" "}
+          <span className="font-bold text-gray-900">
+            {item.completedModules || 0}/{item.totalModules || 0}
+          </span>
+        </div>
+        
+        {/* Button Section */}
         <div className="flex items-center gap-3">
-          <div className="text-sm text-gray-700">
-            Modules:{" "}
-            <span className="font-bold text-gray-900">
-              {item.completedModules || 0}/{item.totalModules || 0}
-            </span>
-          </div>
-          
           {/* Assessment Button - ONLY show for EXTERNAL courses (not internal platform courses) */}
           {isExternalCourse && !checkingAssessment && (
             assessmentCompleted ? (
@@ -204,28 +208,28 @@ const ModernLearningCard = ({
               </button>
             )
           )}
-        </div>
 
-        {/* Certificate or Continue Button */}
-        {item.certificateUrl ? (
-          <button
-            onClick={() => window.open(item.certificateUrl, "_blank")}
-            className={`
-              px-6 py-2.5 rounded-full font-medium text-sm
-              flex items-center gap-2 transition-all duration-300
-              ${isCompleted
-                ? "bg-green-500 text-white hover:bg-green-600"
-                : "bg-blue-500 text-white hover:bg-blue-600"}
-            `}
-          >
-            <Award className="w-4 h-4" />
-            Certificate
-          </button>
-        ) : (
-          <button className="px-6 py-2.5 rounded-full font-medium text-sm bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300">
-            Continue
-          </button>
-        )}
+          {/* Certificate or Continue Button */}
+          {item.certificateUrl ? (
+            <button
+              onClick={() => window.open(item.certificateUrl, "_blank")}
+              className={`
+                px-6 py-2.5 rounded-full font-medium text-sm
+                flex items-center gap-2 transition-all duration-300
+                ${isCompleted
+                  ? "bg-blue-500 text-white hover:bg-blue-600"
+                  : "bg-blue-500 text-white hover:bg-blue-600"}
+              `}
+            >
+              <Award className="w-4 h-4" />
+              Certificate
+            </button>
+          ) : (
+            <button className="px-6 py-2.5 rounded-full font-medium text-sm bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300">
+              Continue
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

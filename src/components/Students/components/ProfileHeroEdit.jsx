@@ -657,7 +657,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   </CardContent>
                 </Card>
 
-                {/* Social Media Links - FloatingDock */}
+                {/* Social Media Links - FloatingDock with Expansion */}
                 {(displayData?.github_link ||
                   displayData?.portfolio_link ||
                   displayData?.linkedin_link ||
@@ -671,46 +671,101 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                           Connect:
                         </span>
                       </div>
-                      <FloatingDock
-                        items={[
-                          displayData.github_link && {
-                            title: "GitHub",
-                            icon: <IconBrandGithub className="h-full w-full text-gray-700" />,
-                            href: displayData.github_link.startsWith("http") ? displayData.github_link : `https://${displayData.github_link}`,
-                          },
-                          displayData.portfolio_link && {
-                            title: "Portfolio",
-                            icon: <IconWorld className="h-full w-full text-blue-600" />,
-                            href: displayData.portfolio_link.startsWith("http") ? displayData.portfolio_link : `https://${displayData.portfolio_link}`,
-                          },
-                          displayData.linkedin_link && {
-                            title: "LinkedIn",
-                            icon: <IconBrandLinkedin className="h-full w-full text-blue-700" />,
-                            href: displayData.linkedin_link.startsWith("http") ? displayData.linkedin_link : `https://${displayData.linkedin_link}`,
-                          },
-                          displayData.twitter_link && {
-                            title: "Twitter",
-                            icon: <IconBrandTwitter className="h-full w-full text-black" />,
-                            href: displayData.twitter_link.startsWith("http") ? displayData.twitter_link : `https://${displayData.twitter_link}`,
-                          },
-                          displayData.instagram_link && {
-                            title: "Instagram",
-                            icon: <IconBrandInstagram className="h-full w-full text-pink-600" />,
-                            href: displayData.instagram_link.startsWith("http") ? displayData.instagram_link : `https://${displayData.instagram_link}`,
-                          },
-                          displayData.facebook_link && {
-                            title: "Facebook",
-                            icon: <IconBrandFacebook className="h-full w-full text-blue-800" />,
-                            href: displayData.facebook_link.startsWith("http") ? displayData.facebook_link : `https://${displayData.facebook_link}`,
-                          },
-                          displayData.youtube_link && {
-                            title: "YouTube",
-                            icon: <IconBrandYoutube className="h-full w-full text-red-600" />,
-                            href: displayData.youtube_link.startsWith("http") ? displayData.youtube_link : `https://${displayData.youtube_link}`,
-                          },
-                        ].filter(Boolean)}
-                        desktopClassName="bg-white/80 backdrop-blur-sm border border-gray-200"
-                      />
+                      
+                      {/* Custom expandable FloatingDock */}
+                      <div className="group relative">
+                        {(() => {
+                          const allItems = [
+                            displayData.github_link && {
+                              title: "GitHub",
+                              icon: <IconBrandGithub className="h-full w-full text-gray-700" />,
+                              href: displayData.github_link.startsWith("http") ? displayData.github_link : `https://${displayData.github_link}`,
+                            },
+                            displayData.portfolio_link && {
+                              title: "Portfolio",
+                              icon: <IconWorld className="h-full w-full text-blue-600" />,
+                              href: displayData.portfolio_link.startsWith("http") ? displayData.portfolio_link : `https://${displayData.portfolio_link}`,
+                            },
+                            displayData.linkedin_link && {
+                              title: "LinkedIn",
+                              icon: <IconBrandLinkedin className="h-full w-full text-blue-700" />,
+                              href: displayData.linkedin_link.startsWith("http") ? displayData.linkedin_link : `https://${displayData.linkedin_link}`,
+                            },
+                            displayData.twitter_link && {
+                              title: "Twitter",
+                              icon: <IconBrandTwitter className="h-full w-full text-black" />,
+                              href: displayData.twitter_link.startsWith("http") ? displayData.twitter_link : `https://${displayData.twitter_link}`,
+                            },
+                            displayData.instagram_link && {
+                              title: "Instagram",
+                              icon: <IconBrandInstagram className="h-full w-full text-pink-600" />,
+                              href: displayData.instagram_link.startsWith("http") ? displayData.instagram_link : `https://${displayData.instagram_link}`,
+                            },
+                            displayData.facebook_link && {
+                              title: "Facebook",
+                              icon: <IconBrandFacebook className="h-full w-full text-blue-800" />,
+                              href: displayData.facebook_link.startsWith("http") ? displayData.facebook_link : `https://${displayData.facebook_link}`,
+                            },
+                            displayData.youtube_link && {
+                              title: "YouTube",
+                              icon: <IconBrandYoutube className="h-full w-full text-red-600" />,
+                              href: displayData.youtube_link.startsWith("http") ? displayData.youtube_link : `https://${displayData.youtube_link}`,
+                            },
+                          ].filter(Boolean);
+                          
+                          if (allItems.length <= 3) {
+                            // If 3 or fewer items, show normal FloatingDock
+                            return (
+                              <FloatingDock
+                                items={allItems}
+                                desktopClassName="bg-white/80 backdrop-blur-sm border border-gray-200 transition-all duration-300 group-hover:bg-white group-hover:shadow-lg"
+                              />
+                            );
+                          }
+                          
+                          // If more than 3 items, show expandable version
+                          const visibleItems = allItems.slice(0, 3);
+                          const hiddenItems = allItems.slice(3);
+                          
+                          return (
+                            <div className="relative">
+                              {/* Default state - show first 3 + indicator */}
+                              <div className="group-hover:opacity-0 group-hover:pointer-events-none transition-all duration-300">
+                                <FloatingDock
+                                  items={[
+                                    ...visibleItems,
+                                    {
+                                      title: `+${hiddenItems.length} more`,
+                                      icon: <span className="text-xs font-semibold text-gray-600">+{hiddenItems.length}</span>,
+                                      href: "#",
+                                      onClick: (e) => e.preventDefault(),
+                                    }
+                                  ]}
+                                  desktopClassName="bg-white/80 backdrop-blur-sm border border-gray-200"
+                                />
+                              </div>
+                              
+                              {/* Hover state - show all items vertically */}
+                              <div className="absolute top-0 left-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-300">
+                                <div className="flex flex-col gap-2">
+                                  {/* First row - original 3 items */}
+                                  <FloatingDock
+                                    items={visibleItems}
+                                    desktopClassName="bg-white backdrop-blur-sm border border-gray-200 shadow-lg"
+                                  />
+                                  {/* Additional rows for remaining items */}
+                                  {hiddenItems.length > 0 && (
+                                    <FloatingDock
+                                      items={hiddenItems}
+                                      desktopClassName="bg-white backdrop-blur-sm border border-gray-200 shadow-lg"
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </div>
                   )}
               </div>
