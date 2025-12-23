@@ -114,19 +114,42 @@ export async function createAssessmentAttempt(attemptData) {
  * @returns {Promise<{success: boolean}>}
  */
 export async function updateAssessmentProgress(attemptId, questionIndex, answer, timeRemaining) {
+  console.log('📡 updateAssessmentProgress called:', {
+    attemptId,
+    questionIndex,
+    answer,
+    timeRemaining
+  });
+
   try {
     // First, get current attempt to update answers array
+    console.log('📡 Fetching current attempt from database...');
     const { data: currentAttempt, error: fetchError } = await supabase
       .from('external_assessment_attempts')
       .select('student_answers, questions')
       .eq('id', attemptId)
       .single();
 
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      console.error('❌ Fetch error:', fetchError);
+      throw fetchError;
+    }
+
+    console.log('✅ Current attempt fetched:', {
+      answersCount: currentAttempt.student_answers?.length,
+      questionsCount: currentAttempt.questions?.length
+    });
 
     // Update the answer for current question
     const updatedAnswers = [...currentAttempt.student_answers];
     const question = currentAttempt.questions[questionIndex];
+    
+    console.log('📝 Updating answer for question:', {
+      questionIndex,
+      questionId: question.id,
+      answer,
+      correctAnswer: question.correctAnswer
+    });
     
     updatedAnswers[questionIndex] = {
       question_id: question.id,
@@ -135,23 +158,30 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
       time_taken: updatedAnswers[questionIndex]?.time_taken || 0
     };
 
-    // Update database
+    console.log('💾 Saving to database...');
+    
+    // Update database - save current question index (not +1)
+    // This allows proper resuming from the exact question
     const { error: updateError } = await supabase
       .from('external_assessment_attempts')
       .update({
         student_answers: updatedAnswers,
-        current_question_index: questionIndex + 1,
+        current_question_index: questionIndex,
         time_remaining: timeRemaining,
         last_activity_at: new Date().toISOString()
       })
       .eq('id', attemptId);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('❌ Update error:', updateError);
+      throw updateError;
+    }
 
+    console.log('✅ Database updated successfully!');
     return { success: true };
   } catch (error) {
-    console.error('Error updating assessment progress:', error);
-    return { success: false };
+    console.error('❌ Error updating assessment progress:', error);
+    return { success: false, error: error.message };
   }
 }
 

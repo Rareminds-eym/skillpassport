@@ -277,10 +277,9 @@ const AssessmentTest = () => {
             setCurrentSectionIndex(sectionIdx);
             setCurrentQuestionIndex(questionIdx);
 
-            // Show section intro if at the start of a section (question 0)
-            // This ensures users see the section instructions when resuming
-            const shouldShowIntro = questionIdx === 0;
-            setShowSectionIntro(shouldShowIntro);
+            // Don't show section intro when resuming - go directly to the question
+            // Users have already seen the intro when they first started
+            setShowSectionIntro(false);
             setShowSectionComplete(false);
 
             if (pendingAttempt.section_timings) {
