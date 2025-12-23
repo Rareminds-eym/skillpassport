@@ -222,6 +222,9 @@ export const analyzeAssessmentWithOpenRouter = async (answers, stream, questionB
   }
 };
 
+// Legacy alias for backward compatibility
+export const analyzeAssessmentWithGemini = analyzeAssessmentWithOpenRouter;
+
 /**
  * Format seconds to readable time string
  */
