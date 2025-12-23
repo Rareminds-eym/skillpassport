@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "../../components/Students/components/ui/card";
 import { Button } from "../../components/Students/components/ui/button";
-import { Plus, BookOpen, TrendingUp, Award, GraduationCap, Search, SlidersHorizontal, ArrowUpDown, X, BarChart3 } from "lucide-react";
+import { Plus, BookOpen, TrendingUp, Award, GraduationCap, Search, SlidersHorizontal, ArrowUpDown, X, BarChart3, RefreshCw, ArrowRight } from "lucide-react";
 import ModernLearningCard from "../../components/Students/components/ModernLearningCard";
 import LearningAnalyticsDashboard from "../../components/Students/components/LearningAnalyticsDashboard";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
@@ -53,7 +54,72 @@ const APPROVAL_OPTIONS = [
 ];
 
 
+// Continue Learning Hero Section
+const ContinueLearningSection = ({ course, onContinue }) => {
+  if (!course) return null;
+
+  const progress = course.status === "completed"
+    ? 100
+    : course.totalModules > 0
+      ? Math.round(((course.completedModules || 0) / course.totalModules) * 100)
+      : course.progress || 0;
+
+  return (
+    <div className="relative mb-8">
+      {/* Illustration placeholder - Add your image here */}
+      <div className="absolute -top-4 left-4 z-10 w-24 h-24 sm:w-28 sm:h-28">
+        <img 
+          src="/assets/learning-illustration.png" 
+          alt="Learning" 
+          className="w-full h-full object-contain drop-shadow-lg"
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+      </div>
+
+      {/* Main Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#4361EE] via-[#4C6EF5] to-[#5C7CFA] shadow-xl shadow-blue-200/50">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute -top-20 -right-20 w-64 h-64 bg-white rounded-full blur-3xl" />
+          <div className="absolute -bottom-10 left-1/3 w-40 h-40 bg-white rounded-full blur-2xl" />
+        </div>
+
+        <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 pl-32 sm:pl-36">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <RefreshCw className="w-4 h-4 text-blue-200" />
+              <span className="text-blue-100 text-sm font-medium tracking-wide">Continue Learning</span>
+            </div>
+            <h3 className="text-white text-xl sm:text-2xl font-bold mb-4 truncate pr-4">
+              {course.course || course.title || "Untitled Course"}
+            </h3>
+            <div className="max-w-sm">
+              <div className="relative h-2.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+                <div
+                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-white/60 to-white/80 rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <div className="flex justify-end mt-1.5">
+                <span className="text-white/90 text-sm font-semibold">{progress}%</span>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => onContinue?.(course)}
+            className="mt-4 sm:mt-0 flex items-center gap-2 px-6 py-3 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white font-semibold rounded-full transition-all duration-300 border border-white/30 hover:border-white/50 group"
+          >
+            Continue
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 const MyLearning = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const userEmail = user?.email;
   const { studentData, updateTraining, refresh: refreshStudentData, loading: studentLoading } = useStudentDataByEmail(userEmail, false);
@@ -77,6 +143,11 @@ const MyLearning = () => {
   const loading = studentLoading || trainingsLoading;
   const hasActiveFilters = statusFilter !== 'all' || approvalFilter !== 'all' || searchTerm.trim() !== '';
 
+  const continueLearningCourse = useMemo(() => {
+    const inProgressCourses = trainings.filter(t => t.status !== 'completed');
+    return inProgressCourses.length > 0 ? inProgressCourses[0] : null;
+  }, [trainings]);
+
   useStudentMessageNotifications({ studentId, enabled: !!studentId, playSound: true });
 
   const toggleSkillExpand = (id) => setExpandedSkills((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -84,6 +155,12 @@ const MyLearning = () => {
   const toggleSortDirection = () => setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
   const clearFilters = () => { setStatusFilter('all'); setApprovalFilter('all'); setSearchTerm(''); setSortBy('created_at'); setSortDirection('desc'); };
   const refresh = async () => { await refreshStudentData(); refetchTrainings(); };
+  const handleContinueLearning = (course) => {
+    if (course.course_id) {
+      navigate(`/student/course/${course.course_id}`);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 py-8 px-4 sm:px-6 lg:px-8">
@@ -103,31 +180,23 @@ const MyLearning = () => {
           </Button>
         </div>
 
-        {/* Analytics Dashboard Toggle */}
+        {!loading && continueLearningCourse && (
+          <ContinueLearningSection course={continueLearningCourse} onContinue={handleContinueLearning} />
+        )}
+
         <div className="mb-6">
-          <Button 
-            variant="outline" 
-            onClick={() => setShowAnalytics(!showAnalytics)} 
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border ${showAnalytics ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            Analytics
-            {showAnalytics && <X className="w-4 h-4 ml-1" />}
+          <Button variant="outline" onClick={() => setShowAnalytics(!showAnalytics)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border ${showAnalytics ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+            <BarChart3 className="w-4 h-4" />Analytics{showAnalytics && <X className="w-4 h-4 ml-1" />}
           </Button>
         </div>
 
-        {/* Analytics Dashboard */}
-        {showAnalytics && (
-          <LearningAnalyticsDashboard trainings={trainings} stats={stats} />
-        )}
+        {showAnalytics && <LearningAnalyticsDashboard trainings={trainings} stats={stats} />}
 
-        {/* Filter and Sort Controls */}
         <div className="mb-6 space-y-3">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input type="text" placeholder="Search by title or organization..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+              <input type="text" placeholder="Search by title or organization..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
               {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>}
             </div>
             <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border ${showFilters || hasActiveFilters ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
@@ -142,6 +211,7 @@ const MyLearning = () => {
               </Button>
             </div>
           </div>
+
 
           {showFilters && (
             <div className="flex flex-wrap items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
@@ -170,9 +240,13 @@ const MyLearning = () => {
           )}
         </div>
 
+
         <div className="space-y-6">
           {loading ? (
-            <><div className="grid grid-cols-3 gap-4"><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /></div><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><LearningCardSkeleton /><LearningCardSkeleton /></div></>
+            <>
+              <div className="grid grid-cols-3 gap-4"><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><LearningCardSkeleton /><LearningCardSkeleton /></div>
+            </>
           ) : trainings.length > 0 ? (
             <>
               <div className="grid grid-cols-3 gap-4">

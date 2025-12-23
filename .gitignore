@@ -42,3 +42,6 @@ dist-ssr
 .temp
 .tmp
 .cache
+
+# Kiro settings
+.kiro/settings/mcp.json
