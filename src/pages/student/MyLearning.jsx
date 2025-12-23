@@ -156,9 +156,15 @@ const MyLearning = () => {
   const clearFilters = () => { setStatusFilter('all'); setApprovalFilter('all'); setSearchTerm(''); setSortBy('created_at'); setSortDirection('desc'); };
   const refresh = async () => { await refreshStudentData(); refetchTrainings(); };
   const handleContinueLearning = (course) => {
-    if (course.course_id) {
-      navigate(`/student/course/${course.course_id}`);
+    // Only internal courses should trigger continue actions now
+    // External courses only show status (Completed/Ongoing) without continue buttons
+    const isInternalCourse = !!(course.course_id && course.source === "internal_course");
+    
+    if (isInternalCourse) {
+      // Navigate to internal course learning page
+      navigate(`/student/courses/${course.course_id}/learn`);
     }
+    // External courses no longer have continue buttons, so no action needed
   };
 
 
@@ -255,7 +261,7 @@ const MyLearning = () => {
                 <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm"><div className="w-10 h-10 rounded-xl bg-blue-400 flex items-center justify-center mb-3"><TrendingUp className="w-5 h-5 text-white" /></div><p className="text-2xl font-bold text-gray-900">{stats?.ongoing ?? 0}</p><p className="text-xs text-gray-500">In Progress</p></div>
               </div>
               <div className="flex items-center gap-3"><h2 className="text-lg font-semibold text-gray-800">Your Courses{hasActiveFilters && <span className="ml-2 text-sm font-normal text-gray-500">({trainings.length})</span>}</h2><div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent" /></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{trainings.map((item, idx) => <ModernLearningCard key={item.id || idx} item={item} onEdit={handleEditItem} expandedSkills={expandedSkills} onToggleSkills={toggleSkillExpand} />)}</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{trainings.map((item, idx) => <ModernLearningCard key={item.id || idx} item={item} onEdit={handleEditItem} onContinue={handleContinueLearning} expandedSkills={expandedSkills} onToggleSkills={toggleSkillExpand} />)}</div>
             </>
           ) : hasActiveFilters ? (
             <Card className="bg-white rounded-2xl border border-gray-100 shadow-sm"><CardContent className="text-center py-16 px-6"><Search className="w-12 h-12 text-gray-400 mx-auto mb-4" /><h3 className="text-xl font-bold text-gray-900 mb-2">No matching courses</h3><p className="text-gray-500 mb-6">Try adjusting your filters</p><Button onClick={clearFilters} variant="outline">Clear filters</Button></CardContent></Card>
