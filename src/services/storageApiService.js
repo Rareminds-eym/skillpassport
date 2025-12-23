@@ -1,0 +1,165 @@
+/**
+ * Storage API Service
+ * Connects to Cloudflare Worker for file storage API calls
+ */
+
+const WORKER_URL = import.meta.env.VITE_STORAGE_API_URL;
+
+if (!WORKER_URL) {
+  console.warn('⚠️ VITE_STORAGE_API_URL not configured. Storage API calls will fail.');
+}
+
+const getBaseUrl = () => {
+  if (!WORKER_URL) {
+    throw new Error('VITE_STORAGE_API_URL environment variable is required');
+  }
+  return WORKER_URL;
+};
+
+const getAuthHeaders = (token, isFormData = false) => {
+  const headers = {};
+  if (!isFormData) headers['Content-Type'] = 'application/json';
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+};
+
+/**
+ * Upload a file to R2 storage
+ */
+export async function uploadFile(file, { folder = 'uploads', filename, contentType }, token) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (folder) formData.append('folder', folder);
+  if (filename) formData.append('filename', filename);
+  if (contentType) formData.append('contentType', contentType);
+
+  const response = await fetch(`${getBaseUrl()}/upload`, {
+    method: 'POST',
+    headers: getAuthHeaders(token, true),
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to upload file');
+  }
+
+  return response.json();
+}
+
+/**
+ * Delete a file from R2 storage
+ */
+export async function deleteFile(fileKey, token) {
+  const response = await fetch(`${getBaseUrl()}/delete`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ fileKey }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to delete file');
+  }
+
+  return response.json();
+}
+
+/**
+ * Extract content from a document (PDF, DOCX, etc.)
+ */
+export async function extractContent(fileUrl, token) {
+  const response = await fetch(`${getBaseUrl()}/extract-content`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ fileUrl }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to extract content');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get presigned URL for large file upload
+ */
+export async function getPresignedUrl({ filename, contentType, fileSize, courseId, lessonId }, token) {
+  const response = await fetch(`${getBaseUrl()}/presigned`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ filename, contentType, fileSize, courseId, lessonId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to get presigned URL');
+  }
+
+  return response.json();
+}
+
+/**
+ * Confirm upload after direct-to-R2 upload completes
+ */
+export async function confirmUpload({ fileKey, fileName, fileSize, fileType }, token) {
+  const response = await fetch(`${getBaseUrl()}/confirm`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ fileKey, fileName, fileSize, fileType }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to confirm upload');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get file URL for a given file key
+ */
+export async function getFileUrl(fileKey, token) {
+  const response = await fetch(`${getBaseUrl()}/get-url`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ fileKey }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to get file URL');
+  }
+
+  return response.json();
+}
+
+/**
+ * List files for a lesson
+ */
+export async function listFiles(courseId, lessonId, token) {
+  const response = await fetch(`${getBaseUrl()}/files/${courseId}/${lessonId}`, {
+    method: 'GET',
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to list files');
+  }
+
+  return response.json();
+}
+
+export default {
+  uploadFile,
+  deleteFile,
+  extractContent,
+  getPresignedUrl,
+  confirmUpload,
+  getFileUrl,
+  listFiles,
+};

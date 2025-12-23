@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, KeyRound, ArrowLeft, Check, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../../lib/supabaseClient';
+import userApiService from '../../services/userApiService';
 
 export default function ForgotPassword() {
   const [step, setStep] = useState<1 | 2>(1); // 1: Send OTP, 2: Verify & Reset
@@ -36,14 +36,10 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('reset-password', {
-        body: {
-          action: 'send',
-          email: email.toLowerCase().trim()
-        }
+      const data = await userApiService.resetPassword({
+        action: 'send',
+        email: email.toLowerCase().trim()
       });
-
-      if (error) throw error;
 
       if (!data?.success) {
         throw new Error(data?.error || 'Failed to send OTP');
@@ -84,16 +80,12 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('reset-password', {
-        body: {
-          action: 'verify',
-          email: email.toLowerCase().trim(),
-          otp: otp.trim(),
-          newPassword: newPassword
-        }
+      const data = await userApiService.resetPassword({
+        action: 'verify',
+        email: email.toLowerCase().trim(),
+        otp: otp.trim(),
+        newPassword: newPassword
       });
-
-      if (error) throw error;
 
       if (!data?.success) {
         throw new Error(data?.error || 'Failed to reset password');
@@ -150,11 +142,10 @@ export default function ForgotPassword() {
           {/* Success/Error Messages */}
           {message && (
             <div
-              className={`mb-6 p-4 rounded-lg flex items-start ${
-                message.type === 'success'
+              className={`mb-6 p-4 rounded-lg flex items-start ${message.type === 'success'
                   ? 'bg-green-50 border border-green-200'
                   : 'bg-red-50 border border-red-200'
-              }`}
+                }`}
             >
               {message.type === 'success' ? (
                 <Check className="h-5 w-5 text-green-600 mr-3 flex-shrink-0 mt-0.5" />
@@ -162,9 +153,8 @@ export default function ForgotPassword() {
                 <AlertCircle className="h-5 w-5 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
               )}
               <p
-                className={`text-sm ${
-                  message.type === 'success' ? 'text-green-800' : 'text-red-800'
-                }`}
+                className={`text-sm ${message.type === 'success' ? 'text-green-800' : 'text-red-800'
+                  }`}
               >
                 {message.text}
               </p>
@@ -185,9 +175,8 @@ export default function ForgotPassword() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${
-                      errors.email ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${errors.email ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="your.email@example.com"
                     disabled={loading}
                   />
@@ -219,9 +208,8 @@ export default function ForgotPassword() {
                   type="text"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-center text-2xl tracking-widest ${
-                    errors.otp ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-center text-2xl tracking-widest ${errors.otp ? 'border-red-300' : 'border-gray-300'
+                    }`}
                   placeholder="000000"
                   maxLength={6}
                   disabled={loading}
@@ -243,9 +231,8 @@ export default function ForgotPassword() {
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${
-                    errors.newPassword ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${errors.newPassword ? 'border-red-300' : 'border-gray-300'
+                    }`}
                   placeholder="Enter new password"
                   disabled={loading}
                 />
@@ -263,9 +250,8 @@ export default function ForgotPassword() {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${
-                    errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                    }`}
                   placeholder="Confirm new password"
                   disabled={loading}
                 />

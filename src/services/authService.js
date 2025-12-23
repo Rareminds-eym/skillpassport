@@ -14,6 +14,7 @@ import {
   buildErrorResponse,
   generateCorrelationId,
 } from '../utils/authErrorHandler';
+import userApiService from './userApiService';
 
 /**
  * Authentication Service
@@ -45,7 +46,7 @@ const MAX_RETRIES = 2;
  */
 export const checkAuthentication = async () => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     const sessionPromise = supabase.auth.getSession();
     const { data: { session }, error } = await withTimeout(sessionPromise, AUTH_TIMEOUT_MS);
@@ -84,7 +85,7 @@ export const checkAuthentication = async () => {
   } catch (error) {
     const errorCode = error instanceof AuthError ? error.code : mapSupabaseError(error);
     logAuthEvent('error', 'Authentication check failed', { correlationId, errorCode });
-    
+
     return {
       isAuthenticated: false,
       user: null,
@@ -107,7 +108,7 @@ export const checkAuthentication = async () => {
  */
 export const signUpWithRole = async (email, password, userData = {}) => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     // Validate inputs
     const validation = validateCredentials(email, password);
@@ -202,7 +203,7 @@ export const signUpWithRole = async (email, password, userData = {}) => {
  */
 export const signIn = async (email, password) => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     // Validate inputs
     const validation = validateCredentials(email, password);
@@ -228,7 +229,7 @@ export const signIn = async (email, password) => {
     };
 
     const data = await withTimeout(
-      withRetry(signInOperation, { 
+      withRetry(signInOperation, {
         maxRetries: 1, // Fewer retries for login to prevent lockouts
         shouldRetry: (err) => {
           // Don't retry on invalid credentials or rate limits
@@ -277,7 +278,7 @@ export const signIn = async (email, password) => {
  */
 export const signOut = async () => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     logAuthEvent('info', 'Sign-out attempt', { correlationId });
 
@@ -357,7 +358,7 @@ export const checkUserRole = async (requiredRole) => {
  */
 export const updateUserMetadata = async (metadata) => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     if (!metadata || typeof metadata !== 'object') {
       return buildErrorResponse(AUTH_ERROR_CODES.INVALID_INPUT_FORMAT);
@@ -397,7 +398,7 @@ export const updateUserMetadata = async (metadata) => {
  */
 export const getCurrentUser = async () => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     const { data: { user }, error } = await withTimeout(
       supabase.auth.getUser(),
@@ -440,7 +441,7 @@ export const getCurrentUser = async () => {
  */
 export const sendPasswordResetOtp = async (email) => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     // Validate email
     const emailValidation = validateEmail(email);
@@ -451,9 +452,14 @@ export const sendPasswordResetOtp = async (email) => {
     logAuthEvent('info', 'Password reset OTP request', { correlationId });
 
     const { data, error } = await withTimeout(
-      supabase.functions.invoke('reset-password', {
-        body: { action: 'send', email: emailValidation.sanitized },
-      }),
+      (async () => {
+        try {
+          const result = await userApiService.resetPassword({ action: 'send', email: emailValidation.sanitized });
+          return { data: result, error: null };
+        } catch (err) {
+          return { data: null, error: err };
+        }
+      })(),
       AUTH_TIMEOUT_MS
     );
 
@@ -490,7 +496,7 @@ export const sendPasswordResetOtp = async (email) => {
  */
 export const verifyOtpAndResetPassword = async (email, otp, newPassword) => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     // Validate inputs
     const emailValidation = validateEmail(email);
@@ -512,14 +518,19 @@ export const verifyOtpAndResetPassword = async (email, otp, newPassword) => {
     logAuthEvent('info', 'Password reset verification', { correlationId });
 
     const { data, error } = await withTimeout(
-      supabase.functions.invoke('reset-password', {
-        body: { 
-          action: 'verify', 
-          email: emailValidation.sanitized, 
-          otp: otp.trim(), 
-          newPassword,
-        },
-      }),
+      (async () => {
+        try {
+          const result = await userApiService.resetPassword({
+            action: 'verify',
+            email: emailValidation.sanitized,
+            otp: otp.trim(),
+            newPassword,
+          });
+          return { data: result, error: null };
+        } catch (err) {
+          return { data: null, error: err };
+        }
+      })(),
       AUTH_TIMEOUT_MS
     );
 

@@ -1,36 +1,75 @@
 /**
  * File Service for fetching course videos and resources from R2
- * Integrates with the Render file upload server
+ * Uses Cloudflare Worker (preferred) or Supabase Edge Function as fallback
  */
 
+import { getFileUrl as getFileUrlFromApi } from './courseApiService';
+
 // Get the API URL from environment variables
-// For production, add VITE_FILE_SERVER_URL to your .env
 const FILE_SERVER_URL = import.meta.env.VITE_FILE_SERVER_URL || import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 class FileService {
   /**
+   * Get presigned URL for a file using Course API (Cloudflare Worker or Supabase)
+   * @param {string} fileKey - The R2 file key
+   * @returns {Promise<string>} - Presigned URL
+   */
+  async getFileUrlFromApi(fileKey) {
+    console.log('Calling Course API get-file-url with key:', fileKey);
+    
+    try {
+      const url = await getFileUrlFromApi(fileKey);
+      console.log('Course API returned URL successfully');
+      return url;
+    } catch (error) {
+      console.error('Course API error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get presigned URL for a file from local server
+   * @param {string} fileKey - The R2 file key
+   * @returns {Promise<string>} - Presigned URL
+   */
+  async getFileUrlFromServer(fileKey) {
+    const response = await fetch(`${FILE_SERVER_URL}/api/file/${fileKey}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch file URL: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.url;
+  }
+
+  /**
    * Get presigned URL for a file
+   * Tries Course API first (Cloudflare Worker), falls back to local server
    * @param {string} fileKey - The R2 file key (e.g., "courses/ABC123/lessons/L1/video.mp4")
    * @returns {Promise<string>} - Presigned URL valid for 7 days
    */
   async getFileUrl(fileKey) {
+    // Try Course API first (Cloudflare Worker or Supabase Edge Function)
     try {
-      const response = await fetch(`${FILE_SERVER_URL}/api/file/${fileKey}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      return await this.getFileUrlFromApi(fileKey);
+    } catch (apiError) {
+      console.log('Course API failed, trying local server:', apiError.message);
+    }
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch file URL: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return data.url;
-    } catch (error) {
-      console.error('Error fetching file URL:', error);
-      throw error;
+    // Fallback to local server
+    try {
+      return await this.getFileUrlFromServer(fileKey);
+    } catch (serverError) {
+      console.error('Both file URL methods failed:', serverError);
+      throw new Error('Unable to generate file URL. Please check server configuration.');
     }
   }
 

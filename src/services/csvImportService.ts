@@ -71,10 +71,10 @@ export interface ImportSummary {
  */
 export function autoMapHeaders(headers: string[]): Record<string, string> {
   const mapping: Record<string, string> = {}
-  
+
   headers.forEach(header => {
     const normalized = header.toLowerCase().trim().replace(/[^a-z0-9]/g, '')
-    
+
     // Find matching field
     for (const [dbField, aliases] of Object.entries(FIELD_MAPPINGS)) {
       if (aliases.includes(normalized)) {
@@ -82,13 +82,13 @@ export function autoMapHeaders(headers: string[]): Record<string, string> {
         break
       }
     }
-    
+
     // If no match found, keep original
     if (!mapping[header]) {
       mapping[header] = normalized
     }
   })
-  
+
   return mapping
 }
 
@@ -128,7 +128,7 @@ function checkMandatoryFields(row: Record<string, any>): ValidationError[] {
     ...MANDATORY_FIELDS.CATEGORY_3,
     ...MANDATORY_FIELDS.CATEGORY_4
   ]
-  
+
   // Check for school_code OR school_id
   const hasSchoolIdentifier = row.school_code || row.school_id
   if (!hasSchoolIdentifier) {
@@ -138,10 +138,10 @@ function checkMandatoryFields(row: Record<string, any>): ValidationError[] {
       message: 'Either school_code or school_id is required'
     })
   }
-  
+
   allMandatory.forEach(field => {
     if (field === 'school_code' || field === 'school_id') return // Already checked above
-    
+
     if (!row[field] || String(row[field]).trim() === '') {
       errors.push({
         row: 0,
@@ -151,7 +151,7 @@ function checkMandatoryFields(row: Record<string, any>): ValidationError[] {
       })
     }
   })
-  
+
   return errors
 }
 
@@ -160,14 +160,14 @@ function checkMandatoryFields(row: Record<string, any>): ValidationError[] {
  */
 function validateRow(row: Record<string, any>, rowNumber: number): ValidationError[] {
   const errors: ValidationError[] = []
-  
+
   // Check mandatory fields
   const mandatoryErrors = checkMandatoryFields(row)
   mandatoryErrors.forEach(err => {
     err.row = rowNumber
     errors.push(err)
   })
-  
+
   // Validate email
   if (row.email && !validateEmail(row.email)) {
     errors.push({
@@ -177,7 +177,7 @@ function validateRow(row: Record<string, any>, rowNumber: number): ValidationErr
       value: row.email
     })
   }
-  
+
   // Validate contact number
   if (row.contact_number && !validatePhone(row.contact_number)) {
     errors.push({
@@ -187,7 +187,7 @@ function validateRow(row: Record<string, any>, rowNumber: number): ValidationErr
       value: row.contact_number
     })
   }
-  
+
   // Validate guardian phone
   if (row.guardian_phone && !validatePhone(row.guardian_phone)) {
     errors.push({
@@ -197,7 +197,7 @@ function validateRow(row: Record<string, any>, rowNumber: number): ValidationErr
       value: row.guardian_phone
     })
   }
-  
+
   // Validate alternate number (optional)
   if (row.alternate_number && !validatePhone(row.alternate_number)) {
     errors.push({
@@ -207,7 +207,7 @@ function validateRow(row: Record<string, any>, rowNumber: number): ValidationErr
       value: row.alternate_number
     })
   }
-  
+
   // Validate date of birth
   if (row.date_of_birth && !validateDate(row.date_of_birth)) {
     errors.push({
@@ -217,7 +217,7 @@ function validateRow(row: Record<string, any>, rowNumber: number): ValidationErr
       value: row.date_of_birth
     })
   }
-  
+
   // Validate guardian email if provided
   if (row.guardian_email && !validateEmail(row.guardian_email)) {
     errors.push({
@@ -227,7 +227,7 @@ function validateRow(row: Record<string, any>, rowNumber: number): ValidationErr
       value: row.guardian_email
     })
   }
-  
+
   return errors
 }
 
@@ -240,15 +240,15 @@ async function getSchoolIdFromCode(schoolCode: string): Promise<{ schoolId: stri
     .select('id')
     .eq('code', schoolCode)
     .maybeSingle()
-  
+
   if (error) {
     return { schoolId: null, error: `Database error: ${error.message}` }
   }
-  
+
   if (!data) {
     return { schoolId: null, error: `School with code "${schoolCode}" does not exist` }
   }
-  
+
   return { schoolId: data.id }
 }
 
@@ -270,15 +270,15 @@ async function findExistingClass(
     .eq('section', section)
     .eq('academic_year', academicYear)
     .single()
-  
+
   if (findError || !existingClass) {
-    return { 
-      classId: '', 
-      found: false, 
-      error: `Class ${grade}-${section} (${academicYear}) does not exist. Please create the class first.` 
+    return {
+      classId: '',
+      found: false,
+      error: `Class ${grade}-${section} (${academicYear}) does not exist. Please create the class first.`
     }
   }
-  
+
   return { classId: existingClass.id, found: true }
 }
 
@@ -294,14 +294,14 @@ async function checkClassCapacity(
     .select('max_students, current_students')
     .eq('id', classId)
     .single()
-  
+
   if (error || !data) {
     return { hasCapacity: false, available: 0, max: 0 }
   }
-  
+
   const available = data.max_students - data.current_students
   const hasCapacity = available >= newStudentsCount
-  
+
   return { hasCapacity, available, max: data.max_students }
 }
 
@@ -314,31 +314,31 @@ async function checkDuplicates(
 ): Promise<{ duplicateEmails: string[]; duplicateEnrollments: string[] }> {
   const duplicateEmails: string[] = []
   const duplicateEnrollments: string[] = []
-  
+
   // Check emails
   if (emails.length > 0) {
     const { data: existingEmails } = await supabase
       .from('students')
       .select('email')
       .in('email', emails)
-    
+
     if (existingEmails) {
       duplicateEmails.push(...existingEmails.map(e => e.email))
     }
   }
-  
+
   // Check enrollment numbers
   if (enrollmentNumbers.length > 0) {
     const { data: existingEnrollments } = await supabase
       .from('students')
       .select('enrollment_number')
       .in('enrollment_number', enrollmentNumbers.filter(Boolean))
-    
+
     if (existingEnrollments) {
       duplicateEnrollments.push(...existingEnrollments.map(e => e.enrollment_number))
     }
   }
-  
+
   return { duplicateEmails, duplicateEnrollments }
 }
 
@@ -359,7 +359,7 @@ export async function processCSVData(
     duplicates: 0,
     classesUpdated: 0
   }
-  
+
   // Map raw data to database fields
   const mappedData = rawData.map((row, index) => {
     const mapped: Record<string, any> = {}
@@ -369,20 +369,20 @@ export async function processCSVData(
     })
     return { rowNumber: index + 2, data: mapped } // +2 for header row and 0-index
   })
-  
+
   // Collect all emails and enrollment numbers for duplicate check
   const allEmails = mappedData.map(r => r.data.email).filter(Boolean)
   const allEnrollments = mappedData.map(r => r.data.enrollment_number).filter(Boolean)
   const { duplicateEmails, duplicateEnrollments } = await checkDuplicates(allEmails, allEnrollments)
-  
+
   // Group by class for capacity checking
   const classCounts: Record<string, number> = {}
   const classInfo: Record<string, { schoolId: string; grade: string; section: string; academicYear: string }> = {}
-  
+
   // First pass: resolve school IDs and group by class
   for (const { rowNumber, data } of mappedData) {
     let schoolId = data.school_id
-    
+
     // If school_code provided, resolve to school_id
     if (!schoolId && data.school_code) {
       const result = await getSchoolIdFromCode(data.school_code)
@@ -399,7 +399,7 @@ export async function processCSVData(
       schoolId = result.schoolId
       data.school_id = schoolId
     }
-    
+
     // Validate school_id exists if provided
     if (schoolId) {
       const { data: schoolExists, error: schoolError } = await supabase
@@ -407,7 +407,7 @@ export async function processCSVData(
         .select('id')
         .eq('id', schoolId)
         .maybeSingle()
-      
+
       if (schoolError || !schoolExists) {
         validatedRows.push({
           rowNumber,
@@ -419,7 +419,7 @@ export async function processCSVData(
         continue
       }
     }
-    
+
     const classKey = `${schoolId}_${data.grade}_${data.section}_${data.academic_year}`
     classCounts[classKey] = (classCounts[classKey] || 0) + 1
     classInfo[classKey] = {
@@ -429,10 +429,10 @@ export async function processCSVData(
       academicYear: data.academic_year
     }
   }
-  
+
   // Check capacity for each class
   const capacityResults: Record<string, { hasCapacity: boolean; available: number; max: number; classId: string; error?: string }> = {}
-  
+
   for (const [classKey, count] of Object.entries(classCounts)) {
     const info = classInfo[classKey]
     const { classId, found, error } = await findExistingClass(
@@ -441,29 +441,29 @@ export async function processCSVData(
       info.section,
       info.academicYear
     )
-    
+
     if (!found || error) {
-      capacityResults[classKey] = { 
-        hasCapacity: false, 
-        available: 0, 
-        max: 0, 
-        classId: '', 
-        error: error || `Class ${info.grade}-${info.section} not found` 
+      capacityResults[classKey] = {
+        hasCapacity: false,
+        available: 0,
+        max: 0,
+        classId: '',
+        error: error || `Class ${info.grade}-${info.section} not found`
       }
       continue
     }
-    
+
     summary.classesUpdated++
-    
+
     const capacity = await checkClassCapacity(classId, count)
     capacityResults[classKey] = { ...capacity, classId }
   }
-  
+
   // Second pass: validate each row
   for (const { rowNumber, data } of mappedData) {
     const errors = validateRow(data, rowNumber)
     const warnings: string[] = []
-    
+
     // Check for duplicates
     if (duplicateEmails.includes(data.email)) {
       errors.push({
@@ -473,7 +473,7 @@ export async function processCSVData(
       })
       summary.duplicates++
     }
-    
+
     if (data.enrollment_number && duplicateEnrollments.includes(data.enrollment_number)) {
       errors.push({
         row: rowNumber,
@@ -481,13 +481,13 @@ export async function processCSVData(
         message: 'Duplicate enrollment number - already exists in database'
       })
     }
-    
+
     // Check capacity
     const classKey = `${data.school_id}_${data.grade}_${data.section}_${data.academic_year}`
     const capacity = capacityResults[classKey]
-    
+
     let capacityIssue: string | undefined
-    
+
     // Check if class doesn't exist
     if (capacity && capacity.error) {
       capacityIssue = capacity.error
@@ -506,14 +506,14 @@ export async function processCSVData(
       })
       summary.capacityIssues++
     }
-    
+
     // Add class_id to data
     if (capacity && capacity.classId) {
       data.school_class_id = capacity.classId
     }
-    
+
     const isValid = errors.length === 0
-    
+
     validatedRows.push({
       rowNumber,
       data,
@@ -522,16 +522,21 @@ export async function processCSVData(
       isValid,
       capacityIssue
     })
-    
+
     if (isValid) {
       summary.validRows++
     } else {
       summary.invalidRows++
     }
   }
-  
+
   return { validatedRows, summary }
 }
+
+/**
+ * Import validated students
+ */
+import userApiService from './userApiService';
 
 /**
  * Import validated students
@@ -543,53 +548,48 @@ export async function importStudents(
   let success = 0
   let failed = 0
   const errors: string[] = []
-  
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-  
+
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+
+  if (!token) {
+    return { success: 0, failed: validRows.length, errors: ['Authentication token missing'] }
+  }
+
   for (const row of validRows) {
     try {
-      const response = await fetch(`${supabaseUrl}/functions/v1/create-student`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'apikey': supabaseAnonKey
-        },
-        body: JSON.stringify({
-          userEmail,
-          schoolId: row.data.school_id,
-          student: {
-            name: row.data.student_name,
-            email: row.data.email,
-            contactNumber: row.data.contact_number,
-            alternateNumber: row.data.alternate_number || null,
-            dateOfBirth: row.data.date_of_birth,
-            gender: row.data.gender,
-            enrollmentNumber: row.data.enrollment_number,
-            rollNumber: row.data.roll_number,
-            guardianName: row.data.guardian_name,
-            guardianPhone: row.data.guardian_phone,
-            guardianEmail: row.data.guardian_email,
-            guardianRelation: row.data.guardian_relation,
-            address: row.data.address,
-            city: row.data.city,
-            state: row.data.state,
-            country: row.data.country,
-            pincode: row.data.pincode,
-            bloodGroup: row.data.blood_group,
-            grade: row.data.grade,
-            section: row.data.section,
-            schoolClassId: row.data.school_class_id,
-            approval_status: 'approved',
-            student_type: 'csv_import'
-          }
-        })
-      })
-      
-      const result = await response.json()
-      
-      if (response.ok && result.success) {
+      // Call Cloudflare Worker via userApiService
+      const result = await userApiService.createStudent({
+        userEmail,
+        schoolId: row.data.school_id,
+        student: {
+          name: row.data.student_name,
+          email: row.data.email,
+          contactNumber: row.data.contact_number,
+          alternateNumber: row.data.alternate_number || null,
+          dateOfBirth: row.data.date_of_birth,
+          gender: row.data.gender,
+          enrollmentNumber: row.data.enrollment_number,
+          rollNumber: row.data.roll_number,
+          guardianName: row.data.guardian_name,
+          guardianPhone: row.data.guardian_phone,
+          guardianEmail: row.data.guardian_email,
+          guardianRelation: row.data.guardian_relation,
+          address: row.data.address,
+          city: row.data.city,
+          state: row.data.state,
+          country: row.data.country,
+          pincode: row.data.pincode,
+          bloodGroup: row.data.blood_group,
+          grade: row.data.grade,
+          section: row.data.section,
+          schoolClassId: row.data.school_class_id,
+          approval_status: 'approved',
+          student_type: 'csv_import'
+        }
+      }, token)
+
+      if (result.success) {
         success++
       } else {
         failed++
@@ -600,6 +600,6 @@ export async function importStudents(
       errors.push(`Row ${row.rowNumber}: ${error.message}`)
     }
   }
-  
+
   return { success, failed, errors }
 }

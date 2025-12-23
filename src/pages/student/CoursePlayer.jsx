@@ -62,15 +62,18 @@ const CoursePlayer = () => {
   const [lessonStartTime, setLessonStartTime] = useState(null);
   const [accumulatedTime, setAccumulatedTime] = useState(0);
 
-  // Enroll student and load existing progress
+  // Check if user is a student (for progress tracking)
+  const isStudent = user?.role === 'student';
+
+  // Enroll student and load existing progress (only for students)
   useEffect(() => {
-    if (user?.email && courseId) {
+    if (isStudent && user?.email && courseId) {
       enrollAndLoadProgress();
     }
-  }, [user, courseId]);
+  }, [user, courseId, isStudent]);
 
   const enrollAndLoadProgress = async () => {
-    if (!user?.email) return;
+    if (!user?.email || !isStudent) return;
 
     try {
       console.log('Enrolling student:', user.email, 'in course:', courseId);
@@ -95,15 +98,15 @@ const CoursePlayer = () => {
     }
   };
 
-  // Save progress whenever completed lessons change
+  // Save progress whenever completed lessons change (only for students)
   useEffect(() => {
-    if (user?.email && courseId && completedLessons.size > 0) {
+    if (isStudent && user?.email && courseId && completedLessons.size > 0) {
       saveProgress();
     }
-  }, [completedLessons]);
+  }, [completedLessons, isStudent]);
 
   const saveProgress = async () => {
-    if (!user?.email) return;
+    if (!user?.email || !isStudent) return;
 
     try {
       const lessonsArray = Array.from(completedLessons);
@@ -121,9 +124,9 @@ const CoursePlayer = () => {
     return currentModule.lessons[currentLessonIndex];
   };
 
-  // Save time spent on lesson
+  // Save time spent on lesson (only for students)
   const saveTimeSpent = async (additionalSeconds) => {
-    if (!user?.id || !courseId) return;
+    if (!user?.id || !courseId || !isStudent) return;
 
     const currentLesson = getCurrentLesson();
     if (!currentLesson) return;
@@ -157,9 +160,9 @@ const CoursePlayer = () => {
     }
   };
 
-  // Mark lesson as completed
+  // Mark lesson as completed (only for students)
   const markLessonCompleted = async (lessonId) => {
-    if (!user?.id || !courseId) return;
+    if (!user?.id || !courseId || !isStudent) return;
 
     try {
       const { error } = await supabase
@@ -249,7 +252,7 @@ const CoursePlayer = () => {
 
   // Initialize lesson progress tracking
   const initializeLessonProgress = async () => {
-    if (!user?.id || !courseId) return;
+    if (!user?.id || !courseId || !isStudent) return;
 
     const currentLesson = getCurrentLesson();
     if (!currentLesson) return;
@@ -353,6 +356,34 @@ const CoursePlayer = () => {
     setLessonResources([]);
     setVideoLoading(true);
 
+    // Helper function to extract R2 file key from presigned URL
+    const extractFileKeyFromUrl = (url) => {
+      if (!url) return null;
+      try {
+        // Check if it's an R2 presigned URL
+        if (url.includes('r2.cloudflarestorage.com')) {
+          const urlObj = new URL(url);
+          const pathname = urlObj.pathname;
+          // Remove leading slash to get the file key
+          // URL format: /courses/courseId/lessons/lessonId/filename.mp4
+          const fileKey = pathname.replace(/^\//, '');
+          if (fileKey.startsWith('courses/')) {
+            return fileKey;
+          }
+        }
+        // Check if URL contains courses/ path (might be different R2 URL format)
+        if (url.includes('/courses/')) {
+          const match = url.match(/\/?(courses\/[^?]+)/);
+          if (match) {
+            return match[1];
+          }
+        }
+      } catch (e) {
+        console.log('Could not parse URL:', e);
+      }
+      return null;
+    };
+
     try {
       // Check if lesson has resources from educator upload
       if (currentLesson.resources && currentLesson.resources.length > 0) {
@@ -364,25 +395,44 @@ const CoursePlayer = () => {
         );
 
         if (videoResource) {
-          // Check if URL is an R2 file key or a full URL
-          if (videoResource.url && videoResource.url.startsWith('courses/')) {
-            // It's an R2 file key, fetch fresh presigned URL
-            try {
-              const freshUrl = await fileService.getFileUrl(videoResource.url);
-              setLessonVideoUrl(freshUrl);
-            } catch (error) {
-              console.error('Error fetching fresh video URL:', error);
-              // Fallback to stored URL if available
-              if (videoResource.embedUrl) {
-                setLessonVideoUrl(videoResource.embedUrl);
-              }
-            }
-          } else if (videoResource.embedUrl) {
-            // For YouTube videos, use embed URL
+          // For YouTube videos, use embed URL directly
+          if (videoResource.type === 'youtube' && videoResource.embedUrl) {
+            console.log('Using YouTube embed URL:', videoResource.embedUrl);
             setLessonVideoUrl(videoResource.embedUrl);
           } else if (videoResource.url) {
-            // Use the stored URL directly (presigned URL or external link)
-            setLessonVideoUrl(videoResource.url);
+            console.log('Video resource URL:', videoResource.url);
+            
+            // Try to extract file key and get fresh presigned URL
+            const fileKey = extractFileKeyFromUrl(videoResource.url);
+            console.log('Extracted file key:', fileKey);
+            
+            if (fileKey) {
+              try {
+                console.log('Fetching fresh URL for file key:', fileKey);
+                const freshUrl = await fileService.getFileUrl(fileKey);
+                console.log('Got fresh URL:', freshUrl ? 'success' : 'failed');
+                setLessonVideoUrl(freshUrl);
+              } catch (error) {
+                console.error('Error fetching fresh video URL:', error);
+                // Don't fallback to expired URL - it won't work anyway
+                console.log('Could not refresh video URL - video may not be available');
+              }
+            } else if (videoResource.url.startsWith('courses/')) {
+              // It's already a file key
+              try {
+                console.log('URL is already a file key, fetching fresh URL');
+                const freshUrl = await fileService.getFileUrl(videoResource.url);
+                setLessonVideoUrl(freshUrl);
+              } catch (error) {
+                console.error('Error fetching fresh video URL:', error);
+              }
+            } else if (!videoResource.url.includes('r2.cloudflarestorage.com')) {
+              // Use the stored URL directly (external link or other non-R2 URL)
+              console.log('Using external URL directly');
+              setLessonVideoUrl(videoResource.url);
+            } else {
+              console.log('Could not extract file key from R2 URL');
+            }
           }
         }
 
@@ -392,12 +442,27 @@ const CoursePlayer = () => {
         );
 
         if (otherResources.length > 0) {
-          setLessonResources(otherResources.map(r => ({
-            title: r.name,
-            url: r.url,
-            type: r.type,
-            size: r.size
-          })));
+          // Also refresh URLs for other resources if they're R2 files
+          const refreshedResources = await Promise.all(
+            otherResources.map(async (r) => {
+              let url = r.url;
+              const fileKey = extractFileKeyFromUrl(r.url);
+              if (fileKey && r.type !== 'youtube' && r.type !== 'link') {
+                try {
+                  url = await fileService.getFileUrl(fileKey);
+                } catch (e) {
+                  console.log('Could not refresh URL for resource:', r.name);
+                }
+              }
+              return {
+                title: r.name,
+                url: url,
+                type: r.type,
+                size: r.size
+              };
+            })
+          );
+          setLessonResources(refreshedResources);
         }
       }
       // Fallback: Check for old-style video_url field
@@ -847,6 +912,10 @@ const CoursePlayer = () => {
                               controls
                               controlsList="nodownload"
                               title={currentLesson.title}
+                              onError={(e) => {
+                                console.error('Video load error:', e);
+                                console.log('Failed video URL:', lessonVideoUrl);
+                              }}
                             >
                               Your browser does not support the video tag.
                             </video>

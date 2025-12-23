@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { isJwtExpiryError } from '../utils/authErrorHandler';
 
 const PromotionalEventContext = createContext(null);
 
@@ -33,9 +34,13 @@ export const PromotionalEventProvider = ({ children }) => {
           .gte('end_date', now)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
 
-        if (fetchError && fetchError.code !== 'PGRST116') {
+        if (fetchError) {
+          // JWT errors are handled by AuthContext
+          if (isJwtExpiryError(fetchError)) {
+            return;
+          }
           throw fetchError;
         }
 
@@ -57,6 +62,7 @@ export const PromotionalEventProvider = ({ children }) => {
 
     fetchEvent();
   }, []);
+
 
   // Dismiss modal handler - banner will show after this
   const dismissModal = useCallback(() => {
