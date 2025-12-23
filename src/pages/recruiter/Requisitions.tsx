@@ -299,7 +299,7 @@ setTotalCount(count || 0);
       experience_level: requisitionData.experience_level,
       experience_required: requisitionData.experience_required,  // ADD THIS
       skills_required: requisitionData.skills_required,  // ADD THIS
-      deadline: requisitionData.deadline,  // ADD THIS
+      deadline: requisitionData.deadline ? new Date(requisitionData.deadline).toISOString() : null,
       benefits: requisitionData.benefits,  // ADD THIS
       salary_range_min: requisitionData.salary_range_min,
       salary_range_max: requisitionData.salary_range_max,
@@ -328,6 +328,7 @@ setTotalCount(count || 0);
       .update({
         ...updates,
         title: updates.job_title,
+        deadline: updates.deadline ? new Date(updates.deadline).toISOString() : null,
         updated_at: new Date().toISOString(),
         is_active: updates.status === 'open'
       })

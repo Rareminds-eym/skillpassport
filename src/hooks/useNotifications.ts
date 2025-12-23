@@ -3,16 +3,20 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 export type NotificationType =
-  // Recruiter notifications
+  // Opportunity notifications
+  | "new_opportunity"
+  | "opportunity_closed"
   | "offer_accepted"
   | "offer_declined"
   | "offer_created"
   | "offer_withdrawn"
   | "offer_expiring"
+  // Interview notifications
   | "interview_scheduled"
   | "interview_rescheduled"
   | "interview_completed"
   | "interview_reminder"
+  // Pipeline notifications
   | "pipeline_stage_changed"
   | "candidate_shortlisted"
   | "candidate_rejected"
@@ -24,6 +28,12 @@ export type NotificationType =
   | "student_achievement"
   | "new_student_enrolled"
   | "attendance_reminder"
+  // Course notifications
+  | "course_added"
+  | "course_updated"
+  // Message notifications
+  | "new_message"
+  | "message_reply"
   // Admin notifications
   | "approval_required"
   | "system_alert"
@@ -133,7 +143,9 @@ export function useNotifications(
 
   // ✅ Step 2: Fetch notifications
   const fetchNotifications = async (reset = true) => {
-    if (!userId) return;
+    if (!userId) {
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -150,6 +162,7 @@ export function useNotifications(
       }
 
       const { data, error } = await query;
+
       if (error) throw error;
 
       if (reset) setItems(data || []);
@@ -160,6 +173,7 @@ export function useNotifications(
         lastCursorRef.current = data[data.length - 1].created_at;
       }
     } catch (err: any) {
+      console.error('❌ [useNotifications] Error:', err);
       setError(err.message || "Failed to fetch notifications");
     } finally {
       setLoading(false);

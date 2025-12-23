@@ -318,21 +318,14 @@ const Opportunities = () => {
       // Grade-based filtering (same logic as Dashboard)
       const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
       const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
-      const studentGrade = studentData?.grade;
 
-      // Apply grade-based filtering for school students
+      // Apply filtering based on student type
       if (isSchoolStudent) {
+        // School students: Show ONLY internships
         const isInternship = opp.employment_type && opp.employment_type.toLowerCase() === 'internship';
-        
-        // For grades 6-8: Show ONLY internships
-        if (studentGrade && parseInt(studentGrade) >= 6 && parseInt(studentGrade) <= 8) {
-          if (!isInternship) return false;
-        }
-        
-        // For grade 9+: Show ALL opportunities (no filtering needed)
-        // Grade 9+ students see everything, so no additional filtering
+        if (!isInternship) return false;
       } else if (isUniversityStudent) {
-        // University/College students: Show ALL opportunities (no filtering)
+        // College/University students: Show ALL opportunities (no filtering)
         // They see everything - internships, full-time, part-time, contracts, etc.
       }
 
@@ -403,13 +396,13 @@ const Opportunities = () => {
     });
 
     // Debug logging for opportunity filtering
+    const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
+    const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
+    
     console.log('🎯 Opportunities Page Filtering Debug:', {
-      isSchoolStudent: studentData?.school_id || studentData?.school_class_id,
-      isUniversityStudent: studentData?.university_college_id || studentData?.universityId,
-      studentGrade: studentData?.grade,
-      gradeRange: studentData?.grade ? 
-        (parseInt(studentData.grade) >= 6 && parseInt(studentData.grade) <= 8 ? 'Grades 6-8 (Internships Only)' :
-         parseInt(studentData.grade) >= 9 ? 'Grade 9+ (All Opportunities)' : 'Other Grade') : 'No Grade',
+      isSchoolStudent,
+      isUniversityStudent,
+      studentType: isSchoolStudent ? 'School Student (Internships Only)' : isUniversityStudent ? 'College/University Student (All Jobs)' : 'Unknown',
       totalOpportunities: opportunities.length,
       filteredCount: filtered.length,
       studentData: {
