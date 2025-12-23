@@ -67,25 +67,46 @@ export const courseEnrollmentService = {
       // If enrollment exists, return it
       if (existingEnrollment) {
         console.log('Student already enrolled, returning existing enrollment');
-        // Update last_accessed
+        // Update last_accessed and ensure progress is at least 1 (so it shows in My Learning)
+        const updateData = { 
+          last_accessed: new Date().toISOString(),
+          status: existingEnrollment.status === 'completed' ? 'completed' : 'in_progress'
+        };
+        
+        // If progress is 0, set it to 1 to indicate the student has started the course
+        if (existingEnrollment.progress === 0) {
+          updateData.progress = 1;
+        }
+        
         await supabase
           .from('course_enrollments')
-          .update({ last_accessed: new Date().toISOString() })
+          .update(updateData)
           .eq('id', existingEnrollment.id);
         
         return {
           success: true,
           message: 'Already enrolled',
-          data: existingEnrollment
+          data: { ...existingEnrollment, ...updateData }
         };
       }
 
       // If we reach here, student is not enrolled yet
 
-      // We'll set total_lessons to 0 initially and update it when the student first accesses the course
-      const totalLessons = 0;
+      // Get total lessons count from course modules
+      const { data: modulesData } = await supabase
+        .from('course_modules')
+        .select(`
+          module_id,
+          lessons!fk_module (lesson_id)
+        `)
+        .eq('course_id', courseId);
 
-      // Create enrollment
+      const totalLessons = modulesData?.reduce((acc, module) => 
+        acc + (module.lessons?.length || 0), 0) || 0;
+
+      console.log('📚 Course has', totalLessons, 'total lessons');
+
+      // Create enrollment with progress=1 so it shows in My Learning immediately
       const { data: enrollment, error: enrollError } = await supabase
         .from('course_enrollments')
         .insert({
@@ -97,7 +118,7 @@ export const courseEnrollmentService = {
           educator_id: courseData.educator_id,
           educator_name: educatorName,
           enrolled_at: new Date().toISOString(),
-          progress: 0,
+          progress: 1,  // Start with 1% so it shows in My Learning
           completed_lessons: [],
           total_lessons: totalLessons,
           status: 'active',
@@ -127,10 +148,14 @@ export const courseEnrollmentService = {
 
       if (enrollError) throw enrollError;
 
-      // Update course enrollment count
-      await supabase.rpc('increment_course_enrollment', {
-        course_id_param: courseId
-      }).catch(() => {}); // Ignore if RPC doesn't exist
+      // Update course enrollment count (ignore if RPC doesn't exist)
+      try {
+        await supabase.rpc('increment_course_enrollment', {
+          course_id_param: courseId
+        });
+      } catch (rpcError) {
+        // Ignore - RPC may not exist
+      }
 
       return {
         success: true,
@@ -182,13 +207,15 @@ export const courseEnrollmentService = {
       if (!enrollment) throw new Error('Enrollment not found');
 
       // Calculate progress percentage
-      const totalLessons = enrollment.total_lessons || 1;
-      const progress = Math.round((completedLessons.length / totalLessons) * 100);
+      const totalLessons = enrollment.total_lessons || completedLessons.length || 1;
+      const progress = Math.min(100, Math.round((completedLessons.length / totalLessons) * 100));
 
       // Determine status
       let status = 'active';
-      if (progress === 100) {
+      if (progress >= 100) {
         status = 'completed';
+      } else if (progress > 0) {
+        status = 'in_progress';
       }
 
       // Update enrollment
@@ -199,13 +226,15 @@ export const courseEnrollmentService = {
           progress: progress,
           status: status,
           last_accessed: new Date().toISOString(),
-          completed_at: progress === 100 ? new Date().toISOString() : null
+          completed_at: progress >= 100 ? new Date().toISOString() : null
         })
         .eq('id', enrollment.id)
         .select()
         .single();
 
       if (updateError) throw updateError;
+
+      console.log('📊 Progress updated:', { progress, completedLessons: completedLessons.length, totalLessons, status });
 
       return {
         success: true,

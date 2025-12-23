@@ -85,9 +85,14 @@ export const useStudentTrainings = (studentId, options = {}) => {
         console.error('❌ Error fetching enrollments:', enrollmentsError);
       }
 
-      // Filter enrollments: show if progress > 0 OR status is completed
+      // Filter enrollments: show if progress > 0 OR status is completed OR recently accessed (within 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
       const filteredEnrollments = (enrollmentsData || []).filter(e => 
-        e.progress > 0 || e.status === 'completed'
+        e.progress > 0 || 
+        e.status === 'completed' || 
+        (e.last_accessed && new Date(e.last_accessed) > sevenDaysAgo)
       );
 
       // Apply additional filters to enrollments

@@ -85,9 +85,13 @@ const CoursePlayer = () => {
     getLastAccessedText
   } = useSessionRestore(user?.id, courseId, { enabled: isStudent });
 
+  // Track if enrollment has been initialized
+  const enrollmentInitializedRef = useRef(false);
+
   // Enroll student and load existing progress (only for students)
   useEffect(() => {
-    if (isStudent && user?.email && courseId) {
+    if (isStudent && user?.email && courseId && !enrollmentInitializedRef.current) {
+      enrollmentInitializedRef.current = true;
       enrollAndLoadProgress();
     }
   }, [user, courseId, isStudent]);
@@ -110,6 +114,16 @@ const CoursePlayer = () => {
         if (enrollResult.data.completed_lessons && enrollResult.data.completed_lessons.length > 0) {
           setCompletedLessons(new Set(enrollResult.data.completed_lessons));
         }
+
+        // Restore last position if available (and not at the beginning)
+        const savedModuleIndex = enrollResult.data.last_module_index || 0;
+        const savedLessonIndex = enrollResult.data.last_lesson_index || 0;
+        
+        if (savedModuleIndex > 0 || savedLessonIndex > 0) {
+          console.log('📍 Restoring to saved position - Module:', savedModuleIndex, 'Lesson:', savedLessonIndex);
+          setCurrentModuleIndex(savedModuleIndex);
+          setCurrentLessonIndex(savedLessonIndex);
+        }
       } else if (!enrollResult.success) {
         console.error('Failed to enroll:', enrollResult.error);
       }
@@ -120,17 +134,23 @@ const CoursePlayer = () => {
 
   // Save progress whenever completed lessons change (only for students)
   useEffect(() => {
-    if (isStudent && user?.email && courseId && completedLessons.size > 0) {
+    if (isStudent && user?.email && courseId && completedLessons.size > 0 && course) {
       saveProgress();
     }
-  }, [completedLessons, isStudent]);
+  }, [completedLessons, isStudent, course]);
 
   const saveProgress = async () => {
-    if (!user?.email || !isStudent) return;
+    if (!user?.email || !isStudent || !course) return;
 
     try {
       const lessonsArray = Array.from(completedLessons);
-      await courseEnrollmentService.updateProgress(user.email, courseId, lessonsArray);
+      const result = await courseEnrollmentService.updateProgress(user.email, courseId, lessonsArray);
+      console.log('📊 Progress saved:', lessonsArray.length, 'lessons completed');
+      
+      // Also update the enrollment state with new progress
+      if (result.success && result.data) {
+        setEnrollment(prev => ({ ...prev, ...result.data }));
+      }
     } catch (error) {
       console.error('Error saving progress:', error);
     }
@@ -452,6 +472,7 @@ const CoursePlayer = () => {
       // If record exists, load accumulated time
       if (existing) {
         setAccumulatedTime(existing.time_spent_seconds || 0);
+        console.log('📚 Loaded existing progress for lesson:', currentLesson.title, 'Time:', existing.time_spent_seconds);
 
         // Update last_accessed
         await supabase
@@ -463,7 +484,10 @@ const CoursePlayer = () => {
           .eq('id', existing.id);
       } else {
         // Create new progress record
-        await supabase
+        console.log('📚 Creating new progress record for lesson:', currentLesson.title);
+        setAccumulatedTime(0);
+        
+        const { error: insertError } = await supabase
           .from('student_course_progress')
           .insert({
             student_id: user.id,
@@ -473,7 +497,21 @@ const CoursePlayer = () => {
             time_spent_seconds: 0,
             last_accessed: new Date().toISOString()
           });
+          
+        if (insertError && insertError.code !== '23505') {
+          console.error('Error creating lesson progress:', insertError);
+        }
       }
+
+      // Also update the course enrollment's last position
+      await courseProgressService.saveRestorePoint(
+        user.id,
+        courseId,
+        currentModuleIndex,
+        currentLessonIndex,
+        currentLesson.id,
+        0
+      );
     } catch (error) {
       console.error('Error initializing lesson progress:', error);
     }
@@ -789,14 +827,37 @@ const CoursePlayer = () => {
     const lessonKey = `${currentModuleIndex}-${currentLessonIndex}`;
     setCompletedLessons(prev => new Set([...prev, lessonKey]));
 
+    // Calculate next position
+    let nextModuleIndex = currentModuleIndex;
+    let nextLessonIndex = currentLessonIndex;
+
     // Check if there's a next lesson in current module
     if (currentLessonIndex < currentModule.lessons.length - 1) {
-      setCurrentLessonIndex(prev => prev + 1);
+      nextLessonIndex = currentLessonIndex + 1;
     }
     // Move to next module
     else if (currentModuleIndex < course.modules.length - 1) {
-      setCurrentModuleIndex(prev => prev + 1);
-      setCurrentLessonIndex(0);
+      nextModuleIndex = currentModuleIndex + 1;
+      nextLessonIndex = 0;
+    }
+
+    // Update state
+    setCurrentModuleIndex(nextModuleIndex);
+    setCurrentLessonIndex(nextLessonIndex);
+
+    // Save the new position to database immediately
+    const nextModule = course.modules[nextModuleIndex];
+    const nextLesson = nextModule?.lessons?.[nextLessonIndex];
+    if (nextLesson) {
+      console.log('📍 Saving position - Module:', nextModuleIndex, 'Lesson:', nextLessonIndex);
+      await courseProgressService.saveRestorePoint(
+        user.id,
+        courseId,
+        nextModuleIndex,
+        nextLessonIndex,
+        nextLesson.id,
+        0
+      );
     }
   };
 
@@ -832,6 +893,21 @@ const CoursePlayer = () => {
 
     setCurrentModuleIndex(moduleIndex);
     setCurrentLessonIndex(lessonIndex);
+
+    // Save the new position to database immediately
+    const targetModule = course.modules[moduleIndex];
+    const targetLesson = targetModule?.lessons?.[lessonIndex];
+    if (targetLesson && user?.id) {
+      console.log('📍 Saving position - Module:', moduleIndex, 'Lesson:', lessonIndex);
+      await courseProgressService.saveRestorePoint(
+        user.id,
+        courseId,
+        moduleIndex,
+        lessonIndex,
+        targetLesson.id,
+        0
+      );
+    }
   };
 
   // Check if lesson is completed
