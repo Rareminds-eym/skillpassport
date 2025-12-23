@@ -10,6 +10,7 @@ import {
   EyeIcon,
   BriefcaseIcon,
   AcademicCapIcon,
+  EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 import {
   useNotifications,
@@ -23,7 +24,7 @@ interface NotificationPanelProps {
   studentEmail?: string;
 }
 
-type FilterKey = "all" | "unread" | "opportunities" | "interviews" | "courses";
+type FilterKey = "all" | "unread" | "opportunities" | "interviews" | "courses" | "messages";
 
 const NotificationPanel: React.FC<NotificationPanelProps> = ({
   isOpen,
@@ -33,7 +34,17 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
   const { user } = useAuth();
 
   // Use email from props, auth user, or fallback
-  const emailToUse = studentEmail || user?.email || null;
+const userIdToUse = user?.id || user?.user_id || null;
+
+  // 🔍 DEBUG: Log panel initialization and props
+  useEffect(() => {
+    console.group('🚀 NotificationPanel Initialization');
+    console.log('📧 studentEmail prop:', studentEmail);
+    console.log('👤 user from auth:', user);
+    console.log('✉️ userIdToUse:', userIdToUse);
+    console.log('📂 isOpen:', isOpen);
+    console.groupEnd();
+  }, [isOpen, studentEmail, user, userIdToUse]);
 
   const {
     items: notifications,
@@ -45,8 +56,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     loadMore,
     loading,
     error,
-  } = useNotifications(emailToUse);
+  } = useNotifications(userIdToUse);
 
+  
   const [selectedFilter, setSelectedFilter] = useState<FilterKey>("all");
 
   // Track new notifications for animation
@@ -61,6 +73,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
     const newIds = [...currentIds].filter((id) => !prevIds.has(id));
     if (newIds.length > 0) {
+      console.log('🆕 New notifications detected:', newIds);
       setNewNotificationIds(new Set(newIds));
       setShowNewNotificationToast(true);
 
@@ -83,26 +96,47 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
           "offer_withdrawn",
           "offer_expiring",
           "candidate_shortlisted",
-          "new_application"
+          "new_application",
+          "new_opportunity",
+          "opportunity_closed"
         ].includes(n.type);
       case "interviews":
         return [
           "interview_scheduled",
           "interview_rescheduled",
           "interview_completed",
-          "interview_reminder"
+          "interview_reminder",
+          "pipeline_stage_changed",
+          "candidate_rejected"
         ].includes(n.type);
       case "courses":
         return [
           "assignment_submitted",
           "class_activity_pending",
           "student_achievement",
-          "new_student_enrolled"
+          "new_student_enrolled",
+          "course_added",
+          "course_updated"
+        ].includes(n.type);
+      case "messages":
+        return [
+          "new_message",
+          "message_reply"
         ].includes(n.type);
       default:
         return true;
     }
   });
+
+  // 🔍 DEBUG: Log filtered results
+  useEffect(() => {
+    console.group('🔍 Filter Results');
+    console.log('🎯 selectedFilter:', selectedFilter);
+    console.log('📋 filteredNotifications:', filteredNotifications);
+    console.log('🔢 filtered count:', filteredNotifications?.length ?? 0);
+    console.log('🔢 total count:', notifications?.length ?? 0);
+    console.groupEnd();
+  }, [selectedFilter, filteredNotifications, notifications]);
 
   // Helper function to get count for each filter
   const getFilterCount = (filterKey: FilterKey): number => {
@@ -117,7 +151,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
           "offer_withdrawn",
           "offer_expiring",
           "candidate_shortlisted",
-          "new_application"
+          "new_application",
+          "new_opportunity",
+          "opportunity_closed"
         ].includes(n.type)
       ).length;
     }
@@ -127,7 +163,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
           "interview_scheduled",
           "interview_rescheduled",
           "interview_completed",
-          "interview_reminder"
+          "interview_reminder",
+          "pipeline_stage_changed",
+          "candidate_rejected"
         ].includes(n.type)
       ).length;
     }
@@ -137,7 +175,17 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
           "assignment_submitted",
           "class_activity_pending",
           "student_achievement",
-          "new_student_enrolled"
+          "new_student_enrolled",
+          "course_added",
+          "course_updated"
+        ].includes(n.type)
+      ).length;
+    }
+    if (filterKey === "messages") {
+      return notifications.filter((n) =>
+        [
+          "new_message",
+          "message_reply"
         ].includes(n.type)
       ).length;
     }
@@ -153,6 +201,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
       case "offer_declined":
       case "offer_withdrawn":
       case "candidate_rejected":
+      case "opportunity_closed":
         return <XMarkIcon className={`${base} text-red-500`} />;
       case "offer_expiring":
         return <ExclamationTriangleIcon className={`${base} text-amber-500`} />;
@@ -164,6 +213,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
         return <CheckIcon className={`${base} text-emerald-500`} />;
       case "pipeline_stage_changed":
       case "candidate_shortlisted":
+      case "new_opportunity":
         return <BriefcaseIcon className={`${base} text-blue-500`} />;
       case "new_application":
         return <BellIcon className={`${base} text-indigo-500`} />;
@@ -171,6 +221,13 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
       case "class_activity_pending":
       case "student_achievement":
         return <AcademicCapIcon className={`${base} text-blue-500`} />;
+      case "course_added":
+        return <CheckCircleIcon className={`${base} text-green-500`} />;
+      case "course_updated":
+        return <InformationCircleIcon className={`${base} text-cyan-500`} />;
+      case "new_message":
+      case "message_reply":
+        return <EnvelopeIcon className={`${base} text-purple-500`} />;
       case "system_maintenance":
         return <ExclamationTriangleIcon className={`${base} text-yellow-500`} />;
       default:
@@ -193,7 +250,12 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     return date.toLocaleDateString();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    console.log('❌ NotificationPanel: Panel is closed, not rendering');
+    return null;
+  }
+
+  console.log('✅ NotificationPanel: Rendering panel with', filteredNotifications?.length ?? 0, 'filtered notifications');
 
   return (
     <>
@@ -216,7 +278,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
             <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
             {unreadCount > 0 && (
               <button
-                onClick={markAllRead}
+                onClick={() => {
+                  console.log('🔵 Mark all read clicked');
+                  markAllRead();
+                }}
                 className="text-xs text-blue-600 hover:underline transition-colors"
               >
                 Mark all read
@@ -232,12 +297,15 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
         {/* Filters */}
         <div className="flex gap-2 px-4 py-2 border-b border-gray-100 overflow-x-auto">
-          {(["all", "unread", "opportunities", "interviews", "courses"] as FilterKey[]).map((key) => {
+          {(["all", "unread", "opportunities", "interviews", "courses", "messages"] as FilterKey[]).map((key) => {
             const count = getFilterCount(key);
             return (
               <button
                 key={key}
-                onClick={() => setSelectedFilter(key)}
+                onClick={() => {
+                  console.log('🔵 Filter changed to:', key);
+                  setSelectedFilter(key);
+                }}
                 className={`text-xs px-2.5 py-1 rounded-full transition whitespace-nowrap ${
                   selectedFilter === key
                     ? "bg-blue-100 text-blue-700 font-medium"
@@ -253,10 +321,23 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
         {/* Notifications list */}
         <div className="max-h-96 overflow-y-auto">
-          {loading && <div className="p-6 text-center text-sm text-gray-500">Loading…</div>}
-          {error && <div className="p-6 text-center text-sm text-red-500">{error}</div>}
+          {loading && (
+            <div className="p-6 text-center text-sm text-gray-500">
+              Loading…
+              {console.log('⏳ Showing loading state')}
+            </div>
+          )}
+          {error && (
+            <div className="p-6 text-center text-sm text-red-500">
+              {error}
+              {console.error('❌ Error in notifications:', error)}
+            </div>
+          )}
           {!loading && filteredNotifications.length === 0 && (
-            <div className="p-8 text-center text-sm text-gray-500">No notifications</div>
+            <div className="p-8 text-center text-sm text-gray-500">
+              No notifications
+              {console.log('📭 No notifications to display')}
+            </div>
           )}
 
           <ul className="divide-y divide-gray-100">
@@ -281,7 +362,13 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                       <span className="text-[11px] text-gray-400">{formatRelativeTime(n.created_at)}</span>
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
                         {!n.read && (
-                          <button onClick={() => markRead(n.id)} className="text-gray-400 hover:text-blue-600">
+                          <button 
+                            onClick={() => {
+                              console.log('🔵 Mark read clicked for notification:', n.id);
+                              markRead(n.id);
+                            }} 
+                            className="text-gray-400 hover:text-blue-600"
+                          >
                             <EyeIcon className="h-4 w-4" />
                           </button>
                         )}
@@ -295,7 +382,13 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
           {hasMore && (
             <div className="p-3 border-t border-gray-100 text-center">
-              <button onClick={loadMore} className="text-sm text-blue-600 hover:underline">
+              <button 
+                onClick={() => {
+                  console.log('🔵 Load more clicked');
+                  loadMore();
+                }} 
+                className="text-sm text-blue-600 hover:underline"
+              >
                 Load more
               </button>
             </div>

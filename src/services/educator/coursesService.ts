@@ -2,6 +2,85 @@ import { supabase } from '../../lib/supabaseClient';
 import { Course, CourseModule, Lesson, Resource } from '../../types/educator/course';
 
 // =====================================================
+// NOTIFICATION HELPER
+// =====================================================
+
+/**
+ * Create a notification for all students in a school
+ * This is used when a course is added or updated
+ */
+const createCourseNotification = async (
+  type: 'course_added' | 'course_updated',
+  courseId: string,
+  courseTitle: string,
+  educatorName: string,
+  schoolId?: string
+): Promise<void> => {
+  try {
+    // If no schoolId provided, get it from course
+    let finalSchoolId = schoolId;
+    if (!finalSchoolId) {
+      const { data: courseData } = await supabase
+        .from('courses')
+        .select('school_id')
+        .eq('course_id', courseId)
+        .single();
+      
+      if (courseData?.school_id) {
+        finalSchoolId = courseData.school_id;
+      }
+    }
+
+    if (!finalSchoolId) {
+      console.warn('⚠️ No school ID found for course notification');
+      return;
+    }
+
+    // Get all students in the school
+    const { data: studentData, error: studentError } = await supabase
+      .from('students')
+      .select('user_id')
+      .eq('school_id', finalSchoolId);
+
+    if (studentError) {
+      console.error('❌ Error fetching students for notification:', studentError);
+      return;
+    }
+
+    if (!studentData || studentData.length === 0) {
+      console.log('ℹ️ No students found for school');
+      return;
+    }
+
+    // Create notifications for each student
+    const notifications = studentData.map(student => ({
+      recipient_id: student.user_id,
+      type: type,
+      title: type === 'course_added' 
+        ? `New Course: ${courseTitle}`
+        : `Course Updated: ${courseTitle}`,
+      message: type === 'course_added'
+        ? `${educatorName} has added a new course "${courseTitle}"`
+        : `${educatorName} has updated the course "${courseTitle}"`,
+      read: false
+    }));
+
+    const { error: notificationError } = await supabase
+      .from('notifications')
+      .insert(notifications);
+
+    if (notificationError) {
+      console.error('❌ Error creating notifications:', notificationError);
+      return;
+    }
+
+    console.log(`✅ Notifications created for ${notifications.length} students`);
+  } catch (error) {
+    console.error('❌ Error in createCourseNotification:', error);
+  }
+};
+
+// =====================================================
 // COURSE CRUD OPERATIONS
 // =====================================================
 
@@ -438,6 +517,10 @@ export const createCourse = async (
       console.log('✅ Modules inserted');
     }
 
+    // Create notifications for new course
+    console.log('📢 Creating course notifications');
+    await createCourseNotification('course_added', courseRow.course_id, courseData.title, educatorName, finalSchoolId);
+
     // Fetch and return the complete course
     console.log('📡 Fetching complete course data');
     const courses = await getCoursesByEducator(educatorId);
@@ -542,7 +625,7 @@ export const updateCourse = async (
     console.log('📡 Fetching updated course');
     const { data: courseData } = await supabase
       .from('courses')
-      .select('educator_id')
+      .select('educator_id, title, educator_name, school_id')
       .eq('course_id', courseId)
       .single();
 
@@ -550,6 +633,16 @@ export const updateCourse = async (
       console.error('❌ Course not found');
       throw new Error('Course not found');
     }
+
+    // Create notifications for course update
+    console.log('📢 Creating course update notifications');
+    await createCourseNotification(
+      'course_updated', 
+      courseId, 
+      updates.title || courseData.title, 
+      courseData.educator_name, 
+      courseData.school_id
+    );
 
     const courses = await getCoursesByEducator(courseData.educator_id);
     const updatedCourse = courses.find(c => c.id === courseId);
