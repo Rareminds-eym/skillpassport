@@ -23,10 +23,10 @@ Handles course-related AI features including AI tutor, video transcription, and 
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key | User-scoped queries |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | Admin operations |
 | `VITE_OPENROUTER_API_KEY` | OpenRouter API key | AI features (model: openai/gpt-4o-mini) |
-| `R2_ACCOUNT_ID` | Cloudflare R2 account ID | File storage operations |
-| `R2_ACCESS_KEY_ID` | R2 access key | R2 authentication |
-| `R2_SECRET_ACCESS_KEY` | R2 secret key | R2 authentication |
-| `R2_BUCKET_NAME` | R2 bucket name | File storage bucket |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare R2 account ID | File storage operations |
+| `CLOUDFLARE_R2_ACCESS_KEY_ID` | R2 access key | R2 authentication |
+| `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | R2 secret key | R2 authentication |
+| `CLOUDFLARE_R2_BUCKET_NAME` | R2 bucket name | File storage bucket |
 
 ### R2 Bucket Binding
 
@@ -56,10 +56,10 @@ wrangler secret put VITE_SUPABASE_URL
 wrangler secret put VITE_SUPABASE_ANON_KEY
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 wrangler secret put VITE_OPENROUTER_API_KEY
-wrangler secret put R2_ACCOUNT_ID
-wrangler secret put R2_ACCESS_KEY_ID
-wrangler secret put R2_SECRET_ACCESS_KEY
-wrangler secret put R2_BUCKET_NAME
+wrangler secret put CLOUDFLARE_ACCOUNT_ID
+wrangler secret put CLOUDFLARE_R2_ACCESS_KEY_ID
+wrangler secret put CLOUDFLARE_R2_SECRET_ACCESS_KEY
+wrangler secret put CLOUDFLARE_R2_BUCKET_NAME
 
 # Optional transcription services
 wrangler secret put DEEPGRAM_API_KEY

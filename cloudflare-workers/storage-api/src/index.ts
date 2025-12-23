@@ -12,11 +12,11 @@ import { AwsClient } from 'aws4fetch';
 export interface Env {
   VITE_SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
-  R2_ACCOUNT_ID: string;
-  R2_ACCESS_KEY_ID: string;
-  R2_SECRET_ACCESS_KEY: string;
-  R2_BUCKET_NAME: string;
-  R2_PUBLIC_URL?: string;
+  CLOUDFLARE_ACCOUNT_ID: string;
+  CLOUDFLARE_R2_ACCESS_KEY_ID: string;
+  CLOUDFLARE_R2_SECRET_ACCESS_KEY: string;
+  CLOUDFLARE_R2_BUCKET_NAME: string;
+  CLOUDFLARE_R2_PUBLIC_URL?: string;
 }
 
 const corsHeaders = {
