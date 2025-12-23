@@ -25,6 +25,7 @@ import WeeklyLearningTracker from '../../components/student/WeeklyLearningTracke
 import { useAuth } from '../../context/AuthContext';
 import { courseEnrollmentService } from '../../services/courseEnrollmentService';
 import SearchBar from '../../components/common/SearchBar';
+import CourseAdvancedFilters from '../../components/Students/components/CourseAdvancedFilters';
 
 const Courses = () => {
   const navigate = useNavigate();
@@ -37,6 +38,13 @@ const Courses = () => {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'Active', 'Upcoming'
   const [sortBy, setSortBy] = useState('created_at'); // 'created_at', 'title', 'enrollment_count'
+  const [advancedFilters, setAdvancedFilters] = useState({
+    category: [],
+    skillType: [],
+    duration: [],
+    enrollmentRange: '',
+    postedWithin: '',
+  });
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -66,7 +74,7 @@ const Courses = () => {
     if (hasFetchedCoursesRef.current) {
       fetchCourses();
     }
-  }, [debouncedSearch, filterStatus, sortBy]);
+  }, [debouncedSearch, filterStatus, sortBy, advancedFilters]);
 
   // Separate effect for enrollments - only when user email changes
   useEffect(() => {
@@ -110,6 +118,41 @@ const Courses = () => {
       // Apply status filter
       if (filterStatus !== 'all') {
         query = query.eq('status', filterStatus);
+      }
+
+      // Apply advanced filters
+      if (advancedFilters.category.length > 0) {
+        query = query.in('category', advancedFilters.category);
+      }
+
+      if (advancedFilters.skillType.length > 0) {
+        query = query.in('skill_type', advancedFilters.skillType.map(type => type.toLowerCase()));
+      }
+
+      if (advancedFilters.duration.length > 0) {
+        query = query.in('duration', advancedFilters.duration);
+      }
+
+      // Apply enrollment range filter
+      if (advancedFilters.enrollmentRange) {
+        const range = advancedFilters.enrollmentRange;
+        if (range === '1-25') {
+          query = query.gte('enrollment_count', 1).lte('enrollment_count', 25);
+        } else if (range === '26-100') {
+          query = query.gte('enrollment_count', 26).lte('enrollment_count', 100);
+        } else if (range === '101-500') {
+          query = query.gte('enrollment_count', 101).lte('enrollment_count', 500);
+        } else if (range === '500+') {
+          query = query.gte('enrollment_count', 500);
+        }
+      }
+
+      // Apply posted within filter
+      if (advancedFilters.postedWithin) {
+        const daysAgo = parseInt(advancedFilters.postedWithin);
+        const dateThreshold = new Date();
+        dateThreshold.setDate(dateThreshold.getDate() - daysAgo);
+        query = query.gte('created_at', dateThreshold.toISOString());
       }
 
       // Apply sorting
@@ -158,7 +201,7 @@ const Courses = () => {
       setLoading(false);
       isFetchingRef.current = false;
     }
-  }, [debouncedSearch, filterStatus, sortBy, initialLoad]);
+  }, [debouncedSearch, filterStatus, sortBy, initialLoad, advancedFilters]);
 
   const fetchEnrollments = useCallback(async () => {
     const email = userEmailRef.current;
@@ -188,7 +231,23 @@ const Courses = () => {
   // Reset to page 1 when search or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, filterStatus, sortBy]);
+  }, [debouncedSearch, filterStatus, sortBy, advancedFilters]);
+
+  // Handle advanced filters
+  const handleAdvancedFilters = (newFilters) => {
+    setAdvancedFilters(newFilters);
+  };
+
+  // Check if any advanced filters are active
+  const hasActiveAdvancedFilters = () => {
+    return (
+      advancedFilters.category.length > 0 ||
+      advancedFilters.skillType.length > 0 ||
+      advancedFilters.duration.length > 0 ||
+      advancedFilters.enrollmentRange ||
+      advancedFilters.postedWithin
+    );
+  };
 
   // No need for client-side filtering anymore - data comes filtered from DB
   const filteredCourses = courses;
@@ -383,76 +442,142 @@ const Courses = () => {
         {/* Courses Tab Content */}
         {/* Search and Filters */}
         {!initialLoad && activeTab === 'courses' && (
-          <div className="mb-6 flex flex-col lg:flex-row items-center gap-4">
-            {/* Search Bar */}
-            <div className="flex-1 w-full">
-              <SearchBar
-                value={searchTerm}
-                onChange={setSearchTerm}
-                onDebouncedChange={setDebouncedSearch}
-                debounceMs={500}
-                placeholder="Search courses by title, code, or description..."
-                size="lg"
-                className="shadow-sm"
-              />
+          <div className="mb-6 space-y-4">
+            <div className="flex flex-col lg:flex-row items-center gap-4">
+              {/* Search Bar */}
+              <div className="flex-1 w-full">
+                <SearchBar
+                  value={searchTerm}
+                  onChange={setSearchTerm}
+                  onDebouncedChange={setDebouncedSearch}
+                  debounceMs={500}
+                  placeholder="Search courses by title, code, or description..."
+                  size="lg"
+                  className="shadow-sm"
+                />
+              </div>
+
+              {/* Filters */}
+              <div className="flex gap-2 items-center w-full lg:w-auto flex-wrap">
+                {/* Status Filter */}
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="h-12 px-4 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm flex-1 lg:flex-none lg:min-w-[150px]"
+                >
+                  <option value="all">All Status</option>
+                  <option value="Active">Active</option>
+                  <option value="Upcoming">Upcoming</option>
+                </select>
+
+                {/* Sort By Filter */}
+                <div className="relative flex-1 lg:flex-none lg:min-w-[150px]">
+                  <ArrowDownAZ className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="h-12 pl-10 pr-4 w-full bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                  >
+                    <option value="created_at">Newest First</option>
+                    <option value="title">Name (A-Z)</option>
+                    <option value="enrollment_count">Most Popular</option>
+                  </select>
+                </div>
+
+                {/* Advanced Filters */}
+                <CourseAdvancedFilters
+                  onApplyFilters={handleAdvancedFilters}
+                  initialFilters={advancedFilters}
+                />
+
+                {/* View Mode Toggle */}
+                <div className="flex border border-gray-300 rounded-lg overflow-hidden h-12 bg-white shadow-sm">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`px-4 flex items-center justify-center ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    <Grid3x3 className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`px-4 flex items-center justify-center ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    <List className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Clear Filters Button */}
+                {(filterStatus !== 'all' || searchTerm !== '' || sortBy !== 'created_at' || hasActiveAdvancedFilters()) && (
+                  <button
+                    onClick={() => {
+                      setFilterStatus('all');
+                      setSearchTerm('');
+                      setDebouncedSearch('');
+                      setSortBy('created_at');
+                      setAdvancedFilters({
+                        category: [],
+                        skillType: [],
+                        duration: [],
+                        enrollmentRange: '',
+                        postedWithin: '',
+                      });
+                    }}
+                    className="h-12 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Filters */}
-            <div className="flex gap-2 items-center w-full lg:w-auto flex-wrap">
-              {/* Status Filter */}
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="h-12 px-4 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm flex-1 lg:flex-none lg:min-w-[150px]"
-              >
-                <option value="all">All Status</option>
-                <option value="Active">Active</option>
-                <option value="Upcoming">Upcoming</option>
-              </select>
+            {/* Results Count and Active Filters */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              {/* Results Count */}
+              {!loading && (
+                <div className="text-sm text-gray-600">
+                  <span className="font-medium">{filteredCourses.length}</span> course{filteredCourses.length !== 1 ? 's' : ''} found
+                  {(searchTerm || filterStatus !== 'all' || hasActiveAdvancedFilters()) && (
+                    <span className="ml-1">matching your criteria</span>
+                  )}
+                </div>
+              )}
 
-              {/* Sort By Filter */}
-              <div className="relative flex-1 lg:flex-none lg:min-w-[150px]">
-                <ArrowDownAZ className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="h-12 pl-10 pr-4 w-full bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
-                >
-                  <option value="created_at">Newest First</option>
-                  <option value="title">Name (A-Z)</option>
-                  <option value="enrollment_count">Most Popular</option>
-                </select>
-              </div>
-
-              {/* View Mode Toggle */}
-              <div className="flex border border-gray-300 rounded-lg overflow-hidden h-12 bg-white shadow-sm">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`px-4 flex items-center justify-center ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                >
-                  <Grid3x3 className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`px-4 flex items-center justify-center ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                >
-                  <List className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Clear Filters Button */}
-              {(filterStatus !== 'all' || searchTerm !== '' || sortBy !== 'created_at') && (
-                <button
-                  onClick={() => {
-                    setFilterStatus('all');
-                    setSearchTerm('');
-                    setDebouncedSearch('');
-                    setSortBy('created_at');
-                  }}
-                  className="h-12 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
-                >
-                  Clear Filters
-                </button>
+              {/* Active Filters Indicator */}
+              {hasActiveAdvancedFilters() && (
+                <div className="flex flex-wrap gap-2 items-center text-sm">
+                  <span className="text-gray-600 font-medium">Active filters:</span>
+                  {advancedFilters.category.map(cat => (
+                    <span key={cat} className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
+                      Category: {cat}
+                    </span>
+                  ))}
+                  {advancedFilters.skillType.map(type => (
+                    <span key={type} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                      Skill: {type}
+                    </span>
+                  ))}
+                  {advancedFilters.duration.map(dur => (
+                    <span key={dur} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                      Duration: {dur}
+                    </span>
+                  ))}
+                  {advancedFilters.enrollmentRange && (
+                    <span className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-xs font-medium">
+                      Popularity: {
+                        advancedFilters.enrollmentRange === '1-25' ? 'Intimate Learning' :
+                        advancedFilters.enrollmentRange === '26-100' ? 'Interactive Groups' :
+                        advancedFilters.enrollmentRange === '101-500' ? 'Popular Courses' :
+                        advancedFilters.enrollmentRange === '500+' ? 'Massive Enrollment' :
+                        'All Courses'
+                      }
+                    </span>
+                  )}
+                  {advancedFilters.postedWithin && (
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+                      Posted: Last {advancedFilters.postedWithin} days
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           </div>

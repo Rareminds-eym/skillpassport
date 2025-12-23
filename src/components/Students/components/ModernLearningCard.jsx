@@ -8,6 +8,7 @@ import {
   ListChecks,
   Target,
   CheckCircle,
+  ArrowRight,
 } from "lucide-react";
 import { checkAssessmentStatus } from "../../../services/externalAssessmentService";
 import { useAuth } from "../../../context/AuthContext";
@@ -20,6 +21,7 @@ import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
 const ModernLearningCard = ({
   item,
   onEdit,
+  onContinue,
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -72,6 +74,22 @@ const ModernLearningCard = ({
     
     checkCompletion();
   }, [isExternalCourse, studentData?.id, item.course]);
+
+  // Handle continue button click (only for internal courses)
+  const handleContinueClick = () => {
+    if (progress >= 100 || isExternalCourse) {
+      // Course is 100% completed or external course - no continue button should be shown
+      return;
+    }
+    
+    // Internal course - navigate to course learning page
+    if (onContinue) {
+      onContinue(item);
+    } else {
+      // Fallback navigation if onContinue not provided
+      navigate(`/student/courses/${item.course_id}/learn`);
+    }
+  };
 
   return (
     <div
@@ -221,8 +239,29 @@ const ModernLearningCard = ({
             <Award className="w-4 h-4" />
             Certificate
           </button>
+        ) : isExternalCourse ? (
+          // External courses: Show only status (Completed/Ongoing), no continue button
+          <div className={`px-6 py-2.5 rounded-full font-medium text-sm flex items-center gap-2 ${
+            progress >= 100 
+              ? "bg-green-100 text-green-700" 
+              : "bg-blue-100 text-blue-700"
+          }`}>
+            <CheckCircle className="w-4 h-4" />
+            {progress >= 100 ? "Completed" : "Ongoing"}
+          </div>
+        ) : progress >= 100 ? (
+          // Internal courses: No continue button for 100% completed courses without certificate
+          <div className="px-6 py-2.5 rounded-full font-medium text-sm bg-green-100 text-green-700 flex items-center gap-2">
+            <CheckCircle className="w-4 h-4" />
+            Completed
+          </div>
         ) : (
-          <button className="px-6 py-2.5 rounded-full font-medium text-sm bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300">
+          // Internal courses: Show continue button for incomplete courses
+          <button 
+            onClick={handleContinueClick}
+            className="px-6 py-2.5 rounded-full font-medium text-sm bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300 flex items-center gap-2"
+          >
+            <ArrowRight className="w-4 h-4" />
             Continue
           </button>
         )}

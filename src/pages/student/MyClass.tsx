@@ -17,7 +17,10 @@ import {
   Trophy,
   TrendingUp,
   Activity,
-  Award
+  Award,
+  Upload,
+  Paperclip,
+  X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
@@ -34,8 +37,10 @@ import {
 import {
   getAssignmentsByStudentId,
   getAssignmentStats,
-  updateAssignmentStatus
+  updateAssignmentStatus,
+  submitAssignmentWithFile
 } from '../../services/assignmentsService';
+import storageApiService from '../../services/storageApiService';
 import {
   getStudentExams,
   getStudentResults,
@@ -109,6 +114,13 @@ const MyClass: React.FC = () => {
   const [exams, setExams] = useState<StudentExam[]>([]);
   const [results, setResults] = useState<StudentResult[]>([]);
   const [resultStats, setResultStats] = useState({ totalExams: 0, passed: 0, failed: 0, absent: 0, averagePercentage: 0 });
+  
+  // Assignment upload states
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Fetch all data
   useEffect(() => {
@@ -395,10 +407,110 @@ const MyClass: React.FC = () => {
     const due = new Date(dueDate);
     const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
-    if (diffDays < 0) return <span className="text-red-600 font-medium">Overdue</span>;
+    if (diffDays < 0) return <span className="text-red-700 font-medium">{Math.abs(diffDays)} days overdue</span>;
     if (diffDays === 0) return <span className="text-orange-600 font-medium">Due Today</span>;
     if (diffDays === 1) return <span className="text-orange-500 font-medium">Tomorrow</span>;
     return <span className="text-gray-600">{diffDays} days</span>;
+  };
+
+  const isOverdue = (dueDate: string) => {
+    const today = new Date();
+    const due = new Date(dueDate);
+    return due < today;
+  };
+
+  const handleUploadClick = (assignment: any) => {
+    setSelectedAssignment(assignment);
+    setShowUploadModal(true);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type (PDF only for now)
+      if (file.type !== 'application/pdf') {
+        alert('Please select a PDF file only.');
+        return;
+      }
+      
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File size must be less than 10MB.');
+        return;
+      }
+      
+      setUploadFile(file);
+    }
+  };
+
+  const handleUploadSubmit = async () => {
+    if (!uploadFile || !selectedAssignment) return;
+    
+    setIsUploading(true);
+    setUploadProgress(0);
+    
+    try {
+      // Get user token (you may need to adjust this based on your auth implementation)
+      const userToken = localStorage.getItem('userToken') || user?.access_token;
+      
+      // Simulate initial progress
+      setUploadProgress(10);
+      
+      // Upload file to storage
+      const uploadResult = await storageApiService.uploadFile(uploadFile, {
+        folder: `assignments/${selectedAssignment.assignment_id}`,
+        filename: `${studentId}_${Date.now()}_${uploadFile.name}`,
+        contentType: uploadFile.type
+      }, userToken);
+      
+      setUploadProgress(70);
+      
+      // Update assignment submission in database
+      await submitAssignmentWithFile(selectedAssignment.student_assignment_id, {
+        submission_type: 'file',
+        submission_url: uploadResult.url || uploadResult.fileUrl,
+        submission_content: uploadFile.name
+      });
+      
+      setUploadProgress(100);
+      
+      // Update local state
+      setAssignments(prev => prev.map(a => 
+        a.assignment_id === selectedAssignment.assignment_id 
+          ? { ...a, status: 'submitted', submission_date: new Date().toISOString() }
+          : a
+      ));
+      
+      // Refresh stats
+      if (studentId) {
+        const updatedStats = await getAssignmentStats(studentId);
+        setStats(updatedStats);
+      }
+      
+      // Close modal and reset state
+      setTimeout(() => {
+        setShowUploadModal(false);
+        setSelectedAssignment(null);
+        setUploadFile(null);
+        setUploadProgress(0);
+        setIsUploading(false);
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('Upload failed. Please try again.');
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const closeUploadModal = () => {
+    if (!isUploading) {
+      setShowUploadModal(false);
+      setSelectedAssignment(null);
+      setUploadFile(null);
+      setUploadProgress(0);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -645,47 +757,90 @@ const MyClass: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {assignments.map(assignment => (
-                      <div key={assignment.assignment_id} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <h4 className="font-medium text-gray-900">{assignment.title}</h4>
-                            <p className="text-sm text-gray-500">{assignment.course_name}</p>
+                    {assignments.map(assignment => {
+                      const overdueStatus = isOverdue(assignment.due_date);
+                      
+                      // Elegant overdue styling - sophisticated red accent
+                      const cardBgClass = overdueStatus
+                        ? 'bg-gradient-to-r from-red-50 to-white border-l-4 border-l-red-400 border-t border-r border-b border-red-100'
+                        : 'bg-white border border-gray-200 hover:border-gray-300';
+                      
+                      const cardShadow = overdueStatus ? '' : 'hover:shadow-sm';
+                      
+                      return (
+                        <div key={assignment.assignment_id} className={`rounded-lg p-4 transition-all duration-200 ${cardBgClass} ${cardShadow}`}>
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-medium text-gray-900">{assignment.title}</h4>
+                                {overdueStatus && (
+                                  <span className="px-2 py-0.5 rounded text-xs font-semibold bg-red-500 text-white">
+                                    OVERDUE
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-500">{assignment.course_name}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {getStatusBadge(assignment.status)}
+                              {assignment.status !== 'submitted' && assignment.status !== 'graded' && (
+                                <select
+                                  value={assignment.status}
+                                  onChange={(e) => handleStatusChange(assignment.assignment_id, assignment.student_assignment_id, e.target.value)}
+                                  className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
+                                >
+                                  <option value="todo">To Do</option>
+                                  <option value="in-progress">In Progress</option>
+                                  <option value="submitted">Submitted</option>
+                                </select>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {getStatusBadge(assignment.status)}
-                            <select
-                              value={assignment.status}
-                              onChange={(e) => handleStatusChange(assignment.assignment_id, assignment.student_assignment_id, e.target.value)}
-                              className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
-                            >
-                              <option value="todo">To Do</option>
-                              <option value="in-progress">In Progress</option>
-                              <option value="submitted">Submitted</option>
-                            </select>
-                          </div>
-                        </div>
-                        {assignment.description && (
-                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">{assignment.description}</p>
-                        )}
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            Due: {new Date(assignment.due_date).toLocaleDateString()}
-                          </span>
-                          <span>{getDaysRemaining(assignment.due_date)}</span>
-                          <span className="flex items-center gap-1">
-                            <Target className="w-4 h-4" />
-                            {assignment.total_points} points
-                          </span>
-                          {assignment.grade_percentage && (
-                            <span className="text-green-600 font-medium">
-                              Grade: {assignment.grade_percentage}%
-                            </span>
+                          
+                          {assignment.description && (
+                            <p className="text-sm text-gray-600 mb-3 line-clamp-2">{assignment.description}</p>
                           )}
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4 text-sm text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-4 h-4" />
+                                Due: {new Date(assignment.due_date).toLocaleDateString()}
+                              </span>
+                              <span>{getDaysRemaining(assignment.due_date)}</span>
+                              <span className="flex items-center gap-1">
+                                <Target className="w-4 h-4" />
+                                {assignment.total_points} points
+                              </span>
+                              {assignment.grade_percentage && (
+                                <span className="text-green-600 font-medium">
+                                  Grade: {assignment.grade_percentage}%
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* Upload Button */}
+                            {assignment.status !== 'submitted' && assignment.status !== 'graded' && (
+                              <button
+                                onClick={() => handleUploadClick(assignment)}
+                                className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                              >
+                                <Upload className="w-4 h-4" />
+                                Upload PDF
+                              </button>
+                            )}
+                            
+                            {/* Submission Info */}
+                            {assignment.submission_date && (
+                              <div className="flex items-center gap-2 text-sm text-green-600">
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>Submitted on {new Date(assignment.submission_date).toLocaleDateString()}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1554,6 +1709,137 @@ const MyClass: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Upload Assignment</h3>
+                <p className="text-sm text-gray-500 mt-1">{selectedAssignment?.title}</p>
+              </div>
+              <button
+                onClick={closeUploadModal}
+                disabled={isUploading}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              {!uploadFile ? (
+                /* File Selection */
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="assignment-upload"
+                    disabled={isUploading}
+                  />
+                  <label htmlFor="assignment-upload" className="cursor-pointer">
+                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-lg font-medium text-gray-700 mb-1">
+                      Click to upload PDF
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      PDF files only, max 10MB
+                    </p>
+                  </label>
+                </div>
+              ) : (
+                /* File Selected */
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <Paperclip className="w-5 h-5 text-blue-600" />
+                    <div className="flex-1">
+                      <p className="font-medium text-blue-900">{uploadFile.name}</p>
+                      <p className="text-sm text-blue-600">
+                        {(uploadFile.size / (1024 * 1024)).toFixed(2)} MB
+                      </p>
+                    </div>
+                    {!isUploading && (
+                      <button
+                        onClick={() => setUploadFile(null)}
+                        className="p-1 hover:bg-blue-100 rounded"
+                      >
+                        <X className="w-4 h-4 text-blue-600" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Upload Progress */}
+                  {isUploading && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Uploading...</span>
+                        <span className="text-blue-600 font-medium">{uploadProgress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Assignment Details */}
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Course:</span>
+                      <span className="font-medium text-gray-900">{selectedAssignment?.course_name}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Due Date:</span>
+                      <span className="font-medium text-gray-900">
+                        {selectedAssignment?.due_date && new Date(selectedAssignment.due_date).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Points:</span>
+                      <span className="font-medium text-gray-900">{selectedAssignment?.total_points}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+              <button
+                onClick={closeUploadModal}
+                disabled={isUploading}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUploadSubmit}
+                disabled={!uploadFile || isUploading}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    Submit Assignment
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
