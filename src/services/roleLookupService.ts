@@ -89,27 +89,8 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
       });
     }
 
-    // 4. Check educators table (fallback)
-    if (!foundRoles.includes('educator')) {
-      const { data: educatorAltData, error: educatorAltError } = await supabase
-        .from('educators')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (!educatorAltError && educatorAltData) {
-        foundRoles.push('educator');
-        foundUserData.push({
-          id: educatorAltData.id,
-          email: educatorAltData.email,
-          name: educatorAltData.first_name && educatorAltData.last_name 
-            ? `${educatorAltData.first_name} ${educatorAltData.last_name}`
-            : educatorAltData.first_name || educatorAltData.last_name || undefined,
-          role: 'educator',
-          ...educatorAltData
-        });
-      }
-    }
+    // Note: Removed fallback to 'educators' table as it doesn't exist
+    // The system uses 'school_educators' table for all educator data
 
     // 5. Check users table for admin roles
     // Note: users table uses 'id' column that references auth.users(id) directly
