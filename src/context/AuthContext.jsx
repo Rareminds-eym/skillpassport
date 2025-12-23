@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext(null);
@@ -14,8 +14,72 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const isRefreshing = useRef(false);
+  const refreshAttempts = useRef(0);
+  const MAX_REFRESH_ATTEMPTS = 3;
+
+  // Helper to restore user from localStorage
+  const restoreUserFromStorage = useCallback((sessionUser) => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        const userMatches = 
+          parsedUser.user_id === sessionUser.id || 
+          parsedUser.id === sessionUser.id ||
+          parsedUser.email === sessionUser.email;
+        
+        if (userMatches) {
+          return parsedUser;
+        }
+      } catch (e) {
+        console.warn('Failed to parse stored user:', e);
+      }
+    }
+    // Create new user data from session
+    return {
+      id: sessionUser.id,
+      email: sessionUser.email,
+      role: sessionUser.user_metadata?.role || 'user',
+    };
+  }, []);
+
+  // Attempt to refresh the session when it becomes invalid
+  const attemptSessionRefresh = useCallback(async () => {
+    if (isRefreshing.current || refreshAttempts.current >= MAX_REFRESH_ATTEMPTS) {
+      return null;
+    }
+
+    isRefreshing.current = true;
+    refreshAttempts.current += 1;
+    
+    try {
+      console.log('Attempting session refresh...');
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.warn('Session refresh failed:', error.message);
+        return null;
+      }
+      
+      if (data?.session) {
+        console.log('Session refreshed successfully');
+        refreshAttempts.current = 0; // Reset on success
+        return data.session;
+      }
+      
+      return null;
+    } catch (err) {
+      console.error('Session refresh error:', err);
+      return null;
+    } finally {
+      isRefreshing.current = false;
+    }
+  }, []);
 
   useEffect(() => {
+    let mounted = true;
+
     // Initialize auth state
     const initializeAuth = async () => {
       try {
@@ -24,55 +88,56 @@ export const AuthProvider = ({ children }) => {
         
         if (error) {
           console.error('Error getting session:', error);
+          
+          // If 403 error, try to refresh the session
+          if (error.status === 403 || error.message?.includes('403')) {
+            console.log('Session invalid (403), attempting refresh...');
+            const refreshedSession = await attemptSessionRefresh();
+            
+            if (refreshedSession?.user && mounted) {
+              const userData = restoreUserFromStorage(refreshedSession.user);
+              setUser(userData);
+              localStorage.setItem('user', JSON.stringify(userData));
+              setLoading(false);
+              return;
+            }
+          }
         }
+
+        if (!mounted) return;
 
         if (session?.user) {
           // Session exists - load user data from localStorage or create from session
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            // Verify the stored user matches the session user
-            // Check user_id (for admins) or id (for regular users) or email
-            const userMatches = 
-              parsedUser.user_id === session.user.id || 
-              parsedUser.id === session.user.id ||
-              parsedUser.email === session.user.email;
-            
-            if (userMatches) {
-              setUser(parsedUser);
-            } else {
-              // Mismatch - clear and use session data
-              const userData = {
-                id: session.user.id,
-                email: session.user.email,
-                role: session.user.user_metadata?.role || 'user',
-              };
-              setUser(userData);
-              localStorage.setItem('user', JSON.stringify(userData));
-            }
-          } else {
-            // No stored user but session exists - create user data
-            const userData = {
-              id: session.user.id,
-              email: session.user.email,
-              role: session.user.user_metadata?.role || 'user',
-            };
-            setUser(userData);
-            localStorage.setItem('user', JSON.stringify(userData));
-          }
+          const userData = restoreUserFromStorage(session.user);
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
         } else {
           // No session - check for demo users in localStorage
           const storedUser = localStorage.getItem('user');
           if (storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            // Allow demo users (they don't have Supabase sessions)
-            if (parsedUser.isDemoMode || parsedUser.id?.includes('-001')) {
-              setUser(parsedUser);
-            } else {
-              // Real user but no session - clear
+            try {
+              const parsedUser = JSON.parse(storedUser);
+              // Allow demo users (they don't have Supabase sessions)
+              if (parsedUser.isDemoMode || parsedUser.id?.includes('-001')) {
+                setUser(parsedUser);
+              } else {
+                // Real user but no session - try to refresh before clearing
+                const refreshedSession = await attemptSessionRefresh();
+                if (refreshedSession?.user && mounted) {
+                  const userData = restoreUserFromStorage(refreshedSession.user);
+                  setUser(userData);
+                  localStorage.setItem('user', JSON.stringify(userData));
+                } else if (mounted) {
+                  // Refresh failed - clear user
+                  setUser(null);
+                  localStorage.removeItem('user');
+                  localStorage.removeItem('userEmail');
+                }
+              }
+            } catch (e) {
+              console.warn('Failed to parse stored user:', e);
               setUser(null);
               localStorage.removeItem('user');
-              localStorage.removeItem('userEmail');
             }
           } else {
             setUser(null);
@@ -82,13 +147,21 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (err) {
         console.error('Error initializing auth:', err);
+        if (!mounted) return;
+        
         // Fallback to localStorage
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
-          setUser(JSON.parse(storedUser));
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch (e) {
+            console.warn('Failed to parse stored user:', e);
+          }
         }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -97,31 +170,28 @@ export const AuthProvider = ({ children }) => {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
+        
         console.log('Auth state changed:', event, session?.user?.id);
         
         if (event === 'SIGNED_IN' && session?.user) {
           // User signed in - update state
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            // Check user_id (for admins) or id (for regular users) or email
-            const userMatches = 
-              parsedUser.user_id === session.user.id || 
-              parsedUser.id === session.user.id ||
-              parsedUser.email === session.user.email;
-            
-            if (userMatches) {
-              setUser(parsedUser);
-            }
-          }
+          refreshAttempts.current = 0; // Reset refresh attempts on successful sign in
+          const userData = restoreUserFromStorage(session.user);
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
         } else if (event === 'SIGNED_OUT') {
           // User signed out - clear state (but preserve demo users)
           const storedUser = localStorage.getItem('user');
           if (storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            // Don't clear demo users
-            if (parsedUser.isDemoMode || parsedUser.id?.includes('-001')) {
-              return;
+            try {
+              const parsedUser = JSON.parse(storedUser);
+              // Don't clear demo users
+              if (parsedUser.isDemoMode || parsedUser.id?.includes('-001')) {
+                return;
+              }
+            } catch (e) {
+              // Ignore parse errors
             }
           }
           setUser(null);
@@ -130,52 +200,43 @@ export const AuthProvider = ({ children }) => {
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
           // Token refreshed - ensure user state is still valid
           console.log('Token refreshed successfully');
-          // Re-validate and update user state if needed
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            const userMatches = 
-              parsedUser.user_id === session.user.id || 
-              parsedUser.id === session.user.id ||
-              parsedUser.email === session.user.email;
-            
-            if (userMatches && !user) {
-              // User state was lost but session is valid - restore it
-              setUser(parsedUser);
-            }
-          } else if (!user && session.user) {
-            // No stored user but session exists - create user data
-            const userData = {
-              id: session.user.id,
-              email: session.user.email,
-              role: session.user.user_metadata?.role || 'user',
-            };
-            setUser(userData);
-            localStorage.setItem('user', JSON.stringify(userData));
-          }
+          refreshAttempts.current = 0; // Reset refresh attempts on successful refresh
+          
+          // Always update user state on token refresh to ensure consistency
+          const userData = restoreUserFromStorage(session.user);
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
         } else if (event === 'USER_UPDATED' && session?.user) {
           // User data updated - refresh stored user data
           console.log('User updated');
           const storedUser = localStorage.getItem('user');
           if (storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            // Update with latest session data
-            const updatedUser = {
-              ...parsedUser,
-              email: session.user.email,
-              role: session.user.user_metadata?.role || parsedUser.role,
-            };
-            setUser(updatedUser);
-            localStorage.setItem('user', JSON.stringify(updatedUser));
+            try {
+              const parsedUser = JSON.parse(storedUser);
+              // Update with latest session data
+              const updatedUser = {
+                ...parsedUser,
+                email: session.user.email,
+                role: session.user.user_metadata?.role || parsedUser.role,
+              };
+              setUser(updatedUser);
+              localStorage.setItem('user', JSON.stringify(updatedUser));
+            } catch (e) {
+              // If parse fails, create new user data
+              const userData = restoreUserFromStorage(session.user);
+              setUser(userData);
+              localStorage.setItem('user', JSON.stringify(userData));
+            }
           }
         }
       }
     );
 
     return () => {
+      mounted = false;
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [attemptSessionRefresh, restoreUserFromStorage]);
 
   const login = (userData) => {
     setUser(userData);

@@ -46,10 +46,47 @@ const Dashboard = () => {
 
   useEffect(() => {
     let mounted = true;
+    let refreshAttempts = 0;
+    const MAX_REFRESH_ATTEMPTS = 3;
+
+    // Attempt to refresh the session when it becomes invalid
+    const attemptSessionRefresh = async () => {
+      if (refreshAttempts >= MAX_REFRESH_ATTEMPTS) {
+        return null;
+      }
+
+      refreshAttempts += 1;
+      
+      try {
+        console.log('Dashboard: Attempting session refresh...');
+        const { data, error } = await supabase.auth.refreshSession();
+        
+        if (error) {
+          console.warn('Dashboard: Session refresh failed:', error.message);
+          return null;
+        }
+        
+        if (data?.session) {
+          console.log('Dashboard: Session refreshed successfully');
+          refreshAttempts = 0; // Reset on success
+          return data.session;
+        }
+        
+        return null;
+      } catch (err) {
+        console.error('Dashboard: Session refresh error:', err);
+        return null;
+      }
+    };
 
     // Listen for auth changes first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
+
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('✅ Token refreshed, reloading data...');
+        refreshAttempts = 0;
+      }
 
       if (session?.user) {
         console.log('✅ Auth state change - user found, loading data...');
@@ -71,23 +108,61 @@ const Dashboard = () => {
         
         if (!mounted) return;
 
+        if (error) {
+          console.error('Session error:', error);
+          
+          // If 403 error, try to refresh the session
+          if (error.status === 403 || error.message?.includes('403')) {
+            console.log('Dashboard: Session invalid (403), attempting refresh...');
+            const refreshedSession = await attemptSessionRefresh();
+            
+            if (refreshedSession?.user && mounted) {
+              console.log('✅ Session refreshed, loading data...');
+              setIsAuthenticated(true);
+              setError(null);
+              loadDashboardData();
+              return;
+            }
+          }
+        }
+
         if (session?.user) {
           console.log('✅ Session check - user found, loading data...');
           setIsAuthenticated(true);
           setError(null);
           loadDashboardData();
         } else {
-          console.log('❌ Session check - no user');
-          setIsAuthenticated(false);
-          setLoading(false);
-          setError('Please log in to view the dashboard');
+          // No session - try to refresh before giving up
+          console.log('No session found, attempting refresh...');
+          const refreshedSession = await attemptSessionRefresh();
+          
+          if (refreshedSession?.user && mounted) {
+            console.log('✅ Session refreshed, loading data...');
+            setIsAuthenticated(true);
+            setError(null);
+            loadDashboardData();
+          } else if (mounted) {
+            console.log('❌ Session check - no user');
+            setIsAuthenticated(false);
+            setLoading(false);
+            setError('Please log in to view the dashboard');
+          }
         }
       } catch (err) {
         console.error('Authentication error:', err);
         if (mounted) {
-          setIsAuthenticated(false);
-          setLoading(false);
-          setError('Authentication error. Please refresh the page.');
+          // Try to refresh on any auth error
+          const refreshedSession = await attemptSessionRefresh();
+          
+          if (refreshedSession?.user) {
+            setIsAuthenticated(true);
+            setError(null);
+            loadDashboardData();
+          } else {
+            setIsAuthenticated(false);
+            setLoading(false);
+            setError('Authentication error. Please refresh the page.');
+          }
         }
       }
     };
