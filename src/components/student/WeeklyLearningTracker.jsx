@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Clock, BookOpen, Layers, GraduationCap, Flame, TrendingUp, Trophy, ArrowRight, Award, ChevronRight, CheckCircle2, Lock } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { ArrowRight, BookOpen, Clock, Flame, GraduationCap, TrendingUp, Trophy } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
+import '../../utils/suppressRechartsWarnings'; // Auto-suppress Recharts warnings
 
 // Compact tooltip for chart
 const CustomTooltip = ({ active, payload, label }) => {
@@ -168,32 +169,186 @@ const WeeklyOverviewCard = ({ stats, activeDays }) => {
   );
 };
 
-// Daily Chart Card
+// Suppress Recharts warnings in development
+const SuppressedResponsiveContainer = ({ children, ...props }) => {
+  const originalWarn = console.warn;
+  
+  useEffect(() => {
+    // Temporarily suppress Recharts dimension warnings
+    console.warn = (...args) => {
+      const message = args[0];
+      if (typeof message === 'string' && message.includes('width') && message.includes('height') && message.includes('chart should be greater than 0')) {
+        // Suppress this specific warning
+        return;
+      }
+      originalWarn.apply(console, args);
+    };
+    
+    return () => {
+      console.warn = originalWarn;
+    };
+  }, []);
+  
+  return <ResponsiveContainer {...props}>{children}</ResponsiveContainer>;
+};
+
+// Daily Chart Card with Robust Error Prevention
 const DailyChartCard = ({ weekData, derivedStats }) => {
+  const [isChartReady, setIsChartReady] = useState(false);
+  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
+  const containerRef = useRef(null);
+  const mountedRef = useRef(true);
+  
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+  
+  useEffect(() => {
+    // Comprehensive visibility and dimension check
+    const checkContainerReadiness = () => {
+      if (!mountedRef.current || !containerRef.current) {
+        return;
+      }
+
+      const element = containerRef.current;
+      const rect = element.getBoundingClientRect();
+      const computedStyle = window.getComputedStyle(element);
+      
+      // Multiple checks for element readiness
+      const isVisible = element.offsetParent !== null;
+      const hasValidDimensions = rect.width > 0 && rect.height > 0;
+      const isNotHidden = computedStyle.display !== 'none' && computedStyle.visibility !== 'hidden';
+      const hasMinimumSize = rect.width >= 200 && rect.height >= 120;
+      
+      console.log('📊 Chart readiness check:', {
+        isVisible,
+        hasValidDimensions,
+        isNotHidden,
+        hasMinimumSize,
+        width: rect.width,
+        height: rect.height,
+        hasData: weekData && weekData.length > 0,
+        display: computedStyle.display,
+        visibility: computedStyle.visibility
+      });
+      
+      if (isVisible && hasValidDimensions && isNotHidden && hasMinimumSize && mountedRef.current) {
+        setContainerDimensions({ width: rect.width, height: rect.height });
+        // Additional delay to ensure React has finished rendering
+        setTimeout(() => {
+          if (mountedRef.current) {
+            setIsChartReady(true);
+          }
+        }, 100);
+      } else {
+        setIsChartReady(false);
+        setContainerDimensions({ width: 0, height: 0 });
+      }
+    };
+
+    // Multiple timing strategies
+    const timers = [
+      setTimeout(checkContainerReadiness, 100),
+      setTimeout(checkContainerReadiness, 300),
+      setTimeout(checkContainerReadiness, 500),
+      setTimeout(checkContainerReadiness, 1000)
+    ];
+    
+    // ResizeObserver with error handling
+    let resizeObserver;
+    if (containerRef.current && typeof window !== 'undefined' && window.ResizeObserver) {
+      try {
+        resizeObserver = new ResizeObserver((entries) => {
+          if (mountedRef.current && entries.length > 0) {
+            checkContainerReadiness();
+          }
+        });
+        resizeObserver.observe(containerRef.current);
+      } catch (error) {
+        console.warn('ResizeObserver error:', error);
+      }
+    }
+    
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+      if (resizeObserver) {
+        try {
+          resizeObserver.disconnect();
+        } catch (error) {
+          console.warn('ResizeObserver disconnect error:', error);
+        }
+      }
+    };
+  }, [weekData]);
+
+  // Strict validation before rendering chart
+  const shouldRenderChart = useMemo(() => {
+    return (
+      isChartReady &&
+      weekData &&
+      Array.isArray(weekData) &&
+      weekData.length > 0 &&
+      containerDimensions.width >= 200 &&
+      containerDimensions.height >= 120 &&
+      mountedRef.current
+    );
+  }, [isChartReady, weekData, containerDimensions]);
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm h-full">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-gray-900">Daily Learning</h3>
         <div className="flex items-center gap-4 text-xs">
-          <span className="text-gray-500">Avg: <span className="font-semibold text-gray-700">{derivedStats.avgMinutes}m</span></span>
-          <span className="text-gray-500">Best: <span className="font-semibold text-blue-600">{derivedStats.mostProductiveDay}</span></span>
+          <span className="text-gray-500">Avg: <span className="font-semibold text-gray-700">{derivedStats?.avgMinutes || 0}m</span></span>
+          <span className="text-gray-500">Best: <span className="font-semibold text-blue-600">{derivedStats?.mostProductiveDay || 'N/A'}</span></span>
         </div>
       </div>
-      <div className="h-[120px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={weekData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-            <defs>
-              <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3B82F6" />
-                <stop offset="100%" stopColor="#93C5FD" />
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 10 }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 9 }} tickFormatter={(v) => `${v}m`} />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: '#F3F4F6', radius: 4 }} />
-            <Bar dataKey="minutes" fill="url(#barGrad)" radius={[6, 6, 0, 0]} maxBarSize={32} />
-          </BarChart>
-        </ResponsiveContainer>
+      <div 
+        ref={containerRef}
+        className="h-[120px] w-full"
+        style={{ 
+          minHeight: '120px', 
+          minWidth: '200px',
+          width: '100%',
+          height: '120px'
+        }}
+      >
+        {shouldRenderChart ? (
+          <SuppressedResponsiveContainer 
+            width="100%" 
+            height="100%" 
+            minWidth={200} 
+            minHeight={120}
+            aspect={undefined}
+          >
+            <BarChart 
+              data={weekData} 
+              margin={{ top: 5, right: 5, left: -25, bottom: 0 }}
+              width={containerDimensions.width}
+              height={containerDimensions.height}
+            >
+              <defs>
+                <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3B82F6" />
+                  <stop offset="100%" stopColor="#93C5FD" />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 10 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 9 }} tickFormatter={(v) => `${v}m`} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: '#F3F4F6', radius: 4 }} />
+              <Bar dataKey="minutes" fill="url(#barGrad)" radius={[6, 6, 0, 0]} maxBarSize={32} />
+            </BarChart>
+          </SuppressedResponsiveContainer>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-50 rounded-lg">
+            <div className="text-center">
+              <div className="animate-pulse bg-gray-200 rounded w-full h-full min-h-[120px]"></div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

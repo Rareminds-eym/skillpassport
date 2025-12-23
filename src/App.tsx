@@ -1,14 +1,15 @@
-import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './context/AuthContext';
-import { SupabaseAuthProvider } from './context/SupabaseAuthContext';
-import { SupabaseAuthBridgeProvider } from './context/SupabaseAuthBridge';
-import { SearchProvider } from './context/SearchContext';
-import AppRoutes from './routes/AppRoutes';
-import { Toaster } from './components/Students/components/ui/toaster';
 import { Toaster as HotToaster } from 'react-hot-toast';
+import { BrowserRouter } from 'react-router-dom';
 import { ToastProvider } from './components/Recruiter/components/Toast';
+import { Toaster } from './components/Students/components/ui/toaster';
 import SubscriptionPrefetch from './components/Subscription/SubscriptionPrefetch';
+import { AuthProvider } from './context/AuthContext';
+import { SearchProvider } from './context/SearchContext';
+import { SupabaseAuthBridgeProvider } from './context/SupabaseAuthBridge';
+import { SupabaseAuthProvider } from './context/SupabaseAuthContext';
+import AppRoutes from './routes/AppRoutes';
+import './utils/suppressRechartsWarnings'; // Suppress Recharts warnings globally
 
 // Create React Query client
 const queryClient = new QueryClient({

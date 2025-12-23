@@ -222,7 +222,8 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
         studentId, 
         limit, 
         isResolvingStudent,
-        hasLocalStorageEmail: !!localStorage.getItem('userEmail')
+        hasLocalStorageEmail: !!localStorage.getItem('userEmail'),
+        currentPage: window.location.pathname
       });
 
       if (!effectiveEmail) {
@@ -242,8 +243,10 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
           effectiveEmail,
           hasEmail: !!effectiveEmail,
           isResolving: isResolvingStudent,
-          localStorageEmail: localStorage.getItem('userEmail')
+          localStorageEmail: localStorage.getItem('userEmail'),
+          currentPage: window.location.pathname
         });
+        // Return empty array instead of throwing to prevent React Query errors
         return [];
       }
 
@@ -296,15 +299,15 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
       return combined;
     },
-    enabled: !!effectiveEmail && !isResolvingStudent, // Only run if email is provided and not resolving
+    enabled: !!effectiveEmail && !isResolvingStudent && !!studentId, // Only run if email, student ID are available and not resolving
     refetchOnMount: true,
     refetchOnWindowFocus: false,
-    staleTime: 0, // Always consider fresh data (real-time requirement)
-    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    staleTime: 30 * 1000, // Consider data fresh for 30 seconds
+    gcTime: 2 * 60 * 1000, // Keep in cache for 2 minutes (reduced from 5)
     refetchInterval: false, // Disable polling, rely on WebSocket events
     refetchIntervalInBackground: false,
-    retry: 2, // Retry failed requests twice
-    retryDelay: 1000, // Wait 1s between retries
+    retry: 1, // Reduce retries from 2 to 1
+    retryDelay: 2000, // Increase delay between retries
   });
 
   // 4️⃣ Auto-refresh formatted timestamps every 60s
