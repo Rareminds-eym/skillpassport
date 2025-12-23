@@ -64,18 +64,9 @@ class AIRecommendationService {
    */
   async getCachedRecommendations(studentId) {
     try {
-      const { data, error } = await supabase
-        .from('recommendation_cache')
-        .select('recommendations, cached_at, expires_at')
-        .eq('student_id', studentId)
-        .gt('expires_at', new Date().toISOString())
-        .single();
-
-      if (error || !data) {
-        return null;
-      }
-
-      return data;
+      // recommendation_cache table doesn't exist, return null to force fresh fetch
+      console.log('⚠️ Recommendation cache not available, fetching fresh data');
+      return null;
     } catch (error) {
       console.error('Error fetching cached recommendations:', error);
       return null;
@@ -87,47 +78,9 @@ class AIRecommendationService {
    */
   async cacheRecommendations(studentId, recommendations) {
     try {
-      // Get current opportunities count
-      const { count } = await supabase
-        .from('opportunities')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
-
-      // Get student profile hash
-      const { data: student } = await supabase
-        .from('students')
-        .select('skills, interests, bio, experience_level')
-        .eq('user_id', studentId)
-        .single();
-
-      const profileHash = student ?
-        JSON.stringify({
-          skills: student.skills,
-          interests: student.interests,
-          bio: student.bio,
-          experience_level: student.experience_level
-        }) : '';
-
-      // Upsert cache
-      const { error } = await supabase
-        .from('recommendation_cache')
-        .upsert({
-          student_id: studentId,
-          recommendations: recommendations,
-          cached_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
-          opportunities_count: count || 0,
-          student_profile_hash: profileHash,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'student_id'
-        });
-
-      if (error) {
-        console.error('Error caching recommendations:', error);
-      } else {
-        console.log('✅ Cached recommendations for student:', studentId);
-      }
+      // recommendation_cache table doesn't exist, skip caching
+      console.log('⚠️ Recommendation cache table not available, skipping cache');
+      return;
     } catch (error) {
       console.error('Error caching recommendations:', error);
     }
@@ -281,11 +234,8 @@ class AIRecommendationService {
    */
   async invalidateCache(studentId) {
     try {
-      await supabase
-        .from('recommendation_cache')
-        .delete()
-        .eq('student_id', studentId);
-
+      // recommendation_cache table doesn't exist, nothing to invalidate
+      console.log('⚠️ Recommendation cache table not available, nothing to invalidate');
       return { success: true };
     } catch (error) {
       console.error('Error invalidating cache:', error);

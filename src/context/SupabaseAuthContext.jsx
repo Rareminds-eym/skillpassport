@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { handleAuthError, isJwtExpiryError } from '../utils/authErrorHandler';
 
 /**
  * Enhanced AuthContext with Supabase Integration
@@ -135,17 +136,28 @@ export const SupabaseAuthProvider = ({ children }) => {
     };
   }, [attemptSessionRefresh]);
 
-  // Load user profile from students table
+  // Load user profile from students table (only for student users)
   const loadUserProfile = async (userId) => {
     try {
-      
+      // Query using user_id column, not id
       const { data, error } = await supabase
         .from('students')
         .select('*')
-        .eq('id', userId)
-        .single();
+        .eq('user_id', userId)
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      // PGRST116 means no rows found - this is expected for non-student users (educators, admins)
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return;
+        }
+        
+        // Handle JWT expiration
+        if (isJwtExpiryError(error)) {
+          await handleAuthError(error);
+          return;
+        }
+
         console.error('❌ Error loading user profile:', error);
         return;
       }
@@ -154,10 +166,13 @@ export const SupabaseAuthProvider = ({ children }) => {
         setUserProfile(data);
         // Also store email in localStorage for backward compatibility
         localStorage.setItem('userEmail', data.email);
-      } else {
       }
+      // For non-student users, userProfile will remain null - this is expected
     } catch (error) {
       console.error('❌ Error loading user profile:', error);
+      if (isJwtExpiryError(error)) {
+        await handleAuthError(error);
+      }
     }
   };
 
@@ -230,16 +245,15 @@ export const SupabaseAuthProvider = ({ children }) => {
     }
   };
 
-  // Update user profile
+  // Update user profile (only works for student users)
   const updateUserProfile = async (updates) => {
     try {
       if (!user) throw new Error('No user logged in');
 
-
       const { data, error } = await supabase
         .from('students')
         .update(updates)
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .select()
         .single();
 

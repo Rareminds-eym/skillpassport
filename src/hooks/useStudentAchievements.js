@@ -4,7 +4,7 @@
  * Fetches from: technical_skills, soft_skills, education, training, experience
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 export const useStudentAchievements = (studentId, email) => {
@@ -45,10 +45,10 @@ export const useStudentAchievements = (studentId, email) => {
       // Fetch from separate tables in parallel
       const [educationRes, trainingRes, experienceRes, techSkillsRes, softSkillsRes] = await Promise.all([
         supabase.from('education').select('*').eq('student_id', actualStudentId),
-        supabase.from('training').select('*').eq('student_id', actualStudentId),
+        supabase.from('trainings').select('*').eq('student_id', actualStudentId),
         supabase.from('experience').select('*').eq('student_id', actualStudentId),
-        supabase.from('technical_skills').select('*').eq('student_id', actualStudentId),
-        supabase.from('soft_skills').select('*').eq('student_id', actualStudentId),
+        supabase.from('skills').select('*').eq('student_id', actualStudentId).eq('type', 'technical'),
+        supabase.from('skills').select('*').eq('student_id', actualStudentId).eq('type', 'soft'),
       ]);
 
       // Process and combine achievements
@@ -121,7 +121,7 @@ export const useStudentAchievements = (studentId, email) => {
               date: skill.updated_at || skill.created_at,
               level: skill.level,
               verified: skill.verified,
-              source: 'technical_skills_table'
+              source: 'skills_table'
             });
           }
         });

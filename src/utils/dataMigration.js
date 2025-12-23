@@ -1,15 +1,15 @@
-import { supabase } from '../utils/api';
 import {
-  studentData,
-  educationData,
-  trainingData,
-  experienceData,
-  technicalSkills,
-  softSkills,
-  opportunities,
-  recentUpdates,
-  suggestions
+    educationData,
+    experienceData,
+    opportunities,
+    recentUpdates,
+    softSkills,
+    studentData,
+    suggestions,
+    technicalSkills,
+    trainingData
 } from '../components/Students/data/mockData';
+import { supabase } from '../utils/api';
 
 /**
  * Utility to migrate mock data to Supabase
@@ -74,7 +74,7 @@ export const migrateMockDataToSupabase = async (studentId) => {
     }));
 
     const { error: trainingError } = await supabase
-      .from('training')
+      .from('trainings')
       .upsert(trainingRecords);
 
     if (trainingError) {
@@ -106,12 +106,14 @@ export const migrateMockDataToSupabase = async (studentId) => {
       name: skill.name,
       level: skill.level,
       verified: skill.verified,
-      icon: skill.icon
+      type: 'technical',
+      description: skill.description || null,
+      enabled: true
     }));
 
     const { error: techSkillsError } = await supabase
-      .from('technical_skills')
-      .upsert(technicalSkillRecords, { onConflict: 'student_id,name' });
+      .from('skills')
+      .upsert(technicalSkillRecords, { onConflict: 'student_id,name,type' });
 
     if (techSkillsError) {
       console.error('❌ Error migrating technical skills:', techSkillsError);
@@ -123,12 +125,14 @@ export const migrateMockDataToSupabase = async (studentId) => {
       student_id: finalStudentId,
       name: skill.name,
       level: skill.level,
-      type: skill.type
+      type: 'soft',
+      description: skill.description || null,
+      enabled: true
     }));
 
     const { error: softSkillsError } = await supabase
-      .from('soft_skills')
-      .upsert(softSkillRecords, { onConflict: 'student_id,name' });
+      .from('skills')
+      .upsert(softSkillRecords, { onConflict: 'student_id,name,type' });
 
     if (softSkillsError) {
       console.error('❌ Error migrating soft skills:', softSkillsError);
@@ -223,10 +227,10 @@ export const clearStudentData = async (studentId) => {
     // Delete in reverse order of dependencies
     await supabase.from('suggestions').delete().eq('student_id', studentId);
     await supabase.from('recent_updates').delete().eq('student_id', studentId);
-    await supabase.from('soft_skills').delete().eq('student_id', studentId);
-    await supabase.from('technical_skills').delete().eq('student_id', studentId);
+    await supabase.from('skills').delete().eq('student_id', studentId).eq('type', 'soft');
+    await supabase.from('skills').delete().eq('student_id', studentId).eq('type', 'technical');
     await supabase.from('experience').delete().eq('student_id', studentId);
-    await supabase.from('training').delete().eq('student_id', studentId);
+    await supabase.from('trainings').delete().eq('student_id', studentId);
     await supabase.from('education').delete().eq('student_id', studentId);
     await supabase.from('students').delete().eq('id', studentId);
 
