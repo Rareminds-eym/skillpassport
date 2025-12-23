@@ -16,6 +16,14 @@ import { Card, CardContent } from '../../components/Students/components/ui/card'
 import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 import { Label } from '../../components/Students/components/ui/label';
 import { generateAssessment, getCachedAssessment, cacheAssessment } from '../../services/assessmentGenerationService';
+import { 
+  createAssessmentAttempt, 
+  updateAssessmentProgress, 
+  completeAssessment,
+  checkAssessmentStatus 
+} from '../../services/externalAssessmentService';
+import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useAuth } from '../../context/AuthContext';
 
 /**
  * Dynamic Assessment Component
@@ -24,10 +32,17 @@ import { generateAssessment, getCachedAssessment, cacheAssessment } from '../../
 const DynamicAssessment = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   
   // Get course info from navigation state
   const courseName = location.state?.courseName || 'General Skills';
   const courseLevel = location.state?.level || 'Intermediate';
+  const courseId = location.state?.courseId;
+  const resumeAttempt = location.state?.resumeAttempt; // For resuming in-progress assessment
+  const preGeneratedQuestions = location.state?.preGeneratedQuestions; // For pre-generated questions
+  
+  // Get student data
+  const { studentData } = useStudentDataByEmail(user?.email, false);
   
   const [assessment, setAssessment] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -35,56 +50,281 @@ const DynamicAssessment = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [timeElapsed, setTimeElapsed] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(900); // 15 minutes default
   const [showResults, setShowResults] = useState(false);
   const [score, setScore] = useState(0);
+  const [attemptId, setAttemptId] = useState(null); // Track database attempt ID
+  const [isSaving, setIsSaving] = useState(false); // Track save status
+  const [loadedExistingAttempt, setLoadedExistingAttempt] = useState(null); // Store loaded existing attempt
+
+  // Check for existing in-progress attempt when page loads directly (not from AssessmentStart)
+  useEffect(() => {
+    const checkForExistingAttempt = async () => {
+      // Only check if:
+      // 1. No resumeAttempt was passed in location state
+      // 2. We have student data and course name
+      // 3. We haven't loaded an existing attempt yet
+      if (!resumeAttempt && loadedExistingAttempt === null && studentData?.id && courseName) {
+        console.log('🔍 DynamicAssessment: Checking for existing in-progress attempt...', {
+          studentId: studentData.id,
+          courseName: courseName
+        });
+        
+        const result = await checkAssessmentStatus(studentData.id, courseName);
+        
+        console.log('📊 DynamicAssessment: Check result:', result);
+        
+        if (result.status === 'in_progress' && result.attempt) {
+          console.log('✅ DynamicAssessment: Found existing in-progress attempt!', {
+            attemptId: result.attempt.id,
+            currentQuestionIndex: result.attempt.current_question_index,
+            totalQuestions: result.attempt.total_questions,
+            timeRemaining: result.attempt.time_remaining
+          });
+          setLoadedExistingAttempt(result.attempt);
+        } else if (result.status === 'completed') {
+          console.log('⚠️ DynamicAssessment: Assessment already completed');
+          alert('You have already completed this assessment');
+          navigate('/student/my-learning');
+          return;
+        } else {
+          console.log('ℹ️ DynamicAssessment: No existing attempt found, will create new one');
+          setLoadedExistingAttempt(false); // Mark as checked but no attempt found
+        }
+      }
+    };
+    
+    checkForExistingAttempt();
+  }, [studentData?.id, courseName, resumeAttempt, loadedExistingAttempt, navigate]);
 
   // Load or generate assessment
   useEffect(() => {
-    loadAssessment();
-  }, [courseName]);
+    console.log('🔄 DynamicAssessment: Load assessment effect triggered', {
+      resumeAttempt: resumeAttempt ? 'YES' : 'NO',
+      loadedExistingAttempt: loadedExistingAttempt === null ? 'NULL' : loadedExistingAttempt === false ? 'FALSE' : 'ATTEMPT_OBJECT'
+    });
+    
+    // Only load assessment after we've checked for existing attempts
+    // OR if resumeAttempt was passed directly
+    if (resumeAttempt || loadedExistingAttempt !== null) {
+      console.log('✅ DynamicAssessment: Conditions met, calling loadAssessment()');
+      loadAssessment();
+    } else {
+      console.log('⏳ DynamicAssessment: Waiting for existing attempt check...');
+    }
+  }, [courseName, resumeAttempt, loadedExistingAttempt]);
 
   // Debug: Log course info
   useEffect(() => {
     console.log('🎓 Assessment Page Loaded:', {
       courseName,
       courseLevel,
-      locationState: location.state
+      locationState: location.state,
+      resumeAttempt: resumeAttempt ? 'YES' : 'NO',
+      preGeneratedQuestions: preGeneratedQuestions ? 'YES' : 'NO'
     });
   }, [courseName, courseLevel, location.state]);
 
-  // Timer
+  // Timer - countdown for timed assessments
   useEffect(() => {
-    if (!loading && !showResults) {
+    if (!loading && !showResults && timeRemaining > 0) {
       const timer = setInterval(() => {
-        setTimeElapsed(prev => prev + 1);
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            // Time's up - auto submit
+            handleSubmit();
+            return 0;
+          }
+          return prev - 1;
+        });
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [loading, showResults]);
+  }, [loading, showResults, timeRemaining]);
+
+  // Auto-save progress every 10 seconds
+  useEffect(() => {
+    if (!loading && !showResults && attemptId && assessment) {
+      const autoSave = setInterval(() => {
+        const currentAnswer = answers[assessment.questions[currentQuestionIndex]?.id];
+        if (currentAnswer) {
+          console.log('💾 Auto-saving progress...');
+          updateAssessmentProgress(
+            attemptId,
+            currentQuestionIndex,
+            currentAnswer,
+            timeRemaining
+          );
+        }
+      }, 10000); // Every 10 seconds
+
+      return () => clearInterval(autoSave);
+    }
+  }, [loading, showResults, attemptId, currentQuestionIndex, answers, timeRemaining, assessment]);
 
   const loadAssessment = async () => {
+    console.log('📥 DynamicAssessment: loadAssessment() called');
     setLoading(true);
     setError(null);
 
     try {
-      // Try to load from cache first
+      // Determine which attempt to use: passed via state or loaded from database
+      const attemptToResume = resumeAttempt || (loadedExistingAttempt && loadedExistingAttempt !== false ? loadedExistingAttempt : null);
+      
+      console.log('🔍 DynamicAssessment: Checking attemptToResume:', {
+        hasResumeAttempt: !!resumeAttempt,
+        hasLoadedExistingAttempt: !!(loadedExistingAttempt && loadedExistingAttempt !== false),
+        attemptToResume: attemptToResume ? 'YES' : 'NO'
+      });
+      
+      // CASE 1: Resuming an in-progress assessment
+      if (attemptToResume) {
+        console.log('🔄 DynamicAssessment: CASE 1 - Resuming in-progress assessment:', {
+          attemptId: attemptToResume.id,
+          courseName: attemptToResume.course_name,
+          currentQuestionIndex: attemptToResume.current_question_index,
+          totalQuestions: attemptToResume.total_questions,
+          timeRemaining: attemptToResume.time_remaining
+        });
+        
+        // Restore assessment data from attempt
+        const restoredAssessment = {
+          course: attemptToResume.course_name,
+          level: attemptToResume.assessment_level,
+          questions: attemptToResume.questions
+        };
+        
+        console.log('📦 DynamicAssessment: Restored assessment:', {
+          course: restoredAssessment.course,
+          level: restoredAssessment.level,
+          questionsCount: restoredAssessment.questions?.length
+        });
+        
+        setAssessment(restoredAssessment);
+        setAttemptId(attemptToResume.id);
+        
+        // Restore progress
+        const restoredQuestionIndex = attemptToResume.current_question_index || 0;
+        const restoredTimeRemaining = attemptToResume.time_remaining || 900;
+        
+        console.log('⏮️ DynamicAssessment: Restoring progress:', {
+          questionIndex: restoredQuestionIndex,
+          timeRemaining: restoredTimeRemaining
+        });
+        
+        setCurrentQuestionIndex(restoredQuestionIndex);
+        setTimeRemaining(restoredTimeRemaining);
+        
+        // Restore answers
+        const restoredAnswers = {};
+        attemptToResume.student_answers?.forEach((ans, idx) => {
+          if (ans.selected_answer !== null) {
+            const questionId = attemptToResume.questions[idx]?.id;
+            if (questionId) {
+              restoredAnswers[questionId] = ans.selected_answer;
+            }
+          }
+        });
+        setAnswers(restoredAnswers);
+        
+        console.log('✅ DynamicAssessment: Assessment resumed successfully!', {
+          questionIndex: restoredQuestionIndex,
+          answersRestored: Object.keys(restoredAnswers).length,
+          timeRemaining: restoredTimeRemaining
+        });
+        
+        setLoading(false);
+        return;
+      }
+
+      console.log('➡️ DynamicAssessment: No attempt to resume, proceeding to other cases...');
+
+      // CASE 2: Using pre-generated questions
+      if (preGeneratedQuestions && Array.isArray(preGeneratedQuestions)) {
+        console.log('✅ Using pre-generated questions:', preGeneratedQuestions.length);
+        
+        const generatedAssessment = {
+          course: courseName,
+          level: courseLevel,
+          questions: preGeneratedQuestions
+        };
+        
+        setAssessment(generatedAssessment);
+        
+        // Create database attempt if user is logged in
+        if (studentData?.id) {
+          const result = await createAssessmentAttempt({
+            studentId: studentData.id,
+            courseName: courseName,
+            courseId: courseId,
+            assessmentLevel: courseLevel,
+            questions: preGeneratedQuestions
+          });
+          
+          if (result.success) {
+            setAttemptId(result.data.id);
+            console.log('✅ Database attempt created:', result.data.id);
+          } else {
+            console.warn('⚠️ Could not create database attempt:', result.error);
+          }
+        }
+        
+        setLoading(false);
+        return;
+      }
+
+      // CASE 3: Try to load from cache first
       const cached = getCachedAssessment(courseName);
       
       if (cached) {
         console.log('✅ Using cached assessment for:', courseName);
         console.log('📅 Cached on:', new Date(cached.cachedAt).toLocaleString());
         setAssessment(cached);
+        
+        // Create database attempt if user is logged in
+        if (studentData?.id) {
+          const result = await createAssessmentAttempt({
+            studentId: studentData.id,
+            courseName: courseName,
+            courseId: courseId,
+            assessmentLevel: courseLevel,
+            questions: cached.questions
+          });
+          
+          if (result.success) {
+            setAttemptId(result.data.id);
+            console.log('✅ Database attempt created:', result.data.id);
+          }
+        }
+        
         setLoading(false);
         return;
       }
 
-      // Generate new assessment
+      // CASE 4: Generate new assessment
       console.log('🔄 No cache found. Generating new assessment for:', courseName);
-      const generated = await generateAssessment(courseName, courseLevel, 15);
+      const generated = await generateAssessment(courseName, courseLevel, 15, courseId);
       
       console.log('✅ Assessment generated successfully');
       setAssessment(generated);
       cacheAssessment(courseName, generated);
+      
+      // Create database attempt if user is logged in
+      if (studentData?.id) {
+        const result = await createAssessmentAttempt({
+          studentId: studentData.id,
+          courseName: courseName,
+          courseId: courseId,
+          assessmentLevel: courseLevel,
+          questions: generated.questions
+        });
+        
+        if (result.success) {
+          setAttemptId(result.data.id);
+          console.log('✅ Database attempt created:', result.data.id);
+        }
+      }
+      
       setLoading(false);
     } catch (err) {
       console.error('❌ Error loading assessment:', err);
@@ -98,10 +338,37 @@ const DynamicAssessment = () => {
       ...prev,
       [questionId]: answer
     }));
+
+    // Don't save here - we'll save when user clicks Next
+    // This prevents overwriting the progress saved by handleNext
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentQuestionIndex < assessment.questions.length - 1) {
+      // Save progress before moving to next question
+      if (attemptId) {
+        setIsSaving(true);
+        const currentAnswer = answers[assessment.questions[currentQuestionIndex]?.id];
+        if (currentAnswer) {
+          console.log('💾 Saving progress before moving to next question...', {
+            currentQuestionIndex,
+            nextQuestionIndex: currentQuestionIndex + 1,
+            answer: currentAnswer
+          });
+          
+          // Save the CURRENT question's answer with the NEXT question index
+          // So when user resumes, they start from the next question
+          await updateAssessmentProgress(
+            attemptId,
+            currentQuestionIndex, // Current question index (the one we just answered)
+            currentAnswer,
+            timeRemaining,
+            currentQuestionIndex + 1 // Next question index (where to resume)
+          );
+        }
+        setIsSaving(false);
+      }
+
       setCurrentQuestionIndex(prev => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -116,7 +383,7 @@ const DynamicAssessment = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Calculate score
     let correctCount = 0;
     assessment.questions.forEach(q => {
@@ -128,6 +395,19 @@ const DynamicAssessment = () => {
 
     const percentage = Math.round((correctCount / assessment.questions.length) * 100);
     setScore(percentage);
+
+    // Complete assessment in database
+    if (attemptId) {
+      const timeTaken = 900 - timeRemaining; // Calculate time taken
+      const result = await completeAssessment(attemptId, timeTaken);
+      
+      if (result.success) {
+        console.log('✅ Assessment completed in database');
+      } else {
+        console.error('❌ Failed to complete assessment:', result.error);
+      }
+    }
+
     setShowResults(true);
   };
 
@@ -238,7 +518,7 @@ const DynamicAssessment = () => {
                     <div className="text-sm text-gray-600">Correct</div>
                   </div>
                   <div className="bg-white rounded-xl p-4">
-                    <div className="text-2xl font-bold text-gray-900">{formatTime(timeElapsed)}</div>
+                    <div className="text-2xl font-bold text-gray-900">{formatTime(900 - timeRemaining)}</div>
                     <div className="text-sm text-gray-600">Time Taken</div>
                   </div>
                 </div>
@@ -256,8 +536,9 @@ const DynamicAssessment = () => {
                       setShowResults(false);
                       setCurrentQuestionIndex(0);
                       setAnswers({});
-                      setTimeElapsed(0);
+                      setTimeRemaining(900); // Reset timer to 15 minutes
                       setScore(0);
+                      setAttemptId(null); // Clear attempt ID for new attempt
                     }}
                     className="px-8 bg-blue-600 hover:bg-blue-700"
                   >
@@ -284,7 +565,7 @@ const DynamicAssessment = () => {
         <div className="mb-6 flex items-center justify-between">
           <button
             onClick={() => {
-              if (window.confirm('Are you sure you want to exit? Your progress will be lost.')) {
+              if (window.confirm('Are you sure you want to exit? Your progress will be saved.')) {
                 navigate(-1);
               }
             }}
@@ -295,9 +576,17 @@ const DynamicAssessment = () => {
           </button>
 
           <div className="flex items-center gap-4">
+            {/* Save indicator */}
+            {isSaving && (
+              <div className="flex items-center gap-2 text-sm text-blue-600">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Saving...</span>
+              </div>
+            )}
+            
             <div className="flex items-center gap-2 text-gray-600">
               <Clock className="w-5 h-5" />
-              <span className="font-medium">{formatTime(timeElapsed)}</span>
+              <span className="font-medium">{formatTime(timeRemaining)}</span>
             </div>
             
             {/* Debug: Regenerate button */}
@@ -323,6 +612,22 @@ const DynamicAssessment = () => {
 
         {/* Progress Bar */}
         <div className="mb-8">
+          {/* Resume banner */}
+          {(resumeAttempt || (loadedExistingAttempt && loadedExistingAttempt !== false)) && (
+            <div className="mb-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-blue-800 mb-1">Assessment Resumed</h3>
+                  <p className="text-xs text-blue-700">
+                    You're continuing from question {currentQuestionIndex + 1}. 
+                    Your previous answers have been restored.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700">
               Question {currentQuestionIndex + 1} of {assessment.questions.length}

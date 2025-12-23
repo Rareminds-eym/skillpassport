@@ -13,6 +13,11 @@ import { supabase } from '../lib/supabaseClient';
  */
 export async function checkAssessmentStatus(studentId, courseName) {
   try {
+    console.log('🔍 checkAssessmentStatus: Fetching from database...', {
+      studentId,
+      courseName
+    });
+    
     const { data, error } = await supabase
       .from('external_assessment_attempts')
       .select('*')
@@ -25,8 +30,18 @@ export async function checkAssessmentStatus(studentId, courseName) {
     }
 
     if (!data) {
+      console.log('ℹ️ checkAssessmentStatus: No attempt found');
       return { status: 'not_started', attempt: null };
     }
+
+    console.log('📊 checkAssessmentStatus: Found attempt in database:', {
+      id: data.id,
+      status: data.status,
+      current_question_index: data.current_question_index,
+      time_remaining: data.time_remaining,
+      last_activity_at: data.last_activity_at,
+      answeredCount: data.student_answers?.filter(a => a.selected_answer !== null).length
+    });
 
     return {
       status: data.status, // 'in_progress' or 'completed'
@@ -108,17 +123,21 @@ export async function createAssessmentAttempt(attemptData) {
 /**
  * Update assessment progress (save answer and move forward)
  * @param {string} attemptId - Attempt UUID
- * @param {number} questionIndex - Current question index
+ * @param {number} questionIndex - Index of question being answered (0-based)
  * @param {string} answer - Selected answer
  * @param {number} timeRemaining - Seconds remaining
+ * @param {number} resumeFromIndex - Index to resume from (optional, defaults to questionIndex + 1)
  * @returns {Promise<{success: boolean}>}
  */
-export async function updateAssessmentProgress(attemptId, questionIndex, answer, timeRemaining) {
+export async function updateAssessmentProgress(attemptId, questionIndex, answer, timeRemaining, resumeFromIndex = null) {
+  const resumeIndex = resumeFromIndex !== null ? resumeFromIndex : questionIndex + 1;
+  
   console.log('📡 updateAssessmentProgress called:', {
     attemptId,
     questionIndex,
     answer,
-    timeRemaining
+    timeRemaining,
+    resumeFromIndex: resumeIndex
   });
 
   try {
@@ -140,33 +159,41 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
       questionsCount: currentAttempt.questions?.length
     });
 
-    // Update the answer for current question
+    // Update the answer for the question at questionIndex
     const updatedAnswers = [...currentAttempt.student_answers];
     const question = currentAttempt.questions[questionIndex];
+    
+    if (!question) {
+      console.error('❌ Question not found at index:', questionIndex);
+      throw new Error(`Question not found at index ${questionIndex}`);
+    }
     
     console.log('📝 Updating answer for question:', {
       questionIndex,
       questionId: question.id,
       answer,
-      correctAnswer: question.correctAnswer
+      correctAnswer: question.correctAnswer || question.correct_answer,
+      willResumeFrom: resumeIndex
     });
     
     updatedAnswers[questionIndex] = {
       question_id: question.id,
       selected_answer: answer,
-      is_correct: answer === question.correctAnswer,
+      is_correct: answer === (question.correctAnswer || question.correct_answer),
       time_taken: updatedAnswers[questionIndex]?.time_taken || 0
     };
 
-    console.log('💾 Saving to database...');
+    console.log('💾 Saving to database...', {
+      updatingAnswerAt: questionIndex,
+      resumeFromIndex: resumeIndex
+    });
     
-    // Update database - save current question index (not +1)
-    // This allows proper resuming from the exact question
+    // Update database - save where user should resume from
     const { error: updateError } = await supabase
       .from('external_assessment_attempts')
       .update({
         student_answers: updatedAnswers,
-        current_question_index: questionIndex,
+        current_question_index: resumeIndex, // Save where to resume from
         time_remaining: timeRemaining,
         last_activity_at: new Date().toISOString()
       })
@@ -177,7 +204,10 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
       throw updateError;
     }
 
-    console.log('✅ Database updated successfully!');
+    console.log('✅ Database updated successfully!', {
+      answeredQuestionIndex: questionIndex,
+      savedResumeIndex: resumeIndex
+    });
     return { success: true };
   } catch (error) {
     console.error('❌ Error updating assessment progress:', error);
