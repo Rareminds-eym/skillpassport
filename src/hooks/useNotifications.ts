@@ -64,28 +64,28 @@ async function resolveUserId(identifier: string): Promise<string | null> {
   // Try educators first
   const { data: educatorData } = await supabase
     .from("school_educators")
-    .select("user_id")
+    .select("id")
     .ilike("email", identifier)
     .maybeSingle();
 
-  if (educatorData?.user_id) return educatorData.user_id;
+  if (educatorData?.id) return educatorData.id;
 
   // Try students
   const { data: studentData } = await supabase
     .from("students")
-    .select("user_id")
+    .select("id")
     .ilike("email", identifier)
     .maybeSingle();
 
-  if (studentData?.user_id) return studentData.user_id;
+  if (studentData?.id) return studentData.id;
 
   // Try recruiters
   const { data: recruiter } = await supabase
     .from("recruiters")
-    .select("user_id")
+    .select("id")
     .eq("email", identifier)
     .maybeSingle();
-  if (recruiter?.user_id) return recruiter.user_id;
+  if (recruiter?.id) return recruiter.id;
 
   // Try users (admins)
   const { data: userData } = await supabase
