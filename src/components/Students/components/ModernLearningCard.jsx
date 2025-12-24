@@ -250,20 +250,21 @@ const ModernLearningCard = ({
           )}
 
           {/* Certificate or Continue Button */}
-          {item.certificateUrl ? (
-            <button
-              onClick={() => window.open(item.certificateUrl, "_blank")}
-              className={`
-                px-6 py-2.5 rounded-full font-medium text-sm
-                flex items-center gap-2 transition-all duration-300
-                ${isCompleted
-                  ? "bg-green-500 text-white hover:bg-green-600"
-                  : "bg-blue-500 text-white hover:bg-blue-600"}
-              `}
-            >
-              <Award className="w-4 h-4" />
-              Certificate
-            </button>
+          {isCompleted ? (
+            item.certificateUrl ? (
+              <button
+                onClick={() => window.open(item.certificateUrl, "_blank")}
+                className="px-6 py-2.5 rounded-full font-medium text-sm bg-green-500 text-white hover:bg-green-600 transition-all duration-300 flex items-center gap-2"
+              >
+                <Award className="w-4 h-4" />
+                Certificate
+              </button>
+            ) : (
+              <div className="px-6 py-2.5 rounded-full font-medium text-sm bg-green-100 text-green-700 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                Completed
+              </div>
+            )
           ) : isCourseEnrollment ? (
             <button 
               onClick={handleContinue}
