@@ -23,7 +23,7 @@ import WarningModal from "../../components/assessment/test/WarningModal";
 import TimeWarningModal from "../../components/assessment/test/TimeWarningModal";
 import { useAuth } from "../../context/AuthContext";
 import { useTest } from "../../context/assessment/TestContext";
-import { updateAssessmentProgress, createAssessmentAttempt } from "../../services/externalAssessmentService";
+import { createAssessmentAttempt, updateAssessmentProgress } from "../../services/externalAssessmentService";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 
 interface TestAttempt {
@@ -62,6 +62,12 @@ const TestPage: React.FC = () => {
   const [attemptId, setAttemptId] = useState<string | null>(
     location.state?.resumeAttempt?.id || null
   );
+
+  // Get student data for saving progress
+  const { studentData } = useStudentDataByEmail(user?.email || '', false);
+  
+  // Track attempt ID for progress saving
+  const [attemptId, setAttemptId] = useState<string | null>(null);
 
   // Core state
 
@@ -133,6 +139,9 @@ const TestPage: React.FC = () => {
           setShowPermissions(false);
           setTestStarted(true);
           console.log('✅ Set testStarted: true');
+          
+          // Set the attempt ID for progress saving
+          setAttemptId(resumeAttempt.id);
           
           // Transform saved questions
           const transformedQuestions = resumeAttempt.questions.map((q: any) => ({
@@ -605,11 +614,39 @@ const TestPage: React.FC = () => {
     setShowPermissions(true);
   };
 
-  const handlePermissionsGranted = () => {
+  const handlePermissionsGranted = async () => {
     setShowInstructions(false);
     setShowPermissions(false);
     setTestStarted(true);
     console.log("Assessment started for course:", courseId);
+    
+    // Create assessment attempt in database if not resuming
+    if (!attemptId && studentData?.id && questions.length > 0) {
+      console.log('📝 Creating new assessment attempt...');
+      const result = await createAssessmentAttempt({
+        studentId: studentData.id,
+        courseName: certificateName,
+        courseId: courseId,
+        assessmentLevel: location.state?.level || 'Intermediate',
+        questions: questions.map(q => ({
+          id: q.id,
+          question: q.text || q.question,
+          options: q.options,
+          correct_answer: q.correctAnswer,
+          type: q.type || 'mcq',
+          difficulty: q.difficulty,
+          skill_tag: q.skillTag,
+          estimated_time: q.estimatedTime
+        }))
+      });
+      
+      if (result.success && result.data) {
+        setAttemptId(result.data.id);
+        console.log('✅ Assessment attempt created:', result.data.id);
+      } else {
+        console.error('❌ Failed to create attempt:', result.error);
+      }
+    }
   };
 
   // Submit test attempt
@@ -972,46 +1009,18 @@ const TestPage: React.FC = () => {
                   key={index}
                   whileHover={{ scale: 1.02 }}
                   onClick={async () => {
-                    console.log('🖱️ Answer clicked:', option);
-                    
-                    // Update local state first
                     const newAnswers = [...selectedAnswers];
                     newAnswers[currentQuestion] = option;
                     setSelectedAnswers(newAnswers);
-
-                    // Save to database immediately - SIMPLIFIED VERSION
-                    if (!attemptId) {
-                      console.error('❌ No attemptId - cannot save');
-                      return;
-                    }
-
-                    if (!testStarted) {
-                      console.error('❌ Test not started - cannot save');
-                      return;
-                    }
-
-                    try {
-                      console.log('💾 Saving to database...', {
-                        attemptId,
-                        questionIndex: currentQuestion,
-                        answer: option
-                      });
-
-                      // Call the save function
-                      const result = await updateAssessmentProgress(
+                    
+                    // Auto-save progress to database
+                    if (attemptId) {
+                      await updateAssessmentProgress(
                         attemptId,
                         currentQuestion,
                         option,
                         totalTimeLeft
                       );
-
-                      if (result.success) {
-                        console.log(`✅ SAVED! Q${currentQuestion + 1}: ${option}`);
-                      } else {
-                        console.error('❌ Save failed:', result);
-                      }
-                    } catch (error) {
-                      console.error('❌ Error saving:', error);
                     }
                   }}
                   className={`w-full p-4 rounded-lg border-2 transition-all ${
