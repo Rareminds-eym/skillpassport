@@ -12,8 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   MoreHorizontal,
-  Clock,
-  Sparkles
+  Clock
 } from 'lucide-react';
 import { Conversation } from '../hooks/useCareerConversations';
 
@@ -115,7 +114,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-500" />
+            <img src="/RMLogo.webp" alt="RareMinds Logo" className="w-5 h-5" />
             <span className="font-semibold text-gray-900">Career AI</span>
           </div>
           <button

@@ -29,6 +29,7 @@ const ModernLearningCard = ({
   const { user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
   const [assessmentCompleted, setAssessmentCompleted] = useState(false);
+  const [assessmentScore, setAssessmentScore] = useState(null);
   const [checkingAssessment, setCheckingAssessment] = useState(true);
   
   const userEmail = user?.email;
@@ -37,22 +38,20 @@ const ModernLearningCard = ({
   // Check if this is a course enrollment (started from course player)
   const isCourseEnrollment = item.type === 'course_enrollment' || item.source === 'course_enrollment';
 
-  // Calculate progress
-  const progress =
-    item.status === "completed"
-      ? 100
-      : item.totalModules > 0
-      ? Math.round(((item.completedModules || 0) / item.totalModules) * 100)
-      : item.progress || 0;
-
-  const isCompleted = item.status === "completed";
-  
   // Check if course is from RareMinds platform (internal) or external
-  // Internal courses: have course_id (linking to courses table) AND source='internal_course'
-  // External courses: everything else (manual, external_course, or no course_id)
-  // Course enrollments are always internal platform courses
   const isInternalCourse = isCourseEnrollment || !!(item.course_id && item.source === "internal_course");
   const isExternalCourse = !isInternalCourse;
+
+  // Calculate progress - for external courses, use assessment score if completed
+  const progress = isExternalCourse && assessmentScore !== null
+    ? assessmentScore
+    : item.status === "completed"
+      ? 100
+      : item.totalModules > 0
+        ? Math.round(((item.completedModules || 0) / item.totalModules) * 100)
+        : item.progress || 0;
+
+  const isCompleted = item.status === "completed";
 
   // Check if assessment is already completed or in progress
   useEffect(() => {
@@ -61,6 +60,10 @@ const ModernLearningCard = ({
         setCheckingAssessment(true);
         const result = await checkAssessmentStatus(studentData.id, item.course);
         setAssessmentCompleted(result.status === 'completed');
+        // Store the assessment score if completed
+        if (result.status === 'completed' && result.attempt?.score !== undefined) {
+          setAssessmentScore(result.attempt.score);
+        }
         setCheckingAssessment(false);
       } else {
         setCheckingAssessment(false);
@@ -195,7 +198,9 @@ const ModernLearningCard = ({
         {/* Progress Section */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-600">Progress</span>
+            <span className="text-sm font-medium text-gray-600">
+              {isExternalCourse && assessmentScore !== null ? 'Assessment Score' : 'Progress'}
+            </span>
             <span className={`text-lg font-bold ${isCompleted ? "text-blue-600" : "text-blue-600"}`}>
               {progress}%
             </span>
@@ -203,7 +208,9 @@ const ModernLearningCard = ({
           <div className={`h-2.5 rounded-full overflow-hidden ${isCompleted ? "bg-blue-200" : "bg-blue-200"}`}>
             <div
               className={`h-full rounded-full transition-all duration-500 ease-out ${
-                isCompleted ? "bg-blue-500" : "bg-blue-500"
+                isExternalCourse && assessmentScore !== null
+                  ? assessmentScore >= 60 ? "bg-green-500" : "bg-orange-500"
+                  : isCompleted ? "bg-blue-500" : "bg-blue-500"
               }`}
               style={{ width: `${progress}%` }}
             />
