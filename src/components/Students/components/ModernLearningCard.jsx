@@ -42,15 +42,43 @@ const ModernLearningCard = ({
   const isInternalCourse = isCourseEnrollment || !!(item.course_id && item.source === "internal_course");
   const isExternalCourse = !isInternalCourse;
 
-  // Calculate progress - for external courses, use assessment score if completed
-  const progress = isExternalCourse && assessmentScore !== null
-    ? assessmentScore
-    : item.status === "completed"
-      ? 100
-      : item.totalModules > 0
-        ? Math.round(((item.completedModules || 0) / item.totalModules) * 100)
-        : item.progress || 0;
+  // Calculate progress based on course type
+  // - External courses: use assessment score if taken, else 0
+  // - Internal courses (enrollments): use progress from enrollment data
+  // - Other trainings: calculate from modules
+  const calculateProgress = () => {
+    // External courses - show assessment score or 0
+    if (isExternalCourse) {
+      // If assessment was taken, show the score (even if completed status)
+      if (assessmentScore !== null) {
+        return assessmentScore;
+      }
+      // No assessment taken yet - show 0
+      return 0;
+    }
+    
+    // Course enrollments - use the progress field directly from enrollment
+    if (isCourseEnrollment) {
+      if (item.status === "completed") return 100;
+      // Use progress from enrollment, or calculate from lessons
+      if (item.progress !== undefined && item.progress !== null) {
+        return Math.round(item.progress);
+      }
+      if (item.totalModules > 0) {
+        return Math.round(((item.completedModules || 0) / item.totalModules) * 100);
+      }
+      return 0;
+    }
+    
+    // Regular trainings (internal courses not from enrollment)
+    if (item.status === "completed") return 100;
+    if (item.totalModules > 0) {
+      return Math.round(((item.completedModules || 0) / item.totalModules) * 100);
+    }
+    return item.progress || 0;
+  };
 
+  const progress = calculateProgress();
   const isCompleted = item.status === "completed";
 
   // Check if assessment is already completed or in progress
