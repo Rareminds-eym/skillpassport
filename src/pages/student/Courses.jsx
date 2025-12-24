@@ -15,14 +15,13 @@ import { useNavigate } from 'react-router-dom';
 import SearchBar from '../../components/common/SearchBar';
 import CourseDetailModal from '../../components/student/courses/CourseDetailModal';
 import WeeklyLearningTracker from '../../components/student/WeeklyLearningTracker';
+import CourseAdvancedFilters from '../../components/Students/components/CourseAdvancedFilters';
 import { Badge } from '../../components/Students/components/ui/badge';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { courseEnrollmentService } from '../../services/courseEnrollmentService';
-import SearchBar from '../../components/common/SearchBar';
-import CourseAdvancedFilters from '../../components/Students/components/CourseAdvancedFilters';
 
 const Courses = () => {
   const navigate = useNavigate();
