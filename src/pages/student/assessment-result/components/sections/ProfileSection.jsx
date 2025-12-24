@@ -8,12 +8,13 @@ const getScoreColor = (percentage) => {
 };
 
 const ProfileSection = ({ results, riasecNames }) => {
-    const { riasec, aptitude, bigFive, workValues } = results;
+    const { riasec, aptitude, bigFive, workValues, profileSnapshot } = results;
 
     // Debug logging for aptitude data
     console.log('=== ProfileSection Debug ===');
     console.log('Aptitude object:', aptitude);
     console.log('Aptitude scores:', aptitude?.scores);
+    console.log('ProfileSnapshot:', profileSnapshot);
 
     return (
         <div className="space-y-6">
@@ -81,54 +82,83 @@ const ProfileSection = ({ results, riasecNames }) => {
                             <Zap className="w-6 h-6 text-indigo-600" />
                         </div>
                         <div>
-                            <h3 className="font-bold text-gray-900 text-xl">Cognitive Abilities</h3>
-                            <p className="text-base text-gray-500">Multi-Aptitude</p>
+                            <h3 className="font-bold text-gray-900 text-xl">Cognitive Strengths</h3>
+                            <p className="text-base text-gray-500">Your natural abilities</p>
                         </div>
                     </div>
-                    <div className="space-y-3">
-                        {aptitude?.scores ? Object.entries(aptitude.scores).map(([domain, data]) => {
-                            const configs = {
-                                verbal: { n: 'Verbal Reasoning', Icon: FileText },
-                                numerical: { n: 'Numerical Ability', Icon: Calculator },
-                                abstract: { n: 'Abstract Reasoning', Icon: Puzzle },
-                                spatial: { n: 'Spatial Reasoning', Icon: Ruler },
-                                clerical: { n: 'Clerical Speed', Icon: Bolt }
-                            };
-                            const cfg = configs[domain.toLowerCase()] || { n: domain, Icon: BarChart3 };
-                            const correct = typeof data === 'object' ? (data.correct || 0) : 0;
-                            const total = typeof data === 'object' ? (data.total || 1) : 1;
-                            const pct = typeof data === 'object'
-                                ? (data.percentage || Math.round((correct / total) * 100))
-                                : (typeof data === 'number' ? data : 0);
-                            const scoreColor = getScoreColor(pct);
-                            const IconComponent = cfg.Icon;
-                            return (
-                                <div key={domain} className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-lg ${scoreColor.light} flex items-center justify-center shrink-0`}>
-                                        <IconComponent className={`w-5 h-5 ${scoreColor.text}`} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="text-lg font-medium text-gray-700 truncate">{cfg.n}</span>
-                                            <span className={`text-base font-bold ${scoreColor.text} ml-2`}>{correct}/{total}</span>
+
+                    {/* For high school: display aptitudeStrengths from profileSnapshot */}
+                    {profileSnapshot?.aptitudeStrengths && profileSnapshot.aptitudeStrengths.length > 0 ? (
+                        <div className="space-y-4">
+                            {profileSnapshot.aptitudeStrengths.map((strength, index) => (
+                                <div key={index} className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border border-indigo-100">
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center shrink-0 mt-0.5">
+                                            <Star className="w-4 h-4 text-white fill-white" />
                                         </div>
-                                        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                                            <div className={`h-full rounded-full ${scoreColor.bg}`} style={{ width: `${pct}%` }} />
+                                        <div className="flex-1">
+                                            <h4 className="font-bold text-gray-900 text-lg mb-1">{strength.name}</h4>
+                                            <p className="text-gray-600 text-base leading-relaxed">{strength.description}</p>
                                         </div>
                                     </div>
-                                    <span className={`text-base font-bold px-2 py-1 rounded ${scoreColor.light} ${scoreColor.text} shrink-0`}>{pct}%</span>
                                 </div>
-                            );
-                        }) : <p className="text-gray-500 italic text-center py-4 text-base">No aptitude data available</p>}
-                    </div>
-                    {aptitude?.topStrengths && (
-                        <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-2">
-                            {aptitude.topStrengths.map((s, i) => (
-                                <span key={i} className="px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-base font-semibold flex items-center gap-1">
-                                    <Award className="w-4 h-4" /> {s}
-                                </span>
                             ))}
                         </div>
+                    ) : aptitude?.scores ? (
+                        /* For after12: display test scores with progress bars */
+                        <>
+                            <div className="space-y-3">
+                                {Object.entries(aptitude.scores).map(([domain, data]) => {
+                                    const configs = {
+                                        verbal: { n: 'Verbal Reasoning', Icon: FileText },
+                                        numerical: { n: 'Numerical Ability', Icon: Calculator },
+                                        abstract: { n: 'Abstract Reasoning', Icon: Puzzle },
+                                        spatial: { n: 'Spatial Reasoning', Icon: Ruler },
+                                        clerical: { n: 'Clerical Speed', Icon: Bolt }
+                                    };
+                                    const cfg = configs[domain.toLowerCase()] || { n: domain, Icon: BarChart3 };
+
+                                    // After12: test-based (correct/total)
+                                    const correct = typeof data === 'object' ? (data.correct || 0) : 0;
+                                    const total = typeof data === 'object' ? (data.total || 1) : 1;
+                                    const scoreText = `${correct}/${total}`;
+                                    const pct = typeof data === 'object'
+                                        ? (data.percentage || Math.round((correct / total) * 100))
+                                        : (typeof data === 'number' ? data : 0);
+
+                                    const scoreColor = getScoreColor(pct);
+                                    const IconComponent = cfg.Icon;
+                                    return (
+                                        <div key={domain} className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-lg ${scoreColor.light} flex items-center justify-center shrink-0`}>
+                                                <IconComponent className={`w-5 h-5 ${scoreColor.text}`} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="text-lg font-medium text-gray-700 truncate">{cfg.n}</span>
+                                                    <span className={`text-base font-bold ${scoreColor.text} ml-2`}>{scoreText}</span>
+                                                </div>
+                                                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                                                    <div className={`h-full rounded-full ${scoreColor.bg}`} style={{ width: `${pct}%` }} />
+                                                </div>
+                                            </div>
+                                            <span className={`text-base font-bold px-2 py-1 rounded ${scoreColor.light} ${scoreColor.text} shrink-0`}>{pct}%</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {aptitude?.topStrengths && (
+                                <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-2">
+                                    {aptitude.topStrengths.map((s, i) => (
+                                        <span key={i} className="px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-base font-semibold flex items-center gap-1">
+                                            <Award className="w-4 h-4" /> {s}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <p className="text-gray-500 italic text-center py-4 text-base">No cognitive data available</p>
                     )}
                 </div>
 

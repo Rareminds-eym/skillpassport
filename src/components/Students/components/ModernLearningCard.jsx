@@ -23,6 +23,7 @@ import { checkAssessmentStatus } from "../../../services/externalAssessmentServi
 const ModernLearningCard = ({
   item,
   onEdit,
+  onContinue,
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -103,8 +104,11 @@ const ModernLearningCard = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Inner Colored Card */}
-      <div className={`rounded-2xl p-6 ${isCompleted ? "bg-green-50" : "bg-blue-50"}`}>
+      {/* Colored Left Border */}
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
+      
+      {/* Inner Card - White Background */}
+      <div className="rounded-2xl p-6 bg-white">
         {/* Top Row - Status Badge & Edit */}
         <div className="flex items-center justify-between mb-4">
           {/* Status Badge - Top Left */}
@@ -192,14 +196,14 @@ const ModernLearningCard = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-600">Progress</span>
-            <span className={`text-lg font-bold ${isCompleted ? "text-green-600" : "text-blue-600"}`}>
+            <span className={`text-lg font-bold ${isCompleted ? "text-blue-600" : "text-blue-600"}`}>
               {progress}%
             </span>
           </div>
-          <div className={`h-2.5 rounded-full overflow-hidden ${isCompleted ? "bg-green-200" : "bg-blue-200"}`}>
+          <div className={`h-2.5 rounded-full overflow-hidden ${isCompleted ? "bg-blue-200" : "bg-blue-200"}`}>
             <div
               className={`h-full rounded-full transition-all duration-500 ease-out ${
-                isCompleted ? "bg-green-500" : "bg-blue-500"
+                isCompleted ? "bg-blue-500" : "bg-blue-500"
               }`}
               style={{ width: `${progress}%` }}
             />
@@ -209,7 +213,15 @@ const ModernLearningCard = ({
 
       {/* Footer Section - Outside the colored card, in white area */}
       <div className="px-3 py-4 flex items-center justify-between">
-        {/* Modules Count with Assessment Button */}
+        {/* Modules Count */}
+        <div className="text-sm text-gray-700">
+          Modules:{" "}
+          <span className="font-bold text-gray-900">
+            {item.completedModules || 0}/{item.totalModules || 0}
+          </span>
+        </div>
+        
+        {/* Button Section */}
         <div className="flex items-center gap-3">
           <div className="text-sm text-gray-700">
             {isCourseEnrollment ? 'Lessons' : 'Modules'}:{" "}
@@ -243,7 +255,6 @@ const ModernLearningCard = ({
               </button>
             )
           )}
-        </div>
 
         {/* Certificate or Continue Button */}
         {item.certificateUrl ? (

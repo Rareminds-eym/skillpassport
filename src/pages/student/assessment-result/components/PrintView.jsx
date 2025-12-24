@@ -18,7 +18,18 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
     const { riasec, aptitude, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote } = results;
 
     // Determine if this is a simplified assessment (middle/high school)
-    const isSimplifiedAssessment = gradeLevel === 'middle' || gradeLevel === 'highschool';
+    // Check both gradeLevel prop AND presence of profileSnapshot (which only exists for middle/high school)
+    const isSimplifiedAssessment =
+        gradeLevel === 'middle' ||
+        gradeLevel === 'highschool' ||
+        (results.profileSnapshot && (results.profileSnapshot.aptitudeStrengths || results.profileSnapshot.keyPatterns));
+
+    // Debug logging
+    console.log('=== PrintView Debug ===');
+    console.log('Grade Level:', gradeLevel);
+    console.log('Is Simplified Assessment:', isSimplifiedAssessment);
+    console.log('Has profileSnapshot:', !!results.profileSnapshot);
+    console.log('Has aptitudeStrengths:', !!results.profileSnapshot?.aptitudeStrengths);
     
     // Default student info if not provided
     const safeStudentInfo = {
@@ -402,10 +413,10 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
                         <p style={{fontSize: '9px', color: '#6b7280', fontStyle: 'italic', margin: '0'}}>{riasec?.interpretation}</p>
                     </div>
 
-                    {/* Aptitude Scores - Only for after12 OR high school with aptitude sampling */}
-                    {(!isSimplifiedAssessment || (gradeLevel === 'highschool' && aptitude?.scores)) && (
+                    {/* Cognitive Abilities - Only for after12 (college students with MCQ tests) */}
+                    {!isSimplifiedAssessment && aptitude?.scores && (
                     <div>
-                        <h3 style={styles.subTitle}>{isSimplifiedAssessment ? 'Aptitude Sampling' : 'Cognitive Abilities'}</h3>
+                        <h3 style={styles.subTitle}>Cognitive Abilities</h3>
                         <table style={styles.table}>
                             <thead>
                                 <tr>
@@ -415,7 +426,7 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
                                 </tr>
                             </thead>
                             <tbody>
-                                {aptitude?.scores && Object.entries(aptitude.scores).map(([domain, data]) => {
+                                {Object.entries(aptitude.scores).map(([domain, data]) => {
                                     const pct = data.percentage || 0;
                                     const scoreStyle = getScoreStyle(pct);
                                     return (
@@ -491,10 +502,229 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
                 </div>
                 )}
 
+                {/* Character Strengths - ONLY for middle/high school */}
+                {isSimplifiedAssessment && results.profileSnapshot?.aptitudeStrengths && (
+                <div style={{marginTop: '15px'}}>
+                    <h3 style={styles.subTitle}>Character Strengths & Personal Qualities</h3>
+                    {results.profileSnapshot.aptitudeStrengths.map((strength, idx) => (
+                        <div key={idx} style={styles.card}>
+                            <h4 style={{margin: '0 0 4px 0', fontSize: '11px', fontWeight: 'bold', color: '#4f46e5'}}>{strength.name}</h4>
+                            <p style={{margin: '0', fontSize: '9px', color: '#4b5563'}}>{strength.description}</p>
+                        </div>
+                    ))}
+                </div>
+                )}
+
+                {/* Learning & Work Style - ONLY for middle/high school */}
+                {isSimplifiedAssessment && results.profileSnapshot?.keyPatterns && (
+                <div style={{...styles.twoCol, marginTop: '15px'}}>
+                    <div style={styles.card}>
+                        <h4 style={{margin: '0 0 6px 0', fontSize: '11px', fontWeight: 'bold', color: '#1e293b'}}>What You Enjoy</h4>
+                        <p style={{margin: '0', fontSize: '9px'}}>{results.profileSnapshot.keyPatterns.enjoyment}</p>
+                    </div>
+                    <div style={styles.card}>
+                        <h4 style={{margin: '0 0 6px 0', fontSize: '11px', fontWeight: 'bold', color: '#1e293b'}}>How You Work Best</h4>
+                        <p style={{margin: '0', fontSize: '9px'}}>{results.profileSnapshot.keyPatterns.workStyle}</p>
+                    </div>
+                    <div style={styles.card}>
+                        <h4 style={{margin: '0 0 6px 0', fontSize: '11px', fontWeight: 'bold', color: '#1e293b'}}>Your Strengths</h4>
+                        <p style={{margin: '0', fontSize: '9px'}}>{results.profileSnapshot.keyPatterns.strength}</p>
+                    </div>
+                    <div style={styles.card}>
+                        <h4 style={{margin: '0 0 6px 0', fontSize: '11px', fontWeight: 'bold', color: '#1e293b'}}>What Motivates You</h4>
+                        <p style={{margin: '0', fontSize: '9px'}}>{results.profileSnapshot.keyPatterns.motivation}</p>
+                    </div>
+                </div>
+                )}
+
                 {/* Overall Summary - For all grade levels */}
                 {results.overallSummary && (
                 <div style={styles.summaryBox}>
                     <p style={{margin: '0', fontSize: '10px'}}><strong>Overall Summary:</strong> {results.overallSummary}</p>
+                </div>
+                )}
+
+                {/* Section 2: Career Exploration - ONLY for middle/high school */}
+                {isSimplifiedAssessment && careerFit && (
+                <>
+                <h2 style={{...styles.sectionTitle, marginTop: '30px'}}>2. Career Exploration</h2>
+
+                {careerFit?.clusters?.map((cluster, idx) => {
+                    const scoreStyle = getScoreStyle(cluster.matchScore || 0);
+                    return (
+                        <div key={idx} style={{...styles.card, borderLeft: `4px solid ${scoreStyle.border}`}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px'}}>
+                                <div>
+                                    <h4 style={{margin: '0 0 4px 0', fontSize: '12px', fontWeight: 'bold'}}>{cluster.title}</h4>
+                                    <span style={{...styles.badge, background: scoreStyle.bg, color: scoreStyle.color}}>{cluster.fit} Match • {cluster.matchScore}%</span>
+                                </div>
+                            </div>
+                            <p style={{fontSize: '9px', color: '#4b5563', margin: '6px 0'}}>{cluster.summary}</p>
+                            {cluster.roles?.entry && (
+                                <div style={{fontSize: '9px', marginTop: '8px'}}>
+                                    <strong>Example Careers:</strong> {cluster.roles.entry.join(', ')}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+
+                <h3 style={styles.subTitle}>Career Ideas to Explore</h3>
+                <div style={styles.twoCol}>
+                    <div>
+                        <h4 style={{fontSize: '10px', fontWeight: 'bold', color: '#166534', margin: '0 0 6px 0'}}>Strong Matches</h4>
+                        {careerFit?.specificOptions?.highFit?.map((career, i) => (
+                            <div key={i} style={{padding: '3px 0', fontSize: '9px'}}>• {career}</div>
+                        ))}
+                    </div>
+                    <div>
+                        <h4 style={{fontSize: '10px', fontWeight: 'bold', color: '#854d0e', margin: '0 0 6px 0'}}>Also Consider</h4>
+                        {careerFit?.specificOptions?.mediumFit?.map((career, i) => (
+                            <div key={i} style={{padding: '3px 0', fontSize: '9px'}}>• {career}</div>
+                        ))}
+                    </div>
+                </div>
+                </>
+                )}
+
+                {/* Section 3: Skills to Develop - ONLY for middle/high school */}
+                {isSimplifiedAssessment && skillGap && (
+                <>
+                <h2 style={{...styles.sectionTitle, marginTop: '30px'}}>3. Skills to Develop</h2>
+
+                {skillGap?.currentStrengths && skillGap.currentStrengths.length > 0 && (
+                    <div>
+                        <h3 style={styles.subTitle}>Your Current Strengths</h3>
+                        <div style={styles.card}>
+                            {skillGap.currentStrengths.map((s, i) => (
+                                <div key={i} style={{padding: '4px 0', fontSize: '9px', borderBottom: i < skillGap.currentStrengths.length - 1 ? '1px solid #f1f5f9' : 'none'}}>
+                                    <span style={{color: '#166534', marginRight: '6px'}}>✓</span> {s}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <h3 style={styles.subTitle}>Priority Skills to Build (Next 6 Months)</h3>
+                {skillGap?.priorityA?.map((item, idx) => (
+                    <div key={idx} style={{...styles.card, padding: '10px'}}>
+                        <div style={{marginBottom: '6px'}}>
+                            <strong style={{fontSize: '11px', color: '#1e293b'}}>{idx + 1}. {item.skill}</strong>
+                            {item.targetLevel && (
+                                <span style={{...styles.badge, background: '#dcfce7', color: '#166534', marginLeft: '8px'}}>
+                                    Target: {item.targetLevel}
+                                </span>
+                            )}
+                        </div>
+                        <p style={{margin: '0', fontSize: '9px', color: '#4b5563'}}><strong>Why this matters:</strong> {item.reason || item.whyNeeded}</p>
+                    </div>
+                ))}
+
+                {skillGap?.priorityB && skillGap.priorityB.length > 0 && (
+                    <>
+                        <h3 style={styles.subTitle}>Additional Skills to Explore (6-12 Months)</h3>
+                        <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px'}}>
+                            {skillGap.priorityB.map((item, idx) => (
+                                <span key={idx} style={{...styles.badge, background: '#fef9c3', color: '#854d0e'}}>
+                                    {typeof item === 'string' ? item : item.skill}
+                                </span>
+                            ))}
+                        </div>
+                    </>
+                )}
+
+                {skillGap?.recommendedTrack && (
+                    <div style={{...styles.summaryBox, marginTop: '15px'}}>
+                        <p style={{margin: '0'}}><strong>Your Learning Path:</strong> {skillGap.recommendedTrack}</p>
+                    </div>
+                )}
+                </>
+                )}
+
+                {/* Section 4: 12-Month Journey - ONLY for middle/high school */}
+                {isSimplifiedAssessment && roadmap?.twelveMonthJourney && (
+                <>
+                <h2 style={{...styles.sectionTitle, marginTop: '30px'}}>4. Your 12-Month Journey</h2>
+
+                {Object.entries(roadmap.twelveMonthJourney).map(([phaseKey, phase], idx) => (
+                    <div key={phaseKey} style={{...styles.card, background: idx % 2 === 0 ? '#f0f9ff' : '#fefce8', border: 'none'}}>
+                        <h4 style={{margin: '0 0 6px 0', fontSize: '12px', fontWeight: 'bold', color: '#1e293b'}}>
+                            {phase.months}: {phase.title}
+                        </h4>
+                        <p style={{margin: '4px 0', fontSize: '9px'}}><strong>Goals:</strong> {phase.goals?.join(', ')}</p>
+                        <p style={{margin: '4px 0', fontSize: '9px'}}><strong>Activities:</strong> {phase.activities?.join(', ')}</p>
+                        <p style={{margin: '0', fontSize: '9px', color: '#166534'}}><strong>Outcome:</strong> {phase.outcome}</p>
+                    </div>
+                ))}
+                </>
+                )}
+
+                {/* Projects to Try - ONLY for middle/high school */}
+                {isSimplifiedAssessment && roadmap?.projects && roadmap.projects.length > 0 && (
+                <>
+                <h3 style={{...styles.subTitle, marginTop: '20px'}}>Projects to Try</h3>
+                {roadmap.projects.map((project, idx) => (
+                    <div key={idx} style={styles.card}>
+                        <h4 style={{margin: '0 0 6px 0', fontSize: '11px', color: '#4f46e5'}}>
+                            Project {idx + 1}: {project.title}
+                        </h4>
+                        <p style={{margin: '4px 0', fontSize: '9px'}}>{project.description}</p>
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '6px', fontSize: '9px'}}>
+                            <div><strong>Timeline:</strong> {project.timeline}</div>
+                            <div><strong>Level:</strong> {project.difficulty}</div>
+                        </div>
+                        {project.steps && (
+                            <div style={{marginTop: '6px', fontSize: '9px'}}>
+                                <strong>Steps:</strong>
+                                {project.steps.map((step, i) => (
+                                    <div key={i} style={{paddingLeft: '10px', padding: '2px 0'}}>• {step}</div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ))}
+                </>
+                )}
+
+                {/* Activities & Exposure - ONLY for middle/high school */}
+                {isSimplifiedAssessment && roadmap?.exposure && (
+                <div style={{...styles.twoCol, marginTop: '15px'}}>
+                    {roadmap.exposure.activities && roadmap.exposure.activities.length > 0 && (
+                        <div style={styles.card}>
+                            <h4 style={{margin: '0 0 6px 0', fontSize: '11px', fontWeight: 'bold'}}>Activities to Join</h4>
+                            {roadmap.exposure.activities.map((activity, i) => (
+                                <div key={i} style={{fontSize: '9px', padding: '2px 0'}}>• {activity}</div>
+                            ))}
+                        </div>
+                    )}
+                    {roadmap.exposure.certifications && roadmap.exposure.certifications.length > 0 && (
+                        <div style={styles.card}>
+                            <h4 style={{margin: '0 0 6px 0', fontSize: '11px', fontWeight: 'bold'}}>Certificates to Earn</h4>
+                            {roadmap.exposure.certifications.map((cert, i) => (
+                                <div key={i} style={{fontSize: '9px', padding: '2px 0'}}>• {cert}</div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                )}
+
+                {/* Final Note - For middle/high school */}
+                {isSimplifiedAssessment && finalNote && (
+                <div style={styles.finalBox}>
+                    <h3 style={{margin: '0 0 10px 0', fontSize: '12px', color: '#fbbf24'}}>Message for You</h3>
+                    <p style={{margin: '0 0 6px 0', fontSize: '10px'}}>
+                        <strong style={{color: '#86efac'}}>Your Biggest Strength:</strong> {finalNote.advantage}
+                    </p>
+                    <p style={{margin: '0', fontSize: '10px'}}>
+                        <strong style={{color: '#fde047'}}>Your Next Step:</strong> {finalNote.growthFocus}
+                    </p>
+                </div>
+                )}
+
+                {/* Report Disclaimer - For middle/high school */}
+                {isSimplifiedAssessment && (
+                <div style={{background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '6px', padding: '10px 12px', marginTop: '15px', marginBottom: '30px', fontSize: '8px', color: '#78350f', lineHeight: '1.5'}}>
+                    <p style={{margin: '0'}}><strong>Report Disclaimer:</strong> This career report is generated by Rareminds using the inputs and assessment data shared by the user. Your information has been processed confidentially and in compliance with applicable data protection norms, and is not shared with any external parties.</p>
                 </div>
                 )}
 

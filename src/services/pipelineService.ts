@@ -577,6 +577,7 @@ export const addCandidateToPipeline = async (pipelineData: {
         from_stage: null,
         to_stage: data.stage,
         performed_by: pipelineData.added_by,
+        student_id: pipelineData.student_id,
         activity_details: {
           ai_score: aiScore,
           employability_score: employabilityScore
@@ -669,42 +670,9 @@ export const moveCandidateToStage = async (
       from_stage: previousStage,
       to_stage: newStage,
       activity_details: notes ? { notes } : null,
-      performed_by: performedBy
+      performed_by: performedBy,
+      student_id: currentData.student_id
     });
-
-    // Create notification for student about stage change
-    try {
-      // Get opportunity details for better notification
-      const { data: opportunity } = await supabase
-        .from('opportunities')
-        .select('title, department')
-        .eq('id', currentData.opportunity_id)
-        .single();
-
-      const stageLabels: { [key: string]: string } = {
-        sourced: 'Sourced',
-        screened: 'Screened',
-        interview_1: 'Interview Round 1',
-        interview_2: 'Interview Round 2',
-        offer: 'Offer Stage',
-        hired: 'Hired',
-        rejected: 'Application Reviewed'
-      };
-
-      const notificationMessage = newStage === 'rejected' 
-        ? `Your application for ${opportunity?.title || 'a position'} has been reviewed. Thank you for your interest.`
-        : `Great news! You've been moved to ${stageLabels[newStage] || newStage} stage for ${opportunity?.title || 'a position'}.`;
-
-      // Insert notification (if you have a notifications table for students)
-      // This is optional - you can create a student_notifications table
-      console.log({
-        student_id: currentData.student_id,
-        message: notificationMessage,
-        from_stage: previousStage,
-        to_stage: newStage
-      });
-    } catch (notifError) {
-    }
 
     return { data, error: null };
   } catch (error) {
@@ -772,7 +740,8 @@ export const rejectCandidate = async (
       from_stage: data.previous_stage,
       to_stage: 'rejected',
       activity_details: { reason: rejectionReason },
-      performed_by: performedBy
+      performed_by: performedBy,
+      student_id: data.student_id
     });
 
     return { data, error: null };
@@ -832,7 +801,8 @@ export const assignCandidate = async (
       pipeline_candidate_id: candidateId,
       activity_type: 'note_added',
       activity_details: { assigned_to: assignedTo },
-      performed_by: performedBy
+      performed_by: performedBy,
+      student_id: data.student_id
     });
 
     return { data, error: null };
@@ -872,6 +842,7 @@ export const logPipelineActivity = async (activityData: {
   to_stage?: string;
   activity_details?: any;
   performed_by?: string;
+  student_id?: string;
 }) => {
   try {
     const { data, error } = await supabase

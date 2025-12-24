@@ -239,7 +239,7 @@ export default function ClubsActivitiesPage() {
     const [loading, setLoading] = useState(true);
 
     // Get educator's school information with class assignments
-    const { school: educatorSchool, college: educatorCollege, educatorType, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
+    const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
     // Fetch clubs and competitions from Supabase on mount
     useEffect(() => {

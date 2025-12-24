@@ -85,11 +85,12 @@ interface UseAnalyticsOptions {
   schoolId?: string;
   collegeId?: string;
   educatorType?: 'school' | 'college' | null;
+  educatorRole?: string | null;
   assignedClassIds?: string[];
 }
 
 export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
-  const { schoolId, collegeId, educatorType, assignedClassIds } = options;
+  const { schoolId, collegeId, educatorType, educatorRole, assignedClassIds } = options;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -119,8 +120,17 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
     
     try {
       if (educatorType === 'school' && schoolId) {
-        // For school educators, filter by assigned classes if available
-        if (assignedClassIds && assignedClassIds.length > 0) {
+        // For school educators, check role and class assignments
+        if (educatorRole === 'admin' || educatorRole === 'school_admin') {
+          // School admins can see all students in their school
+          const { data: schoolStudents } = await supabase
+            .from('students')
+            .select('user_id')
+            .eq('school_id', schoolId)
+            .eq('is_deleted', false);
+          return schoolStudents?.map(s => s.user_id) || [];
+        } else if (assignedClassIds && assignedClassIds.length > 0) {
+          // Regular educators can only see students in their assigned classes
           const { data: schoolStudents } = await supabase
             .from('students')
             .select('user_id')
@@ -129,13 +139,8 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
             .eq('is_deleted', false);
           return schoolStudents?.map(s => s.user_id) || [];
         } else {
-          // Fallback for admins or educators without class assignments
-          const { data: schoolStudents } = await supabase
-            .from('students')
-            .select('user_id')
-            .eq('school_id', schoolId)
-            .eq('is_deleted', false);
-          return schoolStudents?.map(s => s.user_id) || [];
+          // Educators with no class assignments should see no students
+          return [];
         }
       } else if (educatorType === 'college' && collegeId) {
         // For college educators, filter by college

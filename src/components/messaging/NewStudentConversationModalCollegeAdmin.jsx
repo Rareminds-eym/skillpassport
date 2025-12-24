@@ -111,7 +111,7 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
         email: student.email || '',
         university: student.university || '',
         branch: student.branch_field || '',
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name || student.email || 'Student')}&background=9333EA&color=fff`
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name || student.email || 'Student')}&background=3B82F6&color=fff`
       }));
 
       console.log('📋 Final formatted students:', formattedStudents.length);
@@ -174,8 +174,8 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-              <GraduationCap className="w-6 h-6 text-purple-600" />
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <GraduationCap className="w-6 h-6 text-blue-600" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">Start New Conversation</h2>
@@ -201,7 +201,7 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
               <select
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
               >
                 {subjects.map((subj) => (
                   <option key={subj} value={subj}>
@@ -220,7 +220,7 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
                   placeholder="Search students by name, email, university, or branch..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
+                  className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
             </div>
@@ -229,7 +229,7 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
             <div className="space-y-2 max-h-80 overflow-y-auto">
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : filteredStudents.length === 0 ? (
                 <div className="text-center py-12">
@@ -245,8 +245,8 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
                     onClick={() => setSelectedStudent(student)}
                     className={`w-full flex items-center gap-4 p-4 rounded-lg border-2 transition-all text-left ${
                       selectedStudent?.id === student.id
-                        ? 'border-purple-500 bg-purple-50'
-                        : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
                     }`}
                   >
                     <img
@@ -262,7 +262,7 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
                         {student.email}
                       </p>
                       {(student.university || student.branch) && (
-                        <p className="text-xs text-purple-600 truncate">
+                        <p className="text-xs text-blue-600 truncate">
                           {student.university} {student.branch && `• ${student.branch}`}
                         </p>
                       )}
@@ -285,7 +285,7 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
           <button
             onClick={handleCreateConversation}
             disabled={!selectedStudent}
-            className="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
           >
             Start Conversation
           </button>
