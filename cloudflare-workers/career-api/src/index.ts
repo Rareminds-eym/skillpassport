@@ -8,24 +8,24 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import type { Env, StoredMessage, ChatRequest, Opportunity, CareerIntent } from './types/career-ai';
+import type { CareerIntent, ChatRequest, Env, Opportunity, StoredMessage } from './types/career-ai';
+import { authenticateUser, generateConversationTitle, isValidUUID, sanitizeInput } from './utils/auth';
 import { corsHeaders, jsonResponse, streamResponse } from './utils/cors';
-import { authenticateUser, sanitizeInput, generateConversationTitle, isValidUUID } from './utils/auth';
 import { checkRateLimit } from './utils/rate-limit';
 
 // AI modules
-import { detectIntent } from './ai/intent-detection';
 import { getConversationPhase, getPhaseParameters } from './ai/conversation-phase';
-import { runGuardrails, validateResponse, getBlockedResponse } from './ai/guardrails';
-import { compressContext, buildMemoryContext } from './ai/memory';
+import { getBlockedResponse, runGuardrails, validateResponse } from './ai/guardrails';
+import { detectIntent } from './ai/intent-detection';
+import { buildMemoryContext, compressContext } from './ai/memory';
 import { buildEnhancedSystemPrompt } from './ai/prompts/enhanced-system-prompt';
 
 // Context builders
-import { buildStudentContext } from './context/student';
 import { buildAssessmentContext } from './context/assessment';
-import { buildCareerProgressContext } from './context/progress';
 import { buildCourseContext } from './context/courses';
 import { fetchOpportunities } from './context/opportunities';
+import { buildCareerProgressContext } from './context/progress';
+import { buildStudentContext } from './context/student';
 
 // ==================== CAREER CHAT HANDLER ====================
 
@@ -1240,20 +1240,38 @@ export default {
         return await handleRecommendOpportunities(request, env);
       }
 
+      if (path === '/analyze-assessment') {
+        if (!env.VITE_OPENROUTER_API_KEY) {
+          return jsonResponse({ error: 'AI service not configured' }, 500);
+        }
+        return await handleAnalyzeAssessment(request, env);
+      }
+
+      if (path === '/generate-embedding') {
+        return await handleGenerateEmbedding(request, env);
+      }
+
+      if (path === '/parse-resume') {
+        if (!env.VITE_OPENROUTER_API_KEY) {
+          return jsonResponse({ error: 'AI service not configured' }, 500);
+        }
+        return await handleParseResume(request, env);
+      }
+
       // Health check
       if (path === '/health' || path === '/') {
         return jsonResponse({
           status: 'ok',
           service: 'career-api',
           version: '2.0-cloudflare',
-          endpoints: ['/chat', '/recommend-opportunities'],
+          endpoints: ['/chat', '/recommend-opportunities', '/analyze-assessment', '/generate-embedding', '/parse-resume'],
           timestamp: new Date().toISOString()
         });
       }
 
       return jsonResponse({ 
         error: 'Not found', 
-        availableEndpoints: ['/chat', '/recommend-opportunities'] 
+        availableEndpoints: ['/chat', '/recommend-opportunities', '/analyze-assessment', '/generate-embedding', '/parse-resume'] 
       }, 404);
 
     } catch (error) {

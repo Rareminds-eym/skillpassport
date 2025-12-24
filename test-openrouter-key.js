@@ -1,60 +1,29 @@
-/**
- * Test OpenRouter API Key
- * Run this to verify if your OpenRouter API key is valid
- */
+// Quick test for OpenRouter API key
+const API_KEY = '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';
 
-const OPENROUTER_API_KEY = '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';
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-
-async function testOpenRouterKey() {
-  console.log('🔑 Testing OpenRouter API Key...');
-  console.log('📍 API URL:', OPENROUTER_API_URL);
-  
+async function testKey() {
   try {
-    const response = await fetch(OPENROUTER_API_URL, {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'HTTP-Referer': 'http://localhost:3001',
-        'X-Title': 'SkillPassport Test'
+        'HTTP-Referer': 'https://test.com',
+        'X-Title': 'Test'
       },
       body: JSON.stringify({
         model: 'openai/gpt-4o-mini',
-        messages: [
-          {
-            role: 'user',
-            content: 'Say "Hello, API key is working!" if you can read this.'
-          }
-        ],
-        max_tokens: 50
+        messages: [{ role: 'user', content: 'Say hi' }],
+        max_tokens: 10
       })
     });
-
-    console.log('📊 Response Status:', response.status, response.statusText);
     
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('❌ API Error:', errorData);
-      console.error('\n🔍 Error Details:');
-      console.error('   Status:', response.status);
-      console.error('   Message:', errorData.error?.message || errorData.message);
-      console.error('\n💡 Common causes for this error:');
-      console.error('   1. Invalid or expired API key');
-      console.error('   2. No credits in OpenRouter account');
-      console.error('   3. API key lacks necessary permissions');
-      console.error('\n🔗 Check your OpenRouter account at: https://openrouter.ai/keys');
-      return;
-    }
-
-    const data = await response.json();
-    console.log('✅ Success! API Response:', data.choices[0]?.message?.content);
-    console.log('\n💰 Usage:', data.usage);
-    
-  } catch (error) {
-    console.error('❌ Test failed with error:', error.message);
+    console.log('Status:', response.status);
+    const data = await response.text();
+    console.log('Response:', data);
+  } catch (err) {
+    console.error('Error:', err.message);
   }
 }
 
-// Run the test
-testOpenRouterKey();
+testKey();
