@@ -1,7 +1,7 @@
+import { ArrowLeft, Award, Target } from 'lucide-react';
 import React, { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle, XCircle, Clock, Award, ArrowLeft, Target } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { supabase } from '../../utils/supabase';
 
 const Results: React.FC = () => {
   const navigate = useNavigate();
