@@ -957,6 +957,59 @@ const CoursePlayer = () => {
     return currentLessonIndex > 0 || currentModuleIndex > 0;
   };
 
+  // Check if this is the last lesson in the course
+  const isLastLesson = () => {
+    if (!course?.modules) return false;
+    const currentModule = course.modules[currentModuleIndex];
+    return currentModuleIndex === course.modules.length - 1 &&
+           currentLessonIndex === currentModule.lessons.length - 1;
+  };
+
+  // Complete the course (called when clicking Complete on last lesson)
+  const completeCourse = async () => {
+    const currentLesson = getCurrentLesson();
+
+    // Save current time before completing
+    if (lessonStartTime) {
+      const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
+      if (timeSpent > 0) {
+        await saveTimeSpent(timeSpent);
+      }
+    }
+
+    // Mark current lesson as completed in database
+    if (currentLesson) {
+      await markLessonCompleted(currentLesson.id);
+    }
+
+    // Mark current lesson as completed in local state
+    const lessonKey = `${currentModuleIndex}-${currentLessonIndex}`;
+    setCompletedLessons(prev => new Set([...prev, lessonKey]));
+
+    // Update course enrollment to completed status
+    try {
+      const { error } = await supabase
+        .from('course_enrollments')
+        .update({ 
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          progress: 100
+        })
+        .eq('student_id', user.id)
+        .eq('course_id', courseId);
+
+      if (error) {
+        console.error('Error completing course:', error);
+      } else {
+        console.log('🎉 Course completed successfully!');
+        // Navigate to my learning page or show completion modal
+        navigate('/student/my-learning');
+      }
+    } catch (error) {
+      console.error('Error in completeCourse:', error);
+    }
+  };
+
   // Get appropriate icon for resource type
   const getResourceIcon = (type) => {
     switch (type) {
@@ -1293,14 +1346,24 @@ const CoursePlayer = () => {
                         {currentLessonIndex + 1} of {currentModule?.lessons?.length || 0} lessons
                       </div>
 
-                      <Button
-                        onClick={goToNextLesson}
-                        disabled={!canGoNext()}
-                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
-                      >
-                        {canGoNext() ? 'Next' : 'Complete'}
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
+                      {isLastLesson() ? (
+                        <Button
+                          onClick={completeCourse}
+                          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Complete Course
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={goToNextLesson}
+                          disabled={!canGoNext()}
+                          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+                        >
+                          Next
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
