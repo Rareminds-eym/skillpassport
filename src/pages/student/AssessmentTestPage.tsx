@@ -54,7 +54,7 @@ const TestPage: React.FC = () => {
   const saveProgressTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const userEmail = user?.email;
-  const { studentData } = useStudentDataByEmail(userEmail, false);
+  const { studentData } = useStudentDataByEmail(userEmail || '', false);
   
   // Track the current attempt ID for progress saving
   const [attemptId, setAttemptId] = useState<string | null>(
@@ -654,12 +654,17 @@ const TestPage: React.FC = () => {
               answer.toString() === questions[index].correctAnswer
           ).length;
 
-          // Navigate to results page
+          // Calculate total time taken
+          const totalTimeTaken = timeTakenPerQuestion.reduce((acc, time) => acc + time, 0);
+
+          // Navigate to results page with all necessary data
           navigate("/student/assessment/results", {
             state: {
               score,
               totalQuestions: questions.length,
               courseId,
+              certificateName,
+              attemptId,
               questions: questions.map((q, index) => ({
                 questionId: q.id,
                 question: q.text,
