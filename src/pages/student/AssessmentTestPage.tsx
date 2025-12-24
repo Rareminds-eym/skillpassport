@@ -11,6 +11,7 @@ import {
   Phone,
   MessageSquare,
   ArrowLeft,
+  CheckCircle,
 } from "lucide-react";
 import { getQuestions } from "../../data/assessment/questions";
 import { getCertificateConfig } from "../../data/assessment/certificateConfig";
@@ -22,6 +23,8 @@ import WarningModal from "../../components/assessment/test/WarningModal";
 import TimeWarningModal from "../../components/assessment/test/TimeWarningModal";
 import { useAuth } from "../../context/AuthContext";
 import { useTest } from "../../context/assessment/TestContext";
+import { updateAssessmentProgress, createAssessmentAttempt } from "../../services/externalAssessmentService";
+import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 
 interface TestAttempt {
   nmId: string;
@@ -50,6 +53,15 @@ const TestPage: React.FC = () => {
   const totalTimerRef = useRef<NodeJS.Timeout | null>(null);
   const questionStartTimeRef = useRef<number>(Date.now());
   const questionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const saveProgressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const userEmail = user?.email;
+  const { studentData } = useStudentDataByEmail(userEmail, false);
+  
+  // Track the current attempt ID for progress saving
+  const [attemptId, setAttemptId] = useState<string | null>(
+    location.state?.resumeAttempt?.id || null
+  );
 
   // Core state
 
@@ -101,8 +113,26 @@ const TestPage: React.FC = () => {
         // Check if resuming an in-progress attempt
         const resumeAttempt = location.state?.resumeAttempt;
         
+        console.log('🔍 Loading questions - checking state:', {
+          hasResumeAttempt: !!resumeAttempt,
+          hasPreGenerated: !!(location.state?.preGeneratedQuestions),
+          resumeQuestionIndex: resumeAttempt?.current_question_index,
+          locationState: location.state
+        });
+        
         if (resumeAttempt) {
           console.log('📝 Resuming assessment from question', resumeAttempt.current_question_index + 1);
+          console.log('📝 Resume attempt data:', resumeAttempt);
+          
+          // Set attempt ID for progress tracking
+          setAttemptId(resumeAttempt.id);
+          console.log('✅ Set attemptId:', resumeAttempt.id);
+          
+          // Skip instructions and permissions when resuming
+          setShowInstructions(false);
+          setShowPermissions(false);
+          setTestStarted(true);
+          console.log('✅ Set testStarted: true');
           
           // Transform saved questions
           const transformedQuestions = resumeAttempt.questions.map((q: any) => ({
@@ -120,6 +150,19 @@ const TestPage: React.FC = () => {
           // Restore saved answers
           const restoredAnswers = resumeAttempt.student_answers.map((a: any) => a.selected_answer);
           
+          console.log('📦 Restoring answers:', {
+            rawAnswers: resumeAttempt.student_answers,
+            restoredAnswers: restoredAnswers,
+            nonNullCount: restoredAnswers.filter((a: any) => a !== null).length
+          });
+          
+          console.log('📊 Assessment Data Summary:');
+          console.log('   Total Questions:', transformedQuestions.length);
+          console.log('   Answered Questions:', restoredAnswers.filter((a: any) => a !== null).length);
+          console.log('   Remaining Questions:', restoredAnswers.filter((a: any) => a === null).length);
+          console.log('   Current Question Index:', resumeAttempt.current_question_index);
+          console.log('   Will resume at Question:', resumeAttempt.current_question_index + 1);
+          
           setQuestions(transformedQuestions);
           setSelectedAnswers(restoredAnswers);
           setCurrentQuestion(resumeAttempt.current_question_index);
@@ -127,6 +170,9 @@ const TestPage: React.FC = () => {
           setTotalTimeLeft(resumeAttempt.time_remaining || 900);
           
           console.log('✅ Resumed at question', resumeAttempt.current_question_index + 1);
+          console.log('✅ Restored', restoredAnswers.filter((a: any) => a !== null).length, 'previous answers');
+          console.log('✅ Current question set to:', resumeAttempt.current_question_index);
+          console.log('✅ All', transformedQuestions.length, 'questions loaded (including unanswered)');
         }
         // Check if we have pre-generated questions
         else if (location.state?.preGeneratedQuestions && location.state.preGeneratedQuestions.length > 0) {
@@ -150,6 +196,24 @@ const TestPage: React.FC = () => {
           setSelectedAnswers(new Array(transformedQuestions.length).fill(null));
           setTimeTakenPerQuestion(new Array(transformedQuestions.length).fill(0));
           setTotalTimeLeft(900); // 15 minutes default
+          
+          // Create new assessment attempt in database
+          if (studentData?.id) {
+            const attemptResult = await createAssessmentAttempt({
+              studentId: studentData.id,
+              courseName: certificateName,
+              courseId: courseId,
+              assessmentLevel: location.state?.level || 'Intermediate',
+              questions: transformedQuestions
+            });
+            
+            if (attemptResult.success && attemptResult.data) {
+              setAttemptId(attemptResult.data.id);
+              console.log('✅ Created new assessment attempt:', attemptResult.data.id);
+            } else {
+              console.warn('⚠️ Could not create attempt record:', attemptResult.error);
+            }
+          }
         } else {
           // Check if we should use dynamic generation
           const useDynamicGeneration = location.state?.useDynamicGeneration;
@@ -197,6 +261,24 @@ const TestPage: React.FC = () => {
             setSelectedAnswers(new Array(transformedQuestions.length).fill(null));
             setTimeTakenPerQuestion(new Array(transformedQuestions.length).fill(0));
             setTotalTimeLeft(900); // 15 minutes default
+            
+            // Create new assessment attempt in database
+            if (studentData?.id) {
+              const attemptResult = await createAssessmentAttempt({
+                studentId: studentData.id,
+                courseName: certificateName,
+                courseId: courseId,
+                assessmentLevel: level,
+                questions: transformedQuestions
+              });
+              
+              if (attemptResult.success && attemptResult.data) {
+                setAttemptId(attemptResult.data.id);
+                console.log('✅ Created new assessment attempt:', attemptResult.data.id);
+              } else {
+                console.warn('⚠️ Could not create attempt record:', attemptResult.error);
+              }
+            }
           } else {
             // Use original static question loading
             // Get certificate configuration
@@ -224,6 +306,24 @@ const TestPage: React.FC = () => {
             setQuestions(fetchedQuestions);
             setSelectedAnswers(new Array(fetchedQuestions.length).fill(null));
             setTimeTakenPerQuestion(new Array(fetchedQuestions.length).fill(0));
+            
+            // Create new assessment attempt in database
+            if (studentData?.id) {
+              const attemptResult = await createAssessmentAttempt({
+                studentId: studentData.id,
+                courseName: certificateName,
+                courseId: courseId,
+                assessmentLevel: config.difficulty,
+                questions: fetchedQuestions
+              });
+              
+              if (attemptResult.success && attemptResult.data) {
+                setAttemptId(attemptResult.data.id);
+                console.log('✅ Created new assessment attempt:', attemptResult.data.id);
+              } else {
+                console.warn('⚠️ Could not create attempt record:', attemptResult.error);
+              }
+            }
           }
         }
       } catch (err) {
@@ -236,7 +336,7 @@ const TestPage: React.FC = () => {
     };
 
     loadQuestions();
-  }, [courseId, certificateName, navigate]);
+  }, [courseId, certificateName, navigate, studentData?.id]);
 
   // Handle tab visibility changes
   useEffect(() => {
@@ -361,6 +461,79 @@ const TestPage: React.FC = () => {
     };
   }, []);
 
+  // Debug: Track currentQuestion changes
+  useEffect(() => {
+    console.log('🔄 currentQuestion changed to:', currentQuestion);
+  }, [currentQuestion]);
+
+  // Auto-save progress when answers change or when navigating
+  useEffect(() => {
+    const saveProgress = async () => {
+      if (!attemptId || !testStarted || showInstructions || showPermissions) {
+        return;
+      }
+
+      try {
+        const currentAnswer = selectedAnswers[currentQuestion];
+        console.log(`💾 Auto-saving progress:`, {
+          question: currentQuestion + 1,
+          answer: currentAnswer,
+          timeLeft: totalTimeLeft,
+          allAnswers: selectedAnswers
+        });
+        
+        await updateAssessmentProgress(
+          attemptId,
+          currentQuestion,
+          currentAnswer,
+          totalTimeLeft
+        );
+        console.log('✅ Progress auto-saved at question', currentQuestion + 1);
+      } catch (error) {
+        console.error('❌ Failed to auto-save progress:', error);
+      }
+    };
+
+    // Debounce auto-save to avoid too many requests
+    if (saveProgressTimerRef.current) {
+      clearTimeout(saveProgressTimerRef.current);
+    }
+
+    saveProgressTimerRef.current = setTimeout(() => {
+      saveProgress();
+    }, 2000); // Save 2 seconds after last change
+
+    return () => {
+      if (saveProgressTimerRef.current) {
+        clearTimeout(saveProgressTimerRef.current);
+      }
+    };
+  }, [selectedAnswers, currentQuestion, totalTimeLeft, attemptId, testStarted, showInstructions, showPermissions]);
+
+  // Save progress when user leaves the page
+  useEffect(() => {
+    const handleBeforeUnload = async (e: BeforeUnloadEvent) => {
+      if (attemptId && testStarted && !showResults) {
+        // Save immediately before leaving
+        await updateAssessmentProgress(
+          attemptId,
+          currentQuestion,
+          selectedAnswers[currentQuestion],
+          totalTimeLeft
+        );
+        
+        e.preventDefault();
+        e.returnValue = 'Your progress has been saved. Are you sure you want to leave?';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [attemptId, testStarted, showResults, currentQuestion, selectedAnswers, totalTimeLeft]);
+
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     alert("Message sent! Our support team will get back to you soon.");
@@ -381,13 +554,43 @@ const TestPage: React.FC = () => {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const handleQuestionSelect = (index: number) => {
+  const handleQuestionSelect = async (index: number) => {
+    // Save progress immediately before switching questions
+    if (attemptId && testStarted) {
+      try {
+        await updateAssessmentProgress(
+          attemptId,
+          currentQuestion,
+          selectedAnswers[currentQuestion],
+          totalTimeLeft
+        );
+        console.log('✅ Saved progress before switching to question', index + 1);
+      } catch (error) {
+        console.error('❌ Failed to save before switching:', error);
+      }
+    }
+
     setCurrentQuestion(index);
     setShowReview(false);
     setIsFromReview(true);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    // Save progress immediately before moving to next question
+    if (attemptId && testStarted) {
+      try {
+        await updateAssessmentProgress(
+          attemptId,
+          currentQuestion,
+          selectedAnswers[currentQuestion],
+          totalTimeLeft
+        );
+        console.log('✅ Saved progress before moving to next question');
+      } catch (error) {
+        console.error('❌ Failed to save before navigation:', error);
+      }
+    }
+
     if (isFromReview) {
       setShowReview(true);
     } else if (currentQuestion === questions.length - 1) {
@@ -510,6 +713,35 @@ const TestPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-pattern-chemistry">
       <div className="max-w-5xl mx-auto p-6">
+        {/* Resume Indicator Banner */}
+        {location.state?.resumeAttempt && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-blue-900">
+                    Assessment Resumed
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    You're continuing from where you left off. Your previous answers have been restored.
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-semibold text-blue-900">
+                  {selectedAnswers.filter((a) => a !== null).length} / {questions.length}
+                </p>
+                <p className="text-xs text-blue-700">Questions Answered</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+        
         {/* Header */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-6">
@@ -739,10 +971,48 @@ const TestPage: React.FC = () => {
                 <motion.button
                   key={index}
                   whileHover={{ scale: 1.02 }}
-                  onClick={() => {
+                  onClick={async () => {
+                    console.log('🖱️ Answer clicked:', option);
+                    
+                    // Update local state first
                     const newAnswers = [...selectedAnswers];
                     newAnswers[currentQuestion] = option;
                     setSelectedAnswers(newAnswers);
+
+                    // Save to database immediately - SIMPLIFIED VERSION
+                    if (!attemptId) {
+                      console.error('❌ No attemptId - cannot save');
+                      return;
+                    }
+
+                    if (!testStarted) {
+                      console.error('❌ Test not started - cannot save');
+                      return;
+                    }
+
+                    try {
+                      console.log('💾 Saving to database...', {
+                        attemptId,
+                        questionIndex: currentQuestion,
+                        answer: option
+                      });
+
+                      // Call the save function
+                      const result = await updateAssessmentProgress(
+                        attemptId,
+                        currentQuestion,
+                        option,
+                        totalTimeLeft
+                      );
+
+                      if (result.success) {
+                        console.log(`✅ SAVED! Q${currentQuestion + 1}: ${option}`);
+                      } else {
+                        console.error('❌ Save failed:', result);
+                      }
+                    } catch (error) {
+                      console.error('❌ Error saving:', error);
+                    }
                   }}
                   className={`w-full p-4 rounded-lg border-2 transition-all ${
                     selectedAnswers[currentQuestion] === option

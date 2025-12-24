@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { getStudentRecentActivity } from '../services/studentActivityService';
 
@@ -49,6 +49,18 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
   const [lastUpdateTime, setLastUpdateTime] = useState(Date.now());
   const [studentId, setStudentId] = useState(null);
   const [isResolvingStudent, setIsResolvingStudent] = useState(false);
+
+  // Get email from multiple sources with fallback
+  const effectiveEmail = useMemo(() => {
+    // Priority: 1. Passed parameter, 2. localStorage, 3. null
+    const email = studentEmail || localStorage.getItem('userEmail');
+    console.log('🔍 Effective email resolved:', { 
+      passed: studentEmail, 
+      localStorage: localStorage.getItem('userEmail'),
+      final: email 
+    });
+    return email;
+  }, [studentEmail]);
 
   // 1️⃣ Resolve student ID by email
   const fetchStudentIdByEmail = useCallback(async (email) => {
@@ -188,25 +200,33 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
     }
   }, []);
 
-  // 3️⃣ Resolve student ID when studentEmail changes
+  // 3️⃣ Resolve student ID when email changes
   useEffect(() => {
-    console.log('🔄 Email changed, resolving student ID for:', studentEmail);
-    if (studentEmail) {
-      fetchStudentIdByEmail(studentEmail);
+    console.log('🔄 Email effect triggered:', { effectiveEmail, studentEmail });
+    
+    if (effectiveEmail) {
+      console.log('✅ Resolving student ID for:', effectiveEmail);
+      fetchStudentIdByEmail(effectiveEmail);
     } else {
-      console.warn('⚠️ No studentEmail provided');
+      console.error('❌ No email available from any source');
       setStudentId(null);
     }
-  }, [studentEmail, fetchStudentIdByEmail]);
+  }, [effectiveEmail, fetchStudentIdByEmail]);
 
   // Fetch activities using React Query with optimized settings
   const query = useQuery({
-    queryKey: ['student-activities', studentEmail, studentId, limit],
+    queryKey: ['student-activities', effectiveEmail, studentId, limit],
     queryFn: async () => {
-      console.log('🚀 Query function triggered with:', { studentEmail, studentId, limit, isResolvingStudent });
+      console.log('🚀 Query function triggered with:', { 
+        effectiveEmail, 
+        studentId, 
+        limit, 
+        isResolvingStudent,
+        hasLocalStorageEmail: !!localStorage.getItem('userEmail')
+      });
 
-      if (!studentEmail) {
-        console.warn('⚠️ No studentEmail, returning empty array');
+      if (!effectiveEmail) {
+        console.error('❌ No email available for query');
         return [];
       }
 
@@ -218,6 +238,12 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
       if (!studentId) {
         console.warn('⚠️ No student ID available, cannot fetch activities');
+        console.log('🔍 Debug info:', {
+          effectiveEmail,
+          hasEmail: !!effectiveEmail,
+          isResolving: isResolvingStudent,
+          localStorageEmail: localStorage.getItem('userEmail')
+        });
         return [];
       }
 
@@ -270,7 +296,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
       return combined;
     },
-    enabled: !!studentEmail && !isResolvingStudent, // Only run if email is provided and not resolving
+    enabled: !!effectiveEmail && !isResolvingStudent, // Only run if email is provided and not resolving
     refetchOnMount: true,
     refetchOnWindowFocus: false,
     staleTime: 0, // Always consider fresh data (real-time requirement)

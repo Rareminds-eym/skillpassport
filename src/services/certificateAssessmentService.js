@@ -3,7 +3,7 @@
  * Dynamically loads assessment questions based on certificate/course name
  */
 
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseClient';
 
 /**
  * Fetch assessment questions for a specific certificate/course

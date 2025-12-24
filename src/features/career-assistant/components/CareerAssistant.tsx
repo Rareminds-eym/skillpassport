@@ -11,7 +11,7 @@ import {
   PanelLeftClose,
   PanelLeft
 } from 'lucide-react';
-import { streamCareerChat } from '../services/careerEdgeFunctionService';
+import { streamCareerChat } from '../services/careerWorkerService';
 import { useAuth } from '../../../context/AuthContext';
 import { useCareerConversations, ConversationMessage } from '../hooks/useCareerConversations';
 import { useAIFeedback, AIFeedback } from '../hooks/useAIFeedback';

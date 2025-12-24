@@ -197,6 +197,7 @@ Before sending, verify:
 </system>`;
 }
 
+
 function getPhaseRules(phase: ConversationPhase): string {
   const rules: Record<ConversationPhase, string> = {
     opening: `
@@ -355,9 +356,6 @@ ${jobList}
 </opportunities>`;
 }
 
-// Note: buildFewShotExamples is now imported from './few-shot.ts' as buildExternalFewShotExamples
-// This provides more comprehensive profile-aware examples with error recovery scenarios
-
 function buildIntentGuidance(intent: string, ctx: PromptContext): string {
   const studentName = ctx.profile.name.split(' ')[0];
   
@@ -370,17 +368,7 @@ function buildIntentGuidance(intent: string, ctx: PromptContext): string {
 3. Highlight matching skills AND skill gaps
 4. Recommend top 3-5 jobs with specific reasons
 5. Offer to filter by location/type if needed
-</instructions>
-<response_template>
-Structure your response as:
-1. Brief acknowledgment of their request
-2. Top 3-5 job matches with:
-   - Job title & company (EXACT from <opportunities>)
-   - Match percentage (based on skill overlap)
-   - Matching skills (✅) and gaps (📍)
-   - Location & type
-3. Offer to filter or show more details
-</response_template>`,
+</instructions>`,
 
     'skill-gap': `
 <task>SKILL_GAP_ANALYSIS</task>
@@ -390,17 +378,7 @@ Structure your response as:
 3. Identify critical gaps with priority levels
 4. Suggest specific courses from <courses> to fill gaps
 5. Provide learning timeline estimate
-</instructions>
-<response_template>
-Structure your response as:
-1. Current Skills Summary (from <student_skills>)
-2. Market Requirements (for ${ctx.profile.department} field)
-3. Gap Analysis:
-   - High Priority gaps (critical for jobs)
-   - Medium Priority gaps (good to have)
-4. Recommended Courses (ONLY from <courses>)
-5. Timeline Estimate (realistic weeks/months)
-</response_template>`,
+</instructions>`,
 
     'interview-prep': `
 <task>INTERVIEW_PREPARATION</task>
@@ -418,48 +396,10 @@ Structure your response as:
 1. Assess current level from <student_skills>
 2. Define target skill/role based on user's request
 3. Create phased roadmap (foundation → advanced)
-4. For courses: ONLY recommend from <courses> IF they are RELEVANT to the learning goal
-5. If no relevant courses exist in <courses>, say "I don't have specific courses for [topic] in our database, but here are the skills you should learn:" and provide skill-based guidance
+4. For courses: ONLY recommend from <courses> IF they are RELEVANT
+5. If no relevant courses exist, provide skill-based guidance
 6. Add milestones and project suggestions
-</instructions>
-
-<course_relevance_check>
-BEFORE recommending a course, verify:
-- Does the course title/category DIRECTLY match the user's learning goal?
-- Would someone learning [target topic] actually benefit from this course?
-- Is the course content related to the skills needed for [target topic]?
-
-**Relevance Test:** For each course, ask:
-"If a student wants to learn [target topic], would this course help them?"
-- If YES → Include it
-- If NO → Do NOT include it, even if it's a good course
-
-If no relevant courses exist in <courses>:
-- Be HONEST: "Our course catalog doesn't currently have [target topic]-specific courses"
-- Provide a skill-based roadmap instead (what to learn, in what order)
-- Focus on skills, projects, and milestones
-- Do NOT recommend unrelated courses just to fill the roadmap
-</course_relevance_check>
-
-<response_template>
-Structure your response as:
-**Phase 1: Foundation (Month 1-2)**
-- Skills to learn
-- Relevant courses from <courses> (ONLY if they match the goal)
-- Mini-project suggestion
-
-**Phase 2: Intermediate (Month 3-4)**
-- Advanced skills
-- Relevant courses (if available)
-- Portfolio project
-
-**Phase 3: Job-Ready (Month 5-6)**
-- Final skills + certifications
-- Interview prep
-
-⚠️ CRITICAL: Do NOT recommend unrelated courses just to fill the roadmap. 
-If no relevant courses exist, focus on skills and projects instead.
-</response_template>`,
+</instructions>`,
 
     'career-guidance': `
 <task>CAREER_GUIDANCE</task>
@@ -469,22 +409,7 @@ If no relevant courses exist, focus on skills and projects instead.
 3. Present 2-3 career path options
 4. Explain growth trajectory for each
 5. Recommend immediate next steps
-</instructions>
-<response_template>
-Use Tree-of-Thoughts approach:
-**Path A: [Career Option 1]** (Fit: X%)
-- Why it fits: [based on skills/assessment]
-- Growth: [trajectory over 5 years]
-- Pros/Cons
-
-**Path B: [Career Option 2]** (Fit: Y%)
-- Why it fits: [based on skills/assessment]
-- Growth: [trajectory]
-- Pros/Cons
-
-**My Recommendation:** [Best path] because [specific reasons from profile]
-**Immediate Next Steps:** [2-3 actionable items]
-</response_template>`,
+</instructions>`,
 
     'assessment-insights': `
 <task>ASSESSMENT_EXPLANATION</task>

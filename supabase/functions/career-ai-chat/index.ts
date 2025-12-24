@@ -269,6 +269,7 @@ function errorResponse(message: string, status: number): Response {
   );
 }
 
+
 // Stream AI response with SSE
 interface StreamParams {
   openRouterKey: string;

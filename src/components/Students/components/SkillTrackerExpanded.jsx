@@ -1,22 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Code,
-  TrendingUp,
-  Star,
-  Target,
-  Award,
-  ChevronDown,
-  ChevronUp,
-  Sparkles,
-  Zap,
-  Activity
+    Award,
+    ChevronDown,
+    ChevronUp,
+    Code,
+    Sparkles,
+    Star,
+    Target,
+    TrendingUp,
+    Zap
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Progress } from './ui/progress';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
+import { Badge } from './ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 const SkillTrackerExpanded = ({ studentId, email }) => {
   const [techSkills, setTechSkills] = useState([]);
@@ -46,10 +43,10 @@ const SkillTrackerExpanded = ({ studentId, email }) => {
 
       if (!actualStudentId) return;
 
-      // Fetch technical and soft skills from separate tables
+      // Fetch technical and soft skills from skills table with type filtering
       const [techRes, softRes] = await Promise.all([
-        supabase.from('technical_skills').select('*').eq('student_id', actualStudentId),
-        supabase.from('soft_skills').select('*').eq('student_id', actualStudentId)
+        supabase.from('skills').select('*').eq('student_id', actualStudentId).eq('type', 'technical'),
+        supabase.from('skills').select('*').eq('student_id', actualStudentId).eq('type', 'soft')
       ]);
 
       setTechSkills(techRes.data || []);
@@ -194,7 +191,7 @@ const SkillTrackerExpanded = ({ studentId, email }) => {
               <div>
                 <span className="text-xl font-semibold text-gray-900">Technical Skills</span>
                 <p className="text-sm text-gray-500 font-normal mt-0.5">
-                  {techSkills.length} skills from technical_skills table
+                  {techSkills.length} skills from skills table
                 </p>
               </div>
             </div>
@@ -299,7 +296,7 @@ const SkillTrackerExpanded = ({ studentId, email }) => {
               <div>
                 <span className="text-xl font-semibold text-gray-900">Soft Skills</span>
                 <p className="text-sm text-gray-500 font-normal mt-0.5">
-                  {softSkills.length} skills from soft_skills table
+                  {softSkills.length} skills from skills table
                 </p>
               </div>
             </div>

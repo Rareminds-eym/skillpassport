@@ -61,11 +61,109 @@ Required JSON structure:
 IMPORTANT: Generate questions that someone studying {{COURSE_NAME}} would expect to see. Make it obvious this is a {{COURSE_NAME}} assessment, not a general test.`;
 
 /**
+ * Save generated assessment to database for reuse
+ */
+export async function saveGeneratedAssessment(courseName, courseId, assessment) {
+  try {
+    const { supabase } = await import('../lib/supabaseClient');
+    
+    console.log('💾 Saving generated assessment to database...', {
+      courseName,
+      courseId,
+      questionCount: assessment.questions?.length
+    });
+
+    const { data, error } = await supabase
+      .from('generated_external_assessment')
+      .insert({
+        certificate_name: courseName,
+        course_id: courseId,
+        assessment_level: assessment.level,
+        total_questions: assessment.questions.length,
+        questions: assessment.questions,
+        generated_by: 'AI'
+      })
+      .select()
+      .single();
+
+    if (error) {
+      // If duplicate (already exists), that's okay
+      if (error.code === '23505') {
+        console.log('ℹ️ Assessment already exists in database');
+        return { success: true, data: null, alreadyExists: true };
+      }
+      throw error;
+    }
+
+    console.log('✅ Assessment saved to database:', data.id);
+    return { success: true, data, alreadyExists: false };
+  } catch (error) {
+    console.error('❌ Error saving assessment to database:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Load generated assessment from database
+ */
+export async function loadGeneratedAssessment(courseName) {
+  try {
+    const { supabase } = await import('../lib/supabaseClient');
+    
+    console.log('🔍 Loading generated assessment from database...', courseName);
+
+    const { data, error } = await supabase
+      .from('generated_external_assessment')
+      .select('*')
+      .eq('certificate_name', courseName)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        console.log('ℹ️ No generated assessment found in database');
+        return null;
+      }
+      throw error;
+    }
+
+    console.log('✅ Loaded assessment from database:', {
+      id: data.id,
+      questionCount: data.questions?.length,
+      generatedAt: data.generated_at
+    });
+
+    // Transform to expected format
+    return {
+      course: data.certificate_name,
+      level: data.assessment_level,
+      total_questions: data.total_questions,
+      questions: data.questions
+    };
+  } catch (error) {
+    console.error('❌ Error loading assessment from database:', error);
+    return null;
+  }
+}
+
+/**
  * Generate assessment using backend API (which calls Claude AI)
  */
-export async function generateAssessment(courseName, level = 'Intermediate', questionCount = 15) {
+export async function generateAssessment(courseName, level = 'Intermediate', questionCount = 15, courseId = null) {
   try {
     console.log('🎯 Generating assessment for:', courseName, 'Level:', level);
+
+    // First, try to load from database
+    try {
+      const dbAssessment = await loadGeneratedAssessment(courseName);
+      if (dbAssessment) {
+        console.log('✅ Using assessment from database - no AI call needed!');
+        return dbAssessment;
+      }
+      console.log('ℹ️ No existing assessment in database, will generate new one');
+    } catch (dbError) {
+      console.warn('⚠️ Database check failed, will try to generate:', dbError.message);
+      // Continue to generation even if DB check fails
+    }
 
     // Call backend API instead of Claude directly (to avoid CORS)
     const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -86,7 +184,7 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
       console.error('❌ API Error:', errorData);
       
       if (response.status === 401) {
@@ -98,7 +196,7 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
 
     const assessment = await response.json();
     
-    console.log('✅ Generated assessment:', {
+    console.log('✅ Generated assessment with AI:', {
       course: assessment.course,
       level: assessment.level,
       questionCount: assessment.questions?.length,
@@ -113,6 +211,20 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
     }
 
     console.log('✅ Assessment validated successfully');
+    
+    // Save to database for future use (don't fail if this doesn't work)
+    if (courseId) {
+      try {
+        const saveResult = await saveGeneratedAssessment(courseName, courseId, assessment);
+        if (saveResult.success) {
+          console.log('✅ Assessment saved to database for future reuse');
+        }
+      } catch (saveError) {
+        console.warn('⚠️ Could not save to database, but assessment is still usable:', saveError.message);
+        // Don't throw - assessment generation succeeded, saving is optional
+      }
+    }
+
     return assessment;
   } catch (error) {
     console.error('❌ Error generating assessment:', error);

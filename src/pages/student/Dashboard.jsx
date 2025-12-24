@@ -1,89 +1,76 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useLocation } from "react-router-dom";
-import { motion } from "motion/react";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/Students/components/ui/card";
-import { Button } from "../../components/Students/components/ui/button";
-import { Badge } from "../../components/Students/components/ui/badge";
-import { LampContainer } from "../../components/Students/components/ui/lamp";
-import {
-  TrendingUp,
-  CheckCircle,
-  Star,
-  ExternalLink,
-  Edit,
-  Calendar,
-  Award,
-  Eye,
-  QrCode,
-  Medal,
-  Briefcase,
-  MapPin,
-  Clock,
-  Building2,
-  Sparkles,
-  Target,
-  BookOpen,
-  Trophy,
-  ChevronRight,
-  Link,
-  Github,
-  Presentation,
-  Video,
-  File,
-  FileText,
-  ClipboardList,
-  GraduationCap,
-  PresentationIcon,
-  Rocket,
-  Cpu,
-  Users2,
-  Lightbulb,
-  BarChart3,
-} from "lucide-react";
-import {
-  ChartBarIcon,
-  RectangleStackIcon,
+    ChartBarIcon,
+    RectangleStackIcon,
 } from "@heroicons/react/24/outline";
 import {
-  suggestions,
-  educationData,
-  trainingData,
-  experienceData,
-  technicalSkills,
-  softSkills,
-} from "../../components/Students/data/mockData";
-import {
-  EducationEditModal,
-  TrainingEditModal,
-  ExperienceEditModal,
-  SkillsEditModal,
-  ProjectsEditModal,
-  CertificatesEditModal,
-} from "../../components/Students/components/ProfileEditModals";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
-import { useOpportunities } from "../../hooks/useOpportunities";
-import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
-import { useAIRecommendations } from "../../hooks/useAIRecommendations";
-import { supabase } from "../../lib/supabaseClient";
-import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
-import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
+    BarChart3,
+    BookOpen,
+    Briefcase,
+    Building2,
+    Calendar,
+    CheckCircle,
+    ChevronRight,
+    ClipboardList,
+    Clock,
+    Cpu,
+    ExternalLink,
+    Github,
+    GraduationCap,
+    Lightbulb,
+    MapPin,
+    Medal,
+    PresentationIcon,
+    Rocket,
+    Sparkles,
+    Star,
+    TrendingUp,
+    Users2
+} from "lucide-react";
+import { motion } from "motion/react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Toaster } from "react-hot-toast";
+import { useLocation, useNavigate } from "react-router-dom";
 import CareerAIToolsGrid from "../../components/shared/CareerAIToolsGrid";
 import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
-import RecentUpdatesCard from "../../components/Students/components/RecentUpdatesCard";
-import { useStudentAchievements } from "../../hooks/useStudentAchievements";
-import { useNavigate } from "react-router-dom";
-import { useStudentLearning } from "../../hooks/useStudentLearning";
-import { useStudentCertificates } from "../../hooks/useStudentCertificates";
-import { useStudentProjects } from "../../hooks/useStudentProjects";
 import AnalyticsView from "../../components/Students/components/AnalyticsView";
-import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
+import {
+    CertificatesEditModal,
+    EducationEditModal,
+    ExperienceEditModal,
+    ProjectsEditModal,
+    SkillsEditModal,
+    TrainingEditModal,
+} from "../../components/Students/components/ProfileEditModals";
 import TrainingRecommendations from "../../components/Students/components/TrainingRecommendations";
+import { Badge } from "../../components/Students/components/ui/badge";
+import { Button } from "../../components/Students/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from "../../components/Students/components/ui/card";
+import { LampContainer } from "../../components/Students/components/ui/lamp";
+import {
+    educationData,
+    experienceData,
+    softSkills,
+    suggestions,
+    technicalSkills,
+    trainingData,
+} from "../../components/Students/data/mockData";
+import { useAIRecommendations } from "../../hooks/useAIRecommendations";
+import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
+import { useOpportunities } from "../../hooks/useOpportunities";
+import { useStudentAchievements } from "../../hooks/useStudentAchievements";
+import { useStudentCertificates } from "../../hooks/useStudentCertificates";
+import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
+import { useStudentLearning } from "../../hooks/useStudentLearning";
+import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
+import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
+import { useStudentProjects } from "../../hooks/useStudentProjects";
+import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
+import { supabase } from "../../lib/supabaseClient";
 import { calculateEmployabilityScore } from "../../utils/employabilityCalculator";
 // Debug utilities removed for production cleanliness
 
@@ -141,6 +128,13 @@ const StudentDashboard = () => {
   // Use authenticated student data instead of localStorage
   // Get user email from localStorage or context (customize as needed)
   const userEmail = localStorage.getItem("userEmail");
+
+  // Debug: Log userEmail to help with troubleshooting
+  useEffect(() => {
+    console.log('📧 Dashboard userEmail:', userEmail);
+    console.log('📧 localStorage userEmail:', localStorage.getItem("userEmail"));
+    console.log('📧 All localStorage keys:', Object.keys(localStorage));
+  }, [userEmail]);
 
   // Use the same hook as ProfileEditSection for fetching and updating
   const {
@@ -1232,50 +1226,51 @@ const StudentDashboard = () => {
                   className={`p-5 rounded-xl bg-gradient-to-r from-blue-50 to-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200 space-y-3 ${project.enabled ? "" : "opacity-75"
                     }`}
                 >
-                  {/* First row: Title + Status */}
-                  <div className="flex items-center justify-between gap-3">
-                    <h4 className="font-semibold text-gray-900 text-base">
+                  {/* Project Title */}
+                  <div className="flex items-start justify-between gap-3">
+                    <h4 className="font-semibold text-gray-900 text-base flex-1">
                       {project.title || project.name || "Untitled Project"}
                     </h4>
+                    {project.status && (
+                      <Badge className={`px-2 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${
+                        project.status.toLowerCase() === "completed"
+                          ? "bg-green-100 text-green-600"
+                          : "bg-blue-100 text-blue-600"
+                      }`}>
+                        {project.status}
+                      </Badge>
+                    )}
+                  </div>
 
-                    {/* Date + Status Badge */}
-                    <div className="flex items-center justify-between gap-3 mb-3">
-                      <p className="text-sm text-gray-900 leading-relaxed font-medium">
-                        {project.duration || project.timeline || project.period || ""}
-                      </p>
-                      {project.status && (
-                        <Badge className={`px-1 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${
-                          project.status.toLowerCase() === "completed"
-                            ? "bg-green-100 text-green-600"
-                            : "bg-blue-100 text-blue-600"
-                        }`}>
-                          {project.status}
-                        </Badge>
-                      )}
+                  {/* Duration/Timeline */}
+                  {(project.duration || project.timeline || project.period) && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Calendar className="w-4 h-4" />
+                      <span>{project.duration || project.timeline || project.period}</span>
                     </div>
+                  )}
 
-                    {/* Demo Button + GitHub Button */}
-                    <div className="flex items-center justify-end gap-3">
-                      {project.demo_link && (
-                        <Button
-                          size="sm"
-                          onClick={() => window.open(project.demo_link, '_blank')}
-                          className="w-auto bg-gradient-to-r from-blue-50 to-indigo-100 hover:from-blue-200 hover:to-indigo-300 text-blue-700 font-semibold px-1 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
-                        >
-                          Demo
-                        </Button>
-                      )}
-                      {(project.github_link || project.github_url || project.github) && (
-                        <Button
-                          size="sm"
-                          onClick={() => window.open(project.github_url || project.github_link || project.github, '_blank')}
-                          className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-2 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
-                        >
-                          <Github className="w-4 h-4" />
-                          Git
-                        </Button>
-                      )}
-                    </div>
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    {project.demo_link && (
+                      <Button
+                        size="sm"
+                        onClick={() => window.open(project.demo_link, '_blank')}
+                        className="bg-gradient-to-r from-blue-50 to-indigo-100 hover:from-blue-200 hover:to-indigo-300 text-blue-700 font-semibold px-3 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
+                      >
+                        Demo
+                      </Button>
+                    )}
+                    {(project.github_link || project.github_url || project.github) && (
+                      <Button
+                        size="sm"
+                        onClick={() => window.open(project.github_url || project.github_link || project.github, '_blank')}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-3 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all flex items-center gap-2"
+                      >
+                        <Github className="w-4 h-4" />
+                        Git
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
@@ -1322,7 +1317,79 @@ const StudentDashboard = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Education content would go here */}
+              {(showAllEducation
+                ? userData.education.filter(
+                    (education) =>
+                      education.enabled !== false &&
+                      (education.approval_status === "verified" || education.approval_status === "approved")
+                  )
+                : userData.education
+                    .filter(
+                      (education) =>
+                        education.enabled !== false &&
+                        (education.approval_status === "verified" || education.approval_status === "approved")
+                    )
+                    .slice(0, 3)
+              ).map((education, idx) => (
+                <div
+                  key={education.id || `education-${idx}`}
+                  className="p-5 rounded-xl bg-gradient-to-r from-blue-50 to-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 text-base mb-1">
+                        {education.degree || education.qualification || education.level || "Education"}
+                      </h4>
+                      <p className="text-blue-600 text-sm font-medium mb-2">
+                        {education.institution || education.school || education.university || "Institution"}
+                      </p>
+                      <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                        {education.field && (
+                          <div className="flex items-center gap-1">
+                            <BookOpen className="w-4 h-4" />
+                            <span>{education.field}</span>
+                          </div>
+                        )}
+                        {(education.year || education.duration || education.period) && (
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-4 h-4" />
+                            <span>{education.year || education.duration || education.period}</span>
+                          </div>
+                        )}
+                      </div>
+                      {education.grade && (
+                        <div className="text-sm text-gray-700 font-medium">
+                          Grade: {education.grade}
+                        </div>
+                      )}
+                    </div>
+                    {(education.approval_status === "verified" || education.approval_status === "approved") && (
+                      <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        Verified
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+              
+              {userData.education.filter(
+                (education) =>
+                  education.enabled !== false &&
+                  (education.approval_status === "verified" || education.approval_status === "approved")
+              ).length > 3 && !showAllEducation && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAllEducation(true)}
+                  className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+                >
+                  View All Education ({userData.education.filter(
+                    (education) =>
+                      education.enabled !== false &&
+                      (education.approval_status === "verified" || education.approval_status === "approved")
+                  ).length})
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
@@ -1350,7 +1417,7 @@ const StudentDashboard = () => {
             </button> */}
           </div>
         </CardHeader>
-<CardContent className="pt-4 p-8 space-y-4">
+<CardContent className="pt-4 p-8 space-y-4 min-h-[500px]">
           {/* No Assessment CTA - TOP (only show when not expanded) */}
           {!hasAssessment && !recommendationsLoading && !showAllTraining && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-dashed border-blue-300 mb-4 shadow-sm">
@@ -1397,7 +1464,7 @@ const StudentDashboard = () => {
                 <BookOpen className="w-5 h-5 text-blue-600" />
                 My Courses
               </h3>
-              <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 blue-scrollbar">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 blue-scrollbar">
                 {userData.training
                   .filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved"))
                   .map((training, idx) => {
@@ -1818,7 +1885,7 @@ const StudentDashboard = () => {
 
   const render3x3Grid = () => {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-0 mb-0">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {threeByThreeCards.map((cardName, index) => {
           const cardKey = cardNameMapping[cardName];
           const card = allCards[cardKey];
@@ -1837,7 +1904,7 @@ const StudentDashboard = () => {
   // Utility to truncate long text and toggle full view
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8FAFC] py-4">
       {/* Hot-toast notification container */}
       <Toaster
         position="top-right"
@@ -1852,13 +1919,13 @@ const StudentDashboard = () => {
         }}
       />
 
-      <div className="w-full mx-auto">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* View Switcher Tabs */}
         {!isViewingOthersProfile && (
-          <div className="mb-0 flex justify-center">
+          <div className="mb-6 flex justify-center px-4 sm:px-6 lg:px-8">
             {/* Tab Navigation with Subheadings */}
             <div className="bg-white shadow-sm border-0 p-2 w-full">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Dashboard Tab */}
                 <button
                   onClick={() => setActiveView('dashboard')}
@@ -1951,13 +2018,13 @@ const StudentDashboard = () => {
                 duration: 0.8,
                 ease: "easeInOut",
               }}
-              className="-mt-48 relative z-10 px-0"
+              className="-mt-48 relative z-10"
             >
               {render3x3Grid()}
             </motion.div>
             
             {/* Separate Section: 2 in a row and 1 column (Suggested Steps and Achievement Timeline) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-4 sm:px-6 lg:px-8">
               {/* Suggested Steps - 2 columns wide */}
               <div className="lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
                 <Card

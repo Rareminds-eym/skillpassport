@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "../../components/Students/components/ui/card";
 import { Button } from "../../components/Students/components/ui/button";
-import { Plus, BookOpen, TrendingUp, Award, GraduationCap, Search, SlidersHorizontal, ArrowUpDown, X, BarChart3 } from "lucide-react";
+import { Plus, BookOpen, TrendingUp, Award, GraduationCap, Search, SlidersHorizontal, ArrowUpDown, X, BarChart3, RefreshCw, ArrowRight } from "lucide-react";
 import ModernLearningCard from "../../components/Students/components/ModernLearningCard";
 import LearningAnalyticsDashboard from "../../components/Students/components/LearningAnalyticsDashboard";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
@@ -53,8 +54,69 @@ const APPROVAL_OPTIONS = [
   { value: 'rejected', label: 'Rejected' },
 ];
 
+// Continue Learning Hero Section
+const ContinueLearningSection = ({ course, onContinue }) => {
+  if (!course) return null;
+
+  const progress = course.status === "completed"
+    ? 100
+    : course.totalModules > 0
+      ? Math.round(((course.completedModules || 0) / course.totalModules) * 100)
+      : course.progress || 0;
+
+  return (
+    <div className="relative mb-8">
+      <div className="absolute -top-4 left-4 z-10 w-24 h-24 sm:w-28 sm:h-28">
+        <img 
+          src="/assets/learning-illustration.png" 
+          alt="Learning" 
+          className="w-full h-full object-contain drop-shadow-lg"
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+      </div>
+
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#4361EE] via-[#4C6EF5] to-[#5C7CFA] shadow-xl shadow-blue-200/50">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute -top-20 -right-20 w-64 h-64 bg-white rounded-full blur-3xl" />
+          <div className="absolute -bottom-10 left-1/3 w-40 h-40 bg-white rounded-full blur-2xl" />
+        </div>
+
+        <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 pl-32 sm:pl-36">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <RefreshCw className="w-4 h-4 text-blue-200" />
+              <span className="text-blue-100 text-sm font-medium tracking-wide">Continue Learning</span>
+            </div>
+            <h3 className="text-white text-xl sm:text-2xl font-bold mb-4 truncate pr-4">
+              {course.course || course.title || "Untitled Course"}
+            </h3>
+            <div className="max-w-sm">
+              <div className="relative h-2.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+                <div
+                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-white/60 to-white/80 rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <div className="flex justify-end mt-1.5">
+                <span className="text-white/90 text-sm font-semibold">{progress}%</span>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => onContinue?.(course)}
+            className="mt-4 sm:mt-0 flex items-center gap-2 px-6 py-3 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white font-semibold rounded-full transition-all duration-300 border border-white/30 hover:border-white/50 group"
+          >
+            Continue
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const MyLearning = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const userEmail = user?.email;
   const { studentData, updateTraining, refresh: refreshStudentData, loading: studentLoading } = useStudentDataByEmail(userEmail, false);
@@ -83,6 +145,12 @@ const MyLearning = () => {
 
   const loading = studentLoading || trainingsLoading;
   const hasActiveFilters = statusFilter !== 'all' || approvalFilter !== 'all' || searchTerm.trim() !== '';
+
+  // Continue learning course - find first in-progress course
+  const continueLearningCourse = useMemo(() => {
+    const inProgressCourses = trainings.filter(t => t.status !== 'completed');
+    return inProgressCourses.length > 0 ? inProgressCourses[0] : null;
+  }, [trainings]);
 
   // Pagination calculations
   const totalPages = Math.ceil(trainings.length / itemsPerPage);
@@ -129,11 +197,18 @@ const MyLearning = () => {
   };
   
   const refresh = async () => { await refreshStudentData(); refetchTrainings(); };
+  
+  const handleContinueLearning = (course) => {
+    const isInternalCourse = !!(course.course_id && course.source === "internal_course");
+    
+    if (isInternalCourse) {
+      navigate(`/student/courses/${course.course_id}/learn`);
+    }
+  };
 
   // Handle page change with smooth scroll
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    // Smooth scroll to courses section
     const coursesSection = document.querySelector('[data-courses-section]');
     if (coursesSection) {
       coursesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -145,7 +220,6 @@ const MyLearning = () => {
       <div className="max-w-7xl mx-auto">
         {/* View Switcher Tabs */}
         <div className="mb-6 flex justify-center">
-          {/* Tab Navigation with Subheadings */}
           <div className="bg-white shadow-sm border-0 p-2 w-full rounded-xl">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {/* My Learning Tab */}
@@ -217,19 +291,16 @@ const MyLearning = () => {
         ) : (
           <>
             <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-              <div>
-                {/* <div className="flex items-center gap-3 mb-2">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
-                    <GraduationCap className="w-6 h-6 text-white" />
-                  </div>
-                  <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">My Learning</h1>
-                </div>
-                <p className="text-gray-500 text-base max-w-lg">Track your courses, certifications, and professional development journey</p> */}
-              </div>
+              <div></div>
               <Button onClick={() => setActiveModal("learning")} className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold px-6 py-3 rounded-xl">
                 <Plus className="w-5 h-5 mr-2" />Add Learning
               </Button>
             </div>
+
+            {/* Continue Learning Section */}
+            {!loading && continueLearningCourse && (
+              <ContinueLearningSection course={continueLearningCourse} onContinue={handleContinueLearning} />
+            )}
 
             {/* Filter and Sort Controls */}
             <div className="mb-6 space-y-3">
@@ -287,7 +358,7 @@ const MyLearning = () => {
                 <>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm"><div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center mb-3"><BookOpen className="w-5 h-5 text-white" /></div><p className="text-2xl font-bold text-gray-900">{stats?.total ?? 0}</p><p className="text-xs text-gray-500">Total Courses</p></div>
-                    <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm"><div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center mb-3"><Award className="w-5 h-5 text-white" /></div><p className="text-2xl font-bold text-gray-900">{stats?.completed ?? 0}</p><p className="text-xs text-gray-500">Completed</p></div>
+                    <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm"><div className="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center mb-3"><Award className="w-5 h-5 text-white" /></div><p className="text-2xl font-bold text-gray-900">{stats?.completed ?? 0}</p><p className="text-xs text-gray-500">Completed</p></div>
                     <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm"><div className="w-10 h-10 rounded-xl bg-blue-400 flex items-center justify-center mb-3"><TrendingUp className="w-5 h-5 text-white" /></div><p className="text-2xl font-bold text-gray-900">{stats?.ongoing ?? 0}</p><p className="text-xs text-gray-500">In Progress</p></div>
                   </div>
                   
@@ -311,7 +382,8 @@ const MyLearning = () => {
                         <ModernLearningCard 
                           key={item.id || idx} 
                           item={item} 
-                          onEdit={handleEditItem} 
+                          onEdit={handleEditItem}
+                          onContinue={handleContinueLearning}
                           expandedSkills={expandedSkills} 
                           onToggleSkills={toggleSkillExpand} 
                         />

@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { handleAuthError, isJwtExpiryError } from '../utils/authErrorHandler';
 
 /**
  * Enhanced AuthContext with Supabase Integration
@@ -21,53 +22,142 @@ export const SupabaseAuthProvider = ({ children }) => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
+  const isRefreshing = useRef(false);
+  const refreshAttempts = useRef(0);
+  const MAX_REFRESH_ATTEMPTS = 3;
+
+  // Attempt to refresh the session when it becomes invalid
+  const attemptSessionRefresh = useCallback(async () => {
+    if (isRefreshing.current || refreshAttempts.current >= MAX_REFRESH_ATTEMPTS) {
+      return null;
+    }
+
+    isRefreshing.current = true;
+    refreshAttempts.current += 1;
+    
+    try {
+      console.log('SupabaseAuth: Attempting session refresh...');
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.warn('SupabaseAuth: Session refresh failed:', error.message);
+        return null;
+      }
+      
+      if (data?.session) {
+        console.log('SupabaseAuth: Session refreshed successfully');
+        refreshAttempts.current = 0; // Reset on success
+        return data.session;
+      }
+      
+      return null;
+    } catch (err) {
+      console.error('SupabaseAuth: Session refresh error:', err);
+      return null;
+    } finally {
+      isRefreshing.current = false;
+    }
+  }, []);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadUserProfile(session.user.id);
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        // Get initial session
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('SupabaseAuth: Error getting session:', error);
+          
+          // If 403 error, try to refresh the session
+          if (error.status === 403 || error.message?.includes('403')) {
+            console.log('SupabaseAuth: Session invalid (403), attempting refresh...');
+            const refreshedSession = await attemptSessionRefresh();
+            
+            if (refreshedSession && mounted) {
+              setSession(refreshedSession);
+              setUser(refreshedSession.user);
+              if (refreshedSession.user) {
+                loadUserProfile(refreshedSession.user.id);
+              }
+              setLoading(false);
+              return;
+            }
+          }
+        }
+
+        if (!mounted) return;
+
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+        if (initialSession?.user) {
+          loadUserProfile(initialSession.user.id);
+        }
+      } catch (err) {
+        console.error('SupabaseAuth: Initialization error:', err);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      if (!mounted) return;
+      
       console.log('SupabaseAuth state changed:', event);
-      setSession(session);
-      setUser(session?.user ?? null);
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
       
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Reset refresh attempts on successful auth events
+        refreshAttempts.current = 0;
         // Load/refresh user profile on sign in or token refresh
-        if (session?.user) {
-          loadUserProfile(session.user.id);
+        if (currentSession?.user) {
+          loadUserProfile(currentSession.user.id);
         }
       } else if (event === 'SIGNED_OUT') {
         setUserProfile(null);
-      } else if (event === 'USER_UPDATED' && session?.user) {
+      } else if (event === 'USER_UPDATED' && currentSession?.user) {
         // Refresh profile when user is updated
-        loadUserProfile(session.user.id);
+        loadUserProfile(currentSession.user.id);
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [attemptSessionRefresh]);
 
-  // Load user profile from students table
+  // Load user profile from students table (only for student users)
   const loadUserProfile = async (userId) => {
     try {
-      
+      // Query using user_id column, not id
       const { data, error } = await supabase
         .from('students')
         .select('*')
-        .eq('id', userId)
-        .single();
+        .eq('user_id', userId)
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      // PGRST116 means no rows found - this is expected for non-student users (educators, admins)
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return;
+        }
+        
+        // Handle JWT expiration
+        if (isJwtExpiryError(error)) {
+          await handleAuthError(error);
+          return;
+        }
+
         console.error('❌ Error loading user profile:', error);
         return;
       }
@@ -76,10 +166,13 @@ export const SupabaseAuthProvider = ({ children }) => {
         setUserProfile(data);
         // Also store email in localStorage for backward compatibility
         localStorage.setItem('userEmail', data.email);
-      } else {
       }
+      // For non-student users, userProfile will remain null - this is expected
     } catch (error) {
       console.error('❌ Error loading user profile:', error);
+      if (isJwtExpiryError(error)) {
+        await handleAuthError(error);
+      }
     }
   };
 
@@ -152,16 +245,15 @@ export const SupabaseAuthProvider = ({ children }) => {
     }
   };
 
-  // Update user profile
+  // Update user profile (only works for student users)
   const updateUserProfile = async (updates) => {
     try {
       if (!user) throw new Error('No user logged in');
 
-
       const { data, error } = await supabase
         .from('students')
         .update(updates)
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .select()
         .single();
 
