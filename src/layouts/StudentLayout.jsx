@@ -28,7 +28,7 @@ const getActiveTabFromPath = (pathname) => {
   if (pathname.includes('/digital-portfolio')) return 'digital-portfolio';
   if (pathname.includes('/opportunities')) return 'opportunities';
   if (pathname.includes('/career-ai')) return 'career-ai';
-  if (pathname.includes('/assignments')) return 'assignments';
+  if (pathname.includes('/assignments') || pathname.includes('/my-class')) return 'assignments';
   if (pathname.includes('/messages')) return 'messages';
   if (pathname.includes('/my-skills')) return 'skills';
   if (pathname.includes('/my-experience')) return 'experience';
