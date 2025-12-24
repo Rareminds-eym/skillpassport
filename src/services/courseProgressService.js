@@ -112,15 +112,7 @@ export const courseProgressService = {
         return { success: false, error: 'Missing required parameters' };
       }
 
-      // First get current sessions_count
-      const { data: current } = await supabase
-        .from('course_enrollments')
-        .select('sessions_count')
-        .eq('student_id', studentId)
-        .eq('course_id', courseId)
-        .maybeSingle();
-
-      const newSessionsCount = (current?.sessions_count || 0) + 1;
+      console.log('💾 Saving restore point:', { studentId, courseId, moduleIndex, lessonIndex, lessonId });
 
       const { error } = await supabase
         .from('course_enrollments')
@@ -129,13 +121,17 @@ export const courseProgressService = {
           last_lesson_index: lessonIndex,
           last_lesson_id: lessonId,
           last_video_position: Math.floor(videoPosition),
-          last_accessed: new Date().toISOString(),
-          sessions_count: newSessionsCount
+          last_accessed: new Date().toISOString()
         })
         .eq('student_id', studentId)
         .eq('course_id', courseId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error saving restore point:', error);
+        throw error;
+      }
+      
+      console.log('✅ Restore point saved successfully');
       return { success: true };
     } catch (error) {
       console.error('Error saving restore point:', error);

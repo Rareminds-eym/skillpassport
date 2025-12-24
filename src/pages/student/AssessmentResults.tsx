@@ -1,107 +1,145 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle, BookOpen, Award } from 'lucide-react';
-import { courses } from '../../data/assessment/courses';
+import { CheckCircle, XCircle, Clock, Award, ArrowLeft, Target } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 const Results: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { score, totalQuestions, courseId } = location.state || { score: 0, totalQuestions: 0, courseId: '' };
+  const { score, totalQuestions, courseId, questions, certificateName } = location.state || { 
+    score: 0, 
+    totalQuestions: 0, 
+    courseId: '',
+    questions: [],
+    certificateName: 'Assessment'
+  };
   
-  // Calculate percentage for internal logic
-  const percentage = Math.round((score / totalQuestions) * 100);
+  // Calculate percentage
+  const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+  const passed = percentage >= 60;
   
-  // Get course from courses array
-  const course = courses.find(c => c.id === courseId);
-
-  // Generate feedback based on course and score
-  const getFeedback = () => {
-    const performance = percentage >= 80 ? 'excellent' : percentage >= 60 ? 'good' : 'needs improvement';
-    
-    const feedbackMap = {
-      'csevbm': {
-        excellent: 'Outstanding understanding of chemical safety protocols! You demonstrated exceptional knowledge in handling hazardous materials, emergency procedures, and regulatory compliance. Your grasp of safety measures in battery production is commendable.',
-        good: 'Good understanding of chemical safety fundamentals. While you show competency in basic safety protocols, consider reviewing advanced topics like emergency response procedures and chemical waste management.',
-        'needs improvement': 'Your understanding of chemical safety needs strengthening. Focus on studying safety protocols, hazard identification, and emergency procedures. Consider reviewing the material safety data sheets and regulatory requirements.'
-      },
-      'green-chemistry': {
-        excellent: 'Exceptional grasp of sustainable chemistry principles! Your understanding of eco-friendly practices and green manufacturing processes is outstanding. You show strong knowledge of environmental impact reduction strategies.',
-        good: 'Good comprehension of green chemistry concepts. While you understand the basics, consider deepening your knowledge of advanced sustainable practices and innovative eco-friendly technologies.',
-        'needs improvement': 'Your understanding of green chemistry concepts needs improvement. Focus on studying sustainable practices, environmental impact assessment, and eco-friendly manufacturing processes.'
-      },
-      'ev-battery-management': {
-        excellent: 'Outstanding knowledge of EV battery management systems! Your understanding of battery technology, safety protocols, and maintenance procedures is exceptional. You show excellent grasp of performance optimization techniques.',
-        good: 'Good understanding of EV battery management fundamentals. While you grasp the basics well, consider reviewing advanced topics in battery diagnostics and system optimization.',
-        'needs improvement': 'Your understanding of EV battery management needs strengthening. Focus on studying battery technologies, maintenance procedures, and safety protocols.'
-      },
-      'organic-food': {
-        excellent: 'Exceptional understanding of organic food production! Your knowledge of sustainable farming practices, certification requirements, and quality control is outstanding.',
-        good: 'Good grasp of organic food production basics. While you understand the fundamentals, consider deepening your knowledge of advanced farming techniques and certification standards.',
-        'needs improvement': 'Your understanding of organic food production needs improvement. Focus on studying sustainable farming practices, certification requirements, and quality control measures.'
-      },
-      'food-analysis': {
-        excellent: 'Outstanding knowledge of food analysis techniques! Your understanding of testing methods, quality control, and safety standards is exceptional.',
-        good: 'Good comprehension of food analysis fundamentals. While you grasp the basics well, consider reviewing advanced testing methods and quality assurance protocols.',
-        'needs improvement': 'Your understanding of food analysis needs strengthening. Focus on studying testing methods, quality control procedures, and safety standards.'
-      },
-      'default': {
-        excellent: 'Outstanding performance! You have demonstrated exceptional understanding of the subject matter.',
-        good: 'Good performance! You have shown a solid grasp of the core concepts.',
-        'needs improvement': 'Your understanding of the subject matter needs improvement. Consider reviewing the material and trying again.'
-      }
-    };
-
-    const courseFeedback = feedbackMap[courseId] || feedbackMap['default'];
-    return courseFeedback[performance];
+  // Calculate total time taken
+  const totalTimeTaken = questions?.reduce((acc: number, q: any) => acc + (q.timeTaken || 0), 0) || 0;
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Mark assessment as completed in database
+  useEffect(() => {
+    const markCompleted = async () => {
+      if (!location.state?.attemptId) return;
+      
+      try {
+        await supabase
+          .from('external_assessment_attempts')
+          .update({
+            status: 'completed',
+            score: percentage,
+            correct_answers: score,
+            completed_at: new Date().toISOString(),
+            time_taken: totalTimeTaken
+          })
+          .eq('id', location.state.attemptId);
+        
+        console.log('✅ Assessment marked as completed');
+      } catch (error) {
+        console.error('Failed to mark assessment as completed:', error);
+      }
+    };
+    
+    markCompleted();
+  }, [location.state?.attemptId, percentage, score, totalTimeTaken]);
+
   return (
-    <div className="min-h-screen bg-pattern-chemistry flex items-center justify-center py-12">
-      <div className="max-w-4xl w-full px-4 sm:px-6 lg:px-8">
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-green-500 to-green-600 px-6 py-12 sm:px-8 text-center">
-            <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-white bg-opacity-20 mb-6">
-              <CheckCircle className="h-12 w-12 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 flex items-center justify-center py-12 px-4">
+      <div className="max-w-lg w-full">
+        {/* Main Card */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+          {/* Header with gradient */}
+          <div className={`px-8 py-10 text-center ${
+            passed 
+              ? 'bg-gradient-to-r from-emerald-500 to-teal-500' 
+              : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+          }`}>
+            <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
+              passed ? 'bg-white/20' : 'bg-white/20'
+            }`}>
+              {passed ? (
+                <Award className="w-10 h-10 text-white" />
+              ) : (
+                <Target className="w-10 h-10 text-white" />
+              )}
             </div>
-            <h2 className="text-3xl font-bold text-white font-serif mb-4">Hackathon Complete!</h2>
-            <p className="text-xl text-white text-opacity-90">
-              You've completed the {course?.title || 'Hackathon'}
+            <h1 className="text-2xl font-bold text-white mb-2">
+              {passed ? 'Congratulations!' : 'Keep Learning!'}
+            </h1>
+            <p className="text-white/90 text-sm">
+              {passed 
+                ? 'You have successfully passed the assessment' 
+                : 'Review the material and strengthen your skills'}
             </p>
           </div>
 
-          {/* Results */}
-          <div className="px-6 py-8 sm:px-8">
-            {/* Score Display */}
-            {/* <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center h-24 w-24 rounded-full bg-blue-100 mb-4">
-                <span className="text-2xl font-bold text-blue-600">{percentage}%</span>
+          {/* Score Section */}
+          <div className="px-8 py-8">
+            {/* Score Circle */}
+            <div className="flex justify-center mb-8">
+              <div className={`relative w-32 h-32 rounded-full flex items-center justify-center ${
+                passed ? 'bg-emerald-50' : 'bg-blue-50'
+              }`}>
+                <div className="text-center">
+                  <span className={`text-4xl font-bold ${
+                    passed ? 'text-emerald-600' : 'text-blue-600'
+                  }`}>
+                    {percentage}%
+                  </span>
+                  <p className="text-xs text-gray-500 mt-1">Your Score</p>
+                </div>
               </div>
-              <p className="text-lg text-gray-600">
-                You scored {score} out of {totalQuestions} questions correctly
-              </p>
-            </div> */}
+            </div>
 
-            {/* Feedback */}
-            <div className="mb-8 text-center">
-              <h3 className="text-xl font-medium text-gray-900 mb-4 flex items-center justify-center font-serif">
-                <Award className="h-6 w-6 text-blue-600 mr-2" />
-                Performance Analysis
-              </h3>
-              <p className="text-gray-600 bg-blue-50 p-6 rounded-lg border-l-4 border-blue-500 max-w-2xl mx-auto">
-                {getFeedback()}
+            {/* Stats Grid */}
+            <div className="grid grid-cols-3 gap-4 mb-8">
+              <div className="bg-gray-50 rounded-xl p-4 text-center">
+                <p className="text-xl font-bold text-gray-900">{totalQuestions}</p>
+                <p className="text-xs text-gray-500">Total Questions</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4 text-center">
+                <p className={`text-xl font-bold ${passed ? 'text-emerald-600' : 'text-blue-600'}`}>
+                  {score}
+                </p>
+                <p className="text-xs text-gray-500">Correct</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4 text-center">
+                <p className="text-xl font-bold text-gray-900">{formatTime(totalTimeTaken)}</p>
+                <p className="text-xs text-gray-500">Time Taken</p>
+              </div>
+            </div>
+
+            {/* Assessment Info */}
+            <div className="bg-blue-50 rounded-xl p-4 mb-6">
+              <p className="text-sm text-blue-800 text-center">
+                <span className="font-semibold">{certificateName}</span>
+                <br />
+                <span className="text-blue-600 text-xs">Assessment Completed</span>
               </p>
             </div>
 
-            <div className="flex justify-center">
-              <button
-                onClick={() => navigate('/student/dashboard')}
-                className="inline-flex items-center px-8 py-3 border border-transparent text-lg font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-              >
-                <BookOpen className="h-5 w-5 mr-2" />
-                Return to Dashboard
-              </button>
-            </div>
+            {/* Action Button - Only Back to Learning */}
+            <button
+              onClick={() => navigate('/student/my-learning')}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-200/50"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Back to My Learning
+            </button>
+
+            {/* Note about one-time assessment */}
+            <p className="text-center text-xs text-gray-400 mt-4">
+              This assessment can only be taken once per course
+            </p>
           </div>
         </div>
       </div>

@@ -215,7 +215,7 @@ const ModernLearningCard = ({
       <div className="px-3 py-4 flex items-center justify-between">
         {/* Modules Count */}
         <div className="text-sm text-gray-700">
-          Modules:{" "}
+          {isCourseEnrollment ? 'Lessons' : 'Modules'}:{" "}
           <span className="font-bold text-gray-900">
             {item.completedModules || 0}/{item.totalModules || 0}
           </span>
@@ -223,13 +223,6 @@ const ModernLearningCard = ({
         
         {/* Button Section */}
         <div className="flex items-center gap-3">
-          <div className="text-sm text-gray-700">
-            {isCourseEnrollment ? 'Lessons' : 'Modules'}:{" "}
-            <span className="font-bold text-gray-900">
-              {item.completedModules || 0}/{item.totalModules || 0}
-            </span>
-          </div>
-          
           {/* Assessment Button - ONLY show for EXTERNAL courses (not internal platform courses or enrollments) */}
           {isExternalCourse && !isCourseEnrollment && !checkingAssessment && (
             assessmentCompleted ? (
@@ -256,34 +249,35 @@ const ModernLearningCard = ({
             )
           )}
 
-        {/* Certificate or Continue Button */}
-        {item.certificateUrl ? (
-          <button
-            onClick={() => window.open(item.certificateUrl, "_blank")}
-            className={`
-              px-6 py-2.5 rounded-full font-medium text-sm
-              flex items-center gap-2 transition-all duration-300
-              ${isCompleted
-                ? "bg-green-500 text-white hover:bg-green-600"
-                : "bg-blue-500 text-white hover:bg-blue-600"}
-            `}
-          >
-            <Award className="w-4 h-4" />
-            Certificate
-          </button>
-        ) : isCourseEnrollment ? (
-          <button 
-            onClick={handleContinue}
-            className="px-6 py-2.5 rounded-full font-medium text-sm bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300 flex items-center gap-2"
-          >
-            <Play className="w-4 h-4" />
-            {progress > 0 ? 'Resume' : 'Start'}
-          </button>
-        ) : (
-          <button className="px-6 py-2.5 rounded-full font-medium text-sm bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300">
-            Continue
-          </button>
-        )}
+          {/* Certificate or Continue Button */}
+          {item.certificateUrl ? (
+            <button
+              onClick={() => window.open(item.certificateUrl, "_blank")}
+              className={`
+                px-6 py-2.5 rounded-full font-medium text-sm
+                flex items-center gap-2 transition-all duration-300
+                ${isCompleted
+                  ? "bg-green-500 text-white hover:bg-green-600"
+                  : "bg-blue-500 text-white hover:bg-blue-600"}
+              `}
+            >
+              <Award className="w-4 h-4" />
+              Certificate
+            </button>
+          ) : isCourseEnrollment ? (
+            <button 
+              onClick={handleContinue}
+              className="px-6 py-2.5 rounded-full font-medium text-sm bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300 flex items-center gap-2"
+            >
+              <Play className="w-4 h-4" />
+              {progress > 0 ? 'Resume' : 'Start'}
+            </button>
+          ) : (
+            <button className="px-6 py-2.5 rounded-full font-medium text-sm bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300">
+              Continue
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
