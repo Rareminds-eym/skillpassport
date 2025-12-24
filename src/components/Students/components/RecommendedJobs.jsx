@@ -163,11 +163,13 @@ const RecommendedJobs = ({
               className="flex justify-center"
             >
               <div className="relative">
-                <Brain className="w-20 h-20 text-white" />
+                <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg">
+                  <img src="/RMLogo.webp" alt="RareMinds Logo" className="w-16 h-16" />
+                </div>
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="absolute -top-2 -right-2"
+                  className="absolute -top-5 -right-2"
                 >
                   <Sparkles className="w-8 h-8 text-yellow-300" />
                 </motion.div>
@@ -311,8 +313,8 @@ const RecommendedJobs = ({
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-4 relative z-10">
-          <div className="p-2 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg">
-            <Sparkles className="w-6 h-6 text-white" />
+          <div className="p-2 bg-gradient-to-br from-slate-200 to-gray-200 rounded-lg">
+            <img src="/RMLogo.webp" alt="RareMinds Logo" className="w-5 h-5" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-gray-900">AI Recommended For You</h2>

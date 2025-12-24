@@ -118,7 +118,7 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: "courses", label: "Courses", icon: BookOpenIcon },
     { id: "digital-portfolio", label: "Digital Portfolio", icon: BriefcaseIcon },
     { id: "opportunities", label: "Opportunities", icon: RocketLaunchIcon },
-    { id: "career-ai", label: "Career AI", icon: SparklesIcon },
+    { id: "career-ai", label: "Career AI"},
     // Only show "My Class" if student is part of a school or college
     ...(isPartOfSchoolOrCollege ? [{ id: "assignments", label: "My Class", icon: ClipboardDocumentListIcon }] : []),
     // {id: "clubs", label: "Co-Curriculars"},
