@@ -22,6 +22,8 @@ import WarningModal from "../../components/assessment/test/WarningModal";
 import TimeWarningModal from "../../components/assessment/test/TimeWarningModal";
 import { useAuth } from "../../context/AuthContext";
 import { useTest } from "../../context/assessment/TestContext";
+import { createAssessmentAttempt, updateAssessmentProgress } from "../../services/externalAssessmentService";
+import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 
 interface TestAttempt {
   nmId: string;
@@ -50,6 +52,12 @@ const TestPage: React.FC = () => {
   const totalTimerRef = useRef<NodeJS.Timeout | null>(null);
   const questionStartTimeRef = useRef<number>(Date.now());
   const questionTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Get student data for saving progress
+  const { studentData } = useStudentDataByEmail(user?.email || '', false);
+  
+  // Track attempt ID for progress saving
+  const [attemptId, setAttemptId] = useState<string | null>(null);
 
   // Core state
 
@@ -103,6 +111,9 @@ const TestPage: React.FC = () => {
         
         if (resumeAttempt) {
           console.log('📝 Resuming assessment from question', resumeAttempt.current_question_index + 1);
+          
+          // Set the attempt ID for progress saving
+          setAttemptId(resumeAttempt.id);
           
           // Transform saved questions
           const transformedQuestions = resumeAttempt.questions.map((q: any) => ({
@@ -402,11 +413,39 @@ const TestPage: React.FC = () => {
     setShowPermissions(true);
   };
 
-  const handlePermissionsGranted = () => {
+  const handlePermissionsGranted = async () => {
     setShowInstructions(false);
     setShowPermissions(false);
     setTestStarted(true);
     console.log("Assessment started for course:", courseId);
+    
+    // Create assessment attempt in database if not resuming
+    if (!attemptId && studentData?.id && questions.length > 0) {
+      console.log('📝 Creating new assessment attempt...');
+      const result = await createAssessmentAttempt({
+        studentId: studentData.id,
+        courseName: certificateName,
+        courseId: courseId,
+        assessmentLevel: location.state?.level || 'Intermediate',
+        questions: questions.map(q => ({
+          id: q.id,
+          question: q.text || q.question,
+          options: q.options,
+          correct_answer: q.correctAnswer,
+          type: q.type || 'mcq',
+          difficulty: q.difficulty,
+          skill_tag: q.skillTag,
+          estimated_time: q.estimatedTime
+        }))
+      });
+      
+      if (result.success && result.data) {
+        setAttemptId(result.data.id);
+        console.log('✅ Assessment attempt created:', result.data.id);
+      } else {
+        console.error('❌ Failed to create attempt:', result.error);
+      }
+    }
   };
 
   // Submit test attempt
@@ -739,10 +778,20 @@ const TestPage: React.FC = () => {
                 <motion.button
                   key={index}
                   whileHover={{ scale: 1.02 }}
-                  onClick={() => {
+                  onClick={async () => {
                     const newAnswers = [...selectedAnswers];
                     newAnswers[currentQuestion] = option;
                     setSelectedAnswers(newAnswers);
+                    
+                    // Auto-save progress to database
+                    if (attemptId) {
+                      await updateAssessmentProgress(
+                        attemptId,
+                        currentQuestion,
+                        option,
+                        totalTimeLeft
+                      );
+                    }
                   }}
                   className={`w-full p-4 rounded-lg border-2 transition-all ${
                     selectedAnswers[currentQuestion] === option

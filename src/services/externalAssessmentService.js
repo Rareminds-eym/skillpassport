@@ -129,10 +129,13 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
     const updatedAnswers = [...currentAttempt.student_answers];
     const question = currentAttempt.questions[questionIndex];
     
+    // Check correct answer - handle both formats
+    const correctAnswer = question.correct_answer || question.correctAnswer;
+    
     updatedAnswers[questionIndex] = {
       question_id: question.id,
       selected_answer: answer,
-      is_correct: answer === question.correctAnswer,
+      is_correct: answer === correctAnswer,
       time_taken: updatedAnswers[questionIndex]?.time_taken || 0
     };
 
