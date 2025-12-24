@@ -159,23 +159,13 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
     const updatedAnswers = [...currentAttempt.student_answers];
     const question = currentAttempt.questions[questionIndex];
     
-    if (!question) {
-      console.error('❌ Question not found at index:', questionIndex);
-      throw new Error(`Question not found at index ${questionIndex}`);
-    }
-    
-    console.log('📝 Updating answer for question:', {
-      questionIndex,
-      questionId: question.id,
-      answer,
-      correctAnswer: question.correctAnswer || question.correct_answer,
-      willResumeFrom: resumeIndex
-    });
+    // Check correct answer - handle both formats
+    const correctAnswer = question.correct_answer || question.correctAnswer;
     
     updatedAnswers[questionIndex] = {
       question_id: question.id,
       selected_answer: answer,
-      is_correct: answer === (question.correctAnswer || question.correct_answer),
+      is_correct: answer === correctAnswer,
       time_taken: updatedAnswers[questionIndex]?.time_taken || 0
     };
 
