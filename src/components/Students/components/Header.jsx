@@ -182,7 +182,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   } else if (tab.id === "applications") {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
-                    navigate("/student/assignments");
+                    navigate("/student/my-class");
                   // }
                   // else if (tab.id === "clubs") {
                   //   navigate("/student/clubs");
@@ -247,7 +247,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   } else if (tab.id === "applications") {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
-                    navigate("/student/assignments");
+                    navigate("/student/my-class");
                   // } else if (tab.id === "clubs") {
                   //   navigate("/student/clubs");
                   } else if (tab.id === "career-ai") {
@@ -407,7 +407,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   } else if (tab.id === "applications") {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
-                    navigate("/student/assignments");
+                    navigate("/student/my-class");
                   // } else if (tab.id === "clubs") {
                   //   navigate("/student/clubs");
                   } else if (tab.id === "messages") {
