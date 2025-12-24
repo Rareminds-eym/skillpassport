@@ -358,7 +358,7 @@ const MyLearning = () => {
                 <>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm"><div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center mb-3"><BookOpen className="w-5 h-5 text-white" /></div><p className="text-2xl font-bold text-gray-900">{stats?.total ?? 0}</p><p className="text-xs text-gray-500">Total Courses</p></div>
-                    <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm"><div className="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center mb-3"><Award className="w-5 h-5 text-white" /></div><p className="text-2xl font-bold text-gray-900">{stats?.completed ?? 0}</p><p className="text-xs text-gray-500">Completed</p></div>
+                    <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm"><div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center mb-3"><Award className="w-5 h-5 text-white" /></div><p className="text-2xl font-bold text-gray-900">{stats?.completed ?? 0}</p><p className="text-xs text-gray-500">Completed</p></div>
                     <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm"><div className="w-10 h-10 rounded-xl bg-blue-400 flex items-center justify-center mb-3"><TrendingUp className="w-5 h-5 text-white" /></div><p className="text-2xl font-bold text-gray-900">{stats?.ongoing ?? 0}</p><p className="text-xs text-gray-500">In Progress</p></div>
                   </div>
                   
