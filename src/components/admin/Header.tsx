@@ -9,6 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../../context/AuthContext";
 import NotificationPanel from "./NotificationPanel";
+import { useAdminNotifications } from "../../hooks/useAdminNotifications";
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -19,12 +20,15 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({
   onMenuToggle,
   showMobileMenu,
-  notificationCount = 3,
+  notificationCount,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Get real-time notifications for admin
+  const { unreadCount, loading: notificationsLoading } = useAdminNotifications(user?.id);
 
   const handleNotificationClick = () => {
     setShowNotifications((prev) => !prev);
@@ -83,7 +87,7 @@ const Header: React.FC<HeaderProps> = ({
                 className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full focus:ring-2 focus:ring-indigo-500 transition"
               >
                 <BellIcon className="h-6 w-6" />
-                {notificationCount > 0 && (
+                {(unreadCount > 0) && (
                   <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
                 )}
               </button>
@@ -91,6 +95,7 @@ const Header: React.FC<HeaderProps> = ({
                 <NotificationPanel
                   isOpen={showNotifications}
                   onClose={() => setShowNotifications(false)}
+                  userId={user?.id}
                 />
               )}
             </div>

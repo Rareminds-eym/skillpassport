@@ -153,12 +153,33 @@ export const updateAttemptProgress = async (attemptId, progress) => {
  * @param {boolean} isCorrect - Whether the answer is correct (for MCQ)
  */
 export const saveResponse = async (attemptId, questionId, responseValue, isCorrect = null) => {
+  // Ensure responseValue is never null or undefined
+  // Convert null/undefined to appropriate defaults based on type
+  let sanitizedValue = responseValue;
+
+  if (responseValue === null || responseValue === undefined) {
+    // Default to empty string for text responses, empty array for multi-select
+    sanitizedValue = '';
+  } else if (Array.isArray(responseValue) && responseValue.length === 0) {
+    // For empty arrays, store as empty array JSON
+    sanitizedValue = [];
+  }
+
+  console.log('Saving response:', {
+    attemptId,
+    questionId,
+    originalValue: responseValue,
+    sanitizedValue,
+    valueType: typeof sanitizedValue,
+    isCorrect
+  });
+
   const { data, error } = await supabase
     .from('personal_assessment_responses')
     .upsert({
       attempt_id: attemptId,
       question_id: questionId,
-      response_value: responseValue,
+      response_value: sanitizedValue,
       is_correct: isCorrect,
       responded_at: new Date().toISOString()
     }, {
@@ -167,7 +188,17 @@ export const saveResponse = async (attemptId, questionId, responseValue, isCorre
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error saving response:', error);
+    console.error('Failed data:', {
+      attempt_id: attemptId,
+      question_id: questionId,
+      response_value: sanitizedValue,
+      is_correct: isCorrect
+    });
+    throw error;
+  }
+
   return data;
 };
 
@@ -198,6 +229,13 @@ export const getAttemptResponses = async (attemptId) => {
  * @param {object} sectionTimings - Time spent on each section
  */
 export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel, geminiResults, sectionTimings) => {
+  console.log('=== completeAttempt Debug ===');
+  console.log('Grade Level:', gradeLevel);
+  console.log('Student ID:', studentId);
+  console.log('Stream ID:', streamId);
+  console.log('Has geminiResults:', !!geminiResults);
+  console.log('Has profileSnapshot:', !!geminiResults?.profileSnapshot);
+
   // Update attempt status
   const { error: attemptError } = await supabase
     .from('personal_assessment_attempts')
@@ -208,40 +246,67 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
     })
     .eq('id', attemptId);
 
-  if (attemptError) throw attemptError;
+  if (attemptError) {
+    console.error('Error updating attempt:', attemptError);
+    throw attemptError;
+  }
+
+  // Prepare data for insertion
+  const dataToInsert = {
+    attempt_id: attemptId,
+    student_id: studentId,
+    grade_level: gradeLevel,
+    stream_id: streamId,
+    status: 'completed',
+    riasec_scores: geminiResults.riasec?.scores || null,
+    riasec_code: geminiResults.riasec?.code || null,
+    aptitude_scores: geminiResults.aptitude?.scores || null,
+    aptitude_overall: geminiResults.aptitude?.overallScore || null,
+    bigfive_scores: geminiResults.bigFive || null,
+    work_values_scores: geminiResults.workValues?.scores || null,
+    employability_scores: geminiResults.employability?.skillScores || null,
+    employability_readiness: geminiResults.employability?.overallReadiness || null,
+    knowledge_score: geminiResults.knowledge?.score || null,
+    knowledge_details: geminiResults.knowledge || null,
+    career_fit: geminiResults.careerFit || null,
+    skill_gap: geminiResults.skillGap || null,
+    roadmap: geminiResults.roadmap || null,
+    profile_snapshot: geminiResults.profileSnapshot || null,
+    timing_analysis: geminiResults.timingAnalysis || null,
+    final_note: geminiResults.finalNote || null,
+    overall_summary: geminiResults.overallSummary || null,
+    gemini_results: geminiResults
+  };
+
+  console.log('Data to insert:', {
+    grade_level: dataToInsert.grade_level,
+    stream_id: dataToInsert.stream_id,
+    has_riasec: !!dataToInsert.riasec_scores,
+    has_profileSnapshot: !!dataToInsert.profile_snapshot,
+    has_careerFit: !!dataToInsert.career_fit,
+    has_skillGap: !!dataToInsert.skill_gap,
+    has_roadmap: !!dataToInsert.roadmap
+  });
 
   // Save results
   const { data: results, error: resultsError } = await supabase
     .from('personal_assessment_results')
-    .insert({
-      attempt_id: attemptId,
-      student_id: studentId,
-      grade_level: gradeLevel,
-      stream_id: streamId,
-      status: 'completed',
-      riasec_scores: geminiResults.riasec?.scores,
-      riasec_code: geminiResults.riasec?.code,
-      aptitude_scores: geminiResults.aptitude?.scores,
-      aptitude_overall: geminiResults.aptitude?.overallScore,
-      bigfive_scores: geminiResults.bigFive,
-      work_values_scores: geminiResults.workValues?.scores,
-      employability_scores: geminiResults.employability?.skillScores,
-      employability_readiness: geminiResults.employability?.overallReadiness,
-      knowledge_score: geminiResults.knowledge?.score,
-      knowledge_details: geminiResults.knowledge,
-      career_fit: geminiResults.careerFit,
-      skill_gap: geminiResults.skillGap,
-      roadmap: geminiResults.roadmap,
-      profile_snapshot: geminiResults.profileSnapshot,
-      timing_analysis: geminiResults.timingAnalysis,
-      final_note: geminiResults.finalNote,
-      overall_summary: geminiResults.overallSummary,
-      gemini_results: geminiResults
-    })
+    .insert(dataToInsert)
     .select()
     .single();
 
-  if (resultsError) throw resultsError;
+  if (resultsError) {
+    console.error('Error inserting results:', resultsError);
+    console.error('Error details:', {
+      code: resultsError.code,
+      message: resultsError.message,
+      details: resultsError.details,
+      hint: resultsError.hint
+    });
+    throw resultsError;
+  }
+
+  console.log('Results saved successfully:', results.id);
   return results;
 };
 

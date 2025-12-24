@@ -574,10 +574,22 @@ const CompactCourseCard = ({ course, onClick }) => {
   const isCompleted = course.completionRate === 100;
   const isNotStarted = course.completionRate === 0;
 
+  const handleClick = () => {
+    // Don't navigate if course is 100% completed
+    if (isCompleted) {
+      return;
+    }
+    onClick();
+  };
+
   return (
     <div 
-      onClick={onClick} 
-      className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 cursor-pointer transition-all group"
+      onClick={handleClick} 
+      className={`flex items-center gap-4 p-3 rounded-xl border border-gray-100 transition-all group ${
+        isCompleted 
+          ? 'cursor-default' 
+          : 'hover:border-gray-200 hover:bg-gray-50 cursor-pointer'
+      }`}
     >
       {/* Progress Circle */}
       <div className="relative w-10 h-10 flex-shrink-0">
@@ -607,15 +619,21 @@ const CompactCourseCard = ({ course, onClick }) => {
       </div>
 
       {/* Action */}
-      <button className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-        isCompleted 
-          ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' 
-          : isNotStarted
+      {isCompleted ? (
+        // For 100% completed courses, show completed status instead of continue button
+        <div className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-600 flex items-center gap-1">
+          <CheckCircle2 className="w-3 h-3" />
+          Completed
+        </div>
+      ) : (
+        <button className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+          isNotStarted
             ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-      }`}>
-        {isCompleted ? 'Certificate' : isNotStarted ? 'Start' : 'Continue'}
-      </button>
+        }`}>
+          {isNotStarted ? 'Start' : 'Continue'}
+        </button>
+      )}
     </div>
   );
 };

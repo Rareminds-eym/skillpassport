@@ -622,10 +622,13 @@ const EducatorAssessmentResults: React.FC = () => {
       if (schoolEducatorData?.school_id) {
         // School educator
         schoolId = schoolEducatorData.school_id;
-        studentsQuery = studentsQuery.eq('school_id', schoolId);
-
-        // If educator has assigned classes (not admin), filter by those classes
-        if (schoolEducatorData.role !== 'admin' && schoolEducatorData.role !== 'school_admin') {
+        
+        // Apply filtering based on educator role and class assignments
+        if (schoolEducatorData.role === 'admin' || schoolEducatorData.role === 'school_admin') {
+          // School admins can see all students in their school
+          studentsQuery = studentsQuery.eq('school_id', schoolId);
+        } else {
+          // Regular educators can only see students in their assigned classes
           const { data: classAssignments, error: classError } = await supabase
             .from('school_educator_class_assignments')
             .select('class_id')
@@ -633,7 +636,14 @@ const EducatorAssessmentResults: React.FC = () => {
 
           if (!classError && classAssignments && classAssignments.length > 0) {
             const assignedClassIds = classAssignments.map(assignment => assignment.class_id);
-            studentsQuery = studentsQuery.in('school_class_id', assignedClassIds);
+            studentsQuery = studentsQuery
+              .eq('school_id', schoolId)
+              .in('school_class_id', assignedClassIds);
+          } else {
+            // Educator has no class assignments - return empty results
+            setResults([]);
+            setLoading(false);
+            return;
           }
         }
 
@@ -1083,7 +1093,9 @@ const EducatorAssessmentResults: React.FC = () => {
               <p className="text-sm text-gray-500 mb-4">
                 {searchQuery || activeFilterCount > 0
                   ? 'Try adjusting your search or filters'
-                  : 'No student assessments available yet'}
+                  : results.length === 0 && !error
+                    ? 'No students have completed assessments yet, or you may not be assigned to any classes'
+                    : 'No student assessments available yet'}
               </p>
               {activeFilterCount > 0 && (
                 <button

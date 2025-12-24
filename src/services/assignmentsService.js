@@ -421,6 +421,37 @@ export const deleteStudentAssignment = async (studentAssignmentId) => {
 };
 
 /**
+ * Submit assignment with file upload
+ * @param {string} studentAssignmentId - The UUID of the student_assignment
+ * @param {Object} submissionData - Submission details including file info
+ * @returns {Promise<Object>} Updated student assignment
+ */
+export const submitAssignmentWithFile = async (studentAssignmentId, submissionData) => {
+  try {
+    const updateData = {
+      ...submissionData,
+      status: 'submitted',
+      submission_date: new Date().toISOString(),
+      completed_date: new Date().toISOString(),
+      updated_date: new Date().toISOString()
+    };
+    
+    const { data, error } = await supabase
+      .from('student_assignments')
+      .update(updateData)
+      .eq('student_assignment_id', studentAssignmentId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error submitting assignment with file:', error);
+    throw error;
+  }
+};
+
+/**
  * Submit assignment (update submission details)
  * @param {string} studentAssignmentId - The UUID of the student_assignment
  * @param {Object} submissionData - Submission details

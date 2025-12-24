@@ -48,14 +48,16 @@ const Messages = () => {
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showMenu, setShowMenu] = useState(null);
-  // Read tab from URL parameter, default to recruiters
+  // Read tab from URL parameter, default based on available tabs
   const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(
-    tabFromUrl === 'educators' ? 'educators' : 
-    tabFromUrl === 'admin' ? 'admin' : 
-    tabFromUrl === 'college_admin' ? 'college_admin' :
-    'recruiters'
-  );
+  const [activeTab, setActiveTab] = useState(() => {
+    // If tab is specified in URL, use it (will be validated later)
+    if (tabFromUrl && ['recruiters', 'educators', 'admin', 'college_admin'].includes(tabFromUrl)) {
+      return tabFromUrl;
+    }
+    // Default to recruiters (always available)
+    return 'recruiters';
+  });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, conversationId: null, contactName: '' });
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const [showNewAdminConversationModal, setShowNewAdminConversationModal] = useState(false);
@@ -73,6 +75,41 @@ const Messages = () => {
   const { studentData, loading: loadingStudentData } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id || user?.id;
   const studentName = studentData?.profile?.name || user?.name || 'Student';
+  
+  // Determine available tabs based on student's school_id and university_college_id
+  const hasSchoolId = !!studentData?.school_id;
+  const hasCollegeId = !!studentData?.university_college_id;
+  
+  // Available tabs logic:
+  // - Recruiters: Always available
+  // - Educators: Always available  
+  // - School Admin: Only if student has school_id
+  // - College Admin: Only if student has university_college_id
+  const availableTabs = useMemo(() => {
+    const tabs = ['recruiters', 'educators'];
+    
+    if (hasSchoolId) {
+      tabs.push('admin'); // school admin
+    }
+    
+    if (hasCollegeId) {
+      tabs.push('college_admin');
+    }
+    
+    return tabs;
+  }, [hasSchoolId, hasCollegeId]);
+  
+  // Ensure activeTab is valid for current student
+  useEffect(() => {
+    if (!loadingStudentData && availableTabs.length > 0) {
+      // If current activeTab is not available, switch to first available tab
+      if (!availableTabs.includes(activeTab)) {
+        console.log('🔄 Current tab not available, switching to:', availableTabs[0]);
+        setActiveTab(availableTabs[0]);
+        setSearchParams({ tab: availableTabs[0] }, { replace: true });
+      }
+    }
+  }, [activeTab, availableTabs, loadingStudentData, setSearchParams]);
   
   // Fetch recruiter conversations
   const { 
@@ -268,29 +305,42 @@ const Messages = () => {
     }
   }, [studentId, loadingStudentData, userEmail]);
   
-  // Fetch messages for selected conversation (works for all conversation types)
+  // Fetch messages for selected conversation - call all hooks unconditionally
+  const recruiterMessages = useStudentMessages({
+    studentId,
+    conversationId: activeTab === 'recruiters' ? selectedConversationId : null,
+    enabled: activeTab === 'recruiters' && !!selectedConversationId,
+    enableRealtime: true
+  });
+
+  const educatorMessages = useStudentEducatorMessages({
+    studentId,
+    conversationId: activeTab === 'educators' ? selectedConversationId : null,
+    enabled: activeTab === 'educators' && !!selectedConversationId,
+    enableRealtime: true
+  });
+
+  const adminMessages = useStudentAdminMessages({
+    studentId,
+    conversationId: activeTab === 'admin' ? selectedConversationId : null,
+    enabled: activeTab === 'admin' && !!selectedConversationId,
+    enableRealtime: true
+  });
+
+  const collegeAdminMessages = useStudentCollegeAdminMessages({
+    studentId,
+    conversationId: activeTab === 'college_admin' ? selectedConversationId : null,
+    enabled: activeTab === 'college_admin' && !!selectedConversationId,
+    enableRealtime: true
+  });
+
+  // Select the appropriate messages based on active tab
   const { messages, isLoading: loadingMessages, sendMessage, isSending } = 
-    activeTab === 'recruiters' ? useStudentMessages({
-      studentId,
-      conversationId: selectedConversationId,
-      enabled: !!selectedConversationId,
-      enableRealtime: true
-    }) : activeTab === 'educators' ? useStudentEducatorMessages({
-      studentId,
-      conversationId: selectedConversationId,
-      enabled: !!selectedConversationId,
-      enableRealtime: true
-    }) : activeTab === 'admin' ? useStudentAdminMessages({
-      studentId,
-      conversationId: selectedConversationId,
-      enabled: !!selectedConversationId,
-      enableRealtime: true
-    }) : activeTab === 'college_admin' ? useStudentCollegeAdminMessages({
-      studentId,
-      conversationId: selectedConversationId,
-      enabled: !!selectedConversationId,
-      enableRealtime: true
-    }) : { messages: [], isLoading: false, sendMessage: () => {}, isSending: false };
+    activeTab === 'recruiters' ? recruiterMessages :
+    activeTab === 'educators' ? educatorMessages :
+    activeTab === 'admin' ? adminMessages :
+    activeTab === 'college_admin' ? collegeAdminMessages :
+    { messages: [], isLoading: false, sendMessage: () => {}, isSending: false };
 
   // Use shared global presence context (no duplicate subscription)
   const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
@@ -506,7 +556,7 @@ const Messages = () => {
         }
         
         // Generate avatar URL (no photo column in recruiters table)
-        const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(recruiterName)}&background=EF4444&color=fff`;
+        const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(recruiterName)}&background=3B82F6&color=fff`;
         
         // Format time
         let timeDisplay = 'No messages';
@@ -558,7 +608,7 @@ const Messages = () => {
         
         // Generate avatar URL
         const avatar = educator?.photo_url || 
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=10B981&color=fff`;
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=3B82F6&color=fff`;
         
         // Format time
         let timeDisplay = 'No messages';
@@ -627,7 +677,7 @@ const Messages = () => {
         const subject = conv.subject || 'General Discussion';
         
         // Generate avatar URL for college
-        const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(collegeName)}&background=9333EA&color=fff`;
+        const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(collegeName)}&background=3B82F6&color=fff`;
         
         // Format time
         let timeDisplay = 'No messages';
@@ -1002,7 +1052,7 @@ const Messages = () => {
     return (
       <div className="flex h-[calc(100vh-180px)] bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-red-500 animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-500">
             {!studentId ? 'Loading user data...' : 
              isTabSwitching ? 'Switching tabs...' :
@@ -1027,7 +1077,7 @@ const Messages = () => {
               {activeTab === 'educators' && (
                 <button
                   onClick={() => setShowNewConversationModal(true)}
-                  className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                   title="Start new conversation with educator"
                 >
                   <GraduationCap className="w-4 h-4" />
@@ -1044,10 +1094,10 @@ const Messages = () => {
                 <div className="flex items-center gap-2">
                   {activeTab === 'recruiters' && (
                     <>
-                      <Users className="w-4 h-4 text-red-600" />
+                      <Users className="w-4 h-4 text-blue-600" />
                       <span className="text-sm font-medium text-gray-900">Recruiters</span>
                       {recruiterConversations.length > 0 && (
-                        <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full">
+                        <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
                           {recruiterConversations.length}
                         </span>
                       )}
@@ -1055,10 +1105,10 @@ const Messages = () => {
                   )}
                   {activeTab === 'educators' && (
                     <>
-                      <GraduationCap className="w-4 h-4 text-green-600" />
+                      <GraduationCap className="w-4 h-4 text-blue-600" />
                       <span className="text-sm font-medium text-gray-900">Educators</span>
                       {educatorConversations.length > 0 && (
-                        <span className="bg-green-100 text-green-600 text-xs px-2 py-0.5 rounded-full">
+                        <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
                           {educatorConversations.length}
                         </span>
                       )}
@@ -1077,10 +1127,10 @@ const Messages = () => {
                   )}
                   {activeTab === 'college_admin' && (
                     <>
-                      <Building2 className="w-4 h-4 text-purple-600" />
+                      <Building2 className="w-4 h-4 text-blue-600" />
                       <span className="text-sm font-medium text-gray-900">College Admin</span>
                       {collegeAdminConversations.length > 0 && (
-                        <span className="bg-purple-100 text-purple-600 text-xs px-2 py-0.5 rounded-full">
+                        <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
                           {collegeAdminConversations.length}
                         </span>
                       )}
@@ -1094,6 +1144,7 @@ const Messages = () => {
               {showTabDropdown && (
                 <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                   <div className="py-1">
+                    {/* Recruiters Tab - Always available */}
                     <button
                       onClick={async () => {
                         console.log('🔄 Switching to recruiters tab');
@@ -1116,21 +1167,22 @@ const Messages = () => {
                         }
                       }}
                       className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        activeTab === 'recruiters' ? 'bg-red-50 text-red-700' : 'text-gray-700'
+                        activeTab === 'recruiters' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                       }`}
                     >
-                      <Users className={`w-4 h-4 ${activeTab === 'recruiters' ? 'text-red-600' : 'text-gray-500'}`} />
+                      <Users className={`w-4 h-4 ${activeTab === 'recruiters' ? 'text-blue-600' : 'text-gray-500'}`} />
                       <div className="flex-1">
                         <div className="font-medium">Recruiters</div>
                         <div className="text-xs text-gray-500">Job application messages</div>
                       </div>
                       {recruiterConversations.length > 0 && (
-                        <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full">
+                        <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
                           {recruiterConversations.length}
                         </span>
                       )}
                     </button>
                     
+                    {/* Educators Tab - Always available */}
                     <button
                       onClick={async () => {
                         console.log('🔄 Switching to educators tab');
@@ -1153,94 +1205,100 @@ const Messages = () => {
                         }
                       }}
                       className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        activeTab === 'educators' ? 'bg-green-50 text-green-700' : 'text-gray-700'
+                        activeTab === 'educators' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                       }`}
                     >
-                      <GraduationCap className={`w-4 h-4 ${activeTab === 'educators' ? 'text-green-600' : 'text-gray-500'}`} />
+                      <GraduationCap className={`w-4 h-4 ${activeTab === 'educators' ? 'text-blue-600' : 'text-gray-500'}`} />
                       <div className="flex-1">
                         <div className="font-medium">Educators</div>
                         <div className="text-xs text-gray-500">Teacher and class messages</div>
                       </div>
                       {educatorConversations.length > 0 && (
-                        <span className="bg-green-100 text-green-600 text-xs px-2 py-0.5 rounded-full">
+                        <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
                           {educatorConversations.length}
                         </span>
                       )}
                     </button>
                     
-                    <button
-                      onClick={async () => {
-                        console.log('🔄 Switching to admin tab');
-                        setIsTabSwitching(true);
-                        setActiveTab('admin');
-                        setSelectedConversationId(null);
-                        setSearchParams({ tab: 'admin' }, { replace: true });
-                        setShowTabDropdown(false);
-                        
-                        // Force refetch for admin tab
-                        if (studentId && !loadingStudentData && refetchAdminConversations) {
-                          console.log('🚀 Refetching admin conversations');
-                          try {
-                            await refetchAdminConversations();
-                          } finally {
-                            setTimeout(() => setIsTabSwitching(false), 300);
+                    {/* School Admin Tab - Only if student has school_id */}
+                    {hasSchoolId && (
+                      <button
+                        onClick={async () => {
+                          console.log('🔄 Switching to admin tab');
+                          setIsTabSwitching(true);
+                          setActiveTab('admin');
+                          setSelectedConversationId(null);
+                          setSearchParams({ tab: 'admin' }, { replace: true });
+                          setShowTabDropdown(false);
+                          
+                          // Force refetch for admin tab
+                          if (studentId && !loadingStudentData && refetchAdminConversations) {
+                            console.log('🚀 Refetching admin conversations');
+                            try {
+                              await refetchAdminConversations();
+                            } finally {
+                              setTimeout(() => setIsTabSwitching(false), 300);
+                            }
+                          } else {
+                            setIsTabSwitching(false);
                           }
-                        } else {
-                          setIsTabSwitching(false);
-                        }
-                      }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        activeTab === 'admin' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                      }`}
-                    >
-                      <Building2 className={`w-4 h-4 ${activeTab === 'admin' ? 'text-blue-600' : 'text-gray-500'}`} />
-                      <div className="flex-1">
-                        <div className="font-medium">School Admin</div>
-                        <div className="text-xs text-gray-500">School administration messages</div>
-                      </div>
-                      {adminConversations.length > 0 && (
-                        <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
-                          {adminConversations.length}
-                        </span>
-                      )}
-                    </button>
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                          activeTab === 'admin' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                      >
+                        <Building2 className={`w-4 h-4 ${activeTab === 'admin' ? 'text-blue-600' : 'text-gray-500'}`} />
+                        <div className="flex-1">
+                          <div className="font-medium">School Admin</div>
+                          <div className="text-xs text-gray-500">School administration messages</div>
+                        </div>
+                        {adminConversations.length > 0 && (
+                          <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                            {adminConversations.length}
+                          </span>
+                        )}
+                      </button>
+                    )}
                     
-                    <button
-                      onClick={async () => {
-                        console.log('🔄 Switching to college_admin tab');
-                        setIsTabSwitching(true);
-                        setActiveTab('college_admin');
-                        setSelectedConversationId(null);
-                        setSearchParams({ tab: 'college_admin' });
-                        setShowTabDropdown(false);
-                        
-                        // Force refetch for college admin tab
-                        if (studentId && !loadingStudentData && refetchCollegeAdminConversations) {
-                          console.log('🚀 Refetching college admin conversations');
-                          try {
-                            await refetchCollegeAdminConversations();
-                          } finally {
-                            setTimeout(() => setIsTabSwitching(false), 300);
+                    {/* College Admin Tab - Only if student has university_college_id */}
+                    {hasCollegeId && (
+                      <button
+                        onClick={async () => {
+                          console.log('🔄 Switching to college_admin tab');
+                          setIsTabSwitching(true);
+                          setActiveTab('college_admin');
+                          setSelectedConversationId(null);
+                          setSearchParams({ tab: 'college_admin' });
+                          setShowTabDropdown(false);
+                          
+                          // Force refetch for college admin tab
+                          if (studentId && !loadingStudentData && refetchCollegeAdminConversations) {
+                            console.log('🚀 Refetching college admin conversations');
+                            try {
+                              await refetchCollegeAdminConversations();
+                            } finally {
+                              setTimeout(() => setIsTabSwitching(false), 300);
+                            }
+                          } else {
+                            setIsTabSwitching(false);
                           }
-                        } else {
-                          setIsTabSwitching(false);
-                        }
-                      }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        activeTab === 'college_admin' ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
-                      }`}
-                    >
-                      <Building2 className={`w-4 h-4 ${activeTab === 'college_admin' ? 'text-purple-600' : 'text-gray-500'}`} />
-                      <div className="flex-1">
-                        <div className="font-medium">College Admin</div>
-                        <div className="text-xs text-gray-500">College administration messages</div>
-                      </div>
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                          activeTab === 'college_admin' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                      >
+                        <Building2 className={`w-4 h-4 ${activeTab === 'college_admin' ? 'text-blue-600' : 'text-gray-500'}`} />
+                        <div className="flex-1">
+                          <div className="font-medium">College Admin</div>
+                          <div className="text-xs text-gray-500">College administration messages</div>
+                        </div>
                       {collegeAdminConversations.length > 0 && (
-                        <span className="bg-purple-100 text-purple-600 text-xs px-2 py-0.5 rounded-full">
+                        <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
                           {collegeAdminConversations.length}
                         </span>
                       )}
-                    </button>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -1256,12 +1314,7 @@ const Messages = () => {
               placeholder={`Search ${activeTab === 'recruiters' ? 'recruiter' : activeTab === 'educators' ? 'educator' : activeTab === 'admin' ? 'school admin' : 'college admin'} conversations...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 ${
-                activeTab === 'recruiters' ? 'focus:ring-red-500' : 
-                activeTab === 'educators' ? 'focus:ring-green-500' : 
-                activeTab === 'admin' ? 'focus:ring-blue-500' :
-                'focus:ring-purple-500'
-              } focus:border-transparent text-sm`}
+              className={`w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm`}
             />
           </div>
         </div>
@@ -1288,7 +1341,7 @@ const Messages = () => {
                   <p className="text-gray-400 text-xs mt-2 mb-4">Message your teachers about classes!</p>
                   <button
                     onClick={() => setShowNewConversationModal(true)}
-                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors"
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
                   >
                     Start New Conversation
                   </button>
@@ -1312,7 +1365,7 @@ const Messages = () => {
                   <p className="text-gray-400 text-xs mt-2 mb-4">Contact your college administration!</p>
                   <button
                     onClick={() => setShowNewCollegeAdminConversationModal(true)}
-                    className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium rounded-lg transition-colors"
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
                   >
                     Contact College Admin
                   </button>
@@ -1325,7 +1378,7 @@ const Messages = () => {
               key={contact.id}
               className={`relative group flex items-start gap-3 p-4 cursor-pointer hover:bg-gray-50 transition-all duration-200 border-b border-gray-100 ${
                 selectedConversationId === contact.id 
-                  ? (activeTab === 'recruiters' ? 'bg-red-50' : activeTab === 'educators' ? 'bg-green-50' : activeTab === 'admin' ? 'bg-blue-50' : 'bg-purple-50')
+                  ? 'bg-blue-50'
                   : ''
               }`}
               style={{
@@ -1356,9 +1409,7 @@ const Messages = () => {
                       {contact.time}
                     </span>
                   </div>
-                  <p className={`text-xs mb-1 truncate font-medium ${
-                    activeTab === 'recruiters' ? 'text-red-600' : activeTab === 'educators' ? 'text-green-600' : activeTab === 'admin' ? 'text-blue-600' : 'text-purple-600'
-                  }`}>
+                  <p className="text-xs mb-1 truncate font-medium text-blue-600">
                     {contact.role}
                   </p>
                   <div className="flex items-center justify-between">
@@ -1366,9 +1417,7 @@ const Messages = () => {
                       {contact.lastMessage}
                     </p>
                     {contact.unread > 0 && (
-                      <span className={`flex-shrink-0 ml-2 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${
-                        activeTab === 'recruiters' ? 'bg-red-500' : activeTab === 'educators' ? 'bg-green-500' : activeTab === 'admin' ? 'bg-blue-500' : 'bg-purple-500'
-                      }`}>
+                      <span className="flex-shrink-0 ml-2 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center bg-blue-500">
                         {contact.unread}
                       </span>
                     )}
@@ -1463,7 +1512,7 @@ const Messages = () => {
               )}
               {loadingMessages ? (
                 <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-8 h-8 text-red-500 animate-spin" />
+                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
                 </div>
               ) : displayMessages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
@@ -1479,14 +1528,14 @@ const Messages = () => {
                     <div
                       className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
                         message.sender === 'me'
-                          ? (activeTab === 'recruiters' ? 'bg-red-500 text-white' : activeTab === 'educators' ? 'bg-green-500 text-white' : activeTab === 'admin' ? 'bg-blue-500 text-white' : 'bg-purple-500 text-white')
+                          ? 'bg-blue-500 text-white'
                           : 'bg-white text-gray-900 border border-gray-200'
                       }`}
                     >
                       <p className="text-sm leading-relaxed">{message.text}</p>
                       <div className={`flex items-center gap-1 mt-1 text-xs ${
                         message.sender === 'me' 
-                          ? (activeTab === 'recruiters' ? 'text-red-100' : activeTab === 'educators' ? 'text-green-100' : 'text-blue-100')
+                          ? 'text-blue-100'
                           : 'text-gray-500'
                       }`}>
                         <span>{message.time}</span>
@@ -1535,7 +1584,7 @@ const Messages = () => {
                     onFocus={() => setTyping(true)}
                     onBlur={() => setTyping(false)}
                     placeholder="Type a message..."
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                   <button
                     type="button"
@@ -1548,13 +1597,7 @@ const Messages = () => {
                 <button
                   type="submit"
                   disabled={!messageInput.trim() || isSending}
-                  className={`p-2.5 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-full transition-colors ${
-                    activeTab === 'recruiters' 
-                      ? 'bg-red-500 hover:bg-red-600' 
-                      : activeTab === 'educators'
-                      ? 'bg-green-500 hover:bg-green-600'
-                      : 'bg-blue-500 hover:bg-blue-600'
-                  }`}
+                  className="p-2.5 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-full transition-colors bg-blue-500 hover:bg-blue-600"
                 >
                   {isSending ? (
                     <Loader2 className="w-5 h-5 text-white animate-spin" />
@@ -1569,13 +1612,11 @@ const Messages = () => {
           // Empty State
           <div className="flex-1 flex items-center justify-center bg-gray-50">
             <div className="text-center">
-              <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                activeTab === 'recruiters' ? 'bg-red-100' : activeTab === 'educators' ? 'bg-green-100' : 'bg-blue-100'
-              }`}>
+              <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 bg-blue-100`}>
                 {activeTab === 'recruiters' ? (
-                  <Send className="w-12 h-12 text-red-500" />
+                  <Send className="w-12 h-12 text-blue-500" />
                 ) : activeTab === 'educators' ? (
-                  <GraduationCap className="w-12 h-12 text-green-500" />
+                  <GraduationCap className="w-12 h-12 text-blue-500" />
                 ) : (
                   <Building2 className="w-12 h-12 text-blue-500" />
                 )}

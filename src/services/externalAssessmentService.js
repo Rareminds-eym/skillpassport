@@ -26,8 +26,18 @@ export async function checkAssessmentStatus(studentId, courseName) {
     }
 
     if (!data) {
+      console.log('ℹ️ checkAssessmentStatus: No attempt found');
       return { status: 'not_started', attempt: null };
     }
+
+    console.log('📊 checkAssessmentStatus: Found attempt in database:', {
+      id: data.id,
+      status: data.status,
+      current_question_index: data.current_question_index,
+      time_remaining: data.time_remaining,
+      last_activity_at: data.last_activity_at,
+      answeredCount: data.student_answers?.filter(a => a.selected_answer !== null).length
+    });
 
     return {
       status: data.status, // 'in_progress' or 'completed'
@@ -109,23 +119,43 @@ export async function createAssessmentAttempt(attemptData) {
 /**
  * Update assessment progress (save answer and move forward)
  * @param {string} attemptId - Attempt UUID
- * @param {number} questionIndex - Current question index
+ * @param {number} questionIndex - Index of question being answered (0-based)
  * @param {string} answer - Selected answer
  * @param {number} timeRemaining - Seconds remaining
+ * @param {number} resumeFromIndex - Index to resume from (optional, defaults to questionIndex + 1)
  * @returns {Promise<{success: boolean}>}
  */
-export async function updateAssessmentProgress(attemptId, questionIndex, answer, timeRemaining) {
+export async function updateAssessmentProgress(attemptId, questionIndex, answer, timeRemaining, resumeFromIndex = null) {
+  const resumeIndex = resumeFromIndex !== null ? resumeFromIndex : questionIndex + 1;
+  
+  console.log('📡 updateAssessmentProgress called:', {
+    attemptId,
+    questionIndex,
+    answer,
+    timeRemaining,
+    resumeFromIndex: resumeIndex
+  });
+
   try {
     // First, get current attempt to update answers array
+    console.log('📡 Fetching current attempt from database...');
     const { data: currentAttempt, error: fetchError } = await supabase
       .from('external_assessment_attempts')
       .select('student_answers, questions')
       .eq('id', attemptId)
       .single();
 
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      console.error('❌ Fetch error:', fetchError);
+      throw fetchError;
+    }
 
-    // Update the answer for current question
+    console.log('✅ Current attempt fetched:', {
+      answersCount: currentAttempt.student_answers?.length,
+      questionsCount: currentAttempt.questions?.length
+    });
+
+    // Update the answer for the question at questionIndex
     const updatedAnswers = [...currentAttempt.student_answers];
     const question = currentAttempt.questions[questionIndex];
     
@@ -139,23 +169,35 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
       time_taken: updatedAnswers[questionIndex]?.time_taken || 0
     };
 
-    // Update database
+    console.log('💾 Saving to database...', {
+      updatingAnswerAt: questionIndex,
+      resumeFromIndex: resumeIndex
+    });
+    
+    // Update database - save where user should resume from
     const { error: updateError } = await supabase
       .from('external_assessment_attempts')
       .update({
         student_answers: updatedAnswers,
-        current_question_index: questionIndex + 1,
+        current_question_index: resumeIndex, // Save where to resume from
         time_remaining: timeRemaining,
         last_activity_at: new Date().toISOString()
       })
       .eq('id', attemptId);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('❌ Update error:', updateError);
+      throw updateError;
+    }
 
+    console.log('✅ Database updated successfully!', {
+      answeredQuestionIndex: questionIndex,
+      savedResumeIndex: resumeIndex
+    });
     return { success: true };
   } catch (error) {
-    console.error('Error updating assessment progress:', error);
-    return { success: false };
+    console.error('❌ Error updating assessment progress:', error);
+    return { success: false, error: error.message };
   }
 }
 

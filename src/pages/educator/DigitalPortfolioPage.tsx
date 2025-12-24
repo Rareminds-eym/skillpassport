@@ -199,13 +199,13 @@ const DigitalPortfolioPage = () => {
   });
 
   // Get educator's school/college information
-  const { school: educatorSchool, college: educatorCollege, educatorType, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
+  const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
   // Fetch students filtered by educator's assigned classes or institution
   const { students, loading, error } = useStudents({ 
     schoolId: educatorSchool?.id,
     collegeId: educatorCollege?.id,
-    classIds: educatorType === 'school' ? assignedClassIds : undefined
+    classIds: educatorType === 'school' && educatorRole !== 'admin' ? assignedClassIds : undefined
   });
 
   // Reset to page 1 when filters or search change

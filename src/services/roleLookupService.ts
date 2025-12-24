@@ -105,9 +105,12 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
     console.log('👤 Users table result:', { userData, userError });
 
     if (!userError && userData && userData.role) {
-      const adminRole = userData.role as UserRole;
-      console.log('🎭 Found role in users table:', adminRole);
-      if (['school_admin', 'college_admin', 'university_admin'].includes(adminRole)) {
+      const userRole = userData.role as string;
+      console.log('🎭 Found role in users table:', userRole);
+      
+      // Handle admin roles
+      if (['school_admin', 'college_admin', 'university_admin'].includes(userRole)) {
+        const adminRole = userRole as UserRole;
         foundRoles.push(adminRole);
         foundUserData.push({
           id: userData.id,
@@ -118,11 +121,72 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
           role: adminRole,
           ...userData
         });
-      } else {
-        console.log('⚠️ User has role but not an admin role:', adminRole);
+      }
+      // Handle educator roles (college_educator, school_educator)
+      else if (['college_educator', 'school_educator'].includes(userRole)) {
+        console.log('🎓 Converting', userRole, 'to educator role');
+        foundRoles.push('educator');
+        foundUserData.push({
+          id: userData.id,
+          email: userData.email || email,
+          name: userData.firstName && userData.lastName 
+            ? `${userData.firstName} ${userData.lastName}`
+            : userData.firstName || userData.lastName || undefined,
+          role: 'educator',
+          school_id: userRole === 'school_educator' ? userData.organizationId : undefined,
+          university_college_id: userRole === 'college_educator' ? userData.organizationId : undefined,
+          ...userData
+        });
+      }
+      // Handle student roles (college_student, school_student)
+      else if (['college_student', 'school_student'].includes(userRole)) {
+        console.log('🎓 Converting', userRole, 'to student role');
+        foundRoles.push('student');
+        foundUserData.push({
+          id: userData.id,
+          email: userData.email || email,
+          name: userData.firstName && userData.lastName 
+            ? `${userData.firstName} ${userData.lastName}`
+            : userData.firstName || userData.lastName || undefined,
+          role: 'student',
+          school_id: userRole === 'school_student' ? userData.organizationId : undefined,
+          university_college_id: userRole === 'college_student' ? userData.organizationId : undefined,
+          ...userData
+        });
+      }
+      // Handle recruiter role
+      else if (userRole === 'recruiter') {
+        console.log('💼 Adding recruiter role');
+        foundRoles.push('recruiter');
+        foundUserData.push({
+          id: userData.id,
+          email: userData.email || email,
+          name: userData.firstName && userData.lastName 
+            ? `${userData.firstName} ${userData.lastName}`
+            : userData.firstName || userData.lastName || undefined,
+          role: 'recruiter',
+          ...userData
+        });
+      }
+      // Handle special admin roles (super_admin, company_admin) - treat as school_admin for now
+      else if (['super_admin', 'company_admin'].includes(userRole)) {
+        console.log('🔧 Converting', userRole, 'to school_admin role');
+        foundRoles.push('school_admin');
+        foundUserData.push({
+          id: userData.id,
+          email: userData.email || email,
+          name: userData.firstName && userData.lastName 
+            ? `${userData.firstName} ${userData.lastName}`
+            : userData.firstName || userData.lastName || undefined,
+          role: 'school_admin',
+          ...userData
+        });
+      }
+      else {
+        console.log('⚠️ User has unrecognized role:', userRole);
       }
     } else {
-      console.log('⚠️ No admin role found in users table');
+      console.log('⚠️ No role found in users table');
       if (userData) {
         console.log('⚠️ User data found but no role field:', userData);
       }

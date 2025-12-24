@@ -71,13 +71,13 @@ const StudentCollegeAdminCommunication = () => {
       // Try college_lecturers table first
       const { data: lecturerData, error: lecturerError } = await supabase
         .from('college_lecturers')
-        .select('collegeId, college_id, colleges(id, name)')
+        .select('collegeId, colleges(id, name)')
         .or(`user_id.eq.${collegeAdminId},userId.eq.${collegeAdminId}`)
         .single();
       
       if (!lecturerError && lecturerData) {
         return {
-          college_id: lecturerData.collegeId || lecturerData.college_id,
+          college_id: lecturerData.collegeId,
           colleges: lecturerData.colleges
         };
       }
@@ -217,7 +217,11 @@ const StudentCollegeAdminCommunication = () => {
         }
         
         queryClient.invalidateQueries({ 
-          queryKey: ['college-admin-conversations', collegeId],
+          queryKey: ['college-admin-conversations', collegeId, 'active'],
+          refetchType: 'active'
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: ['college-admin-conversations', collegeId, 'archived'],
           refetchType: 'active'
         });
       }
@@ -304,6 +308,13 @@ const StudentCollegeAdminCommunication = () => {
     );
     
     MessageService.markConversationAsRead(selectedConversationId, collegeAdminId)
+      .then(() => {
+        // Force cache invalidation after successful mark as read
+        queryClient.invalidateQueries({ 
+          queryKey: ['college-admin-conversations', collegeId, 'active'],
+          refetchType: 'active'
+        });
+      })
       .catch(err => {
         console.error('Failed to mark as read:', err);
         markedAsReadRef.current.delete(markKey);
@@ -492,7 +503,7 @@ const StudentCollegeAdminCommunication = () => {
         id: conv.id,
         name: studentName,
         role: role,
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=9333EA&color=fff`,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=3B82F6&color=fff`,
         lastMessage: conv.last_message_preview || 'No messages yet',
         online: isUserOnlineGlobal(conv.student_id),
         time: conv.last_message_at 
@@ -591,8 +602,8 @@ const StudentCollegeAdminCommunication = () => {
 
   const renderStatusIcon = useCallback((status: string) => (
     <div className="flex">
-      <CheckIcon className={`w-3 h-3 ${status === 'read' ? 'text-purple-500' : 'text-gray-400'}`} />
-      {status !== 'sent' && <CheckIcon className={`w-3 h-3 -ml-1 ${status === 'read' ? 'text-purple-500' : 'text-gray-400'}`} />}
+      <CheckIcon className={`w-3 h-3 ${status === 'read' ? 'text-blue-500' : 'text-gray-400'}`} />
+      {status !== 'sent' && <CheckIcon className={`w-3 h-3 -ml-1 ${status === 'read' ? 'text-blue-500' : 'text-gray-400'}`} />}
     </div>
   ), []);
 
@@ -617,7 +628,7 @@ const StudentCollegeAdminCommunication = () => {
                     <ChevronLeftIcon className="w-5 h-5 text-gray-700" />
                   </button>
                 )}
-                <UserGroupIcon className="w-6 h-6 text-purple-600" />
+                <UserGroupIcon className="w-6 h-6 text-blue-600" />
                 <div className="flex flex-col flex-1">
                   <h2 className="text-xl font-bold text-gray-900">
                     {showArchived ? 'Archived Messages' : 'Student Messages'}
@@ -631,7 +642,7 @@ const StudentCollegeAdminCommunication = () => {
                 {!showArchived && (
                   <button
                     onClick={() => setShowNewConversationModal(true)}
-                    className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                     title="Start new conversation"
                   >
                     <ChatBubbleLeftRightIcon className="w-4 h-4" />
@@ -651,7 +662,7 @@ const StudentCollegeAdminCommunication = () => {
                       setSearchQuery('');
                     }
                   }}
-                  className="w-full pl-12 pr-10 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent focus:bg-white transition-all text-sm"
+                  className="w-full pl-12 pr-10 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all text-sm"
                 />
                 {searchQuery && (
                   <button
@@ -695,13 +706,13 @@ const StudentCollegeAdminCommunication = () => {
               {/* Loading indicator during transition */}
               {isTransitioning && (
                 <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 pointer-events-none">
-                  <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
 
               {loadingConversations ? (
                 <div className="flex items-center justify-center h-full">
-                  <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : filteredContacts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full p-6 text-center">
@@ -727,7 +738,7 @@ const StudentCollegeAdminCommunication = () => {
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors"
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
                     >
                       Clear Search
                     </button>
@@ -736,7 +747,7 @@ const StudentCollegeAdminCommunication = () => {
                     <div className="space-y-3">
                       <button
                         onClick={() => setShowNewConversationModal(true)}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                       >
                         <ChatBubbleLeftRightIcon className="w-4 h-4" />
                         Start New Conversation
@@ -761,7 +772,7 @@ const StudentCollegeAdminCommunication = () => {
                     key={contact.id}
                     className={`relative w-full flex items-center border-b border-gray-100 group transition-all duration-200 ${
                       selectedConversationId === contact.id 
-                        ? 'bg-purple-50 border-l-4 border-l-purple-500' 
+                        ? 'bg-blue-50 border-l-4 border-l-blue-500' 
                         : 'hover:bg-gray-50 border-l-4 border-l-transparent'
                     }`}
                   >
@@ -788,7 +799,7 @@ const StudentCollegeAdminCommunication = () => {
                             {contact.time}
                           </span>
                         </div>
-                        <p className="text-xs text-purple-600 font-semibold mb-1 truncate">
+                        <p className="text-xs text-blue-600 font-semibold mb-1 truncate">
                           {contact.role}
                         </p>
                         <p className="text-xs text-gray-600 truncate">
@@ -796,7 +807,7 @@ const StudentCollegeAdminCommunication = () => {
                         </p>
                       </div>
                       {contact.unread > 0 && (
-                        <div className="flex-shrink-0 min-w-[18px] h-5 px-1.5 bg-purple-600 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                        <div className="flex-shrink-0 min-w-[18px] h-5 px-1.5 bg-blue-600 text-white text-xs rounded-full flex items-center justify-center font-bold">
                           {contact.unread > 9 ? '9+' : contact.unread}
                         </div>
                       )}
@@ -810,11 +821,11 @@ const StudentCollegeAdminCommunication = () => {
                           e.stopPropagation();
                           handleToggleArchive(contact.id, !showArchived);
                         }}
-                        className="p-1.5 hover:bg-purple-100 rounded-full transition-colors"
+                        className="p-1.5 hover:bg-blue-100 rounded-full transition-colors"
                         title={showArchived ? 'Unarchive conversation' : 'Archive conversation'}
                       >
                         {showArchived ? (
-                          <ArrowUturnLeftIcon className="w-4 h-4 text-purple-600" />
+                          <ArrowUturnLeftIcon className="w-4 h-4 text-blue-600" />
                         ) : (
                           <ArchiveBoxIcon className="w-4 h-4 text-gray-600" />
                         )}
@@ -857,7 +868,7 @@ const StudentCollegeAdminCommunication = () => {
                     </div>
                     <div>
                       <h3 className="font-bold text-gray-900 text-lg">{currentChat.name}</h3>
-                      <p className="text-sm text-purple-600 font-medium">{currentChat.role}</p>
+                      <p className="text-sm text-blue-600 font-medium">{currentChat.role}</p>
                       <p className="text-xs text-gray-500">
                         {currentChat.online ? (
                           <span className="flex items-center gap-1">
@@ -887,7 +898,7 @@ const StudentCollegeAdminCommunication = () => {
                 <div className="flex-1 overflow-y-auto px-6 py-4 bg-gray-50 space-y-3">
                   {loadingMessages ? (
                     <div className="flex items-center justify-center h-full">
-                      <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                      <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                     </div>
                   ) : displayMessages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full">
@@ -907,7 +918,7 @@ const StudentCollegeAdminCommunication = () => {
                           <div
                             className={`rounded-2xl px-4 py-2.5 shadow-sm ${
                               message.sender === 'me'
-                                ? 'bg-purple-600 text-white'
+                                ? 'bg-blue-600 text-white'
                                 : 'bg-white text-gray-900 border border-gray-200'
                             }`}
                           >
@@ -917,7 +928,7 @@ const StudentCollegeAdminCommunication = () => {
                             <div className="flex items-center justify-end gap-2 mt-1">
                               <span
                                 className={`text-xs ${
-                                  message.sender === 'me' ? 'text-purple-100' : 'text-gray-400'
+                                  message.sender === 'me' ? 'text-blue-100' : 'text-gray-400'
                                 }`}
                               >
                                 {message.time}
@@ -972,7 +983,7 @@ const StudentCollegeAdminCommunication = () => {
                           }
                         }}
                         placeholder="Type your message..."
-                        className="w-full pl-4 pr-12 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-sm bg-white transition-all"
+                        className="w-full pl-4 pr-12 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm bg-white transition-all"
                         rows={1}
                         style={{ minHeight: '44px', maxHeight: '100px' }}
                       />
@@ -987,7 +998,7 @@ const StudentCollegeAdminCommunication = () => {
                     <button
                       type="submit"
                       disabled={!messageInput.trim() || isSending}
-                      className="p-3 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-lg"
+                      className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-lg"
                       title="Send"
                     >
                       {isSending ? (
@@ -1002,8 +1013,8 @@ const StudentCollegeAdminCommunication = () => {
             ) : (
               <div className="flex-1 flex items-center justify-center bg-gray-50">
                 <div className="text-center max-w-md px-8">
-                  <div className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <ChatBubbleLeftRightIcon className="w-12 h-12 text-purple-600" />
+                  <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <ChatBubbleLeftRightIcon className="w-12 h-12 text-blue-600" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-3">
                     Select a conversation

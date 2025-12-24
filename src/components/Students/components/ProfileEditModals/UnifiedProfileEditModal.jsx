@@ -468,119 +468,62 @@ const UnifiedProfileEditModal = ({
   if (singleEditMode) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2 text-lg">
               {Icon && <Icon className="w-5 h-5 text-blue-600" />}
               Edit {config.title}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-5 pt-2">
-            {/* Form Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {config.fields.map(field => {
-                const renderedField = renderField(field);
-                if (!renderedField) return null;
-                
-                return (
-                  <div key={field.name} className={field.type === "textarea" || field.type === "tags" ? "md:col-span-2" : ""}>
-                    <Label htmlFor={field.name} className="text-sm font-medium text-gray-700 mb-1.5 block">
-                      {field.label}
-                    </Label>
-                    {renderedField}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Progress Preview for Training */}
-            {config.hasProgress && (
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Progress Preview</span>
-                  <span className="text-blue-600 font-semibold">
-                    {calculateProgress(
-                      parsePositiveNumber(formData.completedModules),
-                      parsePositiveNumber(formData.totalModules)
-                    )}%
-                  </span>
-                </div>
-                <Progress value={calculateProgress(
-                  parsePositiveNumber(formData.completedModules),
-                  parsePositiveNumber(formData.totalModules)
-                )} className="h-2" />
-                <p className="text-xs text-gray-500">Progress is calculated from completed/total modules</p>
+          {/* Scrollable Content Area */}
+          <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+            <div className="space-y-5 pt-2">
+              {/* Form Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {config.fields.map(field => {
+                  const renderedField = renderField(field);
+                  if (!renderedField) return null;
+                  
+                  return (
+                    <div key={field.name} className={field.type === "textarea" || field.type === "tags" ? "md:col-span-2" : ""}>
+                      <Label htmlFor={field.name} className="text-sm font-medium text-gray-700 mb-1.5 block">
+                        {field.label}
+                      </Label>
+                      {renderedField}
+                    </div>
+                  );
+                })}
               </div>
-            )}
 
-            {/* Action Buttons - Single Save Button */}
-            <div className="flex gap-3 pt-4 border-t border-gray-200">
-              <Button 
-                onClick={saveAndClose} 
-                disabled={isSaving}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-11"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={onClose} 
-                disabled={isSaving}
-                className="px-6 h-11"
-              >
-                Cancel
-              </Button>
+              {/* Progress Preview for Training */}
+              {config.hasProgress && (
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Progress Preview</span>
+                    <span className="text-blue-600 font-semibold">
+                      {calculateProgress(
+                        parsePositiveNumber(formData.completedModules),
+                        parsePositiveNumber(formData.totalModules)
+                      )}%
+                    </span>
+                  </div>
+                  <Progress value={calculateProgress(
+                    parsePositiveNumber(formData.completedModules),
+                    parsePositiveNumber(formData.totalModules)
+                  )} className="h-2" />
+                  <p className="text-xs text-gray-500">Progress is calculated from completed/total modules</p>
+                </div>
+              )}
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
-  // Render multi-item mode - list with add/edit capabilities
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {Icon && <Icon className="w-5 h-5" />}
-            Edit {config.title}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {/* Item List */}
-          {items.length > 0 ? (
-            <div className="space-y-3">
-              {items.map((item, index) => renderItemCard(item, index))}
-            </div>
-          ) : (
-            <p className="text-center text-gray-500 py-8">{config.emptyMessage}</p>
-          )}
-
-          {/* Add/Edit Form */}
-          {renderForm()}
-
-          {/* Footer with Save All */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={onClose} disabled={isSaving}>
-              Cancel
-            </Button>
+          {/* Fixed Action Buttons at Bottom */}
+          <div className="flex-shrink-0 flex gap-3 pt-4 border-t border-gray-200 bg-white">
             <Button 
-              onClick={handleSubmit} 
+              onClick={saveAndClose} 
               disabled={isSaving}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-11"
             >
               {isSaving ? (
                 <>
@@ -590,11 +533,74 @@ const UnifiedProfileEditModal = ({
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  Save All Changes
+                  Save Changes
                 </>
               )}
             </Button>
+            <Button 
+              variant="outline" 
+              onClick={onClose} 
+              disabled={isSaving}
+              className="px-6 h-11"
+            >
+              Cancel
+            </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Render multi-item mode - list with add/edit capabilities
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="flex items-center gap-2">
+            {Icon && <Icon className="w-5 h-5" />}
+            Edit {config.title}
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+          <div className="space-y-4">
+            {/* Item List */}
+            {items.length > 0 ? (
+              <div className="space-y-3">
+                {items.map((item, index) => renderItemCard(item, index))}
+              </div>
+            ) : (
+              <p className="text-center text-gray-500 py-8">{config.emptyMessage}</p>
+            )}
+
+            {/* Add/Edit Form */}
+            {renderForm()}
+          </div>
+        </div>
+
+        {/* Fixed Footer with Save All */}
+        <div className="flex-shrink-0 flex justify-end gap-3 pt-4 border-t bg-white">
+          <Button variant="outline" onClick={onClose} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isSaving}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Save All Changes
+              </>
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
