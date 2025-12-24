@@ -1,30 +1,28 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  ChevronRight,
-  ChevronLeft,
-  Clock,
-  HelpCircle,
-  X,
-  Mail,
-  Phone,
-  MessageSquare,
-  ArrowLeft,
-  CheckCircle,
+    ArrowLeft,
+    CheckCircle,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    HelpCircle,
+    Mail,
+    Phone,
+    X
 } from "lucide-react";
-import { getQuestions } from "../../data/assessment/questions";
-import { getCertificateConfig } from "../../data/assessment/certificateConfig";
-import { Question } from "../../types";
-import ReviewPage from "../../components/assessment/test/ReviewPage";
+import React, { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import InstructionsPage from "../../components/assessment/test/InstructionsPage";
 import PermissionsModal from "../../components/assessment/test/PermissionsModal";
-import WarningModal from "../../components/assessment/test/WarningModal";
+import ReviewPage from "../../components/assessment/test/ReviewPage";
 import TimeWarningModal from "../../components/assessment/test/TimeWarningModal";
+import WarningModal from "../../components/assessment/test/WarningModal";
 import { useAuth } from "../../context/AuthContext";
 import { useTest } from "../../context/assessment/TestContext";
-import { createAssessmentAttempt, updateAssessmentProgress } from "../../services/externalAssessmentService";
+import { getCertificateConfig } from "../../data/assessment/certificateConfig";
+import { getQuestions } from "../../data/assessment/questions";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
+import { createAssessmentAttempt, updateAssessmentProgress } from "../../services/externalAssessmentService";
 
 interface TestAttempt {
   nmId: string;
@@ -62,12 +60,6 @@ const TestPage: React.FC = () => {
   const [attemptId, setAttemptId] = useState<string | null>(
     location.state?.resumeAttempt?.id || null
   );
-
-  // Get student data for saving progress
-  const { studentData } = useStudentDataByEmail(user?.email || '', false);
-  
-  // Track attempt ID for progress saving
-  const [attemptId, setAttemptId] = useState<string | null>(null);
 
   // Core state
 
