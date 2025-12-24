@@ -13,8 +13,6 @@ import { supabase } from '../lib/supabaseClient';
  */
 export const getAssignmentsByStudentId = async (studentId) => {
   try {
-    debugger;
-
     // STEP 1: Convert students.id → students.user_id
     const { data: studentRow, error: mapError } = await supabase
       .from('students')

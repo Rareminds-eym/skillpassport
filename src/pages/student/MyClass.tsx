@@ -20,7 +20,11 @@ import {
   Award,
   Upload,
   Paperclip,
-  X
+  X,
+  Calculator,
+  FlaskConical,
+  Atom,
+  BookOpenCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
@@ -45,8 +49,10 @@ import {
   getStudentExams,
   getStudentResults,
   getStudentResultStats,
+  getGroupedStudentExams,
   StudentExam,
-  StudentResult
+  StudentResult,
+  GroupedExam
 } from '../../services/studentExamService';
 
 type TabType = 'overview' | 'assignments' | 'timetable' | 'classmates' | 'curriculars' | 'exams' | 'results';
@@ -90,6 +96,44 @@ const getSubjectColor = (subject: string): { bg: string; text: string; border: s
   return { bg: 'bg-gray-100', text: 'text-gray-900', border: 'border-gray-200' };
 };
 
+// Subject icon mapping for better visual representation
+const getSubjectIcon = (subjectName: string) => {
+  const subject = subjectName?.toLowerCase() || '';
+  
+  if (subject.includes('math')) {
+    return Calculator;
+  }
+  if (subject.includes('physics')) {
+    return Atom;
+  }
+  if (subject.includes('chemistry')) {
+    return FlaskConical;
+  }
+  if (subject.includes('biology') || subject.includes('bio')) {
+    return BookOpenCheck;
+  }
+  if (subject.includes('english') || subject.includes('language')) {
+    return BookOpen;
+  }
+  return FileText; // Default icon
+};
+
+// Exam type icon mapping
+const getExamTypeIcon = (examType: string) => {
+  const type = examType?.toLowerCase() || '';
+  
+  if (type.includes('term') || type.includes('mid')) {
+    return ClipboardList;
+  }
+  if (type.includes('practical')) {
+    return ClipboardList;
+  }
+  if (type.includes('final')) {
+    return Award;
+  }
+  return FileText; // Default icon
+};
+
 const MyClass: React.FC = () => {
   const { user } = useAuth();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
@@ -112,6 +156,7 @@ const MyClass: React.FC = () => {
   const [myCertificates, setMyCertificates] = useState<any[]>([]);
   const [attendanceData, setAttendanceData] = useState<Record<string, any>>({});
   const [exams, setExams] = useState<StudentExam[]>([]);
+  const [groupedExams, setGroupedExams] = useState<GroupedExam[]>([]);
   const [results, setResults] = useState<StudentResult[]>([]);
   const [resultStats, setResultStats] = useState({ totalExams: 0, passed: 0, failed: 0, absent: 0, averagePercentage: 0 });
   
@@ -265,12 +310,14 @@ const MyClass: React.FC = () => {
 
         // Fetch exams and results
         if (studentId) {
-          const [examsData, resultsData, statsData] = await Promise.all([
+          const [examsData, groupedExamsData, resultsData, statsData] = await Promise.all([
             getStudentExams(studentId),
+            getGroupedStudentExams(studentId),
             getStudentResults(studentId),
             getStudentResultStats(studentId)
           ]);
           setExams(examsData);
+          setGroupedExams(groupedExamsData);
           setResults(resultsData);
           setResultStats(statsData);
         }
@@ -1403,93 +1450,141 @@ const MyClass: React.FC = () => {
                   <p className="text-gray-600">View your upcoming and past examinations</p>
                 </div>
 
-                {exams.length === 0 ? (
+                {groupedExams.length === 0 ? (
                   <div className="text-center py-12">
                     <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No Exams Scheduled</h3>
                     <p className="text-gray-500">Your exam schedule will appear here when available.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {/* Upcoming Exams */}
-                    {exams.filter(exam => new Date(exam.exam_date) >= new Date()).length > 0 && (
+                    {groupedExams.filter(exam => exam.subjects.some(s => new Date(s.exam_date) >= new Date())).length > 0 && (
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                           <Clock className="w-5 h-5 text-blue-600" />
                           Upcoming Exams
                         </h3>
-                        <div className="space-y-3">
-                          {exams
-                            .filter(exam => new Date(exam.exam_date) >= new Date())
-                            .map(exam => (
+                        <div className="space-y-6">
+                          {groupedExams
+                            .filter(exam => exam.subjects.some(s => new Date(s.exam_date) >= new Date()))
+                            .map(groupedExam => (
                               <div
-                                key={exam.id}
-                                className="bg-white border-2 border-blue-200 rounded-lg p-5 hover:border-blue-300 hover:shadow-md transition-all"
+                                key={groupedExam.assessment_id}
+                                className="bg-white border-2 border-blue-200 rounded-xl p-6"
                               >
-                                <div className="flex items-start justify-between mb-3">
+                                {/* Exam Header */}
+                                <div className="flex items-start justify-between mb-6">
                                   <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <h4 className="font-bold text-gray-900 text-lg">{exam.subject_name}</h4>
-                                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                                        {exam.type}
+                                    <div className="flex items-center gap-3 mb-2">
+                                      <div className="flex items-center gap-2">
+                                        {React.createElement(getExamTypeIcon(groupedExam.type), { 
+                                          className: "w-6 h-6 text-blue-600" 
+                                        })}
+                                        <h4 className="text-xl font-bold text-gray-900">{groupedExam.assessment_code}</h4>
+                                      </div>
+                                      <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium flex items-center gap-1">
+                                        {React.createElement(getExamTypeIcon(groupedExam.type), { 
+                                          className: "w-3 h-3" 
+                                        })}
+                                        {groupedExam.type.replace('_', ' ').toUpperCase()}
                                       </span>
                                     </div>
-                                    <p className="text-sm text-gray-500">{exam.assessment_code}</p>
+                                    <p className="text-gray-600">
+                                      {groupedExam.subjects.length} subject{groupedExam.subjects.length > 1 ? 's' : ''} • 
+                                      Total {groupedExam.overall_total_marks} marks
+                                    </p>
                                   </div>
                                   <div className="text-right">
                                     <p className="text-sm font-medium text-gray-600">Total Marks</p>
-                                    <p className="text-2xl font-bold text-blue-600">{exam.total_marks}</p>
+                                    <p className="text-3xl font-bold text-blue-600">{groupedExam.overall_total_marks}</p>
                                   </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
-                                  <div className="flex items-center gap-2">
-                                    <Calendar className="w-4 h-4 text-gray-400" />
-                                    <div>
-                                      <p className="text-xs text-gray-500">Date</p>
-                                      <p className="text-sm font-medium text-gray-900">
-                                        {new Date(exam.exam_date).toLocaleDateString('en-US', {
-                                          month: 'short',
-                                          day: 'numeric',
-                                          year: 'numeric'
-                                        })}
-                                      </p>
+                                {/* Instructions */}
+                                {groupedExam.instructions && (
+                                  <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-blue-100">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <ClipboardList className="w-4 h-4 text-blue-600" />
+                                      <p className="text-sm font-medium text-blue-900">Instructions:</p>
                                     </div>
-                                  </div>
-
-                                  <div className="flex items-center gap-2">
-                                    <Clock className="w-4 h-4 text-gray-400" />
-                                    <div>
-                                      <p className="text-xs text-gray-500">Time</p>
-                                      <p className="text-sm font-medium text-gray-900">
-                                        {exam.start_time} - {exam.end_time}
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-center gap-2">
-                                    <Clock className="w-4 h-4 text-gray-400" />
-                                    <div>
-                                      <p className="text-xs text-gray-500">Duration</p>
-                                      <p className="text-sm font-medium text-gray-900">{exam.duration_minutes} mins</p>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-center gap-2">
-                                    <MapPin className="w-4 h-4 text-gray-400" />
-                                    <div>
-                                      <p className="text-xs text-gray-500">Room</p>
-                                      <p className="text-sm font-medium text-gray-900">{exam.room || 'TBA'}</p>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {exam.instructions && (
-                                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
-                                    <p className="text-xs font-medium text-blue-900 mb-1">Instructions:</p>
-                                    <p className="text-sm text-blue-800">{exam.instructions}</p>
+                                    <p className="text-sm text-blue-800">{groupedExam.instructions}</p>
                                   </div>
                                 )}
+
+                                {/* Subject Timetable */}
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <Calendar className="w-5 h-5 text-gray-700" />
+                                    <h5 className="text-lg font-semibold text-gray-800">Exam Timetable</h5>
+                                  </div>
+                                  {groupedExam.subjects
+                                    .sort((a, b) => new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime())
+                                    .map(subject => {
+                                      const SubjectIcon = getSubjectIcon(subject.subject_name);
+                                      return (
+                                        <div
+                                          key={subject.id}
+                                          className="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex-1">
+                                              <div className="flex items-center gap-3 mb-2">
+                                                <div className="flex items-center gap-2">
+                                                  <SubjectIcon className="w-5 h-5 text-blue-600" />
+                                                  <h6 className="text-lg font-semibold text-gray-900">{subject.subject_name}</h6>
+                                                </div>
+                                                <span className="text-sm text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+                                                  {subject.total_marks} marks
+                                                </span>
+                                              </div>
+                                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                                <div className="flex items-center gap-2">
+                                                  <Calendar className="w-4 h-4 text-gray-400" />
+                                                  <div>
+                                                    <p className="text-xs text-gray-500">Date</p>
+                                                    <p className="font-medium text-gray-900">
+                                                      {new Date(subject.exam_date).toLocaleDateString('en-US', {
+                                                        weekday: 'short',
+                                                        month: 'short',
+                                                        day: 'numeric'
+                                                      })}
+                                                    </p>
+                                                  </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                  <Clock className="w-4 h-4 text-gray-400" />
+                                                  <div>
+                                                    <p className="text-xs text-gray-500">Time</p>
+                                                    <p className="font-medium text-gray-900">
+                                                      {subject.start_time.slice(0, 5)} - {subject.end_time.slice(0, 5)}
+                                                    </p>
+                                                  </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                  <Clock className="w-4 h-4 text-gray-400" />
+                                                  <div>
+                                                    <p className="text-xs text-gray-500">Duration</p>
+                                                    <p className="font-medium text-gray-900">{subject.duration_minutes} mins</p>
+                                                  </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                  <MapPin className="w-4 h-4 text-gray-400" />
+                                                  <div>
+                                                    <p className="text-xs text-gray-500">Room</p>
+                                                    <p className="font-medium text-gray-900">{subject.room || 'TBA'}</p>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                </div>
                               </div>
                             ))}
                         </div>
@@ -1497,39 +1592,47 @@ const MyClass: React.FC = () => {
                     )}
 
                     {/* Past Exams */}
-                    {exams.filter(exam => new Date(exam.exam_date) < new Date()).length > 0 && (
+                    {groupedExams.filter(exam => exam.subjects.every(s => new Date(s.exam_date) < new Date())).length > 0 && (
                       <div className="mt-8">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                           <CheckCircle2 className="w-5 h-5 text-gray-600" />
                           Past Exams
                         </h3>
-                        <div className="space-y-3">
-                          {exams
-                            .filter(exam => new Date(exam.exam_date) < new Date())
-                            .map(exam => (
+                        <div className="space-y-4">
+                          {groupedExams
+                            .filter(exam => exam.subjects.every(s => new Date(s.exam_date) < new Date()))
+                            .map(groupedExam => (
                               <div
-                                key={exam.id}
-                                className="bg-gray-50 border border-gray-200 rounded-lg p-4 hover:bg-gray-100 transition-colors"
+                                key={groupedExam.assessment_id}
+                                className="bg-gray-50 border border-gray-200 rounded-lg p-4"
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
-                                      <h4 className="font-semibold text-gray-900">{exam.subject_name}</h4>
-                                      <span className="px-2 py-1 bg-gray-200 text-gray-700 rounded-full text-xs font-medium">
-                                        {exam.type}
+                                      <div className="flex items-center gap-2">
+                                        {React.createElement(getExamTypeIcon(groupedExam.type), { 
+                                          className: "w-4 h-4 text-gray-600" 
+                                        })}
+                                        <h4 className="font-semibold text-gray-900">{groupedExam.assessment_code}</h4>
+                                      </div>
+                                      <span className="px-2 py-1 bg-gray-200 text-gray-700 rounded-full text-xs font-medium flex items-center gap-1">
+                                        {React.createElement(getExamTypeIcon(groupedExam.type), { 
+                                          className: "w-3 h-3" 
+                                        })}
+                                        {groupedExam.type.replace('_', ' ')}
                                       </span>
                                     </div>
                                     <div className="flex items-center gap-4 text-sm text-gray-600">
+                                      <span>{groupedExam.subjects.length} subjects</span>
                                       <span className="flex items-center gap-1">
                                         <Calendar className="w-3 h-3" />
-                                        {new Date(exam.exam_date).toLocaleDateString()}
+                                        {new Date(groupedExam.subjects[0]?.exam_date).toLocaleDateString()} - {new Date(groupedExam.subjects[groupedExam.subjects.length - 1]?.exam_date).toLocaleDateString()}
                                       </span>
-                                      <span>{exam.room}</span>
                                     </div>
                                   </div>
                                   <div className="text-right">
                                     <p className="text-sm text-gray-500">Total Marks</p>
-                                    <p className="text-lg font-bold text-gray-700">{exam.total_marks}</p>
+                                    <p className="text-lg font-bold text-gray-700">{groupedExam.overall_total_marks}</p>
                                   </div>
                                 </div>
                               </div>
@@ -1546,162 +1649,259 @@ const MyClass: React.FC = () => {
             {activeTab === 'results' && (
               <div>
                 <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Exam Results</h2>
-                  <p className="text-gray-600">View your published examination results</p>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Academic Results</h2>
+                  <p className="text-gray-600">Comprehensive examination results and performance analysis</p>
                 </div>
 
-                {/* Stats Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <p className="text-xs text-gray-500 mb-1">Total Exams</p>
-                    <p className="text-2xl font-bold text-gray-900">{resultStats.totalExams}</p>
-                  </div>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <p className="text-xs text-green-600 mb-1">Passed</p>
-                    <p className="text-2xl font-bold text-green-700">{resultStats.passed}</p>
-                  </div>
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <p className="text-xs text-red-600 mb-1">Failed</p>
-                    <p className="text-2xl font-bold text-red-700">{resultStats.failed}</p>
-                  </div>
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                    <p className="text-xs text-orange-600 mb-1">Absent</p>
-                    <p className="text-2xl font-bold text-orange-700">{resultStats.absent}</p>
-                  </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p className="text-xs text-blue-600 mb-1">Average</p>
-                    <p className="text-2xl font-bold text-blue-700">{resultStats.averagePercentage}%</p>
+                {/* Performance Summary */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <div className="w-1 h-6 bg-blue-500 rounded-full"></div>
+                    Performance Summary
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="text-center p-3 bg-gray-50 rounded-lg border border-gray-100">
+                      <p className="text-2xl font-bold text-gray-900">{resultStats.totalExams}</p>
+                      <p className="text-sm text-gray-600 mt-1">Total Exams</p>
+                    </div>
+                    <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
+                      <p className="text-2xl font-bold text-green-600">{resultStats.passed}</p>
+                      <p className="text-sm text-green-700 mt-1">Passed</p>
+                    </div>
+                    <div className="text-center p-3 bg-red-50 rounded-lg border border-red-100">
+                      <p className="text-2xl font-bold text-red-600">{resultStats.failed}</p>
+                      <p className="text-sm text-red-700 mt-1">Failed</p>
+                    </div>
+                    <div className="text-center p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                      <p className="text-2xl font-bold text-yellow-600">{resultStats.absent}</p>
+                      <p className="text-sm text-yellow-700 mt-1">Absent</p>
+                    </div>
+                    <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+                      <p className="text-2xl font-bold text-blue-600">{resultStats.averagePercentage}%</p>
+                      <p className="text-sm text-blue-700 mt-1">Average</p>
+                    </div>
                   </div>
                 </div>
 
                 {results.length === 0 ? (
-                  <div className="text-center py-12">
+                  <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
                     <Award className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No Results Published</h3>
-                    <p className="text-gray-500">Your exam results will appear here once they are published.</p>
+                    <p className="text-gray-500">Your examination results will appear here once they are published.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {results.map(result => {
-                      const isPassed = !result.is_absent && !result.is_exempt && 
-                        result.marks_obtained !== undefined && 
-                        result.marks_obtained >= result.pass_marks;
-                      const isFailed = !result.is_absent && !result.is_exempt && 
-                        result.marks_obtained !== undefined && 
-                        result.marks_obtained < result.pass_marks;
+                  <div className="space-y-6">
+                    {/* Group results by assessment */}
+                    {(() => {
+                      // Group results by assessment_id
+                      const groupedResults = results.reduce((acc, result) => {
+                        const key = result.assessment_id;
+                        if (!acc[key]) {
+                          acc[key] = {
+                            assessment_id: result.assessment_id,
+                            assessment_code: result.assessment_code,
+                            type: result.type,
+                            exam_date: result.exam_date,
+                            subjects: []
+                          };
+                        }
+                        acc[key].subjects.push(result);
+                        return acc;
+                      }, {} as Record<string, any>);
 
-                      return (
-                        <div
-                          key={result.id}
-                          className={`border-2 rounded-lg p-5 transition-all ${
-                            result.is_absent
-                              ? 'bg-orange-50 border-orange-200'
-                              : isPassed
-                              ? 'bg-green-50 border-green-200'
-                              : isFailed
-                              ? 'bg-red-50 border-red-200'
-                              : 'bg-gray-50 border-gray-200'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className="font-bold text-gray-900 text-lg">{result.subject_name}</h4>
-                                <span className="px-2 py-1 bg-white/60 text-gray-700 rounded-full text-xs font-medium border border-gray-300">
-                                  {result.type}
-                                </span>
-                                {result.is_absent && (
-                                  <span className="px-2 py-1 bg-orange-200 text-orange-800 rounded-full text-xs font-medium">
-                                    Absent
+                      return Object.values(groupedResults).map((assessment: any) => (
+                        <div key={assessment.assessment_id} className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                          {/* Assessment Header */}
+                          <div className="border-b border-gray-200 p-6 bg-gradient-to-r from-blue-50 to-white">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                  <div className="w-2 h-6 bg-blue-500 rounded-full"></div>
+                                  {assessment.assessment_code}
+                                </h3>
+                                <div className="flex items-center gap-4 mt-2">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {assessment.type.replace('_', ' ').toUpperCase()}
                                   </span>
-                                )}
-                                {result.is_exempt && (
-                                  <span className="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs font-medium">
-                                    Exempt
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-600">{result.assessment_code}</p>
-                              {result.exam_date && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                  {new Date(result.exam_date).toLocaleDateString('en-US', {
-                                    month: 'long',
-                                    day: 'numeric',
-                                    year: 'numeric'
-                                  })}
-                                </p>
-                              )}
-                            </div>
-
-                            {!result.is_absent && !result.is_exempt && (
-                              <div className="text-right">
-                                <p className="text-sm font-medium text-gray-600 mb-1">Score</p>
-                                <div className="flex items-baseline gap-1">
-                                  <p className={`text-3xl font-bold ${
-                                    isPassed ? 'text-green-700' : isFailed ? 'text-red-700' : 'text-gray-700'
-                                  }`}>
-                                    {result.marks_obtained}
-                                  </p>
-                                  <p className="text-lg text-gray-500">/ {result.total_marks}</p>
+                                  {assessment.exam_date && (
+                                    <span className="text-sm text-gray-600 flex items-center gap-1">
+                                      <Calendar className="w-4 h-4" />
+                                      {new Date(assessment.exam_date).toLocaleDateString('en-US', {
+                                        month: 'long',
+                                        day: 'numeric',
+                                        year: 'numeric'
+                                      })}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
-                            )}
+                              <div className="text-right bg-white rounded-lg p-3 border border-gray-100">
+                                <p className="text-sm text-gray-600">Subjects</p>
+                                <p className="text-2xl font-bold text-blue-600">{assessment.subjects.length}</p>
+                              </div>
+                            </div>
                           </div>
 
-                          {!result.is_absent && !result.is_exempt && (
-                            <div className="grid grid-cols-3 gap-4 mb-3">
-                              <div className="bg-white/60 rounded-lg p-3 border border-gray-200">
-                                <p className="text-xs text-gray-600 mb-1">Percentage</p>
-                                <p className={`text-xl font-bold ${
-                                  isPassed ? 'text-green-700' : isFailed ? 'text-red-700' : 'text-gray-700'
-                                }`}>
-                                  {result.percentage?.toFixed(1)}%
-                                </p>
-                              </div>
+                          {/* Results Table */}
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
+                                <tr>
+                                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Subject</th>
+                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Marks Obtained</th>
+                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Total Marks</th>
+                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Percentage</th>
+                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Grade</th>
+                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-100">
+                                {assessment.subjects.map((result: any) => {
+                                  const isPassed = !result.is_absent && !result.is_exempt && result.is_pass === true;
+                                  const isFailed = !result.is_absent && !result.is_exempt && result.is_pass === false;
+                                  
+                                  return (
+                                    <tr key={result.id} className="hover:bg-blue-50 transition-colors duration-150">
+                                      <td className="px-6 py-4 whitespace-nowrap border-r border-gray-100">
+                                        <div className="flex items-center">
+                                          <div>
+                                            <div className="text-sm font-semibold text-gray-900">{result.subject_name}</div>
+                                            {result.is_moderated && (
+                                              <div className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                                                <div className="w-1 h-1 bg-blue-500 rounded-full"></div>
+                                                Moderated from {result.original_marks}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-center border-r border-gray-100">
+                                        {result.is_absent ? (
+                                          <span className="text-sm text-yellow-600 font-semibold">Absent</span>
+                                        ) : result.is_exempt ? (
+                                          <span className="text-sm text-blue-600 font-semibold">Exempt</span>
+                                        ) : (
+                                          <div className="text-sm font-semibold text-gray-900">
+                                            {result.marks_obtained}
+                                            {result.is_moderated && (
+                                              <span className="text-blue-600 ml-1" title={`Moderated from ${result.original_marks} to ${result.marks_obtained}. Reason: ${result.moderation_reason}`}>
+                                                *
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-700 border-r border-gray-100">
+                                        {result.total_marks}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-center border-r border-gray-100">
+                                        {result.is_absent || result.is_exempt ? (
+                                          <span className="text-sm text-gray-400">-</span>
+                                        ) : (
+                                          <span className={`text-sm font-semibold ${
+                                            isPassed ? 'text-green-600' : isFailed ? 'text-red-600' : 'text-gray-900'
+                                          }`}>
+                                            {result.percentage?.toFixed(1)}%
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-center border-r border-gray-100">
+                                        {result.is_absent || result.is_exempt ? (
+                                          <span className="text-sm text-gray-400">-</span>
+                                        ) : (
+                                          <span className={`text-sm font-semibold ${
+                                            isPassed ? 'text-green-600' : isFailed ? 'text-red-600' : 'text-gray-900'
+                                          }`}>
+                                            {result.grade || 'N/A'}
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                                        {result.is_absent ? (
+                                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                            Absent
+                                          </span>
+                                        ) : result.is_exempt ? (
+                                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                                            Exempt
+                                          </span>
+                                        ) : isPassed ? (
+                                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                                            Pass
+                                          </span>
+                                        ) : isFailed ? (
+                                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
+                                            <AlertCircle className="w-3 h-3 mr-1" />
+                                            Fail
+                                          </span>
+                                        ) : (
+                                          <span className="text-sm text-gray-400">-</span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
 
-                              <div className="bg-white/60 rounded-lg p-3 border border-gray-200">
-                                <p className="text-xs text-gray-600 mb-1">Grade</p>
-                                <p className={`text-xl font-bold ${
-                                  isPassed ? 'text-green-700' : isFailed ? 'text-red-700' : 'text-gray-700'
-                                }`}>
-                                  {result.grade || 'N/A'}
-                                </p>
+                          {/* Assessment Summary */}
+                          <div className="border-t-2 border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50 px-6 py-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-8">
+                                <div className="text-sm flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                                  <span className="text-gray-600">Total Subjects: </span>
+                                  <span className="font-semibold text-gray-900">{assessment.subjects.length}</span>
+                                </div>
+                                <div className="text-sm flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                  <span className="text-gray-600">Passed: </span>
+                                  <span className="font-semibold text-green-600">
+                                    {assessment.subjects.filter((s: any) => !s.is_absent && !s.is_exempt && s.is_pass === true).length}
+                                  </span>
+                                </div>
+                                <div className="text-sm flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                  <span className="text-gray-600">Failed: </span>
+                                  <span className="font-semibold text-red-600">
+                                    {assessment.subjects.filter((s: any) => !s.is_absent && !s.is_exempt && s.is_pass === false).length}
+                                  </span>
+                                </div>
                               </div>
-
-                              <div className="bg-white/60 rounded-lg p-3 border border-gray-200">
-                                <p className="text-xs text-gray-600 mb-1">Pass Marks</p>
-                                <p className="text-xl font-bold text-gray-700">{result.pass_marks}</p>
+                              <div className="text-sm bg-white rounded-lg px-4 py-2 border border-gray-200 shadow-sm">
+                                <span className="text-gray-600">Overall Average: </span>
+                                <span className="font-bold text-blue-600">
+                                  {(() => {
+                                    const validResults = assessment.subjects.filter((s: any) => !s.is_absent && !s.is_exempt && s.percentage !== undefined);
+                                    const average = validResults.length > 0
+                                      ? validResults.reduce((sum: number, s: any) => sum + (s.percentage || 0), 0) / validResults.length
+                                      : 0;
+                                    return average.toFixed(1);
+                                  })()}%
+                                </span>
                               </div>
                             </div>
-                          )}
+                          </div>
 
-                          {result.remarks && (
-                            <div className="bg-white/60 rounded-lg p-3 border border-gray-200">
-                              <p className="text-xs font-medium text-gray-700 mb-1">Remarks:</p>
-                              <p className="text-sm text-gray-600">{result.remarks}</p>
-                            </div>
-                          )}
-
-                          {!result.is_absent && !result.is_exempt && (
-                            <div className="mt-3 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                {isPassed ? (
-                                  <>
-                                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                                    <span className="text-sm font-medium text-green-700">Passed</span>
-                                  </>
-                                ) : isFailed ? (
-                                  <>
-                                    <AlertCircle className="w-5 h-5 text-red-600" />
-                                    <span className="text-sm font-medium text-red-700">Failed</span>
-                                  </>
-                                ) : null}
+                          {/* Moderation Notes */}
+                          {assessment.subjects.some((s: any) => s.is_moderated) && (
+                            <div className="border-t border-gray-200 bg-blue-50 px-6 py-4">
+                              <div className="flex items-start gap-2">
+                                <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5" />
+                                <div>
+                                  <p className="text-sm font-medium text-blue-900">Moderation Applied</p>
+                                  <p className="text-xs text-blue-700 mt-1">
+                                    * Indicates marks that have been moderated. Hover over the asterisk for details.
+                                  </p>
+                                </div>
                               </div>
                             </div>
                           )}
                         </div>
-                      );
-                    })}
+                      ));
+                    })()}
                   </div>
                 )}
               </div>
