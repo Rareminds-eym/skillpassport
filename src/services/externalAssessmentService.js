@@ -13,19 +13,15 @@ import { supabase } from '../lib/supabaseClient';
  */
 export async function checkAssessmentStatus(studentId, courseName) {
   try {
-    console.log('🔍 checkAssessmentStatus: Fetching from database...', {
-      studentId,
-      courseName
-    });
-    
+    // Use maybeSingle() instead of single() to avoid 406 error when no rows exist
     const { data, error } = await supabase
       .from('external_assessment_attempts')
       .select('*')
       .eq('student_id', studentId)
       .eq('course_name', courseName)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       throw error;
     }
 
@@ -383,14 +379,15 @@ export async function getAssessmentHistory(studentId) {
  */
 export async function getAssessmentByCourse(studentId, courseName) {
   try {
+    // Use maybeSingle() instead of single() to avoid 406 error when no rows exist
     const { data, error } = await supabase
       .from('external_assessment_attempts')
       .select('*')
       .eq('student_id', studentId)
       .eq('course_name', courseName)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       throw error;
     }
 

@@ -46,7 +46,7 @@ async function verifyEducatorTables() {
       }
     }
 
-    console.log('\n📋 Checking educators table:');
+    console.log('\n📋 Checking educators table (for comparison - this table should not exist):');
     const { data: educators, error: educatorsError } = await supabase
       .from('educators')
       .select('*')

@@ -1,28 +1,25 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
-import { Button } from '../../components/Students/components/ui/button';
-import { Badge } from '../../components/Students/components/ui/badge';
-import {
-  Search,
-  BookOpen,
-  Clock,
-  Users,
-  Star,
-  Filter,
-  Grid3x3,
-  List,
-  Play,
-  ChevronLeft,
-  ChevronRight,
-  TrendingUp,
-  ArrowDownAZ
-} from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
 import { motion } from 'framer-motion';
+import {
+    ArrowDownAZ,
+    BookOpen,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    Grid3x3,
+    List,
+    TrendingUp,
+    Users
+} from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import SearchBar from '../../components/common/SearchBar';
 import CourseDetailModal from '../../components/student/courses/CourseDetailModal';
 import WeeklyLearningTracker from '../../components/student/WeeklyLearningTracker';
+import { Badge } from '../../components/Students/components/ui/badge';
+import { Button } from '../../components/Students/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
 import { courseEnrollmentService } from '../../services/courseEnrollmentService';
 import SearchBar from '../../components/common/SearchBar';
 import CourseAdvancedFilters from '../../components/Students/components/CourseAdvancedFilters';
@@ -51,6 +48,7 @@ const Courses = () => {
   const coursesPerPage = 6;
   const [activeTab, setActiveTab] = useState('courses'); // 'courses' or 'progress'
   const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
+  const [enrollmentProgress, setEnrollmentProgress] = useState({}); // Track progress per course
   
   // Refs to prevent duplicate fetches and track initialization
   const isFetchingRef = useRef(false);
@@ -212,12 +210,31 @@ const Courses = () => {
       if (result.success && result.data) {
         const enrolledIds = new Set(result.data.map(enrollment => enrollment.course_id));
         setEnrolledCourseIds(enrolledIds);
+        
+        // Track progress for each enrolled course
+        const progressMap = {};
+        result.data.forEach(enrollment => {
+          progressMap[enrollment.course_id] = {
+            progress: enrollment.progress || 0,
+            lastModuleIndex: enrollment.last_module_index || 0,
+            lastLessonIndex: enrollment.last_lesson_index || 0,
+            status: enrollment.status
+          };
+        });
+        setEnrollmentProgress(progressMap);
+        
         console.log('📝 Student enrolled in courses:', enrolledIds.size);
       }
     } catch (error) {
       console.error('Error fetching enrollments:', error);
     }
   }, []);
+
+  // Check if course has resumable progress
+  const hasResumableProgress = (courseId) => {
+    const progress = enrollmentProgress[courseId];
+    return progress && progress.progress > 0 && progress.progress < 100;
+  };
 
   // Check if a course is new (posted within last 24 hours)
   const isNewCourse = (createdAt) => {
@@ -432,9 +449,9 @@ const Courses = () => {
             </div>
           )}
 
-        {/* Weekly Learning Progress Tab - Keep mounted to prevent re-fetching */}
-        {!loading && (
-          <div className={activeTab === 'progress' ? 'block' : 'hidden'}>
+        {/* Weekly Learning Progress Tab - Only render when active to prevent chart dimension issues */}
+        {!loading && activeTab === 'progress' && (
+          <div>
             <WeeklyLearningTracker />
           </div>
         )}
@@ -638,47 +655,56 @@ const Courses = () => {
                 whileHover={{ y: -8, transition: { duration: 0.2 } }}
               >
                 <Card className="h-full hover:shadow-lg transition-all duration-200 border border-gray-200 overflow-hidden group">
-                  {/* Course Thumbnail */}
-                  {course.thumbnail && (
-                    <div className="h-40 overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative">
-                      {(course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
-                        <motion.img
-                          src={course.thumbnail}
-                          alt={course.title}
-                          className="w-full h-full object-cover"
-                          whileHover={{ scale: 1.05 }}
-                          transition={{ duration: 0.3 }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <BookOpen className="h-16 w-16 text-white opacity-90" />
-                        </div>
-                      )}
-                      {/* Badges */}
-                      <div className="absolute top-2 left-2 flex gap-2">
-                        {enrolledCourseIds.has(course.course_id) && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                          >
-                            <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                              Enrolled
-                            </Badge>
-                          </motion.div>
-                        )}
-                        {isNewCourse(course.created_at) && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                          >
-                            <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                              NEW
-                            </Badge>
-                          </motion.div>
-                        )}
+                  {/* Course Thumbnail - Always show with placeholder if no image */}
+                  <div className="h-40 overflow-hidden bg-slate-100 relative">
+                    {course.thumbnail && (course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
+                      <motion.img
+                        src={course.thumbnail}
+                        alt={course.title}
+                        className="w-full h-full object-cover"
+                        whileHover={{ scale: 1.05 }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100">
+                        <BookOpen className="h-12 w-12 text-slate-400 mb-2" />
+                        <span className="text-slate-500 text-xs font-medium">No Image</span>
                       </div>
+                    )}
+                    {/* Badges */}
+                    <div className="absolute top-2 left-2 flex gap-2">
+                      {hasResumableProgress(course.course_id) ? (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                        >
+                          <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-lg font-semibold px-3 py-1 flex items-center gap-1">
+                            <Play className="w-3 h-3" />
+                            Resume ({enrollmentProgress[course.course_id]?.progress}%)
+                          </Badge>
+                        </motion.div>
+                      ) : enrolledCourseIds.has(course.course_id) && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                        >
+                          <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                            Enrolled
+                          </Badge>
+                        </motion.div>
+                      )}
+                      {isNewCourse(course.created_at) && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                        >
+                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                            NEW
+                          </Badge>
+                        </motion.div>
+                      )}
                     </div>
-                  )}
+                  </div>
 
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between mb-2">
@@ -686,16 +712,6 @@ const Courses = () => {
                         <Badge className={`${getStatusColor(course.status)} border`}>
                           {course.status}
                         </Badge>
-                        {/* {enrolledCourseIds.has(course.course_id) && (
-                          <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 font-semibold">
-                            Enrolled
-                          </Badge>
-                        )} */}
-                        {!course.thumbnail && isNewCourse(course.created_at) && (
-                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 font-semibold">
-                            NEW
-                          </Badge>
-                        )}
                       </div>
                       <span className="text-xs font-medium text-gray-500">{course.code}</span>
                     </div>
@@ -789,35 +805,39 @@ const Courses = () => {
                 <Card className="hover:shadow-lg transition-all duration-200 border-0">
                   <CardContent className="p-6">
                     <div className="flex flex-col lg:flex-row gap-6">
-                      {/* Thumbnail */}
-                      {course.thumbnail && (
-                        <div className="w-full lg:w-48 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative">
-                          {(course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
-                            <img
-                              src={course.thumbnail}
-                              alt={course.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <BookOpen className="h-12 w-12 text-white opacity-90" />
-                            </div>
-                          )}
-                          {/* Badges */}
-                          <div className="absolute top-2 left-2 flex gap-2">
-                            {enrolledCourseIds.has(course.course_id) && (
-                              <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                                Enrolled
-                              </Badge>
-                            )}
-                            {isNewCourse(course.created_at) && (
-                              <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                                NEW
-                              </Badge>
-                            )}
+                      {/* Thumbnail - Always show with placeholder if no image */}
+                      <div className="w-full lg:w-48 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-slate-100 relative">
+                        {course.thumbnail && (course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
+                          <img
+                            src={course.thumbnail}
+                            alt={course.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100">
+                            <BookOpen className="h-10 w-10 text-slate-400 mb-1" />
+                            <span className="text-slate-500 text-xs font-medium">No Image</span>
                           </div>
+                        )}
+                        {/* Badges */}
+                        <div className="absolute top-2 left-2 flex gap-2">
+                          {hasResumableProgress(course.course_id) ? (
+                            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-lg font-semibold px-3 py-1 flex items-center gap-1">
+                              <Play className="w-3 h-3" />
+                              Resume ({enrollmentProgress[course.course_id]?.progress}%)
+                            </Badge>
+                          ) : enrolledCourseIds.has(course.course_id) && (
+                            <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                              Enrolled
+                            </Badge>
+                          )}
+                          {isNewCourse(course.created_at) && (
+                            <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                              NEW
+                            </Badge>
+                          )}
                         </div>
-                      )}
+                      </div>
 
                       {/* Course Info */}
                       <div className="flex-1">
@@ -828,16 +848,6 @@ const Courses = () => {
                               <Badge className={`${getStatusColor(course.status)} border`}>
                                 {course.status}
                               </Badge>
-                              {/* {enrolledCourseIds.has(course.course_id) && (
-                                <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 font-semibold">
-                                  Enrolled
-                                </Badge>
-                              )} */}
-                              {!course.thumbnail && isNewCourse(course.created_at) && (
-                                <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 font-semibold">
-                                  NEW
-                                </Badge>
-                              )}
                             </div>
                             <p className="text-sm text-gray-500">Course Code: {course.code}</p>
                           </div>

@@ -86,24 +86,8 @@ async function checkUserRoles(email) {
     console.log('❌ No educator role (school_educators)');
   }
 
-  // Check educators table (fallback)
-  const { data: educatorAltData, error: educatorAltError } = await supabase
-    .from('educators')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (!educatorAltError && educatorAltData) {
-    console.log('\n✅ EDUCATOR role found (educators):');
-    console.log('   ID:', educatorAltData.id);
-    console.log('   Name:', `${educatorAltData.first_name} ${educatorAltData.last_name}`);
-    console.log('   Email:', educatorAltData.email);
-    if (!foundRoles.find(r => r.role === 'educator')) {
-      foundRoles.push({ role: 'educator', data: educatorAltData });
-    }
-  } else {
-    console.log('❌ No educator role (educators)');
-  }
+  // Note: Removed fallback to 'educators' table as it doesn't exist
+  // The system uses 'school_educators' table for all educator data
 
   // Check users table for admin roles
   const { data: userData, error: userError } = await supabase

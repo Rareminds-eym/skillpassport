@@ -24,16 +24,16 @@ Handles file storage operations using Cloudflare R2.
 |----------|-------------|-------|
 | `VITE_SUPABASE_URL` | Supabase project URL | Database operations |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | Admin operations |
-| `R2_ACCOUNT_ID` | Cloudflare R2 account ID (also accepts `CLOUDFLARE_ACCOUNT_ID`) | R2 API endpoint construction |
-| `R2_ACCESS_KEY_ID` | R2 access key ID (also accepts `CLOUDFLARE_R2_ACCESS_KEY_ID`) | AWS S3-compatible authentication |
-| `R2_SECRET_ACCESS_KEY` | R2 secret access key (also accepts `CLOUDFLARE_R2_SECRET_ACCESS_KEY`) | AWS S3-compatible authentication |
-| `R2_BUCKET_NAME` | R2 bucket name (also accepts `CLOUDFLARE_R2_BUCKET_NAME`) | Target storage bucket |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare R2 account ID | R2 API endpoint construction |
+| `CLOUDFLARE_R2_ACCESS_KEY_ID` | R2 access key ID | AWS S3-compatible authentication |
+| `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | R2 secret access key | AWS S3-compatible authentication |
+| `CLOUDFLARE_R2_BUCKET_NAME` | R2 bucket name | Target storage bucket |
 
 ### Optional
 
 | Variable | Description | Default | Usage |
 |----------|-------------|---------|-------|
-| `R2_PUBLIC_URL` | Custom R2 public domain (also accepts `CLOUDFLARE_R2_PUBLIC_URL`) | `https://pub-{ACCOUNT_ID}.r2.dev` | Public file access URLs |
+| `CLOUDFLARE_R2_PUBLIC_URL` | Custom R2 public domain | `https://pub-{ACCOUNT_ID}.r2.dev` | Public file access URLs |
 
 ## Setup Instructions
 
@@ -54,13 +54,13 @@ Create R2 bucket in Cloudflare dashboard:
 # Required secrets
 wrangler secret put VITE_SUPABASE_URL
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-wrangler secret put R2_ACCOUNT_ID
-wrangler secret put R2_ACCESS_KEY_ID
-wrangler secret put R2_SECRET_ACCESS_KEY
-wrangler secret put R2_BUCKET_NAME
+wrangler secret put CLOUDFLARE_ACCOUNT_ID
+wrangler secret put CLOUDFLARE_R2_ACCESS_KEY_ID
+wrangler secret put CLOUDFLARE_R2_SECRET_ACCESS_KEY
+wrangler secret put CLOUDFLARE_R2_BUCKET_NAME
 
 # Optional - custom domain
-wrangler secret put R2_PUBLIC_URL
+wrangler secret put CLOUDFLARE_R2_PUBLIC_URL
 ```
 
 ### 4. Deploy
@@ -145,7 +145,7 @@ https://cdn.yourdomain.com/{file-key}
 
 To set up custom domain:
 1. Add domain in Cloudflare R2 settings
-2. Set `R2_PUBLIC_URL` environment variable
+2. Set `CLOUDFLARE_R2_PUBLIC_URL` environment variable
 
 ## Authentication
 
@@ -226,4 +226,4 @@ All file types supported, common formats:
 - Uses S3-compatible API
 - Supports custom domains for branding
 - PDF extraction is placeholder (requires additional processing)
-- Variable names accept both `R2_*` and `CLOUDFLARE_R2_*` prefixes for compatibility
+- Variable names use consistent `CLOUDFLARE_` prefixes for all R2 credentials

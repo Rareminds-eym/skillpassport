@@ -1,36 +1,59 @@
 /**
  * AI Assessment Service
- * Uses Claude AI to analyze assessment answers and provide personalized results
+ * Uses OpenRouter API via Cloudflare Worker to analyze assessment answers and provide personalized results
  * 
  * Feature: rag-course-recommendations
  * Requirements: 4.1, 5.2, 6.3
  */
 
 import {
-  getRecommendedCourses,
-  getRecommendedCoursesByType,
-  getCoursesForMultipleSkillGaps
+    getCoursesForMultipleSkillGaps,
+    getRecommendedCourses,
+    getRecommendedCoursesByType
 } from './courseRecommendationService';
 
 /**
- * Call Claude API with the given prompt
- * Uses claude-3-5-sonnet for larger output capacity (8192 tokens)
- * Assessment responses are large JSON objects requiring more tokens than haiku supports
+ * Call OpenRouter API via Cloudflare Worker for assessment analysis
+ * Uses the backend worker which handles OpenRouter API calls with proper authentication
  * 
- * @param {string} prompt - The prompt to send
- * @returns {Promise<string>} - The response text
+ * @param {Object} assessmentData - The assessment data to analyze
+ * @returns {Promise<Object>} - The analyzed results
  */
-const callClaudeAssessment = async (prompt) => {
-  if (!isClaudeConfigured()) {
-    throw new Error('Claude API not configured');
+const callOpenRouterAssessment = async (assessmentData) => {
+  const API_URL = import.meta.env.VITE_CAREER_API_URL || 'https://career-api.dark-mode-d021.workers.dev';
+
+  // Get current session for auth token
+  const { data: { session } } = await import('../lib/supabaseClient').then(m => m.supabase.auth.getSession());
+  const token = session?.access_token;
+
+  if (!token) {
+    throw new Error('Authentication required for assessment analysis');
   }
 
-  return await callClaude(prompt, {
-    model: 'claude-sonnet-4-20250514', // Latest Sonnet with higher token limits
-    maxTokens: 8192,
-    temperature: 0.1,
-    useCache: false // Assessment results should not be cached
+  console.log('🤖 Sending assessment data to backend for OpenRouter analysis...');
+
+  const response = await fetch(`${API_URL}/analyze-assessment`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ assessmentData })
   });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Server error: ${response.status}`);
+  }
+
+  const result = await response.json();
+
+  if (!result.success || !result.data) {
+    throw new Error('Invalid response from server');
+  }
+
+  console.log('✅ Assessment analysis successful via OpenRouter backend');
+  return result.data;
 };
 
 /**
@@ -95,7 +118,7 @@ const validateResults = (results) => {
  * Separates courses by skill type (technical vs soft) to ensure both are represented.
  * Falls back to keyword matching if embedding-based search fails.
  * 
- * @param {Object} assessmentResults - Parsed results from Claude AI
+ * @param {Object} assessmentResults - Parsed results from OpenRouter AI
  * @returns {Promise<Object>} - Assessment results with platformCourses, coursesByType, and skillGapCourses added
  * 
  * Feature: rag-course-recommendations
@@ -166,7 +189,7 @@ const addCourseRecommendations = async (assessmentResults) => {
 };
 
 /**
- * Analyze assessment results using Claude AI
+ * Analyze assessment results using OpenRouter AI via Cloudflare Worker
  * @param {Object} answers - All answers from the assessment
  * @param {string} stream - Student's selected stream (cs, bca, bba, dm, animation)
  * @param {Object} questionBanks - All question banks for reference
@@ -174,63 +197,23 @@ const addCourseRecommendations = async (assessmentResults) => {
  * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
  * @returns {Promise<Object>} - AI-analyzed results
  */
-export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12') => {
-  // Check for Claude API
-  if (!isClaudeConfigured()) {
-    throw new Error('Claude API key not configured. Please add VITE_CLAUDE_API_KEY to your .env file.');
-  }
-
-  // Prepare the assessment data
-  const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings, gradeLevel);
-  const prompt = buildAnalysisPrompt(assessmentData, gradeLevel);
-
-  // Use Claude AI for assessment analysis
-  console.log('🤖 Using Claude API for assessment analysis...');
+export const analyzeAssessmentWithOpenRouter = async (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12') => {
+  console.log('🤖 Using OpenRouter API via Cloudflare Worker for assessment analysis...');
   
   try {
-    const API_URL = import.meta.env.VITE_CAREER_API_URL || 'https://career-api.rareminds.workers.dev';
-
-    // Get current session for auth token
-    const { data: { session } } = await import('../lib/supabaseClient').then(m => m.supabase.auth.getSession());
-    const token = session?.access_token;
-
-    if (!token) {
-      throw new Error('Authentication required for assessment analysis');
-    }
-
     // Prepare the assessment data
-    const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings);
+    const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings, gradeLevel);
 
-    console.log('🤖 Sending assessment data to backend for analysis...');
+    // Call OpenRouter via backend
+    const parsedResults = await callOpenRouterAssessment(assessmentData);
 
-    const response = await fetch(`${API_URL}/analyze-assessment`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ assessmentData })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Server error: ${response.status}`);
-    }
-
-    const result = await response.json();
-
-    if (!result.success || !result.data) {
-      throw new Error('Invalid response from server');
-    }
-
-    console.log('✅ Assessment analysis successful via backend');
-    const parsedResults = result.data;
-
+    // Validate the results
     const { isValid, missingFields } = validateResults(parsedResults);
     if (!isValid) {
-      console.warn('Backend response has missing fields:', missingFields);
+      console.warn('OpenRouter response has missing fields:', missingFields);
     }
 
+    // Add course recommendations
     const resultsWithCourses = await addCourseRecommendations(parsedResults);
     return resultsWithCourses;
   } catch (error) {
@@ -238,6 +221,9 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
     throw new Error(`Assessment analysis failed: ${error.message}. Please try again.`);
   }
 };
+
+// Legacy alias for backward compatibility
+export const analyzeAssessmentWithGemini = analyzeAssessmentWithOpenRouter;
 
 /**
  * Format seconds to readable time string
@@ -1105,7 +1091,7 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 };
 
 /**
- * Build the analysis prompt for Claude AI
+ * Build the analysis prompt for OpenRouter AI
  */
 const buildAnalysisPrompt = (assessmentData, gradeLevel = 'after12') => {
   // Create a hash of the answers for consistency tracking
@@ -1515,7 +1501,7 @@ CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL OF THESE:
 };
 
 /**
- * Calculate knowledge score from answers
+ * Calculate knowledge score from answers (legacy function name for compatibility)
  * @param {Object} answers - Assessment answers
  * @param {Array} questions - Stream-specific questions with correct answers
  * @returns {Object} - Knowledge score results
@@ -1553,6 +1539,7 @@ export const calculateKnowledgeWithGemini = async (answers, questions) => {
 };
 
 export default {
-  analyzeAssessmentWithGemini,
+  analyzeAssessmentWithOpenRouter,
+  analyzeAssessmentWithGemini: analyzeAssessmentWithOpenRouter, // Legacy alias for compatibility
   calculateKnowledgeWithGemini
 };

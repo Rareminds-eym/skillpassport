@@ -22,46 +22,91 @@ export const courseEnrollmentService = {
       if (studentError) throw studentError;
       if (!studentData) throw new Error('Student not found');
 
-      // Get course details (only need basic info, not modules)
+      // Get course details with educator name - join directly to users since admin_users.id = users.id
       const { data: courseData, error: courseError } = await supabase
         .from('courses')
-        .select('course_id, title, educator_id, educator_name')
+        .select(`
+          course_id, 
+          title, 
+          educator_id
+        `)
         .eq('course_id', courseId)
         .single();
 
       if (courseError) throw courseError;
       if (!courseData) throw new Error('Course not found');
 
-      // Check if already enrolled
+      // Get educator name separately to avoid complex joins
+      let educatorName = 'Unknown Educator';
+      if (courseData.educator_id) {
+        const { data: educatorData } = await supabase
+          .from('users')
+          .select('firstName, lastName, email')
+          .eq('id', courseData.educator_id)
+          .single();
+        
+        if (educatorData) {
+          educatorName = `${educatorData.firstName || ''} ${educatorData.lastName || ''}`.trim() || educatorData.email || 'Unknown Educator';
+        }
+      }
+
+      // Check if already enrolled - use maybeSingle to avoid 406 error
       const { data: existingEnrollment, error: checkError } = await supabase
         .from('course_enrollments')
         .select('*')
         .eq('student_id', studentData.id)
         .eq('course_id', courseId)
-        .single();
+        .maybeSingle();
 
-      // If enrollment exists, return it
-      if (existingEnrollment) {
-        console.log('Student already enrolled, returning existing enrollment');
-        return {
-          success: true,
-          message: 'Already enrolled',
-          data: existingEnrollment
-        };
-      }
-
-      // If error is anything other than "not found", throw it
-      if (checkError && checkError.code !== 'PGRST116') {
+      // If error occurred, throw it
+      if (checkError) {
         console.error('Error checking enrollment:', checkError);
         throw checkError;
       }
 
-      // If we reach here, student is not enrolled yet (PGRST116 = not found)
+      // If enrollment exists, return it
+      if (existingEnrollment) {
+        console.log('Student already enrolled, returning existing enrollment');
+        // Update last_accessed and ensure progress is at least 1 (so it shows in My Learning)
+        const updateData = { 
+          last_accessed: new Date().toISOString(),
+          status: existingEnrollment.status === 'completed' ? 'completed' : 'in_progress'
+        };
+        
+        // If progress is 0, set it to 1 to indicate the student has started the course
+        if (existingEnrollment.progress === 0) {
+          updateData.progress = 1;
+        }
+        
+        await supabase
+          .from('course_enrollments')
+          .update(updateData)
+          .eq('id', existingEnrollment.id);
+        
+        return {
+          success: true,
+          message: 'Already enrolled',
+          data: { ...existingEnrollment, ...updateData }
+        };
+      }
 
-      // We'll set total_lessons to 0 initially and update it when the student first accesses the course
-      const totalLessons = 0;
+      // If we reach here, student is not enrolled yet
 
-      // Create enrollment
+      // Get total lessons count from course modules
+      const { data: modulesData } = await supabase
+        .from('course_modules')
+        .select(`
+          module_id,
+          lessons!fk_module (lesson_id)
+        `)
+        .eq('course_id', courseId);
+
+      const totalLessons = modulesData?.reduce((acc, module) => 
+        acc + (module.lessons?.length || 0), 0) || 0;
+
+      console.log('📚 Course has', totalLessons, 'total lessons');
+
+      // Create enrollment with progress=1 so it shows in My Learning immediately
       const { data: enrollment, error: enrollError } = await supabase
         .from('course_enrollments')
         .insert({
@@ -71,9 +116,9 @@ export const courseEnrollmentService = {
           course_id: courseId,
           course_title: courseData.title,
           educator_id: courseData.educator_id,
-          educator_name: courseData.educator_name,
+          educator_name: educatorName,
           enrolled_at: new Date().toISOString(),
-          progress: 0,
+          progress: 1,  // Start with 1% so it shows in My Learning
           completed_lessons: [],
           total_lessons: totalLessons,
           status: 'active',
@@ -82,12 +127,35 @@ export const courseEnrollmentService = {
         .select()
         .single();
 
+      // Handle duplicate key error (race condition from React StrictMode)
+      if (enrollError && enrollError.code === '23505') {
+        console.log('Duplicate enrollment detected, fetching existing record');
+        const { data: existingRecord } = await supabase
+          .from('course_enrollments')
+          .select('*')
+          .eq('student_id', studentData.id)
+          .eq('course_id', courseId)
+          .maybeSingle();
+        
+        if (existingRecord) {
+          return {
+            success: true,
+            message: 'Already enrolled',
+            data: existingRecord
+          };
+        }
+      }
+
       if (enrollError) throw enrollError;
 
-      // Update course enrollment count
-      await supabase.rpc('increment_course_enrollment', {
-        course_id_param: courseId
-      });
+      // Update course enrollment count (ignore if RPC doesn't exist)
+      try {
+        await supabase.rpc('increment_course_enrollment', {
+          course_id_param: courseId
+        });
+      } catch (rpcError) {
+        // Ignore - RPC may not exist
+      }
 
       return {
         success: true,
@@ -127,25 +195,27 @@ export const courseEnrollmentService = {
 
       if (studentError) throw studentError;
 
-      // Get enrollment
+      // Get enrollment - use maybeSingle to avoid 406 error
       const { data: enrollment, error: enrollError } = await supabase
         .from('course_enrollments')
         .select('*')
         .eq('student_id', studentData.id)
         .eq('course_id', courseId)
-        .single();
+        .maybeSingle();
 
       if (enrollError) throw enrollError;
       if (!enrollment) throw new Error('Enrollment not found');
 
       // Calculate progress percentage
-      const totalLessons = enrollment.total_lessons || 1;
-      const progress = Math.round((completedLessons.length / totalLessons) * 100);
+      const totalLessons = enrollment.total_lessons || completedLessons.length || 1;
+      const progress = Math.min(100, Math.round((completedLessons.length / totalLessons) * 100));
 
       // Determine status
       let status = 'active';
-      if (progress === 100) {
+      if (progress >= 100) {
         status = 'completed';
+      } else if (progress > 0) {
+        status = 'in_progress';
       }
 
       // Update enrollment
@@ -156,13 +226,15 @@ export const courseEnrollmentService = {
           progress: progress,
           status: status,
           last_accessed: new Date().toISOString(),
-          completed_at: progress === 100 ? new Date().toISOString() : null
+          completed_at: progress >= 100 ? new Date().toISOString() : null
         })
         .eq('id', enrollment.id)
         .select()
         .single();
 
       if (updateError) throw updateError;
+
+      console.log('📊 Progress updated:', { progress, completedLessons: completedLessons.length, totalLessons, status });
 
       return {
         success: true,
@@ -198,9 +270,9 @@ export const courseEnrollmentService = {
         .select('*')
         .eq('student_id', studentData.id)
         .eq('course_id', courseId)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
 
       return {
         success: true,

@@ -1,30 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '../../components/Students/components/ui/card';
-import { Button } from '../../components/Students/components/ui/button';
-import { Badge } from '../../components/Students/components/ui/badge';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  BookOpen,
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle,
-  Circle,
-  Clock,
-  Award,
-  Menu,
-  X,
-  FileText,
-  Video,
-  Image,
-  Link as LinkIcon,
-  Youtube
+    Award,
+    BookOpen,
+    CheckCircle,
+    ChevronLeft,
+    ChevronRight,
+    Circle,
+    Clock,
+    FileText,
+    Image,
+    Link as LinkIcon,
+    Menu,
+    Video,
+    X
 } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
-import { motion, AnimatePresence } from 'framer-motion';
-import { courseEnrollmentService } from '../../services/courseEnrollmentService';
-import { useAuth } from '../../context/AuthContext';
-import { fileService } from '../../services/fileService';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AITutorPanel, VideoLearningPanel } from '../../components/ai-tutor';
+import RestoreProgressModal from '../../components/student/courses/RestoreProgressModal';
+import { Badge } from '../../components/Students/components/ui/badge';
+import { Button } from '../../components/Students/components/ui/button';
+import { Card, CardContent } from '../../components/Students/components/ui/card';
+import { useAuth } from '../../context/AuthContext';
+import { useSessionRestore } from '../../hooks/useSessionRestore';
+import { supabase } from '../../lib/supabaseClient';
+import { courseEnrollmentService } from '../../services/courseEnrollmentService';
+import { courseProgressService } from '../../services/courseProgressService';
+import { fileService } from '../../services/fileService';
 
 const CoursePlayer = () => {
   const { courseId } = useParams();
@@ -61,13 +63,35 @@ const CoursePlayer = () => {
   const [lessonResources, setLessonResources] = useState([]);
   const [lessonStartTime, setLessonStartTime] = useState(null);
   const [accumulatedTime, setAccumulatedTime] = useState(0);
+  
+  // Video progress tracking refs
+  const videoRef = useRef(null);
+  const videoSaveTimeoutRef = useRef(null);
+  const lastSavedVideoPositionRef = useRef(0);
 
   // Check if user is a student (for progress tracking)
   const isStudent = user?.role === 'student';
 
+  // Session restore hook - only for students
+  const {
+    restorePoint,
+    showRestoreModal,
+    isLoading: restoreLoading,
+    shouldAutoRestore,
+    handleRestore,
+    handleStartFresh,
+    dismissModal,
+    saveRestorePoint,
+    getLastAccessedText
+  } = useSessionRestore(user?.id, courseId, { enabled: isStudent });
+
+  // Track if enrollment has been initialized
+  const enrollmentInitializedRef = useRef(false);
+
   // Enroll student and load existing progress (only for students)
   useEffect(() => {
-    if (isStudent && user?.email && courseId) {
+    if (isStudent && user?.email && courseId && !enrollmentInitializedRef.current) {
+      enrollmentInitializedRef.current = true;
       enrollAndLoadProgress();
     }
   }, [user, courseId, isStudent]);
@@ -90,6 +114,16 @@ const CoursePlayer = () => {
         if (enrollResult.data.completed_lessons && enrollResult.data.completed_lessons.length > 0) {
           setCompletedLessons(new Set(enrollResult.data.completed_lessons));
         }
+
+        // Restore last position if available (and not at the beginning)
+        const savedModuleIndex = enrollResult.data.last_module_index || 0;
+        const savedLessonIndex = enrollResult.data.last_lesson_index || 0;
+        
+        if (savedModuleIndex > 0 || savedLessonIndex > 0) {
+          console.log('📍 Restoring to saved position - Module:', savedModuleIndex, 'Lesson:', savedLessonIndex);
+          setCurrentModuleIndex(savedModuleIndex);
+          setCurrentLessonIndex(savedLessonIndex);
+        }
       } else if (!enrollResult.success) {
         console.error('Failed to enroll:', enrollResult.error);
       }
@@ -100,17 +134,23 @@ const CoursePlayer = () => {
 
   // Save progress whenever completed lessons change (only for students)
   useEffect(() => {
-    if (isStudent && user?.email && courseId && completedLessons.size > 0) {
+    if (isStudent && user?.email && courseId && completedLessons.size > 0 && course) {
       saveProgress();
     }
-  }, [completedLessons, isStudent]);
+  }, [completedLessons, isStudent, course]);
 
   const saveProgress = async () => {
-    if (!user?.email || !isStudent) return;
+    if (!user?.email || !isStudent || !course) return;
 
     try {
       const lessonsArray = Array.from(completedLessons);
-      await courseEnrollmentService.updateProgress(user.email, courseId, lessonsArray);
+      const result = await courseEnrollmentService.updateProgress(user.email, courseId, lessonsArray);
+      console.log('📊 Progress saved:', lessonsArray.length, 'lessons completed');
+      
+      // Also update the enrollment state with new progress
+      if (result.success && result.data) {
+        setEnrollment(prev => ({ ...prev, ...result.data }));
+      }
     } catch (error) {
       console.error('Error saving progress:', error);
     }
@@ -123,6 +163,163 @@ const CoursePlayer = () => {
     if (!currentModule.lessons || !currentModule.lessons[currentLessonIndex]) return null;
     return currentModule.lessons[currentLessonIndex];
   };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VIDEO PROGRESS TRACKING HANDLERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Save video position to database
+  const saveVideoPosition = useCallback(async (position, duration) => {
+    if (!isStudent || !user?.id || !courseId) return;
+    const currentLesson = getCurrentLesson();
+    if (!currentLesson) return;
+
+    await courseProgressService.saveVideoPosition(
+      user.id,
+      courseId,
+      currentLesson.id,
+      Math.floor(position),
+      Math.floor(duration)
+    );
+    lastSavedVideoPositionRef.current = position;
+  }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex]);
+
+  // Load saved video position when lesson changes
+  useEffect(() => {
+    if (!isStudent || !user?.id || !courseId) return;
+    const currentLesson = getCurrentLesson();
+    if (!currentLesson) return;
+
+    const loadVideoPosition = async () => {
+      const saved = await courseProgressService.getVideoPosition(user.id, courseId, currentLesson.id);
+      if (saved && saved.video_position_seconds > 0 && !saved.video_completed) {
+        lastSavedVideoPositionRef.current = Math.max(0, saved.video_position_seconds - 2);
+      } else {
+        lastSavedVideoPositionRef.current = 0;
+      }
+    };
+
+    loadVideoPosition();
+  }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex]);
+
+  // Video event handlers
+  const handleVideoLoadedMetadata = useCallback(() => {
+    if (videoRef.current && lastSavedVideoPositionRef.current > 0) {
+      videoRef.current.currentTime = lastSavedVideoPositionRef.current;
+      console.log('📹 Restored video position to:', lastSavedVideoPositionRef.current);
+    }
+  }, []);
+
+  const handleVideoTimeUpdate = useCallback(() => {
+    if (!videoRef.current || !isStudent) return;
+    
+    const video = videoRef.current;
+    const position = video.currentTime;
+    const duration = video.duration;
+
+    // Debounced save during playback (every 5 seconds of progress)
+    if (videoSaveTimeoutRef.current) {
+      clearTimeout(videoSaveTimeoutRef.current);
+    }
+
+    videoSaveTimeoutRef.current = setTimeout(() => {
+      if (!video.paused && position > lastSavedVideoPositionRef.current + 3) {
+        saveVideoPosition(position, duration);
+      }
+    }, 5000);
+
+    // Check for completion (90%)
+    if (duration > 0 && position / duration >= 0.9) {
+      const currentLesson = getCurrentLesson();
+      if (currentLesson) {
+        courseProgressService.markVideoCompleted(user.id, courseId, currentLesson.id);
+      }
+    }
+  }, [isStudent, user?.id, courseId, saveVideoPosition]);
+
+  const handleVideoPause = useCallback(() => {
+    if (!videoRef.current || !isStudent) return;
+    saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
+  }, [isStudent, saveVideoPosition]);
+
+  const handleVideoSeeked = useCallback(() => {
+    if (!videoRef.current || !isStudent) return;
+    saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
+  }, [isStudent, saveVideoPosition]);
+
+  const handleVideoEnded = useCallback(() => {
+    if (!isStudent || !user?.id || !courseId) return;
+    const currentLesson = getCurrentLesson();
+    if (currentLesson) {
+      courseProgressService.markVideoCompleted(user.id, courseId, currentLesson.id);
+    }
+  }, [isStudent, user?.id, courseId]);
+
+  // Save video position on page unload
+  useEffect(() => {
+    if (!isStudent) return;
+
+    const handleBeforeUnload = () => {
+      if (videoRef.current && videoRef.current.currentTime > 0) {
+        saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && videoRef.current) {
+        saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (videoSaveTimeoutRef.current) {
+        clearTimeout(videoSaveTimeoutRef.current);
+      }
+    };
+  }, [isStudent, saveVideoPosition]);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SESSION RESTORE HANDLING
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Handle restore from modal
+  const onRestoreConfirm = useCallback(() => {
+    const point = handleRestore();
+    if (point) {
+      setCurrentModuleIndex(point.lastModuleIndex);
+      setCurrentLessonIndex(point.lastLessonIndex);
+      // Video position will auto-restore via handleVideoLoadedMetadata
+      console.log('📍 Restored to Module', point.lastModuleIndex + 1, 'Lesson', point.lastLessonIndex + 1);
+    }
+  }, [handleRestore]);
+
+  // Auto-restore for high progress
+  useEffect(() => {
+    if (shouldAutoRestore && restorePoint && course) {
+      setCurrentModuleIndex(restorePoint.lastModuleIndex);
+      setCurrentLessonIndex(restorePoint.lastLessonIndex);
+      console.log('📍 Auto-restored to last position');
+    }
+  }, [shouldAutoRestore, restorePoint, course]);
+
+  // Save restore point when lesson changes
+  useEffect(() => {
+    if (!isStudent || !user?.id || !courseId || !course) return;
+    const currentLesson = getCurrentLesson();
+    if (!currentLesson) return;
+
+    saveRestorePoint(
+      currentModuleIndex,
+      currentLessonIndex,
+      currentLesson.id,
+      videoRef.current?.currentTime || 0
+    );
+  }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex, course, saveRestorePoint]);
 
   // Save time spent on lesson (only for students)
   const saveTimeSpent = async (additionalSeconds) => {
@@ -188,7 +385,7 @@ const CoursePlayer = () => {
 
       // Update student streak after completing lesson
       try {
-        const response = await fetch(`http://localhost:3001/api/streaks/${user.id}/complete`, {
+        const response = await fetch(`https://streak-api.dark-mode-d021.workers.dev/${user.id}/complete`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -265,9 +462,9 @@ const CoursePlayer = () => {
         .eq('student_id', user.id)
         .eq('course_id', courseId)
         .eq('lesson_id', currentLesson.id)
-        .single();
+        .maybeSingle();
 
-      if (fetchError && fetchError.code !== 'PGRST116') {
+      if (fetchError) {
         console.error('Error fetching lesson progress:', fetchError);
         return;
       }
@@ -275,6 +472,7 @@ const CoursePlayer = () => {
       // If record exists, load accumulated time
       if (existing) {
         setAccumulatedTime(existing.time_spent_seconds || 0);
+        console.log('📚 Loaded existing progress for lesson:', currentLesson.title, 'Time:', existing.time_spent_seconds);
 
         // Update last_accessed
         await supabase
@@ -286,7 +484,10 @@ const CoursePlayer = () => {
           .eq('id', existing.id);
       } else {
         // Create new progress record
-        await supabase
+        console.log('📚 Creating new progress record for lesson:', currentLesson.title);
+        setAccumulatedTime(0);
+        
+        const { error: insertError } = await supabase
           .from('student_course_progress')
           .insert({
             student_id: user.id,
@@ -296,7 +497,21 @@ const CoursePlayer = () => {
             time_spent_seconds: 0,
             last_accessed: new Date().toISOString()
           });
+          
+        if (insertError && insertError.code !== '23505') {
+          console.error('Error creating lesson progress:', insertError);
+        }
       }
+
+      // Also update the course enrollment's last position
+      await courseProgressService.saveRestorePoint(
+        user.id,
+        courseId,
+        currentModuleIndex,
+        currentLessonIndex,
+        currentLesson.id,
+        0
+      );
     } catch (error) {
       console.error('Error initializing lesson progress:', error);
     }
@@ -612,14 +827,37 @@ const CoursePlayer = () => {
     const lessonKey = `${currentModuleIndex}-${currentLessonIndex}`;
     setCompletedLessons(prev => new Set([...prev, lessonKey]));
 
+    // Calculate next position
+    let nextModuleIndex = currentModuleIndex;
+    let nextLessonIndex = currentLessonIndex;
+
     // Check if there's a next lesson in current module
     if (currentLessonIndex < currentModule.lessons.length - 1) {
-      setCurrentLessonIndex(prev => prev + 1);
+      nextLessonIndex = currentLessonIndex + 1;
     }
     // Move to next module
     else if (currentModuleIndex < course.modules.length - 1) {
-      setCurrentModuleIndex(prev => prev + 1);
-      setCurrentLessonIndex(0);
+      nextModuleIndex = currentModuleIndex + 1;
+      nextLessonIndex = 0;
+    }
+
+    // Update state
+    setCurrentModuleIndex(nextModuleIndex);
+    setCurrentLessonIndex(nextLessonIndex);
+
+    // Save the new position to database immediately
+    const nextModule = course.modules[nextModuleIndex];
+    const nextLesson = nextModule?.lessons?.[nextLessonIndex];
+    if (nextLesson) {
+      console.log('📍 Saving position - Module:', nextModuleIndex, 'Lesson:', nextLessonIndex);
+      await courseProgressService.saveRestorePoint(
+        user.id,
+        courseId,
+        nextModuleIndex,
+        nextLessonIndex,
+        nextLesson.id,
+        0
+      );
     }
   };
 
@@ -655,6 +893,21 @@ const CoursePlayer = () => {
 
     setCurrentModuleIndex(moduleIndex);
     setCurrentLessonIndex(lessonIndex);
+
+    // Save the new position to database immediately
+    const targetModule = course.modules[moduleIndex];
+    const targetLesson = targetModule?.lessons?.[lessonIndex];
+    if (targetLesson && user?.id) {
+      console.log('📍 Saving position - Module:', moduleIndex, 'Lesson:', lessonIndex);
+      await courseProgressService.saveRestorePoint(
+        user.id,
+        courseId,
+        moduleIndex,
+        lessonIndex,
+        targetLesson.id,
+        0
+      );
+    }
   };
 
   // Check if lesson is completed
@@ -722,6 +975,19 @@ const CoursePlayer = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      {/* Session Restore Modal */}
+      {isStudent && (
+        <RestoreProgressModal
+          isOpen={showRestoreModal}
+          restorePoint={restorePoint}
+          courseName={course?.title}
+          onRestore={onRestoreConfirm}
+          onStartFresh={handleStartFresh}
+          onClose={dismissModal}
+          lastAccessedText={getLastAccessedText()}
+        />
+      )}
+
       {/* Top Navigation Bar */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -906,12 +1172,18 @@ const CoursePlayer = () => {
                         ) : (
                           <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
                             <video
+                              ref={videoRef}
                               id="lesson-video-player"
                               src={lessonVideoUrl}
                               className="w-full h-full"
                               controls
                               controlsList="nodownload"
                               title={currentLesson.title}
+                              onLoadedMetadata={handleVideoLoadedMetadata}
+                              onTimeUpdate={handleVideoTimeUpdate}
+                              onPause={handleVideoPause}
+                              onSeeked={handleVideoSeeked}
+                              onEnded={handleVideoEnded}
                               onError={(e) => {
                                 console.error('Video load error:', e);
                                 console.log('Failed video URL:', lessonVideoUrl);

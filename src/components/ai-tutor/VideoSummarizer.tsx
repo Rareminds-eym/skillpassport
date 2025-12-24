@@ -1,35 +1,35 @@
-import React, { useState, useRef, useEffect } from 'react';
 import {
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Maximize,
-  SkipBack,
-  SkipForward,
-  Sparkles,
-  BookOpen,
-  List,
-  FileText,
-  Clock,
-  Tag,
-  ChevronRight,
-  Loader2,
-  AlertCircle,
-  RefreshCw,
-  Brain,
-  Send
+    AlertCircle,
+    BookOpen,
+    Brain,
+    ChevronRight,
+    Clock,
+    FileText,
+    List,
+    Loader2,
+    Maximize,
+    Pause,
+    Play,
+    RefreshCw,
+    Send,
+    SkipBack,
+    SkipForward,
+    Sparkles,
+    Tag,
+    Volume2,
+    VolumeX
 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import {
-  VideoSummary,
-  TranscriptSegment,
-  processVideo,
-  getVideoSummaryByUrl,
-  formatTimestamp,
-  findSegmentAtTime
-} from '../../services/videoSummarizerService';
 import { useTutorChat } from '../../hooks/useTutorChat';
+import {
+    TranscriptSegment,
+    VideoSummary,
+    findSegmentAtTime,
+    formatTimestamp,
+    getVideoSummaryRobust,
+    processVideo
+} from '../../services/videoSummarizerService';
 
 interface VideoSummarizerProps {
   videoUrl: string;
@@ -84,8 +84,9 @@ const VideoSummarizer: React.FC<VideoSummarizerProps> = ({
     setError(null);
 
     try {
-      // Check for existing summary
-      const existing = await getVideoSummaryByUrl(videoUrl);
+      // Use robust video summary lookup with fallback strategies
+      const existing = await getVideoSummaryRobust(lessonId, videoUrl);
+      
       if (existing && existing.processingStatus === 'completed') {
         setSummary(existing);
         setIsProcessing(false);

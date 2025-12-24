@@ -1,36 +1,36 @@
-import React, { useState, useEffect } from 'react';
 import {
-  Sparkles,
-  ChevronDown,
-  RefreshCw,
-  Play,
-  Download,
-  RotateCcw,
-  Check,
-  X,
-  Shuffle,
-  Zap,
-  Trophy,
-  Target,
-  BookOpen,
-  MessageSquare,
-  FileText,
-  Mic,
-  List,
-  Brain,
-  Lightbulb,
-  Pin,
-  Tag,
-  type LucideIcon
+    BookOpen,
+    Brain,
+    Check,
+    ChevronDown,
+    Download,
+    FileText,
+    Lightbulb,
+    List,
+    MessageSquare,
+    Mic,
+    Pin,
+    Play,
+    RefreshCw,
+    RotateCcw,
+    Shuffle,
+    Sparkles,
+    Tag,
+    Target,
+    Trophy,
+    X,
+    Zap,
+    type LucideIcon
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import {
-  VideoSummary,
-  processVideo,
-  getVideoSummaryByUrl,
-  formatTimestamp,
-  downloadSRT,
-  downloadVTT,
-  getSentimentEmoji
+    VideoSummary,
+    downloadSRT,
+    downloadVTT,
+    formatTimestamp,
+    getSentimentEmoji,
+    getVideoSummaryRobust,
+    processVideo
 } from '../../services/videoSummarizerService';
 
 interface VideoLearningPanelProps {
@@ -542,7 +542,8 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
     setProcessingStartTime(Date.now());
 
     try {
-      const existing = await getVideoSummaryByUrl(videoUrl);
+      // Use robust video summary lookup with fallback strategies
+      const existing = await getVideoSummaryRobust(lessonId, videoUrl || undefined);
       
       // If completed, show the summary
       if (existing?.processingStatus === 'completed') {

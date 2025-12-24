@@ -52,24 +52,17 @@ class FileService {
 
   /**
    * Get presigned URL for a file
-   * Tries Course API first (Cloudflare Worker), falls back to local server
+   * Uses Course API (Cloudflare Worker) only
    * @param {string} fileKey - The R2 file key (e.g., "courses/ABC123/lessons/L1/video.mp4")
    * @returns {Promise<string>} - Presigned URL valid for 7 days
    */
   async getFileUrl(fileKey) {
-    // Try Course API first (Cloudflare Worker or Supabase Edge Function)
+    // Use Course API only (Cloudflare Worker)
     try {
       return await this.getFileUrlFromApi(fileKey);
     } catch (apiError) {
-      console.log('Course API failed, trying local server:', apiError.message);
-    }
-
-    // Fallback to local server
-    try {
-      return await this.getFileUrlFromServer(fileKey);
-    } catch (serverError) {
-      console.error('Both file URL methods failed:', serverError);
-      throw new Error('Unable to generate file URL. Please check server configuration.');
+      console.error('Course API failed:', apiError.message);
+      throw new Error('Unable to generate file URL. Please ensure R2 credentials are configured in the Course API worker.');
     }
   }
 

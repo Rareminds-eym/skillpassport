@@ -85,20 +85,8 @@ const DebugRoles = () => {
         });
       }
 
-      // Educators (fallback)
-      const { data: educatorAltData } = await supabase
-        .from('educators')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (educatorAltData && !checks.roles.find(r => r.role === 'educator')) {
-        checks.roles.push({
-          role: 'educator',
-          table: 'educators',
-          data: educatorAltData
-        });
-      }
+      // Note: Removed fallback to 'educators' table as it doesn't exist
+      // The system uses 'school_educators' table for all educator data
 
       // Users (admin roles)
       // Note: users table uses 'id' column that references auth.users(id) directly

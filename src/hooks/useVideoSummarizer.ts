@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  VideoSummary,
-  processVideo,
-  getVideoSummaryByUrl,
-  getVideoSummaryByLesson,
-  checkProcessingStatus
+    VideoSummary,
+    checkProcessingStatus,
+    getVideoSummaryRobust,
+    processVideo
 } from '../services/videoSummarizerService';
 
 interface UseVideoSummarizerOptions {
@@ -41,13 +40,8 @@ export function useVideoSummarizer(options: UseVideoSummarizerOptions): UseVideo
     setError(null);
 
     try {
-      let existingSummary: VideoSummary | null = null;
-
-      if (lessonId) {
-        existingSummary = await getVideoSummaryByLesson(lessonId);
-      } else if (videoUrl) {
-        existingSummary = await getVideoSummaryByUrl(videoUrl);
-      }
+      // Use robust video summary lookup with fallback strategies
+      const existingSummary = await getVideoSummaryRobust(lessonId, videoUrl);
 
       if (existingSummary) {
         setSummary(existingSummary);

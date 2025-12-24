@@ -260,60 +260,218 @@ export async function processVideo(
 }
 
 export async function getVideoSummaryByLesson(lessonId: string): Promise<VideoSummary | null> {
-  const { data, error } = await supabase
-    .from('video_summaries')
-    .select('*')
-    .eq('lesson_id', lessonId)
-    .eq('processing_status', 'completed')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('video_summaries')
+      .select('*')
+      .eq('lesson_id', lessonId)
+      .eq('processing_status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  return error || !data ? null : transformVideoSummary(data);
+    if (error) {
+      console.warn('Error querying video_summaries by lesson_id:', error);
+      return null;
+    }
+
+    return data ? transformVideoSummary(data) : null;
+  } catch (err) {
+    console.warn('Exception querying video_summaries by lesson_id:', err);
+    return null;
+  }
+}
+
+/**
+ * Get video summary with robust error handling and fallback strategies
+ */
+export async function getVideoSummaryRobust(lessonId?: string, videoUrl?: string): Promise<VideoSummary | null> {
+  // Strategy 1: Try lesson_id first (most reliable)
+  if (lessonId) {
+    try {
+      console.log('[VideoSummary] Attempting lesson_id lookup:', lessonId);
+      const summary = await getVideoSummaryByLesson(lessonId);
+      if (summary) {
+        console.log('[VideoSummary] Found by lesson_id');
+        return summary;
+      }
+    } catch (err) {
+      console.warn('[VideoSummary] Lesson_id lookup failed:', err);
+    }
+  }
+
+  // Strategy 2: Try video_url if lesson_id failed
+  if (videoUrl) {
+    try {
+      console.log('[VideoSummary] Attempting video_url lookup');
+      const summary = await getVideoSummaryByUrl(videoUrl);
+      if (summary) {
+        console.log('[VideoSummary] Found by video_url');
+        return summary;
+      }
+    } catch (err) {
+      console.warn('[VideoSummary] Video_url lookup failed:', err);
+    }
+  }
+
+  // Strategy 3: Direct SQL query as last resort (for debugging)
+  if (lessonId) {
+    try {
+      console.log('[VideoSummary] Attempting direct query fallback');
+      // This is a fallback that might help identify the issue
+      const { data, error } = await supabase
+        .from('video_summaries')
+        .select('*')
+        .eq('lesson_id', lessonId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data && data.processing_status === 'completed') {
+        console.log('[VideoSummary] Found by direct query (completed)');
+        return transformVideoSummary(data);
+      } else if (data) {
+        console.log('[VideoSummary] Found by direct query but status is:', data.processing_status);
+      } else {
+        console.log('[VideoSummary] No records found for lesson_id');
+      }
+
+      if (error) {
+        console.warn('[VideoSummary] Direct query error:', error);
+      }
+    } catch (err) {
+      console.warn('[VideoSummary] Direct query exception:', err);
+    }
+  }
+
+  console.log('[VideoSummary] No summary found with any strategy');
+  return null;
 }
 
 export async function getVideoSummaryByUrl(videoUrl: string): Promise<VideoSummary | null> {
-  const { data, error } = await supabase
-    .from('video_summaries')
-    .select('*')
-    .eq('video_url', videoUrl)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
+  try {
+    // First, try to find by exact URL match (for backward compatibility)
+    let { data, error } = await supabase
+      .from('video_summaries')
+      .select('*')
+      .eq('video_url', videoUrl)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  return error || !data ? null : transformVideoSummary(data);
+    // If not found and the URL looks like a presigned URL, try to find by file key
+    if (!data && !error && videoUrl.includes('X-Amz-')) {
+      const fileKey = extractFileKey(videoUrl);
+      
+      // Get all video summaries and check if any match the file key
+      const { data: allSummaries, error: allError } = await supabase
+        .from('video_summaries')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (!allError && allSummaries) {
+        data = allSummaries.find(summary => isSameFile(summary.video_url, videoUrl)) || null;
+      }
+    }
+
+    if (error) {
+      console.warn('Error querying video_summaries by video_url:', error);
+      return null;
+    }
+
+    return data ? transformVideoSummary(data) : null;
+  } catch (err) {
+    console.warn('Exception querying video_summaries by video_url:', err);
+    return null;
+  }
 }
 
 export async function getVideoSummary(id: string): Promise<VideoSummary | null> {
-  const { data, error } = await supabase
-    .from('video_summaries')
-    .select('*')
-    .eq('id', id)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('video_summaries')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
 
-  return error || !data ? null : transformVideoSummary(data);
+    if (error) {
+      console.warn('Error querying video_summaries by id:', error);
+      return null;
+    }
+
+    return data ? transformVideoSummary(data) : null;
+  } catch (err) {
+    console.warn('Exception querying video_summaries by id:', err);
+    return null;
+  }
 }
 
 export async function checkProcessingStatus(id: string): Promise<{
   status: string;
   summary?: VideoSummary;
 }> {
-  const { data, error } = await supabase
-    .from('video_summaries')
-    .select('*')
-    .eq('id', id)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('video_summaries')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
 
-  if (error || !data) return { status: 'not_found' };
+    if (error) {
+      console.warn('Error checking processing status:', error);
+      return { status: 'not_found' };
+    }
 
-  return {
-    status: data.processing_status,
-    summary: data.processing_status === 'completed' ? transformVideoSummary(data) : undefined,
-  };
+    if (!data) return { status: 'not_found' };
+
+    return {
+      status: data.processing_status,
+      summary: data.processing_status === 'completed' ? transformVideoSummary(data) : undefined,
+    };
+  } catch (err) {
+    console.warn('Exception checking processing status:', err);
+    return { status: 'not_found' };
+  }
 }
 
 
 // ==================== UTILITY FUNCTIONS ====================
+
+/**
+ * Extract the file key from a presigned URL or regular R2 URL
+ * This helps match video summaries regardless of URL format (presigned vs direct)
+ */
+function extractFileKey(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    
+    // Handle R2 URLs: https://account.r2.cloudflarestorage.com/bucket/path/file.ext
+    if (urlObj.hostname.includes('r2.cloudflarestorage.com')) {
+      const pathParts = urlObj.pathname.split('/');
+      // Remove empty first element and bucket name
+      return pathParts.slice(2).join('/');
+    }
+    
+    // Handle public R2 URLs: https://pub-account.r2.dev/path/file.ext
+    if (urlObj.hostname.includes('r2.dev')) {
+      return urlObj.pathname.substring(1); // Remove leading slash
+    }
+    
+    // For other URLs, return the full URL as fallback
+    return url;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Check if two URLs refer to the same file by comparing their file keys
+ */
+function isSameFile(url1: string, url2: string): boolean {
+  const key1 = extractFileKey(url1);
+  const key2 = extractFileKey(url2);
+  return key1 === key2;
+}
 
 export function formatTimestamp(seconds: number): string {
   const hrs = Math.floor(seconds / 3600);

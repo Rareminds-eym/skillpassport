@@ -10,7 +10,8 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export interface Env {
-    VITE_SUPABASE_URL: string;
+    VITE_SUPABASE_URL?: string;
+    SUPABASE_URL?: string;
     SUPABASE_SERVICE_ROLE_KEY: string;
     RESEND_API_KEY?: string;
 }
@@ -29,7 +30,14 @@ function jsonResponse(data: any, status = 200) {
 }
 
 function getSupabaseClient(env: Env): SupabaseClient {
-    return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabaseUrl = env.VITE_SUPABASE_URL || env.SUPABASE_URL;
+    if (!supabaseUrl) {
+        throw new Error('SUPABASE_URL or VITE_SUPABASE_URL environment variable is required');
+    }
+    if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+        throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is required');
+    }
+    return createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
 // ==================== GET STUDENT STREAK ====================
