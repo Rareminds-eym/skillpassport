@@ -12,21 +12,30 @@ import {
   MapPin
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
+import TopSkillsInDemand from './TopSkillsInDemand';
 
 const AnalyticsView = ({ studentId, userEmail }) => {
   const [applications, setApplications] = useState([]);
-  const [skillsData, setSkillsData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [debugMode, setDebugMode] = useState(process.env.NODE_ENV === 'development');
+
+  // Debug logging
+  const debugLog = (message, data = null) => {
+    if (debugMode) {
+      console.log(`[AnalyticsView] ${message}`, data || '');
+    }
+  };
 
   useEffect(() => {
+    debugLog('AnalyticsView mounted', { studentId, userEmail });
     if (studentId) {
       fetchApplicationData();
-      fetchSkillsData();
     }
   }, [studentId]);
 
   const fetchApplicationData = async () => {
     try {
+      debugLog('Fetching application data...');
       setLoading(true);
       const { data: appliedJobs, error: jobsError } = await supabase
         .from('applied_jobs')
@@ -48,23 +57,16 @@ const AnalyticsView = ({ studentId, userEmail }) => {
         .order('applied_at', { ascending: false });
 
       if (!jobsError) {
+        debugLog(`Fetched ${appliedJobs?.length || 0} applications`);
         setApplications(appliedJobs || []);
+      } else {
+        debugLog('Error fetching applications:', jobsError);
       }
     } catch (error) {
+      debugLog('Error in fetchApplicationData:', error);
       console.error('Error in fetchApplicationData:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchSkillsData = async () => {
-    try {
-      const { data, error } = await supabase.rpc('analyze_skills_demand');
-      if (!error && data && Array.isArray(data) && data.length > 0) {
-        setSkillsData(data);
-      }
-    } catch (error) {
-      console.error('Exception in fetchSkillsData:', error);
     }
   };
 
@@ -130,17 +132,6 @@ const AnalyticsView = ({ studentId, userEmail }) => {
     };
   }, [applications]);
 
-  const skillsMatch = useMemo(() => {
-    if (skillsData.length > 0) {
-      return skillsData.slice(0, 5).reduce((acc, item) => {
-        const displayName = item.skill.charAt(0).toUpperCase() + item.skill.slice(1);
-        acc[displayName] = parseInt(item.total_mentions);
-        return acc;
-      }, {});
-    }
-    return {};
-  }, [skillsData]);
-
   // Chart configurations
   const statusRadialChartOptions = {
     chart: { type: 'radialBar', toolbar: { show: false } },
@@ -179,17 +170,6 @@ const AnalyticsView = ({ studentId, userEmail }) => {
   };
 
   const timelineColumnChartSeries = [{ name: 'Applications', data: Object.values(analytics.applicationsByMonth) }];
-
-  const skillsColumnChartOptions = {
-    chart: { type: 'bar', toolbar: { show: false }, horizontal: true },
-    plotOptions: { bar: { borderRadius: 6, horizontal: true, dataLabels: { position: 'top' } } },
-    dataLabels: { enabled: true, offsetX: 30, style: { fontSize: '11px', colors: ['#304758'] }, formatter: (val) => Math.round(val) },
-    colors: ['#10b981'],
-    xaxis: { categories: Object.keys(skillsMatch).slice(0, 5), title: { text: 'Number of Jobs' } },
-    yaxis: { labels: { style: { fontSize: '12px' } } }
-  };
-
-  const skillsColumnChartSeries = [{ name: 'Jobs', data: Object.values(skillsMatch).slice(0, 5) }];
 
   if (loading) {
     return (
@@ -301,23 +281,11 @@ const AnalyticsView = ({ studentId, userEmail }) => {
         </Card>
 
         {/* Skills in Demand */}
-        <Card className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200">
-          <CardHeader className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <Award className="w-4 h-4 text-green-600" />
-              Top Skills in Demand
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            {Object.keys(skillsMatch).length > 0 ? (
-              <ReactApexChart options={skillsColumnChartOptions} series={skillsColumnChartSeries} type="bar" height={350} />
-            ) : (
-              <div className="h-[350px] flex items-center justify-center">
-                <p className="text-gray-500 text-sm">No skills data available</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <TopSkillsInDemand 
+          limit={5} 
+          className="lg:col-span-2" 
+          showHeader={true}
+        />
       </div>
 
       {/* Empty State */}
