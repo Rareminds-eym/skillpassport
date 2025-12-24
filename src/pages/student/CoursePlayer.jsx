@@ -24,6 +24,7 @@ import { Card, CardContent } from '../../components/Students/components/ui/card'
 import { useAuth } from '../../context/AuthContext';
 import { useSessionRestore } from '../../hooks/useSessionRestore';
 import { supabase } from '../../lib/supabaseClient';
+import { generateCourseCertificate } from '../../services/certificateService';
 import { courseEnrollmentService } from '../../services/courseEnrollmentService';
 import { courseProgressService } from '../../services/courseProgressService';
 import { fileService } from '../../services/fileService';
@@ -1002,8 +1003,36 @@ const CoursePlayer = () => {
         console.error('Error completing course:', error);
       } else {
         console.log('🎉 Course completed successfully!');
-        // Navigate to my learning page or show completion modal
-        navigate('/student/my-learning');
+        
+        // Generate certificate for the completed course
+        const studentName = user?.name || user?.email?.split('@')[0] || 'Student';
+        const courseName = course?.title || 'Course';
+        const educatorName = course?.educator_name || enrollment?.educator_name || 'Skill Ecosystem Platform';
+        
+        console.log('📜 Generating certificate...');
+        const certResult = await generateCourseCertificate(
+          user.id,
+          studentName,
+          courseId,
+          courseName,
+          educatorName
+        );
+        
+        if (certResult.success) {
+          console.log('✅ Certificate generated:', certResult.credentialId);
+          // Navigate to my learning page with success message
+          navigate('/student/my-learning', { 
+            state: { 
+              courseCompleted: true, 
+              courseName,
+              certificateUrl: certResult.certificateUrl 
+            } 
+          });
+        } else {
+          console.error('Certificate generation failed:', certResult.error);
+          // Still navigate even if certificate fails
+          navigate('/student/my-learning');
+        }
       }
     } catch (error) {
       console.error('Error in completeCourse:', error);

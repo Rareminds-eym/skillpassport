@@ -7,7 +7,7 @@ import {
     Edit,
     ListChecks,
     Play,
-    Target,
+    Target
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -252,13 +252,23 @@ const ModernLearningCard = ({
           {/* Certificate or Continue Button */}
           {isCompleted ? (
             item.certificateUrl ? (
-              <button
-                onClick={() => window.open(item.certificateUrl, "_blank")}
-                className="px-6 py-2.5 rounded-full font-medium text-sm bg-green-500 text-white hover:bg-green-600 transition-all duration-300 flex items-center gap-2"
-              >
-                <Award className="w-4 h-4" />
-                Certificate
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.open(item.certificateUrl, "_blank")}
+                  className="px-5 py-2.5 rounded-full font-medium text-sm bg-green-500 text-white hover:bg-green-600 transition-all duration-300 flex items-center gap-2"
+                  title="View Certificate"
+                >
+                  <Award className="w-4 h-4" />
+                  View
+                </button>
+                <button
+                  onClick={() => downloadCertificate(item.certificateUrl, item.course || item.title)}
+                  className="p-2.5 rounded-full font-medium text-sm bg-green-100 text-green-700 hover:bg-green-200 transition-all duration-300"
+                  title="Download Certificate"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
             ) : (
               <div className="px-6 py-2.5 rounded-full font-medium text-sm bg-green-100 text-green-700 flex items-center gap-2">
                 <CheckCircle className="w-4 h-4" />
