@@ -64,6 +64,7 @@ const CoursePlayer = () => {
   const [lessonResources, setLessonResources] = useState([]);
   const [lessonStartTime, setLessonStartTime] = useState(null);
   const [accumulatedTime, setAccumulatedTime] = useState(0);
+  const [positionInitialized, setPositionInitialized] = useState(false);
   
   // Video progress tracking refs
   const videoRef = useRef(null);
@@ -94,19 +95,27 @@ const CoursePlayer = () => {
     if (isStudent && user?.email && courseId && !enrollmentInitializedRef.current) {
       enrollmentInitializedRef.current = true;
       enrollAndLoadProgress();
+    } else if (!isStudent && !positionInitialized) {
+      // For non-students, immediately mark position as initialized
+      console.log('📍 Non-student user, using default position');
+      setPositionInitialized(true);
     }
-  }, [user, courseId, isStudent]);
+  }, [user, courseId, isStudent, positionInitialized]);
 
   const enrollAndLoadProgress = async () => {
-    if (!user?.email || !isStudent) return;
+    if (!user?.email || !isStudent) {
+      // For non-students, position is initialized at default (0, 0)
+      setPositionInitialized(true);
+      return;
+    }
 
     try {
-      console.log('Enrolling student:', user.email, 'in course:', courseId);
+      console.log('📚 Enrolling student:', user.email, 'in course:', courseId);
 
       // Enroll student (or get existing enrollment)
       const enrollResult = await courseEnrollmentService.enrollStudent(user.email, courseId);
 
-      console.log('Enrollment result:', enrollResult);
+      console.log('📚 Enrollment result:', enrollResult);
 
       if (enrollResult.success && enrollResult.data) {
         setEnrollment(enrollResult.data);
@@ -119,17 +128,38 @@ const CoursePlayer = () => {
         // Restore last position if available (and not at the beginning)
         const savedModuleIndex = enrollResult.data.last_module_index || 0;
         const savedLessonIndex = enrollResult.data.last_lesson_index || 0;
+        const savedLessonId = enrollResult.data.last_lesson_id;
+        const savedVideoPosition = enrollResult.data.last_video_position || 0;
+        
+        console.log('📍 Saved position from enrollment:', {
+          moduleIndex: savedModuleIndex,
+          lessonIndex: savedLessonIndex,
+          lessonId: savedLessonId,
+          videoPosition: savedVideoPosition
+        });
         
         if (savedModuleIndex > 0 || savedLessonIndex > 0) {
           console.log('📍 Restoring to saved position - Module:', savedModuleIndex, 'Lesson:', savedLessonIndex);
           setCurrentModuleIndex(savedModuleIndex);
           setCurrentLessonIndex(savedLessonIndex);
+          
+          // Also set the video position ref for when video loads
+          if (savedVideoPosition > 0) {
+            lastSavedVideoPositionRef.current = Math.max(0, savedVideoPosition - 2);
+            console.log('📹 Pre-setting video position from enrollment:', lastSavedVideoPositionRef.current);
+          }
         }
+        
+        // Mark position as initialized after setting the correct indices
+        setPositionInitialized(true);
       } else if (!enrollResult.success) {
         console.error('Failed to enroll:', enrollResult.error);
+        // Still mark as initialized so we can proceed with default position
+        setPositionInitialized(true);
       }
     } catch (error) {
       console.error('Error enrolling student:', error);
+      setPositionInitialized(true);
     }
   };
 
@@ -171,41 +201,56 @@ const CoursePlayer = () => {
 
   // Save video position to database
   const saveVideoPosition = useCallback(async (position, duration) => {
-    if (!isStudent || !user?.id || !courseId) return;
+    console.log('📹 saveVideoPosition called:', { position, duration, isStudent, userId: user?.id, courseId });
+    if (!isStudent || !user?.id || !courseId) {
+      console.log('📹 saveVideoPosition skipped - missing params');
+      return;
+    }
     const currentLesson = getCurrentLesson();
-    if (!currentLesson) return;
+    if (!currentLesson) {
+      console.log('📹 saveVideoPosition skipped - no current lesson');
+      return;
+    }
 
-    await courseProgressService.saveVideoPosition(
+    console.log('📹 Saving video position for lesson:', currentLesson.id, 'position:', position, 'duration:', duration);
+    const result = await courseProgressService.saveVideoPosition(
       user.id,
       courseId,
       currentLesson.id,
       Math.floor(position),
       Math.floor(duration)
     );
+    console.log('📹 Save video position result:', result);
     lastSavedVideoPositionRef.current = position;
   }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex]);
 
   // Load saved video position when lesson changes
   useEffect(() => {
-    if (!isStudent || !user?.id || !courseId) return;
+    if (!isStudent || !user?.id || !courseId || !course) return;
     const currentLesson = getCurrentLesson();
     if (!currentLesson) return;
 
     const loadVideoPosition = async () => {
+      console.log('📹 Loading video position for lesson:', currentLesson.id, currentLesson.title);
       const saved = await courseProgressService.getVideoPosition(user.id, courseId, currentLesson.id);
+      console.log('📹 Saved video position data:', saved);
       if (saved && saved.video_position_seconds > 0 && !saved.video_completed) {
         lastSavedVideoPositionRef.current = Math.max(0, saved.video_position_seconds - 2);
+        console.log('📹 Will restore video to position:', lastSavedVideoPositionRef.current);
       } else {
         lastSavedVideoPositionRef.current = 0;
+        console.log('📹 No saved position, starting from beginning');
       }
     };
 
     loadVideoPosition();
-  }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex]);
+  }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex, course]);
 
   // Video event handlers
   const handleVideoLoadedMetadata = useCallback(() => {
+    console.log('📹 Video loaded metadata, lastSavedVideoPositionRef:', lastSavedVideoPositionRef.current);
     if (videoRef.current && lastSavedVideoPositionRef.current > 0) {
+      console.log('📹 Setting video currentTime to:', lastSavedVideoPositionRef.current);
       videoRef.current.currentTime = lastSavedVideoPositionRef.current;
       console.log('📹 Restored video position to:', lastSavedVideoPositionRef.current);
     }
@@ -288,13 +333,35 @@ const CoursePlayer = () => {
   // SESSION RESTORE HANDLING
   // ═══════════════════════════════════════════════════════════════════════════
 
+  // Handle user choosing to start fresh from modal
+  const onStartFresh = useCallback(async () => {
+    console.log('📍 User chose to start fresh');
+    await handleStartFresh();
+    // Reset to beginning
+    setCurrentModuleIndex(0);
+    setCurrentLessonIndex(0);
+    lastSavedVideoPositionRef.current = 0;
+    console.log('📍 Reset to Module 0, Lesson 0');
+  }, [handleStartFresh]);
+
   // Handle restore from modal
   const onRestoreConfirm = useCallback(() => {
     const point = handleRestore();
     if (point) {
+      console.log('📍 Restore point data:', point);
+      console.log('📍 Restoring to Module Index:', point.lastModuleIndex, 'Lesson Index:', point.lastLessonIndex);
+      console.log('📍 Last Lesson ID:', point.lastLessonId, 'Video Position:', point.lastVideoPosition);
+      
+      // Set the video position from restore point for immediate use
+      if (point.lastVideoPosition > 0) {
+        lastSavedVideoPositionRef.current = Math.max(0, point.lastVideoPosition - 2);
+        console.log('📹 Set video position from restore point:', lastSavedVideoPositionRef.current);
+      }
+      
+      // Update indices - this will trigger the media fetch effect
       setCurrentModuleIndex(point.lastModuleIndex);
       setCurrentLessonIndex(point.lastLessonIndex);
-      // Video position will auto-restore via handleVideoLoadedMetadata
+      
       console.log('📍 Restored to Module', point.lastModuleIndex + 1, 'Lesson', point.lastLessonIndex + 1);
     }
   }, [handleRestore]);
@@ -449,11 +516,14 @@ const CoursePlayer = () => {
   };
 
   // Initialize lesson progress tracking
-  const initializeLessonProgress = async () => {
+  const initializeLessonProgress = async (targetLesson) => {
     if (!user?.id || !courseId || !isStudent) return;
 
-    const currentLesson = getCurrentLesson();
+    // Use passed lesson or fall back to getCurrentLesson()
+    const currentLesson = targetLesson || getCurrentLesson();
     if (!currentLesson) return;
+
+    console.log('📚 initializeLessonProgress for lesson:', currentLesson.title, 'ID:', currentLesson.id);
 
     try {
       // Check if progress record exists
@@ -525,11 +595,27 @@ const CoursePlayer = () => {
 
   // Fetch video and resources when lesson changes
   useEffect(() => {
-    if (course && currentModuleIndex !== null && currentLessonIndex !== null) {
-      fetchLessonMedia();
-      initializeLessonProgress();
+    // Wait for position to be initialized before loading media
+    // This prevents loading the wrong lesson's media before enrollment data is loaded
+    if (!positionInitialized) {
+      console.log('🎬 Waiting for position to be initialized...');
+      return;
     }
-  }, [course, currentModuleIndex, currentLessonIndex]);
+    
+    if (course && currentModuleIndex !== null && currentLessonIndex !== null) {
+      // Get the lesson directly here to avoid stale closure issues
+      const module = course.modules?.[currentModuleIndex];
+      const lesson = module?.lessons?.[currentLessonIndex];
+      
+      console.log('🎬 Lesson change detected - Module:', currentModuleIndex, 'Lesson:', currentLessonIndex);
+      console.log('🎬 Target lesson:', lesson?.title, 'ID:', lesson?.id);
+      
+      if (lesson) {
+        fetchLessonMedia(lesson);
+        initializeLessonProgress(lesson);
+      }
+    }
+  }, [course, currentModuleIndex, currentLessonIndex, positionInitialized]);
 
   // Track time spent on current lesson
   useEffect(() => {
@@ -563,9 +649,15 @@ const CoursePlayer = () => {
     return () => clearInterval(interval);
   }, [lessonStartTime, accumulatedTime, currentModuleIndex, currentLessonIndex]);
 
-  const fetchLessonMedia = async () => {
-    const currentLesson = getCurrentLesson();
-    if (!currentLesson) return;
+  const fetchLessonMedia = async (targetLesson) => {
+    // Use passed lesson or fall back to getCurrentLesson()
+    const currentLesson = targetLesson || getCurrentLesson();
+    if (!currentLesson) {
+      console.log('🎬 fetchLessonMedia: No lesson provided');
+      return;
+    }
+
+    console.log('🎬 fetchLessonMedia: Loading media for lesson:', currentLesson.title, 'ID:', currentLesson.id);
 
     // Reset states
     setLessonVideoUrl(null);
@@ -603,7 +695,7 @@ const CoursePlayer = () => {
     try {
       // Check if lesson has resources from educator upload
       if (currentLesson.resources && currentLesson.resources.length > 0) {
-        console.log('Lesson resources:', currentLesson.resources);
+        console.log('🎬 Lesson resources for', currentLesson.title, ':', currentLesson.resources);
 
         // Find video resources (uploaded by educator)
         const videoResource = currentLesson.resources.find(
@@ -611,12 +703,14 @@ const CoursePlayer = () => {
         );
 
         if (videoResource) {
+          console.log('🎬 Found video resource for lesson:', currentLesson.title, 'Resource:', videoResource.name, 'Type:', videoResource.type);
+          
           // For YouTube videos, use embed URL directly
           if (videoResource.type === 'youtube' && videoResource.embedUrl) {
-            console.log('Using YouTube embed URL:', videoResource.embedUrl);
+            console.log('🎬 Setting YouTube embed URL for lesson:', currentLesson.title);
             setLessonVideoUrl(videoResource.embedUrl);
           } else if (videoResource.url) {
-            console.log('Video resource URL:', videoResource.url);
+            console.log('🎬 Video resource URL for lesson:', currentLesson.title, ':', videoResource.url);
             
             // Try to extract file key and get fresh presigned URL
             const fileKey = extractFileKeyFromUrl(videoResource.url);
@@ -626,7 +720,7 @@ const CoursePlayer = () => {
               try {
                 console.log('Fetching fresh URL for file key:', fileKey);
                 const freshUrl = await fileService.getFileUrl(fileKey);
-                console.log('Got fresh URL:', freshUrl ? 'success' : 'failed');
+                console.log('🎬 Setting fresh video URL for lesson:', currentLesson.title);
                 setLessonVideoUrl(freshUrl);
               } catch (error) {
                 console.error('Error fetching fresh video URL:', error);
@@ -1087,7 +1181,7 @@ const CoursePlayer = () => {
           restorePoint={restorePoint}
           courseName={course?.title}
           onRestore={onRestoreConfirm}
-          onStartFresh={handleStartFresh}
+          onStartFresh={onStartFresh}
           onClose={dismissModal}
           lastAccessedText={getLastAccessedText()}
         />
