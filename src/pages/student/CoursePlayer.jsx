@@ -870,15 +870,38 @@ const CoursePlayer = () => {
       }
     }
 
+    // Calculate previous position
+    let prevModuleIndex = currentModuleIndex;
+    let prevLessonIndex = currentLessonIndex;
+
     // Check if there's a previous lesson in current module
     if (currentLessonIndex > 0) {
-      setCurrentLessonIndex(prev => prev - 1);
+      prevLessonIndex = currentLessonIndex - 1;
     }
     // Move to previous module's last lesson
     else if (currentModuleIndex > 0) {
-      setCurrentModuleIndex(prev => prev - 1);
-      const previousModule = course.modules[currentModuleIndex - 1];
-      setCurrentLessonIndex(previousModule.lessons.length - 1);
+      prevModuleIndex = currentModuleIndex - 1;
+      const previousModule = course.modules[prevModuleIndex];
+      prevLessonIndex = previousModule.lessons.length - 1;
+    }
+
+    // Update state
+    setCurrentModuleIndex(prevModuleIndex);
+    setCurrentLessonIndex(prevLessonIndex);
+
+    // Save the new position to database immediately
+    const prevModule = course.modules[prevModuleIndex];
+    const prevLesson = prevModule?.lessons?.[prevLessonIndex];
+    if (prevLesson && user?.id) {
+      console.log('📍 Saving position - Module:', prevModuleIndex, 'Lesson:', prevLessonIndex);
+      await courseProgressService.saveRestorePoint(
+        user.id,
+        courseId,
+        prevModuleIndex,
+        prevLessonIndex,
+        prevLesson.id,
+        0
+      );
     }
   };
 
