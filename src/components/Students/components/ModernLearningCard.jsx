@@ -4,6 +4,7 @@ import {
     Calendar,
     CheckCircle,
     Clock,
+    Download,
     Edit,
     ListChecks,
     Play,
