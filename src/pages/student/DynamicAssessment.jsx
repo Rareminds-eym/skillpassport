@@ -16,11 +16,11 @@ import { Card, CardContent } from '../../components/Students/components/ui/card'
 import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 import { Label } from '../../components/Students/components/ui/label';
 import { generateAssessment, getCachedAssessment, cacheAssessment } from '../../services/assessmentGenerationService';
-import { 
-  createAssessmentAttempt, 
-  updateAssessmentProgress, 
+import {
+  createAssessmentAttempt,
+  updateAssessmentProgress,
   completeAssessment,
-  checkAssessmentStatus 
+  checkAssessmentStatus
 } from '../../services/externalAssessmentService';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useAuth } from '../../context/AuthContext';
@@ -485,16 +485,17 @@ const DynamicAssessment = () => {
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-500' 
                   : 'bg-gradient-to-r from-blue-500 to-indigo-500'
               }`}>
+                {/* Animated Icon */}
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ delay: 0.2, type: 'spring' }}
-                  className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/20 mb-4"
+                  transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                  className="w-28 h-28 mx-auto mb-4 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center"
                 >
                   {passed ? (
-                    <Award className="w-10 h-10 text-white" />
+                    <Award className="w-14 h-14 text-white" />
                   ) : (
-                    <Target className="w-10 h-10 text-white" />
+                    <Target className="w-14 h-14 text-white" />
                   )}
                 </motion.div>
                 
