@@ -1470,13 +1470,21 @@ const CoursePlayer = () => {
                       </div>
 
                       {isLastLesson() ? (
-                        <Button
-                          onClick={completeCourse}
-                          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                          Complete Course
-                        </Button>
+                        // Only show Complete Course button if course is not already completed
+                        enrollment?.status !== 'completed' && !enrollment?.completed_at ? (
+                          <Button
+                            onClick={completeCourse}
+                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            Complete Course
+                          </Button>
+                        ) : (
+                          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg font-medium">
+                            <CheckCircle className="w-4 h-4" />
+                            Course Completed
+                          </div>
+                        )
                       ) : (
                         <Button
                           onClick={goToNextLesson}

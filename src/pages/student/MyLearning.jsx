@@ -1,17 +1,17 @@
-import { useState, useMemo } from "react";
+import { ArrowRight, ArrowUpDown, Award, BarChart3, BookOpen, GraduationCap, Plus, RefreshCw, Search, SlidersHorizontal, TrendingUp, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent } from "../../components/Students/components/ui/card";
-import { Button } from "../../components/Students/components/ui/button";
-import { Plus, BookOpen, TrendingUp, Award, GraduationCap, Search, SlidersHorizontal, ArrowUpDown, X, BarChart3, RefreshCw, ArrowRight } from "lucide-react";
-import ModernLearningCard from "../../components/Students/components/ModernLearningCard";
+import Pagination from "../../components/admin/Pagination";
 import LearningAnalyticsDashboard from "../../components/Students/components/LearningAnalyticsDashboard";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
-import { useStudentTrainings } from "../../hooks/useStudentTrainings";
-import { useAuth } from "../../context/AuthContext";
+import ModernLearningCard from "../../components/Students/components/ModernLearningCard";
 import { TrainingEditModal } from "../../components/Students/components/ProfileEditModals";
 import SelectCourseModal from "../../components/Students/components/SelectCourseModal";
+import { Button } from "../../components/Students/components/ui/button";
+import { Card, CardContent } from "../../components/Students/components/ui/card";
+import { useAuth } from "../../context/AuthContext";
+import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
-import Pagination from "../../components/admin/Pagination";
+import { useStudentTrainings } from "../../hooks/useStudentTrainings";
 
 const StatCardSkeleton = () => (
   <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm animate-pulse">
@@ -199,9 +199,13 @@ const MyLearning = () => {
   const refresh = async () => { await refreshStudentData(); refetchTrainings(); };
   
   const handleContinueLearning = (course) => {
-    const isInternalCourse = !!(course.course_id && course.source === "internal_course");
+    // Check if it's a course enrollment (internal platform course)
+    const isCourseEnrollment = course.type === 'course_enrollment' || course.source === 'course_enrollment';
     
-    if (isInternalCourse) {
+    if (isCourseEnrollment && course.course_id) {
+      navigate(`/student/courses/${course.course_id}/learn`);
+    } else if (course.course_id) {
+      // Fallback for any course with course_id
       navigate(`/student/courses/${course.course_id}/learn`);
     }
   };

@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import {
     ArrowDownAZ,
     BookOpen,
+    CheckCircle,
     ChevronLeft,
     ChevronRight,
     Clock,
@@ -231,6 +232,18 @@ const Courses = () => {
     return progress && progress.progress > 0 && progress.progress < 100;
   };
 
+  // Check if course is completed
+  const isCourseCompleted = (courseId) => {
+    const progress = enrollmentProgress[courseId];
+    return progress && (progress.progress >= 100 || progress.status === 'completed');
+  };
+
+  // Get course progress percentage
+  const getCourseProgress = (courseId) => {
+    const progress = enrollmentProgress[courseId];
+    return progress?.progress || 0;
+  };
+
   // Check if a course is new (posted within last 24 hours)
   const isNewCourse = (createdAt) => {
     if (!createdAt) return false;
@@ -336,6 +349,7 @@ const Courses = () => {
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
         onStartCourse={handleStartCourse}
+        enrollmentProgress={enrollmentProgress}
       />
       <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
@@ -665,7 +679,17 @@ const Courses = () => {
                     )}
                     {/* Badges */}
                     <div className="absolute top-2 left-2 flex gap-2">
-                      {hasResumableProgress(course.course_id) ? (
+                      {isCourseCompleted(course.course_id) ? (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                        >
+                          <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 shadow-lg font-semibold px-3 py-1 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            Completed
+                          </Badge>
+                        </motion.div>
+                      ) : hasResumableProgress(course.course_id) ? (
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
@@ -680,7 +704,7 @@ const Courses = () => {
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
                         >
-                          <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                          <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
                             Enrolled
                           </Badge>
                         </motion.div>
@@ -733,6 +757,30 @@ const Courses = () => {
                         <div>
                           <p className="text-xs text-gray-500">Instructor</p>
                           <p className="text-sm font-medium text-gray-900">{course.educator_name}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Progress Bar - Show for enrolled courses */}
+                    {enrolledCourseIds.has(course.course_id) && (
+                      <div className="pt-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-gray-600">Progress</span>
+                          <span className={`text-xs font-semibold ${isCourseCompleted(course.course_id) ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                            {getCourseProgress(course.course_id)}%
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${getCourseProgress(course.course_id)}%` }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
+                            className={`h-full rounded-full ${
+                              isCourseCompleted(course.course_id) 
+                                ? 'bg-gradient-to-r from-emerald-500 to-green-500' 
+                                : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                            }`}
+                          />
                         </div>
                       </div>
                     )}
@@ -813,13 +861,18 @@ const Courses = () => {
                         )}
                         {/* Badges */}
                         <div className="absolute top-2 left-2 flex gap-2">
-                          {hasResumableProgress(course.course_id) ? (
+                          {isCourseCompleted(course.course_id) ? (
+                            <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 shadow-lg font-semibold px-3 py-1 flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" />
+                              Completed
+                            </Badge>
+                          ) : hasResumableProgress(course.course_id) ? (
                             <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-lg font-semibold px-3 py-1 flex items-center gap-1">
                               <Play className="w-3 h-3" />
                               Resume ({enrollmentProgress[course.course_id]?.progress}%)
                             </Badge>
                           ) : enrolledCourseIds.has(course.course_id) && (
-                            <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                            <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
                               Enrolled
                             </Badge>
                           )}
@@ -865,6 +918,28 @@ const Courses = () => {
                             </div>
                           )}
                         </div>
+
+                        {/* Progress Bar - Show for enrolled courses */}
+                        {enrolledCourseIds.has(course.course_id) && (
+                          <div className="mb-4 max-w-md">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-medium text-gray-600">Progress</span>
+                              <span className={`text-xs font-semibold ${isCourseCompleted(course.course_id) ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                                {getCourseProgress(course.course_id)}%
+                              </span>
+                            </div>
+                            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                style={{ width: `${getCourseProgress(course.course_id)}%` }}
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  isCourseCompleted(course.course_id) 
+                                    ? 'bg-gradient-to-r from-emerald-500 to-green-500' 
+                                    : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                                }`}
+                              />
+                            </div>
+                          </div>
+                        )}
 
                         <Button
                           onClick={() => handleCourseClick(course)}
