@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { X, Eye, EyeOff, GraduationCap, MapPin, Phone, Mail, Globe, Calendar, User } from 'lucide-react';
-import { signUpWithRole } from '../../services/authService';
-import { createUserRecord } from '../../services/educatorAuthService';
-import { createCollege, checkCollegeCode } from '../../services/collegeService';
+import userApiService from '../../services/userApiService';
+import { supabase } from '../../lib/supabaseClient';
 
 function CollegeSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onSwitchToLogin }) {
     const [formData, setFormData] = useState({
@@ -43,7 +42,7 @@ function CollegeSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, on
         if (error) setError('');
     };
 
-    const validateStep1 = () => {
+    const validateStep1 = async () => {
         if (!formData.email || !formData.password || !formData.confirmPassword) {
             setError('Please fill in all required fields');
             return false;
@@ -56,6 +55,21 @@ function CollegeSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, on
             setError('Password must be at least 6 characters');
             return false;
         }
+
+        // Check if email already exists via API
+        setLoading(true);
+        try {
+            const result = await userApiService.checkEmail(formData.email);
+            if (result.exists) {
+                setError('An account with this email already exists');
+                setLoading(false);
+                return false;
+            }
+        } catch (err) {
+            console.error('Email check error:', err);
+            // Continue if check fails - server will validate again
+        }
+        setLoading(false);
         return true;
     };
 
@@ -65,19 +79,22 @@ function CollegeSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, on
             return false;
         }
 
-        // Check college code uniqueness
+        // Check college code uniqueness via API
         setLoading(true);
-        const { isUnique, error: checkError } = await checkCollegeCode(formData.collegeCode);
-        setLoading(false);
-
-        if (checkError) {
+        try {
+            const result = await userApiService.checkCollegeCode(formData.collegeCode);
+            if (!result.isUnique) {
+                setError('College code already exists');
+                setLoading(false);
+                return false;
+            }
+        } catch (err) {
+            console.error('College code check error:', err);
             setError('Error checking college code');
+            setLoading(false);
             return false;
         }
-        if (!isUnique) {
-            setError('College code already exists');
-            return false;
-        }
+        setLoading(false);
 
         return true;
     };
@@ -92,8 +109,9 @@ function CollegeSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, on
 
     const handleNext = async () => {
         setError('');
-        if (step === 1 && validateStep1()) {
-            setStep(2);
+        if (step === 1) {
+            const isValid = await validateStep1();
+            if (isValid) setStep(2);
         } else if (step === 2) {
             const isValid = await validateStep2();
             if (isValid) setStep(3);
@@ -113,36 +131,12 @@ function CollegeSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, on
         setError('');
 
         try {
-            // 1. Create Auth User
-            const authResult = await signUpWithRole(formData.email, formData.password, {
-                role: 'admin',
-                name: formData.deanName,
-                phone: formData.deanPhone
-            });
-
-            if (!authResult.success) {
-                throw new Error(authResult.error || 'Signup failed');
-            }
-
-            const userId = authResult.user.id;
-
-            // 2. Create User Record (Required for FK)
-            const userRecordResult = await createUserRecord(userId, {
+            // Call Cloudflare Worker API for college admin signup
+            const result = await userApiService.signupCollegeAdmin({
                 email: formData.email,
-                firstName: formData.deanName.split(' ')[0],
-                lastName: formData.deanName.split(' ').slice(1).join(' ') || '',
-                role: 'college_admin'
-            });
-
-            if (!userRecordResult.success) {
-                throw new Error(userRecordResult.error || 'Failed to create user record');
-            }
-
-            // 3. Create College Profile
-            const collegeData = {
-                name: formData.collegeName,
-                code: formData.collegeCode,
-                email: formData.email,
+                password: formData.password,
+                collegeName: formData.collegeName,
+                collegeCode: formData.collegeCode,
                 phone: formData.phone,
                 website: formData.website,
                 address: formData.address,
@@ -150,24 +144,33 @@ function CollegeSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, on
                 state: formData.state,
                 country: formData.country,
                 pincode: formData.pincode,
-                establishedYear: parseInt(formData.establishedYear),
+                establishedYear: formData.establishedYear ? parseInt(formData.establishedYear) : undefined,
                 collegeType: formData.collegeType,
-                affiliation: formData.affiliation || null,
-                accreditation: formData.accreditation || null,
+                affiliation: formData.affiliation || undefined,
+                accreditation: formData.accreditation || undefined,
                 deanName: formData.deanName,
                 deanEmail: formData.deanEmail || formData.email,
-                deanPhone: formData.deanPhone || formData.phone,
-                accountStatus: 'pending',
-                approvalStatus: 'pending'
-            };
+                deanPhone: formData.deanPhone || formData.phone
+            });
 
-            const collegeResult = await createCollege(collegeData, userId);
-
-            if (!collegeResult.success) {
-                throw new Error(collegeResult.error || 'Failed to create college profile');
+            if (result.success) {
+                console.log('✅ College account created:', result.data);
+                
+                // Auto-login the user after successful signup
+                const { error: signInError } = await supabase.auth.signInWithPassword({
+                    email: formData.email,
+                    password: formData.password
+                });
+                
+                if (signInError) {
+                    console.warn('Auto-login failed, user may need to login manually:', signInError);
+                    // Still call success - account was created, user can login manually
+                }
+                
+                onSignupSuccess();
+            } else {
+                throw new Error(result.error || 'Failed to create college account');
             }
-
-            onSignupSuccess();
         } catch (err) {
             console.error('Signup error:', err);
             setError(err.message || 'An error occurred during signup');

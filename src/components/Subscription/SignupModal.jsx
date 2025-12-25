@@ -259,7 +259,11 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
       );
 
       if (!authResult.success) {
-        setErrors({ submit: authResult.error || 'Registration failed. Please try again.' });
+        // Use message for user-friendly text, fallback to error if it's a string message, then default
+        const errorMessage = authResult.message || 
+          (typeof authResult.error === 'string' && !authResult.error.includes('_') ? authResult.error : null) || 
+          'Registration failed. Please try again.';
+        setErrors({ submit: errorMessage });
         setLoading(false);
         return;
       }
@@ -286,6 +290,7 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
       }
 
       // Store user data temporarily for payment flow
+      // IMPORTANT: Only store after successful database record creation
       const userData = {
         id: userId,
         name: formData.fullName,
@@ -296,11 +301,19 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
         schoolId: formData.schoolId || null,
         collegeId: formData.collegeId || null,
         isNewUser: true,
-        studentRecord: registrationResult.data?.student || null
+        studentRecord: registrationResult.data?.student || null,
+        // Flag to indicate this is a pending user awaiting payment
+        isPendingPayment: true,
+        createdAt: new Date().toISOString(),
       };
 
-      // Store in localStorage temporarily
-      localStorage.setItem('pendingUser', JSON.stringify(userData));
+      // Only store pendingUser if database records were created successfully
+      if (registrationResult.success) {
+        localStorage.setItem('pendingUser', JSON.stringify(userData));
+      } else {
+        // If database records failed, don't store - user needs to retry signup
+        console.warn('⚠️ Not storing pendingUser - database records incomplete');
+      }
       
       // Call success callback to proceed to payment
       if (onSignupSuccess) {

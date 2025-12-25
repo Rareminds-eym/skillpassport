@@ -17,17 +17,21 @@ Handles Razorpay payment processing for Skill Passport platform.
 
 ## Environment Variables
 
-### Required
+### Required Secrets
+
+Set these via Cloudflare Dashboard or `wrangler secret put`:
 
 | Variable | Description | Usage |
 |----------|-------------|-------|
-| `VITE_SUPABASE_URL` | Supabase project URL | Database operations |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key | User-scoped queries |
+| `SUPABASE_URL` | Supabase project URL | Database operations |
+| `SUPABASE_ANON_KEY` | Supabase anonymous key | User-scoped queries |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | Admin operations |
-| `VITE_RAZORPAY_KEY_ID` | Razorpay key ID | Create and verify orders |
+| `RAZORPAY_KEY_ID` | Razorpay key ID | Create and verify orders |
 | `RAZORPAY_KEY_SECRET` | Razorpay secret key | Signature verification |
 
-### Optional
+> **Note**: The worker also supports `VITE_` prefixed names as fallback for backward compatibility.
+
+### Optional Secrets
 
 | Variable | Description | Default | Usage |
 |----------|-------------|---------|-------|
@@ -43,13 +47,23 @@ cd cloudflare-workers/payments-api
 npm install
 ```
 
-### 2. Configure Secrets
+### 2. Local Development
+```bash
+# Copy example vars file
+cp .dev.vars.example .dev.vars
+
+# Edit .dev.vars with your credentials
+# Then start local dev server
+npm run dev
+```
+
+### 3. Configure Production Secrets
 ```bash
 # Required secrets
-wrangler secret put VITE_SUPABASE_URL
-wrangler secret put VITE_SUPABASE_ANON_KEY
+wrangler secret put SUPABASE_URL
+wrangler secret put SUPABASE_ANON_KEY
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-wrangler secret put VITE_RAZORPAY_KEY_ID
+wrangler secret put RAZORPAY_KEY_ID
 wrangler secret put RAZORPAY_KEY_SECRET
 
 # Optional secrets
@@ -58,12 +72,32 @@ wrangler secret put TEST_RAZORPAY_KEY_ID
 wrangler secret put TEST_RAZORPAY_KEY_SECRET
 ```
 
-### 3. Deploy
+### 4. Deploy
 ```bash
 npm run deploy
 ```
 
-### 4. Update Frontend Environment
+### 5. Verify Deployment
+```bash
+# Check health endpoint
+curl https://payments-api.your-subdomain.workers.dev/health
+```
+
+The health endpoint returns configuration status:
+```json
+{
+  "status": "ok",
+  "config": {
+    "supabase_url": true,
+    "supabase_anon_key": true,
+    "supabase_service_role_key": true,
+    "razorpay_key_id": true,
+    "razorpay_key_secret": true
+  }
+}
+```
+
+### 6. Update Frontend Environment
 ```env
 VITE_PAYMENTS_API_URL=https://payments-api.your-subdomain.workers.dev
 ```
