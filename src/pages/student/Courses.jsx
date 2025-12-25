@@ -7,6 +7,7 @@ import {
     Clock,
     Grid3x3,
     List,
+    Play,
     TrendingUp,
     Users
 } from 'lucide-react';
@@ -44,6 +45,7 @@ const Courses = () => {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0); // Total courses count for pagination
   const coursesPerPage = 6;
   const [activeTab, setActiveTab] = useState('courses'); // 'courses' or 'progress'
   const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
@@ -65,13 +67,13 @@ const Courses = () => {
     }
   }, []);
 
-  // Fetch courses when search, filter, or sort changes
+  // Fetch courses when search, filter, sort, or page changes
   useEffect(() => {
     // Skip initial load (handled by the effect above)
     if (hasFetchedCoursesRef.current) {
       fetchCourses();
     }
-  }, [debouncedSearch, filterStatus, sortBy, advancedFilters]);
+  }, [debouncedSearch, filterStatus, sortBy, advancedFilters, currentPage]);
 
   // Separate effect for enrollments - only when user email changes
   useEffect(() => {
@@ -93,17 +95,20 @@ const Courses = () => {
     }
     
     isFetchingRef.current = true;
-    const startTime = Date.now();
     const isFirstLoad = initialLoad;
 
     try {
       setLoading(true);
 
-      // Fetch courses with status Active or Upcoming (students shouldn't see Drafts)
+      // Calculate pagination range
+      const from = (currentPage - 1) * coursesPerPage;
+      const to = from + coursesPerPage - 1;
+
+      // Build base query for courses with status Active or Upcoming
       // Also exclude deleted courses
       let query = supabase
         .from('courses')
-        .select('*')
+        .select('*', { count: 'exact' }) // Get total count for pagination
         .in('status', ['Active', 'Upcoming'])
         .is('deleted_at', null);
 
@@ -166,39 +171,30 @@ const Courses = () => {
           break;
       }
 
-      const { data, error } = await query;
+      // Apply pagination range
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
 
-      console.log('📚 Fetched courses for students:', data?.length || 0);
+      console.log(`📚 Fetched courses for page ${currentPage}:`, data?.length || 0, 'of', count, 'total');
       setCourses(data || []);
+      setTotalCount(count || 0);
 
-      // Only show 5-second loader on initial page load, not on search/filter
       if (isFirstLoad) {
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, 5000 - elapsedTime);
-
-        if (remainingTime > 0) {
-          await new Promise(resolve => setTimeout(resolve, remainingTime));
-        }
         setInitialLoad(false);
       }
     } catch (error) {
       console.error('Error fetching courses:', error);
-      // Still wait for 5 seconds on initial load even on error
       if (isFirstLoad) {
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, 5000 - elapsedTime);
-        if (remainingTime > 0) {
-          await new Promise(resolve => setTimeout(resolve, remainingTime));
-        }
         setInitialLoad(false);
       }
     } finally {
       setLoading(false);
       isFetchingRef.current = false;
     }
-  }, [debouncedSearch, filterStatus, sortBy, initialLoad, advancedFilters]);
+  }, [debouncedSearch, filterStatus, sortBy, initialLoad, advancedFilters, currentPage]);
 
   const fetchEnrollments = useCallback(async () => {
     const email = userEmailRef.current;
@@ -244,7 +240,7 @@ const Courses = () => {
     return hoursDifference <= 24;
   };
 
-  // Reset to page 1 when search or filter changes
+  // Reset to page 1 when search or filter changes (but not when page changes)
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearch, filterStatus, sortBy, advancedFilters]);
@@ -265,14 +261,11 @@ const Courses = () => {
     );
   };
 
-  // No need for client-side filtering anymore - data comes filtered from DB
-  const filteredCourses = courses;
+  // Courses are already paginated from the server
+  const currentCourses = courses;
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredCourses.length / coursesPerPage);
-  const indexOfLastCourse = currentPage * coursesPerPage;
-  const indexOfFirstCourse = indexOfLastCourse - coursesPerPage;
-  const currentCourses = filteredCourses.slice(indexOfFirstCourse, indexOfLastCourse);
+  // Pagination logic - use totalCount from server
+  const totalPages = Math.ceil(totalCount / coursesPerPage);
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -551,7 +544,7 @@ const Courses = () => {
               {/* Results Count */}
               {!loading && (
                 <div className="text-sm text-gray-600">
-                  <span className="font-medium">{filteredCourses.length}</span> course{filteredCourses.length !== 1 ? 's' : ''} found
+                  <span className="font-medium">{totalCount}</span> course{totalCount !== 1 ? 's' : ''} found
                   {(searchTerm || filterStatus !== 'all' || hasActiveAdvancedFilters()) && (
                     <span className="ml-1">matching your criteria</span>
                   )}
@@ -600,7 +593,7 @@ const Courses = () => {
         )}
 
         {/* Empty State */}
-        {!loading && !initialLoad && activeTab === 'courses' && filteredCourses.length === 0 && (
+        {!loading && !initialLoad && activeTab === 'courses' && totalCount === 0 && (
           <Card className="text-center py-12 shadow-sm border border-gray-200">
             <CardContent>
               <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -889,7 +882,7 @@ const Courses = () => {
         )}
 
         {/* Pagination */}
-        {!loading && !initialLoad && activeTab === 'courses' && filteredCourses.length > 0 && totalPages > 1 && (
+        {!loading && !initialLoad && activeTab === 'courses' && totalCount > 0 && totalPages > 1 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

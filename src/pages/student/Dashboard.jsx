@@ -1687,7 +1687,7 @@ const StudentDashboard = () => {
                     {certificateLink && (
                       <Button
                         size="sm"
-                        onClick={() => window.open(certificateLink, '_blank')}
+                        onClick={() => window.open(getCertificateProxyUrl(certificateLink), '_blank')}
                         className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-4 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
                       >
                         <ExternalLink className="w-4 h-4 mr-2" />

@@ -140,7 +140,10 @@ const uploadToR2 = async (blob, studentId, courseId, credentialId) => {
   }
 
   const data = await response.json();
-  return data.url;
+  
+  // Return proxy URL instead of direct R2 URL (R2 bucket is not public)
+  // This allows downloading through the storage-api worker which has R2 credentials
+  return `${STORAGE_API_URL}/course-certificate?key=${encodeURIComponent(filename)}`;
 };
 
 export const generateCourseCertificate = async (studentId, studentName, courseId, courseName, educatorName) => {
@@ -193,12 +196,88 @@ export const generateCourseCertificate = async (studentId, studentName, courseId
   }
 };
 
-export const downloadCertificate = (certificateUrl, courseName) => {
-  const link = document.createElement('a');
-  link.href = certificateUrl;
-  link.download = `${courseName.replace(/[^a-z0-9]/gi, '_')}_Certificate.png`;
-  link.target = '_blank';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+export const downloadCertificate = async (certificateUrl, courseName) => {
+  const STORAGE_API_URL = import.meta.env.VITE_STORAGE_API_URL || import.meta.env.VITE_COURSE_API_URL;
+  
+  try {
+    // If it's a data URL, download directly
+    if (certificateUrl.startsWith('data:')) {
+      const link = document.createElement('a');
+      link.href = certificateUrl;
+      link.download = `${courseName.replace(/[^a-z0-9]/gi, '_')}_Certificate.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
+    let downloadUrl = certificateUrl;
+    
+    // If it's already a proxy URL, use it directly
+    if (certificateUrl.includes('/course-certificate')) {
+      downloadUrl = certificateUrl;
+    } 
+    // If it's a direct R2 URL, convert to proxy URL
+    else if (certificateUrl.includes('.r2.dev/') || certificateUrl.includes('r2.cloudflarestorage.com')) {
+      downloadUrl = `${STORAGE_API_URL}/course-certificate?url=${encodeURIComponent(certificateUrl)}`;
+    }
+    // For any other URL, try using the proxy
+    else {
+      downloadUrl = `${STORAGE_API_URL}/course-certificate?url=${encodeURIComponent(certificateUrl)}`;
+    }
+    
+    const response = await fetch(downloadUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${courseName.replace(/[^a-z0-9]/gi, '_')}_Certificate.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up the blob URL
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Certificate download error:', error);
+    throw error; // Re-throw so caller can handle it
+  }
+};
+
+/**
+ * Get the viewable/downloadable URL for a certificate
+ * Converts direct R2 URLs to proxy URLs that work without public bucket access
+ * @param {string} certificateUrl - The certificate URL
+ * @param {string} mode - 'inline' for viewing in browser, 'download' for downloading
+ */
+export const getCertificateProxyUrl = (certificateUrl, mode = 'inline') => {
+  const STORAGE_API_URL = import.meta.env.VITE_STORAGE_API_URL || import.meta.env.VITE_COURSE_API_URL;
+  
+  if (!certificateUrl) return null;
+  
+  // Data URLs work directly
+  if (certificateUrl.startsWith('data:')) {
+    return certificateUrl;
+  }
+  
+  // Already a proxy URL - add/update mode parameter
+  if (certificateUrl.includes('/course-certificate')) {
+    const url = new URL(certificateUrl);
+    url.searchParams.set('mode', mode);
+    return url.toString();
+  }
+  
+  // Convert R2 URL to proxy URL
+  if (certificateUrl.includes('.r2.dev/') || certificateUrl.includes('r2.cloudflarestorage.com')) {
+    return `${STORAGE_API_URL}/course-certificate?url=${encodeURIComponent(certificateUrl)}&mode=${mode}`;
+  }
+  
+  // For other URLs, try proxy
+  return `${STORAGE_API_URL}/course-certificate?url=${encodeURIComponent(certificateUrl)}&mode=${mode}`;
 };

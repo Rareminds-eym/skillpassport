@@ -337,6 +337,80 @@ async function handleGetFileUrl(request: Request, env: Env): Promise<Response> {
   });
 }
 
+// ==================== COURSE CERTIFICATE (PROXY) ====================
+
+async function handleCourseCertificate(request: Request, env: Env): Promise<Response> {
+  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+    return jsonResponse({ error: 'R2 credentials not configured' }, 500);
+  }
+
+  const url = new URL(request.url);
+  let fileKey = url.searchParams.get('key');
+  const mode = url.searchParams.get('mode') || 'inline'; // 'inline' for viewing, 'download' for downloading
+  
+  // Also support extracting key from full URL
+  const fileUrl = url.searchParams.get('url');
+  if (!fileKey && fileUrl) {
+    // Extract key from URL like https://pub-xxx.r2.dev/certificates/...
+    const urlParts = fileUrl.split('.r2.dev/');
+    if (urlParts.length > 1) {
+      fileKey = urlParts[1];
+    } else {
+      // Try extracting from custom domain URL
+      const pathMatch = fileUrl.match(/\/certificates\/(.+)$/);
+      if (pathMatch) {
+        fileKey = `certificates/${pathMatch[1]}`;
+      }
+    }
+  }
+
+  if (!fileKey) {
+    return jsonResponse({ error: 'File key or URL is required' }, 400);
+  }
+
+  const bucketName = env.CLOUDFLARE_R2_BUCKET_NAME || 'skill-echosystem';
+  const r2 = new AwsClient({
+    accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+    secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+  });
+
+  const endpoint = `https://${env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const downloadUrl = `${endpoint}/${bucketName}/${fileKey}`;
+
+  const downloadRequest = new Request(downloadUrl, {
+    method: 'GET',
+  });
+
+  const signedRequest = await r2.sign(downloadRequest);
+  const response = await fetch(signedRequest);
+
+  if (!response.ok) {
+    return jsonResponse({ error: 'File not found or access denied', status: response.status }, response.status);
+  }
+
+  // Get the file content and return it with proper headers
+  const fileContent = await response.arrayBuffer();
+  const contentType = response.headers.get('Content-Type') || 'image/png';
+  
+  // Extract filename from key
+  const filename = fileKey.split('/').pop() || 'certificate.png';
+  
+  // Set Content-Disposition based on mode
+  const contentDisposition = mode === 'download' 
+    ? `attachment; filename="${filename}"` 
+    : `inline; filename="${filename}"`;
+
+  return new Response(fileContent, {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      'Content-Type': contentType,
+      'Content-Disposition': contentDisposition,
+      'Content-Length': fileContent.byteLength.toString(),
+    },
+  });
+}
+
 // ==================== LIST FILES ====================
 
 async function handleListFiles(request: Request, env: Env, courseId: string, lessonId: string): Promise<Response> {
@@ -423,6 +497,8 @@ export default {
         case '/get-url':
         case '/get-file-url':
           return await handleGetFileUrl(request, env);
+        case '/course-certificate':
+          return await handleCourseCertificate(request, env);
         case '/delete':
           return await handleDelete(request, env);
         case '/extract-content':
@@ -432,11 +508,11 @@ export default {
           return jsonResponse({
             status: 'ok',
             service: 'storage-api',
-            endpoints: ['/upload', '/presigned', '/confirm', '/get-url', '/delete', '/files/:courseId/:lessonId', '/extract-content'],
+            endpoints: ['/upload', '/presigned', '/confirm', '/get-url', '/course-certificate', '/delete', '/files/:courseId/:lessonId', '/extract-content'],
             timestamp: new Date().toISOString()
           });
         default:
-          return jsonResponse({ error: 'Not found', availableEndpoints: ['/upload', '/presigned', '/confirm', '/get-url', '/delete', '/extract-content'] }, 404);
+          return jsonResponse({ error: 'Not found', availableEndpoints: ['/upload', '/presigned', '/confirm', '/get-url', '/course-certificate', '/delete', '/extract-content'] }, 404);
       }
     } catch (error) {
       console.error('Worker error:', error);

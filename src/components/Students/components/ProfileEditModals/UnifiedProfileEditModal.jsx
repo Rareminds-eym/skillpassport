@@ -1,17 +1,24 @@
-import { useState, useEffect, useCallback } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import {
+    Award, Calendar,
+    Clock,
+    Eye, EyeOff,
+    Loader2,
+    PenSquare,
+    Plus,
+    Save,
+    Trash2
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Textarea } from "../ui/textarea";
-import { Badge } from "../ui/badge";
 import { Progress } from "../ui/progress";
-import {
-  Plus, Trash2, PenSquare, Eye, EyeOff, Clock, Award, Calendar, Save, Loader2
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "../ui/textarea";
 import { FIELD_CONFIGS } from "./fieldConfigs";
-import { generateUuid, calculateDuration, calculateProgress, parseSkills, parsePositiveNumber, isValidUrl } from "./utils";
+import { calculateDuration, calculateProgress, generateUuid, isValidUrl, parsePositiveNumber, parseSkills } from "./utils";
 
 const UnifiedProfileEditModal = ({ 
   isOpen, 
@@ -457,7 +464,7 @@ const UnifiedProfileEditModal = ({
       )}
 
       {item.certificateUrl && (
-        <Button variant="outline" size="sm" className="mt-3 w-full" onClick={() => window.open(item.certificateUrl, "_blank")}>
+        <Button variant="outline" size="sm" className="mt-3 w-full" onClick={() => window.open(getCertificateProxyUrl(item.certificateUrl), "_blank")}>
           <Award className="w-4 h-4 mr-2" /> View Certificate
         </Button>
       )}
