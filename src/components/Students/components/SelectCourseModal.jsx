@@ -27,7 +27,7 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
       // Fetch all active courses
       const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
-        .select('course_id, title, code, description, educator_name, duration, category, university')
+        .select('course_id, title, code, description, duration, category, university')
         .eq('status', 'Active')
         .order('title');
 
@@ -138,7 +138,6 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
           student_id: studentId,
           course_id: course.course_id,
           course_title: course.title,
-          educator_name: course.educator_name,
           enrolled_at: new Date().toISOString(),
           status: 'active',
           progress: 0
@@ -329,10 +328,6 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
                           </div>
                         </div>
                         
-                        {course.educator_name && (
-                          <p className="text-sm text-gray-600 mb-2">By {course.educator_name}</p>
-                        )}
-                        
                         {course.description && (
                           <p className="text-sm text-gray-700 mb-3 line-clamp-2">{course.description}</p>
                         )}
@@ -393,10 +388,6 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
                             </span>
                           )}
                         </div>
-                        
-                        {course.educator_name && (
-                          <p className="text-sm text-gray-600 mb-2">By {course.educator_name}</p>
-                        )}
                         
                         {course.description && (
                           <p className="text-sm text-gray-700 mb-3 line-clamp-2">{course.description}</p>

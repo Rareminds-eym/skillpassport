@@ -3,8 +3,8 @@ import { Clock, BookOpen, Target, Award, TrendingUp, TrendingDown, Minus } from 
 
 /**
  * Learning Analytics Dashboard Component
- * Displays learning statistics, activity heatmap, and progress charts
- * Design: Clean white cards with blue accent colors
+ * Professional analytics with blue and green color scheme
+ * Clean white cards with modern design elements
  */
 const LearningAnalyticsDashboard = ({ trainings = [], stats = {} }) => {
   // Calculate analytics data
@@ -79,109 +79,114 @@ const LearningAnalyticsDashboard = ({ trainings = [], stats = {} }) => {
   const TrendIndicator = ({ current, previous }) => {
     if (current > previous) {
       return (
-        <span className="flex items-center text-emerald-600 text-xs font-medium mt-1">
-          <TrendingUp className="w-3 h-3 mr-0.5" />
+        <span className="flex items-center text-green-600 text-xs font-semibold mt-2">
+          <TrendingUp className="w-3 h-3 mr-1" />
           +{current - previous} this month
         </span>
       );
     } else if (current < previous) {
       return (
-        <span className="flex items-center text-red-500 text-xs font-medium mt-1">
-          <TrendingDown className="w-3 h-3 mr-0.5" />
+        <span className="flex items-center text-red-500 text-xs font-semibold mt-2">
+          <TrendingDown className="w-3 h-3 mr-1" />
           {current - previous} this month
         </span>
       );
     }
     return (
-      <span className="flex items-center text-gray-400 text-xs font-medium mt-1">
-        <Minus className="w-3 h-3 mr-0.5" />
+      <span className="flex items-center text-slate-400 text-xs font-semibold mt-2">
+        <Minus className="w-3 h-3 mr-1" />
         No change
       </span>
     );
   };
 
   return (
-    <div className="space-y-6">
-      {/* KPI Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="space-y-8">
+      {/* Enhanced KPI Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Hours */}
-        <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm hover:shadow-md transition-all duration-300">
           <div className="flex items-start justify-between">
-            <div>
-              <p className="text-3xl font-bold text-gray-900">{analytics.totalHours}</p>
-              <p className="text-sm text-gray-500 mt-1">Total Hours</p>
+            <div className="space-y-2">
+              <p className="text-3xl font-bold text-slate-900">{analytics.totalHours}</p>
+              <p className="text-sm font-medium text-slate-600">Total Hours</p>
             </div>
-            <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center">
-              <Clock className="w-5 h-5 text-blue-600" />
+            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
+              <Clock className="w-6 h-6 text-blue-600" />
             </div>
           </div>
         </div>
 
         {/* Courses Completed */}
-        <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm hover:shadow-md transition-all duration-300">
           <div className="flex items-start justify-between">
-            <div>
-              <p className="text-3xl font-bold text-gray-900">{analytics.completedCourses}</p>
-              <p className="text-sm text-gray-500 mt-1">Completed</p>
+            <div className="space-y-1">
+              <p className="text-3xl font-bold text-slate-900">{analytics.completedCourses}</p>
+              <p className="text-sm font-medium text-slate-600">Completed</p>
               <TrendIndicator current={analytics.completedThisMonth} previous={analytics.completedLastMonth} />
             </div>
-            <div className="w-11 h-11 bg-emerald-50 rounded-xl flex items-center justify-center">
-              <Award className="w-5 h-5 text-emerald-600" />
+            <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
+              <Award className="w-6 h-6 text-green-600" />
             </div>
           </div>
         </div>
 
         {/* Completion Rate */}
-        <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm hover:shadow-md transition-all duration-300">
           <div className="flex items-start justify-between">
-            <div>
-              <p className="text-3xl font-bold text-gray-900">{analytics.completionRate}%</p>
-              <p className="text-sm text-gray-500 mt-1">Completion Rate</p>
+            <div className="space-y-2">
+              <p className="text-3xl font-bold text-slate-900">{analytics.completionRate}%</p>
+              <p className="text-sm font-medium text-slate-600">Completion Rate</p>
             </div>
-            <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center">
-              <Target className="w-5 h-5 text-blue-600" />
+            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
+              <Target className="w-6 h-6 text-blue-600" />
             </div>
           </div>
         </div>
 
         {/* Average Progress */}
-        <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm hover:shadow-md transition-all duration-300">
           <div className="flex items-start justify-between">
-            <div>
-              <p className="text-3xl font-bold text-gray-900">{analytics.avgProgress}%</p>
-              <p className="text-sm text-gray-500 mt-1">Avg Progress</p>
+            <div className="space-y-2">
+              <p className="text-3xl font-bold text-slate-900">{analytics.avgProgress}%</p>
+              <p className="text-sm font-medium text-slate-600">Avg Progress</p>
             </div>
-            <div className="w-11 h-11 bg-sky-50 rounded-xl flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-sky-600" />
+            <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-green-600" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Activity Heatmap & Course Progress */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Activity Heatmap */}
-        <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-800 mb-4">Learning Activity</h3>
-          <div className="space-y-3">
+        <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-slate-900">Learning Activity</h3>
+            <div className="text-sm text-slate-500">Last 4 weeks</div>
+          </div>
+          
+          <div className="space-y-4">
             {/* Day Labels */}
-            <div className="flex gap-1.5 pl-8">
+            <div className="flex gap-2 pl-10">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-                <div key={day} className="flex-1 text-center text-xs text-gray-400 font-medium">
+                <div key={day} className="flex-1 text-center text-xs font-medium text-slate-400">
                   {day}
                 </div>
               ))}
             </div>
+            
             {/* Heatmap Grid */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {analytics.activityData.map((week, weekIdx) => (
-                <div key={weekIdx} className="flex items-center gap-1.5">
-                  <span className="text-xs text-gray-400 w-6 text-right">W{4 - weekIdx}</span>
-                  <div className="flex gap-1.5 flex-1">
+                <div key={weekIdx} className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-slate-400 w-8 text-right">W{4 - weekIdx}</span>
+                  <div className="flex gap-2 flex-1">
                     {week.map((day, dayIdx) => (
                       <div
                         key={dayIdx}
-                        className={`flex-1 h-8 rounded-md transition-all cursor-pointer hover:scale-105 ${getActivityColor(day.level)}`}
+                        className={`flex-1 h-10 rounded-lg transition-all cursor-pointer hover:scale-105 ${getActivityColor(day.level)}`}
                         title={`${day.date}: ${day.hours} hours`}
                       />
                     ))}
@@ -189,56 +194,66 @@ const LearningAnalyticsDashboard = ({ trainings = [], stats = {} }) => {
                 </div>
               ))}
             </div>
+            
             {/* Legend */}
-            <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-gray-50">
-              <span className="text-xs text-gray-400">Less</span>
+            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
+              <span className="text-xs font-medium text-slate-400">Less</span>
               <div className="flex gap-1">
                 {[0, 1, 2, 3, 4].map((level) => (
-                  <div key={level} className={`w-4 h-4 rounded-sm ${getActivityColor(level)}`} />
+                  <div key={level} className={`w-4 h-4 rounded ${getActivityColor(level)}`} />
                 ))}
               </div>
-              <span className="text-xs text-gray-400">More</span>
+              <span className="text-xs font-medium text-slate-400">More</span>
             </div>
           </div>
         </div>
 
         {/* Course Progress */}
-        <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-800 mb-4">Course Progress</h3>
-          <div className="space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-slate-900">Course Progress</h3>
+            <div className="text-sm text-slate-500">In Progress</div>
+          </div>
+          
+          <div className="space-y-5">
             {analytics.courseProgress.length > 0 ? (
               analytics.courseProgress.map((course) => (
                 <div key={course.id} className="group">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700 truncate max-w-[200px] group-hover:text-blue-600 transition-colors">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-semibold text-slate-700 truncate max-w-[200px] group-hover:text-blue-600 transition-colors">
                       {course.title}
                     </span>
-                    <span className="text-sm font-bold text-blue-600">{course.progress}%</span>
+                    <span className="text-lg font-bold text-blue-600">{course.progress}%</span>
                   </div>
-                  <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+                      className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-700"
                       style={{ width: `${course.progress}%` }}
                     />
                   </div>
                 </div>
               ))
             ) : (
-              <div className="text-center py-10">
-                <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center mx-auto mb-3">
-                  <BookOpen className="w-6 h-6 text-gray-300" />
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <BookOpen className="w-8 h-8 text-slate-400" />
                 </div>
-                <p className="text-sm text-gray-400">No courses in progress</p>
+                <p className="text-sm font-medium text-slate-500">No courses in progress</p>
+                <p className="text-xs text-slate-400 mt-1">Start a new course to see progress here</p>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Monthly Trend */}
-      <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-800 mb-4">Monthly Completions</h3>
-        <div className="flex items-end justify-between h-40 gap-3 px-2">
+      {/* Monthly Trend Chart */}
+      <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-bold text-slate-900">Monthly Completions</h3>
+          <div className="text-sm text-slate-500">Last 6 months</div>
+        </div>
+        
+        <div className="flex items-end justify-between h-48 gap-4 px-2">
           {analytics.monthlyTrend.map((month, idx) => {
             const maxCount = Math.max(...analytics.monthlyTrend.map(m => m.count), 1);
             const heightPercent = (month.count / maxCount) * 100;
@@ -246,12 +261,15 @@ const LearningAnalyticsDashboard = ({ trainings = [], stats = {} }) => {
               <div key={idx} className="flex-1 flex flex-col items-center group">
                 <div className="flex-1 w-full flex items-end justify-center">
                   <div
-                    className="w-full max-w-[40px] bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg transition-all duration-300 group-hover:from-blue-600 group-hover:to-blue-500"
-                    style={{ height: `${Math.max(heightPercent, 8)}%` }}
+                    className="w-full max-w-[50px] bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-xl transition-all duration-500 group-hover:from-blue-600 group-hover:to-blue-500 cursor-pointer"
+                    style={{ height: `${Math.max(heightPercent, 10)}%` }}
+                    title={`${month.label}: ${month.count} completions`}
                   />
                 </div>
-                <span className="text-xs text-gray-500 mt-3 font-medium">{month.label}</span>
-                <span className="text-xs font-bold text-gray-700">{month.count}</span>
+                <div className="mt-4 text-center">
+                  <span className="text-xs font-medium text-slate-500">{month.label}</span>
+                  <div className="text-sm font-bold text-slate-700 mt-1">{month.count}</div>
+                </div>
               </div>
             );
           })}
@@ -321,21 +339,21 @@ function generateMonthlyTrend(trainings) {
   return months;
 }
 
-// Helper function to get activity color based on level (Blue shades)
+// Helper function to get activity color based on level (Blue and Green shades)
 function getActivityColor(level) {
   switch (level) {
     case 0:
-      return "bg-gray-100";
+      return "bg-slate-100";
     case 1:
       return "bg-blue-100";
     case 2:
-      return "bg-blue-200";
+      return "bg-blue-300";
     case 3:
-      return "bg-blue-400";
+      return "bg-blue-500";
     case 4:
-      return "bg-blue-600";
+      return "bg-green-500";
     default:
-      return "bg-gray-100";
+      return "bg-slate-100";
   }
 }
 
