@@ -7,6 +7,7 @@ import {
     Clock,
     Grid3x3,
     List,
+    Play,
     TrendingUp,
     Users
 } from 'lucide-react';
