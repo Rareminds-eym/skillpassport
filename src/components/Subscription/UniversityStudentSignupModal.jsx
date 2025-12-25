@@ -207,7 +207,10 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
       });
 
       if (!authResult.success) {
-        setErrors({ submit: authResult.error || 'Registration failed' });
+        const errorMessage = authResult.message || 
+          (typeof authResult.error === 'string' && !authResult.error.includes('_') ? authResult.error : null) || 
+          'Registration failed';
+        setErrors({ submit: errorMessage });
         setLoading(false);
         return;
       }

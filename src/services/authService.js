@@ -126,35 +126,122 @@ export const signUpWithRole = async (email, password, userData = {}) => {
 
     // Perform signup with retry for transient failures
     const signupOperation = async () => {
-      const { data, error } = await supabase.auth.signUp({
+      // Log BEFORE making the request to verify we reach this point
+      logAuthEvent('info', 'About to call supabase.auth.signUp', { 
+        correlationId,
         email: validation.email,
-        password,
-        options: {
-          data: {
-            role: userData.role || 'student',
-            name: userData.name || '',
-            phone: userData.phone || '',
-            ...userData,
-          },
-          emailRedirectTo: undefined,
-        },
+        hasPassword: !!password,
+        userDataKeys: Object.keys(userData)
+      });
+      
+      // Log the Supabase client state
+      console.log('[AUTH DEBUG] Supabase client check:', {
+        hasSupabase: !!supabase,
+        hasAuth: !!supabase?.auth,
+        hasSignUp: typeof supabase?.auth?.signUp === 'function'
       });
 
-      if (error) {
-        throw error;
+      let response;
+      try {
+        response = await supabase.auth.signUp({
+          email: validation.email,
+          password,
+          options: {
+            data: {
+              role: userData.role || 'student',
+              name: userData.name || '',
+              phone: userData.phone || '',
+              ...userData,
+            },
+            emailRedirectTo: undefined,
+          },
+        });
+      } catch (signupError) {
+        // Catch any errors thrown during the signUp call itself
+        console.error('[AUTH DEBUG] signUp threw an exception:', signupError);
+        logAuthEvent('error', 'signUp threw exception', { 
+          correlationId,
+          errorName: signupError?.name,
+          errorMessage: signupError?.message,
+          errorStack: signupError?.stack?.substring(0, 500)
+        });
+        throw signupError;
       }
 
-      return data;
+      // Log the FULL response for debugging
+      console.log('[AUTH DEBUG] Full signUp response:', JSON.stringify(response, null, 2));
+      
+      logAuthEvent('info', 'Supabase signUp response', { 
+        correlationId,
+        hasUser: !!response.data?.user,
+        hasSession: !!response.data?.session,
+        hasError: !!response.error,
+        errorMessage: response.error?.message || null,
+        errorCode: response.error?.code || null,
+        errorStatus: response.error?.status || null,
+        userId: response.data?.user?.id || null,
+        identitiesCount: response.data?.user?.identities?.length ?? 'N/A',
+        responseDataKeys: Object.keys(response.data || {})
+      });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      return response.data;
     };
 
+    // withRetry returns a function, so we need to call it to get the promise
+    const retryableSignup = withRetry(signupOperation, { maxRetries: MAX_RETRIES });
     const data = await withTimeout(
-      withRetry(signupOperation, { maxRetries: MAX_RETRIES }),
+      retryableSignup(), // Call the function to get the promise
       AUTH_TIMEOUT_MS
     );
 
+    // Handle various signup response scenarios
     if (!data.user) {
-      logAuthEvent('error', 'Signup returned no user', { correlationId });
-      return buildErrorResponse(AUTH_ERROR_CODES.UNEXPECTED_ERROR);
+      // Log detailed info about the null user case
+      logAuthEvent('error', 'Signup returned no user - possible causes: email signups disabled, rate limit, or configuration issue', { 
+        correlationId,
+        hasSession: !!data.session,
+        dataKeys: Object.keys(data || {})
+      });
+      
+      // Check if this might be a configuration issue (no user AND no session AND no error)
+      // This typically happens when email signups are disabled in Supabase settings
+      return buildErrorResponse(AUTH_ERROR_CODES.UNEXPECTED_ERROR, {
+        customMessage: 'Unable to create account. This may be a temporary issue. Please try again or contact support if the problem persists.',
+      });
+    }
+
+    // Check if user has empty identities array - this indicates email already exists
+    // Supabase returns a user object with empty identities for security (doesn't reveal if email exists)
+    if (data.user.identities && data.user.identities.length === 0) {
+      logAuthEvent('warn', 'Signup returned user with no identities - email likely already registered', { 
+        correlationId,
+        userId: data.user.id 
+      });
+      return buildErrorResponse(AUTH_ERROR_CODES.INVALID_CREDENTIALS, {
+        customMessage: 'This email is already registered. Please sign in instead.',
+      });
+    }
+
+    // Check if email confirmation is required (user created but no session)
+    if (data.user && !data.session) {
+      logAuthEvent('info', 'Signup successful - email confirmation required', { 
+        correlationId, 
+        userId: data.user.id 
+      });
+      
+      // User was created successfully, but needs to confirm email
+      // We still return success so the app can proceed with creating database records
+      return {
+        success: true,
+        user: data.user,
+        session: null,
+        requiresEmailConfirmation: true,
+        error: null,
+      };
     }
 
     logAuthEvent('info', 'Signup successful', { correlationId, userId: data.user.id });
@@ -228,20 +315,23 @@ export const signIn = async (email, password) => {
       return data;
     };
 
+    // withRetry returns a function, so we need to call it to get the promise
+    const retryableSignIn = withRetry(signInOperation, {
+      maxRetries: 1, // Fewer retries for login to prevent lockouts
+      shouldRetry: (err) => {
+        // Don't retry on invalid credentials or rate limits
+        const code = err.code || mapSupabaseError(err);
+        return ![
+          AUTH_ERROR_CODES.INVALID_CREDENTIALS,
+          AUTH_ERROR_CODES.RATE_LIMITED,
+          AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS,
+          AUTH_ERROR_CODES.ACCOUNT_LOCKED,
+        ].includes(code);
+      },
+    });
+    
     const data = await withTimeout(
-      withRetry(signInOperation, {
-        maxRetries: 1, // Fewer retries for login to prevent lockouts
-        shouldRetry: (err) => {
-          // Don't retry on invalid credentials or rate limits
-          const code = err.code || mapSupabaseError(err);
-          return ![
-            AUTH_ERROR_CODES.INVALID_CREDENTIALS,
-            AUTH_ERROR_CODES.RATE_LIMITED,
-            AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS,
-            AUTH_ERROR_CODES.ACCOUNT_LOCKED,
-          ].includes(code);
-        },
-      }),
+      retryableSignIn(), // Call the function to get the promise
       AUTH_TIMEOUT_MS
     );
 

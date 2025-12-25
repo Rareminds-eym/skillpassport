@@ -200,51 +200,91 @@ function PaymentCompletion() {
     return studentType ? `/subscription/plans/${studentType}` : '/subscription/plans/student';
   }, [studentType]);
 
-  // Redirect if not authenticated
+  // Validate user exists in database and redirect if not authenticated
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      if (plan) {
-        localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, studentType }));
-      }
-      navigate('/register', {
-        replace: true,
-        state: { plan, studentType, returnTo: '/subscription/payment' },
-      });
-    }
-  }, [authLoading, isAuthenticated, navigate, plan, studentType]);
+    const validateAndFetchUser = async () => {
+      if (authLoading) return;
 
-  // Autofill user details from public.users table
-  useEffect(() => {
-    const fetchUserDetails = async () => {
-      if (isAuthenticated && user) {
-        try {
-          // Fetch user data from public.users table
-          const { data: userData } = await supabase
-            .from('users')
-            .select('firstName, lastName, phone')
-            .eq('id', user.id)
-            .single();
-
-          const fullName = `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim();
-
-          setUserDetails((prev) => ({
-            name: prev.name || fullName,
-            email: prev.email || user.email || '',
-            phone: prev.phone || userData?.phone || '',
-          }));
-        } catch {
-          // Fallback on error
-          setUserDetails((prev) => ({
-            name: prev.name || '',
-            email: prev.email || user.email || '',
-            phone: prev.phone || '',
-          }));
+      // If not authenticated at all, redirect to register
+      if (!isAuthenticated || !user) {
+        if (plan) {
+          localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, studentType }));
         }
+        navigate('/register', {
+          replace: true,
+          state: { plan, studentType, returnTo: '/subscription/payment' },
+        });
+        return;
+      }
+
+      // CRITICAL: Verify user actually exists in database (not just localStorage)
+      try {
+        // First check if user exists in auth.users via session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session?.user) {
+          console.warn('⚠️ No valid Supabase session found, clearing stale data');
+          // Clear stale localStorage data
+          localStorage.removeItem('user');
+          localStorage.removeItem('userEmail');
+          localStorage.removeItem('pendingUser');
+          
+          if (plan) {
+            localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, studentType }));
+          }
+          navigate('/register', {
+            replace: true,
+            state: { plan, studentType, returnTo: '/subscription/payment' },
+          });
+          return;
+        }
+
+        // Verify user exists in public.users table
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id, firstName, lastName, phone, email')
+          .eq('id', session.user.id)
+          .single();
+
+        if (userError || !userData) {
+          console.warn('⚠️ User not found in database, may need to complete registration');
+          // User has auth account but no database record - this is a partial signup
+          // Try to get details from auth metadata
+          const authUser = session.user;
+          const metadata = authUser.user_metadata || {};
+          
+          setUserDetails({
+            name: metadata.name || metadata.full_name || '',
+            email: authUser.email || '',
+            phone: metadata.phone || '',
+          });
+          
+          // Set error to inform user
+          setError('Your account setup is incomplete. Please complete payment to finish registration.');
+          return;
+        }
+
+        // User exists - populate form with their data
+        const fullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+        setUserDetails({
+          name: fullName,
+          email: userData.email || user.email || '',
+          phone: userData.phone || '',
+        });
+
+      } catch (err) {
+        console.error('Error validating user:', err);
+        // On error, try to use available data
+        setUserDetails((prev) => ({
+          name: prev.name || '',
+          email: prev.email || user?.email || '',
+          phone: prev.phone || '',
+        }));
       }
     };
 
-    fetchUserDetails();
-  }, [isAuthenticated, user]);
+    validateAndFetchUser();
+  }, [authLoading, isAuthenticated, user, navigate, plan, studentType]);
 
   // Redirect if active subscription
   useEffect(() => {

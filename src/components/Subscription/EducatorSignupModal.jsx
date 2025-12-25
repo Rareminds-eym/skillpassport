@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Lock, User, Phone, Eye, EyeOff, AlertCircle, Info, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { signUpWithRole } from '../../services/authService';
-import { createUserRecord, createEducatorProfile, getEducatorByEmail, getSchools, getColleges } from '../../services/educatorAuthService';
+import { signupEducator, signupCollegeEducator, signupUniversityEducator, checkEmail, getSchools, getColleges, getUniversities } from '../../services/userApiService';
+import { supabase } from '../../lib/supabaseClient';
 
 // Cache for email checks to avoid repeated queries
 const emailCheckCache = new Map();
@@ -11,8 +11,8 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Helper function to extract entity type from studentType prop
- * @param {string} studentType - The type from URL (e.g., "college-educator", "school-educator", "educator")
- * @returns {'school' | 'college'} - The entity type, defaults to 'school'
+ * @param {string} studentType - The type from URL (e.g., "college-educator", "school-educator", "university-educator", "educator")
+ * @returns {'school' | 'college' | 'university'} - The entity type, defaults to 'school'
  */
 const parseEntityType = (studentType) => {
     if (!studentType || typeof studentType !== 'string') {
@@ -21,12 +21,32 @@ const parseEntityType = (studentType) => {
     
     const normalized = studentType.toLowerCase().trim();
     
+    if (normalized.includes('university')) {
+        return 'university';
+    }
+    
     if (normalized.includes('college')) {
         return 'college';
     }
     
     // Default to 'school' for 'school-educator', 'educator', or any other value
     return 'school';
+};
+
+/**
+ * Helper to check if entity type is higher education (college or university)
+ */
+const isHigherEducation = (entityType) => entityType === 'college' || entityType === 'university';
+
+/**
+ * Get display label for entity type
+ */
+const getEntityLabel = (entityType) => {
+    switch (entityType) {
+        case 'university': return 'University';
+        case 'college': return 'College';
+        default: return 'School';
+    }
 };
 
 export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onSwitchToLogin, studentType }) {
@@ -53,22 +73,31 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
     const [loadingInstitutions, setLoadingInstitutions] = useState(true);
     const navigate = useNavigate();
 
-    // Fetch institutions (schools or colleges) based on entity type
+    // Fetch institutions (schools, colleges, or universities) based on entity type
     useEffect(() => {
         const fetchInstitutions = async () => {
             setLoadingInstitutions(true);
             
-            let result;
-            if (entityType === 'college') {
-                result = await getColleges();
-            } else {
-                result = await getSchools();
-            }
-            
-            if (result.success) {
-                setInstitutions(result.data);
-            } else {
-                console.error(`Failed to fetch ${entityType}s:`, result.error);
+            try {
+                let result;
+                if (entityType === 'university') {
+                    result = await getUniversities();
+                } else if (entityType === 'college') {
+                    result = await getColleges();
+                } else {
+                    result = await getSchools();
+                }
+                
+                // userApiService returns { success: true, data: [...] }
+                if (result.success && result.data) {
+                    setInstitutions(result.data);
+                } else {
+                    console.error(`Failed to fetch ${entityType}s`);
+                    setInstitutions([]);
+                }
+            } catch (error) {
+                console.error(`Failed to fetch ${entityType}s:`, error);
+                setInstitutions([]);
             }
             
             setLoadingInstitutions(false);
@@ -102,11 +131,13 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
             setCheckingEmail(true);
 
             try {
-                const { exists, data } = await getEducatorByEmail(email);
+                // Use userApiService checkEmail
+                const result = await checkEmail(email);
+                const exists = result.exists;
 
                 const info = exists ? {
                     email: email,
-                    name: `${data?.first_name || ''} ${data?.last_name || ''}`.trim() || 'User',
+                    name: 'User', // Worker doesn't return user details, just existence
                     hasAuthAccount: true
                 } : null;
 
@@ -167,11 +198,10 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
             newErrors.phone = 'Please enter a valid 10-digit phone number';
         }
 
-        // Institution validation - required for both schools and colleges
-        // if (!formData.schoolId || formData.schoolId.trim() === '') {
-        //     const institutionLabel = entityType === 'college' ? 'college' : 'school';
-        //     newErrors.schoolId = `Please select a ${institutionLabel}`;
-        // }
+        // Institution validation - required for higher education educators
+        if (isHigherEducation(entityType) && (!formData.schoolId || formData.schoolId.trim() === '')) {
+            newErrors.schoolId = `Please select a ${entityType}`;
+        }
 
         // Password validation
         if (!formData.password) {
@@ -218,76 +248,79 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
         setLoading(true);
 
         try {
-            // Determine user_role and institution IDs based on entityType
-            // Convert empty strings to null to avoid UUID validation errors
-            const isCollege = entityType === 'college';
+            // Determine if college/university or school educator
+            const isHigherEd = isHigherEducation(entityType);
             const selectedInstitutionId = formData.schoolId?.trim() || null;
-            const institutionData = {
-                user_role: isCollege ? 'college_educator' : 'school_educator',  // Maps to 'role' column in DB
-                schoolId: isCollege ? null : selectedInstitutionId,
-                collegeId: isCollege ? selectedInstitutionId : null
-            };
 
-            // Step 1: Create auth user with role 'educator'
-            const authResult = await signUpWithRole(
-                formData.email,
-                formData.password,
-                {
-                    role: 'educator',
+            // Validate institution selection for higher education educators
+            if (isHigherEd && !selectedInstitutionId) {
+                setErrors({ submit: `Please select a ${entityType}` });
+                setLoading(false);
+                return;
+            }
+
+            let result;
+            
+            if (entityType === 'university') {
+                // Use Cloudflare Worker API for university educator signup
+                result = await signupUniversityEducator({
+                    email: formData.email.toLowerCase(),
+                    password: formData.password,
                     firstName: formData.firstName,
                     lastName: formData.lastName,
-                    phone: formData.phone,
-                    schoolId: institutionData.schoolId,
-                    collegeId: institutionData.collegeId
-                }
-            );
+                    phone: formData.phone || undefined,
+                    universityId: selectedInstitutionId,
+                });
+            } else if (entityType === 'college') {
+                // Use Cloudflare Worker API for college educator signup
+                result = await signupCollegeEducator({
+                    email: formData.email.toLowerCase(),
+                    password: formData.password,
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    phone: formData.phone || undefined,
+                    collegeId: selectedInstitutionId,
+                });
+            } else {
+                // Use Cloudflare Worker API for school educator signup
+                result = await signupEducator({
+                    email: formData.email.toLowerCase(),
+                    password: formData.password,
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    phone: formData.phone || undefined,
+                    schoolId: selectedInstitutionId,
+                });
+            }
 
-            if (!authResult.success) {
-                setErrors({ submit: authResult.error || 'Registration failed. Please try again.' });
+            // Worker returns { success: true, data: { userId, educatorId, email, name, role, ... } }
+            if (!result.success) {
+                setErrors({ submit: result.error || 'Registration failed. Please try again.' });
                 setLoading(false);
                 return;
             }
 
-            // Step 2: Create user record in users table (required for foreign key constraint)
-            const userRecordResult = await createUserRecord(authResult.user.id, {
-                email: formData.email,
-                firstName: formData.firstName,
-                lastName: formData.lastName,
-                user_role: institutionData.user_role
+            // Auto-login the user after successful signup
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+                email: formData.email.toLowerCase(),
+                password: formData.password
             });
-
-            if (!userRecordResult.success) {
-                setErrors({ submit: 'Account created but user setup failed. Please contact support.' });
-                setLoading(false);
-                return;
-            }
-
-            // Step 3: Create educator profile in school_educators table
-            const profileResult = await createEducatorProfile(authResult.user.id, {
-                firstName: formData.firstName,
-                lastName: formData.lastName,
-                email: formData.email,
-                phone: formData.phone,
-                schoolId: institutionData.schoolId,
-                collegeId: institutionData.collegeId,
-                user_role: institutionData.user_role
-            });
-
-            if (!profileResult.success) {
-                setErrors({ submit: 'Account created but profile setup failed. Please contact support.' });
-                setLoading(false);
-                return;
+            
+            if (signInError) {
+                console.warn('Auto-login failed, user may need to login manually:', signInError);
+                // Still proceed - account was created, user can login manually
             }
 
             // Store user data temporarily for payment flow
             const userData = {
-                id: authResult.user.id,
-                name: `${formData.firstName} ${formData.lastName}`,
-                email: formData.email,
+                id: result.data.userId,
+                name: result.data.name || `${formData.firstName} ${formData.lastName}`,
+                email: result.data.email || formData.email,
                 phone: formData.phone,
-                user_role: institutionData.user_role,
-                schoolId: institutionData.schoolId,
-                collegeId: institutionData.collegeId,
+                user_role: result.data.role,
+                schoolId: entityType === 'school' ? selectedInstitutionId : null,
+                collegeId: entityType === 'college' ? selectedInstitutionId : null,
+                universityId: entityType === 'university' ? selectedInstitutionId : null,
                 isNewUser: true
             };
 
@@ -347,10 +380,9 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
                                 <X className="w-6 h-6" />
                             </button>
 
-                            {/* Header */}
                             <div className="p-6 pb-4 border-b border-gray-100">
                                 <h2 className="text-2xl font-bold text-gray-900">
-                                    Create {entityType === 'college' ? 'College' : 'School'} Educator Account
+                                    Create {getEntityLabel(entityType)} Educator Account
                                 </h2>
                                 <p className="text-sm text-gray-600 mt-1">
                                     Sign up to purchase the {selectedPlan?.name} plan
@@ -497,11 +529,11 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
                                     )}
                                 </div>
 
-                                {/* Institution Selection */}
-                                {/* <div>
+                                {/* Institution Selection - Required for higher education educators */}
+                                <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        {entityType === 'college' ? 'Select Your College' : 'Select Your School'} {entityType !== 'college' && '*'}
-                                        {entityType === 'college' && <span className="text-gray-500 text-xs ml-1">(Optional)</span>}
+                                        {isHigherEducation(entityType) ? `Select Your ${getEntityLabel(entityType)} *` : 'Select Your School'}
+                                        {!isHigherEducation(entityType) && <span className="text-gray-500 text-xs ml-1">(Optional)</span>}
                                     </label>
                                     <div className="relative">
                                         <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -531,7 +563,7 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
                                             {errors.schoolId}
                                         </p>
                                     )}
-                                </div> */}
+                                </div>
 
                                 {/* Password Fields - Two columns */}
                                 <div className="grid grid-cols-2 gap-4">

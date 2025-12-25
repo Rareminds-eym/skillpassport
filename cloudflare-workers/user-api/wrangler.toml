@@ -4,3 +4,7 @@ compatibility_date = "2024-01-01"
 
 [vars]
 ENVIRONMENT = "production"
+
+# Note: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, and RESEND_API_KEY
+# should be set as secrets in Cloudflare dashboard for production
+# For local development, create a .dev.vars file with these values
