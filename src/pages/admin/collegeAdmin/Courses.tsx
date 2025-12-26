@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   PlusIcon,
   BookOpenIcon,
@@ -30,6 +30,7 @@ import { supabase } from '../../../lib/supabaseClient';
 
 const CollegeAdminCourses: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuth();
 
   /** ─────────────────────────────────────────────
@@ -140,6 +141,16 @@ const CollegeAdminCourses: React.FC = () => {
 
     loadEducatorAndCourses();
   }, [user, isAuthenticated]);
+
+  /** ─────────────────────────────────────────────
+   *  HANDLE SEARCH PARAMS FROM URL
+   * ───────────────────────────────────────────── */
+  useEffect(() => {
+    const searchParam = searchParams.get('search');
+    if (searchParam) {
+      setSearchQuery(searchParam);
+    }
+  }, [searchParams]);
 
   /** ─────────────────────────────────────────────
    *  FILTER + SORT
