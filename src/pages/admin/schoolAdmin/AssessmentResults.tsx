@@ -16,6 +16,7 @@ import {
 import { supabase } from '../../../lib/supabaseClient';
 import SearchBar from '../../../components/common/SearchBar';
 import { useAuth } from '../../../context/AuthContext';
+import AssessmentReportDrawer from '../../../components/shared/AssessmentReportDrawer';
 
 // Types
 interface AssessmentResult {
@@ -232,7 +233,7 @@ const AssessmentCard = ({
 };
 
 
-// Detail Modal Component
+/* OLD Detail Modal Component - Commented out, replaced with AssessmentReportDrawer
 const AssessmentDetailModal = ({
   result,
   isOpen,
@@ -259,7 +260,6 @@ const AssessmentDetailModal = ({
         />
 
         <div className="relative bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-4xl sm:w-full">
-          {/* Header */}
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -281,263 +281,13 @@ const AssessmentDetailModal = ({
               </button>
             </div>
           </div>
-
-          {/* Content */}
-          <div className="px-6 py-6 max-h-[70vh] overflow-y-auto">
-            {/* Assessment Info */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-xs text-gray-500 mb-1">Stream</p>
-                <p className="font-semibold text-indigo-600">
-                  {result.stream_id?.toUpperCase() || 'N/A'}
-                </p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-xs text-gray-500 mb-1">Status</p>
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    result.status === 'completed'
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-yellow-100 text-yellow-700'
-                  }`}
-                >
-                  {result.status}
-                </span>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-xs text-gray-500 mb-1">Date</p>
-                <p className="font-semibold text-gray-700">
-                  {new Date(result.created_at).toLocaleDateString()}
-                </p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-xs text-gray-500 mb-1">RIASEC Code</p>
-                <p className="font-bold text-indigo-600 tracking-wider">
-                  {result.riasec_code || 'N/A'}
-                </p>
-              </div>
-            </div>
-
-            {/* Scores Section */}
-            <div className="mb-6">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <ChartBarIcon className="h-5 w-5 text-indigo-500" />
-                Assessment Scores
-              </h4>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 text-center">
-                  <p className="text-3xl font-bold text-blue-600">
-                    {result.aptitude_overall !== null
-                      ? `${result.aptitude_overall}%`
-                      : 'N/A'}
-                  </p>
-                  <p className="text-sm text-blue-700 mt-1">Aptitude Score</p>
-                </div>
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 text-center">
-                  <p className="text-3xl font-bold text-purple-600">
-                    {result.knowledge_score !== null
-                      ? `${result.knowledge_score}%`
-                      : 'N/A'}
-                  </p>
-                  <p className="text-sm text-purple-700 mt-1">Knowledge Score</p>
-                </div>
-                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 text-center">
-                  <p className="text-2xl font-bold text-green-600">
-                    {result.employability_readiness || 'N/A'}
-                  </p>
-                  <p className="text-sm text-green-700 mt-1">Employability</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Career Fit Section */}
-            {careerFit.clusters && careerFit.clusters.length > 0 && (
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <AcademicCapIcon className="h-5 w-5 text-indigo-500" />
-                  Top Career Clusters
-                </h4>
-                <div className="space-y-3">
-                  {careerFit.clusters.slice(0, 3).map((cluster: any, idx: number) => (
-                    <div key={idx} className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-gray-900">{cluster.title}</span>
-                        <span className="text-sm font-semibold text-indigo-600">
-                          {cluster.matchScore}% Match
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-indigo-500 h-2 rounded-full"
-                          style={{ width: `${cluster.matchScore}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Skill Gap Section */}
-            {skillGap.priorityA && skillGap.priorityA.length > 0 && (
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <SparklesIcon className="h-5 w-5 text-indigo-500" />
-                  Priority Skills to Develop
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {skillGap.priorityA.slice(0, 6).map((item: any, idx: number) => (
-                    <span
-                      key={idx}
-                      className="px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-sm font-medium"
-                    >
-                      {item.skill || item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Overall Summary */}
-            {gemini.overallSummary && (
-              <div className="bg-slate-800 rounded-xl p-5 text-white mb-6">
-                <h4 className="font-semibold mb-2">Overall Career Direction</h4>
-                <p className="text-gray-300 text-sm leading-relaxed">
-                  {gemini.overallSummary}
-                </p>
-              </div>
-            )}
-
-            {/* Recommended Courses by Type */}
-            {gemini.coursesByType && (
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <AcademicCapIcon className="h-5 w-5 text-indigo-500" />
-                  Recommended Courses
-                </h4>
-
-                {/* Technical Courses */}
-                {gemini.coursesByType.technical &&
-                  gemini.coursesByType.technical.length > 0 && (
-                    <div className="mb-4">
-                      <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                        <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                        Technical Skills ({gemini.coursesByType.technical.length})
-                      </h5>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {gemini.coursesByType.technical
-                          .slice(0, 4)
-                          .map((course: any, idx: number) => (
-                            <div
-                              key={idx}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/school-admin/academics/browse-courses?search=${encodeURIComponent(course.title)}`);
-                              }}
-                              className="bg-blue-50 border border-blue-100 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-blue-200 hover:bg-blue-100 transition-all duration-200"
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-gray-900 text-sm truncate">
-                                    {course.title}
-                                  </p>
-                                  <p className="text-xs text-gray-500 mt-0.5">
-                                    {course.code} • {course.duration}
-                                  </p>
-                                </div>
-                                <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                                  {course.relevance_score}%
-                                </span>
-                              </div>
-                              {course.skills && course.skills.length > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-1">
-                                  {course.skills
-                                    .slice(0, 3)
-                                    .map((skill: string, sIdx: number) => (
-                                      <span
-                                        key={sIdx}
-                                        className="px-1.5 py-0.5 bg-white text-gray-600 text-xs rounded"
-                                      >
-                                        {skill}
-                                      </span>
-                                    ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-
-                {/* Soft Skills Courses */}
-                {gemini.coursesByType.soft && gemini.coursesByType.soft.length > 0 && (
-                  <div>
-                    <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                      Soft Skills ({gemini.coursesByType.soft.length})
-                    </h5>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {gemini.coursesByType.soft
-                        .slice(0, 4)
-                        .map((course: any, idx: number) => (
-                          <div
-                            key={idx}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/school-admin/academics/browse-courses?search=${encodeURIComponent(course.title)}`);
-                            }}
-                            className="bg-green-50 border border-green-100 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-green-200 hover:bg-green-100 transition-all duration-200"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-900 text-sm truncate">
-                                  {course.title}
-                                </p>
-                                <p className="text-xs text-gray-500 mt-0.5">
-                                  {course.code} • {course.duration}
-                                </p>
-                              </div>
-                              <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                                {course.relevance_score}%
-                              </span>
-                            </div>
-                            {course.skills && course.skills.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                {course.skills
-                                  .slice(0, 3)
-                                  .map((skill: string, sIdx: number) => (
-                                    <span
-                                      key={sIdx}
-                                      className="px-1.5 py-0.5 bg-white text-gray-600 text-xs rounded"
-                                    >
-                                      {skill}
-                                    </span>
-                                  ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="bg-gray-50 px-6 py-4 flex justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              Close
-            </button>
-          </div>
+          ... rest of modal content ...
         </div>
       </div>
     </div>
   );
 };
+END OF OLD Detail Modal Component */
 
 
 // Main Component
@@ -1158,11 +908,30 @@ const SchoolAdminAssessmentResults: React.FC = () => {
         </div>
       </div>
 
-      {/* Detail Modal */}
+      {/* OLD Detail Modal - Commented out, replaced with AssessmentReportDrawer
       <AssessmentDetailModal
         result={selectedResult}
         isOpen={showDetailModal}
         navigate={navigate}
+        onClose={() => {
+          setShowDetailModal(false);
+          setSelectedResult(null);
+        }}
+      />
+      */}
+
+      {/* NEW: Assessment Report Drawer - Uses the same design as student assessment result page */}
+      <AssessmentReportDrawer
+        student={selectedResult ? {
+          id: selectedResult.student_id,
+          user_id: selectedResult.student_id,
+          name: selectedResult.student_name,
+          email: selectedResult.student_email,
+          college: selectedResult.school_name,
+          college_name: selectedResult.school_name,
+        } : null}
+        assessmentResult={selectedResult}
+        isOpen={showDetailModal}
         onClose={() => {
           setShowDetailModal(false);
           setSelectedResult(null);
