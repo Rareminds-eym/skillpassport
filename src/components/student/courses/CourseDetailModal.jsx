@@ -1,9 +1,31 @@
-import React from 'react';
-import { X, BookOpen, Clock, Users, Award, CheckCircle, Play } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Award, BookOpen, CheckCircle, Clock, Play, RotateCcw, Users, X } from 'lucide-react';
 
-const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse }) => {
+const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress }) => {
   if (!isOpen || !course) return null;
+
+  // Get progress for this course
+  const progress = enrollmentProgress?.[course.course_id];
+  const hasProgress = progress && progress.progress > 0;
+  const isCompleted = progress && (progress.progress >= 100 || progress.status === 'completed');
+  const isInProgress = hasProgress && !isCompleted;
+
+  // Determine button text and icon
+  const getButtonContent = () => {
+    if (course.status !== 'Active') {
+      return { text: 'Coming Soon', icon: Play, disabled: true };
+    }
+    if (isCompleted) {
+      return { text: 'Review Course', icon: RotateCcw, disabled: false };
+    }
+    if (isInProgress) {
+      return { text: `Continue Learning (${progress.progress}%)`, icon: Play, disabled: false };
+    }
+    return { text: 'Start Learning', icon: Play, disabled: false };
+  };
+
+  const buttonContent = getButtonContent();
+  const ButtonIcon = buttonContent.icon;
 
   return (
     <AnimatePresence>
@@ -38,7 +60,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse }) => {
             </button>
 
             {/* Status Badge */}
-            <div className="absolute top-4 left-4">
+            <div className="absolute top-4 left-4 flex gap-2">
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                 course.status === 'Active'
                   ? 'bg-emerald-500 text-white'
@@ -46,8 +68,41 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse }) => {
               }`}>
                 {course.status}
               </span>
+              {isCompleted && (
+                <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-500 text-white flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  Completed
+                </span>
+              )}
+              {isInProgress && (
+                <span className="px-3 py-1 rounded-full text-sm font-medium bg-amber-500 text-white">
+                  {progress.progress}% Complete
+                </span>
+              )}
             </div>
           </div>
+
+          {/* Progress Bar - Show if enrolled */}
+          {hasProgress && (
+            <div className="px-6 pt-4">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium text-gray-600">Your Progress</span>
+                <span className={`text-sm font-semibold ${isCompleted ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                  {progress.progress}%
+                </span>
+              </div>
+              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  style={{ width: `${progress.progress}%` }}
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    isCompleted 
+                      ? 'bg-gradient-to-r from-emerald-500 to-green-500' 
+                      : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                  }`}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6">
@@ -180,7 +235,11 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">
-                  {course.status === 'Active'
+                  {isCompleted
+                    ? 'You have completed this course'
+                    : isInProgress
+                    ? 'Continue where you left off'
+                    : course.status === 'Active'
                     ? 'Start learning now'
                     : 'Available soon'}
                 </p>
@@ -194,15 +253,19 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse }) => {
                 </button>
                 <button
                   onClick={() => onStartCourse(course)}
-                  disabled={course.status !== 'Active'}
+                  disabled={buttonContent.disabled}
                   className={`px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                    course.status === 'Active'
-                      ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    buttonContent.disabled
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : isCompleted
+                      ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                      : isInProgress
+                      ? 'bg-amber-500 text-white hover:bg-amber-600'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
                   }`}
                 >
-                  <Play className="w-5 h-5" />
-                  {course.status === 'Active' ? 'Start Learning' : 'Coming Soon'}
+                  <ButtonIcon className="w-5 h-5" />
+                  {buttonContent.text}
                 </button>
               </div>
             </div>

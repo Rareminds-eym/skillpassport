@@ -819,33 +819,72 @@ const WeeklyLearningTracker = () => {
       }
 
       const weekDates = getCurrentWeek();
-      const { data: progressData } = await supabase.from('student_course_progress').select('*').eq('student_id', user.id);
-      const { data: enrollments } = await supabase.from('course_enrollments').select('*').eq('student_id', user.id);
+      
+      // Fetch all data in parallel with single queries (no N+1)
+      const [
+        { data: progressData },
+        { data: enrollments }
+      ] = await Promise.all([
+        supabase.from('student_course_progress').select('*').eq('student_id', user.id),
+        supabase.from('course_enrollments').select('*, courses(course_id, title)').eq('student_id', user.id)
+      ]);
 
-      const courseProgress = await Promise.all(
-        (enrollments || []).map(async (enrollment) => {
-          const { data: courseDetails } = await supabase.from('courses').select('course_id, title').eq('course_id', enrollment.course_id).single();
-          const { data: modulesData } = await supabase.from('course_modules').select('module_id').eq('course_id', enrollment.course_id);
+      // Get all course IDs from enrollments
+      const courseIds = (enrollments || []).map(e => e.course_id).filter(Boolean);
+      
+      // Batch fetch all modules for all courses in one query
+      let allModules = [];
+      if (courseIds.length > 0) {
+        const { data: modulesData } = await supabase
+          .from('course_modules')
+          .select('module_id, course_id')
+          .in('course_id', courseIds);
+        allModules = modulesData || [];
+      }
 
-          let totalCount = 0;
-          if (modulesData?.length > 0) {
-            const { count } = await supabase.from('lessons').select('*', { count: 'exact', head: true }).in('module_id', modulesData.map(m => m.module_id));
-            totalCount = count || 0;
-          }
+      // Get all module IDs
+      const moduleIds = allModules.map(m => m.module_id);
+      
+      // Batch fetch lesson counts per module in one query
+      let lessonCounts = {};
+      if (moduleIds.length > 0) {
+        const { data: lessonsData } = await supabase
+          .from('lessons')
+          .select('module_id')
+          .in('module_id', moduleIds);
+        
+        // Count lessons per module
+        (lessonsData || []).forEach(lesson => {
+          lessonCounts[lesson.module_id] = (lessonCounts[lesson.module_id] || 0) + 1;
+        });
+      }
 
-          const { count: completedCount } = await supabase.from('student_course_progress').select('*', { count: 'exact', head: true }).eq('student_id', user.id).eq('course_id', enrollment.course_id).eq('status', 'completed');
-          const completionRate = totalCount > 0 ? Math.round(((completedCount || 0) / totalCount) * 100) : 0;
+      // Calculate course progress using the batched data
+      const courseProgress = (enrollments || []).map(enrollment => {
+        const courseTitle = enrollment.courses?.title || 'Untitled Course';
+        
+        // Get modules for this course
+        const courseModules = allModules.filter(m => m.course_id === enrollment.course_id);
+        
+        // Calculate total lessons for this course
+        const totalCount = courseModules.reduce((sum, m) => sum + (lessonCounts[m.module_id] || 0), 0);
+        
+        // Count completed lessons for this course from progressData
+        const completedCount = (progressData || []).filter(
+          p => p.course_id === enrollment.course_id && p.status === 'completed'
+        ).length;
+        
+        const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-          return {
-            courseId: enrollment.course_id,
-            courseName: courseDetails?.title || 'Untitled Course',
-            completionRate,
-            completedLessons: completedCount || 0,
-            totalLessons: totalCount,
-            startDate: enrollment.enrolled_at,
-          };
-        })
-      );
+        return {
+          courseId: enrollment.course_id,
+          courseName: courseTitle,
+          completionRate,
+          completedLessons: completedCount,
+          totalLessons: totalCount,
+          startDate: enrollment.enrolled_at,
+        };
+      });
 
       // Only update state if component is still mounted
       if (!isMountedRef.current) {
