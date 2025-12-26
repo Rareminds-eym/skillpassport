@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, Phone, Eye, EyeOff, AlertCircle, Info, GraduationCap } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertCircle, Eye, EyeOff, GraduationCap, Info, Lock, Mail, Phone, User, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signUpWithRole } from '../../services/authService';
 import { supabase } from '../../lib/supabaseClient';
-import { getModalContent, parseStudentType } from '../../utils/getEntityContent';
+import { signUpWithRole } from '../../services/authService';
 import { completeStudentRegistration, getAllColleges, getAllSchools } from '../../services/studentService';
+import { getModalContent, parseStudentType } from '../../utils/getEntityContent';
 
 // Cache for email checks to avoid repeated queries
 const emailCheckCache = new Map();
@@ -139,14 +139,14 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
         if (exists) {
           supabase
             .from('students')
-            .select('email, name, profile')
+            .select('email, name')
             .eq('email', email)
             .maybeSingle()
             .then(({ data }) => {
               if (data) {
                 const fullInfo = {
                   email: email,
-                  name: data?.name || data?.profile?.name || 'User',
+                  name: data?.name || 'User',
                   hasAuthAccount: true
                 };
                 setExistingUserInfo(fullInfo);
@@ -437,10 +437,10 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
                     />
                   </div>
                   {checkingEmail && (
-                    <p className="mt-1 text-xs text-blue-600 flex items-center gap-1">
+                    <div className="mt-1 text-xs text-blue-600 flex items-center gap-1">
                       <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
                       Checking email...
-                    </p>
+                    </div>
                   )}
                   {emailExists && existingUserInfo && !checkingEmail && (
                     <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -532,10 +532,10 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
                       </select>
                     </div>
                     {loadingColleges && (
-                      <p className="mt-1 text-xs text-blue-600 flex items-center gap-1">
+                      <div className="mt-1 text-xs text-blue-600 flex items-center gap-1">
                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
                         Loading colleges...
-                      </p>
+                      </div>
                     )}
                     {!loadingColleges && colleges.length === 0 && (
                       <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
@@ -585,10 +585,10 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
                       </select>
                     </div>
                     {loadingSchools && (
-                      <p className="mt-1 text-xs text-blue-600 flex items-center gap-1">
+                      <div className="mt-1 text-xs text-blue-600 flex items-center gap-1">
                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
                         Loading schools...
-                      </p>
+                      </div>
                     )}
                     {!loadingSchools && schools.length === 0 && (
                       <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
