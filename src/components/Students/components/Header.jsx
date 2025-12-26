@@ -127,7 +127,7 @@ const Header = ({ activeTab, setActiveTab }) => {
   ];
 
   return (
-    <header className={`bg-white border-b border-gray-200 shadow-sm py-2 px-1 sm:px-2 lg:px-4 sticky top-0 z-50 transition-transform duration-300 ease-in-out ${
+    <header className={`bg-white border-b border-gray-200 shadow-sm py-2 px-1 sm:px-2 lg:px-4 sticky top-0 z-[100] transition-transform duration-300 ease-in-out ${
       scrolled ? 'header-hidden' : 'header-visible'
     }`}>
       <div className="flex items-center justify-between w-full max-w-7xl mx-auto">

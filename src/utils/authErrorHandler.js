@@ -201,15 +201,33 @@ export const withRetry = (fn, options = {}) => {
 // RESPONSE BUILDERS
 // ============================================================================
 
+// User-friendly messages for each error code
+const ERROR_MESSAGES = {
+  [AUTH_ERROR_CODES.INVALID_CREDENTIALS]: 'Invalid email or password. Please check your credentials and try again.',
+  [AUTH_ERROR_CODES.USER_NOT_FOUND]: 'No account found with this email. Please sign up first.',
+  [AUTH_ERROR_CODES.EMAIL_NOT_CONFIRMED]: 'Please verify your email address before signing in.',
+  [AUTH_ERROR_CODES.PASSWORD_TOO_WEAK]: 'Password is too weak. Please use at least 8 characters with uppercase, lowercase, and numbers.',
+  [AUTH_ERROR_CODES.INVALID_INPUT_FORMAT]: 'Please check your input and try again.',
+  [AUTH_ERROR_CODES.RATE_LIMITED]: 'Too many requests. Please wait a moment and try again.',
+  [AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS]: 'Too many failed attempts. Please try again later.',
+  [AUTH_ERROR_CODES.ACCOUNT_LOCKED]: 'Your account has been locked. Please contact support.',
+  [AUTH_ERROR_CODES.NETWORK_ERROR]: 'Network error. Please check your connection and try again.',
+  [AUTH_ERROR_CODES.DATABASE_ERROR]: 'A database error occurred. Please try again later.',
+  [AUTH_ERROR_CODES.UNEXPECTED_ERROR]: 'An unexpected error occurred. Please try again.',
+  [AUTH_ERROR_CODES.SESSION_EXPIRED]: 'Your session has expired. Please sign in again.',
+  [AUTH_ERROR_CODES.UNAUTHORIZED]: 'You are not authorized to perform this action.',
+};
+
 export const buildSuccessResponse = (data, meta = {}) => {
   return { success: true, ...data, ...meta };
 };
 
 export const buildErrorResponse = (code, details = {}) => {
+  const defaultMessage = ERROR_MESSAGES[code] || 'An authentication error occurred';
   return {
     success: false,
     error: code,
-    message: details.customMessage || 'An authentication error occurred',
+    message: details.customMessage || defaultMessage,
     details
   };
 };

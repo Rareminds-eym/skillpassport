@@ -112,37 +112,34 @@ export const AuthProvider = ({ children }) => {
           setUser(userData);
           localStorage.setItem('user', JSON.stringify(userData));
         } else {
-          // No session - check for demo users in localStorage
+          // No session - clear any stale user data
+          // This prevents showing "authenticated" state when user doesn't exist in Supabase
           const storedUser = localStorage.getItem('user');
           if (storedUser) {
             try {
               const parsedUser = JSON.parse(storedUser);
-              // Allow demo users (they don't have Supabase sessions)
+              // Only allow demo users without a session
               if (parsedUser.isDemoMode || parsedUser.id?.includes('-001')) {
                 setUser(parsedUser);
               } else {
-                // Real user but no session - try to refresh before clearing
-                const refreshedSession = await attemptSessionRefresh();
-                if (refreshedSession?.user && mounted) {
-                  const userData = restoreUserFromStorage(refreshedSession.user);
-                  setUser(userData);
-                  localStorage.setItem('user', JSON.stringify(userData));
-                } else if (mounted) {
-                  // Refresh failed - clear user
-                  setUser(null);
-                  localStorage.removeItem('user');
-                  localStorage.removeItem('userEmail');
-                }
+                // Real user but no session - clear stale data
+                console.warn('⚠️ Clearing stale user data - no valid Supabase session');
+                setUser(null);
+                localStorage.removeItem('user');
+                localStorage.removeItem('userEmail');
+                localStorage.removeItem('pendingUser');
               }
             } catch (e) {
               console.warn('Failed to parse stored user:', e);
               setUser(null);
               localStorage.removeItem('user');
+              localStorage.removeItem('pendingUser');
             }
           } else {
             setUser(null);
             localStorage.removeItem('user');
             localStorage.removeItem('userEmail');
+            localStorage.removeItem('pendingUser');
           }
         }
       } catch (err) {

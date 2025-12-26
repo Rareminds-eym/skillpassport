@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import {
     ArrowDownAZ,
     BookOpen,
+    CheckCircle,
     ChevronLeft,
     ChevronRight,
     Clock,
@@ -45,6 +46,7 @@ const Courses = () => {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0); // Total courses count for pagination
   const coursesPerPage = 6;
   const [activeTab, setActiveTab] = useState('courses'); // 'courses' or 'progress'
   const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
@@ -66,13 +68,13 @@ const Courses = () => {
     }
   }, []);
 
-  // Fetch courses when search, filter, or sort changes
+  // Fetch courses when search, filter, sort, or page changes
   useEffect(() => {
     // Skip initial load (handled by the effect above)
     if (hasFetchedCoursesRef.current) {
       fetchCourses();
     }
-  }, [debouncedSearch, filterStatus, sortBy, advancedFilters]);
+  }, [debouncedSearch, filterStatus, sortBy, advancedFilters, currentPage]);
 
   // Separate effect for enrollments - only when user email changes
   useEffect(() => {
@@ -94,17 +96,20 @@ const Courses = () => {
     }
     
     isFetchingRef.current = true;
-    const startTime = Date.now();
     const isFirstLoad = initialLoad;
 
     try {
       setLoading(true);
 
-      // Fetch courses with status Active or Upcoming (students shouldn't see Drafts)
+      // Calculate pagination range
+      const from = (currentPage - 1) * coursesPerPage;
+      const to = from + coursesPerPage - 1;
+
+      // Build base query for courses with status Active or Upcoming
       // Also exclude deleted courses
       let query = supabase
         .from('courses')
-        .select('*')
+        .select('*', { count: 'exact' }) // Get total count for pagination
         .in('status', ['Active', 'Upcoming'])
         .is('deleted_at', null);
 
@@ -167,39 +172,30 @@ const Courses = () => {
           break;
       }
 
-      const { data, error } = await query;
+      // Apply pagination range
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
 
-      console.log('📚 Fetched courses for students:', data?.length || 0);
+      console.log(`📚 Fetched courses for page ${currentPage}:`, data?.length || 0, 'of', count, 'total');
       setCourses(data || []);
+      setTotalCount(count || 0);
 
-      // Only show 5-second loader on initial page load, not on search/filter
       if (isFirstLoad) {
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, 5000 - elapsedTime);
-
-        if (remainingTime > 0) {
-          await new Promise(resolve => setTimeout(resolve, remainingTime));
-        }
         setInitialLoad(false);
       }
     } catch (error) {
       console.error('Error fetching courses:', error);
-      // Still wait for 5 seconds on initial load even on error
       if (isFirstLoad) {
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, 5000 - elapsedTime);
-        if (remainingTime > 0) {
-          await new Promise(resolve => setTimeout(resolve, remainingTime));
-        }
         setInitialLoad(false);
       }
     } finally {
       setLoading(false);
       isFetchingRef.current = false;
     }
-  }, [debouncedSearch, filterStatus, sortBy, initialLoad, advancedFilters]);
+  }, [debouncedSearch, filterStatus, sortBy, initialLoad, advancedFilters, currentPage]);
 
   const fetchEnrollments = useCallback(async () => {
     const email = userEmailRef.current;
@@ -236,6 +232,18 @@ const Courses = () => {
     return progress && progress.progress > 0 && progress.progress < 100;
   };
 
+  // Check if course is completed
+  const isCourseCompleted = (courseId) => {
+    const progress = enrollmentProgress[courseId];
+    return progress && (progress.progress >= 100 || progress.status === 'completed');
+  };
+
+  // Get course progress percentage
+  const getCourseProgress = (courseId) => {
+    const progress = enrollmentProgress[courseId];
+    return progress?.progress || 0;
+  };
+
   // Check if a course is new (posted within last 24 hours)
   const isNewCourse = (createdAt) => {
     if (!createdAt) return false;
@@ -245,7 +253,7 @@ const Courses = () => {
     return hoursDifference <= 24;
   };
 
-  // Reset to page 1 when search or filter changes
+  // Reset to page 1 when search or filter changes (but not when page changes)
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearch, filterStatus, sortBy, advancedFilters]);
@@ -266,14 +274,11 @@ const Courses = () => {
     );
   };
 
-  // No need for client-side filtering anymore - data comes filtered from DB
-  const filteredCourses = courses;
+  // Courses are already paginated from the server
+  const currentCourses = courses;
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredCourses.length / coursesPerPage);
-  const indexOfLastCourse = currentPage * coursesPerPage;
-  const indexOfFirstCourse = indexOfLastCourse - coursesPerPage;
-  const currentCourses = filteredCourses.slice(indexOfFirstCourse, indexOfLastCourse);
+  // Pagination logic - use totalCount from server
+  const totalPages = Math.ceil(totalCount / coursesPerPage);
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -344,6 +349,7 @@ const Courses = () => {
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
         onStartCourse={handleStartCourse}
+        enrollmentProgress={enrollmentProgress}
       />
       <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
@@ -552,7 +558,7 @@ const Courses = () => {
               {/* Results Count */}
               {!loading && (
                 <div className="text-sm text-gray-600">
-                  <span className="font-medium">{filteredCourses.length}</span> course{filteredCourses.length !== 1 ? 's' : ''} found
+                  <span className="font-medium">{totalCount}</span> course{totalCount !== 1 ? 's' : ''} found
                   {(searchTerm || filterStatus !== 'all' || hasActiveAdvancedFilters()) && (
                     <span className="ml-1">matching your criteria</span>
                   )}
@@ -601,7 +607,7 @@ const Courses = () => {
         )}
 
         {/* Empty State */}
-        {!loading && !initialLoad && activeTab === 'courses' && filteredCourses.length === 0 && (
+        {!loading && !initialLoad && activeTab === 'courses' && totalCount === 0 && (
           <Card className="text-center py-12 shadow-sm border border-gray-200">
             <CardContent>
               <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -673,7 +679,17 @@ const Courses = () => {
                     )}
                     {/* Badges */}
                     <div className="absolute top-2 left-2 flex gap-2">
-                      {hasResumableProgress(course.course_id) ? (
+                      {isCourseCompleted(course.course_id) ? (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                        >
+                          <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 shadow-lg font-semibold px-3 py-1 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            Completed
+                          </Badge>
+                        </motion.div>
+                      ) : hasResumableProgress(course.course_id) ? (
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
@@ -688,7 +704,7 @@ const Courses = () => {
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
                         >
-                          <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                          <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
                             Enrolled
                           </Badge>
                         </motion.div>
@@ -741,6 +757,30 @@ const Courses = () => {
                         <div>
                           <p className="text-xs text-gray-500">Instructor</p>
                           <p className="text-sm font-medium text-gray-900">{course.educator_name}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Progress Bar - Show for enrolled courses */}
+                    {enrolledCourseIds.has(course.course_id) && (
+                      <div className="pt-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-gray-600">Progress</span>
+                          <span className={`text-xs font-semibold ${isCourseCompleted(course.course_id) ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                            {getCourseProgress(course.course_id)}%
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${getCourseProgress(course.course_id)}%` }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
+                            className={`h-full rounded-full ${
+                              isCourseCompleted(course.course_id) 
+                                ? 'bg-gradient-to-r from-emerald-500 to-green-500' 
+                                : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                            }`}
+                          />
                         </div>
                       </div>
                     )}
@@ -821,13 +861,18 @@ const Courses = () => {
                         )}
                         {/* Badges */}
                         <div className="absolute top-2 left-2 flex gap-2">
-                          {hasResumableProgress(course.course_id) ? (
+                          {isCourseCompleted(course.course_id) ? (
+                            <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 shadow-lg font-semibold px-3 py-1 flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" />
+                              Completed
+                            </Badge>
+                          ) : hasResumableProgress(course.course_id) ? (
                             <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-lg font-semibold px-3 py-1 flex items-center gap-1">
                               <Play className="w-3 h-3" />
                               Resume ({enrollmentProgress[course.course_id]?.progress}%)
                             </Badge>
                           ) : enrolledCourseIds.has(course.course_id) && (
-                            <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                            <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
                               Enrolled
                             </Badge>
                           )}
@@ -874,6 +919,28 @@ const Courses = () => {
                           )}
                         </div>
 
+                        {/* Progress Bar - Show for enrolled courses */}
+                        {enrolledCourseIds.has(course.course_id) && (
+                          <div className="mb-4 max-w-md">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-medium text-gray-600">Progress</span>
+                              <span className={`text-xs font-semibold ${isCourseCompleted(course.course_id) ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                                {getCourseProgress(course.course_id)}%
+                              </span>
+                            </div>
+                            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                style={{ width: `${getCourseProgress(course.course_id)}%` }}
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  isCourseCompleted(course.course_id) 
+                                    ? 'bg-gradient-to-r from-emerald-500 to-green-500' 
+                                    : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                                }`}
+                              />
+                            </div>
+                          </div>
+                        )}
+
                         <Button
                           onClick={() => handleCourseClick(course)}
                           className="bg-indigo-600 hover:bg-indigo-700 text-white"
@@ -890,7 +957,7 @@ const Courses = () => {
         )}
 
         {/* Pagination */}
-        {!loading && !initialLoad && activeTab === 'courses' && filteredCourses.length > 0 && totalPages > 1 && (
+        {!loading && !initialLoad && activeTab === 'courses' && totalCount > 0 && totalPages > 1 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

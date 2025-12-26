@@ -3,15 +3,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import EducatorSignupModal from '../EducatorSignupModal';
 
-// Mock the services
-vi.mock('../../../services/authService', () => ({
-    signUpWithRole: vi.fn()
-}));
-
-vi.mock('../../../services/educatorAuthService', () => ({
-    createUserRecord: vi.fn(),
-    createEducatorProfile: vi.fn(),
-    getEducatorByEmail: vi.fn().mockResolvedValue({ exists: false, data: null }),
+// Mock the userApiService (new service)
+vi.mock('../../../services/userApiService', () => ({
+    signupEducator: vi.fn(),
+    signupCollegeEducator: vi.fn(),
+    checkEmail: vi.fn().mockResolvedValue({ success: true, exists: false }),
     getSchools: vi.fn().mockResolvedValue({ 
         success: true, 
         data: [

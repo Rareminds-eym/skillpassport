@@ -1,13 +1,21 @@
 /**
- * Razorpay Payment Service
- * Handles Razorpay payment integration for subscription plans
+ * Razorpay Service
+ * 
+ * Handles Razorpay browser SDK integration for payment checkout.
+ * This service MUST run in the browser (loads Razorpay script, opens checkout modal).
+ * 
+ * BROWSER-ONLY FUNCTIONS:
+ * - loadRazorpayScript()      - Load Razorpay checkout.js
+ * - initiateRazorpayPayment() - Open Razorpay checkout modal
+ * 
+ * API CALLS (via paymentsApiService → Worker):
+ * - createRazorpayOrder()     - Create order via Worker
+ * - verifyPayment()           - Verify payment via Worker
  */
 
 import { supabase } from '../../lib/supabaseClient';
 import { getRazorpayKeyId, getRazorpayKeyMode } from '../../config/payment';
 import paymentsApiService from '../paymentsApiService';
-
-const DEMO_MODE = false; // Production mode with Cloudflare Workers
 
 /**
  * Load Razorpay checkout script dynamically
@@ -30,15 +38,15 @@ export const loadRazorpayScript = () => {
 };
 
 /**
- * Create Razorpay order on backend
+ * Create Razorpay order via Cloudflare Worker
  * @param {Object} orderData - Order details
- * @returns {Promise<Object>} Order details from backend
+ * @returns {Promise<Object>} Order details from Razorpay
  */
 export const createRazorpayOrder = async (orderData) => {
   try {
-    console.log('create-razorpay-order', orderData);
+    console.log('📦 Creating Razorpay order:', orderData);
 
-    // Get auth token for authenticated requests
+    // Get auth token
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
@@ -46,128 +54,58 @@ export const createRazorpayOrder = async (orderData) => {
       throw new Error('No authentication token available');
     }
 
-    // Call Cloudflare Worker via paymentsApiService
+    // Call Worker via paymentsApiService
     const result = await paymentsApiService.createOrder({
       amount: orderData.amount,
       currency: orderData.currency,
       planId: orderData.planId,
-      userId: orderData.userId, // Ensure userId is passed if needed, though createOrder might extract from token
-      metadata: {
-        planName: orderData.planName,
-        userEmail: orderData.userEmail,
-        userName: orderData.userName
-      }
+      planName: orderData.planName,
+      userEmail: orderData.userEmail,
+      userName: orderData.userName,
     }, token);
 
-    console.log('✅ Order created successfully:', result);
+    console.log('✅ Order created:', result.id);
     return result;
   } catch (error) {
-    console.error('❌ Error creating Razorpay order:', error);
+    console.error('❌ Error creating order:', error);
     throw error;
   }
 };
 
 /**
- * Verify payment signature on backend
+ * Verify payment via Cloudflare Worker
+ * Worker handles: signature verification + subscription creation + transaction logging
  * @param {Object} paymentData - Payment verification data
- * @returns {Promise<Object>} Verification result
+ * @returns {Promise<Object>} Verification result with subscription
  */
 export const verifyPayment = async (paymentData) => {
   try {
-    // Get auth token for authenticated requests
+    // Get auth token
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
-    // Call Cloudflare Worker via paymentsApiService
+    // Call Worker via paymentsApiService
     return await paymentsApiService.verifyPayment({
       razorpay_order_id: paymentData.razorpay_order_id,
       razorpay_payment_id: paymentData.razorpay_payment_id,
       razorpay_signature: paymentData.razorpay_signature,
-      orderId: paymentData.orderId // Ensure consistent naming
+      plan: paymentData.plan,
     }, token);
   } catch (error) {
-    console.error('Error verifying payment:', error);
+    console.error('❌ Error verifying payment:', error);
     throw error;
   }
 };
 
-// ... (saveSubscriptionToDatabase and savePaymentTransaction remain unchanged) ...
-
 /**
- * Deactivate subscription (one-time payment system)
- * @param {string} subscriptionId - Database subscription ID (UUID)
- * @param {string} cancellationReason - Reason for cancellation
- * @param {string} cancellationNote - Additional note (optional)
- * @returns {Promise<Object>} Cancellation result
- */
-export const deactivateSubscription = async (subscriptionId, cancellationReason = 'other', cancellationNote = '') => {
-  try {
-    // Get auth token for authenticated requests
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-
-    // Call Cloudflare Worker via paymentsApiService
-    // Note: paymentsApiService.deactivateSubscription only takes subscriptionId currently.
-    // We might need to update paymentsApiService to accept reason/note if the worker supports it.
-    // For now, assuming standard deactivation.
-    return await paymentsApiService.deactivateSubscription(subscriptionId, token);
-  } catch (error) {
-    console.error('Error deactivating subscription:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-};
-
-/**
- * Pause Razorpay subscription
- * @param {string} razorpaySubscriptionId - Razorpay subscription ID
- * @param {number} pauseMonths - Number of months to pause (1-3)
- * @returns {Promise<Object>} Pause result
- */
-export const pauseRazorpaySubscription = async (razorpaySubscriptionId, pauseMonths = 1) => {
-  try {
-    // Get auth token for authenticated requests
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-
-    // Note: Razorpay pause API may need to be implemented as a separate edge function
-    // For now, using the cancel-subscription endpoint with pause logic
-    console.log('⏸️ Pausing subscription for', pauseMonths, 'month(s)');
-
-    // You may need to implement a separate pause-subscription edge function
-    // This is a placeholder that needs the actual Razorpay pause API integration
-    return {
-      success: true,
-      message: `Subscription pause feature needs Razorpay pause API integration`,
-      subscription_id: razorpaySubscriptionId,
-      status: 'paused',
-      pause_months: pauseMonths
-    };
-  } catch (error) {
-    console.error('Error pausing Razorpay subscription:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-};
-
-/**
- * Initialize Razorpay payment with redirect flow
+ * Initialize Razorpay payment checkout
+ * Opens Razorpay modal and handles payment flow with redirect
+ * 
  * @param {Object} params - Payment parameters
  * @param {Object} params.plan - Selected subscription plan
  * @param {Object} params.userDetails - User information
- * @param {Function} params.onSuccess - Success callback (optional, for backward compatibility)
- * @param {Function} params.onFailure - Failure callback (optional, for backward compatibility)
  */
-export const initiateRazorpayPayment = async ({
-  plan,
-  userDetails,
-  onSuccess,
-  onFailure,
-}) => {
+export const initiateRazorpayPayment = async ({ plan, userDetails }) => {
   try {
     // Store plan details in localStorage for success page
     localStorage.setItem('payment_plan_details', JSON.stringify({
@@ -181,9 +119,9 @@ export const initiateRazorpayPayment = async ({
       throw new Error('Failed to load Razorpay SDK');
     }
 
-    // Create order on backend
+    // Create order via Worker
     const orderData = await createRazorpayOrder({
-      amount: parseFloat(plan.price) * 100, // Amount in paise (₹999 = 99900 paise)
+      amount: parseFloat(plan.price) * 100, // Convert to paise
       currency: 'INR',
       planId: plan.id,
       planName: plan.name,
@@ -194,11 +132,11 @@ export const initiateRazorpayPayment = async ({
     // Get current origin for redirect URLs
     const origin = window.location.origin;
 
-    // Get the appropriate Razorpay key based on environment and route
+    // Get Razorpay key
     const razorpayKeyId = getRazorpayKeyId();
-    console.log(`💳 Razorpay Payment: Using ${getRazorpayKeyMode()} key`);
+    console.log(`💳 Using ${getRazorpayKeyMode()} Razorpay key`);
 
-    // Razorpay checkout options with redirect
+    // Razorpay checkout options
     const options = {
       key: razorpayKeyId,
       amount: orderData.amount,
@@ -216,25 +154,23 @@ export const initiateRazorpayPayment = async ({
         plan_name: plan.name,
       },
       theme: {
-        color: '#2563eb', // Blue color from your design
+        color: '#2563eb',
       },
-      handler: async function (response) {
-        // Redirect to success page with payment parameters
+      handler: function (response) {
+        // Redirect to success page with payment params
         const successUrl = new URL('/subscription/payment/success', origin);
         successUrl.searchParams.set('razorpay_payment_id', response.razorpay_payment_id);
         successUrl.searchParams.set('razorpay_order_id', response.razorpay_order_id);
         successUrl.searchParams.set('razorpay_signature', response.razorpay_signature);
-
         window.location.href = successUrl.toString();
       },
       modal: {
         ondismiss: function () {
-          // Redirect to failure page
+          // Redirect to failure page on cancel
           const failureUrl = new URL('/subscription/payment/failure', origin);
           failureUrl.searchParams.set('razorpay_order_id', orderData.id);
           failureUrl.searchParams.set('error_code', 'PAYMENT_CANCELLED');
           failureUrl.searchParams.set('error_description', 'Payment was cancelled by user');
-
           window.location.href = failureUrl.toString();
         },
       },
@@ -251,20 +187,18 @@ export const initiateRazorpayPayment = async ({
       failureUrl.searchParams.set('error_code', response.error.code || 'PAYMENT_FAILED');
       failureUrl.searchParams.set('error_description', response.error.description || 'Payment failed');
       failureUrl.searchParams.set('error_reason', response.error.reason || '');
-
       window.location.href = failureUrl.toString();
     });
 
     razorpay.open();
   } catch (error) {
-    console.error('Error initiating payment:', error);
+    console.error('❌ Error initiating payment:', error);
 
     // Redirect to failure page on error
     const origin = window.location.origin;
     const failureUrl = new URL('/subscription/payment/failure', origin);
     failureUrl.searchParams.set('error_code', 'INITIALIZATION_ERROR');
     failureUrl.searchParams.set('error_description', error.message || 'Failed to initialize payment');
-
     window.location.href = failureUrl.toString();
   }
 };
