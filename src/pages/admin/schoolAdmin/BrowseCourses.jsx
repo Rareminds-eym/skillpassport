@@ -8,14 +8,10 @@ import {
   BookOpen,
   Clock,
   Users,
-  Star,
-  Filter,
   Grid3x3,
   List,
-  Play,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
   ArrowDownAZ
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
@@ -35,8 +31,6 @@ const BrowseCourses = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const coursesPerPage = 6;
-  const [activeTab, setActiveTab] = useState('courses'); // 'courses' or 'progress'
-
   // Handle start course - navigate to course player
   const handleStartCourse = (course) => {
     setShowDetailModal(false);
@@ -255,10 +249,10 @@ const BrowseCourses = () => {
                   </div>
                   <div className="flex-1">
                     <h1 className="font-bold text-2xl text-indigo-600">
-                      Browse & Purchase Courses
+                      Browse Courses
                     </h1>
                     <p className="text-sm text-gray-600 mt-1">
-                      Explore our course marketplace and purchase courses for your school
+                      Explore our course library and access courses for your school
                     </p>
                   </div>
                 </div>
@@ -379,25 +373,24 @@ const BrowseCourses = () => {
                         whileHover={{ scale: 1.05 }}
                         transition={{ duration: 0.3 }}
                       />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <BookOpen className="h-16 w-16 text-white opacity-90" />
-                        </div>
-                      )}
-                      {/* NEW Badge */}
-                      {isNewCourse(course.created_at) && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="absolute top-2 left-2"
-                        >
-                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                            NEW
-                          </Badge>
-                        </motion.div>
-                      )}
-                    </div>
-                  )}
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-400 to-purple-500">
+                        <BookOpen className="h-16 w-16 text-white opacity-90" />
+                      </div>
+                    )}
+                    {/* NEW Badge */}
+                    {isNewCourse(course.created_at) && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute top-2 left-2"
+                      >
+                        <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                          NEW
+                        </Badge>
+                      </motion.div>
+                    )}
+                  </div>
 
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between mb-2">
@@ -405,18 +398,13 @@ const BrowseCourses = () => {
                         <Badge className={`${getStatusColor(course.status)} border`}>
                           {course.status}
                         </Badge>
-                        {!course.thumbnail && isNewCourse(course.created_at) && (
-                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 font-semibold">
-                            NEW
-                          </Badge>
-                        )}
                       </div>
                       <span className="text-xs font-medium text-gray-500">{course.code}</span>
                     </div>
                     <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
                   </CardHeader>
 
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 flex-grow flex flex-col">
                     <p className="text-sm text-gray-600 line-clamp-3">{course.description}</p>
 
                     <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -472,21 +460,20 @@ const BrowseCourses = () => {
                             alt={course.title}
                             className="w-full h-full object-cover"
                           />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <BookOpen className="h-12 w-12 text-white opacity-90" />
-                            </div>
-                          )}
-                          {/* NEW Badge */}
-                          {isNewCourse(course.created_at) && (
-                            <div className="absolute top-2 left-2">
-                              <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                                NEW
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-400 to-purple-500">
+                            <BookOpen className="h-12 w-12 text-white opacity-90" />
+                          </div>
+                        )}
+                        {/* NEW Badge */}
+                        {isNewCourse(course.created_at) && (
+                          <div className="absolute top-2 left-2">
+                            <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                              NEW
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
 
                       {/* Course Info */}
                       <div className="flex-1">
@@ -497,11 +484,6 @@ const BrowseCourses = () => {
                               <Badge className={`${getStatusColor(course.status)} border`}>
                                 {course.status}
                               </Badge>
-                              {!course.thumbnail && isNewCourse(course.created_at) && (
-                                <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 font-semibold">
-                                  NEW
-                                </Badge>
-                              )}
                             </div>
                             <p className="text-sm text-gray-500">Course Code: {course.code}</p>
                           </div>
@@ -509,7 +491,7 @@ const BrowseCourses = () => {
 
                         <p className="text-gray-600 mb-4 line-clamp-2">{course.description}</p>
 
-                        <div className="flex items-center gap-6 text-sm text-gray-600 mb-4">
+                        <div className="flex items-center gap-6 text-sm text-gray-600">
                           <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4" />
                             <span>{course.duration}</span>
@@ -527,13 +509,6 @@ const BrowseCourses = () => {
                             </div>
                           )}
                         </div>
-
-                        <Button
-                          onClick={() => handleCourseClick(course)}
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                        >
-                          View Course Details
-                        </Button>
                       </div>
                     </div>
                   </CardContent>

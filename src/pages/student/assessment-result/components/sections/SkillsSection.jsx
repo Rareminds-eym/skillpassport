@@ -33,11 +33,11 @@ const SkillGapCourseCard = ({ course, onClick }) => {
                 // Navigate to educator browse courses marketplace with search
                 navigate(`/educator/browse-courses?search=${encodeURIComponent(title)}`);
             } else if (currentPath.includes('/school-admin/')) {
-                // Navigate to school admin courses page with search
-                navigate(`/school-admin/academics/courses?search=${encodeURIComponent(title)}`);
+                // Navigate to school admin browse courses page with search
+                navigate(`/school-admin/academics/browse-courses?search=${encodeURIComponent(title)}`);
             } else if (currentPath.includes('/college-admin/')) {
-                // Navigate to college admin courses page with search
-                navigate(`/college-admin/academics/courses?search=${encodeURIComponent(title)}`);
+                // Navigate to college admin browse courses page with search
+                navigate(`/college-admin/academics/browse-courses?search=${encodeURIComponent(title)}`);
             } else if (currentPath.includes('/university-admin/')) {
                 // Navigate to university admin browse courses marketplace with search
                 navigate(`/university-admin/browse-courses?search=${encodeURIComponent(title)}`);
