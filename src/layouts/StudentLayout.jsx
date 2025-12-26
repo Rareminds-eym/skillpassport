@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, useParams, useLocation } from 'react-router-dom';
+import { Outlet, useParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
 import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
