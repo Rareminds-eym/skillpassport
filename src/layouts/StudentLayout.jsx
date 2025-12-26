@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, useParams, useLocation } from 'react-router-dom';
+import { Outlet, useParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
 import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
@@ -51,10 +51,10 @@ const StudentLayout = () => {
     const tabFromPath = getActiveTabFromPath(location.pathname);
     setActiveTab(tabFromPath);
   }, [location.pathname]);
-  
+
   // Check if viewing someone else's profile
   const isViewingOthersProfile = location.pathname.includes('/student/profile/');
-  
+
   const [userData, setUserData] = useState({
     education: educationData,
     training: trainingData,
@@ -82,13 +82,13 @@ const StudentLayout = () => {
 
   // Check if current page is dashboard
   const isDashboardPage = location.pathname === '/student/dashboard' || location.pathname === '/student' || location.pathname === '/student/';
-  
+
   // Check if current page is Career AI
   const isCareerAIPage = location.pathname === '/student/career-ai' || location.pathname.includes('/career-ai');
-  
+
   // Check if current page is Assessment (should be full-screen without padding)
   const isAssessmentPage = location.pathname.includes('/assessment/platform') || location.pathname.includes('/assessment/start') || location.pathname.includes('/assessment/result');
-  
+
   // Assessment result page needs scrolling, unlike test/platform pages
   const isAssessmentResultPage = location.pathname.includes('/assessment/result');
   const isFullScreenAssessment = isAssessmentPage && !isAssessmentResultPage;
@@ -106,8 +106,8 @@ const StudentLayout = () => {
             <div className="flex items-center justify-between text-sm text-gray-500">
               <span>© {new Date().getFullYear()} Student Portal. All rights reserved.</span>
               <div className="flex items-center gap-4">
-                <a href="#" className="hover:text-gray-700 transition-colors">Privacy Policy</a>
-                <a href="#" className="hover:text-gray-700 transition-colors">Terms of Service</a>
+                <Link to="/privacy-policy" className="hover:text-gray-700 transition-colors">Privacy Policy</Link>
+                <Link to="/terms" className="hover:text-gray-700 transition-colors">Terms of Service</Link>
                 <a href="#" className="hover:text-gray-700 transition-colors">Help</a>
               </div>
             </div>
@@ -116,49 +116,49 @@ const StudentLayout = () => {
         {!isAssessmentPage && <FloatingAIButton />}
         <Toaster />
 
-      {/* Edit Modals - Only show if not viewing someone else's profile */}
-      {!isViewingOthersProfile && (
-        <>
-          <EducationEditModal
-            isOpen={activeModal === 'education'}
-            onClose={() => setActiveModal(null)}
-            data={userData.education}
-            onSave={(data) => handleSave('education', data)}
-          />
+        {/* Edit Modals - Only show if not viewing someone else's profile */}
+        {!isViewingOthersProfile && (
+          <>
+            <EducationEditModal
+              isOpen={activeModal === 'education'}
+              onClose={() => setActiveModal(null)}
+              data={userData.education}
+              onSave={(data) => handleSave('education', data)}
+            />
 
-          <TrainingEditModal
-            isOpen={activeModal === 'training'}
-            onClose={() => setActiveModal(null)}
-            data={userData.training}
-            onSave={(data) => handleSave('training', data)}
-          />
+            <TrainingEditModal
+              isOpen={activeModal === 'training'}
+              onClose={() => setActiveModal(null)}
+              data={userData.training}
+              onSave={(data) => handleSave('training', data)}
+            />
 
-          <ExperienceEditModal
-            isOpen={activeModal === 'experience'}
-            onClose={() => setActiveModal(null)}
-            data={userData.experience}
-            onSave={(data) => handleSave('experience', data)}
-          />
+            <ExperienceEditModal
+              isOpen={activeModal === 'experience'}
+              onClose={() => setActiveModal(null)}
+              data={userData.experience}
+              onSave={(data) => handleSave('experience', data)}
+            />
 
-          <SkillsEditModal
-            isOpen={activeModal === 'softSkills'}
-            onClose={() => setActiveModal(null)}
-            data={userData.softSkills}
-            title="Soft Skills"
-            type="Skill"
-            onSave={(data) => handleSave('softSkills', data)}
-          />
+            <SkillsEditModal
+              isOpen={activeModal === 'softSkills'}
+              onClose={() => setActiveModal(null)}
+              data={userData.softSkills}
+              title="Soft Skills"
+              type="Skill"
+              onSave={(data) => handleSave('softSkills', data)}
+            />
 
-          <SkillsEditModal
-            isOpen={activeModal === 'technicalSkills'}
-            onClose={() => setActiveModal(null)}
-            data={userData.technicalSkills}
-            title="Technical Skills"
-            type="Skill"
-            onSave={(data) => handleSave('technicalSkills', data)}
-          />
-        </>
-      )}
+            <SkillsEditModal
+              isOpen={activeModal === 'technicalSkills'}
+              onClose={() => setActiveModal(null)}
+              data={userData.technicalSkills}
+              title="Technical Skills"
+              type="Skill"
+              onSave={(data) => handleSave('technicalSkills', data)}
+            />
+          </>
+        )}
       </div>
     </GlobalPresenceProvider>
   );
