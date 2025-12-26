@@ -6,7 +6,6 @@ import {
 import "react-vertical-timeline-component/style.min.css";
 import "./AchievementsTimeline.css";
 import {
-  Award,
   Building2,
   Rocket,
   Medal,
@@ -15,7 +14,6 @@ import {
   Eye,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Button } from "./ui/button";
 import { useNavigate } from "react-router-dom";
 
 // Helper function to get icon based on type
@@ -180,7 +178,8 @@ const AchievementsTimeline = ({ userData }) => {
             </CardTitle>
             <button
               onClick={() => navigate("/student/timeline")}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-5 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all flex items-center gap-2"
+              className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
+              title="View all achievements"
             >
               <Eye className="w-5 h-5 text-blue-600" />
             </button>
