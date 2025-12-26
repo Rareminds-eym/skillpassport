@@ -1,8 +1,8 @@
 // Assessment Context Builder - Cloudflare Workers Version
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { interpretBigFive, interpretRIASEC } from '../ai/riasec';
 import type { AssessmentResults } from '../types/career-ai';
-import { interpretRIASEC, interpretBigFive } from '../ai/riasec';
 
 export async function buildAssessmentContext(
   supabase: SupabaseClient, 
@@ -34,7 +34,7 @@ export async function buildAssessmentContext(
       .eq('status', 'completed')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle(); // Use maybeSingle() to return null instead of error when no rows found
 
     if (error || !assessment) {
       return defaultResult;
