@@ -4,3 +4,21 @@ compatibility_date = "2024-01-01"
 
 [vars]
 ENVIRONMENT = "production"
+
+# =============================================================================
+# REQUIRED SECRETS - Set via Cloudflare Dashboard or wrangler CLI
+# =============================================================================
+# Run these commands to set secrets:
+#   wrangler secret put SUPABASE_URL
+#   wrangler secret put SUPABASE_ANON_KEY
+#   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+#   wrangler secret put RAZORPAY_KEY_ID
+#   wrangler secret put RAZORPAY_KEY_SECRET
+#
+# Optional secrets:
+#   wrangler secret put RAZORPAY_WEBHOOK_SECRET
+#   wrangler secret put TEST_RAZORPAY_KEY_ID
+#   wrangler secret put TEST_RAZORPAY_KEY_SECRET
+#
+# For local development, copy .dev.vars.example to .dev.vars
+# =============================================================================

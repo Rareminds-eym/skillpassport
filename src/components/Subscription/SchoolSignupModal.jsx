@@ -1,8 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { X, Eye, EyeOff, School, MapPin, Phone, Mail, Globe, Calendar, User } from 'lucide-react';
-import { signUpWithRole } from '../../services/authService';
-import { createUserRecord } from '../../services/educatorAuthService';
-import { createSchool, checkSchoolCode } from '../../services/schoolService';
+import userApiService from '../../services/userApiService';
+import { supabase } from '../../lib/supabaseClient';
 
 function SchoolSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onSwitchToLogin }) {
     const [formData, setFormData] = useState({
@@ -41,7 +40,7 @@ function SchoolSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onS
         if (error) setError('');
     };
 
-    const validateStep1 = () => {
+    const validateStep1 = async () => {
         if (!formData.email || !formData.password || !formData.confirmPassword) {
             setError('Please fill in all required fields');
             return false;
@@ -54,6 +53,21 @@ function SchoolSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onS
             setError('Password must be at least 6 characters');
             return false;
         }
+
+        // Check if email already exists via API
+        setLoading(true);
+        try {
+            const result = await userApiService.checkEmail(formData.email);
+            if (result.exists) {
+                setError('An account with this email already exists');
+                setLoading(false);
+                return false;
+            }
+        } catch (err) {
+            console.error('Email check error:', err);
+            // Continue if check fails - server will validate again
+        }
+        setLoading(false);
         return true;
     };
 
@@ -63,20 +77,22 @@ function SchoolSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onS
             return false;
         }
 
-        // Check school code uniqueness
+        // Check school code uniqueness via API
         setLoading(true);
-        const { isUnique, error: checkError } = await checkSchoolCode(formData.schoolCode);
-        setLoading(false);
-
-        if (checkError) {
+        try {
+            const result = await userApiService.checkSchoolCode(formData.schoolCode);
+            if (!result.isUnique) {
+                setError('School code already exists. Please choose a different code.');
+                setLoading(false);
+                return false;
+            }
+        } catch (err) {
+            console.error('School code check error:', err);
             setError('Error checking school code');
+            setLoading(false);
             return false;
         }
-        if (!isUnique) {
-            setError('School code already exists');
-            return false;
-        }
-
+        setLoading(false);
         return true;
     };
 
@@ -90,8 +106,9 @@ function SchoolSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onS
 
     const handleNext = async () => {
         setError('');
-        if (step === 1 && validateStep1()) {
-            setStep(2);
+        if (step === 1) {
+            const isValid = await validateStep1();
+            if (isValid) setStep(2);
         } else if (step === 2) {
             const isValid = await validateStep2();
             if (isValid) setStep(3);
@@ -111,36 +128,12 @@ function SchoolSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onS
         setError('');
 
         try {
-            // 1. Create Auth User
-            const authResult = await signUpWithRole(formData.email, formData.password, {
-                role: 'admin',
-                name: formData.principalName,
-                phone: formData.principalPhone
-            });
-
-            if (!authResult.success) {
-                throw new Error(authResult.error || 'Signup failed');
-            }
-
-            const userId = authResult.user.id;
-
-            // 2. Create User Record (Required for FK)
-            const userRecordResult = await createUserRecord(userId, {
+            // Call Cloudflare Worker API for school admin signup
+            const result = await userApiService.signupSchoolAdmin({
                 email: formData.email,
-                firstName: formData.principalName.split(' ')[0],
-                lastName: formData.principalName.split(' ').slice(1).join(' ') || '',
-                role: 'school_admin'
-            });
-
-            if (!userRecordResult.success) {
-                throw new Error(userRecordResult.error || 'Failed to create user record');
-            }
-
-            // 3. Create School Profile
-            const schoolData = {
-                name: formData.schoolName,
-                code: formData.schoolCode,
-                email: formData.email,
+                password: formData.password,
+                schoolName: formData.schoolName,
+                schoolCode: formData.schoolCode,
                 phone: formData.phone,
                 website: formData.website,
                 address: formData.address,
@@ -148,22 +141,31 @@ function SchoolSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onS
                 state: formData.state,
                 country: formData.country,
                 pincode: formData.pincode,
-                established_year: parseInt(formData.establishedYear),
+                establishedYear: formData.establishedYear ? parseInt(formData.establishedYear) : undefined,
                 board: formData.board,
-                principal_name: formData.principalName,
-                principal_email: formData.principalEmail || formData.email,
-                principal_phone: formData.principalPhone || formData.phone,
-                account_status: 'pending',
-                approval_status: 'pending'
-            };
+                principalName: formData.principalName,
+                principalEmail: formData.principalEmail || formData.email,
+                principalPhone: formData.principalPhone || formData.phone
+            });
 
-            const schoolResult = await createSchool(schoolData, userId);
-
-            if (!schoolResult.success) {
-                throw new Error(schoolResult.error || 'Failed to create school profile');
+            if (result.success) {
+                console.log('✅ School account created:', result.data);
+                
+                // Auto-login the user after successful signup
+                const { error: signInError } = await supabase.auth.signInWithPassword({
+                    email: formData.email,
+                    password: formData.password
+                });
+                
+                if (signInError) {
+                    console.warn('Auto-login failed, user may need to login manually:', signInError);
+                    // Still call success - account was created, user can login manually
+                }
+                
+                onSignupSuccess();
+            } else {
+                throw new Error(result.error || 'Failed to create school account');
             }
-
-            onSignupSuccess();
         } catch (err) {
             console.error('Signup error:', err);
             setError(err.message || 'An error occurred during signup');
@@ -199,8 +201,7 @@ function SchoolSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onS
                                 <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-200 -z-10"></div>
                                 {[1, 2, 3].map((s) => (
                                     <div key={s} className={`flex flex-col items-center bg-white px-2`}>
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${step >= s ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
-                                            }`}>
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${step >= s ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
                                             {s}
                                         </div>
                                         <span className="text-xs mt-1 font-medium text-gray-600">
@@ -483,9 +484,17 @@ function SchoolSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onS
                                     <button
                                         type="button"
                                         onClick={handleNext}
-                                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center gap-2"
+                                        disabled={loading}
+                                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
                                     >
-                                        Next Step
+                                        {loading ? (
+                                            <>
+                                                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                Checking...
+                                            </>
+                                        ) : (
+                                            'Next Step'
+                                        )}
                                     </button>
                                 ) : (
                                     <button

@@ -73,11 +73,28 @@ export const usePaymentVerification = ({
         }, 10000);
       });
 
-      // Verify payment
+      // Get plan details from localStorage for subscription creation
+      let plan = null;
+      try {
+        const stored = localStorage.getItem('payment_plan_details');
+        if (stored) {
+          const planDetails = JSON.parse(stored);
+          plan = {
+            name: planDetails.name,
+            price: planDetails.price,
+            duration: planDetails.duration,
+          };
+        }
+      } catch (e) {
+        console.warn('Could not parse plan details from localStorage');
+      }
+
+      // Verify payment - Worker now creates subscription too
       const verificationPromise = verifyPaymentSignature({
         razorpay_payment_id: paymentId,
         razorpay_order_id: orderId,
-        razorpay_signature: signature
+        razorpay_signature: signature,
+        plan, // Pass plan for subscription creation
       });
 
       const result = await Promise.race([verificationPromise, timeoutPromise]);

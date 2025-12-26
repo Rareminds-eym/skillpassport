@@ -75,7 +75,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
         console.error('❌ Error fetching trainings:', trainingsError);
       }
 
-      // Fetch from course_enrollments table
+      // Fetch from course_enrollments table with optimized query
       const { data: enrollmentsData, error: enrollmentsError } = await supabase
         .from('course_enrollments')
         .select('*')
@@ -85,11 +85,46 @@ export const useStudentTrainings = (studentId, options = {}) => {
         console.error('❌ Error fetching enrollments:', enrollmentsError);
       }
 
+      // Optimize: Get all course lesson counts in a single query instead of N+1 queries
+      let courseLessonCounts = {};
+      if (enrollmentsData && enrollmentsData.length > 0) {
+        const courseIds = enrollmentsData.map(e => e.course_id).filter(Boolean);
+        
+        if (courseIds.length > 0) {
+          const { data: allCourseLessons, error: lessonsError } = await supabase
+            .from('course_modules')
+            .select(`
+              course_id,
+              lessons:lessons(lesson_id)
+            `)
+            .in('course_id', courseIds);
+
+          if (lessonsError) {
+            console.error('❌ Error fetching course lessons:', lessonsError);
+          } else if (allCourseLessons) {
+            // Build lesson counts map
+            courseLessonCounts = allCourseLessons.reduce((acc, module) => {
+              if (!acc[module.course_id]) {
+                acc[module.course_id] = 0;
+              }
+              acc[module.course_id] += module.lessons?.length || 0;
+              return acc;
+            }, {});
+          }
+        }
+      }
+
+      // Add calculated totals to enrollments (more memory efficient)
+      const enrollmentsWithCorrectTotals = enrollmentsData?.map(enrollment => ({
+        ...enrollment,
+        calculated_total_lessons: courseLessonCounts[enrollment.course_id] || 0
+      })) || [];
+
       // Filter enrollments: show if progress > 0 OR status is completed OR recently accessed (within 7 days)
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       
-      const filteredEnrollments = (enrollmentsData || []).filter(e => 
+      const filteredEnrollments = enrollmentsWithCorrectTotals.filter(e => 
         e.progress > 0 || 
         e.status === 'completed' || 
         (e.last_accessed && new Date(e.last_accessed) > sevenDaysAgo)
@@ -145,39 +180,50 @@ export const useStudentTrainings = (studentId, options = {}) => {
       }));
 
       // Transform course enrollments to match training format
-      const formattedEnrollments = processedEnrollments.map((enroll) => ({
-        id: `enrollment-${enroll.id}`,
-        title: String(enroll.course_title || 'Untitled Course'),
-        course: String(enroll.course_title || 'Untitled Course'),
-        organization: String(enroll.educator_name || 'Platform Course'),
-        provider: String(enroll.educator_name || 'Platform Course'),
-        start_date: enroll.enrolled_at,
-        end_date: enroll.completed_at,
-        startDate: enroll.enrolled_at,
-        endDate: enroll.completed_at,
-        duration: '',
-        description: '',
-        status: enroll.status === 'completed' ? 'completed' : 'ongoing',
-        completedModules: enroll.completed_lessons?.length || 0,
-        totalModules: enroll.total_lessons || 0,
-        hoursSpent: Math.round((enroll.total_time_spent_seconds || 0) / 3600),
-        progress: enroll.progress || 0,
-        approval_status: 'approved',
-        verified: true,
-        processing: false,
-        enabled: true,
-        source: 'course_enrollment',
-        course_id: enroll.course_id,
-        skills: [],
-        certificateUrl: enroll.certificate_url || '',
-        createdAt: enroll.enrolled_at,
-        updatedAt: enroll.last_accessed,
-        type: 'course_enrollment',
-        lastAccessed: enroll.last_accessed,
-        lastModuleIndex: enroll.last_module_index,
-        lastLessonIndex: enroll.last_lesson_index,
-        sessionsCount: enroll.sessions_count
-      }));
+      const formattedEnrollments = processedEnrollments.map((enroll) => {
+        const completedLessonsCount = enroll.completed_lessons?.length || 0;
+        const totalLessonsCount = enroll.calculated_total_lessons || 0;
+        
+        // Calculate correct progress percentage
+        let calculatedProgress = 0;
+        if (totalLessonsCount > 0) {
+          calculatedProgress = Math.round((completedLessonsCount / totalLessonsCount) * 100);
+        }
+        
+        return {
+          id: `enrollment-${enroll.id}`,
+          title: String(enroll.course_title || 'Untitled Course'),
+          course: String(enroll.course_title || 'Untitled Course'),
+          organization: String(enroll.educator_name || 'Platform Course'),
+          provider: String(enroll.educator_name || 'Platform Course'),
+          start_date: enroll.enrolled_at,
+          end_date: enroll.completed_at,
+          startDate: enroll.enrolled_at,
+          endDate: enroll.completed_at,
+          duration: '',
+          description: '',
+          status: calculatedProgress >= 100 ? 'completed' : 'ongoing',
+          completedModules: completedLessonsCount,
+          totalModules: totalLessonsCount,
+          hoursSpent: Math.round((enroll.total_time_spent_seconds || 0) / 3600),
+          progress: calculatedProgress, // Use calculated progress instead of stored progress
+          approval_status: 'approved',
+          verified: true,
+          processing: false,
+          enabled: true,
+          source: 'course_enrollment',
+          course_id: enroll.course_id,
+          skills: [],
+          certificateUrl: '',
+          createdAt: enroll.enrolled_at,
+          updatedAt: enroll.last_accessed,
+          type: 'course_enrollment',
+          lastAccessed: enroll.last_accessed,
+          lastModuleIndex: enroll.last_module_index,
+          lastLessonIndex: enroll.last_lesson_index,
+          sessionsCount: enroll.sessions_count
+        };
+      });
 
       // Merge and deduplicate
       const enrollmentCourseIds = new Set(formattedEnrollments.map(e => e.course_id).filter(Boolean));
@@ -230,50 +276,55 @@ export const useStudentTrainings = (studentId, options = {}) => {
     if (!studentId) return;
 
     try {
-      // Get trainings counts
-      const [trainingsTotal, trainingsCompleted, trainingsOngoing] = await Promise.all([
-        supabase
-          .from('trainings')
-          .select('*', { count: 'exact', head: true })
-          .eq('student_id', studentId)
-          .neq('approval_status', 'rejected'),
-        supabase
-          .from('trainings')
-          .select('*', { count: 'exact', head: true })
-          .eq('student_id', studentId)
-          .eq('status', 'completed')
-          .neq('approval_status', 'rejected'),
-        supabase
-          .from('trainings')
-          .select('*', { count: 'exact', head: true })
-          .eq('student_id', studentId)
-          .eq('status', 'ongoing')
-          .neq('approval_status', 'rejected')
-      ]);
+      // Instead of querying raw tables, calculate stats from the deduplicated trainings array
+      // This ensures we don't double-count courses that exist in both tables
+      
+      // Get trainings that don't have course_id (external/manual trainings)
+      const { data: externalTrainings, error: externalError } = await supabase
+        .from('trainings')
+        .select('status')
+        .eq('student_id', studentId)
+        .neq('approval_status', 'rejected')
+        .is('course_id', null);
 
-      // Get course enrollments counts (only courses with actual progress)
-      const [enrollmentsTotal, enrollmentsCompleted, enrollmentsOngoing] = await Promise.all([
-        supabase
-          .from('course_enrollments')
-          .select('*', { count: 'exact', head: true })
-          .eq('student_id', studentId)
-          .gt('progress', 0),
-        supabase
-          .from('course_enrollments')
-          .select('*', { count: 'exact', head: true })
-          .eq('student_id', studentId)
-          .eq('status', 'completed'),
-        supabase
-          .from('course_enrollments')
-          .select('*', { count: 'exact', head: true })
-          .eq('student_id', studentId)
-          .gt('progress', 0)
-          .neq('status', 'completed')
-      ]);
+      if (externalError) {
+        console.error('❌ Error fetching external trainings:', externalError);
+      }
 
-      const total = (trainingsTotal.count || 0) + (enrollmentsTotal.count || 0);
-      const completed = (trainingsCompleted.count || 0) + (enrollmentsCompleted.count || 0);
-      const ongoing = (trainingsOngoing.count || 0) + (enrollmentsOngoing.count || 0);
+      // Get course enrollments with progress > 0 (internal courses)
+      const { data: internalCourses, error: internalError } = await supabase
+        .from('course_enrollments')
+        .select('status, progress, completed_lessons')
+        .eq('student_id', studentId);
+
+      if (internalError) {
+        console.error('❌ Error fetching internal courses:', internalError);
+      }
+
+      // Calculate stats for external trainings
+      const externalStats = {
+        total: externalTrainings?.length || 0,
+        completed: externalTrainings?.filter(t => t.status === 'completed').length || 0,
+        ongoing: externalTrainings?.filter(t => t.status === 'ongoing').length || 0
+      };
+
+      // Calculate stats for internal courses (with corrected completion logic)
+      const internalCoursesWithProgress = (internalCourses || []).filter(c => 
+        c.progress > 0 || 
+        c.status === 'completed' || 
+        (c.completed_lessons && c.completed_lessons.length > 0)
+      );
+
+      const internalStats = {
+        total: internalCoursesWithProgress.length,
+        completed: internalCoursesWithProgress.filter(c => c.status === 'completed').length,
+        ongoing: internalCoursesWithProgress.filter(c => c.status !== 'completed').length
+      };
+
+      // Combine stats (no double counting)
+      const total = externalStats.total + internalStats.total;
+      const completed = externalStats.completed + internalStats.completed;
+      const ongoing = externalStats.ongoing + internalStats.ongoing;
 
       setStats({
         total: typeof total === 'number' ? total : 0,

@@ -16,11 +16,11 @@ import { Card, CardContent } from '../../components/Students/components/ui/card'
 import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 import { Label } from '../../components/Students/components/ui/label';
 import { generateAssessment, getCachedAssessment, cacheAssessment } from '../../services/assessmentGenerationService';
-import { 
-  createAssessmentAttempt, 
-  updateAssessmentProgress, 
+import {
+  createAssessmentAttempt,
+  updateAssessmentProgress,
   completeAssessment,
-  checkAssessmentStatus 
+  checkAssessmentStatus
 } from '../../services/externalAssessmentService';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useAuth } from '../../context/AuthContext';
@@ -471,80 +471,102 @@ const DynamicAssessment = () => {
     const passed = score >= 60;
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 py-8 px-4">
-        <div className="max-w-3xl mx-auto">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 flex items-center justify-center py-8 px-4">
+        <div className="max-w-lg w-full">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Card className="overflow-hidden">
-              <div className={`p-8 text-center ${passed ? 'bg-gradient-to-br from-green-50 to-emerald-50' : 'bg-gradient-to-br from-orange-50 to-amber-50'}`}>
+            <Card className="overflow-hidden rounded-2xl shadow-xl border border-gray-100">
+              {/* Header with gradient */}
+              <div className={`p-8 text-center ${
+                passed 
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500' 
+                  : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+              }`}>
+                {/* Animated Icon */}
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ delay: 0.2, type: 'spring' }}
+                  transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                  className="w-28 h-28 mx-auto mb-4 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center"
                 >
                   {passed ? (
-                    <Award className="w-24 h-24 text-green-600 mx-auto mb-4" />
+                    <Award className="w-14 h-14 text-white" />
                   ) : (
-                    <Target className="w-24 h-24 text-orange-600 mx-auto mb-4" />
+                    <Target className="w-14 h-14 text-white" />
                   )}
                 </motion.div>
                 
-                <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                <h1 className="text-2xl font-bold text-white mb-2">
                   {passed ? 'Congratulations!' : 'Keep Learning!'}
                 </h1>
-                <p className="text-gray-600 mb-6">
+                <p className="text-white/90 text-sm">
                   {passed 
-                    ? 'You have successfully completed the assessment' 
-                    : 'You can retake the assessment to improve your score'}
+                    ? 'You have successfully passed the assessment' 
+                    : 'Review the material and strengthen your skills'}
                 </p>
+              </div>
 
-                <div className="bg-white rounded-2xl p-6 mb-6 inline-block">
-                  <div className="text-6xl font-bold text-gray-900 mb-2">{score}%</div>
-                  <div className="text-gray-600">Your Score</div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="bg-white rounded-xl p-4">
-                    <div className="text-2xl font-bold text-gray-900">{assessment.questions.length}</div>
-                    <div className="text-sm text-gray-600">Total Questions</div>
-                  </div>
-                  <div className="bg-white rounded-xl p-4">
-                    <div className="text-2xl font-bold text-green-600">
-                      {Math.round((score / 100) * assessment.questions.length)}
+              {/* Score Section */}
+              <div className="p-8 bg-white">
+                {/* Score Circle */}
+                <div className="flex justify-center mb-8">
+                  <div className={`relative w-32 h-32 rounded-full flex items-center justify-center ${
+                    passed ? 'bg-emerald-50' : 'bg-blue-50'
+                  }`}>
+                    <div className="text-center">
+                      <span className={`text-4xl font-bold ${
+                        passed ? 'text-emerald-600' : 'text-blue-600'
+                      }`}>
+                        {score}%
+                      </span>
+                      <p className="text-xs text-gray-500 mt-1">Your Score</p>
                     </div>
-                    <div className="text-sm text-gray-600">Correct</div>
-                  </div>
-                  <div className="bg-white rounded-xl p-4">
-                    <div className="text-2xl font-bold text-gray-900">{formatTime(900 - timeRemaining)}</div>
-                    <div className="text-sm text-gray-600">Time Taken</div>
                   </div>
                 </div>
 
-                <div className="flex gap-3 justify-center">
-                  <Button
-                    onClick={() => navigate('/student/my-learning')}
-                    variant="outline"
-                    className="px-8"
-                  >
-                    Back to Learning
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setShowResults(false);
-                      setCurrentQuestionIndex(0);
-                      setAnswers({});
-                      setTimeRemaining(900); // Reset timer to 15 minutes
-                      setScore(0);
-                      setAttemptId(null); // Clear attempt ID for new attempt
-                    }}
-                    className="px-8 bg-blue-600 hover:bg-blue-700"
-                  >
-                    Retake Assessment
-                  </Button>
+                {/* Stats Grid */}
+                <div className="grid grid-cols-3 gap-4 mb-8">
+                  <div className="bg-gray-50 rounded-xl p-4 text-center">
+                    <p className="text-xl font-bold text-gray-900">{assessment.questions.length}</p>
+                    <p className="text-xs text-gray-500">Total Questions</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4 text-center">
+                    <p className={`text-xl font-bold ${passed ? 'text-emerald-600' : 'text-blue-600'}`}>
+                      {Math.round((score / 100) * assessment.questions.length)}
+                    </p>
+                    <p className="text-xs text-gray-500">Correct</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4 text-center">
+                    <p className="text-xl font-bold text-gray-900">{formatTime(900 - timeRemaining)}</p>
+                    <p className="text-xs text-gray-500">Time Taken</p>
+                  </div>
                 </div>
+
+                {/* Assessment Info */}
+                <div className="bg-blue-50 rounded-xl p-4 mb-6">
+                  <p className="text-sm text-blue-800 text-center">
+                    <span className="font-semibold">{courseName}</span>
+                    <br />
+                    <span className="text-blue-600 text-xs">Assessment Completed</span>
+                  </p>
+                </div>
+
+                {/* Action Button - Only Back to Learning */}
+                <Button
+                  onClick={() => navigate('/student/my-learning')}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-200/50"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                  Back to My Learning
+                </Button>
+
+                {/* Note about one-time assessment */}
+                <p className="text-center text-xs text-gray-400 mt-4">
+                  This assessment can only be taken once per course
+                </p>
               </div>
             </Card>
           </motion.div>

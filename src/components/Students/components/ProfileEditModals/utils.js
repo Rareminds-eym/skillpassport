@@ -21,14 +21,25 @@ export const calculateDuration = (startDate, endDate) => {
   if (isNaN(start.getTime())) return "";
   if (endDate && isNaN(end.getTime())) return "";
   
-  const diffMs = Math.abs(end - start);
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  // Calculate the difference using proper date arithmetic
+  let years = end.getFullYear() - start.getFullYear();
+  let months = end.getMonth() - start.getMonth();
+  let days = end.getDate() - start.getDate();
   
-  const years = Math.floor(diffDays / 365);
-  const remainingDays = diffDays % 365;
-  const months = Math.floor(remainingDays / 30);
-  const days = remainingDays % 30;
+  // Adjust for negative days
+  if (days < 0) {
+    months--;
+    const lastDayOfPrevMonth = new Date(end.getFullYear(), end.getMonth(), 0).getDate();
+    days += lastDayOfPrevMonth;
+  }
   
+  // Adjust for negative months
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+  
+  // Build duration parts
   const parts = [];
   if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
   if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
