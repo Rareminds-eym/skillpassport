@@ -229,6 +229,7 @@ export interface StudentProfileDrawerProps {
   userRole?: 'school_admin' | 'college_admin' | 'university_admin' | 'educator' | 'school_educator' | 'college_educator';
   schoolId?: string;
   collegeId?: string;
+  defaultTab?: string;
 }
 
 export interface TabConfig {

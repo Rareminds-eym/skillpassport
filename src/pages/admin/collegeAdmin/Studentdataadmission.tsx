@@ -13,11 +13,10 @@ import { UserPlusIcon } from 'lucide-react';
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/admin/Pagination';
 import StudentProfileDrawer from '@/components/shared/StudentProfileDrawer';
-import CareerPathDrawer from '@/components/admin/components/CareerPathDrawer';
 import AddStudentModal from '../../../components/educator/modals/Addstudentmodal';
 import { AdmissionNoteModal } from '@/components/shared/StudentProfileDrawer/modals';
 import { useStudents } from '../../../hooks/useAdminStudents';
-import { generateCareerPath, type CareerPathResponse, type StudentProfile } from '@/services/aiCareerPathService';
+import AssessmentReportDrawer from '@/components/shared/AssessmentReportDrawer';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -143,7 +142,7 @@ const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }: {
           <button
             onClick={() => onViewCareerPath(student)}
             className="inline-flex items-center px-2 py-1 border border-yellow-300 rounded text-xs font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
-            title="AI Career Path"
+            title="View Assessment Report"
           >
             <SparklesIcon className="h-3 w-3 mr-1" />
             Career
@@ -168,11 +167,8 @@ const StudentDataAdmission = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [sortBy, setSortBy] = useState('relevance');
   const [showDrawer, setShowDrawer] = useState(false);
-  const [showCareerPathDrawer, setShowCareerPathDrawer] = useState(false);
-  const [careerPath, setCareerPath] = useState<CareerPathResponse | null>(null);
-  const [careerPathLoading, setCareerPathLoading] = useState(false);
-  const [careerPathError, setCareerPathError] = useState<string | null>(null);
-  const [currentStudentForCareer, setCurrentStudentForCareer] = useState<any>(null);
+  const [showAssessmentReport, setShowAssessmentReport] = useState(false);
+  const [studentForReport, setStudentForReport] = useState<any>(null);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [studentForNote, setStudentForNote] = useState<any>(null);
@@ -368,128 +364,10 @@ const StudentDataAdmission = () => {
     setShowNoteModal(true);
   };
 
-  const handleViewCareerPath = async (student: any) => {
-    setCurrentStudentForCareer(student); // Store for retry
-    setCareerPathLoading(true);
-    setCareerPathError(null);
-    setCareerPath(null);
-    setShowCareerPathDrawer(true); // Open drawer immediately
-
-    try {
-      // Validate student data
-      if (!student || !student.id) {
-        throw new Error('Invalid student data');
-      }
-      // Extract comprehensive data from student object
-      const skills = Array.isArray(student.skills) 
-        ? student.skills.map((s: any) => typeof s === 'string' ? s : s.name || s.title).filter(Boolean)
-        : student.profile?.technicalSkills?.map((s: any) => s.name || s) || [];
-      
-      const certificates = Array.isArray(student.certificates)
-        ? student.certificates.map((c: any) => {
-            if (typeof c === 'string') return c;
-            const title = c.title || c.name || 'Certificate';
-            const issuer = c.issuer ? ` (Issuer: ${c.issuer})` : '';
-            const level = c.level ? ` [Level: ${c.level}]` : '';
-            return `${title}${issuer}${level}`;
-          }).filter(Boolean)
-        : [];
-      
-      const experience = Array.isArray(student.experience)
-        ? student.experience.map((e: any) => 
-            typeof e === 'string' ? e : `${e.role || e.title} at ${e.organization || e.company} (${e.duration || 'N/A'})`
-          ).filter(Boolean)
-        : student.profile?.experience?.map((e: any) => `${e.role} at ${e.company}`) || [];
-      
-      const trainings = Array.isArray(student.trainings)
-        ? student.trainings.map((t: any) => 
-            typeof t === 'string' ? t : `${t.title} - ${t.organization || 'Completed'}`
-          ).filter(Boolean)
-        : [];
-      
-      const projects = Array.isArray(student.projects)
-        ? student.projects.map((p: any) => {
-            if (typeof p === 'string') return p;
-            const title = p.title || 'Project';
-            const tech = p.tech_stack ? ` (Tech: ${p.tech_stack})` : '';
-            const org = p.organization ? ` - ${p.organization}` : '';
-            return `${title}${tech}${org}`;
-          }).filter(Boolean)
-        : [];
-      
-      const education = Array.isArray(student.education)
-        ? student.education.map((e: any) => {
-            if (typeof e === 'string') return e;
-            const degree = e.degree || e.level || 'Degree';
-            const dept = e.department ? ` in ${e.department}` : '';
-            const univ = e.university ? ` from ${e.university}` : '';
-            const cgpa = e.cgpa ? ` (CGPA: ${e.cgpa})` : '';
-            return `${degree}${dept}${univ}${cgpa}`;
-          }).filter(Boolean)
-        : student.profile?.education?.map((e: any) => 
-            `${e.degree || 'Degree'} (CGPA: ${e.cgpa || 'N/A'})`
-          ) || [];
-      
-      // Extract interests from profile or generate from dept
-      const interests = student.interests || 
-        student.profile?.interests || 
-        [student.dept, `${student.dept} Development`, 'Career Growth'];
-
-      // Get CGPA from education or profile
-      const cgpa = student.profile?.education?.[0]?.cgpa || 
-        student.cgpa || 
-        (student.ai_score_overall ? (student.ai_score_overall / 10).toFixed(2) : undefined);
-
-      const studentProfile: StudentProfile = {
-        id: student.id,
-        name: student.name,
-        email: student.email,
-        dept: student.dept,
-        college: student.college,
-        currentCgpa: cgpa ? parseFloat(cgpa) : undefined,
-        ai_score_overall: student.ai_score_overall || 0,
-        skills,
-        certificates,
-        experience,
-        trainings,
-        interests,
-        projects,
-        education,
-      };
-
-      console.log('Generating career path with profile:', studentProfile);
-      console.log('Skills:', skills.length, 'Certificates:', certificates.length, 'Projects:', projects.length, 'Education:', education.length);
-      const generatedPath = await generateCareerPath(studentProfile);
-      console.log('Career path generated:', generatedPath);
-      setCareerPath(generatedPath);
-    } catch (err) {
-      console.error('Error generating career path:', err);
-
-      // Provide user-friendly error messages
-      let errorMessage = 'Failed to generate career path';
-
-      if (err instanceof Error) {
-        if (err.message.includes('API')) {
-          errorMessage = 'AI service is currently unavailable. Please check your API key configuration or try again later.';
-        } else if (err.message.includes('network') || err.message.includes('fetch')) {
-          errorMessage = 'Network error. Please check your internet connection and try again.';
-        } else if (err.message.includes('JSON') || err.message.includes('parse')) {
-          errorMessage = 'Failed to process AI response. Please try again.';
-        } else {
-          errorMessage = `Error: ${err.message}`;
-        }
-      }
-
-      setCareerPathError(errorMessage);
-    } finally {
-      setCareerPathLoading(false);
-    }
-  };
-
-  const handleRetryCareerPath = () => {
-    if (currentStudentForCareer) {
-      handleViewCareerPath(currentStudentForCareer);
-    }
+  // Opens the Assessment Report drawer to show the student's completed assessment report
+  const handleViewCareerPath = (student: any) => {
+    setStudentForReport(student);
+    setShowAssessmentReport(true);
   };
 
 
@@ -854,7 +732,7 @@ const StudentDataAdmission = () => {
                           <button
                             onClick={() => handleViewCareerPath(student)}
                             className="text-yellow-600 hover:text-yellow-900"
-                            title="AI Career Path"
+                            title="View Assessment Report"
                           >
                             Career
                           </button>
@@ -896,18 +774,14 @@ const StudentDataAdmission = () => {
         userRole="college_admin"
       />
 
-      {/* Career Path Drawer */}
-      <CareerPathDrawer
-        isOpen={showCareerPathDrawer}
+      {/* Assessment Report Drawer - Shows the student's completed assessment report */}
+      <AssessmentReportDrawer
+        student={studentForReport}
+        isOpen={showAssessmentReport}
         onClose={() => {
-          setShowCareerPathDrawer(false);
-          setCareerPathError(null);
-          setCareerPath(null);
+          setShowAssessmentReport(false);
+          setStudentForReport(null);
         }}
-        careerPath={careerPath}
-        isLoading={careerPathLoading}
-        error={careerPathError}
-        onRetry={handleRetryCareerPath}
       />
 
       {/* Add Student Modal */}
