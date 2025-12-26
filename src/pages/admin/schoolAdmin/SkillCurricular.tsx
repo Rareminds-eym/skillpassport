@@ -11,6 +11,21 @@ import {
     FileDown,
     Edit,
     Trash2,
+    Filter,
+    Download,
+    UserPlus,
+    Clock,
+    MapPin,
+    User,
+    Star,
+    Award,
+    Activity,
+    TrendingUp,
+    Eye,
+    Settings,
+    CheckCircle,
+    AlertCircle,
+    Info,
 } from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
 import * as clubsService from "../../../services/clubsService";
@@ -102,77 +117,125 @@ function ClubCard({ club, isJoined, onJoin, onLeave, onOpenDetails, onEdit, onDe
     const full = memberCount >= club.capacity;
 
     return (
-        <div className="bg-white/80 backdrop-blur rounded-2xl p-4 shadow-md flex flex-col justify-between">
-            <div>
+        <div className="group bg-white rounded-xl border border-gray-200 border-l-4 border-l-blue-500 hover:border-blue-300 hover:shadow-lg transition-all duration-300 overflow-hidden">
+            {/* Header with gradient */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-gray-100">
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="bg-gray-100 rounded-full p-2">
-                            <Users size={28} />
+                        <div className="bg-white rounded-lg p-2 shadow-sm">
+                            <Users size={20} className="text-blue-600" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold">{club.name}</h3>
-                            <p className="text-xs text-slate-500 capitalize">{club.category}</p>
+                            <h3 className="font-semibold text-gray-900 text-lg">{club.name}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 capitalize">
+                                    {club.category}
+                                </span>
+                            </div>
                         </div>
                     </div>
-                    <div className="text-right text-sm text-slate-600">
-                        <div>{memberCount}/{club.capacity}</div>
-                        <div className="text-xs">Members</div>
+                    <div className="text-right">
+                        <div className="text-sm font-semibold text-gray-900">{memberCount}/{club.capacity}</div>
+                        <div className="text-xs text-gray-500">Members</div>
+                        <div className="w-16 bg-gray-200 rounded-full h-1.5 mt-1">
+                            <div 
+                                className="bg-blue-500 h-1.5 rounded-full transition-all duration-300" 
+                                style={{ width: `${Math.min((memberCount / club.capacity) * 100, 100)}%` }}
+                            ></div>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <p className="mt-3 text-sm text-slate-700">{club.description}</p>
+            {/* Content */}
+            <div className="p-4">
+                <p className="text-sm text-gray-600 leading-relaxed mb-4">{club.description}</p>
+
+                {/* Meeting Info */}
+                {(club.meeting_day || club.meeting_time || club.location) && (
+                    <div className="bg-gray-50 rounded-lg p-3 mb-4 space-y-2">
+                        <div className="text-xs font-medium text-gray-700 mb-2">Meeting Details</div>
+                        {club.meeting_day && (
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <Calendar size={12} />
+                                <span>{club.meeting_day}</span>
+                            </div>
+                        )}
+                        {club.meeting_time && (
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <Clock size={12} />
+                                <span>{club.meeting_time}</span>
+                            </div>
+                        )}
+                        {club.location && (
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <MapPin size={12} />
+                                <span>{club.location}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {club.upcomingCompetitions?.length ? (
-                    <div className="mt-3">
-                        <span className="inline-flex items-center gap-2 bg-yellow-50 text-yellow-800 px-2 py-1 rounded-full text-xs">
-                            <Trophy size={14} /> Upcoming
+                    <div className="mb-4">
+                        <span className="inline-flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-medium">
+                            <Trophy size={12} /> 
+                            {club.upcomingCompetitions.length} Upcoming
                         </span>
                     </div>
                 ) : null}
-            </div>
 
-            <div className="mt-4 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                    <button
-                        onClick={() => onOpenDetails(club)}
-                        className="text-sm px-3 py-1 border rounded-md bg-white text-slate-700 hover:shadow-sm"
-                    >
-                        View
-                    </button>
+                {/* Action Buttons */}
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => onOpenDetails(club)}
+                            className="flex items-center justify-center gap-2 flex-1 text-sm px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                        >
+                            <Eye size={14} />
+                            View Details
+                        </button>
 
-                    {!isJoined ? (
+                        {!isJoined ? (
+                            <button
+                                disabled={full}
+                                onClick={() => onJoin(club)}
+                                className={`flex items-center justify-center gap-2 flex-1 text-sm px-3 py-2 rounded-lg transition-colors ${
+                                    full 
+                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
+                                        : "bg-blue-600 text-white hover:bg-blue-700"
+                                }`}
+                            >
+                                <UserPlus size={14} />
+                                {full ? 'Full' : 'Manage'}
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => onLeave(club)}
+                                className="flex items-center justify-center gap-2 flex-1 text-sm px-3 py-2 rounded-lg bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 transition-colors"
+                            >
+                                <X size={14} />
+                                Leave
+                            </button>
+                        )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
                         <button
-                            disabled={full}
-                            onClick={() => onJoin(club)}
-                            className={`flex items-center gap-2 text-sm px-3 py-1 rounded-md ${full ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
+                            onClick={() => onEdit(club)}
+                            className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-2 border border-blue-200 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
                         >
-                            <Plus size={14} /> Join
+                            <Edit size={14} />
+                            Edit
                         </button>
-                    ) : (
                         <button
-                            onClick={() => onLeave(club)}
-                            className="flex items-center gap-2 text-sm px-3 py-1 rounded-md bg-red-50 text-red-600 border border-red-100"
+                            onClick={() => onDelete(club)}
+                            className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-2 border border-red-200 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
                         >
-                            <X size={14} /> Leave
+                            <Trash2 size={14} />
+                            Delete
                         </button>
-                    )}
-                </div>
-                
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => onEdit(club)}
-                        className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-1 border rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    >
-                        <Edit size={14} />
-                        Edit
-                    </button>
-                    <button
-                        onClick={() => onDelete(club)}
-                        className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-1 border rounded-md bg-red-50 text-red-700 hover:bg-red-100"
-                    >
-                        <Trash2 size={14} />
-                        Delete
-                    </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -183,15 +246,18 @@ function Modal({ open, onClose, title, children }) {
     if (!open) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/40" onClick={onClose}></div>
-            <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 z-10 max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">{title}</h3>
-                    <button onClick={onClose} className="p-2 rounded-md hover:bg-gray-100">
-                        <X />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden z-10">
+                <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
+                    <button 
+                        onClick={onClose} 
+                        className="p-2 rounded-lg hover:bg-white/50 transition-colors"
+                    >
+                        <X size={20} className="text-gray-500" />
                     </button>
                 </div>
-                <div>{children}</div>
+                <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">{children}</div>
             </div>
         </div>
     );
@@ -203,6 +269,61 @@ export default function ClubsActivitiesPage() {
     const [clubs, setClubs] = useState([]);
     const [competitions, setCompetitions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState("clubs"); // Add tab state
+
+    // Enhanced tab switching with keyboard support
+    const handleTabSwitch = (tab) => {
+        setActiveTab(tab);
+        // Reset pagination when switching tabs
+        if (tab === "clubs") {
+            setCurrentPage(1);
+        } else if (tab === "competitions") {
+            setCurrentCompetitionPage(1);
+        }
+    };
+
+    // Keyboard navigation for tabs
+    useEffect(() => {
+        const handleKeyPress = (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === '1') {
+                    e.preventDefault();
+                    handleTabSwitch("clubs");
+                } else if (e.key === '2') {
+                    e.preventDefault();
+                    handleTabSwitch("competitions");
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyPress);
+        return () => window.removeEventListener('keydown', handleKeyPress);
+    }, []);
+
+    // Add CSS animation styles
+    useEffect(() => {
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            .animate-fadeIn {
+                animation: fadeIn 0.3s ease-out;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        return () => {
+            document.head.removeChild(style);
+        };
+    }, []);
 
     // Fetch clubs and competitions from Supabase on mount
     useEffect(() => {
@@ -227,6 +348,7 @@ export default function ClubsActivitiesPage() {
     }, []);
 
     const [q, setQ] = useState("");
+    const [competitionSearchQuery, setCompetitionSearchQuery] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("all");
     const [showMine, setShowMine] = useState(false);
     const [selectedClub, setSelectedClub] = useState(null);
@@ -245,8 +367,7 @@ export default function ClubsActivitiesPage() {
         capacity: 30,
         meeting_day: null,
         meeting_time: null,
-        location: "",
-        mentor_name: ""
+        location: ""
     });
     const [studentDrawer, setStudentDrawer] = useState({ open: false, club: null });
     const [allStudents, setAllStudents] = useState([]);
@@ -257,6 +378,7 @@ export default function ClubsActivitiesPage() {
     const [attendanceTopic, setAttendanceTopic] = useState("");
     const [attendanceRecords, setAttendanceRecords] = useState({});
     const [currentPage, setCurrentPage] = useState(1);
+    const [currentCompetitionPage, setCurrentCompetitionPage] = useState(1);
 
     // Fetch real students from Supabase (only from the same school)
     useEffect(() => {
@@ -336,7 +458,7 @@ export default function ClubsActivitiesPage() {
                 // Fetch students from this school only
                 const { data, error } = await supabase
                     .from('students')
-                    .select('id, email, profile, name, grade, section, roll_number, school_id')
+                    .select('id, email, name, grade, section, roll_number, school_id')
                     .eq('school_id', schoolId)
                     .eq('is_deleted', false)
                     .order('name');
@@ -359,10 +481,10 @@ export default function ClubsActivitiesPage() {
                 const mappedStudents = data.map(student => ({
                     id: student.email,
                     email: student.email,
-                    name: student.name || student.profile?.name || student.email,
-                    grade: student.grade || student.profile?.grade || student.profile?.class || 'N/A',
-                    section: student.section || student.profile?.section || '',
-                    rollNumber: student.roll_number || student.profile?.rollNumber || '',
+                    name: student.name || student.email,
+                    grade: student.grade || 'N/A',
+                    section: student.section,
+                    rollNumber: student.roll_number,
                     school_id: student.school_id
                 }));
                 
@@ -398,8 +520,7 @@ export default function ClubsActivitiesPage() {
         capacity: 30,
         meeting_day: null,
         meeting_time: null,
-        location: "",
-        mentor_name: ""
+        location: ""
     });
     const [registrationForm, setRegistrationForm] = useState({
         studentEmail: "",
@@ -435,6 +556,13 @@ export default function ClubsActivitiesPage() {
         });
     }, [clubs, q, categoryFilter, showMine, currentStudent]);
 
+    const filteredCompetitions = useMemo(() => {
+        return competitions.filter((comp) => {
+            if (competitionSearchQuery && !comp.name.toLowerCase().includes(competitionSearchQuery.toLowerCase())) return false;
+            return true;
+        });
+    }, [competitions, competitionSearchQuery]);
+
     const ITEMS_PER_PAGE = 6;
     const totalPages = Math.ceil(filteredClubs.length / ITEMS_PER_PAGE);
     const paginatedClubs = useMemo(() => {
@@ -442,9 +570,22 @@ export default function ClubsActivitiesPage() {
         return filteredClubs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
     }, [filteredClubs, currentPage]);
 
+    // Competition pagination
+    const COMPETITIONS_PER_PAGE = 6;
+    const totalCompetitionPages = Math.ceil(filteredCompetitions.length / COMPETITIONS_PER_PAGE);
+    const paginatedCompetitions = useMemo(() => {
+        const startIndex = (currentCompetitionPage - 1) * COMPETITIONS_PER_PAGE;
+        return filteredCompetitions.slice(startIndex, startIndex + COMPETITIONS_PER_PAGE);
+    }, [filteredCompetitions, currentCompetitionPage]);
+
     useEffect(() => {
         setCurrentPage(1);
     }, [q, categoryFilter, showMine]);
+
+    // Reset competition pagination when competitions change or search changes
+    useEffect(() => {
+        setCurrentCompetitionPage(1);
+    }, [competitions, competitionSearchQuery]);
 
     const enrollStudent = (club) => {
         setStudentDrawer({ open: true, club: club });
@@ -777,14 +918,13 @@ const handleStudentLeave = async (studentId, club) => {
                 capacity: parseInt(newClubForm.capacity),
                 meeting_day: newClubForm.meeting_day || null,
                 meeting_time: newClubForm.meeting_time || null,
-                location: newClubForm.location || null,
-                mentor_name: newClubForm.mentor_name || null
+                location: newClubForm.location || null
             });
 
             setClubs([...clubs, createdClub]);
             setNotice({ type: "success", text: `${createdClub.name} has been created successfully!` });
             setAddClubModal(false);
-            setNewClubForm({ name: "", category: "arts", description: "", capacity: 30, meeting_day: "", meeting_time: "", location: "", mentor_name: "" });
+            setNewClubForm({ name: "", category: "arts", description: "", capacity: 30, meeting_day: "", meeting_time: "", location: "" });
         } catch (error) {
             console.error('Error creating club:', error);
             setNotice({ type: "error", text: "Failed to create club. Please try again." });
@@ -799,8 +939,7 @@ const handleStudentLeave = async (studentId, club) => {
             capacity: club.capacity,
             meeting_day: club.meeting_day || "",
             meeting_time: club.meeting_time || "",
-            location: club.location || "",
-            mentor_name: club.mentor_name || ""
+            location: club.location || ""
         });
         setEditClubModal(club);
     };
@@ -829,8 +968,7 @@ const handleStudentLeave = async (studentId, club) => {
                 capacity: parseInt(editClubForm.capacity),
                 meeting_day: editClubForm.meeting_day || null,
                 meeting_time: editClubForm.meeting_time || null,
-                location: editClubForm.location || null,
-                mentor_name: editClubForm.mentor_name || null
+                location: editClubForm.location || null
             });
 
             const updatedClubs = clubs.map(c => 
@@ -842,7 +980,7 @@ const handleStudentLeave = async (studentId, club) => {
             
             setNotice({ type: "success", text: `${editClubForm.name} has been updated successfully!` });
             setEditClubModal(null);
-            setEditClubForm({ name: "", category: "arts", description: "", capacity: 30, meeting_day: "", meeting_time: "", location: "", mentor_name: "" });
+            setEditClubForm({ name: "", category: "arts", description: "", capacity: 30, meeting_day: "", meeting_time: "", location: "" });
         } catch (error) {
             console.error('Error updating club:', error);
             setNotice({ type: "error", text: "Failed to update club. Please try again." });
@@ -1114,249 +1252,539 @@ const handleStudentLeave = async (studentId, club) => {
     };
 
     return (
-        <div className="p-6 min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-            <div className="max-w-7xl mx-auto">
-                <header className="flex items-center justify-between mb-6">
-                    <div>
-                        <h1 className="text-2xl font-bold">Skills & Co-Curricular</h1>
-                        <p className="text-sm text-slate-600">Clubs • Activities • Competitions</p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <button
-                                onClick={() => setShowExportMenu(!showExportMenu)}
-                                className="flex items-center gap-2 text-sm px-4 py-2 rounded-md bg-white border hover:bg-gray-50"
-                            >
-                                <FileDown size={16} />
-                                Export Reports
-                                <ChevronDown size={16} />
-                            </button>
-
-                            {showExportMenu && (
-                                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border z-50">
-                                    <div className="py-1">
-                                        <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Clubs</div>
-                                        <button
-                                            onClick={exportClubsCSV}
-                                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
-                                        >
-                                            📄 Export Clubs (CSV)
-                                        </button>
-                                        <button
-                                            onClick={exportClubsExcel}
-                                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
-                                        >
-                                            📊 Export Clubs (Excel)
-                                        </button>
-                                        <button
-                                            onClick={exportClubsPDF}
-                                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
-                                        >
-                                            📑 Export Clubs (PDF)
-                                        </button>
-
-                                        <div className="border-t my-1"></div>
-
-                                        <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Competitions</div>
-                                        <button
-                                            onClick={exportCompetitionsCSV}
-                                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
-                                        >
-                                            📄 Export Competitions (CSV)
-                                        </button>
-                                        <button
-                                            onClick={exportCompetitionsExcel}
-                                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
-                                        >
-                                            📊 Export Competitions (Excel)
-                                        </button>
-                                        <button
-                                            onClick={exportCompetitionsPDF}
-                                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
-                                        >
-                                            📑 Export Competitions (PDF)
-                                        </button>
-                                    </div>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
+            <div className="max-w-7xl mx-auto p-6">
+                {/* Modern Header */}
+                <div className="mb-8">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2">Skills & Co-Curricular</h1>
+                            <div className="flex items-center gap-4 text-sm text-gray-600">
+                                <div className="flex items-center gap-2">
+                                    <Users size={16} className="text-blue-600" />
+                                    <span>{clubs.length} Clubs</span>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-                </header>
-
-                <div className="bg-white p-4 rounded-2xl shadow-sm mb-6">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                        <div className="col-span-1 md:col-span-2 flex items-center gap-2">
-                            <Search />
-                            <input
-                                value={q}
-                                onChange={(e) => setQ(e.target.value)}
-                                placeholder="Search clubs..."
-                                className="w-full outline-none bg-transparent placeholder:text-slate-400"
-                            />
+                                <div className="flex items-center gap-2">
+                                    <Trophy size={16} className="text-amber-600" />
+                                    <span>{competitions.length} Competitions</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Users size={16} className="text-green-600" />
+                                    <span>{clubs.reduce((acc, club) => acc + club.members.length, 0)} Total Members</span>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <select
-                                value={categoryFilter}
-                                onChange={(e) => setCategoryFilter(e.target.value)}
-                                className="px-3 py-2 border rounded-md"
-                            >
-                                {categories.map((c) => (
-                                    <option key={c.id} value={c.id}>
-                                        {c.label}
-                                    </option>
-                                ))}
-                            </select>
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-3">
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowExportMenu(!showExportMenu)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+                                >
+                                    <FileDown size={16} />
+                                    <span>Export Reports</span>
+                                    <ChevronDown size={16} className={`transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
+                                </button>
 
-                            <label className="flex items-center gap-2 text-sm">
-                                <input type="checkbox" checked={showMine} onChange={(e) => setShowMine(e.target.checked)} /> My Clubs
-                            </label>
-                        </div>
+                                {showExportMenu && (
+                                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                                        <div className="p-2">
+                                            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Clubs Reports</div>
+                                            <button
+                                                onClick={exportClubsCSV}
+                                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded-lg flex items-center gap-2"
+                                            >
+                                                <FileDown size={14} className="text-green-600" />
+                                                Export Clubs (CSV)
+                                            </button>
+                                            <button
+                                                onClick={exportClubsExcel}
+                                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded-lg flex items-center gap-2"
+                                            >
+                                                <FileDown size={14} className="text-blue-600" />
+                                                Export Clubs (Excel)
+                                            </button>
+                                            <button
+                                                onClick={exportClubsPDF}
+                                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded-lg flex items-center gap-2"
+                                            >
+                                                <FileDown size={14} className="text-red-600" />
+                                                Export Clubs (PDF)
+                                            </button>
 
-                        <div className="flex items-center justify-end gap-3">
-                            <button
-                                onClick={() => setAddClubModal(true)}
-                                className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                            >
-                                <Plus size={16} />
-                                Add Club
-                            </button>
+                                            <div className="border-t border-gray-100 my-2"></div>
+
+                                            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Competitions Reports</div>
+                                            <button
+                                                onClick={exportCompetitionsCSV}
+                                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded-lg flex items-center gap-2"
+                                            >
+                                                <FileDown size={14} className="text-green-600" />
+                                                Export Competitions (CSV)
+                                            </button>
+                                            <button
+                                                onClick={exportCompetitionsExcel}
+                                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded-lg flex items-center gap-2"
+                                            >
+                                                <FileDown size={14} className="text-blue-600" />
+                                                Export Competitions (Excel)
+                                            </button>
+                                            <button
+                                                onClick={exportCompetitionsPDF}
+                                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded-lg flex items-center gap-2"
+                                            >
+                                                <FileDown size={14} className="text-red-600" />
+                                                Export Competitions (PDF)
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {notice ? (
-                    <div className={`p-3 rounded-md mb-4 ${notice.type === "error" ? "bg-red-50 text-red-700" : notice.type === "success" ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"}`}>
-                        {notice.text}
-                        <button onClick={() => setNotice(null)} className="ml-3 text-xs underline">Dismiss</button>
-                    </div>
-                ) : null}
-
-                <section>
-                    <h2 className="text-lg font-semibold mb-3">Clubs</h2>
-                    {filteredClubs.length === 0 ? (
-                        <div className="p-6 bg-white rounded-2xl text-center">No clubs found</div>
-                    ) : (
-                        <>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {paginatedClubs.map((club) => (
-                                    <ClubCard
-                                        key={club.club_id}
-                                        club={club}
-                                        isJoined={joinedClubIds.has(club.club_id)}
-                                        onJoin={enrollStudent}
-                                        onLeave={leaveClub}
-                                        onOpenDetails={openDetails}
-                                        onEdit={handleEditClub}
-                                        onDelete={handleDeleteClub}
-                                    />
-                                ))}
-                            </div>
-
-                            <div className="mt-6 flex items-center justify-between">
-                                <button
-                                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                                    disabled={currentPage === 1}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                >
-                                    ← Previous
-                                </button>
-                                
-                                <span className="text-sm text-slate-600">
-                                    Page {currentPage} of {totalPages} ({filteredClubs.length} total clubs)
-                                </span>
-                                
-                                <button
-                                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                                    disabled={currentPage === totalPages}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                >
-                                    Next →
-                                </button>
-                            </div>
-                        </>
-                    )}
-                </section>
-
-                <section className="mt-10">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold">Upcoming Competitions</h2>
-                        <div className="text-sm text-slate-500">{competitions.length} competitions</div>
+                {/* Enhanced Tab Navigation */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
+                    <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                        {/* Tab Buttons with Enhanced Design */}
+                        <div className="relative flex items-center bg-gray-100 rounded-lg p-2 gap-2 min-w-fit">
+                            {/* Sliding Background Indicator */}
+                            <div 
+                                className={`absolute top-2 bottom-2 rounded-md transition-all duration-500 ease-in-out shadow-lg ${
+                                    activeTab === "clubs" 
+                                        ? "bg-blue-600" 
+                                        : "bg-blue-600"
+                                }`}
+                                style={{ 
+                                    width: 'calc(50% - 6px)',
+                                    left: activeTab === "clubs" ? '8px' : 'calc(50% + 2px)',
+                                }}
+                            />
+                            
+                            <button
+                                onClick={() => handleTabSwitch("clubs")}
+                                className={`relative z-10 px-8 py-3 rounded-md font-medium transition-all duration-300 min-w-fit ${
+                                    activeTab === "clubs"
+                                        ? "text-white"
+                                        : "text-gray-600 hover:text-gray-900"
+                                }`}
+                                title="Switch to Clubs (Ctrl+1)"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <Users size={18} className={`transition-all duration-300 ${
+                                        activeTab === "clubs" ? "scale-110" : ""
+                                    }`} />
+                                    <span className="whitespace-nowrap font-semibold">Clubs</span>
+                                    <span className={`text-xs px-2.5 py-1 rounded-full transition-all duration-300 font-medium ${
+                                        activeTab === "clubs" 
+                                            ? "bg-white/20 text-white" 
+                                            : "bg-blue-100 text-blue-700"
+                                    }`}>
+                                        {clubs.length}
+                                    </span>
+                                </div>
+                            </button>
+                            
+                            <button
+                                onClick={() => handleTabSwitch("competitions")}
+                                className={`relative z-10 px-8 py-3 rounded-md font-medium transition-all duration-300 min-w-fit ${
+                                    activeTab === "competitions"
+                                        ? "text-white"
+                                        : "text-gray-600 hover:text-gray-900"
+                                }`}
+                                title="Switch to Competitions (Ctrl+2)"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <Trophy size={18} className={`transition-all duration-300 ${
+                                        activeTab === "competitions" ? "scale-110" : ""
+                                    }`} />
+                                    <span className="whitespace-nowrap font-semibold">Competitions</span>
+                                    <span className={`text-xs px-2.5 py-1 rounded-full transition-all duration-300 font-medium ${
+                                        activeTab === "competitions" 
+                                            ? "bg-white/20 text-white" 
+                                            : "bg-blue-100 text-blue-700"
+                                    }`}>
+                                        {competitions.length}
+                                    </span>
+                                </div>
+                            </button>
+                        </div>
+                        
+                        {/* Enhanced Add Button with Animation */}
                         <button
-                            onClick={() => setAddCompModal(true)}
-                            className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                            onClick={() => activeTab === "clubs" ? setAddClubModal(true) : setAddCompModal(true)}
+                            className={`group flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg ${
+                                activeTab === "clubs"
+                                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                                    : "bg-blue-600 text-white hover:bg-blue-700"
+                            }`}
                         >
-                            <Plus size={16} />
-                            Add Competition
+                            <Plus size={16} className="transition-transform duration-300 group-hover:rotate-90" />
+                            <span>Add {activeTab === "clubs" ? "Club" : "Competition"}</span>
                         </button>
                     </div>
 
-                    <div className="flex gap-4 overflow-x-auto pb-2">
-                        {competitions.map((comp) => (
-                            <div key={comp.comp_id} className="min-w-[260px] bg-white p-4 rounded-2xl shadow-sm border">
-                                <div className="flex items-start justify-between">
-                                    <div>
-                                        <h3 className="font-semibold">{comp.name}</h3>
-                                        <div className="text-xs text-slate-500 capitalize">{comp.level} • {formatDate(comp.competition_date || comp.date)}</div>
-                                    </div>
-                                    <div className="text-slate-400">
-                                        <Calendar />
-                                    </div>
+                    {/* Tab Content Indicator */}
+                    <div className={`h-1 transition-all duration-500 ${
+                        activeTab === "clubs" ? "bg-blue-600" : "bg-blue-600"
+                    }`} />
+                </div>
+
+                {/* Enhanced Search and Filter Bar - Only show for clubs tab */}
+                {activeTab === "clubs" && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                            {/* Search */}
+                            <div className="lg:col-span-6 relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                                <input
+                                    value={q}
+                                    onChange={(e) => setQ(e.target.value)}
+                                    placeholder="Search clubs by name..."
+                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+
+                            {/* Category Filter */}
+                            <div className="lg:col-span-3">
+                                <div className="relative">
+                                    <select
+                                        value={categoryFilter}
+                                        onChange={(e) => setCategoryFilter(e.target.value)}
+                                        className="w-full pl-4 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+                                    >
+                                        {categories.map((c) => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.label}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
+                            </div>
 
-                                <div className="mt-2">
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                        comp.status === 'upcoming' ? 'bg-blue-100 text-blue-700' :
-                                        comp.status === 'ongoing' ? 'bg-green-100 text-green-700' :
-                                        comp.status === 'completed' ? 'bg-gray-100 text-gray-700' :
-                                        'bg-red-100 text-red-700'
-                                    }`}>
-                                        {comp.status === 'upcoming' ? '🔜 Upcoming' :
-                                         comp.status === 'ongoing' ? '▶️ Ongoing' :
-                                         comp.status === 'completed' ? '✅ Completed' :
-                                         '❌ Cancelled'}
-                                    </span>
+                            {/* My Clubs Toggle */}
+                            <div className="lg:col-span-3">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={showMine} 
+                                        onChange={(e) => setShowMine(e.target.checked)}
+                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">My Clubs Only</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Enhanced Search and Filter Bar - Only show for competitions tab */}
+                {activeTab === "competitions" && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                            {/* Search */}
+                            <div className="lg:col-span-8 relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                                <input
+                                    value={competitionSearchQuery}
+                                    onChange={(e) => setCompetitionSearchQuery(e.target.value)}
+                                    placeholder="Search competitions by name..."
+                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+
+                            {/* Clear Search Button */}
+                            <div className="lg:col-span-4">
+                                {competitionSearchQuery && (
+                                    <button
+                                        onClick={() => setCompetitionSearchQuery("")}
+                                        className="flex items-center gap-2 px-4 py-3 text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                                    >
+                                        <X size={16} />
+                                        Clear Search
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Enhanced Notice */}
+                {notice && (
+                    <div className={`mb-6 p-4 rounded-xl border-l-4 ${
+                        notice.type === "error" 
+                            ? "bg-red-50 border-red-400 text-red-700" 
+                            : notice.type === "success" 
+                            ? "bg-green-50 border-green-400 text-green-700" 
+                            : "bg-blue-50 border-blue-400 text-blue-700"
+                    }`}>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="font-medium">{notice.text}</span>
+                            </div>
+                            <button 
+                                onClick={() => setNotice(null)} 
+                                className="text-sm underline hover:no-underline"
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Tab Content */}
+                <div className="transition-all duration-300 ease-in-out">
+                    {activeTab === "clubs" && (
+                        <section className="mb-10 animate-fadeIn">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-900">Active Clubs</h2>
+                                    <p className="text-gray-600 mt-1">Manage and monitor club activities</p>
                                 </div>
+                                <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                    {filteredClubs.length} of {clubs.length} clubs
+                                </div>
+                            </div>
 
-                                <p className="mt-3 text-sm text-slate-600">Participating Clubs: {comp.participatingClubs?.length ?? 0}</p>
-
-                                <div className="mt-4 space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            className="text-sm px-3 py-1 rounded-md border hover:bg-slate-100"
-                                            onClick={() => setViewComp(comp)}
-                                        >
-                                            View
-                                        </button>
-                                        <button
-                                            onClick={() => setRegisterCompModal(comp)}
-                                            className="text-sm px-3 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700"
-                                        >
-                                            Register
-                                        </button>
+                            {filteredClubs.length === 0 ? (
+                                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                                    <Users size={48} className="text-gray-300 mx-auto mb-4" />
+                                    <h3 className="text-lg font-medium text-gray-900 mb-2">No clubs found</h3>
+                                    <p className="text-gray-500 mb-4">Try adjusting your search or filters</p>
+                                    <button
+                                        onClick={() => setAddClubModal(true)}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                    >
+                                        <Plus size={16} />
+                                        Create First Club
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                        {paginatedClubs.map((club) => (
+                                            <ClubCard
+                                                key={club.club_id}
+                                                club={club}
+                                                isJoined={joinedClubIds.has(club.club_id)}
+                                                onJoin={enrollStudent}
+                                                onLeave={leaveClub}
+                                                onOpenDetails={openDetails}
+                                                onEdit={handleEditClub}
+                                                onDelete={handleDeleteClub}
+                                            />
+                                        ))}
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => handleEditCompetition(comp)}
-                                            className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
-                                        >
-                                            <Edit size={14} />
-                                            Edit
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteCompetition(comp)}
-                                            className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
-                                        >
-                                            <Trash2 size={14} />
-                                            Delete
-                                        </button>
+
+                                    {/* Enhanced Pagination */}
+                                    {totalPages > 1 && (
+                                        <div className="mt-8 flex items-center justify-between bg-white rounded-xl border border-gray-200 p-4">
+                                            <button
+                                                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                                                disabled={currentPage === 1}
+                                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                ← Previous
+                                            </button>
+                                            
+                                            <div className="flex items-center gap-4">
+                                                <span className="text-sm text-gray-600">
+                                                    Page {currentPage} of {totalPages}
+                                                </span>
+                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                                    {filteredClubs.length} total clubs
+                                                </span>
+                                            </div>
+                                            
+                                            <button
+                                                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                                                disabled={currentPage === totalPages}
+                                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                Next →
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </section>
+                    )}
+
+                    {/* Competitions Tab Content */}
+                    {activeTab === "competitions" && (
+                        <section className="animate-fadeIn">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-900">Competitions</h2>
+                                    <p className="text-gray-600 mt-1">Track and manage competitive events</p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                        {filteredCompetitions.length} of {competitions.length} competitions
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                </section>
+
+                            {filteredCompetitions.length === 0 ? (
+                                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                                    <Trophy size={48} className="text-gray-300 mx-auto mb-4" />
+                                    {competitionSearchQuery ? (
+                                        <>
+                                            <h3 className="text-lg font-medium text-gray-900 mb-2">No competitions found</h3>
+                                            <p className="text-gray-500 mb-4">No competitions match your search "{competitionSearchQuery}"</p>
+                                            <button
+                                                onClick={() => setCompetitionSearchQuery("")}
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                                            >
+                                                <X size={16} />
+                                                Clear Search
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <h3 className="text-lg font-medium text-gray-900 mb-2">No competitions yet</h3>
+                                            <p className="text-gray-500 mb-4">Create your first competition to get started</p>
+                                            <button
+                                                onClick={() => setAddCompModal(true)}
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                            >
+                                                <Plus size={16} />
+                                                Create Competition
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                        {paginatedCompetitions.map((comp) => (
+                                            <div key={comp.comp_id} className="bg-white rounded-xl border border-gray-200 border-l-4 border-l-blue-500 hover:border-blue-300 hover:shadow-lg transition-all duration-300 overflow-hidden">
+                                                {/* Competition Header */}
+                                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-gray-100">
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="bg-white rounded-lg p-2 shadow-sm">
+                                                                <Trophy size={20} className="text-blue-600" />
+                                                            </div>
+                                                            <div>
+                                                                <h3 className="font-semibold text-gray-900">{comp.name}</h3>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <span className="text-xs text-gray-500 capitalize">{comp.level}</span>
+                                                                    <span className="text-xs text-gray-400">•</span>
+                                                                    <span className="text-xs text-gray-500">{formatDate(comp.competition_date || comp.date)}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Competition Content */}
+                                                <div className="p-4">
+                                                    <div className="mb-4">
+                                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                                            comp.status === 'upcoming' ? 'bg-gray-100 text-blue-700' :
+                                                            comp.status === 'ongoing' ? 'bg-blue-100 text-green-700' :
+                                                            comp.status === 'completed' ? 'bg-green-100 text-gray-700' :
+                                                            'bg-red-100 text-red-700'
+                                                        }`}>
+                                                            {comp.status === 'upcoming' ? 'Upcoming' :
+                                                             comp.status === 'ongoing' ? 'Ongoing' :
+                                                             comp.status === 'completed' ? 'Completed' :
+                                                             '❌ Cancelled'}
+                                                        </span>
+                                                    </div>
+
+                                                    {comp.category && (
+                                                        <div className="mb-3">
+                                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 capitalize">
+                                                                {comp.category}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="text-xs text-gray-600">Participating Clubs</div>
+                                                            <div className="text-sm font-semibold text-gray-900">
+                                                                {comp.participatingClubs?.length ?? 0}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Action Buttons */}
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                className="flex items-center justify-center gap-2 flex-1 text-sm px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                                                                onClick={() => setViewComp(comp)}
+                                                            >
+                                                                View Details
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setRegisterCompModal(comp)}
+                                                                className="flex items-center justify-center gap-2 flex-1 text-sm px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                                                            >
+                                                                Register
+                                                            </button>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={() => handleEditCompetition(comp)}
+                                                                className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
+                                                            >
+                                                                <Edit size={14} />
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteCompetition(comp)}
+                                                                className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-2 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Competition Pagination */}
+                                    {totalCompetitionPages > 1 && (
+                                        <div className="mt-8 flex items-center justify-between bg-white rounded-xl border border-gray-200 p-4">
+                                            <button
+                                                onClick={() => setCurrentCompetitionPage(Math.max(1, currentCompetitionPage - 1))}
+                                                disabled={currentCompetitionPage === 1}
+                                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                ← Previous
+                                            </button>
+                                            
+                                            <div className="flex items-center gap-4">
+                                                <span className="text-sm text-gray-600">
+                                                    Page {currentCompetitionPage} of {totalCompetitionPages}
+                                                </span>
+                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                                    {filteredCompetitions.length} total competitions
+                                                </span>
+                                            </div>
+                                            
+                                            <button
+                                                onClick={() => setCurrentCompetitionPage(Math.min(totalCompetitionPages, currentCompetitionPage + 1))}
+                                                disabled={currentCompetitionPage === totalCompetitionPages}
+                                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                Next →
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </section>
+                    )}
+                </div>
 
                 <Modal open={detailsOpen} onClose={() => setDetailsOpen(false)} title={selectedClub?.name ?? "Details"}>
                     {selectedClub ? (
@@ -1383,7 +1811,6 @@ const handleStudentLeave = async (studentId, club) => {
                                     <div>📅 {selectedClub.meeting_day || 'TBD'}</div>
                                     <div>🕐 {selectedClub.meeting_time || 'TBD'}</div>
                                     <div>📍 {selectedClub.location || 'TBD'}</div>
-                                    <div>👨‍🏫 Mentor: {selectedClub.mentor_name || 'TBD'}</div>
                                 </div>
                             </div>
 
@@ -1582,7 +2009,7 @@ const handleStudentLeave = async (studentId, club) => {
                             <div className="text-sm font-medium text-blue-900 mb-3">Meeting Details</div>
                             
                             <div className="mb-3">
-                                <label className="block text-sm font-medium mb-1">📅 Meeting Day</label>
+                                <label className="block text-sm font-medium mb-1">Meeting Day</label>
                                 <select
                                     value={editClubForm.meeting_day}
                                     onChange={(e) => setEditClubForm({ ...editClubForm, meeting_day: e.target.value })}
@@ -1598,7 +2025,7 @@ const handleStudentLeave = async (studentId, club) => {
                             </div>
 
                             <div className="mb-3">
-                                <label className="block text-sm font-medium mb-1">🕐 Meeting Time</label>
+                                <label className="block text-sm font-medium mb-1">Meeting Time</label>
                                 <input
                                     type="time"
                                     value={editClubForm.meeting_time}
@@ -1608,7 +2035,7 @@ const handleStudentLeave = async (studentId, club) => {
                             </div>
 
                             <div className="mb-3">
-                                <label className="block text-sm font-medium mb-1">📍 Location</label>
+                                <label className="block text-sm font-medium mb-1"> Location</label>
                                 <input
                                     type="text"
                                     value={editClubForm.location}
@@ -1618,16 +2045,6 @@ const handleStudentLeave = async (studentId, club) => {
                                 />
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium mb-1">👨‍🏫 Mentor Name</label>
-                                <input
-                                    type="text"
-                                    value={editClubForm.mentor_name}
-                                    onChange={(e) => setEditClubForm({ ...editClubForm, mentor_name: e.target.value })}
-                                    placeholder="Enter mentor/teacher name"
-                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
                         </div>
 
                         <div className="flex items-center gap-3 pt-4">
@@ -1666,9 +2083,9 @@ const handleStudentLeave = async (studentId, club) => {
                                     registerCompModal?.status === 'completed' ? 'bg-gray-100 text-gray-700' :
                                     'bg-red-100 text-red-700'
                                 }`}>
-                                    {registerCompModal?.status === 'upcoming' ? '🔜 Upcoming' :
-                                     registerCompModal?.status === 'ongoing' ? '▶️ Ongoing' :
-                                     registerCompModal?.status === 'completed' ? '✅ Completed' :
+                                    {registerCompModal?.status === 'upcoming' ? ' Upcoming' :
+                                     registerCompModal?.status === 'ongoing' ? 'Ongoing' :
+                                     registerCompModal?.status === 'completed' ? 'Completed' :
                                      '❌ Cancelled'}
                                 </span>
                             </div>
@@ -1769,10 +2186,10 @@ const handleStudentLeave = async (studentId, club) => {
                                         onChange={(e) => setRegistrationForm({ ...registrationForm, status: e.target.value })}
                                         className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     >
-                                        <option value="upcoming">🔜 Upcoming</option>
-                                        <option value="ongoing">▶️ Ongoing</option>
-                                        <option value="completed">✅ Completed</option>
-                                        <option value="cancelled">❌ Cancelled</option>
+                                        <option value="upcoming">Upcoming</option>
+                                        <option value="ongoing">Ongoing</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="cancelled">Cancelled</option>
                                     </select>
                                     <p className="text-xs text-slate-500 mt-1">Current status of the competition</p>
                                 </div>
@@ -1941,10 +2358,10 @@ const handleStudentLeave = async (studentId, club) => {
                                     viewComp.status === 'completed' ? 'bg-gray-100 text-gray-700' :
                                     'bg-red-100 text-red-700'
                                 }`}>
-                                    {viewComp.status === 'upcoming' ? '🔜 Upcoming' :
-                                     viewComp.status === 'ongoing' ? '▶️ Ongoing' :
-                                     viewComp.status === 'completed' ? '✅ Completed' :
-                                     '❌ Cancelled'}
+                                    {viewComp.status === 'upcoming' ? ' Upcoming' :
+                                     viewComp.status === 'ongoing' ? 'Ongoing' :
+                                     viewComp.status === 'completed' ? 'Completed' :
+                                     'Cancelled'}
                                 </span>
                             </div>
 
@@ -2019,7 +2436,7 @@ const handleStudentLeave = async (studentId, club) => {
                     <div className="space-y-3">
                         <div className="bg-green-50 p-3 rounded-lg mb-4 text-sm">
                             <div className="flex items-center gap-2 text-green-900">
-                                <span className="font-semibold">ℹ️ Note:</span>
+                                <span className="font-semibold">Note:</span>
                                 <span>This competition will be created for your school only.</span>
                             </div>
                         </div>
@@ -2109,7 +2526,7 @@ const handleStudentLeave = async (studentId, club) => {
                         <div className="flex gap-3 pt-3">
                             <button
                                 onClick={handleAddCompetition}
-                                className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 font-medium"
+                                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-medium"
                             >
                                 Create Competition
                             </button>
