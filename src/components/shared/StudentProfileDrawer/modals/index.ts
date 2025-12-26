@@ -1,4 +1,5 @@
 export { default as AdmissionNoteModal } from './AdmissionNoteModal';
+export { default as SchoolAdmissionNoteModal } from './SchoolAdmissionNoteModal';
 export { default as MessageModal } from './MessageModal';
 export { default as ExportModal } from './ExportModal';
 export { default as ApprovalModal } from './ApprovalModal';
