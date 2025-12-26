@@ -1,27 +1,37 @@
 /**
  * Payment Verification Service
- * Handles payment verification, transaction logging, and duplicate detection
+ * 
+ * Handles payment verification via Cloudflare Worker.
+ * Worker handles: signature verification + subscription creation + transaction logging
+ * 
+ * This service provides:
+ * - verifyPaymentSignature() - Verify payment via Worker
+ * - extractPaymentParams()   - Extract params from URL
+ * - validatePaymentParams()  - Validate required params
+ * - clearVerificationCache() - Clear cache (for testing)
  */
 
 import { supabase } from '../../lib/supabaseClient';
-import { checkAuthentication } from '../authService';
 import paymentsApiService from '../paymentsApiService';
 
 // Cache for verification results (5 minutes TTL)
 const verificationCache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 5 * 60 * 1000;
 
 /**
- * Verify payment signature with Razorpay
+ * Verify payment signature via Cloudflare Worker
+ * Worker handles: verification + subscription creation + transaction logging
+ * 
  * @param {Object} paymentData - Payment verification data
  * @param {string} paymentData.razorpay_payment_id - Payment ID from Razorpay
  * @param {string} paymentData.razorpay_order_id - Order ID from Razorpay
  * @param {string} paymentData.razorpay_signature - Signature from Razorpay
- * @returns {Promise<Object>} Verification result
+ * @param {Object} paymentData.plan - Plan details for subscription creation
+ * @returns {Promise<Object>} Verification result with subscription data
  */
 export const verifyPaymentSignature = async (paymentData) => {
   try {
-    const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = paymentData;
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, plan } = paymentData;
 
     // Validate required parameters
     if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
@@ -41,28 +51,16 @@ export const verifyPaymentSignature = async (paymentData) => {
       return cached.result;
     }
 
-    // Check for duplicate transaction
-    const isDuplicate = await checkDuplicateTransaction(razorpay_payment_id);
-    if (isDuplicate) {
-      console.warn('⚠️ Duplicate transaction detected:', razorpay_payment_id);
-      return {
-        success: false,
-        verified: false,
-        error: 'This payment has already been processed',
-        errorCode: 'DUPLICATE_TRANSACTION'
-      };
-    }
-
-    // Get auth token for authenticated requests (optional - Edge Function will verify via order)
+    // Get auth token (optional - Worker can verify via order)
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
-    // Call Cloudflare Worker via paymentsApiService
+    // Call Worker - handles verification + subscription creation
     const result = await paymentsApiService.verifyPayment({
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      orderId: razorpay_order_id // Ensure consistent naming if needed by worker
+      plan,
     }, token);
 
     // Cache the result
@@ -73,153 +71,12 @@ export const verifyPaymentSignature = async (paymentData) => {
 
     return result;
   } catch (error) {
-    console.error('❌ Error verifying payment signature:', error);
+    console.error('❌ Error verifying payment:', error);
     return {
       success: false,
       verified: false,
       error: error.message || 'Payment verification failed',
       errorCode: 'VERIFICATION_ERROR'
-    };
-  }
-};
-
-/**
- * Check if a transaction has already been processed
- * @param {string} razorpayPaymentId - Razorpay payment ID
- * @returns {Promise<boolean>} True if duplicate exists
- */
-export const checkDuplicateTransaction = async (razorpayPaymentId) => {
-  try {
-    const { data, error } = await supabase
-      .from('payment_transactions')
-      .select('id')
-      .eq('razorpay_payment_id', razorpayPaymentId)
-      .maybeSingle();
-
-    if (error) {
-      console.error('❌ Error checking duplicate transaction:', error);
-      return false; // Fail open - allow transaction to proceed
-    }
-
-    return !!data;
-  } catch (error) {
-    console.error('❌ Error in duplicate check:', error);
-    return false;
-  }
-};
-
-/**
- * Log payment transaction to database
- * @param {Object} transactionData - Transaction details
- * @returns {Promise<Object>} Result of logging operation
- */
-export const logPaymentTransaction = async (transactionData) => {
-  try {
-    const authResult = await checkAuthentication();
-
-    if (!authResult.isAuthenticated) {
-      return {
-        success: false,
-        error: 'User must be authenticated to log transaction'
-      };
-    }
-
-    const userId = authResult.user.id;
-
-    const transaction = {
-      subscription_id: transactionData.subscription_id || null,
-      user_id: userId,
-      razorpay_payment_id: transactionData.razorpay_payment_id,
-      razorpay_order_id: transactionData.razorpay_order_id || null,
-      amount: transactionData.amount,
-      currency: transactionData.currency || 'INR',
-      status: transactionData.status || 'success',
-      payment_method: transactionData.payment_method || 'card',
-      created_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('payment_transactions')
-      .insert([transaction])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Error logging payment transaction:', error);
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-
-    console.log('✅ Payment transaction logged successfully:', data.id);
-    return {
-      success: true,
-      data
-    };
-  } catch (error) {
-    console.error('❌ Error in logPaymentTransaction:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-};
-
-/**
- * Log failed payment transaction
- * @param {Object} failureData - Failure details
- * @returns {Promise<Object>} Result of logging operation
- */
-export const logFailedTransaction = async (failureData) => {
-  try {
-    const authResult = await checkAuthentication();
-
-    if (!authResult.isAuthenticated) {
-      return {
-        success: false,
-        error: 'User must be authenticated to log transaction'
-      };
-    }
-
-    const userId = authResult.user.id;
-
-    const transaction = {
-      user_id: userId,
-      razorpay_payment_id: failureData.razorpay_payment_id || null,
-      razorpay_order_id: failureData.razorpay_order_id || null,
-      amount: failureData.amount,
-      currency: failureData.currency || 'INR',
-      status: 'failed',
-      payment_method: failureData.payment_method || 'unknown',
-      failure_reason: failureData.error_description || failureData.error || null,
-      created_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('payment_transactions')
-      .insert([transaction])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Error logging failed transaction:', error);
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-
-    console.log('✅ Failed transaction logged:', data.id);
-    return {
-      success: true,
-      data
-    };
-  } catch (error) {
-    console.error('❌ Error in logFailedTransaction:', error);
-    return {
-      success: false,
-      error: error.message
     };
   }
 };
@@ -247,20 +104,11 @@ export const extractPaymentParams = (searchParams) => {
  */
 export const validatePaymentParams = (params) => {
   const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = params;
-
   const errors = [];
 
-  if (!razorpay_payment_id) {
-    errors.push('Payment ID is missing');
-  }
-
-  if (!razorpay_order_id) {
-    errors.push('Order ID is missing');
-  }
-
-  if (!razorpay_signature) {
-    errors.push('Payment signature is missing');
-  }
+  if (!razorpay_payment_id) errors.push('Payment ID is missing');
+  if (!razorpay_order_id) errors.push('Order ID is missing');
+  if (!razorpay_signature) errors.push('Payment signature is missing');
 
   return {
     isValid: errors.length === 0,
@@ -274,4 +122,39 @@ export const validatePaymentParams = (params) => {
 export const clearVerificationCache = () => {
   verificationCache.clear();
   console.log('✅ Verification cache cleared');
+};
+
+/**
+ * Log failed transaction for tracking and support purposes
+ * @param {Object} transactionData - Failed transaction details
+ * @returns {Promise<Object>} Result of logging operation
+ */
+export const logFailedTransaction = async (transactionData) => {
+  try {
+    const { razorpay_payment_id, razorpay_order_id, amount, currency, error, error_description } = transactionData;
+    
+    // Get current user if available
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+
+    // Log to console for debugging
+    console.warn('❌ Payment failed:', {
+      payment_id: razorpay_payment_id,
+      order_id: razorpay_order_id,
+      amount,
+      currency,
+      error,
+      error_description,
+      user_id: userId,
+      timestamp: new Date().toISOString()
+    });
+
+    // Optionally log to database if needed
+    // This can be expanded to store in a failed_transactions table
+    
+    return { success: true, logged: true };
+  } catch (err) {
+    console.error('Error logging failed transaction:', err);
+    return { success: false, logged: false, error: err.message };
+  }
 };

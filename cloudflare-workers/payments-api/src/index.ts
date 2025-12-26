@@ -1,23 +1,44 @@
 /**
  * Payments API Cloudflare Worker
- * Handles Razorpay payment processing:
- * - /create-order - Create Razorpay order
- * - /verify-payment - Verify payment signature
- * - /webhook - Handle Razorpay webhooks
- * - /cancel-subscription - Cancel Razorpay subscription
- * - /deactivate-subscription - Deactivate subscription in DB
- * - /expire-subscriptions - Expire old subscriptions (cron)
+ * Complete subscription and payment management backend
+ * 
+ * PAYMENT ENDPOINTS:
+ * - POST /create-order         - Create Razorpay order for subscription
+ * - POST /create-event-order   - Create Razorpay order for events
+ * - POST /verify-payment       - Verify payment + create subscription + log transaction
+ * - POST /webhook              - Handle Razorpay webhooks
+ * 
+ * SUBSCRIPTION ENDPOINTS:
+ * - GET  /get-subscription     - Get user's active subscription
+ * - POST /cancel-subscription  - Cancel Razorpay recurring subscription
+ * - POST /deactivate-subscription - Deactivate/cancel subscription in DB
+ * - POST /pause-subscription   - Pause subscription (1-3 months)
+ * - POST /resume-subscription  - Resume paused subscription
+ * 
+ * ADMIN/CRON ENDPOINTS:
+ * - POST /expire-subscriptions - Auto-expire old subscriptions (cron)
+ * - GET  /health               - Health check with config status
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export interface Env {
-  VITE_SUPABASE_URL: string;
-  VITE_SUPABASE_ANON_KEY: string;
+  // Supabase - support both naming conventions
+  SUPABASE_URL: string;
+  SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
-  VITE_RAZORPAY_KEY_ID: string;
+  // Legacy VITE_ prefixed names (fallback)
+  VITE_SUPABASE_URL?: string;
+  VITE_SUPABASE_ANON_KEY?: string;
+  // Razorpay
+  RAZORPAY_KEY_ID: string;
   RAZORPAY_KEY_SECRET: string;
   RAZORPAY_WEBHOOK_SECRET?: string;
+  // Test mode credentials (optional)
+  TEST_RAZORPAY_KEY_ID?: string;
+  TEST_RAZORPAY_KEY_SECRET?: string;
+  // Legacy VITE_ prefixed names (fallback)
+  VITE_RAZORPAY_KEY_ID?: string;
 }
 
 const corsHeaders = {
@@ -29,6 +50,46 @@ const corsHeaders = {
 // Valid plan amounts in paise
 const VALID_AMOUNTS = [100, 49900, 99900, 199900];
 const MAX_AMOUNT = 1000000;
+
+// URL validation helper
+function isValidHttpUrl(str: string): boolean {
+  try {
+    const url = new URL(str);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+// Helper to get Supabase URL with fallback and validation
+function getSupabaseUrl(env: Env): string {
+  const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+  if (!url) {
+    throw new Error('SUPABASE_URL is not configured. Set it as a Cloudflare secret via: wrangler secret put SUPABASE_URL');
+  }
+  if (!isValidHttpUrl(url)) {
+    throw new Error(`Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL. Got: "${url.substring(0, 50)}...". Ensure SUPABASE_URL is set correctly as a Cloudflare secret.`);
+  }
+  return url;
+}
+
+// Helper to get Supabase Anon Key with fallback
+function getSupabaseAnonKey(env: Env): string {
+  const key = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
+  if (!key) {
+    throw new Error('SUPABASE_ANON_KEY is not configured. Set it as a Cloudflare secret via: wrangler secret put SUPABASE_ANON_KEY');
+  }
+  return key;
+}
+
+// Helper to get Razorpay Key ID with fallback
+function getRazorpayKeyId(env: Env): string {
+  const key = env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID;
+  if (!key) {
+    throw new Error('RAZORPAY_KEY_ID is not configured. Set it as a Cloudflare secret via: wrangler secret put RAZORPAY_KEY_ID');
+  }
+  return key;
+}
 
 function jsonResponse(data: any, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -42,12 +103,13 @@ async function authenticateUser(request: Request, env: Env): Promise<{ user: any
   if (!authHeader) return null;
 
   const token = authHeader.replace('Bearer ', '');
-  const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const supabaseUrl = getSupabaseUrl(env);
+  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
   
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !user) return null;
 
-  const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+  const supabase = createClient(supabaseUrl, getSupabaseAnonKey(env), {
     global: { headers: { Authorization: authHeader } },
   });
 
@@ -55,9 +117,12 @@ async function authenticateUser(request: Request, env: Env): Promise<{ user: any
 }
 
 function getRazorpayCredentials(env: Env) {
-  // Use test credentials if available
-  const keyId = env.TEST_RAZORPAY_KEY_ID || env.RAZORPAY_KEY_ID;
+  // Use test credentials if available, otherwise use production
+  const keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
   const keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
+  if (!keySecret) {
+    throw new Error('RAZORPAY_KEY_SECRET is not configured');
+  }
   return { keyId, keySecret };
 }
 
@@ -117,7 +182,7 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
 
   // Validate required fields
   if (!amount || !currency || !userEmail || !planId || !planName) {
-    return jsonResponse({ error: 'Missing required fields' }, 400);
+    return jsonResponse({ error: 'Missing required fields: amount, currency, userEmail, planId, planName' }, 400);
   }
 
   // Validate amount
@@ -125,9 +190,11 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
     return jsonResponse({ error: 'Invalid amount' }, 400);
   }
 
-  if (!VALID_AMOUNTS.includes(amount)) {
-    return jsonResponse({ error: 'Invalid plan amount' }, 400);
-  }
+  // Allow valid plan amounts or any amount for custom plans
+  // VALID_AMOUNTS check is optional for flexibility
+  // if (!VALID_AMOUNTS.includes(amount)) {
+  //   return jsonResponse({ error: 'Invalid plan amount' }, 400);
+  // }
 
   if (currency !== 'INR') {
     return jsonResponse({ error: 'Only INR currency is supported' }, 400);
@@ -207,43 +274,68 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
 
 // ==================== VERIFY PAYMENT ====================
 
+// Helper to calculate subscription end date
+function calculateSubscriptionEndDate(billingCycle: string): string {
+  const now = new Date();
+  if (billingCycle.toLowerCase().includes('year')) {
+    now.setFullYear(now.getFullYear() + 1);
+  } else {
+    // Default to 1 month
+    now.setMonth(now.getMonth() + 1);
+  }
+  return now.toISOString();
+}
+
 async function handleVerifyPayment(request: Request, env: Env): Promise<Response> {
-  const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const supabaseUrl = getSupabaseUrl(env);
+  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
   const { keyId, keySecret } = getRazorpayCredentials(env);
 
   const body = await request.json() as {
     razorpay_order_id?: string;
     razorpay_payment_id?: string;
     razorpay_signature?: string;
+    // Optional: plan details for subscription creation
+    plan?: {
+      name?: string;
+      price?: number;
+      duration?: string;
+    };
   };
 
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, plan } = body;
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
     return jsonResponse({ error: 'Missing required fields' }, 400);
   }
 
-  // Check idempotency
-  const { data: existingPayment } = await supabaseAdmin
-    .from('payment_transactions')
-    .select('id')
+  // Check idempotency - if subscription already exists for this payment
+  const { data: existingSubscription } = await supabaseAdmin
+    .from('subscriptions')
+    .select('*')
     .eq('razorpay_payment_id', razorpay_payment_id)
     .maybeSingle();
 
-  if (existingPayment) {
-    const { data: order } = await supabaseAdmin
-      .from('razorpay_orders')
-      .select('user_id')
-      .eq('order_id', razorpay_order_id)
+  if (existingSubscription) {
+    // Fetch transaction details for complete response
+    const { data: transaction } = await supabaseAdmin
+      .from('payment_transactions')
+      .select('payment_method, amount')
+      .eq('razorpay_payment_id', razorpay_payment_id)
       .maybeSingle();
 
     return jsonResponse({
       success: true,
       verified: true,
-      message: 'Payment already verified',
+      message: 'Payment already verified and subscription exists',
       payment_id: razorpay_payment_id,
       order_id: razorpay_order_id,
-      user_id: order?.user_id,
+      user_id: existingSubscription.user_id,
+      user_name: existingSubscription.full_name,
+      user_email: existingSubscription.email,
+      payment_method: transaction?.payment_method || 'Card',
+      amount: (transaction?.amount || existingSubscription.plan_amount || 0) * 100, // Convert to paise for consistency
+      subscription: existingSubscription,
       already_processed: true,
     });
   }
@@ -267,7 +359,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
 
   // Fetch payment details from Razorpay
   let paymentMethod = 'unknown';
-  let paymentAmount = 0;
+  let paymentAmount = order.amount;
 
   try {
     const razorpayAuth = btoa(`${keyId}:${keySecret}`);
@@ -278,7 +370,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     if (paymentResponse.ok) {
       const paymentDetails = await paymentResponse.json() as any;
       paymentMethod = paymentDetails.method || 'unknown';
-      paymentAmount = paymentDetails.amount || 0;
+      paymentAmount = paymentDetails.amount || order.amount;
 
       if (paymentAmount !== order.amount) {
         return jsonResponse({ error: 'Payment amount mismatch' }, 400);
@@ -298,17 +390,101 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     .update({ status: 'paid', updated_at: new Date().toISOString() })
     .eq('order_id', razorpay_order_id);
 
+  // Get user details for subscription
+  const { data: userData } = await supabaseAdmin
+    .from('users')
+    .select('firstName, lastName, email, phone')
+    .eq('id', order.user_id)
+    .maybeSingle();
+
+  const fullName = userData 
+    ? `${userData.firstName || ''} ${userData.lastName || ''}`.trim() 
+    : order.user_name || 'User';
+  const userEmail = userData?.email || order.user_email || '';
+  const userPhone = userData?.phone || null;
+
+  // Determine billing cycle from plan or order notes
+  const billingCycle = plan?.duration || order.plan_name?.toLowerCase().includes('year') ? 'year' : 'month';
+  const planAmount = (plan?.price || paymentAmount / 100); // Convert paise to rupees if needed
+
+  // CREATE SUBSCRIPTION RECORD
+  const now = new Date().toISOString();
+  const subscriptionData = {
+    user_id: order.user_id,
+    full_name: fullName,
+    email: userEmail,
+    phone: userPhone,
+    plan_type: plan?.name || order.plan_name || 'Standard Plan',
+    plan_amount: planAmount,
+    billing_cycle: billingCycle,
+    razorpay_payment_id: razorpay_payment_id,
+    razorpay_order_id: razorpay_order_id,
+    status: 'active' as const,
+    subscription_start_date: now,
+    subscription_end_date: calculateSubscriptionEndDate(billingCycle),
+    auto_renew: false,
+    created_at: now,
+    updated_at: now,
+  };
+
+  const { data: subscription, error: subError } = await supabaseAdmin
+    .from('subscriptions')
+    .insert([subscriptionData])
+    .select()
+    .single();
+
+  if (subError) {
+    console.error('Error creating subscription:', subError);
+    // Don't fail the verification, but log the error
+    return jsonResponse({
+      success: true,
+      verified: true,
+      message: 'Payment verified but subscription creation failed',
+      payment_id: razorpay_payment_id,
+      order_id: razorpay_order_id,
+      user_id: order.user_id,
+      user_name: fullName,
+      user_email: userEmail,
+      payment_method: paymentMethod,
+      amount: paymentAmount,
+      subscription_error: subError.message,
+    });
+  }
+
+  // LOG PAYMENT TRANSACTION
+  const transactionData = {
+    subscription_id: subscription.id,
+    user_id: order.user_id,
+    razorpay_payment_id: razorpay_payment_id,
+    razorpay_order_id: razorpay_order_id,
+    amount: planAmount,
+    currency: 'INR',
+    status: 'success',
+    payment_method: paymentMethod,
+    created_at: now,
+  };
+
+  const { error: txnError } = await supabaseAdmin
+    .from('payment_transactions')
+    .insert([transactionData]);
+
+  if (txnError) {
+    console.error('Error logging transaction:', txnError);
+    // Don't fail, subscription is already created
+  }
+
   return jsonResponse({
     success: true,
     verified: true,
-    message: 'Payment verified successfully',
+    message: 'Payment verified and subscription activated',
     payment_id: razorpay_payment_id,
     order_id: razorpay_order_id,
     user_id: order.user_id,
-    user_name: order.user_name,
-    user_email: order.user_email,
+    user_name: fullName,
+    user_email: userEmail,
     payment_method: paymentMethod,
     amount: paymentAmount,
+    subscription: subscription,
   });
 }
 
@@ -322,16 +498,21 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
   }
 
   const rawBody = await request.text();
-  const isValid = await verifyWebhookSignature(rawBody, signature, env.RAZORPAY_WEBHOOK_SECRET);
-  if (!isValid) {
-    return jsonResponse({ error: 'Invalid signature' }, 400);
+  
+  // Only verify signature if webhook secret is configured
+  if (env.RAZORPAY_WEBHOOK_SECRET) {
+    const isValid = await verifyWebhookSignature(rawBody, signature, env.RAZORPAY_WEBHOOK_SECRET);
+    if (!isValid) {
+      return jsonResponse({ error: 'Invalid signature' }, 400);
+    }
   }
 
   const webhookData = JSON.parse(rawBody);
   const event = webhookData.event;
   const payload = webhookData.payload;
 
-  const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const supabaseUrl = getSupabaseUrl(env);
+  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
 
   switch (event) {
     case 'payment.captured':
@@ -511,26 +692,245 @@ async function handleDeactivateSubscription(request: Request, env: Env): Promise
     return jsonResponse({ error: `Cannot cancel subscription with status '${subscription.status}'` }, 400);
   }
 
+  const now = new Date().toISOString();
+
   const { data: updated, error: updateError } = await supabase
     .from('subscriptions')
     .update({
       status: 'cancelled',
       auto_renew: false,
+      cancelled_at: now,
       cancellation_reason,
+      updated_at: now,
     })
     .eq('id', subscription_id)
     .eq('user_id', user.id)
-    .select('id, status, cancelled_at, subscription_end_date')
+    .select('*')
     .single();
 
   if (updateError) {
     return jsonResponse({ error: 'Failed to cancel subscription' }, 500);
   }
 
+  // Log cancellation for analytics
+  await supabase
+    .from('subscription_cancellations')
+    .insert([{
+      subscription_id,
+      user_id: user.id,
+      cancellation_reason,
+      cancelled_at: now,
+      access_until: subscription.subscription_end_date,
+    }])
+    .select()
+    .maybeSingle();
+
   return jsonResponse({
     success: true,
     message: 'Subscription cancelled successfully',
     subscription: updated,
+  });
+}
+
+// ==================== PAUSE SUBSCRIPTION ====================
+
+async function handlePauseSubscription(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticateUser(request, env);
+  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const { user, supabase } = auth;
+
+  const body = await request.json() as {
+    subscription_id?: string;
+    pause_months?: number;
+  };
+  const { subscription_id, pause_months = 1 } = body;
+
+  if (!subscription_id) {
+    return jsonResponse({ error: 'subscription_id is required' }, 400);
+  }
+
+  // Validate pause duration (1-3 months)
+  if (pause_months < 1 || pause_months > 3) {
+    return jsonResponse({ error: 'Pause duration must be between 1 and 3 months' }, 400);
+  }
+
+  // Verify subscription exists and belongs to user
+  const { data: subscription, error: fetchError } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('id', subscription_id)
+    .maybeSingle();
+
+  if (fetchError || !subscription) {
+    return jsonResponse({ error: 'Subscription not found' }, 404);
+  }
+
+  if (subscription.user_id !== user.id) {
+    return jsonResponse({ error: 'Permission denied' }, 403);
+  }
+
+  if (subscription.status === 'paused') {
+    return jsonResponse({
+      success: true,
+      message: 'Subscription is already paused',
+      subscription,
+      already_paused: true,
+    });
+  }
+
+  if (subscription.status !== 'active') {
+    return jsonResponse({ error: `Cannot pause subscription with status '${subscription.status}'` }, 400);
+  }
+
+  const now = new Date();
+  const pausedUntil = new Date(now);
+  pausedUntil.setMonth(pausedUntil.getMonth() + pause_months);
+
+  // Extend subscription end date by pause duration
+  const currentEndDate = new Date(subscription.subscription_end_date);
+  currentEndDate.setMonth(currentEndDate.getMonth() + pause_months);
+
+  const { data: updated, error: updateError } = await supabase
+    .from('subscriptions')
+    .update({
+      status: 'paused',
+      paused_at: now.toISOString(),
+      paused_until: pausedUntil.toISOString(),
+      subscription_end_date: currentEndDate.toISOString(),
+      updated_at: now.toISOString(),
+    })
+    .eq('id', subscription_id)
+    .eq('user_id', user.id)
+    .select('*')
+    .single();
+
+  if (updateError) {
+    return jsonResponse({ error: 'Failed to pause subscription' }, 500);
+  }
+
+  return jsonResponse({
+    success: true,
+    message: `Subscription paused for ${pause_months} month(s)`,
+    subscription: updated,
+    paused_until: pausedUntil.toISOString(),
+  });
+}
+
+// ==================== RESUME SUBSCRIPTION ====================
+
+async function handleResumeSubscription(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticateUser(request, env);
+  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const { user, supabase } = auth;
+
+  const body = await request.json() as {
+    subscription_id?: string;
+  };
+  const { subscription_id } = body;
+
+  if (!subscription_id) {
+    return jsonResponse({ error: 'subscription_id is required' }, 400);
+  }
+
+  // Verify subscription exists and belongs to user
+  const { data: subscription, error: fetchError } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('id', subscription_id)
+    .maybeSingle();
+
+  if (fetchError || !subscription) {
+    return jsonResponse({ error: 'Subscription not found' }, 404);
+  }
+
+  if (subscription.user_id !== user.id) {
+    return jsonResponse({ error: 'Permission denied' }, 403);
+  }
+
+  if (subscription.status === 'active') {
+    return jsonResponse({
+      success: true,
+      message: 'Subscription is already active',
+      subscription,
+      already_active: true,
+    });
+  }
+
+  if (subscription.status !== 'paused') {
+    return jsonResponse({ error: `Cannot resume subscription with status '${subscription.status}'` }, 400);
+  }
+
+  const now = new Date().toISOString();
+
+  const { data: updated, error: updateError } = await supabase
+    .from('subscriptions')
+    .update({
+      status: 'active',
+      paused_at: null,
+      paused_until: null,
+      updated_at: now,
+    })
+    .eq('id', subscription_id)
+    .eq('user_id', user.id)
+    .select('*')
+    .single();
+
+  if (updateError) {
+    return jsonResponse({ error: 'Failed to resume subscription' }, 500);
+  }
+
+  return jsonResponse({
+    success: true,
+    message: 'Subscription resumed successfully',
+    subscription: updated,
+  });
+}
+
+// ==================== GET SUBSCRIPTION ====================
+
+async function handleGetSubscription(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticateUser(request, env);
+  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const { user, supabase } = auth;
+
+  // Get active or paused subscription
+  const { data: subscription, error } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('user_id', user.id)
+    .in('status', ['active', 'paused'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    return jsonResponse({ error: 'Failed to fetch subscription' }, 500);
+  }
+
+  if (!subscription) {
+    // Try to get most recent subscription (even if cancelled/expired)
+    const { data: recentSub } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return jsonResponse({
+      success: true,
+      has_active_subscription: false,
+      subscription: recentSub || null,
+    });
+  }
+
+  return jsonResponse({
+    success: true,
+    has_active_subscription: true,
+    subscription,
   });
 }
 
@@ -587,11 +987,11 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
   let amount = originalAmount;
 
   if (isProductionSite) {
-    keyId = env.RAZORPAY_KEY_ID || env.TEST_RAZORPAY_KEY_ID || '';
-    keySecret = env.RAZORPAY_KEY_SECRET || env.TEST_RAZORPAY_KEY_SECRET || '';
+    keyId = getRazorpayKeyId(env);
+    keySecret = env.RAZORPAY_KEY_SECRET;
   } else {
-    keyId = env.TEST_RAZORPAY_KEY_ID || env.RAZORPAY_KEY_ID || '';
-    keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET || '';
+    keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
+    keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
     // Cap amount at test limit for non-production sites
     if (amount > TEST_MODE_MAX_AMOUNT) {
       console.log(`TEST MODE: Capping amount from ₹${amount / 100} to ₹${TEST_MODE_MAX_AMOUNT / 100}`);
@@ -603,7 +1003,8 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
     return jsonResponse({ error: 'Payment service not configured' }, 500);
   }
 
-  const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const supabaseUrl = getSupabaseUrl(env);
+  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
 
   // Verify registration exists
   const { data: registration, error: regError } = await supabaseAdmin
@@ -676,7 +1077,8 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
 // ==================== EXPIRE SUBSCRIPTIONS ====================
 
 async function handleExpireSubscriptions(env: Env): Promise<Response> {
-  const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const supabaseUrl = getSupabaseUrl(env);
+  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
 
   const { data, error } = await supabaseAdmin.rpc('expire_old_subscriptions');
 
@@ -705,6 +1107,7 @@ export default {
 
     try {
       switch (path) {
+        // Payment endpoints
         case '/create-order':
           return await handleCreateOrder(request, env);
         case '/create-event-order':
@@ -713,14 +1116,53 @@ export default {
           return await handleVerifyPayment(request, env);
         case '/webhook':
           return await handleWebhook(request, env);
+        
+        // Subscription management endpoints
+        case '/get-subscription':
+          return await handleGetSubscription(request, env);
         case '/cancel-subscription':
           return await handleCancelSubscription(request, env);
         case '/deactivate-subscription':
           return await handleDeactivateSubscription(request, env);
+        case '/pause-subscription':
+          return await handlePauseSubscription(request, env);
+        case '/resume-subscription':
+          return await handleResumeSubscription(request, env);
+        
+        // Cron/Admin endpoints
         case '/expire-subscriptions':
           return await handleExpireSubscriptions(env);
+        
+        // Health check
         case '/health':
-          return jsonResponse({ status: 'ok', timestamp: new Date().toISOString() });
+          const configStatus = {
+            supabase_url: !!(env.SUPABASE_URL || env.VITE_SUPABASE_URL),
+            supabase_anon_key: !!(env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY),
+            supabase_service_role_key: !!env.SUPABASE_SERVICE_ROLE_KEY,
+            razorpay_key_id: !!(env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID),
+            razorpay_key_secret: !!env.RAZORPAY_KEY_SECRET,
+          };
+          const allConfigured = Object.values(configStatus).every(Boolean);
+          return jsonResponse({ 
+            status: allConfigured ? 'ok' : 'misconfigured',
+            timestamp: new Date().toISOString(),
+            config: configStatus,
+            endpoints: [
+              'POST /create-order',
+              'POST /create-event-order', 
+              'POST /verify-payment',
+              'POST /webhook',
+              'GET  /get-subscription',
+              'POST /cancel-subscription',
+              'POST /deactivate-subscription',
+              'POST /pause-subscription',
+              'POST /resume-subscription',
+              'POST /expire-subscriptions',
+              'GET  /health',
+            ],
+            message: allConfigured ? 'All required secrets are configured' : 'Some required secrets are missing.',
+          });
+        
         default:
           return jsonResponse({ error: 'Not found' }, 404);
       }

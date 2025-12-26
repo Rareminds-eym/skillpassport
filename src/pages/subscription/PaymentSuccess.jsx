@@ -12,8 +12,8 @@ import {
   Clock,
 } from 'lucide-react';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
-import { activateSubscription } from '../../services/Subscriptions/subscriptionActivationService';
 import { downloadReceipt } from '../../services/Subscriptions/pdfReceiptGenerator';
+import { clearPendingUserData } from '../../utils/authCleanup';
 import useAuth from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
@@ -76,47 +76,53 @@ function PaymentSuccess() {
     }
   }, []);
 
-  useEffect(() => {
-    const activate = async () => {
-      if (verificationStatus === 'success' && transactionDetails && activationStatus === 'pending') {
-        setActivationStatus('activating');
-        try {
-          const result = await activateSubscription({
-            plan: planDetails,
-            userDetails: {
-              name: transactionDetails?.user_name || user?.user_metadata?.full_name || user?.email || 'User',
-              email: transactionDetails?.user_email || user?.email || '',
-              phone: user?.user_metadata?.phone || null,
-              studentType: planDetails?.studentType || 'student',
-            },
-            paymentData: {
-              razorpay_payment_id: paymentParams.razorpay_payment_id,
-              razorpay_order_id: paymentParams.razorpay_order_id,
-            },
-            transactionDetails,
-          });
+  // Get amount from transaction details (database) - don't rely on localStorage
+  const displayAmount = useMemo(() => {
+    // transactionDetails.amount is in paise from Razorpay, convert to rupees
+    if (transactionDetails?.amount) {
+      return transactionDetails.amount / 100;
+    }
+    // Fallback to subscription plan_amount (already in rupees)
+    if (subscriptionData?.plan_amount) {
+      return subscriptionData.plan_amount;
+    }
+    // Last resort: localStorage (may be stale)
+    return planDetails?.price || 0;
+  }, [transactionDetails, subscriptionData, planDetails]);
 
-          if (result.success) {
-            setActivationStatus('activated');
-            setSubscriptionData(result.data.subscription);
-            if (!result.data.alreadyExists) {
-              setShowConfetti(true);
-              setTimeout(() => setShowConfetti(false), 4000);
-              localStorage.removeItem('payment_plan_details');
-              setTimeout(() => setEmailStatus('sent'), 2000);
-            } else {
-              setEmailStatus('sent');
-            }
-          } else {
-            setActivationStatus('failed');
-          }
-        } catch {
-          setActivationStatus('failed');
+  // Handle subscription activation from worker response
+  useEffect(() => {
+    if (verificationStatus === 'success' && transactionDetails && activationStatus === 'pending') {
+      setActivationStatus('activating');
+      
+      // Worker now creates subscription - get it from transactionDetails
+      const subscription = transactionDetails?.subscription;
+      
+      if (subscription) {
+        setActivationStatus('activated');
+        setSubscriptionData(subscription);
+        
+        if (!transactionDetails.already_processed) {
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 4000);
+          clearPendingUserData();
+          setTimeout(() => setEmailStatus('sent'), 2000);
+        } else {
+          clearPendingUserData();
+          setEmailStatus('sent');
         }
+      } else if (transactionDetails.subscription_error) {
+        // Worker verified payment but failed to create subscription
+        console.error('Subscription creation failed:', transactionDetails.subscription_error);
+        setActivationStatus('failed');
+      } else {
+        // Fallback: payment verified but no subscription in response (shouldn't happen)
+        setActivationStatus('activated');
+        clearPendingUserData();
+        setEmailStatus('sent');
       }
-    };
-    activate();
-  }, [verificationStatus, transactionDetails, activationStatus, paymentParams, planDetails, user]);
+    }
+  }, [verificationStatus, transactionDetails, activationStatus]);
 
   useEffect(() => {
     if (!paymentParams.razorpay_payment_id && verificationStatus !== 'loading') {
@@ -139,7 +145,7 @@ function PaymentSuccess() {
         transaction: {
           payment_id: paymentParams.razorpay_payment_id || 'N/A',
           order_id: paymentParams.razorpay_order_id || 'N/A',
-          amount: planDetails?.price || transactionDetails?.amount || 0,
+          amount: displayAmount,
           currency: 'INR',
           payment_method: transactionDetails?.payment_method || 'Card',
           payment_timestamp: formatDate(new Date()),
@@ -238,7 +244,7 @@ function PaymentSuccess() {
             <>
               <h1 className="text-xl font-medium text-gray-900 mb-3">Payment Success!</h1>
               <p className="text-3xl font-bold text-gray-900">
-                {formatAmount(planDetails?.price || transactionDetails?.amount || 0)}
+                {formatAmount(displayAmount)}
               </p>
             </>
           }

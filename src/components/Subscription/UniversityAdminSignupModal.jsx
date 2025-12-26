@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Eye, EyeOff, Building, MapPin, Phone, Mail, Calendar, User, ChevronDown, AlertCircle } from 'lucide-react';
 import { signUpWithRole } from '../../services/authService';
-import { createUserRecord } from '../../services/educatorAuthService';
+import { supabase } from '../../lib/supabaseClient';
 import { getUniversities, checkUniversityCollegeCode, createUniversityCollege } from '../../services/universityService';
 
 function UniversityAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onSwitchToLogin }) {
@@ -168,22 +168,28 @@ function UniversityAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSuc
             });
 
             if (!authResult.success) {
-                throw new Error(authResult.error || 'Signup failed');
+                const errorMessage = authResult.message || 
+                  (typeof authResult.error === 'string' && !authResult.error.includes('_') ? authResult.error : null) || 
+                  'Signup failed';
+                throw new Error(errorMessage);
             }
 
             const userId = authResult.user.id;
 
-            // 2. Create User Record
+            // 2. Create User Record (inline - no external dependency)
             const nameParts = formData.deanName.trim().split(' ');
-            const userRecordResult = await createUserRecord(userId, {
-                email: formData.email,
+            const { error: userError } = await supabase.from('users').insert({
+                id: userId,
+                email: formData.email.toLowerCase(),
                 firstName: nameParts[0] || '',
                 lastName: nameParts.slice(1).join(' ') || '',
-                role: 'university_admin'
+                role: 'university_admin',
+                isActive: true,
+                metadata: { source: 'university_admin_signup' }
             });
 
-            if (!userRecordResult.success) {
-                throw new Error(userRecordResult.error || 'Failed to create user record');
+            if (userError) {
+                throw new Error(userError.message || 'Failed to create user record');
             }
 
             // 3. Create University College Record

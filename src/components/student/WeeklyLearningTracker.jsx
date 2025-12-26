@@ -1,9 +1,10 @@
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { ArrowRight, BookOpen, Clock, Flame, GraduationCap, TrendingUp, Trophy } from 'lucide-react';
+import { ArrowRight, BookOpen, Clock, Download, Eye, Flame, GraduationCap, TrendingUp, Trophy } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
+import { downloadCertificate, getCertificateProxyUrl } from '../../services/certificateService';
 import '../../utils/suppressRechartsWarnings'; // Auto-suppress Recharts warnings
 
 // Compact tooltip for chart
@@ -573,6 +574,35 @@ const MiniDonutChart = ({ completed, inProgress, notStarted, total }) => {
 const CompactCourseCard = ({ course, onClick }) => {
   const isCompleted = course.completionRate === 100;
   const isNotStarted = course.completionRate === 0;
+  const [certificateUrl, setCertificateUrl] = useState(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // Fetch certificate URL for completed courses
+  useEffect(() => {
+    const fetchCertificateUrl = async () => {
+      if (!isCompleted || !course.courseId) return;
+      
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: enrollment } = await supabase
+          .from('course_enrollments')
+          .select('certificate_url')
+          .eq('student_id', user.id)
+          .eq('course_id', course.courseId)
+          .single();
+
+        if (enrollment?.certificate_url) {
+          setCertificateUrl(enrollment.certificate_url);
+        }
+      } catch (error) {
+        console.error('Error fetching certificate URL:', error);
+      }
+    };
+
+    fetchCertificateUrl();
+  }, [isCompleted, course.courseId]);
 
   const handleClick = () => {
     // Don't navigate if course is 100% completed
@@ -580,6 +610,28 @@ const CompactCourseCard = ({ course, onClick }) => {
       return;
     }
     onClick();
+  };
+
+  const handleViewCertificate = (e) => {
+    e.stopPropagation();
+    if (certificateUrl) {
+      const viewUrl = getCertificateProxyUrl(certificateUrl, 'inline');
+      window.open(viewUrl, '_blank');
+    }
+  };
+
+  const handleDownloadCertificate = async (e) => {
+    e.stopPropagation();
+    if (!certificateUrl) return;
+    
+    setIsDownloading(true);
+    try {
+      await downloadCertificate(certificateUrl, course.courseName);
+    } catch (error) {
+      console.error('Error downloading certificate:', error);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -620,10 +672,40 @@ const CompactCourseCard = ({ course, onClick }) => {
 
       {/* Action */}
       {isCompleted ? (
-        // For 100% completed courses, show completed status instead of continue button
-        <div className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-600 flex items-center gap-1">
-          <CheckCircle2 className="w-3 h-3" />
-          Completed
+        // For 100% completed courses, show view course and certificate buttons
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={onClick}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            title="View Course"
+          >
+            <Play className="w-3 h-3" />
+            View
+          </button>
+          <button
+            onClick={handleViewCertificate}
+            disabled={!certificateUrl}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
+              certificateUrl
+                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            }`}
+            title={certificateUrl ? 'View Certificate' : 'Certificate not available'}
+          >
+            <Eye className="w-3 h-3" />
+          </button>
+          <button
+            onClick={handleDownloadCertificate}
+            disabled={!certificateUrl || isDownloading}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
+              certificateUrl && !isDownloading
+                ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            }`}
+            title={certificateUrl ? 'Download Certificate' : 'Certificate not available'}
+          >
+            <Download className={`w-3 h-3 ${isDownloading ? 'animate-bounce' : ''}`} />
+          </button>
         </div>
       ) : (
         <button className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -819,33 +901,72 @@ const WeeklyLearningTracker = () => {
       }
 
       const weekDates = getCurrentWeek();
-      const { data: progressData } = await supabase.from('student_course_progress').select('*').eq('student_id', user.id);
-      const { data: enrollments } = await supabase.from('course_enrollments').select('*').eq('student_id', user.id);
+      
+      // Fetch all data in parallel with single queries (no N+1)
+      const [
+        { data: progressData },
+        { data: enrollments }
+      ] = await Promise.all([
+        supabase.from('student_course_progress').select('*').eq('student_id', user.id),
+        supabase.from('course_enrollments').select('*, courses(course_id, title)').eq('student_id', user.id)
+      ]);
 
-      const courseProgress = await Promise.all(
-        (enrollments || []).map(async (enrollment) => {
-          const { data: courseDetails } = await supabase.from('courses').select('course_id, title').eq('course_id', enrollment.course_id).single();
-          const { data: modulesData } = await supabase.from('course_modules').select('module_id').eq('course_id', enrollment.course_id);
+      // Get all course IDs from enrollments
+      const courseIds = (enrollments || []).map(e => e.course_id).filter(Boolean);
+      
+      // Batch fetch all modules for all courses in one query
+      let allModules = [];
+      if (courseIds.length > 0) {
+        const { data: modulesData } = await supabase
+          .from('course_modules')
+          .select('module_id, course_id')
+          .in('course_id', courseIds);
+        allModules = modulesData || [];
+      }
 
-          let totalCount = 0;
-          if (modulesData?.length > 0) {
-            const { count } = await supabase.from('lessons').select('*', { count: 'exact', head: true }).in('module_id', modulesData.map(m => m.module_id));
-            totalCount = count || 0;
-          }
+      // Get all module IDs
+      const moduleIds = allModules.map(m => m.module_id);
+      
+      // Batch fetch lesson counts per module in one query
+      let lessonCounts = {};
+      if (moduleIds.length > 0) {
+        const { data: lessonsData } = await supabase
+          .from('lessons')
+          .select('module_id')
+          .in('module_id', moduleIds);
+        
+        // Count lessons per module
+        (lessonsData || []).forEach(lesson => {
+          lessonCounts[lesson.module_id] = (lessonCounts[lesson.module_id] || 0) + 1;
+        });
+      }
 
-          const { count: completedCount } = await supabase.from('student_course_progress').select('*', { count: 'exact', head: true }).eq('student_id', user.id).eq('course_id', enrollment.course_id).eq('status', 'completed');
-          const completionRate = totalCount > 0 ? Math.round(((completedCount || 0) / totalCount) * 100) : 0;
+      // Calculate course progress using the batched data
+      const courseProgress = (enrollments || []).map(enrollment => {
+        const courseTitle = enrollment.courses?.title || 'Untitled Course';
+        
+        // Get modules for this course
+        const courseModules = allModules.filter(m => m.course_id === enrollment.course_id);
+        
+        // Calculate total lessons for this course
+        const totalCount = courseModules.reduce((sum, m) => sum + (lessonCounts[m.module_id] || 0), 0);
+        
+        // Count completed lessons for this course from progressData
+        const completedCount = (progressData || []).filter(
+          p => p.course_id === enrollment.course_id && p.status === 'completed'
+        ).length;
+        
+        const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-          return {
-            courseId: enrollment.course_id,
-            courseName: courseDetails?.title || 'Untitled Course',
-            completionRate,
-            completedLessons: completedCount || 0,
-            totalLessons: totalCount,
-            startDate: enrollment.enrolled_at,
-          };
-        })
-      );
+        return {
+          courseId: enrollment.course_id,
+          courseName: courseTitle,
+          completionRate,
+          completedLessons: completedCount,
+          totalLessons: totalCount,
+          startDate: enrollment.enrolled_at,
+        };
+      });
 
       // Only update state if component is still mounted
       if (!isMountedRef.current) {

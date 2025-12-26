@@ -864,48 +864,64 @@ async function handleAiTutorSuggestions(request: Request, env: Env): Promise<Res
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
-  const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
-  const body = await request.json() as { lessonId?: string };
-  const { lessonId } = body;
+  try {
+    const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
+    const body = await request.json() as { lessonId?: string };
+    const { lessonId } = body;
 
-  if (!lessonId) {
-    return jsonResponse({ error: 'Missing required field: lessonId' }, 400);
-  }
+    if (!lessonId) {
+      return jsonResponse({ error: 'Missing required field: lessonId' }, 400);
+    }
 
-  // Fetch lesson with module info
-  const { data: lesson, error: lessonError } = await supabase
-    .from('lessons')
-    .select('lesson_id, title, content, module_id')
-    .eq('lesson_id', lessonId)
-    .maybeSingle();
+    // Fetch lesson with module info
+    const { data: lesson, error: lessonError } = await supabase
+      .from('lessons')
+      .select('lesson_id, title, content, module_id')
+      .eq('lesson_id', lessonId)
+      .maybeSingle();
 
-  if (lessonError || !lesson) {
-    return jsonResponse({ error: 'Lesson not found' }, 404);
-  }
+    if (lessonError) {
+      console.error('Lesson fetch error:', lessonError);
+      return jsonResponse({ error: 'Database error fetching lesson' }, 500);
+    }
 
-  // Get module title
-  const { data: module } = await supabase
-    .from('course_modules')
-    .select('title')
-    .eq('module_id', lesson.module_id)
-    .maybeSingle();
+    if (!lesson) {
+      // Return default questions if lesson not found (graceful degradation)
+      return jsonResponse({
+        questions: [
+          "What are the key concepts in this lesson?",
+          "Can you explain the main points?",
+          "How does this connect to the rest of the course?"
+        ],
+        lessonId,
+        lessonTitle: 'Unknown Lesson'
+      });
+    }
 
-  const moduleTitle = module?.title || 'Unknown Module';
+    // Get module title
+    const { data: module } = await supabase
+      .from('course_modules')
+      .select('title')
+      .eq('module_id', lesson.module_id)
+      .maybeSingle();
 
-  if (!env.VITE_OPENROUTER_API_KEY) {
-    // Return default questions if AI not configured
-    return jsonResponse({
-      questions: [
-        `What are the key concepts in "${lesson.title}"?`,
-        `Can you explain the main points of this lesson?`,
-        `How does this lesson connect to the rest of the course?`
-      ],
-      lessonId,
-      lessonTitle: lesson.title
-    });
-  }
+    const moduleTitle = module?.title || 'Unknown Module';
 
-  const prompt = `Based on the following lesson, generate 3-5 helpful questions that a student might want to ask to better understand the material.
+    // Return default questions if AI not configured (graceful degradation)
+    if (!env.VITE_OPENROUTER_API_KEY) {
+      console.log('VITE_OPENROUTER_API_KEY not configured, returning defaults');
+      return jsonResponse({
+        questions: [
+          `What are the key concepts in "${lesson.title}"?`,
+          `Can you explain the main points of this lesson?`,
+          `How does this lesson connect to the rest of the course?`
+        ],
+        lessonId,
+        lessonTitle: lesson.title
+      });
+    }
+
+    const prompt = `Based on the following lesson, generate 3-5 helpful questions that a student might want to ask to better understand the material.
 
 ## Lesson: ${lesson.title}
 ## Module: ${moduleTitle}
@@ -922,42 +938,71 @@ Generate questions that:
 Return ONLY a JSON array of question strings, like:
 ["Question 1?", "Question 2?", "Question 3?"]`;
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${env.VITE_OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'openai/gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 500,
-      temperature: 0.7
-    })
-  });
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${env.VITE_OPENROUTER_API_KEY}`, 
+        'Content-Type': 'application/json',
+        'HTTP-Referer': env.VITE_SUPABASE_URL || '',
+        'X-Title': 'AI Tutor Suggestions'
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 500,
+        temperature: 0.7
+      })
+    });
 
-  if (!response.ok) {
-    return jsonResponse({ error: 'AI service error' }, 500);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenRouter API error:', response.status, errorText);
+      // Return default questions on AI error (graceful degradation)
+      return jsonResponse({
+        questions: [
+          `What are the key concepts in "${lesson.title}"?`,
+          `Can you explain the main points of this lesson?`,
+          `How does this lesson connect to the rest of the course?`
+        ],
+        lessonId,
+        lessonTitle: lesson.title
+      });
+    }
+
+    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+    const content = data.choices?.[0]?.message?.content || '[]';
+
+    let questions: string[] = [];
+    try {
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) questions = JSON.parse(jsonMatch[0]);
+    } catch {
+      questions = content.split('\n').filter((q: string) => q.trim().endsWith('?')).slice(0, 5);
+    }
+
+    questions = questions.slice(0, 5);
+    if (questions.length < 3) {
+      questions = [
+        `What are the key concepts in "${lesson.title}"?`,
+        `Can you explain the main points of this lesson?`,
+        `How does this lesson connect to the rest of the course?`
+      ];
+    }
+
+    return jsonResponse({ questions, lessonId, lessonTitle: lesson.title });
+  } catch (error) {
+    console.error('AI Tutor Suggestions error:', error);
+    // Return default questions on any error (graceful degradation)
+    return jsonResponse({
+      questions: [
+        "What are the key concepts in this lesson?",
+        "Can you explain the main points?",
+        "How does this connect to the rest of the course?"
+      ],
+      lessonId: 'unknown',
+      lessonTitle: 'Unknown Lesson'
+    });
   }
-
-  const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-  const content = data.choices?.[0]?.message?.content || '[]';
-
-  let questions: string[] = [];
-  try {
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    if (jsonMatch) questions = JSON.parse(jsonMatch[0]);
-  } catch {
-    questions = content.split('\n').filter((q: string) => q.trim().endsWith('?')).slice(0, 5);
-  }
-
-  questions = questions.slice(0, 5);
-  if (questions.length < 3) {
-    questions = [
-      `What are the key concepts in "${lesson.title}"?`,
-      `Can you explain the main points of this lesson?`,
-      `How does this lesson connect to the rest of the course?`
-    ];
-  }
-
-  return jsonResponse({ questions, lessonId, lessonTitle: lesson.title });
 }
 
 // ==================== HANDLER: AI TUTOR CHAT ====================

@@ -10,9 +10,17 @@
 // Production domain for live payments
 const PRODUCTION_DOMAIN = 'skillpassport.rareminds.in';
 
-// Razorpay Keys
+// Razorpay Keys - with fallbacks
 const RAZORPAY_LIVE_KEY = import.meta.env.VITE_RAZORPAY_LIVE_KEY_ID;
-const RAZORPAY_TEST_KEY = import.meta.env.VITE_RAZORPAY_TEST_KEY_ID;
+const RAZORPAY_TEST_KEY = import.meta.env.VITE_RAZORPAY_TEST_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY_ID;
+
+// Debug: Log available keys at startup
+console.log('🔑 Razorpay Config:', {
+  hasLiveKey: !!RAZORPAY_LIVE_KEY,
+  hasTestKey: !!RAZORPAY_TEST_KEY,
+  testKeyPrefix: RAZORPAY_TEST_KEY?.substring(0, 15) + '...',
+  liveKeyPrefix: RAZORPAY_LIVE_KEY?.substring(0, 15) + '...',
+});
 
 /**
  * Check if current environment is production
@@ -43,10 +51,19 @@ export const shouldUseLiveKey = () => {
  * @returns {string} Razorpay Key ID
  */
 export const getRazorpayKeyId = () => {
-  if (shouldUseLiveKey()) {
-    return RAZORPAY_LIVE_KEY;
+  const key = shouldUseLiveKey() ? RAZORPAY_LIVE_KEY : RAZORPAY_TEST_KEY;
+  
+  if (!key) {
+    console.error('❌ Razorpay Key Missing!', {
+      mode: shouldUseLiveKey() ? 'LIVE' : 'TEST',
+      VITE_RAZORPAY_LIVE_KEY_ID: !!import.meta.env.VITE_RAZORPAY_LIVE_KEY_ID,
+      VITE_RAZORPAY_TEST_KEY_ID: !!import.meta.env.VITE_RAZORPAY_TEST_KEY_ID,
+      VITE_RAZORPAY_KEY_ID: !!import.meta.env.VITE_RAZORPAY_KEY_ID,
+    });
+    throw new Error(`Razorpay ${shouldUseLiveKey() ? 'LIVE' : 'TEST'} key is not configured. Check your .env file.`);
   }
-  return RAZORPAY_TEST_KEY;
+  
+  return key;
 };
 
 /**

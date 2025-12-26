@@ -19,11 +19,14 @@ import {
   BarChart3,
   HelpCircle,
   Mail,
-  MessageSquare
+  Home,
+  ArrowLeft
 } from 'lucide-react';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
-import { getUserSubscriptions, cancelSubscription, pauseSubscription, resumeSubscription } from '../../services/Subscriptions/subscriptionService';
+import { getUserSubscriptions } from '../../services/Subscriptions/subscriptionService';
+import { deactivateSubscription, pauseSubscription, resumeSubscription } from '../../services/paymentsApiService';
+import { supabase } from '../../lib/supabaseClient';
 import { getSubscriptionStatusChecks, calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil } from '../../utils/subscriptionHelpers';
 
 const plans = [
@@ -132,11 +135,15 @@ function MySubscription() {
     setIsCancelling(true);
     
     try {
-      // Get subscription ID from current subscription
-      const result = await cancelSubscription(
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      // Call Worker via paymentsApiService
+      const result = await deactivateSubscription(
         subscriptionData.id,
         cancelReason,
-        additionalFeedback || null
+        token
       );
 
       if (result.success) {
@@ -167,9 +174,14 @@ function MySubscription() {
     setIsPausing(true);
     
     try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const result = await pauseSubscription(
         subscriptionData.id,
-        pauseMonths
+        pauseMonths,
+        token
       );
 
       if (result.success) {
@@ -197,7 +209,11 @@ function MySubscription() {
     setIsPausing(true); // Reuse isPausing state for loading
     
     try {
-      const result = await resumeSubscription(subscriptionData.id);
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const result = await resumeSubscription(subscriptionData.id, token);
 
       if (result.success) {
         alert('Subscription resumed successfully!');
@@ -368,21 +384,36 @@ function MySubscription() {
   // No subscription found
   if (!subscriptionData) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-lg border border-neutral-200 p-8 text-center">
-          <div className="w-14 h-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-7 h-7 text-neutral-600" />
+      <div className="min-h-screen bg-neutral-50 flex flex-col">
+        {/* Back to Home for no subscription state */}
+        <div className="bg-white border-b border-neutral-200">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <button
+              onClick={() => navigate('/')}
+              className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors group"
+            >
+              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+              Back to Home
+            </button>
           </div>
-          <h2 className="text-xl font-semibold text-neutral-900 mb-2">No Active Subscription</h2>
-          <p className="text-neutral-600 text-sm mb-6">
-            You don't have an active subscription yet. Choose a plan to get started.
-          </p>
-          <button
-            onClick={() => navigate('/subscription/plans')}
-            className="w-full bg-neutral-900 text-white py-2.5 px-6 rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors"
-          >
-            View Plans
-          </button>
+        </div>
+        
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-lg border border-neutral-200 p-8 text-center">
+            <div className="w-14 h-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-7 h-7 text-neutral-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-neutral-900 mb-2">No Active Subscription</h2>
+            <p className="text-neutral-600 text-sm mb-6">
+              You don't have an active subscription yet. Choose a plan to get started.
+            </p>
+            <button
+              onClick={() => navigate('/subscription/plans')}
+              className="w-full bg-neutral-900 text-white py-2.5 px-6 rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors"
+            >
+              View Plans
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -393,6 +424,15 @@ function MySubscription() {
       {/* Header */}
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Back to Home Button */}
+          <button
+            onClick={() => navigate('/')}
+            className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 mb-4 transition-colors group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            Back to Home
+          </button>
+          
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <h1 className="text-2xl font-semibold text-neutral-900 mb-2">My Subscription</h1>
