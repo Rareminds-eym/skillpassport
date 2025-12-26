@@ -1,10 +1,6 @@
-import { ArrowRight, ArrowUpDown, Award, BarChart3, BookOpen, GraduationCap, Plus, RefreshCw, Search, SlidersHorizontal, TrendingUp, X } from "lucide-react";
+import { ArrowRight, ArrowUpDown, Award, BarChart3, BookOpen, Filter, GraduationCap, Grid3X3, List, Plus, RefreshCw, Search, TrendingUp, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent } from "../../components/Students/components/ui/card";
-import { Button } from "../../components/Students/components/ui/button";
-import { Plus, BookOpen, TrendingUp, Award, GraduationCap, Search, ArrowUpDown, X, BarChart3, RefreshCw, ArrowRight, Filter, Grid3X3, List } from "lucide-react";
-import ModernLearningCard from "../../components/Students/components/ModernLearningCard";
 import LearningAnalyticsDashboard from "../../components/Students/components/LearningAnalyticsDashboard";
 import ModernLearningCard from "../../components/Students/components/ModernLearningCard";
 import { TrainingEditModal } from "../../components/Students/components/ProfileEditModals";
