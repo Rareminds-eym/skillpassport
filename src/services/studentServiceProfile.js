@@ -631,65 +631,22 @@ function transformProfileData(profile, email, studentRecord = null) {
 
     // Education - Will be fetched from separate 'education' table
     // Fallback to profile JSONB only if separate table is empty
-    education: profileData.education || [
-      {
-        id: 1,
-        degree: data.branch_field || profileData.branch_field || 'Not specified',
-        university: data.university || profileData.university || 'Not specified',
-        yearOfPassing: '',
-        cgpa: data.currentCgpa || 'N/A',
-        level: "Bachelor's", // Assume Bachelor's from branch_field
-        status: 'ongoing'
-      }
-    ],
+    education: profileData.education || [],
 
     // Training - Will be fetched from separate 'training' table
     // Fallback to profile JSONB only if separate table is empty
-    training: profileData.training || (data.course_name || profileData.course ? [
-      {
-        id: 1,
-        course: data.course_name || profileData.course,
-        progress: 75, // Default progress
-        status: 'ongoing',
-        skill: profileData.skill || '',
-        trainer: data.trainer_name || profileData.trainer_name || ''
-      }
-    ] : []),
+    training: profileData.training || (data.course_name || profileData.course ? [{ course: data.course_name || profileData.course }] : []),
 
     // Experience - Will be fetched from separate 'experience' table
     experience: profileData.experience || [],
 
     // Technical skills - Will be fetched from separate 'skills' table (type='technical')
     // Fallback to profile JSONB only if separate table is empty
-    technicalSkills: profileData.technicalSkills || (profileData.skill ? [
-      {
-        id: 1,
-        name: profileData.skill,
-        level: 3,
-        verified: true,
-        icon: '🔬', // Science/lab icon
-        category: data.course_name || profileData.course || 'Training'
-      }
-    ] : []),
+    technicalSkills: profileData.technicalSkills ||  [],
 
     // Soft skills - Will be fetched from separate 'skills' table (type='soft')
     // Fallback to profile JSONB only if separate table is empty
-    softSkills: profileData.softSkills || [
-      {
-        id: 1,
-        name: 'Communication',
-        level: 4,
-        type: 'communication',
-        description: 'Effective communication skills'
-      },
-      {
-        id: 2,
-        name: 'Teamwork',
-        level: 4,
-        type: 'collaboration',
-        description: 'Works well in teams'
-      }
-    ],
+    softSkills: profileData.softSkills || [],
 
     projects: Array.isArray(profileData.projects)
       ? profileData.projects
