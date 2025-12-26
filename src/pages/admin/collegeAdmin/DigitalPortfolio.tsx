@@ -226,18 +226,29 @@ const CollegeAdminDigitalPortfolio = () => {
         
         setCollegeInfo(collegeData);
 
-        // Fetch students from the same college using the students table
+        // Fetch students from the same college using the students table with skills, projects, and experience
         const { data: studentsData, error: studentsError } = await supabase
           .from('students')
           .select(`
             id,
             name,
             email,
-            profile,
             college_id,
             branch_field,
             created_at,
-            updated_at
+            updated_at,
+            github_link,
+            linkedin_link,
+            portfolio_link,
+            bio,
+            skill_summary,
+            hobbies,
+            languages,
+            interests,
+            metadata,
+            skills:skills(name, type, level, verified),
+            projects:projects(title, description, status, tech_stack, demo_link, github_link, organization),
+            experience:experience(organization, role, start_date, end_date, duration, verified)
           `)
           .eq('college_id', collegeId)
           .not('college_id', 'is', null);
@@ -249,21 +260,41 @@ const CollegeAdminDigitalPortfolio = () => {
 
         // Transform data to match the expected format
         const transformedStudents = studentsData?.map(student => {
-          const profile = student.profile || {};
+          // Parse metadata for additional profile information
+          const metadata = student.metadata || {};
+          
+          // Find internship from experience data
+          const internshipExperience = student.experience?.find(exp => 
+            exp.role?.toLowerCase().includes('intern') || 
+            exp.organization?.toLowerCase().includes('intern')
+          );
+          
           return {
             id: student.id,
             name: student.name || 'N/A',
             email: student.email,
-            dept: student.branch_field || profile.college_stream || 'N/A',
+            dept: student.branch_field || 'N/A',
             college: collegeData?.name || 'N/A',
-            skills: profile.skills || [],
-            projects: profile.projects || [],
-            hackathon: profile.hackathon,
-            internship: profile.internship,
-            ai_score_overall: profile.ai_score_overall || 0,
-            badges: profile.badges || [],
-            location: profile.location || 'N/A',
+            skills: student.skills || student.languages || metadata.skills || [],
+            projects: student.projects || metadata.projects || [],
+            hackathon: metadata.hackathon,
+            internship: internshipExperience ? {
+              org: internshipExperience.organization,
+              role: internshipExperience.role,
+              duration: internshipExperience.duration
+            } : metadata.internship,
+            ai_score_overall: metadata.ai_score_overall || 0,
+            badges: metadata.badges || [],
+            location: metadata.location || 'N/A',
             last_updated: student.updated_at || student.created_at,
+            bio: student.bio,
+            skill_summary: student.skill_summary,
+            github_link: student.github_link,
+            linkedin_link: student.linkedin_link,
+            portfolio_link: student.portfolio_link,
+            hobbies: student.hobbies || [],
+            interests: student.interests || [],
+            experience: student.experience || []
           };
         }) || [];
 

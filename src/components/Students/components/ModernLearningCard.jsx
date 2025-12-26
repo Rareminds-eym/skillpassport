@@ -390,12 +390,10 @@ const ModernLearningCard = ({
         {/* Animated Background Gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-white to-green-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
         
-        {/* Top Status Indicator - Constant Color */}
+        {/* Top Status Indicator - Blue Color */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-slate-100">
           <div 
-            className={`h-full w-full transition-all duration-300 ${
-              isCompleted ? 'bg-green-500' : 'bg-blue-500'
-            }`}
+            className="h-full w-full transition-all duration-300 bg-blue-500"
           />
         </div>
 
@@ -575,12 +573,10 @@ const ModernLearningCard = ({
       {/* Animated Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-white to-green-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       
-      {/* Top Status Indicator - Constant Color */}
+      {/* Top Status Indicator - Blue Color */}
       <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-100">
         <div 
-          className={`h-full w-full transition-all duration-300 ${
-            isCompleted ? 'bg-green-500' : 'bg-blue-500'
-          }`}
+          className="h-full w-full transition-all duration-300 bg-blue-500"
         />
       </div>
       
