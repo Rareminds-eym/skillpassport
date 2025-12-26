@@ -15,6 +15,7 @@ import Pagination from '../../../components/admin/Pagination';
 import StudentProfileDrawer from '@/components/shared/StudentProfileDrawer';
 import CareerPathDrawer from '@/components/admin/components/CareerPathDrawer';
 import AddStudentModal from '../../../components/educator/modals/Addstudentmodal';
+import { AdmissionNoteModal } from '@/components/shared/StudentProfileDrawer/modals';
 import { useStudents } from '../../../hooks/useAdminStudents';
 import { generateCareerPath, type CareerPathResponse, type StudentProfile } from '@/services/aiCareerPathService';
 
@@ -173,6 +174,8 @@ const StudentDataAdmission = () => {
   const [careerPathError, setCareerPathError] = useState<string | null>(null);
   const [currentStudentForCareer, setCurrentStudentForCareer] = useState<any>(null);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [studentForNote, setStudentForNote] = useState<any>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(25);
@@ -361,8 +364,8 @@ const StudentDataAdmission = () => {
   };
 
   const handleAddNoteClick = (student: any) => {
-    setSelectedStudent(student);
-    setShowDrawer(true);
+    setStudentForNote(student);
+    setShowNoteModal(true);
   };
 
   const handleViewCareerPath = async (student: any) => {
@@ -922,6 +925,21 @@ const StudentDataAdmission = () => {
           console.log('Student created successfully');
         }}
       />
+
+      {/* Admission Note Modal - Opens directly when clicking Note button */}
+      {studentForNote && (
+        <AdmissionNoteModal
+          isOpen={showNoteModal}
+          onClose={() => {
+            setShowNoteModal(false);
+            setStudentForNote(null);
+          }}
+          student={studentForNote}
+          onSuccess={() => {
+            console.log('Note saved/sent successfully');
+          }}
+        />
+      )}
 
     </div>
   );

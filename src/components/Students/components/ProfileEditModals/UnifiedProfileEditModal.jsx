@@ -156,9 +156,13 @@ const UnifiedProfileEditModal = ({
       }
     });
 
-    // Calculate duration for experience type
-    if (config.calculateDuration && processedData.start_date) {
-      processedData.duration = calculateDuration(processedData.start_date, processedData.end_date);
+    // Calculate duration for experience type or training type
+    if (config.calculateDuration) {
+      const startDate = processedData.start_date || processedData.startDate;
+      const endDate = processedData.end_date || processedData.endDate;
+      if (startDate) {
+        processedData.duration = calculateDuration(startDate, endDate);
+      }
     }
 
     // Calculate progress for training type

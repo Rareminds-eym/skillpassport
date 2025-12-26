@@ -64,7 +64,6 @@ export const FIELD_CONFIGS = {
       { name: "totalModules", label: "Total Modules", type: "number", placeholder: "12" },
       { name: "hoursSpent", label: "Hours Spent", type: "number", placeholder: "24" },
       { name: "skills", label: "Skills Covered", type: "tags", placeholder: "React, TypeScript, Node.js" },
-      { name: "certificateUrl", label: "Certificate URL", type: "url", placeholder: "https://..." },
       { name: "description", label: "Description", type: "textarea", placeholder: "Brief description..." },
     ],
     getDefaultValues: () => ({
@@ -77,12 +76,13 @@ export const FIELD_CONFIGS = {
       totalModules: "",
       hoursSpent: "",
       skills: "",
-      certificateUrl: "",
       description: "",
+      duration: "",
     }),
     getDisplayTitle: (item) => item.course || "Untitled",
     getDisplaySubtitle: (item) => item.provider || "",
     hasProgress: true,
+    calculateDuration: true,
   },
 
   experience: {
