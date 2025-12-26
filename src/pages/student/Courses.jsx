@@ -6,6 +6,8 @@ import {
     ChevronLeft,
     ChevronRight,
     Clock,
+    Download,
+    Eye,
     Grid3x3,
     List,
     Play,
@@ -23,6 +25,7 @@ import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
+import { downloadCertificate, getCertificateProxyUrl } from '../../services/certificateService';
 import { courseEnrollmentService } from '../../services/courseEnrollmentService';
 
 const Courses = () => {
@@ -51,6 +54,8 @@ const Courses = () => {
   const [activeTab, setActiveTab] = useState('courses'); // 'courses' or 'progress'
   const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
   const [enrollmentProgress, setEnrollmentProgress] = useState({}); // Track progress per course
+  const [certificateUrls, setCertificateUrls] = useState({}); // Track certificate URLs per course
+  const [downloadingCertificate, setDownloadingCertificate] = useState(null); // Track which certificate is downloading
   
   // Refs to prevent duplicate fetches and track initialization
   const isFetchingRef = useRef(false);
@@ -207,8 +212,9 @@ const Courses = () => {
         const enrolledIds = new Set(result.data.map(enrollment => enrollment.course_id));
         setEnrolledCourseIds(enrolledIds);
         
-        // Track progress for each enrolled course
+        // Track progress and certificate URLs for each enrolled course
         const progressMap = {};
+        const certUrls = {};
         result.data.forEach(enrollment => {
           progressMap[enrollment.course_id] = {
             progress: enrollment.progress || 0,
@@ -216,8 +222,13 @@ const Courses = () => {
             lastLessonIndex: enrollment.last_lesson_index || 0,
             status: enrollment.status
           };
+          // Track certificate URL if available
+          if (enrollment.certificate_url) {
+            certUrls[enrollment.course_id] = enrollment.certificate_url;
+          }
         });
         setEnrollmentProgress(progressMap);
+        setCertificateUrls(certUrls);
         
         console.log('📝 Student enrolled in courses:', enrolledIds.size);
       }
@@ -242,6 +253,37 @@ const Courses = () => {
   const getCourseProgress = (courseId) => {
     const progress = enrollmentProgress[courseId];
     return progress?.progress || 0;
+  };
+
+  // Get certificate URL for a course
+  const getCertificateUrl = (courseId) => {
+    return certificateUrls[courseId] || null;
+  };
+
+  // Handle view certificate
+  const handleViewCertificate = (courseId, courseName, e) => {
+    e?.stopPropagation();
+    const certUrl = getCertificateUrl(courseId);
+    if (certUrl) {
+      const viewUrl = getCertificateProxyUrl(certUrl, 'inline');
+      window.open(viewUrl, '_blank');
+    }
+  };
+
+  // Handle download certificate
+  const handleDownloadCertificate = async (courseId, courseName, e) => {
+    e?.stopPropagation();
+    const certUrl = getCertificateUrl(courseId);
+    if (!certUrl) return;
+    
+    setDownloadingCertificate(courseId);
+    try {
+      await downloadCertificate(certUrl, courseName);
+    } catch (error) {
+      console.error('Error downloading certificate:', error);
+    } finally {
+      setDownloadingCertificate(null);
+    }
   };
 
   // Check if a course is new (posted within last 24 hours)
@@ -785,12 +827,50 @@ const Courses = () => {
                       </div>
                     )}
 
-                    <Button
-                      onClick={() => handleCourseClick(course)}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
-                    >
-                      View Course Details
-                    </Button>
+                    {/* Certificate Buttons for Completed Courses */}
+                    {isCourseCompleted(course.course_id) ? (
+                      <div className="flex flex-col gap-2 pt-2">
+                        <Button
+                          onClick={() => handleCourseClick(course)}
+                          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                        >
+                          View Course
+                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={(e) => handleViewCertificate(course.course_id, course.title, e)}
+                            disabled={!getCertificateUrl(course.course_id)}
+                            className={`flex-1 flex items-center justify-center gap-2 ${
+                              getCertificateUrl(course.course_id)
+                                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            }`}
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Certificate
+                          </Button>
+                          <Button
+                            onClick={(e) => handleDownloadCertificate(course.course_id, course.title, e)}
+                            disabled={!getCertificateUrl(course.course_id) || downloadingCertificate === course.course_id}
+                            className={`flex-1 flex items-center justify-center gap-2 ${
+                              getCertificateUrl(course.course_id) && downloadingCertificate !== course.course_id
+                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            }`}
+                          >
+                            <Download className={`w-4 h-4 ${downloadingCertificate === course.course_id ? 'animate-bounce' : ''}`} />
+                            {downloadingCertificate === course.course_id ? '...' : 'Download'}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={() => handleCourseClick(course)}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                      >
+                        View Course Details
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
@@ -941,12 +1021,48 @@ const Courses = () => {
                           </div>
                         )}
 
-                        <Button
-                          onClick={() => handleCourseClick(course)}
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                        >
-                          View Course Details
-                        </Button>
+                        {/* Certificate Buttons for Completed Courses */}
+                        {isCourseCompleted(course.course_id) ? (
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              onClick={() => handleCourseClick(course)}
+                              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            >
+                              View Course
+                            </Button>
+                            <Button
+                              onClick={(e) => handleViewCertificate(course.course_id, course.title, e)}
+                              disabled={!getCertificateUrl(course.course_id)}
+                              className={`flex items-center gap-2 ${
+                                getCertificateUrl(course.course_id)
+                                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              }`}
+                            >
+                              <Eye className="w-4 h-4" />
+                              View Certificate
+                            </Button>
+                            <Button
+                              onClick={(e) => handleDownloadCertificate(course.course_id, course.title, e)}
+                              disabled={!getCertificateUrl(course.course_id) || downloadingCertificate === course.course_id}
+                              className={`flex items-center gap-2 ${
+                                getCertificateUrl(course.course_id) && downloadingCertificate !== course.course_id
+                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              }`}
+                            >
+                              <Download className={`w-4 h-4 ${downloadingCertificate === course.course_id ? 'animate-bounce' : ''}`} />
+                              {downloadingCertificate === course.course_id ? '...' : 'Download'}
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            onClick={() => handleCourseClick(course)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                          >
+                            View Course Details
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>

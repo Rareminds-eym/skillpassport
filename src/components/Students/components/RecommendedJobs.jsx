@@ -145,7 +145,12 @@ const RecommendedJobs = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="mb-6 h-[400px] rounded-xl overflow-hidden w-full"
+        className="relative z-0 mb-6 h-[400px] overflow-hidden"
+        style={{
+          width: '100vw',
+          marginLeft: 'calc(-50vw + 50%)',
+          marginRight: 'calc(-50vw + 50%)'
+        }}
       >
         <WavyBackground
           className="w-full pb-20"

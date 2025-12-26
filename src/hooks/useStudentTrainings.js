@@ -214,7 +214,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
           source: 'course_enrollment',
           course_id: enroll.course_id,
           skills: [],
-          certificateUrl: '',
+          certificateUrl: enroll.certificate_url || '', // Include certificate URL from enrollment
           createdAt: enroll.enrolled_at,
           updatedAt: enroll.last_accessed,
           type: 'course_enrollment',

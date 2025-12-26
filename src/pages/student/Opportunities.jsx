@@ -42,22 +42,13 @@ import OpportunityListItem from '../../components/Students/components/Opportunit
 import OpportunityPreview from '../../components/Students/components/OpportunityPreview';
 import AdvancedFilters from '../../components/Students/components/AdvancedFilters';
 import RecommendedJobs from '../../components/Students/components/RecommendedJobs';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious
-} from '../../components/Students/components/ui/pagination';
+import Pagination from '../../components/educator/Pagination';
 
 // Import Applications component content
 import StudentPipelineService from '../../services/studentPipelineService';
 import MessageService from '../../services/messageService';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { supabase } from '../../lib/supabaseClient';
-import SearchBar from '../../components/common/SearchBar';
 
 const Opportunities = () => {
   const navigate = useNavigate();
@@ -110,6 +101,15 @@ const Opportunities = () => {
     activeOnly: true,
     searchTerm: debouncedSearch
   });
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Pre-select opportunity from navigation state (from Dashboard)
   useEffect(() => {
@@ -714,43 +714,11 @@ const MyJobsContent = ({
     setCurrentPage(1);
   }, [debouncedSearch, advancedFilters, sortBy, setCurrentPage]);
 
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-    
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) pages.push(i);
-        pages.push('ellipsis');
-        pages.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1);
-        pages.push('ellipsis');
-        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
-      } else {
-        pages.push(1);
-        pages.push('ellipsis');
-        pages.push(currentPage - 1);
-        pages.push(currentPage);
-        pages.push(currentPage + 1);
-        pages.push('ellipsis');
-        pages.push(totalPages);
-      }
-    }
-    
-    return pages;
-  };
-
   return (
     <>
       {/* AI Recommendations Section - Always show if loading or has data */}
       {(recommendationsLoading || (recommendations && recommendations.length > 0)) && (
-        <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-xl shadow-sm p-6 mb-6 border border-indigo-100">
+        <div className="relative z-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-xl shadow-sm p-6 mb-6 border border-indigo-100">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
@@ -771,7 +739,7 @@ const MyJobsContent = ({
                   )}
                 </h3>
                 <p className="text-sm text-gray-600">
-                  {fallback 
+                  {fallback
                     ? 'Trending opportunities based on popularity'
                     : 'Personalized matches based on your profile and skills'
                   }
@@ -865,143 +833,111 @@ const MyJobsContent = ({
       )}
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        {/* Student type filtering info */}
-        {/* {((studentData?.school_id || studentData?.school_class_id) && studentData?.grade) && (
-          <div className="bg-blue-50 rounded-lg p-3 mb-4">
-            <p className="text-sm text-blue-700">
-              <span className="font-semibold">Grade {studentData.grade} Opportunities:</span> 
-              {parseInt(studentData.grade) >= 6 && parseInt(studentData.grade) <= 8
-                ? " Showing internships and learning programs suitable for your grade level."
-                : parseInt(studentData.grade) >= 9
-                ? " Showing all opportunities including internships, jobs, and career opportunities."
-                : " Showing opportunities suitable for your grade level."
-              }
-            </p>
-          </div>
-        )} */}
-        
-        {/* {(studentData?.university_college_id || studentData?.universityId) && (
-          <div className="bg-green-50 rounded-lg p-3 mb-4">
-            <p className="text-sm text-green-700">
-              <span className="font-semibold">College Student Opportunities:</span> 
-              Showing all available opportunities including internships, full-time jobs, part-time work, and contract positions.
-            </p>
-          </div>
-        )} */}
-
-        <div className="flex gap-4 mb-6">
-          <div className="flex-1">
-            <SearchBar
-              value={searchTerm}
-              onChange={setSearchTerm}
-              onDebouncedChange={setDebouncedSearch}
-              debounceMs={500}
+      <div className="relative z-10 mb-8 space-y-4">
+        {/* Search and Primary Controls - Responsive Layout */}
+        <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
+          {/* Search Bar */}
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
               placeholder="Search job title, company, or location..."
-              size="lg"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full h-12 pl-12 pr-12 bg-white border border-slate-200/60 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 shadow-sm"
             />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <p className="text-sm font-semibold text-gray-900">
-                Showing {opportunities.length} Jobs Results
-              </p>
-              {/* Badge for school students */}
-              {/* {studentData?.grade && (studentData?.school_id || studentData?.school_class_id) && (
-                <span className={`px-2.5 py-0.5 rounded-md text-xs font-medium ${
-                  parseInt(studentData.grade) >= 6 && parseInt(studentData.grade) <= 8
-                    ? "bg-blue-50 text-blue-700"
-                    : parseInt(studentData.grade) >= 9
-                    ? "bg-green-50 text-green-700"
-                    : "bg-gray-50 text-gray-700"
-                }`}>
-                  {parseInt(studentData.grade) >= 6 && parseInt(studentData.grade) <= 8
-                    ? "Internships Only"
-                    : parseInt(studentData.grade) >= 9
-                    ? "All Opportunities"
-                    : `Grade ${studentData.grade}`
-                  }
-                </span>
-              )} */}
-              
-              {/* Badge for college students */}
-              {/* {(studentData?.university_college_id || studentData?.universityId) && (
-                <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-green-50 text-green-700">
-                  All Opportunities
-                </span>
-              )} */}
-              {opportunities.length > 0 && (
-                <span className="text-xs text-gray-500">
-                  (Page {currentPage} of {Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage))})
-                </span>
-              )}
-            </div>
-            
-            {/* Active Filters Summary */}
-            {(advancedFilters.employmentType.length > 0 || 
-              advancedFilters.experienceLevel.length > 0 || 
-              advancedFilters.mode.length > 0 ||
-              advancedFilters.skills.length > 0 ||
-              advancedFilters.department.length > 0 ||
-              advancedFilters.salaryMin ||
-              advancedFilters.salaryMax ||
-              advancedFilters.postedWithin) && (
+            {searchTerm && (
               <button
-                onClick={() => setAdvancedFilters({
-                  employmentType: [],
-                  experienceLevel: [],
-                  mode: [],
-                  salaryMin: '',
-                  salaryMax: '',
-                  skills: [],
-                  department: [],
-                  postedWithin: '',
-                })}
-                className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                onClick={() => {
+                  setSearchTerm('');
+                  setDebouncedSearch('');
+                }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
               >
-                <X className="w-3 h-3" />
-                Clear all filters
+                <X className="w-5 h-5" />
               </button>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          {/* Control Buttons - Right side on desktop */}
+          <div className="flex flex-col sm:flex-row lg:flex-row items-stretch sm:items-center gap-3 lg:flex-shrink-0">
+            {/* Advanced Filters Button */}
             <AdvancedFilters
               onApplyFilters={setAdvancedFilters}
               initialFilters={advancedFilters}
             />
-            
-            <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-white border border-slate-200/60 rounded-2xl p-1 shadow-sm h-12">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded transition-colors ${
-                  viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-600'
+                className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${
+                  viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
-                <Grid3x3 className="w-4 h-4" />
+                <Grid3x3 className="w-4 h-4 mx-auto" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded transition-colors ${
-                  viewMode === 'list' ? 'bg-gray-900 text-white' : 'text-gray-600'
+                className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${
+                  viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
-                <List className="w-4 h-4" />
+                <List className="w-4 h-4 mx-auto" />
               </button>
             </div>
 
-            <select 
+            {/* Sort Controls */}
+            <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 text-sm font-medium"
+              className="flex-1 sm:flex-none lg:w-auto px-4 h-12 bg-white border border-slate-200/60 rounded-2xl text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 shadow-sm min-w-0 sm:min-w-[140px] lg:min-w-[140px]"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
             </select>
           </div>
+        </div>
+
+        {/* Results count and clear filters */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <p className="text-sm font-semibold text-slate-900">
+              Showing {opportunities.length} Jobs Results
+            </p>
+            {opportunities.length > 0 && (
+              <span className="text-xs text-slate-500">
+                (Page {currentPage} of {Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage))})
+              </span>
+            )}
+          </div>
+
+          {/* Active Filters Summary */}
+          {(advancedFilters.employmentType.length > 0 ||
+            advancedFilters.experienceLevel.length > 0 ||
+            advancedFilters.mode.length > 0 ||
+            advancedFilters.skills.length > 0 ||
+            advancedFilters.department.length > 0 ||
+            advancedFilters.salaryMin ||
+            advancedFilters.salaryMax ||
+            advancedFilters.postedWithin) && (
+            <button
+              onClick={() => setAdvancedFilters({
+                employmentType: [],
+                experienceLevel: [],
+                mode: [],
+                salaryMin: '',
+                salaryMax: '',
+                skills: [],
+                department: [],
+                postedWithin: '',
+              })}
+              className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+            >
+              <X className="w-3 h-3" />
+              Clear all filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -1070,40 +1006,16 @@ const MyJobsContent = ({
 
           {/* Pagination */}
           {opportunities.length > 0 && totalPages > 1 && (
-            <div className="mt-8 flex justify-center">
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                    />
-                  </PaginationItem>
-
-                  {getPageNumbers().map((page, idx) => (
-                    <PaginationItem key={idx}>
-                      {page === 'ellipsis' ? (
-                        <PaginationEllipsis />
-                      ) : (
-                        <PaginationLink
-                          onClick={() => setCurrentPage(page)}
-                          isActive={currentPage === page}
-                          className="cursor-pointer"
-                        >
-                          {page}
-                        </PaginationLink>
-                      )}
-                    </PaginationItem>
-                  ))}
-
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+            <div className="mt-8">
+              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={opportunities.length}
+                  itemsPerPage={opportunitiesPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
             </div>
           )}
         </>
