@@ -6,18 +6,19 @@ import {
     Clock,
     Download,
     Edit,
+    Eye,
     ListChecks,
     Play,
     Target,
     TrendingUp,
     Users,
-    Zap,
+    Zap
 } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
-import { getCertificateProxyUrl } from "../../../services/certificateService";
+import { downloadCertificate, getCertificateProxyUrl } from "../../../services/certificateService";
 import { checkAssessmentStatus } from "../../../services/externalAssessmentService";
 
 /**
@@ -36,6 +37,8 @@ const ModernLearningCard = ({
   const [assessmentCompleted, setAssessmentCompleted] = useState(false);
   const [assessmentScore, setAssessmentScore] = useState(null);
   const [checkingAssessment, setCheckingAssessment] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [certificateUrl, setCertificateUrl] = useState(item.certificateUrl || '');
   
   const userEmail = user?.email;
   const { studentData } = useStudentDataByEmail(userEmail, false);
@@ -121,6 +124,33 @@ const ModernLearningCard = ({
     checkCompletion();
   }, [isExternalCourse, studentData?.id, item.course]);
 
+  // Fetch certificate URL for completed internal courses if not already provided
+  useEffect(() => {
+    const fetchCertificateUrl = async () => {
+      // Only fetch if it's a completed internal course without a certificate URL
+      if (!isInternalCourse || !isCompleted || certificateUrl || !item.course_id || !studentData?.id) {
+        return;
+      }
+      
+      try {
+        const { data: enrollment } = await supabase
+          .from('course_enrollments')
+          .select('certificate_url')
+          .eq('student_id', studentData.id)
+          .eq('course_id', item.course_id)
+          .single();
+
+        if (enrollment?.certificate_url) {
+          setCertificateUrl(enrollment.certificate_url);
+        }
+      } catch (error) {
+        console.error('Error fetching certificate URL:', error);
+      }
+    };
+
+    fetchCertificateUrl();
+  }, [isInternalCourse, isCompleted, certificateUrl, item.course_id, studentData?.id]);
+
   // Handle continue/resume button click
   const handleContinue = () => {
     if (isCourseEnrollment && item.course_id) {
@@ -198,9 +228,62 @@ const ModernLearningCard = ({
   const StatusIcon = statusBadge.icon;
 
   // Helper functions for list view (different styling)
+  const handleDownloadCertificate = async (e) => {
+    e?.stopPropagation();
+    if (!certificateUrl) return;
+    
+    setIsDownloading(true);
+    try {
+      await downloadCertificate(certificateUrl, item.course || item.title);
+    } catch (error) {
+      console.error('Error downloading certificate:', error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleViewCertificate = (e) => {
+    e?.stopPropagation();
+    if (certificateUrl) {
+      const viewUrl = getCertificateProxyUrl(certificateUrl, 'inline');
+      window.open(viewUrl, '_blank');
+    }
+  };
+
+  const renderListCertificateButtons = () => (
+    <div className="flex items-center gap-2 flex-wrap">
+      <button
+        onClick={handleContinue}
+        className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-indigo-500/25"
+      >
+        <Play className="w-4 h-4" />
+        <span>View Course</span>
+      </button>
+      <button
+        onClick={handleViewCertificate}
+        className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-500/25"
+      >
+        <Eye className="w-4 h-4" />
+        <span>View Cert</span>
+      </button>
+      <button
+        onClick={handleDownloadCertificate}
+        disabled={isDownloading}
+        className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm transition-all duration-300 hover:scale-105 shadow-lg ${
+          isDownloading 
+            ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-gray-200/25' 
+            : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 shadow-green-500/25'
+        }`}
+      >
+        <Download className={`w-4 h-4 ${isDownloading ? 'animate-bounce' : ''}`} />
+        <span>{isDownloading ? '...' : 'Download'}</span>
+      </button>
+    </div>
+  );
+
   const renderListCertificateButton = () => (
     <button
-      onClick={() => window.open(item.certificateUrl, "_blank")}
+      onClick={() => window.open(certificateUrl, "_blank")}
       className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
     >
       <Award className="w-4 h-4" />
@@ -262,7 +345,7 @@ const ModernLearningCard = ({
     // External courses logic
     if (isExternalCourse && !isCourseEnrollment && !checkingAssessment) {
       if (assessmentCompleted) {
-        return item.certificateUrl ? renderListCertificateButton() : renderListCompletedStatus("Assessment Completed");
+        return certificateUrl ? renderListCertificateButtons() : renderListCompletedStatus("Assessment Completed");
       }
       if (progress >= 100) {
         return renderListAssessmentButton();
@@ -272,7 +355,7 @@ const ModernLearningCard = ({
 
     // Internal courses logic
     if (isCompleted) {
-      return item.certificateUrl ? renderListCertificateButton() : renderListCompletedStatus("Course Completed");
+      return certificateUrl ? renderListCertificateButtons() : renderListCompletedStatus("Course Completed");
     }
     
     if (isCourseEnrollment) {
@@ -282,10 +365,48 @@ const ModernLearningCard = ({
     return renderListGenericContinueButton();
   };
 
-  // Helper function to render certificate button
+  // Helper function to render certificate buttons (View Course + View Certificate + Download)
+  const renderCertificateButtons = () => (
+    <div className="space-y-2">
+      {/* View Course Button */}
+      <button 
+        onClick={handleContinue}
+        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-indigo-500/25"
+      >
+        <Play className="w-4 sm:w-5 h-4 sm:h-5" />
+        <span>View Course</span>
+      </button>
+      {/* Certificate Buttons */}
+      <div className="flex gap-2">
+        <button
+          onClick={handleViewCertificate}
+          className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-500/25"
+        >
+          <Eye className="w-4 h-4" />
+          <span className="hidden xs:inline">View Cert</span>
+          <span className="xs:hidden">View</span>
+        </button>
+        <button
+          onClick={handleDownloadCertificate}
+          disabled={isDownloading}
+          className={`flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm transition-all duration-300 hover:scale-105 shadow-lg ${
+            isDownloading 
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-gray-200/25' 
+              : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 shadow-green-500/25'
+          }`}
+        >
+          <Download className={`w-4 h-4 ${isDownloading ? 'animate-bounce' : ''}`} />
+          <span className="hidden xs:inline">{isDownloading ? '...' : 'Download'}</span>
+          <span className="xs:hidden">{isDownloading ? '...' : 'Download'}</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  // Helper function to render certificate button (legacy - single button)
   const renderCertificateButton = () => (
     <button
-      onClick={() => window.open(item.certificateUrl, "_blank")}
+      onClick={() => window.open(certificateUrl, "_blank")}
       className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
     >
       <Award className="w-4 sm:w-5 h-4 sm:h-5" />
@@ -358,7 +479,7 @@ const ModernLearningCard = ({
     // External courses logic
     if (isExternalCourse && !isCourseEnrollment && !checkingAssessment) {
       if (assessmentCompleted) {
-        return item.certificateUrl ? renderCertificateButton() : renderCompletedStatus("Assessment Completed");
+        return certificateUrl ? renderCertificateButtons() : renderCompletedStatus("Assessment Completed");
       }
       if (progress >= 100) {
         return renderAssessmentButton();
@@ -368,7 +489,7 @@ const ModernLearningCard = ({
 
     // Internal courses logic
     if (isCompleted) {
-      return item.certificateUrl ? renderCertificateButton() : renderCompletedStatus("Course Completed");
+      return certificateUrl ? renderCertificateButtons() : renderCompletedStatus("Course Completed");
     }
     
     if (isCourseEnrollment) {
