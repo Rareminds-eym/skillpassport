@@ -26,7 +26,25 @@ const SkillGapCourseCard = ({ course, onClick }) => {
         if (onClick) {
             onClick(course);
         } else {
-            navigate(`/student/courses/${course_id}/learn`);
+            // Check user role from URL path to determine navigation
+            const currentPath = window.location.pathname;
+            
+            if (currentPath.includes('/educator/')) {
+                // Navigate to educator browse courses marketplace with search
+                navigate(`/educator/browse-courses?search=${encodeURIComponent(title)}`);
+            } else if (currentPath.includes('/school-admin/')) {
+                // Navigate to school admin browse courses page with search
+                navigate(`/school-admin/academics/browse-courses?search=${encodeURIComponent(title)}`);
+            } else if (currentPath.includes('/college-admin/')) {
+                // Navigate to college admin browse courses page with search
+                navigate(`/college-admin/academics/browse-courses?search=${encodeURIComponent(title)}`);
+            } else if (currentPath.includes('/university-admin/')) {
+                // Navigate to university admin browse courses marketplace with search
+                navigate(`/university-admin/browse-courses?search=${encodeURIComponent(title)}`);
+            } else {
+                // Default: student - navigate to course player (free enrollment)
+                navigate(`/student/courses/${course_id}/learn`);
+            }
         }
     };
 

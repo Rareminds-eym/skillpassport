@@ -8,19 +8,15 @@ import {
   BookOpen,
   Clock,
   Users,
-  Star,
-  Filter,
   Grid3x3,
   List,
-  Play,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
   ArrowDownAZ
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
 import { motion } from 'framer-motion';
-import CoursePurchaseModal from '../../../components/admin/courses/CoursePurchaseModal';
+import CourseDetailModal from '../../../components/student/courses/CourseDetailModal';
 
 const BrowseCourses = () => {
   const navigate = useNavigate();
@@ -35,28 +31,10 @@ const BrowseCourses = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const coursesPerPage = 6;
-  const [activeTab, setActiveTab] = useState('courses'); // 'courses' or 'progress'
-
-  // Handle purchase course
-  const handlePurchaseCourse = async (course) => {
-    try {
-      // TODO: Integrate with actual payment gateway (Razorpay, Stripe, etc.)
-      console.log('Initiating purchase for course:', course.course_id);
-      
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Show success message
-      alert(`✅ Purchase Successful!\n\nCourse: ${course.title}\nAmount: ₹2,999\n\nYou now have lifetime access to this course for your school.`);
-      
-      setShowDetailModal(false);
-      
-      // Optionally navigate to purchased courses
-      // navigate(`/admin/school/my-courses/${course.course_id}`);
-    } catch (error) {
-      console.error('Purchase failed:', error);
-      alert('❌ Purchase failed. Please try again.');
-    }
+  // Handle start course - navigate to course player
+  const handleStartCourse = (course) => {
+    setShowDetailModal(false);
+    navigate(`/school-admin/courses/${course.course_id}/learn`);
   };
 
   // Read search parameter from URL
@@ -220,13 +198,12 @@ const BrowseCourses = () => {
 
   return (
     <>
-      {/* Course Purchase Modal */}
-      <CoursePurchaseModal
+      {/* Course Detail Modal */}
+      <CourseDetailModal
         course={selectedCourse}
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
-        onPurchase={handlePurchaseCourse}
-        userRole="school_admin"
+        onStartCourse={handleStartCourse}
       />
       <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
@@ -272,10 +249,10 @@ const BrowseCourses = () => {
                   </div>
                   <div className="flex-1">
                     <h1 className="font-bold text-2xl text-indigo-600">
-                      Browse & Purchase Courses
+                      Browse Courses
                     </h1>
                     <p className="text-sm text-gray-600 mt-1">
-                      Explore our course marketplace and purchase courses for your school
+                      Explore our course library and access courses for your school
                     </p>
                   </div>
                 </div>
@@ -382,38 +359,38 @@ const BrowseCourses = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
                 whileHover={{ y: -8, transition: { duration: 0.2 } }}
+                onClick={() => handleCourseClick(course)}
+                className="cursor-pointer"
               >
-                <Card className="h-full hover:shadow-lg transition-all duration-200 border border-gray-200 overflow-hidden group">
-                  {/* Course Thumbnail */}
-                  {course.thumbnail && (
-                    <div className="h-40 overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative">
-                      {(course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
-                        <motion.img
-                          src={course.thumbnail}
-                          alt={course.title}
-                          className="w-full h-full object-cover"
-                          whileHover={{ scale: 1.05 }}
-                          transition={{ duration: 0.3 }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <BookOpen className="h-16 w-16 text-white opacity-90" />
-                        </div>
-                      )}
-                      {/* NEW Badge */}
-                      {isNewCourse(course.created_at) && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="absolute top-2 left-2"
-                        >
-                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                            NEW
-                          </Badge>
-                        </motion.div>
-                      )}
-                    </div>
-                  )}
+                <Card className="h-full hover:shadow-lg transition-all duration-200 border border-gray-200 overflow-hidden group flex flex-col">
+                  {/* Course Thumbnail - Always show with default placeholder */}
+                  <div className="h-40 overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative flex-shrink-0">
+                    {course.thumbnail && (course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
+                      <motion.img
+                        src={course.thumbnail}
+                        alt={course.title}
+                        className="w-full h-full object-cover"
+                        whileHover={{ scale: 1.05 }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-400 to-purple-500">
+                        <BookOpen className="h-16 w-16 text-white opacity-90" />
+                      </div>
+                    )}
+                    {/* NEW Badge */}
+                    {isNewCourse(course.created_at) && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute top-2 left-2"
+                      >
+                        <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                          NEW
+                        </Badge>
+                      </motion.div>
+                    )}
+                  </div>
 
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between mb-2">
@@ -421,18 +398,13 @@ const BrowseCourses = () => {
                         <Badge className={`${getStatusColor(course.status)} border`}>
                           {course.status}
                         </Badge>
-                        {!course.thumbnail && isNewCourse(course.created_at) && (
-                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 font-semibold">
-                            NEW
-                          </Badge>
-                        )}
                       </div>
                       <span className="text-xs font-medium text-gray-500">{course.code}</span>
                     </div>
                     <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
                   </CardHeader>
 
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 flex-grow flex flex-col">
                     <p className="text-sm text-gray-600 line-clamp-3">{course.description}</p>
 
                     <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -448,7 +420,7 @@ const BrowseCourses = () => {
 
                     {/* Educator Info */}
                     {course.educator_name && (
-                      <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                      <div className="flex items-center gap-2 pt-2 border-t border-gray-100 mt-auto">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
                           {course.educator_name.charAt(0).toUpperCase()}
                         </div>
@@ -458,13 +430,6 @@ const BrowseCourses = () => {
                         </div>
                       </div>
                     )}
-
-                    <Button
-                      onClick={() => handleCourseClick(course)}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
-                    >
-                      View Course Details
-                    </Button>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -481,34 +446,34 @@ const BrowseCourses = () => {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3 }}
+                onClick={() => handleCourseClick(course)}
+                className="cursor-pointer"
               >
                 <Card className="hover:shadow-lg transition-all duration-200 border-0">
                   <CardContent className="p-6">
                     <div className="flex flex-col lg:flex-row gap-6">
-                      {/* Thumbnail */}
-                      {course.thumbnail && (
-                        <div className="w-full lg:w-48 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative">
-                          {(course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
-                            <img
-                              src={course.thumbnail}
-                              alt={course.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <BookOpen className="h-12 w-12 text-white opacity-90" />
-                            </div>
-                          )}
-                          {/* NEW Badge */}
-                          {isNewCourse(course.created_at) && (
-                            <div className="absolute top-2 left-2">
-                              <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                                NEW
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      {/* Thumbnail - Always show with default placeholder */}
+                      <div className="w-full lg:w-48 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative">
+                        {course.thumbnail && (course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
+                          <img
+                            src={course.thumbnail}
+                            alt={course.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-400 to-purple-500">
+                            <BookOpen className="h-12 w-12 text-white opacity-90" />
+                          </div>
+                        )}
+                        {/* NEW Badge */}
+                        {isNewCourse(course.created_at) && (
+                          <div className="absolute top-2 left-2">
+                            <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                              NEW
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
 
                       {/* Course Info */}
                       <div className="flex-1">
@@ -519,11 +484,6 @@ const BrowseCourses = () => {
                               <Badge className={`${getStatusColor(course.status)} border`}>
                                 {course.status}
                               </Badge>
-                              {!course.thumbnail && isNewCourse(course.created_at) && (
-                                <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 font-semibold">
-                                  NEW
-                                </Badge>
-                              )}
                             </div>
                             <p className="text-sm text-gray-500">Course Code: {course.code}</p>
                           </div>
@@ -531,7 +491,7 @@ const BrowseCourses = () => {
 
                         <p className="text-gray-600 mb-4 line-clamp-2">{course.description}</p>
 
-                        <div className="flex items-center gap-6 text-sm text-gray-600 mb-4">
+                        <div className="flex items-center gap-6 text-sm text-gray-600">
                           <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4" />
                             <span>{course.duration}</span>
@@ -549,13 +509,6 @@ const BrowseCourses = () => {
                             </div>
                           )}
                         </div>
-
-                        <Button
-                          onClick={() => handleCourseClick(course)}
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                        >
-                          View Course Details
-                        </Button>
                       </div>
                     </div>
                   </CardContent>

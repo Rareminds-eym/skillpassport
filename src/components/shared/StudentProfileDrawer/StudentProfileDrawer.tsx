@@ -51,10 +51,18 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   isOpen,
   onClose,
   userRole = 'school_admin',
+  defaultTab = 'overview',
 }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [copied, setCopied] = useState(false);
+
+  // Reset active tab when defaultTab changes or drawer opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setActiveTab(defaultTab);
+    }
+  }, [isOpen, defaultTab]);
 
   // Modal states
   const [showExportModal, setShowExportModal] = useState(false);

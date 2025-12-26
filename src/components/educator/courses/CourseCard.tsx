@@ -50,9 +50,16 @@ const CourseCard: React.FC<CourseCardProps> = ({
     ? Math.round((course.skillsMapped / course.totalSkills) * 100)
     : 0;
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't trigger if clicking on the actions menu or its children
+    const target = e.target as HTMLElement;
+    if (target.closest('.actions-menu')) return;
+    onView(course);
+  };
+
   return (
     <motion.div
-      className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all duration-200 group"
+      className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all duration-200 group cursor-pointer"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -60,6 +67,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
         y: -8,
         transition: { duration: 0.2 }
       }}
+      onClick={handleCardClick}
     >
       {/* Thumbnail/Icon */}
       {course.thumbnail && (
