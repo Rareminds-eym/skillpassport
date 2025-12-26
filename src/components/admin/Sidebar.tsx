@@ -132,7 +132,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               path: "/school-admin/academics/browse-courses",
               icon: AcademicCapIcon,
             },
-            */
             {
               name: "Curriculum Builder",
               path: "/school-admin/academics/curriculum",
