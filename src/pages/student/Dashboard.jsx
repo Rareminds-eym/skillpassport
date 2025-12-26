@@ -1945,9 +1945,10 @@ const StudentDashboard = () => {
               {render3x3Grid()}
             </motion.div>
             
-            {/* Separate Section: 2 in a row and 1 column (Suggested Steps and Achievement Timeline) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Suggested Steps - 2 columns wide */}
+            {/* Separate Section: Achievement Timeline */}
+            <div className="grid grid-cols-1 gap-6">
+              {/* Suggested Steps - Commented Out */}
+              {false && (
               <div className="lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
                 <Card
                   ref={suggestedNextStepsRef}
@@ -2096,7 +2097,6 @@ const StudentDashboard = () => {
                           </div>
                         ))}
 
-                        {/* Refresh Button */}
                         <Button
                           variant="outline"
                           size="sm"
@@ -2110,7 +2110,6 @@ const StudentDashboard = () => {
                       </>
                     ) : (
                       <>
-                        {/* Fallback to default suggestions if no AI matches */}
                         {suggestions.map((suggestion, idx) => (
                           <div
                             key={suggestion.id || `suggestion-${idx}`}
@@ -2137,9 +2136,10 @@ const StudentDashboard = () => {
                   </CardContent>
                 </Card>
               </div>
-              
+              )}
+
               {/* Achievement Timeline - 1 column */}
-              <div className="lg:col-span-2">
+              <div>
                 <AchievementsTimeline userData={userData} />
               </div>
             </div>
