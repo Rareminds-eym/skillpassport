@@ -1,9 +1,10 @@
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { ArrowRight, BookOpen, Clock, Flame, GraduationCap, TrendingUp, Trophy } from 'lucide-react';
+import { ArrowRight, BookOpen, Clock, Download, Eye, Flame, GraduationCap, TrendingUp, Trophy } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
+import { downloadCertificate, getCertificateProxyUrl } from '../../services/certificateService';
 import '../../utils/suppressRechartsWarnings'; // Auto-suppress Recharts warnings
 
 // Compact tooltip for chart
@@ -573,6 +574,35 @@ const MiniDonutChart = ({ completed, inProgress, notStarted, total }) => {
 const CompactCourseCard = ({ course, onClick }) => {
   const isCompleted = course.completionRate === 100;
   const isNotStarted = course.completionRate === 0;
+  const [certificateUrl, setCertificateUrl] = useState(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // Fetch certificate URL for completed courses
+  useEffect(() => {
+    const fetchCertificateUrl = async () => {
+      if (!isCompleted || !course.courseId) return;
+      
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: enrollment } = await supabase
+          .from('course_enrollments')
+          .select('certificate_url')
+          .eq('student_id', user.id)
+          .eq('course_id', course.courseId)
+          .single();
+
+        if (enrollment?.certificate_url) {
+          setCertificateUrl(enrollment.certificate_url);
+        }
+      } catch (error) {
+        console.error('Error fetching certificate URL:', error);
+      }
+    };
+
+    fetchCertificateUrl();
+  }, [isCompleted, course.courseId]);
 
   const handleClick = () => {
     // Don't navigate if course is 100% completed
@@ -580,6 +610,28 @@ const CompactCourseCard = ({ course, onClick }) => {
       return;
     }
     onClick();
+  };
+
+  const handleViewCertificate = (e) => {
+    e.stopPropagation();
+    if (certificateUrl) {
+      const viewUrl = getCertificateProxyUrl(certificateUrl, 'inline');
+      window.open(viewUrl, '_blank');
+    }
+  };
+
+  const handleDownloadCertificate = async (e) => {
+    e.stopPropagation();
+    if (!certificateUrl) return;
+    
+    setIsDownloading(true);
+    try {
+      await downloadCertificate(certificateUrl, course.courseName);
+    } catch (error) {
+      console.error('Error downloading certificate:', error);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -620,10 +672,40 @@ const CompactCourseCard = ({ course, onClick }) => {
 
       {/* Action */}
       {isCompleted ? (
-        // For 100% completed courses, show completed status instead of continue button
-        <div className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-600 flex items-center gap-1">
-          <CheckCircle2 className="w-3 h-3" />
-          Completed
+        // For 100% completed courses, show view course and certificate buttons
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={onClick}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            title="View Course"
+          >
+            <Play className="w-3 h-3" />
+            View
+          </button>
+          <button
+            onClick={handleViewCertificate}
+            disabled={!certificateUrl}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
+              certificateUrl
+                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            }`}
+            title={certificateUrl ? 'View Certificate' : 'Certificate not available'}
+          >
+            <Eye className="w-3 h-3" />
+          </button>
+          <button
+            onClick={handleDownloadCertificate}
+            disabled={!certificateUrl || isDownloading}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
+              certificateUrl && !isDownloading
+                ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            }`}
+            title={certificateUrl ? 'Download Certificate' : 'Certificate not available'}
+          >
+            <Download className={`w-3 h-3 ${isDownloading ? 'animate-bounce' : ''}`} />
+          </button>
         </div>
       ) : (
         <button className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
