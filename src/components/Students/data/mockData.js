@@ -182,5 +182,5 @@ export const recentUpdates = [
 export const suggestions = [
   "Add your latest project to boost your score by 10%",
   "Complete your Machine Learning course to unlock AI roles",
-  "Upload certificates for Data Structures course"
+  "Add your Data Structures certificate to showcase your skills"
 ];

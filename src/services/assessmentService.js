@@ -363,9 +363,9 @@ export const getLatestResult = async (studentId) => {
     .eq('student_id', studentId)
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle(); // Use maybeSingle() to return null instead of 406 error when no rows found
 
-  if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+  if (error) throw error;
   return data;
 };
 

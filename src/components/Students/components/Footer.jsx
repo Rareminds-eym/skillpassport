@@ -26,9 +26,9 @@ const Footer = () => {
           <div className="lg:col-span-1">
             <Link to="/" className="inline-block mb-6 group">
               <div className="relative">
-                <img 
-                  src="/RareMinds.webp" 
-                  alt="RareMinds Logo" 
+                <img
+                  src="/RareMinds.webp"
+                  alt="RareMinds Logo"
                   className="h-16 w-auto transition-all duration-300 group-hover:scale-105 brightness-0 invert"
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-amber-400 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300"></div>
@@ -51,8 +51,8 @@ const Footer = () => {
             </h4>
             <ul className="space-y-3">
               <li>
-                <Link 
-                  to="/about" 
+                <Link
+                  to="/about"
                   className="group flex items-center text-gray-300 hover:text-white transition-all duration-200"
                 >
                   <span className="w-0 group-hover:w-2 h-0.5 bg-gradient-to-r from-purple-400 to-amber-400 mr-0 group-hover:mr-2 transition-all duration-200"></span>
@@ -60,8 +60,8 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link 
-                  to="https://rareminds.in/blogs" 
+                <Link
+                  to="https://rareminds.in/blogs"
                   className="group flex items-center text-gray-300 hover:text-white transition-all duration-200"
                 >
                   <span className="w-0 group-hover:w-2 h-0.5 bg-gradient-to-r from-purple-400 to-amber-400 mr-0 group-hover:mr-2 transition-all duration-200"></span>
@@ -69,8 +69,8 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link 
-                  to="https://rareminds.in/contact" 
+                <Link
+                  to="https://rareminds.in/contact"
                   className="group flex items-center text-gray-300 hover:text-white transition-all duration-200"
                 >
                   <span className="w-0 group-hover:w-2 h-0.5 bg-gradient-to-r from-purple-400 to-amber-400 mr-0 group-hover:mr-2 transition-all duration-200"></span>
@@ -78,8 +78,8 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link 
-                  to="https://rareminds.in/privacy-policy" 
+                <Link
+                  to="/privacy-policy"
                   className="group flex items-center text-gray-300 hover:text-white transition-all duration-200"
                 >
                   <span className="w-0 group-hover:w-2 h-0.5 bg-gradient-to-r from-purple-400 to-amber-400 mr-0 group-hover:mr-2 transition-all duration-200"></span>
@@ -95,9 +95,9 @@ const Footer = () => {
               Connect With Us
             </h4>
             <div className="flex flex-wrap gap-3">
-              <a 
-                href="https://www.linkedin.com/company/rareminds/" 
-                target="_blank" 
+              <a
+                href="https://www.linkedin.com/company/rareminds/"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="group relative w-12 h-12 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:border-purple-400 transition-all duration-300 hover:scale-110"
                 aria-label="LinkedIn"
@@ -105,9 +105,9 @@ const Footer = () => {
                 <Linkedin className="w-5 h-5 text-gray-300 group-hover:text-purple-400 transition-colors duration-200" />
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-purple-500/0 group-hover:from-purple-500/20 group-hover:to-transparent rounded-xl transition-all duration-300"></div>
               </a>
-              <a 
-                href="https://x.com/minds_rare" 
-                target="_blank" 
+              <a
+                href="https://x.com/minds_rare"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="group relative w-12 h-12 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:border-blue-400 transition-all duration-300 hover:scale-110"
                 aria-label="Twitter"
@@ -115,9 +115,9 @@ const Footer = () => {
                 <Twitter className="w-5 h-5 text-gray-300 group-hover:text-blue-400 transition-colors duration-200" />
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-blue-500/0 group-hover:from-blue-500/20 group-hover:to-transparent rounded-xl transition-all duration-300"></div>
               </a>
-              <a 
-                href="https://www.youtube.com/channel/UClkBtwJsScYxFzNoFdlifeA" 
-                target="_blank" 
+              <a
+                href="https://www.youtube.com/channel/UClkBtwJsScYxFzNoFdlifeA"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="group relative w-12 h-12 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:border-red-400 transition-all duration-300 hover:scale-110"
                 aria-label="YouTube"
@@ -125,9 +125,9 @@ const Footer = () => {
                 <Youtube className="w-5 h-5 text-gray-300 group-hover:text-red-400 transition-colors duration-200" />
                 <div className="absolute inset-0 bg-gradient-to-br from-red-500/0 to-red-500/0 group-hover:from-red-500/20 group-hover:to-transparent rounded-xl transition-all duration-300"></div>
               </a>
-              <a 
-                href="https://www.instagram.com/rareminds_eym/" 
-                target="_blank" 
+              <a
+                href="https://www.instagram.com/rareminds_eym/"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="group relative w-12 h-12 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:border-pink-400 transition-all duration-300 hover:scale-110"
                 aria-label="Instagram"
@@ -168,9 +168,9 @@ const Footer = () => {
             <span className="hidden md:inline">•</span>
             <span>All rights reserved.</span>
           </div>
-          
+
           <div className="flex items-center space-x-6 text-xs text-gray-400">
-            <Link to="https://rareminds.in/terms" className="hover:text-purple-400 transition-colors duration-200">
+            <Link to="/terms" className="hover:text-purple-400 transition-colors duration-200">
               Terms of Service
             </Link>
             <span>•</span>

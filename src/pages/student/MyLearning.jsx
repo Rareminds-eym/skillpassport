@@ -1,10 +1,6 @@
-import { ArrowRight, ArrowUpDown, Award, BarChart3, BookOpen, GraduationCap, Plus, RefreshCw, Search, SlidersHorizontal, TrendingUp, X } from "lucide-react";
+import { ArrowRight, ArrowUpDown, Award, BarChart3, BookOpen, Filter, GraduationCap, Grid3X3, List, Plus, RefreshCw, Search, TrendingUp, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent } from "../../components/Students/components/ui/card";
-import { Button } from "../../components/Students/components/ui/button";
-import { Plus, BookOpen, TrendingUp, Award, GraduationCap, Search, ArrowUpDown, X, BarChart3, RefreshCw, ArrowRight, Filter, Grid3X3, List } from "lucide-react";
-import ModernLearningCard from "../../components/Students/components/ModernLearningCard";
 import LearningAnalyticsDashboard from "../../components/Students/components/LearningAnalyticsDashboard";
 import ModernLearningCard from "../../components/Students/components/ModernLearningCard";
 import { TrainingEditModal } from "../../components/Students/components/ProfileEditModals";
@@ -15,6 +11,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentTrainings } from "../../hooks/useStudentTrainings";
+import Pagination from "../../components/educator/Pagination";
 
 const StatCardSkeleton = () => (
   <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm animate-pulse">
@@ -138,7 +135,7 @@ const MyLearning = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const userEmail = user?.email;
-  const { studentData, updateTraining, refresh: refreshStudentData, loading: studentLoading } = useStudentDataByEmail(userEmail, false);
+  const { studentData, updateTraining, updateSingleTraining, refresh: refreshStudentData, loading: studentLoading } = useStudentDataByEmail(userEmail, false);
   const studentId = studentData?.id;
 
   // State for view toggle and layout
@@ -679,15 +676,14 @@ const MyLearning = () => {
             onClose={() => { 
               setActiveModal(null); 
               setEditingItem(null); 
-              refresh(); 
+              // Don't call refresh() here - only refresh when data is actually saved
             }}
             onSave={async (updatedItems) => { 
               const item = updatedItems[0]; 
               if (!item) return; 
-              const learning = studentData?.training || []; 
-              const idx = learning.findIndex(l => l.id === item.id); 
-              const updated = idx >= 0 ? learning.map(l => l.id === item.id ? { ...l, ...item } : l) : [...learning, item]; 
-              await updateTraining(updated); 
+              
+              // Use the single training update function instead of updating all trainings
+              await updateSingleTraining(item.id, item);
               await refresh(); 
             }}
             data={[editingItem]} 

@@ -150,34 +150,54 @@ export const useStudentTrainings = (studentId, options = {}) => {
       }
 
       // Transform trainings data
-      const formattedTrainings = (trainingsData || []).map((train) => ({
-        id: train.id,
-        title: String(train.title || ''),
-        course: String(train.title || ''),
-        organization: String(train.organization || ''),
-        provider: String(train.organization || ''),
-        start_date: train.start_date,
-        end_date: train.end_date,
-        startDate: train.start_date,
-        endDate: train.end_date,
-        duration: String(train.duration || ''),
-        description: String(train.description || ''),
-        status: String(train.status || 'ongoing'),
-        completedModules: Number(train.completed_modules) || 0,
-        totalModules: Number(train.total_modules) || 0,
-        hoursSpent: Number(train.hours_spent) || 0,
-        approval_status: String(train.approval_status || 'pending'),
-        verified: train.approval_status === 'approved' || train.approval_status === 'verified',
-        processing: train.approval_status === 'pending',
-        enabled: train.approval_status !== 'rejected',
-        source: String(train.source || 'manual'),
-        course_id: train.course_id,
-        skills: [],
-        certificateUrl: '',
-        createdAt: train.created_at,
-        updatedAt: train.updated_at,
-        type: 'training'
-      }));
+      const formattedTrainings = [];
+      
+      for (const train of (trainingsData || [])) {
+        // Fetch certificate for this training
+        const { data: certificateRows } = await supabase
+          .from('certificates')
+          .select('link')
+          .eq('training_id', train.id)
+          .eq('enabled', true)
+          .limit(1);
+          
+        // Fetch skills for this training (only technical skills to match service behavior)
+        const { data: skillRows } = await supabase
+          .from('skills')
+          .select('name')
+          .eq('training_id', train.id)
+          .eq('type', 'technical')
+          .eq('enabled', true);
+        
+        formattedTrainings.push({
+          id: train.id,
+          title: String(train.title || ''),
+          course: String(train.title || ''),
+          organization: String(train.organization || ''),
+          provider: String(train.organization || ''),
+          start_date: train.start_date,
+          end_date: train.end_date,
+          startDate: train.start_date,
+          endDate: train.end_date,
+          duration: String(train.duration || ''),
+          description: String(train.description || ''),
+          status: String(train.status || 'ongoing'),
+          completedModules: Number(train.completed_modules) || 0,
+          totalModules: Number(train.total_modules) || 0,
+          hoursSpent: Number(train.hours_spent) || 0,
+          approval_status: String(train.approval_status || 'pending'),
+          verified: train.approval_status === 'approved' || train.approval_status === 'verified',
+          processing: train.approval_status === 'pending',
+          enabled: train.approval_status !== 'rejected',
+          source: String(train.source || 'manual'),
+          course_id: train.course_id,
+          skills: skillRows?.map(s => s.name) || [], // Fetch actual skills
+          certificateUrl: certificateRows?.[0]?.link || '', // Fetch actual certificate URL
+          createdAt: train.created_at,
+          updatedAt: train.updated_at,
+          type: 'training'
+        });
+      }
 
       // Transform course enrollments to match training format
       const formattedEnrollments = processedEnrollments.map((enroll) => {
@@ -214,7 +234,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
           source: 'course_enrollment',
           course_id: enroll.course_id,
           skills: [],
-          certificateUrl: '',
+          certificateUrl: enroll.certificate_url || '', // Include certificate URL from enrollment
           createdAt: enroll.enrolled_at,
           updatedAt: enroll.last_accessed,
           type: 'course_enrollment',

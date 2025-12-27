@@ -29,6 +29,8 @@ import StudentDigitalPortfolioNav from '../components/digital-pp/ui/StudentDigit
 const Home = lazy(() => import("../pages/homepage/Home"));
 const About = lazy(() => import("../pages/homepage/About"));
 const Contact = lazy(() => import("../pages/homepage/Contact"));
+const TermsAndConditions = lazy(() => import("../pages/TermsAndConditions"));
+const PrivacyPolicy = lazy(() => import("../pages/PrivacyPolicy"));
 const PuterDemo = lazy(() => import("../pages/puter/PuterDemo"));
 const SubscriptionPlans = lazy(() =>
   import("../pages/subscription/SubscriptionPlans")
@@ -383,25 +385,29 @@ const AppRoutes = () => {
         <Route path="/register/plans" element={<EventSales />} />
         <Route path="/register/plans/success" element={<EventSalesSuccess />} />
         <Route path="/register/plans/failure" element={<EventSalesFailure />} />
-        
+
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/puter" element={<PuterDemo />} />
-          
+
+          {/* Legal Pages */}
+          <Route path="/terms" element={<TermsAndConditions />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+
           {/* Unified Login */}
           <Route path="/login" element={<UnifiedLogin />} />
           <Route path="/forgot-password" element={<UnifiedForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/debug-roles" element={<DebugRoles />} />
-          
+
           {/* Deprecated login routes - redirect to unified login */}
           <Route path="/login/student" element={<Navigate to="/login" replace />} />
           <Route path="/login/recruiter" element={<Navigate to="/login" replace />} />
           <Route path="/login/admin" element={<Navigate to="/login" replace />} />
           <Route path="/login/educator" element={<Navigate to="/login" replace />} />
-          
+
           {/* Registration routes */}
           <Route path="/register/recruitment" element={<Register />} />
           <Route path="/register" element={<Register />} />
@@ -420,7 +426,7 @@ const AppRoutes = () => {
           <Route path="/subscription/plans" element={<SubscriptionPlans />} />
           <Route path="/subscription/plans/:type" element={<SubscriptionPlans />} />
           <Route path="/subscription/plans/:type/:mode" element={<SubscriptionPlans />} />
-          
+
           <Route path="/subscription/payment" element={<PaymentCompletion />} />
           <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
@@ -472,12 +478,12 @@ const AppRoutes = () => {
           }
         >
           <Route path="dashboard" element={<CollegeDashboard />} />
-          
+
           {/* Department Management */}
           <Route path="departments/management" element={<DepartmentManagement />} />
           <Route path="departments/mapping" element={<CourseMapping />} />
           <Route path="departments/educators" element={<FacultyManagement />} />
-          
+
           {/* Student Lifecycle Management */}
           <Route path="students/data-management" element={<StudentDataAdmission />} />
           <Route path="students/attendance" element={<AttendanceTracking />} />
@@ -495,41 +501,41 @@ const AppRoutes = () => {
           <Route path="academics/coverage-tracker" element={<AcademicCoverageTracker />} />
           <Route path="academics/program-sections" element={<ProgramSectionManagement />} />
           <Route path="academics/calendar" element={<AcademicCalendar />} />
-          
+
           {/* Examination Management */}
           <Route path="examinations" element={<ExaminationManagement />} />
           <Route path="examinations/transcripts" element={<TranscriptGeneration />} />
-          
+
           {/* Training & Skill Development */}
           <Route path="skill-development" element={<SkillDevelopment />} />
-          
+
           {/* Placement Management */}
           <Route path="placements" element={<PlacementManagement />} />
-          
+
           {/* Mentor Allocation */}
           <Route path="mentors" element={<MentorAllocation />} />
-          
+
           {/* Communication */}
           <Route path="circulars" element={<CircularsManagement />} />
-          
+
           {/* Events */}
           <Route path="events" element={<EventManagement />} />
-          
+
           {/* Finance & Accounts */}
           <Route path="finance" element={<FinanceManagement />} />
-          
+
           {/* Library & Assets */}
           <Route path="library" element={<CollegeLibrary />} />
-          
+
           {/* Reports & Analytics */}
           <Route path="reports" element={<ReportsAnalytics />} />
-          
+
           {/* User Management */}
           <Route path="users" element={<CollegeUserManagement />} />
-          
+
           {/* Settings */}
           <Route path="settings" element={<CollegeSettings />} />
-          
+
           <Route path="" element={<Navigate to="/college-admin/dashboard" replace />} />
         </Route>
 
@@ -548,6 +554,8 @@ const AppRoutes = () => {
           <Route path="students/verifications" element={<SchoolAdminVerifications  />} />
           <Route path="students/digital-portfolio" element={<SchoolAdminDigitalPortfolio />} />
           <Route path="classes/management" element={<ClassManagement />} />
+          <Route path="courses" element={<SchoolAdminCourses />} />
+          <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
           <Route path="teachers/list" element={<TeacherList />} />
           <Route path="teachers/onboarding" element={<TeacherOnboarding />} />
           <Route path="teachers/timetable" element={<TeacherTimetable />} />

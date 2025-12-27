@@ -123,3 +123,38 @@ export const clearVerificationCache = () => {
   verificationCache.clear();
   console.log('✅ Verification cache cleared');
 };
+
+/**
+ * Log failed transaction for tracking and support purposes
+ * @param {Object} transactionData - Failed transaction details
+ * @returns {Promise<Object>} Result of logging operation
+ */
+export const logFailedTransaction = async (transactionData) => {
+  try {
+    const { razorpay_payment_id, razorpay_order_id, amount, currency, error, error_description } = transactionData;
+    
+    // Get current user if available
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+
+    // Log to console for debugging
+    console.warn('❌ Payment failed:', {
+      payment_id: razorpay_payment_id,
+      order_id: razorpay_order_id,
+      amount,
+      currency,
+      error,
+      error_description,
+      user_id: userId,
+      timestamp: new Date().toISOString()
+    });
+
+    // Optionally log to database if needed
+    // This can be expanded to store in a failed_transactions table
+    
+    return { success: true, logged: true };
+  } catch (err) {
+    console.error('Error logging failed transaction:', err);
+    return { success: false, logged: false, error: err.message };
+  }
+};

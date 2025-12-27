@@ -42,17 +42,17 @@ const CourseRecommendationCard = ({ course, onClick }) => {
             const currentPath = window.location.pathname;
             
             if (currentPath.includes('/educator/')) {
-                // Navigate to educator browse courses marketplace
-                navigate('/educator/browse-courses');
+                // Navigate to educator browse courses marketplace with search
+                navigate(`/educator/browse-courses?search=${encodeURIComponent(title)}`);
             } else if (currentPath.includes('/school-admin/')) {
-                // Navigate to school admin browse courses marketplace
-                navigate('/school-admin/academics/browse-courses');
+                // Navigate to school admin browse courses page with search
+                navigate(`/school-admin/academics/browse-courses?search=${encodeURIComponent(title)}`);
             } else if (currentPath.includes('/college-admin/')) {
-                // Navigate to college admin browse courses marketplace
-                navigate('/college-admin/academics/browse-courses');
+                // Navigate to college admin browse courses page with search
+                navigate(`/college-admin/academics/browse-courses?search=${encodeURIComponent(title)}`);
             } else if (currentPath.includes('/university-admin/')) {
-                // Navigate to university admin browse courses marketplace
-                navigate('/university-admin/browse-courses');
+                // Navigate to university admin browse courses marketplace with search
+                navigate(`/university-admin/browse-courses?search=${encodeURIComponent(title)}`);
             } else {
                 // Default: student - navigate to course player (free enrollment)
                 navigate(`/student/courses/${course_id}/learn`);

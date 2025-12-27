@@ -323,6 +323,10 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     // Fallback to profile JSONB for any missing data
     ...realStudentData.profile
   } : null;
+  
+  // Debug logging for student type detection
+  // console.log('DEBUG: student_type =', realStudentData?.student_type, '| school_id =', realStudentData?.school_id, '| isSchool =', (realStudentData?.student_type === 'school' || realStudentData?.school_id) ? 'YES' : 'NO');
+  
   // Fetch institution name and location if not in relationship data
   useEffect(() => {
     const fetchInstitutionName = async () => {
@@ -831,8 +835,8 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   </div> */}
                 </div>
 
-                {/* School-specific fields - Display when school_id is not null - COMPACT HORIZONTAL */}
-                {realStudentData?.school_id && (
+                {/* School-specific fields - Display when school_id is not null AND has actual data - COMPACT HORIZONTAL */}
+                {realStudentData?.school_id && (realStudentData?.grade || realStudentData?.section || realStudentData?.roll_number || realStudentData?.admission_number) && (
                   <div className="bg-blue-50/60 backdrop-blur-md rounded-xl p-3 border border-blue-200/60 shadow-md">
                     <div className="flex items-center gap-2 mb-2">
                       <AcademicCapIcon className="w-4 h-4 text-blue-700" />
@@ -863,8 +867,8 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   </div>
                 )}
 
-                {/* College-specific fields - Display when university_college_id is not null - COMPACT HORIZONTAL */}
-                {realStudentData?.university_college_id && (
+                {/* College-specific fields - Display when university_college_id is not null AND has actual data - COMPACT HORIZONTAL */}
+                {realStudentData?.university_college_id && (realStudentData?.registration_number || realStudentData?.admission_number || realStudentData?.student_id) && (
                   <div className="bg-indigo-50/60 backdrop-blur-md rounded-xl p-3 border border-indigo-200/60 shadow-md">
                     <div className="flex items-center gap-2 mb-2">
                       <TrophyIcon className="w-4 h-4 text-indigo-700" />
@@ -1430,7 +1434,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                 <h3 className="text-lg font-semibold text-gray-900">
                   {displayData.name || "Student Name"}
                 </h3>
-                <p className="text-sm text-gray-600">{displayData.university || "University"}</p>
+                <p className="text-sm text-gray-600">{institutionName}</p>
               </div>
             </div>
 
@@ -1443,8 +1447,20 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                 displayData?.studentId || 
                 "N/A"
               } />
-              <DetailItem label="Department" value={displayData.department || displayData.degree || "Computer Science"} />
-              <DetailItem label="Class Year" value={displayData.classYear || "Class of 2025"} />
+              <DetailItem 
+                label={(realStudentData?.student_type === 'school' || realStudentData?.school_id) ? 'Grade/Section' : 'Department'} 
+                value={
+                  (realStudentData?.student_type === 'school' || realStudentData?.school_id)
+                    ? (realStudentData?.grade 
+                        ? `Grade ${realStudentData.grade}${realStudentData?.section ? ` - ${realStudentData.section}` : ''}` 
+                        : 'N/A')
+                    : (displayData.department || displayData.degree || 'N/A')
+                } 
+              />
+              <DetailItem 
+                label="Class Year" 
+                value={displayData.classYear || 'N/A'} 
+              />
               <DetailItem label="Employability Score" value={`${employabilityData.employabilityScore}%`} highlight />
               <DetailItem label="Level" value={employabilityData.label} />
             </div>
