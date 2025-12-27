@@ -32,13 +32,6 @@ export const useOpportunities = (options = {}) => {
     setError(null);
 
     try {
-      console.log({
-        studentSkills,
-        activeOnly,
-        filters,
-        searchTerm
-      });
-
       // Fetch opportunities with search term if provided
       let data;
       if (searchTerm && searchTerm.trim()) {
@@ -142,13 +135,6 @@ export const useOpportunities = (options = {}) => {
 
   // Re-fetch when dependencies change (including searchTerm)
   useEffect(() => {
-    console.log({
-      filters,
-      studentSkills,
-      activeOnly,
-      searchTerm,
-      fetchOnMount
-    });
     if (fetchOnMount) {
       fetchOpportunities();
     }

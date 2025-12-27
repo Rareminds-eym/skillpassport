@@ -484,17 +484,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   // Debug: Log student_id and school fields from database
   React.useEffect(() => {
     if (realStudentData) {
-      console.log('🔍 Student ID from database:', realStudentData.student_id);
-      console.log('🏫 School ID:', realStudentData.school_id);
-      console.log('🏫 School Data:', realStudentData.schools);
-      console.log('🎓 College ID:', realStudentData.university_college_id);
-      console.log('� College Darta:', realStudentData.university_colleges);
-      console.log('📚 Grade:', realStudentData.grade);
-      console.log('� FSection:', realStudentData.section);
-      console.log('🎯 Roll Number:', realStudentData.roll_number);
-      console.log('🎓 Admission Number:', realStudentData.admission_number);
-      console.log('🏢 Institution Name:', institutionName);
-      console.log('📦 Full realStudentData:', realStudentData);
+      // Student data loaded
     }
   }, [realStudentData, institutionName]);
 

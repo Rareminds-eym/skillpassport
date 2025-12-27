@@ -296,34 +296,19 @@ const StudentDashboard = () => {
   } = useStudentRealtimeActivities(userEmail, 10);
 
   // Debug log for authentication and student data
-  useEffect(() => {
-    console.log({
-      studentData: studentData?.id,
-      loading: authStudentLoading,
-      error: authStudentError,
-    });
-  }, [studentData, authStudentLoading, authStudentError]);
+  // useEffect(() => {
+  //   // Authentication and student data loaded
+  // }, [studentData, authStudentLoading, authStudentError]);
 
   // Debug log for opportunities
-  useEffect(() => {
-    console.log({
-      opportunities,
-      loading: opportunitiesLoading,
-      error: opportunitiesError,
-      count: opportunities?.length,
-    });
-  }, [opportunities, opportunitiesLoading, opportunitiesError]);
+  // useEffect(() => {
+  //   // Opportunities data loaded
+  // }, [opportunities, opportunitiesLoading, opportunitiesError]);
 
   // Debug log for recent updates
-  useEffect(() => {
-    console.log({
-      recentUpdates,
-      loading: recentUpdatesLoading,
-      error: recentUpdatesError,
-      count: recentUpdates?.length,
-      userEmail,
-    });
-  }, [recentUpdates, recentUpdatesLoading, recentUpdatesError, userEmail]);
+  // useEffect(() => {
+  //   // Recent updates data loaded
+  // }, [recentUpdates, recentUpdatesLoading, recentUpdatesError, userEmail]);
 
   // Poll for new opportunities and refresh Recent Updates
   useEffect(() => {
@@ -345,9 +330,6 @@ const StudentDashboard = () => {
 
           // Refresh Recent Updates to show the new opportunity
           setTimeout(() => {
-            console.log(
-              "🔄 Refreshing Recent Updates after new opportunity..."
-            );
             refreshRecentUpdates();
           }, 1000); // Small delay to ensure DB trigger has fired
         }
@@ -375,22 +357,15 @@ const StudentDashboard = () => {
   useEffect(() => {
     const testSupabaseDirectly = async () => {
       try {
-        console.log({
-          url: import.meta.env.VITE_SUPABASE_URL ? "Set" : "Missing",
-          key: import.meta.env.VITE_SUPABASE_ANON_KEY ? "Set" : "Missing",
-        });
-
         const { data, error, count } = await supabase
           .from("opportunities")
           .select("*", { count: "exact" });
 
         // Run debug for recent updates (commented out to prevent automatic execution)
         // await debugRecentUpdates();
-        console.log(
-          "ℹ️ To debug recent updates, run: await window.debugRecentUpdates() in console"
-        );
+        // To debug recent updates, run: await window.debugRecentUpdates() in console
       } catch (err) {
-        console.error("🧪 Direct test error:", err);
+        // Handle error silently
       }
     };
 
@@ -552,16 +527,6 @@ const StudentDashboard = () => {
 
   // Determine institution info from student data (using individual columns)
   const institutionInfo = React.useMemo(() => {
-    // Debug: Log student data structure
-    console.log('🏫 Institution Debug:', {
-      school_id: studentData?.school_id,
-      university_college_id: studentData?.university_college_id,
-      university: studentData?.university, // Individual column
-      college_school_name: studentData?.college_school_name, // Individual column
-      school: studentData?.school,
-      universityCollege: studentData?.universityCollege,
-    });
-
     // Priority: school_id takes precedence if both exist
     if (studentData?.school_id && studentData?.school) {
       return {
@@ -945,16 +910,6 @@ const StudentDashboard = () => {
               </p>
             </div>
           )} */}
-          
-          {(() => {
-            console.log({
-              loading: opportunitiesLoading,
-              error: opportunitiesError,
-              opportunities,
-              count: opportunities?.length,
-            });
-            return null;
-          })()}
           {opportunitiesLoading ? (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -1014,24 +969,6 @@ const StudentDashboard = () => {
               // University/College students: Show ALL opportunities (internships + jobs)
               filteredOpportunities = opportunities; // Show everything
             }
-
-            // Debug logging for opportunity filtering
-            console.log('🎯 Opportunity Filtering Debug:', {
-              isSchoolStudent,
-              isUniversityStudent,
-              studentGrade,
-              gradeRange: studentGrade ? 
-                (parseInt(studentGrade) >= 6 && parseInt(studentGrade) <= 8 ? 'Grades 6-8 (Internships Only)' :
-                 parseInt(studentGrade) >= 9 ? 'Grade 9+ (All Opportunities)' : 'Other Grade') : 'No Grade',
-              totalOpportunities: opportunities.length,
-              filteredCount: filteredOpportunities.length,
-              studentData: {
-                school_id: studentData?.school_id,
-                school_class_id: studentData?.school_class_id,
-                university_college_id: studentData?.university_college_id,
-                grade: studentData?.grade
-              }
-            });
 
             return (
               <>

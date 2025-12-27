@@ -928,12 +928,12 @@ const ModernLearningCard = ({
                 </div>
               </div>
               
-              {/* Hours Spent */}
-              {item.hoursSpent && item.hoursSpent > 0 && (
+              {/* Hours Spent - Show for external courses, default to 0 if not available */}
+              {isExternalCourse && (
                 <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 rounded-lg sm:rounded-xl p-3">
                   <TrendingUp className="w-4 h-4 text-slate-500" />
                   <div>
-                    <div className="font-bold text-lg text-slate-800">{item.hoursSpent}h</div>
+                    <div className="font-bold text-lg text-slate-800">{item.hoursSpent || 0}h</div>
                     <div className="text-xs text-slate-500">Learning Time</div>
                   </div>
                 </div>

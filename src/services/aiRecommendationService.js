@@ -16,7 +16,6 @@ class AIRecommendationService {
       if (!forceRefresh) {
         const cachedData = await this.getCachedRecommendations(studentId);
         if (cachedData) {
-          console.log('✅ Returning cached recommendations');
           return {
             success: true,
             recommendations: cachedData.recommendations,
@@ -65,7 +64,6 @@ class AIRecommendationService {
   async getCachedRecommendations(studentId) {
     try {
       // recommendation_cache table doesn't exist, return null to force fresh fetch
-      console.log('⚠️ Recommendation cache not available, fetching fresh data');
       return null;
     } catch (error) {
       console.error('Error fetching cached recommendations:', error);
@@ -79,7 +77,6 @@ class AIRecommendationService {
   async cacheRecommendations(studentId, recommendations) {
     try {
       // recommendation_cache table doesn't exist, skip caching
-      console.log('⚠️ Recommendation cache table not available, skipping cache');
       return;
     } catch (error) {
       console.error('Error caching recommendations:', error);
@@ -235,7 +232,6 @@ class AIRecommendationService {
   async invalidateCache(studentId) {
     try {
       // recommendation_cache table doesn't exist, nothing to invalidate
-      console.log('⚠️ Recommendation cache table not available, nothing to invalidate');
       return { success: true };
     } catch (error) {
       console.error('Error invalidating cache:', error);

@@ -24,13 +24,6 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
         gradeLevel === 'highschool' ||
         (results.profileSnapshot && (results.profileSnapshot.aptitudeStrengths || results.profileSnapshot.keyPatterns));
 
-    // Debug logging
-    console.log('=== PrintView Debug ===');
-    console.log('Grade Level:', gradeLevel);
-    console.log('Is Simplified Assessment:', isSimplifiedAssessment);
-    console.log('Has profileSnapshot:', !!results.profileSnapshot);
-    console.log('Has aptitudeStrengths:', !!results.profileSnapshot?.aptitudeStrengths);
-    
     // Default student info if not provided
     const safeStudentInfo = {
         name: studentInfo?.name || '—',
