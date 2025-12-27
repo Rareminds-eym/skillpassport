@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { defineConfig } from 'vite';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -43,18 +43,6 @@ export default defineConfig(({ mode }) => ({
     ],
     hmr: {
       port: 3000
-    },
-    proxy: {
-      '/api/upload-to-r2': {
-        target: 'https://dpooleduinyyzxgrcwko.supabase.co/functions/v1/upload-to-r2',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/upload-to-r2/, '')
-      },
-      '/api/delete-from-r2': {
-        target: 'https://dpooleduinyyzxgrcwko.supabase.co/functions/v1/delete-from-r2',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/delete-from-r2/, '')
-      }
     }
   },
 }));
