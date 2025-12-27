@@ -291,7 +291,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
 
       if (trainingError) throw trainingError;
 
-      if (formData.certificate_url) {
+      if (formData.certificate_url || formData.certificate_id) {
         await supabase.from('certificates').insert({
           student_id: studentId,
           training_id: training.id,
@@ -299,14 +299,14 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
           issuer: formData.organization || selectedPlatform?.name,
           issued_on: formData.completion_date || new Date().toISOString().split('T')[0],
           link: formData.certificate_url,
+          credential_id: formData.certificate_id,
           level: formData.difficulty || null,
-          description: formData.description,
+          description: formData.description || null,
           approval_status: 'approved',
           enabled: true,
-          platform: selectedPlatform?.id,
-          certificate_id: formData.certificate_id,
-          instructor: formData.instructor,
-          category: formData.category
+          platform: selectedPlatform?.id || null,
+          instructor: formData.instructor || null,
+          category: formData.category || null
         });
       }
 
