@@ -10,6 +10,7 @@ import {
   updateStudentByEmail,
   updateEducationByEmail,
   updateTrainingByEmail,
+  updateSingleTrainingById,
   updateExperienceByEmail,
   updateTechnicalSkillsByEmail,
   updateSoftSkillsByEmail,
@@ -120,22 +121,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
 
   const updateTraining = async (trainingData) => {
     try {
-      console.log('🎓 updateTraining called with:', trainingData?.length, 'records');
-      console.log('🎓 Training data IDs:', trainingData?.map(t => t.id));
-      console.log('🎓 Training data details:', trainingData?.map(t => ({ 
-        id: t.id, 
-        course: t.course || t.title,
-        provider: t.provider || t.organization 
-      })));
-      
       const result = await updateTrainingByEmail(email, trainingData);
-      
-      console.log('🎓 updateTrainingByEmail result:', result.success ? 'SUCCESS' : 'FAILED');
-      if (!result.success) {
-        console.error('🎓 Error:', result.error);
-      } else {
-        console.log('🎓 Updated data returned:', result.data?.training?.length, 'training records');
-      }
       
       if (result.success) {
         setStudentData(result.data);
@@ -145,6 +131,26 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
       }
     } catch (err) {
       console.error('Error updating training:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const updateSingleTraining = async (trainingId, updateData) => {
+    try {
+      const result = await updateSingleTrainingById(trainingId, updateData, email);
+      
+      if (result.success) {
+        // Refresh the entire student data to get updated training list
+        const refreshResult = await getStudentByEmail(email);
+        if (refreshResult.success) {
+          setStudentData(refreshResult.data);
+        }
+        return { success: true };
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err) {
+      console.error('Error updating single training:', err);
       return { success: false, error: err.message };
     }
   };
@@ -219,6 +225,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
     updateProfile,
     updateEducation,
     updateTraining,
+    updateSingleTraining,
     updateExperience,
     updateTechnicalSkills,
     updateSoftSkills,

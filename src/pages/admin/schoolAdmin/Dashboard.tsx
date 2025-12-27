@@ -2,23 +2,49 @@ import React, { useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import {
   GraduationCap,
-  TrendingUp,
   ChevronRight,
   Clock,
   UserPlus,
   BookOpen,
 } from "lucide-react";
-import KPICard from "../../../components/admin/KPICard";
 import KPIDashboard from "../../../components/admin/KPIDashboard";
-import { BanknotesIcon, BuildingOfficeIcon, MapPinIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../../../context/AuthContext";
 import { supabase } from "../../../lib/supabaseClient";
 import NotificationBell from "../../../components/admin/schoolAdmin/NotificationBell";
-import { toast } from 'react-hot-toast';
+import { toast } from "react-hot-toast";
+
+interface CourseStats {
+  category: string;
+  studentCount: number;
+}
+
+interface RecentActivity {
+  id: number;
+  title: string;
+  description: string;
+  time: string;
+  type: "success" | "info" | "warning" | "error";
+  icon: any;
+}
+
+interface ProgramOverviewItem {
+  program: string;
+  enrollments: number;
+  students: number;
+  duration: string;
+}
 
 const SchoolDashboard: React.FC = () => {
   const { user } = useAuth();
   const [schoolId, setSchoolId] = useState<string | undefined>(undefined);
+  const [courseStats, setCourseStats] = useState<CourseStats[]>([]);
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>(
+    []
+  );
+  const [programOverview, setProgramOverview] = useState<ProgramOverviewItem[]>(
+    []
+  );
+  const [loading, setLoading] = useState(true);
 
 
   useEffect(() => {
@@ -38,20 +64,37 @@ const SchoolDashboard: React.FC = () => {
           .from('school_educators')
           .select('school_id')
           .eq('user_id', user.id)
-          .maybeSingle(); // Use maybeSingle() instead of single() to handle 0 rows gracefully
+          .maybeSingle();
 
         if (error) {
-          console.error('Error fetching school_id:', error);
-          // Set schoolId to undefined so dashboard shows data without school filter
-          setSchoolId(undefined);
+          console.error('Error fetching school_id from educators:', error);
         } else if (data?.school_id) {
-          console.log('School ID from database:', data.school_id);
+          console.log('School ID from school_educators:', data.school_id);
           setSchoolId(data.school_id);
-        } else {
-          console.warn('No school_id found for user - showing all data');
-          // Set schoolId to undefined so dashboard shows data without school filter
-          setSchoolId(undefined);
+          return;
         }
+
+        // Try to get school_id from schools table using email
+        const userEmail = user.email || localStorage.getItem('userEmail');
+        if (userEmail) {
+          const { data: schoolData, error: schoolError } = await supabase
+            .from('schools')
+            .select('id')
+            .eq('email', userEmail)
+            .maybeSingle();
+
+          if (schoolError) {
+            console.error('Error fetching school_id from schools:', schoolError);
+          } else if (schoolData?.id) {
+            console.log('School ID from schools table:', schoolData.id);
+            setSchoolId(schoolData.id);
+            return;
+          }
+        }
+
+        console.warn('No school_id found for user - dashboard will show empty data');
+        // Keep schoolId as undefined - KPIDashboard will show 0s
+        setSchoolId(undefined);
       } catch (err) {
         console.error('Failed to fetch school_id:', err);
         setSchoolId(undefined);
@@ -61,68 +104,166 @@ const SchoolDashboard: React.FC = () => {
     getSchoolId();
   }, [user]);
 
+  // Fetch dashboard data from database
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!schoolId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        // Fetch courses for this school with enrollment counts
+        const { data: coursesData, error: coursesError } = await supabase
+          .from("courses")
+          .select(
+            `
+            course_id,
+            title,
+            category,
+            duration,
+            status
+          `
+          )
+          .eq("school_id", schoolId)
+          .eq("status", "Active");
+
+        if (coursesError) {
+          console.warn("Error fetching courses:", coursesError);
+        }
+
+        // Fetch enrollments for this school's courses
+        const { data: enrollmentsData, error: enrollmentsError } =
+          await supabase
+            .from("course_enrollments")
+            .select("course_id, student_id, status, progress, enrolled_at")
+            .eq("school_id", schoolId);
+
+        if (enrollmentsError) {
+          console.warn("Error fetching enrollments:", enrollmentsError);
+        }
+
+        // Group by category for chart
+        const categoryMap = new Map<string, number>();
+        if (coursesData && enrollmentsData) {
+          coursesData.forEach((course) => {
+            const enrollmentCount = enrollmentsData.filter(
+              (e) => e.course_id === course.course_id
+            ).length;
+            const category = course.category || "Other";
+            categoryMap.set(
+              category,
+              (categoryMap.get(category) || 0) + enrollmentCount
+            );
+          });
+        }
+
+        const stats: CourseStats[] = Array.from(categoryMap.entries()).map(
+          ([category, count]) => ({
+            category,
+            studentCount: count,
+          })
+        );
+        setCourseStats(stats);
+
+        // Build program overview from courses
+        const programs: ProgramOverviewItem[] = (coursesData || [])
+          .slice(0, 5)
+          .map((course) => {
+            const enrollmentCount = (enrollmentsData || []).filter(
+              (e) => e.course_id === course.course_id
+            ).length;
+            return {
+              program: course.title,
+              enrollments: enrollmentCount,
+              students: enrollmentCount,
+              duration: course.duration || "N/A",
+            };
+          });
+        setProgramOverview(programs);
+
+        // Build recent activities from recent enrollments
+        const recentEnrollments = (enrollmentsData || [])
+          .sort(
+            (a, b) =>
+              new Date(b.enrolled_at).getTime() -
+              new Date(a.enrolled_at).getTime()
+          )
+          .slice(0, 4);
+
+        const activities: RecentActivity[] = recentEnrollments.map(
+          (enrollment, index) => {
+            const course = (coursesData || []).find(
+              (c) => c.course_id === enrollment.course_id
+            );
+            return {
+              id: index + 1,
+              title: course?.title || "Course Enrollment",
+              description: `Student enrolled in ${course?.category || "course"}`,
+              time: new Date(enrollment.enrolled_at).toLocaleDateString(),
+              type:
+                enrollment.status === "completed"
+                  ? "success"
+                  : enrollment.progress > 50
+                    ? "info"
+                    : "warning",
+              icon:
+                enrollment.status === "completed"
+                  ? GraduationCap
+                  : enrollment.progress > 50
+                    ? BookOpen
+                    : UserPlus,
+            };
+          }
+        );
+        setRecentActivities(activities);
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [schoolId]);
+
   // Handle notification click
   const handleNotificationClick = (notification: any) => {
     if (notification.viewAll) {
       // Navigate to verifications page
-      window.location.href = '/school-admin/students/verifications';
+      window.location.href = "/school-admin/students/verifications";
       return;
     }
-    
+
     // Navigate to verifications page for individual notifications
-    window.location.href = '/school-admin/students/verifications';
+    window.location.href = "/school-admin/students/verifications";
   };
 
-
-  
-  // ===== KPI Cards Based on School Programs Data =====
-  const kpiData = [
-    {
-      title: "Total Students",
-      value: "4,670",
-      change: 15.3,
-      changeLabel: "school programs",
-      icon: <GraduationCap className="h-6 w-6" />,
-      color: "blue" as const,
-    },
-    {
-      title: "Schools Covered",
-      value: "240",
-      change: 8.2,
-      changeLabel: "active schools",
-      icon: <BuildingOfficeIcon className="h-6 w-6" />,
-      color: "purple" as const,
-    },
-    {
-      title: "Districts Reached",
-      value: "66",
-      change: 22.1,
-      changeLabel: "coverage growth",
-      icon: <MapPinIcon className="h-6 w-6" />,
-      color: "green" as const,
-    },
-    {
-      title: "Training Hours",
-      value: "180",
-      change: 12.5,
-      changeLabel: "total delivered",
-      icon: <Clock className="h-6 w-6" />,
-      color: "yellow" as const,
-    },
-  ];
-
-  // ===== Chart Data - School Programs Distribution =====
+  // ===== Chart Data - Dynamic from Database =====
   const programDistribution = {
     series: [
       {
         name: "Students",
-        data: [1570, 76, 2840, 184]
-      }
+        data:
+          courseStats.length > 0
+            ? courseStats.map((s) => s.studentCount)
+            : [0],
+      },
     ],
     options: {
-      chart: { type: "bar" as const, toolbar: { show: false }, height: 250 },
+      chart: {
+        type: "bar" as const,
+        toolbar: { show: false },
+        height: 250,
+      },
       plotOptions: {
-        bar: { horizontal: true, borderRadius: 6, dataLabels: { position: "center" } },
+        bar: {
+          horizontal: true,
+          borderRadius: 6,
+          dataLabels: { position: "center" },
+        },
       },
       colors: ["#3b82f6"],
       dataLabels: {
@@ -131,12 +272,10 @@ const SchoolDashboard: React.FC = () => {
         style: { fontSize: "11px", colors: ["#fff"] },
       },
       xaxis: {
-        categories: [
-          "Agri & Food (Batch 1 - June)",
-          "Cloud Kitchen (Batch 1 - June)",
-          "Agri & Food (Batch 2 - June 21–28)",
-          "Cloud Kitchen SDP (Batch 2 - June 21–28)",
-        ],
+        categories:
+          courseStats.length > 0
+            ? courseStats.map((s) => s.category)
+            : ["No Data"],
         labels: { style: { colors: "#6b7280" } },
       },
       yaxis: {
@@ -146,19 +285,29 @@ const SchoolDashboard: React.FC = () => {
       },
       tooltip: { theme: "light" },
       grid: { borderColor: "#f1f5f9" },
+      noData: {
+        text: "No course data available",
+        style: { color: "#6b7280" },
+      },
     },
   };
-
 
   const districtsProgress = {
     series: [
       {
-        name: "Districts Coverage",
-        data: [31, 1, 33, 1],
+        name: "Enrollments",
+        data:
+          courseStats.length > 0
+            ? courseStats.map((s) => s.studentCount)
+            : [0],
       },
     ],
     options: {
-      chart: { type: "area" as const, toolbar: { show: false }, height: 250 },
+      chart: {
+        type: "area" as const,
+        toolbar: { show: false },
+        height: 250,
+      },
       stroke: { curve: "smooth" as const, width: 3 },
       fill: {
         type: "gradient",
@@ -167,68 +316,27 @@ const SchoolDashboard: React.FC = () => {
       colors: ["#8b5cf6"],
       dataLabels: { enabled: false },
       xaxis: {
-        categories: [
-          "Agri & Food (Batch 1)",
-          "Cloud Kitchen (Batch 1)",
-          "Agri & Food (Batch 2)",
-          "Cloud Kitchen SDP (Batch 2)",
-        ],
+        categories:
+          courseStats.length > 0
+            ? courseStats.map((s) => s.category)
+            : ["No Data"],
         labels: { style: { colors: "#6b7280" } },
       },
       yaxis: {
-        title: { text: "Districts", style: { color: "#6b7280" } },
+        title: { text: "Enrollments", style: { color: "#6b7280" } },
         labels: { style: { colors: "#6b7280" } },
       },
       tooltip: {
         theme: "light",
-        y: { formatter: (val: number) => `${val} Districts` },
+        y: { formatter: (val: number) => `${val} Students` },
       },
       grid: { borderColor: "#f1f5f9" },
+      noData: {
+        text: "No enrollment data available",
+        style: { color: "#6b7280" },
+      },
     },
   };
-
-
-  const programOverview = [
-    { program: "Agri & Food Processing", schools: 233, students: 4410, duration: "45 hours" },
-    { program: "Cloud Kitchen", schools: 7, students: 260, duration: "45 hours" },
-  ];
-
-
-  const recentActivities = [
-    {
-      id: 1,
-      title: "Agri & Food Processing – Completed",
-      description: "233 schools completed training across 64 districts",
-      time: "June 2024",
-      type: "success",
-      icon: GraduationCap,
-    },
-    {
-      id: 2,
-      title: "Cloud Kitchen – Completed",
-      description: "7 schools trained across 2 districts",
-      time: "June 2024",
-      type: "info",
-      icon: UserPlus,
-    },
-    {
-      id: 3,
-      title: "Students Trained",
-      description: "4,670 school-level learners completed courses",
-      time: "June 2024",
-      type: "success",
-      icon: BookOpen,
-    },
-    {
-      id: 4,
-      title: "District Coverage",
-      description: "Training delivered across 66 districts",
-      time: "June 2024",
-      type: "warning",
-      icon: MapPinIcon,
-    },
-  ];
-
 
   // ===== Activity Type Colors =====
   const typeColors: Record<string, string> = {
@@ -267,18 +375,10 @@ const SchoolDashboard: React.FC = () => {
 
       {/* KPI Cards - Real-time Data from Database */}
       <KPIDashboard schoolId={schoolId} />
-      
-      {/* Additional Static KPI Cards (School Programs) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mt-6">
-        {kpiData.map((kpi, index) => (
-          <KPICard key={index} {...kpi} />
-        ))}
-      </div>
 
-      {/* Quick Stats Cards */}
+      {/* Quick Stats Cards - Commented out (hardcoded data)
      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
 
-  {/* Agri & Food Processing */}
   <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-5 text-white shadow-lg">
     <div className="flex items-center justify-between">
       <div>
@@ -290,7 +390,6 @@ const SchoolDashboard: React.FC = () => {
     <p className="text-sm mt-3">Students trained across 233 schools</p>
   </div>
 
-  {/* Cloud Kitchen */}
   <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl p-5 text-white shadow-lg">
     <div className="flex items-center justify-between">
       <div>
@@ -302,7 +401,6 @@ const SchoolDashboard: React.FC = () => {
     <p className="text-sm mt-3">Students trained across 7 schools</p>
   </div>
 
-  {/* Overall District Coverage */}
   <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl p-5 text-white shadow-lg">
     <div className="flex items-center justify-between">
       <div>
@@ -315,32 +413,45 @@ const SchoolDashboard: React.FC = () => {
   </div>
 
 </div>
+      */}
 
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            School Program Distribution
+            Course Enrollments by Category
           </h2>
-          <ReactApexChart
-            options={programDistribution.options}
-            series={programDistribution.series}
-            type="bar"
-            height={300}
-          />
+          {loading ? (
+            <div className="h-[300px] flex items-center justify-center text-gray-400">
+              Loading...
+            </div>
+          ) : (
+            <ReactApexChart
+              options={programDistribution.options}
+              series={programDistribution.series}
+              type="bar"
+              height={300}
+            />
+          )}
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            District Coverage by Program
+            Enrollment Trends
           </h2>
-          <ReactApexChart
-            options={districtsProgress.options}
-            series={districtsProgress.series}
-            type="area"
-            height={300}
-          />
+          {loading ? (
+            <div className="h-[300px] flex items-center justify-center text-gray-400">
+              Loading...
+            </div>
+          ) : (
+            <ReactApexChart
+              options={districtsProgress.options}
+              series={districtsProgress.series}
+              type="area"
+              height={300}
+            />
+          )}
         </div>
       </div>
 
@@ -349,42 +460,50 @@ const SchoolDashboard: React.FC = () => {
         {/* Recent Activities */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm backdrop-blur-sm hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-5">
-            <h2 className="text-lg font-bold text-gray-900">Program Status</h2>
+            <h2 className="text-lg font-bold text-gray-900">Recent Activity</h2>
             <button className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition">
               View All <ChevronRight className="h-4 w-4" />
             </button>
           </div>
 
           <div className="space-y-4">
-            {recentActivities.map((activity) => {
-              const Icon = activity.icon;
-              return (
-                <div
-                  key={activity.id}
-                  className="flex items-start gap-4 p-4 rounded-xl border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/40 transition-all duration-200"
-                >
+            {recentActivities.length > 0 ? (
+              recentActivities.map((activity) => {
+                const Icon = activity.icon;
+                return (
                   <div
-                    className={`p-3 rounded-xl shadow-sm border border-transparent hover:border-indigo-200 ${typeColors[activity.type]} transition`}
+                    key={activity.id}
+                    className="flex items-start gap-4 p-4 rounded-xl border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/40 transition-all duration-200"
                   >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start">
-                      <p className="font-semibold text-gray-800">
-                        {activity.title}
-                      </p>
-                      <span className="flex items-center text-xs text-gray-400 whitespace-nowrap ml-2">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {activity.time}
-                      </span>
+                    <div
+                      className={`p-3 rounded-xl shadow-sm border border-transparent hover:border-indigo-200 ${typeColors[activity.type]} transition`}
+                    >
+                      <Icon className="h-5 w-5" />
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {activity.description}
-                    </p>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start">
+                        <p className="font-semibold text-gray-800">
+                          {activity.title}
+                        </p>
+                        <span className="flex items-center text-xs text-gray-400 whitespace-nowrap ml-2">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {activity.time}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {activity.description}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No recent activity</p>
+                <p className="text-sm">Course enrollments will appear here</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -392,7 +511,7 @@ const SchoolDashboard: React.FC = () => {
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm backdrop-blur-sm hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-5">
             <h2 className="text-lg font-bold text-gray-900">
-              Program Overview
+              Course Overview
             </h2>
             <button className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition">
               View Details <ChevronRight className="h-4 w-4" />
@@ -400,29 +519,37 @@ const SchoolDashboard: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            {programOverview.map((prog, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between bg-gradient-to-r from-gray-50 to-gray-100 hover:from-indigo-50 hover:to-purple-50 rounded-xl p-4 transition-all duration-200 border border-gray-100 hover:border-indigo-200"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white rounded-lg shadow-sm">
-                    <GraduationCap className="h-5 w-5 text-indigo-600" />
+            {programOverview.length > 0 ? (
+              programOverview.map((prog, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between bg-gradient-to-r from-gray-50 to-gray-100 hover:from-indigo-50 hover:to-purple-50 rounded-xl p-4 transition-all duration-200 border border-gray-100 hover:border-indigo-200"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                      <GraduationCap className="h-5 w-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800">{prog.program}</p>
+                      <p className="text-xs text-gray-500">
+                        {prog.students} enrolled
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-gray-800">{prog.program}</p>
-                    <p className="text-xs text-gray-500">
-                      {prog.schools} schools • {prog.students.toLocaleString()} students
-                    </p>
+                  <div className="text-right">
+                    <span className="text-sm font-semibold px-3 py-1 rounded-full text-green-600 bg-green-100">
+                      {prog.duration}
+                    </span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-sm font-semibold px-3 py-1 rounded-full text-green-600 bg-green-100">
-                    {prog.duration}
-                  </span>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <GraduationCap className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No courses available</p>
+                <p className="text-sm">Add courses to see them here</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>

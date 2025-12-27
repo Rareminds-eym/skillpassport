@@ -40,15 +40,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
   // Prefer email to resolve to Profile ID, otherwise fallback to user ID
   const userIdToUse = studentEmail || user?.email || user?.id || null;
 
-  // 🔍 DEBUG: Log panel initialization and props
-  useEffect(() => {
-    console.group('🚀 NotificationPanel Initialization');
-    console.log('📧 studentEmail prop:', studentEmail);
-    console.log('👤 user from auth:', user);
-    console.log('✉️ userIdToUse:', userIdToUse);
-    console.log('📂 isOpen:', isOpen);
-    console.groupEnd();
-  }, [isOpen, studentEmail, user, userIdToUse]);
+
 
   const {
     items: notifications,
@@ -77,7 +69,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
     const newIds = [...currentIds].filter((id) => !prevIds.has(id));
     if (newIds.length > 0) {
-      console.log('🆕 New notifications detected:', newIds);
       setNewNotificationIds(new Set(newIds));
       setShowNewNotificationToast(true);
 
@@ -186,17 +177,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     }
   });
 
-  // 🔍 DEBUG: Log filtered results
-  useEffect(() => {
-    console.group('🔍 Filter Results');
-    console.log('🎯 selectedFilter:', selectedFilter);
-    console.log('📋 filteredNotifications:', filteredNotifications);
-    console.log('🔢 filtered count:', filteredNotifications?.length ?? 0);
-    console.log('🔢 total count:', notifications?.length ?? 0);
-    console.log('📋 All Notification Types:', notifications.map(n => n.type));
-    console.log('📋 All Notification IDs:', notifications.map(n => n.id));
-    console.groupEnd();
-  }, [selectedFilter, filteredNotifications, notifications]);
+
 
   // Helper function to get count for each filter
   const getFilterCount = (filterKey: FilterKey): number => {
@@ -311,11 +292,8 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
   };
 
   if (!isOpen) {
-    console.log('❌ NotificationPanel: Panel is closed, not rendering');
     return null;
   }
-
-  console.log('✅ NotificationPanel: Rendering panel with', filteredNotifications?.length ?? 0, 'filtered notifications');
 
   return (
     <>
@@ -339,7 +317,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
             {unreadCount > 0 && (
               <button
                 onClick={() => {
-                  console.log('🔵 Mark all read clicked');
                   markAllRead();
                 }}
                 className="text-xs text-blue-600 hover:underline transition-colors"
@@ -363,7 +340,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
               <button
                 key={key}
                 onClick={() => {
-                  console.log('🔵 Filter changed to:', key);
                   setSelectedFilter(key);
                 }}
                 className={`text-xs px-2.5 py-1 rounded-full transition whitespace-nowrap ${
@@ -384,19 +360,16 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
           {loading && (
             <div className="p-6 text-center text-sm text-gray-500">
               Loading…
-              {console.log('⏳ Showing loading state')}
             </div>
           )}
           {error && (
             <div className="p-6 text-center text-sm text-red-500">
               {error}
-              {console.error('❌ Error in notifications:', error)}
             </div>
           )}
           {!loading && filteredNotifications.length === 0 && (
             <div className="p-8 text-center text-sm text-gray-500">
               No notifications
-              {console.log('📭 No notifications to display')}
             </div>
           )}
 
@@ -426,7 +399,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                           <button 
                             onClick={(e) => {
                               e.stopPropagation(); // Prevent triggering the row click
-                              console.log('🔵 Mark read clicked for notification:', n.id);
                               markRead(n.id);
                             }} 
                             className="text-gray-400 hover:text-blue-600"
@@ -446,7 +418,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
             <div className="p-3 border-t border-gray-100 text-center">
               <button 
                 onClick={() => {
-                  console.log('🔵 Load more clicked');
                   loadMore();
                 }} 
                 className="text-sm text-blue-600 hover:underline"

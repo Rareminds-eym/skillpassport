@@ -59,20 +59,22 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
       
       // Fetch Total Students (with error handling)
       try {
-        let studentsQuery = supabase
-          .from('students')
-          .select('*', { count: 'exact', head: true });
-        
-        if (schoolId) {
-          studentsQuery = studentsQuery.eq('school_id', schoolId);
-        }
-        
-        const { count, error: studentsError } = await studentsQuery;
-        
-        if (studentsError) {
-          console.warn('Students query error:', studentsError.message);
+        // Only fetch if schoolId is provided, otherwise show 0
+        if (!schoolId) {
+          totalStudents = 0;
         } else {
-          totalStudents = count || 0;
+          let studentsQuery = supabase
+            .from('students')
+            .select('*', { count: 'exact', head: true })
+            .eq('school_id', schoolId);
+          
+          const { count, error: studentsError } = await studentsQuery;
+          
+          if (studentsError) {
+            console.warn('Students query error:', studentsError.message);
+          } else {
+            totalStudents = count || 0;
+          }
         }
       } catch (err) {
         console.warn('Failed to fetch students:', err);

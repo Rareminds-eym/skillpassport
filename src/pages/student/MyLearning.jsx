@@ -11,6 +11,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentTrainings } from "../../hooks/useStudentTrainings";
+import Pagination from "../../components/educator/Pagination";
 
 const StatCardSkeleton = () => (
   <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm animate-pulse">
@@ -134,7 +135,7 @@ const MyLearning = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const userEmail = user?.email;
-  const { studentData, updateTraining, refresh: refreshStudentData, loading: studentLoading } = useStudentDataByEmail(userEmail, false);
+  const { studentData, updateTraining, updateSingleTraining, refresh: refreshStudentData, loading: studentLoading } = useStudentDataByEmail(userEmail, false);
   const studentId = studentData?.id;
 
   // State for view toggle and layout
@@ -675,15 +676,14 @@ const MyLearning = () => {
             onClose={() => { 
               setActiveModal(null); 
               setEditingItem(null); 
-              refresh(); 
+              // Don't call refresh() here - only refresh when data is actually saved
             }}
             onSave={async (updatedItems) => { 
               const item = updatedItems[0]; 
               if (!item) return; 
-              const learning = studentData?.training || []; 
-              const idx = learning.findIndex(l => l.id === item.id); 
-              const updated = idx >= 0 ? learning.map(l => l.id === item.id ? { ...l, ...item } : l) : [...learning, item]; 
-              await updateTraining(updated); 
+              
+              // Use the single training update function instead of updating all trainings
+              await updateSingleTraining(item.id, item);
               await refresh(); 
             }}
             data={[editingItem]} 
