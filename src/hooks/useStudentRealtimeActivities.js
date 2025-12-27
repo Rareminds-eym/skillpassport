@@ -54,24 +54,17 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
   const effectiveEmail = useMemo(() => {
     // Priority: 1. Passed parameter, 2. localStorage, 3. null
     const email = studentEmail || localStorage.getItem('userEmail');
-    console.log('🔍 Effective email resolved:', { 
-      passed: studentEmail, 
-      localStorage: localStorage.getItem('userEmail'),
-      final: email 
-    });
     return email;
   }, [studentEmail]);
 
   // 1️⃣ Resolve student ID by email
   const fetchStudentIdByEmail = useCallback(async (email) => {
     if (!email) {
-      console.warn('⚠️ No email provided to fetchStudentIdByEmail');
       return null;
     }
     
     try {
       setIsResolvingStudent(true);
-      console.log('🔍 [useStudentRealtimeActivities] Resolving student ID for:', email);
 
       // Try multiple methods to find student
       let data = null;
@@ -86,31 +79,22 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
       if (result.data) {
         data = result.data;
-        console.log('✅ Found student using email column:', data.id);
       } else {
         error = result.error;
       }
 
       if (error) {
-        console.error('❌ Error querying students table:', error);
         throw error;
       }
 
       if (!data) {
-        console.warn('⚠️ [useStudentRealtimeActivities] No student found for email:', email);
-        console.log('💡 Tip: Check if the email exists in the students table');
         setStudentId(null);
         return null;
       }
 
-      console.log('✅ [useStudentRealtimeActivities] Found student:', {
-        id: data.id,
-        email: data.email,
-      });
       setStudentId(data.id);
       return data.id;
     } catch (err) {
-      console.error("❌ [useStudentRealtimeActivities] Error finding student by email:", err);
       setStudentId(null);
       return null;
     } finally {
@@ -121,13 +105,10 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
   // 2️⃣ Fetch activities from recent_updates table by student_id
   const fetchRecentUpdatesFromDB = useCallback(async (resolvedStudentId) => {
     if (!resolvedStudentId) {
-      console.warn('⚠️ No student ID provided to fetchRecentUpdatesFromDB');
       return [];
     }
 
     try {
-      console.log('📊 [useStudentRealtimeActivities] Fetching recent_updates for student:', resolvedStudentId);
-
       const { data, error } = await supabase
         .from("recent_updates")
         .select("*")
@@ -135,17 +116,12 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
         .maybeSingle();
 
       if (error) {
-        console.error('❌ Error fetching from recent_updates:', error);
         throw error;
       }
 
       if (!data) {
-        console.log('ℹ️ [useStudentRealtimeActivities] No recent_updates found for student ID:', resolvedStudentId);
-        console.log('💡 Tip: Check if there are rows in recent_updates table for this student_id');
         return [];
       }
-
-      console.log('📦 Raw recent_updates data:', data);
 
       // Safely parse JSONB and clean data
       let updatesArray = [];
@@ -155,19 +131,13 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
             ? JSON.parse(data.updates)
             : data.updates;
 
-        console.log('📝 Parsed updates object:', parsed);
         updatesArray = (parsed?.updates || []).filter(Boolean);
-        console.log(`✅ Found ${updatesArray.length} valid updates after filtering nulls`);
       } catch (parseErr) {
-        console.error("❌ Error parsing updates JSON:", parseErr);
-        console.log('Raw updates value:', data.updates);
         return [];
       }
 
       // Format timestamps and add proper structure
       const formattedUpdates = updatesArray.map((u, index) => {
-        console.log(`🔧 Processing update ${index + 1}:`, u);
-        
         const realTimestamp =
           u.created_at && u.created_at !== "Just now"
             ? u.created_at
@@ -188,27 +158,20 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
           metadata: u.metadata || {}
         };
 
-        console.log(`✅ Formatted update ${index + 1}:`, formatted);
         return formatted;
       });
 
-      console.log(`✅ [useStudentRealtimeActivities] Fetched ${formattedUpdates.length} updates from recent_updates table`);
       return formattedUpdates;
     } catch (err) {
-      console.error("❌ [useStudentRealtimeActivities] Error fetching recent_updates:", err);
       return [];
     }
   }, []);
 
   // 3️⃣ Resolve student ID when email changes
   useEffect(() => {
-    console.log('🔄 Email effect triggered:', { effectiveEmail, studentEmail });
-    
     if (effectiveEmail) {
-      console.log('✅ Resolving student ID for:', effectiveEmail);
       fetchStudentIdByEmail(effectiveEmail);
     } else {
-      console.error('❌ No email available from any source');
       setStudentId(null);
     }
   }, [effectiveEmail, fetchStudentIdByEmail]);
@@ -217,45 +180,23 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
   const query = useQuery({
     queryKey: ['student-activities', effectiveEmail, studentId, limit],
     queryFn: async () => {
-      console.log('🚀 Query function triggered with:', { 
-        effectiveEmail, 
-        studentId, 
-        limit, 
-        isResolvingStudent,
-        hasLocalStorageEmail: !!localStorage.getItem('userEmail'),
-        currentPage: window.location.pathname
-      });
-
       if (!effectiveEmail) {
-        console.error('❌ No email available for query');
         return [];
       }
 
       // Wait for student ID resolution
       if (isResolvingStudent) {
-        console.log('⏳ Waiting for student ID resolution...');
         return [];
       }
 
       if (!studentId) {
-        console.warn('⚠️ No student ID available, cannot fetch activities');
-        console.log('🔍 Debug info:', {
-          effectiveEmail,
-          hasEmail: !!effectiveEmail,
-          isResolving: isResolvingStudent,
-          localStorageEmail: localStorage.getItem('userEmail'),
-          currentPage: window.location.pathname
-        });
         // Return empty array instead of throwing to prevent React Query errors
         return [];
       }
 
-      console.log('🔄 [useStudentRealtimeActivities] Fetching activities for student:', studentId);
-
       // Fetch from both sources in parallel
       const [realtimeResult, recentUpdatesResult] = await Promise.all([
         getStudentRecentActivity(studentEmail, limit).catch(err => {
-          console.error('❌ Error fetching realtime activities:', err);
           return { data: [], error: err.message };
         }),
         fetchRecentUpdatesFromDB(studentId)
@@ -264,22 +205,11 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
       const realtimeActivities = realtimeResult.data || [];
       const recentUpdatesActivities = recentUpdatesResult || [];
       
-      console.log(`📦 Data sources:`, {
-        recentUpdates: recentUpdatesActivities.length,
-        realtime: realtimeActivities.length
-      });
-      
-      console.log('📋 Recent updates activities:', recentUpdatesActivities);
-      console.log('📋 Realtime activities:', realtimeActivities);
-      
       // Combine all sources and sort by timestamp
       const combined = [...recentUpdatesActivities, ...realtimeActivities]
         // Remove duplicates based on ID
         .filter((activity, index, self) => {
           const isDuplicate = index !== self.findIndex(a => a.id === activity.id);
-          if (isDuplicate) {
-            console.log('🔄 Removing duplicate activity:', activity.id);
-          }
           return !isDuplicate;
         })
         .sort((a, b) => {
@@ -294,9 +224,6 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
           formattedTimestamp: activity.formattedTimestamp || formatTimestamp(activity.timestamp || activity.rawTimestamp || activity.created_at)
         }));
       
-      console.log(`✅ [useStudentRealtimeActivities] Returning ${combined.length} combined activities`);
-      console.log('📋 Final combined activities:', combined);
-
       return combined;
     },
     enabled: !!effectiveEmail && !isResolvingStudent && !!studentId, // Only run if email, student ID are available and not resolving
@@ -314,9 +241,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
   useEffect(() => {
     if (!query.data || query.data.length === 0) return;
     
-    console.log('⏰ Setting up timestamp refresh interval');
     const interval = setInterval(() => {
-      console.log('🔄 Refreshing timestamps...');
       queryClient.setQueryData(
         ['student-activities', studentEmail, studentId, limit],
         (oldData) => {
@@ -330,14 +255,12 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
     }, 60000);
     
     return () => {
-      console.log('🛑 Clearing timestamp refresh interval');
       clearInterval(interval);
     };
   }, [query.data, queryClient, studentEmail, studentId, limit]);
 
   // Debounced refetch to avoid too many requests
   const debouncedRefetch = useCallback(() => {
-    console.log('⏱️ Debounced refetch triggered');
     // Clear existing timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -345,7 +268,6 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
     
     // Set new timer for 500ms debounce
     debounceTimerRef.current = setTimeout(() => {
-      console.log('🔄 Executing debounced refetch');
       setLastUpdateTime(Date.now());
       queryClient.invalidateQueries({ 
         queryKey: ['student-activities', studentEmail],
@@ -356,17 +278,6 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
   // Callback to handle real-time changes
   const handleRealtimeChange = useCallback((table, payload) => {
-    console.log(`🔔 [useStudentRealtimeActivities] Real-time event on ${table}:`, payload.eventType, payload);
-    
-    // Show toast notification for new activities
-    if (payload.eventType === 'INSERT') {
-      console.log('➕ New activity inserted:', payload.new);
-    } else if (payload.eventType === 'UPDATE') {
-      console.log('✏️ Activity updated:', payload.new);
-    } else if (payload.eventType === 'DELETE') {
-      console.log('🗑️ Activity deleted:', payload.old);
-    }
-    
     // Use debounced refetch instead of immediate
     debouncedRefetch();
   }, [debouncedRefetch]);
@@ -374,17 +285,10 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
   // Set up real-time subscriptions for student-relevant tables
   useEffect(() => {
     if (!studentEmail || !studentId || isSubscribedRef.current) {
-      console.log('⏸️ Skipping subscription setup:', { 
-        hasEmail: !!studentEmail, 
-        hasStudentId: !!studentId, 
-        alreadySubscribed: isSubscribedRef.current 
-      });
       return;
     }
 
     const setupRealtimeSubscriptions = async () => {
-      console.log('🔌 [useStudentRealtimeActivities] Setting up real-time subscriptions for student:', studentId);
-
       // Create a unique channel for this student
       const channelName = `student-activities-${studentId}-${Date.now()}`;
       const channel = supabase.channel(channelName);
@@ -417,8 +321,6 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
         }
       ];
 
-      console.log('📋 Subscribing to tables:', tableSubscriptions);
-
       // Subscribe to changes on each table
       tableSubscriptions.forEach(({ table, filter }) => {
         const subscriptionConfig = {
@@ -432,8 +334,6 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
           subscriptionConfig.filter = filter;
         }
 
-        console.log(`📡 Setting up subscription for ${table} with config:`, subscriptionConfig);
-
         channel.on(
           'postgres_changes',
           subscriptionConfig,
@@ -443,19 +343,13 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
       // Subscribe to the channel
       channel.subscribe((status) => {
-        console.log('📡 Subscription status:', status);
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Student subscribed to tables:', 
-            tableSubscriptions.map(t => t.table).join(', '));
           isSubscribedRef.current = true;
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Student real-time subscription error');
           isSubscribedRef.current = false;
         } else if (status === 'TIMED_OUT') {
-          console.error('⏰ Student real-time subscription timed out');
           isSubscribedRef.current = false;
         } else if (status === 'CLOSED') {
-          console.log('🔌 Student real-time subscription closed');
           isSubscribedRef.current = false;
         }
       });
@@ -467,8 +361,6 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
     // Cleanup on unmount or email change
     return () => {
-      console.log('🔌 [useStudentRealtimeActivities] Cleaning up real-time subscriptions');
-      
       // Clear debounce timer
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
@@ -483,15 +375,6 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
       }
     };
   }, [studentEmail, studentId, handleRealtimeChange]);
-
-  console.log('📊 Hook state:', {
-    activitiesCount: query.data?.length || 0,
-    isLoading: query.isLoading || isResolvingStudent,
-    isError: query.isError,
-    error: query.error,
-    studentId,
-    isConnected: isSubscribedRef.current
-  });
 
   return {
     activities: query.data || [],
@@ -512,7 +395,6 @@ export const useRefreshStudentActivities = (studentEmail) => {
   const queryClient = useQueryClient();
   
   return () => {
-    console.log('🔄 Manual refresh triggered for:', studentEmail);
     queryClient.invalidateQueries({ 
       queryKey: ['student-activities', studentEmail] 
     });

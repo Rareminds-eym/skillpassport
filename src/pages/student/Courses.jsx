@@ -96,7 +96,6 @@ const Courses = () => {
   const fetchCourses = useCallback(async () => {
     // Prevent duplicate fetches
     if (isFetchingRef.current) {
-      console.log('📚 Fetch already in progress, skipping...');
       return;
     }
     
@@ -184,7 +183,6 @@ const Courses = () => {
 
       if (error) throw error;
 
-      console.log(`📚 Fetched courses for page ${currentPage}:`, data?.length || 0, 'of', count, 'total');
       setCourses(data || []);
       setTotalCount(count || 0);
 
@@ -230,7 +228,6 @@ const Courses = () => {
         setEnrollmentProgress(progressMap);
         setCertificateUrls(certUrls);
         
-        console.log('📝 Student enrolled in courses:', enrolledIds.size);
       }
     } catch (error) {
       console.error('Error fetching enrollments:', error);
