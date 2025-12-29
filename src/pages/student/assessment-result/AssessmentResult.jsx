@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
 import {
     Target,
     Briefcase,
@@ -36,11 +37,460 @@ import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } 
 import { useAssessmentResults } from './hooks/useAssessmentResults';
 
 /**
+ * Animated Path Component - Creates dotted line animation
+ */
+const AnimatedPath = ({ d, delay = 0 }) => {
+    const ref = useRef(null);
+    const isInView = useInView(ref, { once: true, amount: 0.3 });
+    const [pathLength, setPathLength] = useState(2000);
+
+    useEffect(() => {
+        if (ref.current) {
+            setPathLength(ref.current.getTotalLength());
+        }
+    }, []);
+
+    return (
+        <motion.path
+            ref={ref}
+            d={d}
+            stroke="black"
+            strokeWidth="5"
+            strokeLinecap="round"
+            fill="none"
+            strokeDasharray="10 15"
+            initial={{
+                strokeDashoffset: pathLength,
+                opacity: 0
+            }}
+            animate={isInView ? {
+                strokeDashoffset: 0,
+                opacity: 1
+            } : {
+                strokeDashoffset: pathLength,
+                opacity: 0
+            }}
+            transition={{ duration: 2, delay, ease: "easeInOut" }}
+        />
+    );
+};
+
+/**
+ * Animated Progress Ring Component - Circular percentage display
+ */
+const AnimatedProgressRing = ({ percentage, color, delay = 0 }) => {
+    const ref = useRef(null);
+    const isInView = useInView(ref, { once: true, amount: 0.3 });
+    const [displayValue, setDisplayValue] = useState(0);
+
+    const size = 180;
+    const strokeWidth = 12;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (percentage / 100) * circumference;
+
+    useEffect(() => {
+        if (isInView) {
+            let start = 0;
+            const duration = 2000; // 2 seconds
+            const startTime = performance.now();
+
+            const animate = (currentTime) => {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // Easing function (easeOutCubic)
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const current = Math.floor(eased * percentage);
+
+                setDisplayValue(current);
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            };
+
+            requestAnimationFrame(animate);
+        }
+    }, [isInView, percentage]);
+
+    return (
+        <motion.div
+            ref={ref}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.5 }}
+            transition={{ duration: 0.6, delay, ease: "backOut" }}
+            className="relative"
+            style={{ width: size, height: size }}
+        >
+            <svg width={size} height={size} className="transform -rotate-90">
+                {/* Background circle */}
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    fill="none"
+                    stroke="rgba(255, 255, 255, 0.1)"
+                    strokeWidth={strokeWidth}
+                />
+
+                {/* Animated progress circle */}
+                <motion.circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth={strokeWidth}
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    initial={{ strokeDashoffset: circumference }}
+                    animate={isInView ? { strokeDashoffset: offset } : { strokeDashoffset: circumference }}
+                    transition={{ duration: 2, delay, ease: "easeOut" }}
+                    style={{
+                        filter: `drop-shadow(0 0 8px ${color}40)`
+                    }}
+                />
+            </svg>
+
+            {/* Percentage text in center */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <motion.span
+                    className="text-5xl font-bold"
+                    style={{ color }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                    transition={{ duration: 0.6, delay: delay + 0.3 }}
+                >
+                    {displayValue}%
+                </motion.span>
+                <motion.span
+                    className="text-sm text-gray-400 mt-1"
+                    initial={{ opacity: 0 }}
+                    animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+                    transition={{ duration: 0.6, delay: delay + 0.5 }}
+                >
+                    Match
+                </motion.span>
+            </div>
+        </motion.div>
+    );
+};
+
+/**
+ * Animated Career Path Component - Dotted line connector
+ */
+const AnimatedCareerPath = ({ delay = 0, reverse = false }) => {
+    const ref = useRef(null);
+    const isInView = useInView(ref, { once: true, amount: 0.3 });
+
+    return (
+        <motion.div
+            ref={ref}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.8, delay, ease: "easeOut" }}
+        >
+            <div className="hidden md:flex justify-center md:-mt-10 lg:-mt-8">
+                <div className="relative w-full md:max-w-sm lg:max-w-xl" style={{
+                    transform: reverse ? 'translateX(16%)' : 'translateX(-16%)'
+                }}>
+                    <div style={{ paddingTop: `${(495 / 758) * 100}%` }} />
+                    <svg
+                        viewBox="0 0 758 495"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        preserveAspectRatio="xMidYMid meet"
+                        className="absolute top-0 left-0 w-full h-full"
+                    >
+                        {/* Starting circle */}
+                        <motion.circle
+                            cx={reverse ? "726.556" : "31.4439"}
+                            cy={reverse ? "29.8572" : "29.8572"}
+                            r="11.7417"
+                            fill="white"
+                            stroke="black"
+                            strokeWidth="2.89"
+                            strokeMiterlimit="10"
+                            strokeDasharray="6.93 6.93"
+                            initial={{ scale: 0, rotate: 0 }}
+                            animate={isInView ? { scale: 1, rotate: 360 } : { scale: 0, rotate: 0 }}
+                            transition={{ duration: 0.6, delay: delay + 0.2, ease: "easeOut" }}
+                        />
+
+                        {/* Animated dotted path */}
+                        <AnimatedPath
+                            d={reverse
+                                ? "M693 18.2507C668.797 6.9557 632.826 2.6091 594.88 53.3601C532.468 136.833 520.437 312.778 462.044 370.936C414.568 418.198 370.699 393.22 341.67 365.886C238.732 99.7033 117.664 87.8267 54.5854 287.647C48.0564 308.339 40.8692 333.929 33.954 366.957C26.2841 403.627 21.2821 438.247 18 465"
+                                : "M63 22.2507C87.203 10.9557 123.174 6.6091 161.12 57.3601C223.532 140.833 235.563 316.778 293.956 374.936C341.432 422.198 385.301 397.22 414.33 369.886C517.268 103.703 638.336 91.8267 701.415 291.647C707.944 312.339 715.131 337.929 722.046 370.957C729.716 407.627 734.718 442.247 738 469"
+                            }
+                            delay={delay + 0.3}
+                        />
+
+                        {/* Ending circle */}
+                        <motion.circle
+                            cx={reverse ? "13.7417" : "744.742"}
+                            cy={reverse ? "476.819" : "480.819"}
+                            r="11.7417"
+                            fill="white"
+                            stroke="black"
+                            strokeWidth="2.89"
+                            strokeMiterlimit="10"
+                            strokeDasharray="6.93 6.93"
+                            initial={{ scale: 0, rotate: 0 }}
+                            animate={isInView ? { scale: 1, rotate: 360 } : { scale: 0, rotate: 0 }}
+                            transition={{ duration: 0.6, delay: delay + 2, ease: "easeOut" }}
+                        />
+                    </svg>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+/**
+ * Career Card Component
+ * Displays individual career recommendation with animation
+ */
+const CareerCard = ({ cluster, index, fitType, color, reverse = false }) => {
+    const ref = useRef(null);
+    const isInView = useInView(ref, { once: true, amount: 0.3 });
+
+    if (!cluster) return null;
+
+    const colorConfig = {
+        green: {
+            bg: '#1a2e1a',
+            accent: '#22c55e',
+            accentLight: '#86efac',
+            shadow: 'rgba(34, 197, 94, 0.3)'
+        },
+        yellow: {
+            bg: '#2e2a1a',
+            accent: '#eab308',
+            accentLight: '#fde047',
+            shadow: 'rgba(234, 179, 8, 0.3)'
+        },
+        purple: {
+            bg: '#2a1a2e',
+            accent: '#a855f7',
+            accentLight: '#c084fc',
+            shadow: 'rgba(168, 85, 247, 0.3)'
+        }
+    };
+
+    const config = colorConfig[color];
+
+    return (
+        <>
+            <div className={index > 0 ? "mt-20 md:mt-0 lg:-mt-16" : ""}>
+                <motion.div
+                    ref={ref}
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="grid md:grid-cols-2 gap-16 md:gap-12 items-center relative z-10"
+                >
+                    {/* Card (appears first on mobile, order changes on desktop) */}
+                    <motion.div
+                        initial={{ opacity: 0, x: reverse ? 50 : -50 }}
+                        animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: reverse ? 50 : -50 }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                        className={`flex justify-center ${reverse ? 'md:order-2' : 'md:order-1'}`}
+                    >
+                        {/* Outer Container with Gradient Border */}
+                        <div
+                            className="relative rounded-[10px] p-[1px]"
+                            style={{
+                                width: '100%',
+                                maxWidth: '400px',
+                                minHeight: '350px',
+                                background: `radial-gradient(circle 230px at 0% 0%, ${config.accentLight}, #0c0d0d)`
+                            }}
+                        >
+                            {/* Animated Dot */}
+                            <div
+                                className="absolute w-[5px] aspect-square rounded-full z-[2]"
+                                style={{
+                                    backgroundColor: '#fff',
+                                    boxShadow: `0 0 10px ${config.accentLight}`,
+                                    animation: 'moveDot 6s linear infinite'
+                                }}
+                            />
+
+                            {/* Main Card */}
+                            <div
+                                className="relative w-full h-full rounded-[9px] border border-[#202222] flex flex-col justify-center p-6"
+                                style={{
+                                    background: `radial-gradient(circle 280px at 0% 0%, ${config.accent}40, #0c0d0d)`,
+                                    backgroundSize: '20px 20px'
+                                }}
+                            >
+                                {/* Ray Light Effect */}
+                                <div
+                                    className="absolute w-[220px] h-[45px] rounded-[100px] opacity-40 blur-[10px]"
+                                    style={{
+                                        backgroundColor: config.accentLight,
+                                        boxShadow: `0 0 50px ${config.accentLight}`,
+                                        transformOrigin: '10%',
+                                        top: '0%',
+                                        left: '0',
+                                        transform: 'rotate(40deg)'
+                                    }}
+                                />
+
+                                {/* Grid Lines */}
+                                {/* Top Line */}
+                                <div
+                                    className="absolute w-[2px] h-[1px]"
+                                    style={{
+                                        top: '10%',
+                                        background: `linear-gradient(90deg, ${config.accent}88 30%, #1d1f1f 70%)`
+                                    }}
+                                />
+                                {/* Bottom Line */}
+                                <div
+                                    className="absolute w-[2px] h-[1px] "
+                                    style={{ bottom: '10%' }}
+                                />
+                                {/* Left Line */}
+                                <div
+                                    className="absolute w-[2px] h-full"
+                                    style={{
+                                        left: '10%',
+                                        background: `linear-gradient(180deg, ${config.accent}74 30%, #222424 70%)`
+                                    }}
+                                />
+                                {/* Right Line */}
+                                <div
+                                    className="absolute w-[2px] h-full"
+                                    style={{ right: '10%' }}
+                                />
+
+                                {/* Content */}
+                                <div className="relative z-[1]">
+                                    {/* Header with number badge and title */}
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div
+                                            className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg"
+                                            style={{ backgroundColor: config.accent }}
+                                        >
+                                            {index + 1}
+                                        </div>
+                                        <div className="flex-1">
+                                            <span
+                                                className="inline-block px-3 py-1 text-white text-xs font-semibold rounded-full mb-1"
+                                                style={{ backgroundColor: config.accent }}
+                                            >
+                                                {fitType}
+                                            </span>
+                                            <h3 className="text-lg sm:text-xl font-bold text-white">{cluster.title}</h3>
+                                        </div>
+                                    </div>
+
+                                    {/* Description */}
+                                    <p className="text-gray-300 mb-4 leading-relaxed text-sm">{cluster.description}</p>
+
+                                    {/* Why It Fits / What You'll Do */}
+                                    {(cluster.whyItFits || cluster.whatYoullDo) && (
+                                        <div
+                                            className="rounded-lg p-3 border"
+                                            style={{
+                                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                                borderColor: config.accent
+                                            }}
+                                        >
+                                            <h5
+                                                className="text-xs font-bold uppercase mb-2"
+                                                style={{ color: config.accentLight }}
+                                            >
+                                                {cluster.whyItFits ? 'Why It Fits You' : 'What You\'ll Do'}
+                                            </h5>
+                                            <p className="text-gray-300 text-sm leading-relaxed">
+                                                {cluster.whyItFits || cluster.whatYoullDo}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Keyframes for dot animation - inject into head */}
+                        <style>{`
+                            @keyframes moveDot {
+                                0%, 100% {
+                                    top: 10%;
+                                    right: 10%;
+                                }
+                                25% {
+                                    top: 10%;
+                                    right: calc(100% - 35px);
+                                }
+                                50% {
+                                    top: calc(100% - 30px);
+                                    right: calc(100% - 35px);
+                                }
+                                75% {
+                                    top: calc(100% - 30px);
+                                    right: 10%;
+                                }
+                            }
+                        `}</style>
+                    </motion.div>
+
+                    {/* Animated Progress Ring (appears second on mobile, order changes on desktop) */}
+                    <motion.div
+                        initial={{ opacity: 0, x: reverse ? -50 : 50 }}
+                        animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: reverse ? -50 : 50 }}
+                        transition={{ duration: 0.6, delay: 0.3 }}
+                        className={`flex flex-col items-center text-center px-4 ${reverse ? 'md:order-1' : 'md:order-2'}`}
+                    >
+                        <AnimatedProgressRing
+                            percentage={cluster.matchScore}
+                            color={config.accentLight}
+                            delay={0.5}
+                        />
+                        <p className="text-gray-400 leading-relaxed max-w-xl text-sm mt-6">
+                            {index === 0 && "This career path aligns perfectly with your skills and interests"}
+                            {index === 1 && "A promising career option with good alignment to your profile"}
+                            {index === 2 && "Worth exploring as you develop additional skills and experience"}
+                        </p>
+                    </motion.div>
+                </motion.div>
+            </div>
+            {index < 2 && <AnimatedCareerPath delay={0.4} reverse={reverse} />}
+        </>
+    );
+};
+
+/**
  * Assessment Result Page
  * Displays comprehensive career assessment results with modular components
  */
 const AssessmentResult = () => {
     const [activeSection, setActiveSection] = useState(null);
+    const [isNavbarVisible, setIsNavbarVisible] = useState(true);
+    const lastScrollY = useRef(0);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            const currentScrollY = window.scrollY;
+            if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+                // Scrolling down
+                setIsNavbarVisible(false);
+            } else {
+                // Scrolling up
+                setIsNavbarVisible(true);
+            }
+            lastScrollY.current = currentScrollY;
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, []);
     
     const {
         results,
@@ -151,7 +601,11 @@ const AssessmentResult = () => {
             {/* Web View - Rich UI for screen */}
             <div className="web-view min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 py-8 px-4">
                 {/* Floating Action Bar */}
-                <div className="max-w-6xl mx-auto mb-8">
+                <div
+                    className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-6xl px-4 transition-transform duration-300 ${
+                        isNavbarVisible ? 'translate-y-0' : '-translate-y-24'
+                    }`}
+                >
                     <div className="flex justify-between items-center bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-white/50 p-4">
                         <Button
                             variant="ghost"
@@ -227,11 +681,24 @@ const AssessmentResult = () => {
                 )}
 
                 {/* Report Container */}
-                <div className="max-w-6xl mx-auto print:max-w-none print-container">
+                <div className="max-w-6xl mx-auto print:max-w-none print-container pt-24">
                     {/* Header Section */}
                     <ReportHeader studentInfo={studentInfo} />
 
-                    {/* Summary Grid */}
+                    {/* Overall Summary Banner */}
+                    <div className="bg-slate-800 rounded-2xl p-6 text-white my-8">
+                        <div className="flex items-start gap-3">
+                            <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                                <Rocket className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-xl mb-2">Overall Career Direction</h4>
+                                <p className="text-gray-300 leading-relaxed text-base">"{results.overallSummary}"</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Summary Grid 
                     <div className="mb-8">
                         <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Your Assessment Summary</h2>
                         <p className="text-gray-500 text-center mb-8 text-lg">Click on any section to view detailed insights</p>
@@ -293,26 +760,45 @@ const AssessmentResult = () => {
                                 ]}
                             />
                         </div>
-                    </div>
+                    </div>*/}
 
-                    {/* Overall Summary Banner */}
-                    <div className="bg-slate-800 rounded-2xl p-6 text-white">
-                        <div className="flex items-start gap-3">
-                            <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                                <Rocket className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-xl mb-2">Overall Career Direction</h4>
-                                <p className="text-gray-300 leading-relaxed text-base">"{results.overallSummary}"</p>
-                            </div>
+                    {/* Zig-Zag Career Fit View */}
+                    <div className="mb-8 relative py-20">
+                        <div className="max-w-7xl mx-auto px-6 lg:px-6">
+                            <h2 className="text-center font-extrabold text-gray-800 mb-4 text-2xl sm:text-3xl md:text-4xl">Your Career Recommendations</h2>
+                            <p className="text-center text-gray-500 mb-12 text-sm sm:text-base md:text-lg">Personalized job matches based on your assessment</p>
+
+                            {/* Career Cards */}
+                            <CareerCard
+                                cluster={careerFit?.clusters?.find(c => c.fit === 'High')}
+                                index={0}
+                                fitType="HIGH FIT"
+                                color="green"
+                                reverse={false}
+                            />
+
+                            <CareerCard
+                                cluster={careerFit?.clusters?.find(c => c.fit === 'Medium')}
+                                index={1}
+                                fitType="MEDIUM FIT"
+                                color="yellow"
+                                reverse={true}
+                            />
+
+                            <CareerCard
+                                cluster={careerFit?.clusters?.find(c => c.fit !== 'High' && c.fit !== 'Medium')}
+                                index={2}
+                                fitType="EXPLORE LATER"
+                                color="purple"
+                                reverse={false}
+                            />
                         </div>
                     </div>
                 </div>
 
-                {/* Detail Modal */}
-                <Dialog open={activeSection !== null} onOpenChange={() => setActiveSection(null)}>
+                {/* Detail Modal - COMMENTED OUT FOR NOW */}
+                {/* <Dialog open={activeSection !== null} onOpenChange={() => setActiveSection(null)}>
                     <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] !p-0 gap-0 overflow-hidden border-0 shadow-2xl rounded-2xl">
-                        {/* Header */}
                         <DialogHeader className="bg-slate-800 px-8 py-6 relative !mb-0">
                             <DialogTitle className="sr-only">
                                 {activeSection === 'profile' && 'Student Profile Snapshot'}
@@ -320,7 +806,6 @@ const AssessmentResult = () => {
                                 {activeSection === 'skills' && 'Skill Gap & Development'}
                                 {activeSection === 'roadmap' && 'Action Roadmap'}
                             </DialogTitle>
-                            {/* Close Button */}
                             <button
                                 onClick={() => setActiveSection(null)}
                                 className="absolute top-4 right-4 w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
@@ -364,7 +849,6 @@ const AssessmentResult = () => {
                             </div>
                         </DialogHeader>
 
-                        {/* Scrollable Content */}
                         <div className="overflow-y-auto max-h-[calc(95vh-100px)] bg-gray-50">
                             <div className="p-6 pb-12">
                                 {activeSection === 'profile' && (
@@ -380,14 +864,14 @@ const AssessmentResult = () => {
                                     <CareerSection careerFit={careerFit} />
                                 )}
                                 {activeSection === 'skills' && skillGap && employability && (
-                                    <SkillsSection 
-                                        skillGap={skillGap} 
+                                    <SkillsSection
+                                        skillGap={skillGap}
                                         employability={employability}
                                         skillGapCourses={results.skillGapCourses}
                                     />
                                 )}
                                 {activeSection === 'roadmap' && roadmap && (
-                                    <RoadmapSection 
+                                    <RoadmapSection
                                         roadmap={roadmap}
                                         platformCourses={results.platformCourses}
                                         coursesByType={results.coursesByType}
@@ -397,7 +881,7 @@ const AssessmentResult = () => {
                             </div>
                         </div>
                     </DialogContent>
-                </Dialog>
+                </Dialog> */}
             </div>
         </>
     );
