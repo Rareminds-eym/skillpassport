@@ -12,7 +12,7 @@ export interface Env {
   SUPABASE_SERVICE_ROLE_KEY: string;
   VITE_SUPABASE_URL?: string;
   VITE_SUPABASE_ANON_KEY?: string;
-  RESEND_API_KEY?: string;
+  // Note: RESEND_API_KEY removed - now using Supabase Edge Function with SMTP
 }
 
 // ==================== AUTH ====================
@@ -41,6 +41,7 @@ export interface SchoolAdminSignupRequest {
   principalName: string;
   principalEmail?: string;
   principalPhone?: string;
+  dateOfBirth?: string;
 }
 
 export interface EducatorSignupRequest {
@@ -56,12 +57,15 @@ export interface EducatorSignupRequest {
   qualification?: string;
   experienceYears?: number;
   specialization?: string;
+  dateOfBirth?: string;
 }
 
 export interface StudentSignupRequest {
   email: string;
   password: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
   schoolId: string;
   grade?: string;
@@ -99,6 +103,7 @@ export interface CollegeAdminSignupRequest {
   deanName: string;
   deanEmail?: string;
   deanPhone?: string;
+  dateOfBirth?: string;
 }
 
 export interface CollegeEducatorSignupRequest {
@@ -115,12 +120,15 @@ export interface CollegeEducatorSignupRequest {
   experienceYears?: number;
   specialization?: string;
   dateOfJoining?: string;
+  dateOfBirth?: string;
 }
 
 export interface CollegeStudentSignupRequest {
   email: string;
   password: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
   collegeId: string;
   course?: string;
@@ -156,6 +164,7 @@ export interface UniversityAdminSignupRequest {
   vcName: string;
   vcEmail?: string;
   vcPhone?: string;
+  dateOfBirth?: string;
 }
 
 export interface UniversityEducatorSignupRequest {
@@ -171,12 +180,15 @@ export interface UniversityEducatorSignupRequest {
   qualification?: string;
   experienceYears?: number;
   specialization?: string;
+  dateOfBirth?: string;
 }
 
 export interface UniversityStudentSignupRequest {
   email: string;
   password: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
   universityId: string;
   course?: string;
@@ -214,16 +226,20 @@ export interface RecruiterAdminSignupRequest {
   contactPersonDesignation?: string;
   contactPersonEmail?: string;
   contactPersonPhone?: string;
+  dateOfBirth?: string;
 }
 
 export interface RecruiterSignupRequest {
   email: string;
   password: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
   companyId: string;
   designation?: string;
   department?: string;
+  dateOfBirth?: string;
 }
 
 // ==================== AUTHENTICATED ENDPOINTS ====================

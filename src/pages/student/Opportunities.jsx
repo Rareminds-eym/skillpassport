@@ -399,20 +399,6 @@ const Opportunities = () => {
     const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
     const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
     
-    console.log('🎯 Opportunities Page Filtering Debug:', {
-      isSchoolStudent,
-      isUniversityStudent,
-      studentType: isSchoolStudent ? 'School Student (Internships Only)' : isUniversityStudent ? 'College/University Student (All Jobs)' : 'Unknown',
-      totalOpportunities: opportunities.length,
-      filteredCount: filtered.length,
-      studentData: {
-        school_id: studentData?.school_id,
-        school_class_id: studentData?.school_class_id,
-        university_college_id: studentData?.university_college_id,
-        grade: studentData?.grade
-      }
-    });
-
     // Sort filtered results
     return filtered.sort((a, b) => {
       if (sortBy === 'newest') {
@@ -457,7 +443,6 @@ const Opportunities = () => {
     }
 
     if (appliedJobs.has(opportunity.id)) {
-      console.log('You have already applied to this job');
       return;
     }
 
@@ -484,7 +469,6 @@ const Opportunities = () => {
       
       if (result.success) {
         setAppliedJobs(prev => new Set([...prev, opportunity.id]));
-        console.log('Application submitted successfully');
       } else {
         console.error('Application failed:', result.message);
       }
@@ -1226,8 +1210,6 @@ const MyApplicationsContent = ({
     setMessagingApplicationId(app.id);
     
     try {
-      console.log('📞 Calling MessageService.getOrCreateConversation...');
-      
       const conversation = await MessageService.getOrCreateConversation(
         String(studentId), // Ensure string
         String(app.recruiterId), // Ensure string
@@ -1235,8 +1217,6 @@ const MyApplicationsContent = ({
         app.opportunityId, // opportunityId
         `Application: ${app.jobTitle}` // subject
       );
-      
-      console.log('✅ Conversation created/found:', conversation);
       
       navigate('/student/messages', {
         state: {

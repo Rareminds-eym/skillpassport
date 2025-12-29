@@ -15,6 +15,16 @@ import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 import { Label } from '../../components/Students/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../components/Students/components/ui/alert-dialog';
 import { generateAssessment, getCachedAssessment, cacheAssessment } from '../../services/assessmentGenerationService';
 import {
   createAssessmentAttempt,
@@ -56,6 +66,7 @@ const DynamicAssessment = () => {
   const [attemptId, setAttemptId] = useState(null); // Track database attempt ID
   const [isSaving, setIsSaving] = useState(false); // Track save status
   const [loadedExistingAttempt, setLoadedExistingAttempt] = useState(null); // Store loaded existing attempt
+  const [showExitDialog, setShowExitDialog] = useState(false); // Exit confirmation dialog
 
   // Check for existing in-progress attempt when page loads directly (not from AssessmentStart)
   useEffect(() => {
@@ -586,16 +597,45 @@ const DynamicAssessment = () => {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <button
-            onClick={() => {
-              if (window.confirm('Are you sure you want to exit? Your progress will be saved.')) {
-                navigate(-1);
-              }
-            }}
+            onClick={() => setShowExitDialog(true)}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="font-medium">Exit Assessment</span>
           </button>
+
+          {/* Exit Confirmation Dialog */}
+          <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+            <AlertDialogContent className="bg-white rounded-xl max-w-md">
+              {/* RareMinds Logo Header */}
+              <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+                <img 
+                  src="/RareMinds.webp" 
+                  alt="RareMinds Logo" 
+                  className="h-8 w-auto object-contain"
+                />
+              </div>
+              <AlertDialogHeader className="pt-2">
+                <AlertDialogTitle className="text-lg font-semibold text-gray-900">
+                  Exit Assessment?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-gray-600">
+                  Are you sure you want to exit? Your progress will be saved.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => navigate(-1)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  OK
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <div className="flex items-center gap-4">
             {/* Save indicator */}

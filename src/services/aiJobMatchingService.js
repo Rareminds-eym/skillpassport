@@ -20,18 +20,6 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     const studentId = studentProfile?.id || studentProfile?.email || studentProfile?.profile?.email || 'unknown';
     const studentEmail = studentProfile?.email || studentProfile?.profile?.email || 'unknown@email.com';
 
-    console.log({
-      id: studentId,
-      email: studentEmail,
-      name: studentProfile?.name || studentProfile?.profile?.name || 'Unknown'
-    });
-    console.log({
-      hasProfile: !!studentProfile,
-      profileKeys: studentProfile ? Object.keys(studentProfile) : [],
-      hasNestedProfile: !!studentProfile?.profile,
-      nestedProfileKeys: studentProfile?.profile ? Object.keys(studentProfile.profile) : []
-    });
-
     // Create cache key specific to this student and opportunities
     const opportunitiesHash = opportunities.map(o => o.id).sort().join(',');
     const cacheKey = `${studentId}_${opportunitiesHash}_${topN}`;
@@ -58,19 +46,6 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
 
     // Extract student profile data
     const studentData = extractStudentData(studentProfile);
-
-    // Debug: Log extracted student data
-    console.log({
-      name: studentData.name,
-      department: studentData.department,
-      technical_skills_count: studentData.technical_skills.length,
-      technical_skills: studentData.technical_skills.map(s => s.name),
-      soft_skills_count: studentData.soft_skills.length,
-      projects_count: studentData.projects.length,
-      training_count: studentData.training.length,
-      experience_count: studentData.experience.length,
-      certificates_count: studentData.certificates.length
-    });
 
     // Prepare opportunities data for AI analysis
     // Note: skills_required, requirements, responsibilities are JSONB fields from database
@@ -116,8 +91,6 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       // throw new Error('Authentication required');
     }
 
-    console.log('🤖 Calling career-api for job matching...');
-
     const response = await fetch(`${API_URL}/match-jobs`, {
       method: 'POST',
       headers: {
@@ -143,7 +116,6 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     }
 
     const matches = result.matches || [];
-    console.log(`✅ Received ${matches.length} matches from API`);
 
     // Enrich matches with full opportunity data (since API might return partial data)
     const enrichedMatches = matches.map(match => {
@@ -166,7 +138,6 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     console.error('❌ AI Job Matching Error:', error);
 
     // Fallback to local basic matching if API fails
-    console.log('⚠️ Using fallback local matching...');
 
     // Extract student data locally for fallback
     const studentData = extractStudentData(studentProfile);
@@ -201,18 +172,6 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
  */
 function extractStudentData(studentProfile) {
   const profile = studentProfile?.profile || {};
-
-  // Debug log the raw profile structure
-  console.log({
-    hasProfile: !!studentProfile?.profile,
-    profileKeys: Object.keys(profile),
-    technicalSkillsType: typeof profile.technicalSkills,
-    technicalSkillsValue: profile.technicalSkills,
-    skillType: typeof profile.skill,
-    skillValue: profile.skill,
-    courseValue: profile.course,
-    branchField: profile.branch_field
-  });
 
   // Extract technical skills from various possible field names
   let technicalSkills = [];

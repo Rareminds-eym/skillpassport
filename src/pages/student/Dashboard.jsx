@@ -1,87 +1,86 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useLocation } from "react-router-dom";
-import { motion } from "motion/react";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/Students/components/ui/card";
-import { Button } from "../../components/Students/components/ui/button";
-import { Badge } from "../../components/Students/components/ui/badge";
-import { LampContainer } from "../../components/Students/components/ui/lamp";
-import {
-  TrendingUp,
-  CheckCircle,
-  Star,
-  ExternalLink,
-  Edit,
-  Calendar,
-  Award,
-  Eye,
-  QrCode,
-  Medal,
-  Briefcase,
-  MapPin,
-  Clock,
-  Building2,
-  Sparkles,
-  Target,
-  BookOpen,
-  Trophy,
-  ChevronRight,
-  Link,
-  Github,
-  Presentation,
-  Video,
-  File,
-  FileText,
-  ClipboardList,
-  GraduationCap,
-  PresentationIcon,
-  Rocket,
-  Cpu,
-  Users2,
-  Lightbulb,
-} from "lucide-react";
-import {
-  ChartBarIcon,
-  RectangleStackIcon,
+    ChartBarIcon,
+    RectangleStackIcon,
 } from "@heroicons/react/24/outline";
 import {
-  suggestions,
-  educationData,
-  trainingData,
-  experienceData,
-  technicalSkills,
-  softSkills,
-} from "../../components/Students/data/mockData";
+    Award,
+    BookOpen,
+    Briefcase,
+    Building2,
+    Calendar,
+    CheckCircle,
+    ChevronRight,
+    ClipboardList,
+    Clock,
+    Cpu,
+    ExternalLink,
+    Eye,
+    FileText,
+    Github,
+    GraduationCap,
+    Lightbulb,
+    MapPin,
+    Medal,
+    MoreVertical,
+    PresentationIcon,
+    Rocket,
+    Sparkles,
+    Star,
+    Target,
+    Trash2,
+    TrendingUp,
+    Users2
+} from "lucide-react";
+import { motion } from "motion/react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Toaster } from "react-hot-toast";
+import { useLocation, useNavigate } from "react-router-dom";
+import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
+import AnalyticsView from "../../components/Students/components/AnalyticsView";
 import {
-  EducationEditModal,
-  TrainingEditModal,
-  ExperienceEditModal,
-  SkillsEditModal,
-  ProjectsEditModal,
-  CertificatesEditModal,
+    CertificatesEditModal,
+    EducationEditModal,
+    ExperienceEditModal,
+    ProjectsEditModal,
+    SkillsEditModal,
+    TrainingEditModal,
 } from "../../components/Students/components/ProfileEditModals";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
-import { useOpportunities } from "../../hooks/useOpportunities";
-import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
+import TrainingRecommendations from "../../components/Students/components/TrainingRecommendations";
+import { Badge } from "../../components/Students/components/ui/badge";
+import { Button } from "../../components/Students/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from "../../components/Students/components/ui/card";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "../../components/Students/components/ui/dropdown-menu";
+import { LampContainer } from "../../components/Students/components/ui/lamp";
+import {
+    educationData,
+    experienceData,
+    softSkills,
+    suggestions,
+    technicalSkills,
+    trainingData,
+} from "../../components/Students/data/mockData";
 import { useAIRecommendations } from "../../hooks/useAIRecommendations";
-import { supabase } from "../../lib/supabaseClient";
+import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
+import { useOpportunities } from "../../hooks/useOpportunities";
+import { useStudentAchievements } from "../../hooks/useStudentAchievements";
+import { useStudentCertificates } from "../../hooks/useStudentCertificates";
+import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
+import { useStudentLearning } from "../../hooks/useStudentLearning";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
-import { Toaster } from "react-hot-toast";
-import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
-import RecentUpdatesCard from "../../components/Students/components/RecentUpdatesCard";
-import { useStudentAchievements } from "../../hooks/useStudentAchievements";
-import { useNavigate } from "react-router-dom";
-import { useStudentLearning } from "../../hooks/useStudentLearning";
-import { useStudentCertificates } from "../../hooks/useStudentCertificates";
 import { useStudentProjects } from "../../hooks/useStudentProjects";
-import AnalyticsView from "../../components/Students/components/AnalyticsView";
-import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
-import TrainingRecommendations from "../../components/Students/components/TrainingRecommendations";
+import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
+import { supabase } from "../../lib/supabaseClient";
 // Debug utilities removed for production cleanliness
 
 const StudentDashboard = () => {
@@ -297,34 +296,19 @@ const StudentDashboard = () => {
   } = useStudentRealtimeActivities(userEmail, 10);
 
   // Debug log for authentication and student data
-  useEffect(() => {
-    console.log({
-      studentData: studentData?.id,
-      loading: authStudentLoading,
-      error: authStudentError,
-    });
-  }, [studentData, authStudentLoading, authStudentError]);
+  // useEffect(() => {
+  //   // Authentication and student data loaded
+  // }, [studentData, authStudentLoading, authStudentError]);
 
   // Debug log for opportunities
-  useEffect(() => {
-    console.log({
-      opportunities,
-      loading: opportunitiesLoading,
-      error: opportunitiesError,
-      count: opportunities?.length,
-    });
-  }, [opportunities, opportunitiesLoading, opportunitiesError]);
+  // useEffect(() => {
+  //   // Opportunities data loaded
+  // }, [opportunities, opportunitiesLoading, opportunitiesError]);
 
   // Debug log for recent updates
-  useEffect(() => {
-    console.log({
-      recentUpdates,
-      loading: recentUpdatesLoading,
-      error: recentUpdatesError,
-      count: recentUpdates?.length,
-      userEmail,
-    });
-  }, [recentUpdates, recentUpdatesLoading, recentUpdatesError, userEmail]);
+  // useEffect(() => {
+  //   // Recent updates data loaded
+  // }, [recentUpdates, recentUpdatesLoading, recentUpdatesError, userEmail]);
 
   // Poll for new opportunities and refresh Recent Updates
   useEffect(() => {
@@ -346,9 +330,6 @@ const StudentDashboard = () => {
 
           // Refresh Recent Updates to show the new opportunity
           setTimeout(() => {
-            console.log(
-              "🔄 Refreshing Recent Updates after new opportunity..."
-            );
             refreshRecentUpdates();
           }, 1000); // Small delay to ensure DB trigger has fired
         }
@@ -376,22 +357,15 @@ const StudentDashboard = () => {
   useEffect(() => {
     const testSupabaseDirectly = async () => {
       try {
-        console.log({
-          url: import.meta.env.VITE_SUPABASE_URL ? "Set" : "Missing",
-          key: import.meta.env.VITE_SUPABASE_ANON_KEY ? "Set" : "Missing",
-        });
-
         const { data, error, count } = await supabase
           .from("opportunities")
           .select("*", { count: "exact" });
 
         // Run debug for recent updates (commented out to prevent automatic execution)
         // await debugRecentUpdates();
-        console.log(
-          "ℹ️ To debug recent updates, run: await window.debugRecentUpdates() in console"
-        );
+        // To debug recent updates, run: await window.debugRecentUpdates() in console
       } catch (err) {
-        console.error("🧪 Direct test error:", err);
+        // Handle error silently
       }
     };
 
@@ -553,16 +527,6 @@ const StudentDashboard = () => {
 
   // Determine institution info from student data (using individual columns)
   const institutionInfo = React.useMemo(() => {
-    // Debug: Log student data structure
-    console.log('🏫 Institution Debug:', {
-      school_id: studentData?.school_id,
-      university_college_id: studentData?.university_college_id,
-      university: studentData?.university, // Individual column
-      college_school_name: studentData?.college_school_name, // Individual column
-      school: studentData?.school,
-      universityCollege: studentData?.universityCollege,
-    });
-
     // Priority: school_id takes precedence if both exist
     if (studentData?.school_id && studentData?.school) {
       return {
@@ -674,14 +638,66 @@ const StudentDashboard = () => {
                 Assessment
               </span>
             </CardTitle>
-            <Badge className="bg-gradient-to-r from-blue-100 to-indigo-100 text-white p-1 rounded-full shadow-sm">
-              <Star className="w-6 h-6 fill-[#FBBF24]" />
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-gradient-to-r from-blue-100 to-indigo-100 text-white p-1 rounded-full shadow-sm">
+                <Star className="w-6 h-6 fill-[#FBBF24]" />
+              </Badge>
+              {/* DEV ONLY: Menu with Clear Assessment option */}
+              {import.meta.env.DEV && hasAssessment && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="p-1.5 rounded-md hover:bg-blue-100 transition-colors">
+                      <MoreVertical className="w-5 h-5 text-gray-500" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48 bg-white border border-gray-200 shadow-lg">
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        if (!studentId) return;
+                        if (!window.confirm('DEV: Are you sure you want to clear your assessment data? This will delete all your assessment results.')) return;
+                        
+                        try {
+                          const { error: resultsError } = await supabase
+                            .from('personal_assessment_results')
+                            .delete()
+                            .eq('student_id', studentId);
+                          
+                          if (resultsError) throw resultsError;
+
+                          const { error: attemptsError } = await supabase
+                            .from('personal_assessment_attempts')
+                            .delete()
+                            .eq('student_id', studentId);
+                          
+                          if (attemptsError) throw attemptsError;
+
+                          localStorage.removeItem('assessment_gemini_results');
+                          localStorage.removeItem('assessment_section_timings');
+                          
+                          alert('Assessment data cleared! Refreshing page...');
+                          window.location.reload();
+                        } catch (err) {
+                          console.error('Error clearing assessment:', err);
+                          alert('Failed to clear assessment: ' + err.message);
+                        }
+                      }}
+                      className="text-red-600 hover:bg-red-50 cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      🧪 Clear Assessment
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-8 space-y-4">
           <p className="text-gray-900 text-base leading-normal font-medium">
-            Take our comprehensive assessment to discover your strengths and get a personalized career roadmap.
+            {hasAssessment 
+              ? "You've completed your assessment! View your personalized career insights and recommendations."
+              : "Take our comprehensive assessment to discover your strengths and get a personalized career roadmap."
+            }
           </p>
 
           {/*<div className="flex items-center gap-4 text-xs text-gray-900 font-medium">
@@ -692,13 +708,23 @@ const StudentDashboard = () => {
           </div>*/}
 
           <div className="flex justify-center py-4">
-            <Button
-              onClick={() => navigate("/student/assessment/test")}
-              className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-smshadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
-            >
-              Start Assessment
-              <ChevronRight className="w-5 h-5 ml-2" />
-            </Button>
+            {hasAssessment ? (
+              <Button
+                onClick={() => navigate("/student/assessment/result")}
+                className="w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
+              >
+                <Eye className="w-5 h-5 mr-2" />
+                View Results
+              </Button>
+            ) : (
+              <Button
+                onClick={() => navigate("/student/assessment/test")}
+                className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
+              >
+                Start Assessment
+                <ChevronRight className="w-5 h-5 ml-2" />
+              </Button>
+            )}
           </div>
 
           {/* Conditional content below Start Assessment button */}
@@ -884,16 +910,6 @@ const StudentDashboard = () => {
               </p>
             </div>
           )} */}
-          
-          {(() => {
-            console.log({
-              loading: opportunitiesLoading,
-              error: opportunitiesError,
-              opportunities,
-              count: opportunities?.length,
-            });
-            return null;
-          })()}
           {opportunitiesLoading ? (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -953,24 +969,6 @@ const StudentDashboard = () => {
               // University/College students: Show ALL opportunities (internships + jobs)
               filteredOpportunities = opportunities; // Show everything
             }
-
-            // Debug logging for opportunity filtering
-            console.log('🎯 Opportunity Filtering Debug:', {
-              isSchoolStudent,
-              isUniversityStudent,
-              studentGrade,
-              gradeRange: studentGrade ? 
-                (parseInt(studentGrade) >= 6 && parseInt(studentGrade) <= 8 ? 'Grades 6-8 (Internships Only)' :
-                 parseInt(studentGrade) >= 9 ? 'Grade 9+ (All Opportunities)' : 'Other Grade') : 'No Grade',
-              totalOpportunities: opportunities.length,
-              filteredCount: filteredOpportunities.length,
-              studentData: {
-                school_id: studentData?.school_id,
-                school_class_id: studentData?.school_class_id,
-                university_college_id: studentData?.university_college_id,
-                grade: studentData?.grade
-              }
-            });
 
             return (
               <>
@@ -1945,9 +1943,10 @@ const StudentDashboard = () => {
               {render3x3Grid()}
             </motion.div>
             
-            {/* Separate Section: 2 in a row and 1 column (Suggested Steps and Achievement Timeline) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Suggested Steps - 2 columns wide */}
+            {/* Separate Section: Achievement Timeline */}
+            <div className="grid grid-cols-1 gap-6">
+              {/* Suggested Steps - Commented Out */}
+              {false && (
               <div className="lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
                 <Card
                   ref={suggestedNextStepsRef}
@@ -2096,7 +2095,6 @@ const StudentDashboard = () => {
                           </div>
                         ))}
 
-                        {/* Refresh Button */}
                         <Button
                           variant="outline"
                           size="sm"
@@ -2110,7 +2108,6 @@ const StudentDashboard = () => {
                       </>
                     ) : (
                       <>
-                        {/* Fallback to default suggestions if no AI matches */}
                         {suggestions.map((suggestion, idx) => (
                           <div
                             key={suggestion.id || `suggestion-${idx}`}
@@ -2137,9 +2134,10 @@ const StudentDashboard = () => {
                   </CardContent>
                 </Card>
               </div>
-              
+              )}
+
               {/* Achievement Timeline - 1 column */}
-              <div className="lg:col-span-2">
+              <div>
                 <AchievementsTimeline userData={userData} />
               </div>
             </div>

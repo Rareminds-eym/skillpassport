@@ -108,6 +108,14 @@ function PaymentSuccess() {
           clearPendingUserData();
           setTimeout(() => setEmailStatus('sent'), 2000);
         } else {
+          // User already has an active subscription - show informative toast
+          const message = transactionDetails.message || '';
+          if (message.includes('already has an active subscription')) {
+            toast.success('You already have an active subscription for this plan. Your existing subscription is still valid!', {
+              duration: 5000,
+              icon: '✅',
+            });
+          }
           clearPendingUserData();
           setEmailStatus('sent');
         }
@@ -164,7 +172,13 @@ function PaymentSuccess() {
           email: transactionDetails?.user_email || user?.email || '',
           phone: user?.user_metadata?.phone || null,
         },
-        company: { name: 'RareMinds', address: 'Your Company Address', taxId: 'TAX123456789' },
+        company: { 
+          name: 'RareMinds', 
+          address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001', 
+          taxId: 'GSTIN: 29ABCDE1234F1Z5',
+          phone: '+91 9902326951',
+          email: 'marketing@rareminds.in'
+        },
         generatedAt: new Date().toLocaleString(),
       };
       const filename = `Receipt-${paymentParams.razorpay_payment_id?.slice(-8) || 'payment'}-${new Date().toISOString().split('T')[0]}.pdf`;

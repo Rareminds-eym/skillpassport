@@ -1,19 +1,19 @@
-import { supabase } from '../lib/supabaseClient';
-
 /**
  * Upload Utility
- * Handles image uploads to Cloudflare R2 (via Edge Function) or Supabase Storage (fallback)
+ * Handles image uploads to Cloudflare R2 via storage-api worker
  */
+
+// Storage API worker URL - update this with your deployed worker URL
+const STORAGE_API_URL = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.rareminds.workers.dev';
 
 interface R2UploadResponse {
   success: boolean;
   url?: string;
   error?: string;
-  storage?: 'cloudflare-r2' | 'supabase-storage';
 }
 
 /**
- * Upload an image file to Cloudflare R2 (preferred) or Supabase Storage (fallback)
+ * Upload an image file to Cloudflare R2
  * @param file - The image file to upload
  * @param folder - The folder path (e.g., 'courses')
  * @returns Promise with the uploaded file URL
@@ -46,63 +46,32 @@ export async function uploadToCloudflareR2(
     const extension = file.name.split('.').pop();
     const filename = `${folder}/${timestamp}-${randomString}.${extension}`;
 
-    // Try Cloudflare R2 first (via Edge Function)
-    try {
-      console.log('🚀 Attempting upload to Cloudflare R2...');
-      
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('filename', filename);
-
-      const response = await fetch('/api/upload-to-r2', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Uploaded to Cloudflare R2:', data.url);
-        return {
-          success: true,
-          url: data.url,
-          storage: 'cloudflare-r2'
-        };
-      } else {
-        console.log('⚠️ Cloudflare R2 not available, falling back to Supabase Storage');
-      }
-    } catch (r2Error) {
-      console.log('⚠️ Cloudflare R2 error, falling back to Supabase Storage:', r2Error);
-    }
-
-    // Fallback to Supabase Storage
-    console.log('📦 Uploading to Supabase Storage...');
+    console.log('🚀 Uploading to Cloudflare R2...');
     
-    const { data, error } = await supabase.storage
-      .from('course-images')
-      .upload(filename, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('filename', filename);
 
-    if (error) {
-      console.error('❌ Supabase storage error:', error);
+    const response = await fetch(`${STORAGE_API_URL}/upload`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ Upload failed:', errorData);
       return {
         success: false,
-        error: error.message || 'Failed to upload image'
+        error: errorData.error || `Upload failed with status ${response.status}`
       };
     }
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('course-images')
-      .getPublicUrl(filename);
-
-    console.log('✅ Uploaded to Supabase Storage:', publicUrl);
-
+    const data = await response.json();
+    console.log('✅ Uploaded to Cloudflare R2:', data.url);
+    
     return {
       success: true,
-      url: publicUrl,
-      storage: 'supabase-storage'
+      url: data.url
     };
 
   } catch (error) {
@@ -115,26 +84,27 @@ export async function uploadToCloudflareR2(
 }
 
 /**
- * Delete an image from Supabase Storage
+ * Delete an image from Cloudflare R2
  * @param url - The full URL of the image to delete
  * @returns Promise with success status
  */
 export async function deleteFromCloudflareR2(url: string): Promise<boolean> {
   try {
-    // Extract filename from URL
-    const urlParts = url.split('/');
-    const filename = urlParts.slice(-2).join('/'); // Get folder/filename
+    const response = await fetch(`${STORAGE_API_URL}/delete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ url })
+    });
 
-    const { error } = await supabase.storage
-      .from('course-images')
-      .remove([filename]);
-
-    if (error) {
-      console.error('Error deleting from storage:', error);
+    if (!response.ok) {
+      console.error('Error deleting from R2:', await response.text());
       return false;
     }
 
-    return true;
+    const data = await response.json();
+    return data.success === true;
   } catch (error) {
     console.error('Error deleting image:', error);
     return false;

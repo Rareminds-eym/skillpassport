@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, Phone, Eye, EyeOff, AlertCircle, Info, Briefcase } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertCircle, Briefcase, Eye, EyeOff, Info, Lock, Mail, Phone, User, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { getModalContent } from '../../utils/getEntityContent';
+import DatePicker from './shared/DatePicker';
+import { capitalizeFirstLetter } from './shared/signupValidation';
 
 // Cache for email checks
 const emailCheckCache = new Map();
@@ -18,6 +20,7 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
     email: '',
     phone: '',
     companyId: '',
+    dateOfBirth: '',
     password: '',
     confirmPassword: ''
   });
@@ -148,6 +151,17 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
       newErrors.phone = 'Please enter a valid 10-digit phone number';
     }
 
+    // Date of Birth validation
+    if (!formData.dateOfBirth) {
+      newErrors.dateOfBirth = 'Date of birth is required';
+    } else {
+      const dob = new Date(formData.dateOfBirth);
+      const today = new Date();
+      if (dob > today) {
+        newErrors.dateOfBirth = 'Date of birth cannot be in the future';
+      }
+    }
+
     // Company validation
     if (!formData.companyId) {
       newErrors.companyId = 'Please select a company';
@@ -229,15 +243,20 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
       const userId = authData.user.id;
 
       // Step 2: Create user record in users table
+      const nameParts = formData.fullName.trim().split(' ');
+      const firstName = capitalizeFirstLetter(nameParts[0] || '');
+      const lastName = capitalizeFirstLetter(nameParts.slice(1).join(' ') || '');
+      
       const { error: userError } = await supabase
         .from('users')
         .insert({
           id: userId,
           email: formData.email,
-          firstName: formData.fullName.split(' ')[0],
-          lastName: formData.fullName.split(' ').slice(1).join(' ') || null,
+          firstName: firstName,
+          lastName: lastName,
           role: 'recruiter',
-          isActive: true
+          isActive: true,
+          dob: formData.dateOfBirth || null
         });
 
       if (userError) {
@@ -245,12 +264,13 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
         // Continue anyway as auth user was created
       }
 
-      // Step 3: Create recruiter record
+      // Step 3: Create recruiter record (first_name/last_name stored in users table only)
+      const fullName = `${firstName} ${lastName}`.trim();
       const { error: recruiterError } = await supabase
         .from('recruiters')
         .insert({
           user_id: userId,
-          name: formData.fullName,
+          name: fullName,
           email: formData.email,
           phone: formData.phone,
           company_id: formData.companyId,
@@ -454,6 +474,18 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
                     </p>
                   )}
                 </div>
+
+                {/* Date of Birth */}
+                <DatePicker
+                  name="dateOfBirth"
+                  label="Date of Birth"
+                  required
+                  value={formData.dateOfBirth}
+                  onChange={handleInputChange}
+                  error={errors.dateOfBirth}
+                  placeholder="Select your date of birth"
+                  maxDate={new Date().toISOString().split('T')[0]}
+                />
 
                 {/* Company Selection */}
                 <div>

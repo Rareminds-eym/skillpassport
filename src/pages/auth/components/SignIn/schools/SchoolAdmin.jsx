@@ -1,6 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { State, City } from 'country-state-city';
+import { City, State } from 'country-state-city';
+import { useEffect, useRef, useState } from 'react';
+import { capitalizeFirstLetter } from '../../../../../components/Subscription/shared/signupValidation';
+
+// Languages list
+const LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'hi', name: 'Hindi' },
+  { code: 'ta', name: 'Tamil' },
+  { code: 'te', name: 'Telugu' },
+  { code: 'kn', name: 'Kannada' },
+  { code: 'ml', name: 'Malayalam' },
+  { code: 'mr', name: 'Marathi' },
+  { code: 'gu', name: 'Gujarati' },
+  { code: 'bn', name: 'Bengali' },
+  { code: 'pa', name: 'Punjabi' },
+];
 
 const SchoolAdmin = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -21,13 +35,21 @@ const SchoolAdmin = () => {
     otherAreaOfInterest: '',
     
     // Admin Account Details
-    fullName: '',
+    firstName: '',
+    lastName: '',
     designation: '',
     email: '',
     phoneNumber: '',
+    adminCountry: 'IN',
+    adminState: '',
+    adminCity: '',
+    preferredLanguage: 'en',
+    referralCode: '',
     password: '',
     confirmPassword: '',
     role: 'admin',
+    otp: '',
+    otpVerified: false,
     
     // Security
     agreeToTerms: false
@@ -43,6 +65,12 @@ const SchoolAdmin = () => {
   const [termsViewed, setTermsViewed] = useState(false);
   const [showCaptcha, setShowCaptcha] = useState(false);
   const [cities, setCities] = useState([]);
+  const [adminCities, setAdminCities] = useState([]);
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+
+  const INDIAN_STATES = State.getStatesOfCountry('IN');
 
   const blobRefs = {
     // School Details
@@ -58,7 +86,8 @@ const SchoolAdmin = () => {
     websiteUrl: useRef(null),
     
     // Admin Details
-    fullName: useRef(null),
+    firstName: useRef(null),
+    lastName: useRef(null),
     designation: useRef(null),
     email: useRef(null),
     phoneNumber: useRef(null),
@@ -201,16 +230,29 @@ const SchoolAdmin = () => {
         break;
 
       // Admin Details Validations
-      case 'fullName':
+      case 'firstName':
         if (!value) {
-          newErrors.fullName = 'Full name is required';
-          newSuccess.fullName = false;
+          newErrors.firstName = 'First name is required';
+          newSuccess.firstName = false;
         } else if (value.length < 2) {
-          newErrors.fullName = 'Full name must be at least 2 characters';
-          newSuccess.fullName = false;
+          newErrors.firstName = 'First name must be at least 2 characters';
+          newSuccess.firstName = false;
         } else {
-          newErrors.fullName = '';
-          newSuccess.fullName = true;
+          newErrors.firstName = '';
+          newSuccess.firstName = true;
+        }
+        break;
+
+      case 'lastName':
+        if (!value) {
+          newErrors.lastName = 'Last name is required';
+          newSuccess.lastName = false;
+        } else if (value.length < 2) {
+          newErrors.lastName = 'Last name must be at least 2 characters';
+          newSuccess.lastName = false;
+        } else {
+          newErrors.lastName = '';
+          newSuccess.lastName = true;
         }
         break;
 
@@ -367,7 +409,7 @@ const SchoolAdmin = () => {
   const validateStep = (step) => {
     const stepFields = {
       1: ['schoolName', 'schoolType', 'schoolEmail', 'schoolPhone', 'schoolAddress', 'websiteUrl'],
-      2: ['fullName', 'designation', 'email', 'phoneNumber', 'password', 'confirmPassword']
+      2: ['firstName', 'lastName', 'designation', 'email', 'phoneNumber', 'password', 'confirmPassword']
     };
 
     const fieldsToValidate = stepFields[step] || [];
@@ -405,9 +447,17 @@ const SchoolAdmin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Capitalize names
+    const firstName = capitalizeFirstLetter(formData.firstName);
+    const lastName = capitalizeFirstLetter(formData.lastName);
+    const fullName = `${firstName} ${lastName}`.trim();
+    
     // Auto-generate school code before submission if not provided
     const finalFormData = {
       ...formData,
+      firstName: firstName,
+      lastName: lastName,
+      fullName: fullName,
       schoolCode: formData.schoolCode || generateSchoolCode()
     };
 
@@ -424,6 +474,8 @@ const SchoolAdmin = () => {
     setIsSubmitting(true);
     
     try {
+      // TODO: Add actual database saving logic here
+      // The finalFormData contains firstName and lastName separately with proper capitalization
       await new Promise(resolve => setTimeout(resolve, 2000));
       console.log('School admin account created:', finalFormData);
       alert('School admin account created successfully!');
@@ -442,7 +494,8 @@ const SchoolAdmin = () => {
         websiteUrl: '',
         areasOfInterest: [],
         otherAreaOfInterest: '',
-        fullName: '',
+        firstName: '',
+        lastName: '',
         designation: '',
         email: '',
         phoneNumber: '',
@@ -469,6 +522,45 @@ const SchoolAdmin = () => {
   // Format phone number to only allow digits
   const formatPhoneNumber = (value) => {
     return value.replace(/\D/g, '').slice(0, 10);
+  };
+
+  // Load admin cities when admin state changes
+  useEffect(() => {
+    if (formData.adminState) {
+      const stateObj = INDIAN_STATES.find(s => s.name === formData.adminState);
+      if (stateObj) {
+        const cityList = City.getCitiesOfState('IN', stateObj.isoCode);
+        setAdminCities(cityList);
+      }
+    } else {
+      setAdminCities([]);
+    }
+  }, [formData.adminState]);
+
+  const handleSendOtp = async () => {
+    if (!formData.phoneNumber || formData.phoneNumber.length !== 10) return;
+    setSendingOtp(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setOtpSent(true);
+    } catch {
+      setErrors(prev => ({ ...prev, phoneNumber: 'Failed to send OTP.' }));
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!formData.otp || formData.otp.length !== 6) return;
+    setVerifyingOtp(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setFormData(prev => ({ ...prev, otpVerified: true }));
+    } catch {
+      setErrors(prev => ({ ...prev, otp: 'Invalid OTP.' }));
+    } finally {
+      setVerifyingOtp(false);
+    }
   };
 
   // Load reCAPTCHA script when captcha should be shown
@@ -1089,35 +1181,67 @@ const SchoolAdmin = () => {
               🔹 Admin Account Details
             </h2>
 
-            {/* Full Name */}
-            <div className="relative">
+            {/* First Name and Last Name */}
+            <div className="grid grid-cols-2 gap-4">
               <div className="relative">
-                <input
-                  type="text"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  onFocus={() => animateBlob('fullName')}
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.fullName 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.fullName 
-                        ? 'border-green-500 focus:border-green-500'
-                        : 'border-blue-200 focus:border-blue-100'
-                  }`}
-                  placeholder="Full Name *"
-                />
-                <div
-                  ref={blobRefs.fullName}
-                  className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                ></div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    onFocus={() => animateBlob('firstName')}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
+                      errors.firstName 
+                        ? 'border-red-500 focus:border-red-500' 
+                        : success.firstName 
+                          ? 'border-green-500 focus:border-green-500'
+                          : 'border-blue-200 focus:border-blue-100'
+                    }`}
+                    placeholder="First Name *"
+                  />
+                  <div
+                    ref={blobRefs.firstName}
+                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
+                  ></div>
+                </div>
+                {errors.firstName && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                    <span className="mr-1">⚠</span>
+                    {errors.firstName}
+                  </p>
+                )}
               </div>
-              {errors.fullName && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  {errors.fullName}
-                </p>
-              )}
+
+              <div className="relative">
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    onFocus={() => animateBlob('lastName')}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
+                      errors.lastName 
+                        ? 'border-red-500 focus:border-red-500' 
+                        : success.lastName 
+                          ? 'border-green-500 focus:border-green-500'
+                          : 'border-blue-200 focus:border-blue-100'
+                    }`}
+                    placeholder="Last Name *"
+                  />
+                  <div
+                    ref={blobRefs.lastName}
+                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
+                  ></div>
+                </div>
+                {errors.lastName && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                    <span className="mr-1">⚠</span>
+                    {errors.lastName}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Designation */}

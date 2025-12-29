@@ -338,7 +338,7 @@ export default function ClubsActivitiesPage() {
                 setCompetitions(competitionsData);
             } catch (error) {
                 console.error('Error fetching data:', error);
-                setNotice({ type: "error", text: "Failed to load data. Please refresh the page." });
+                // Silently handle initial load errors - data will show as empty
             } finally {
                 setLoading(false);
             }

@@ -938,7 +938,8 @@ const ClassesPage = () => {
     filters.performanceBands.length
 
   const isLoading = loading || schoolLoading || educatorIdLoading
-  const hasError = error || educatorIdError
+  // Only show actual errors, not "Educator record not found" which is expected for new educators
+  const hasError = error && error !== 'Educator record not found'
   const isEmpty = !isLoading && paginatedClasses.length === 0 && !hasError && !searchQuery && totalFilters === 0
 
   return (
@@ -1168,7 +1169,7 @@ const ClassesPage = () => {
             )}
             {!isLoading && hasError && (
               <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-md p-4">
-                {error || educatorIdError || "Failed to load classes"}
+                {error || "Failed to load classes"}
               </div>
             )}
             {!isLoading && isEmpty && <EmptyState onCreate={() => setShowAddClassModal(true)} />}

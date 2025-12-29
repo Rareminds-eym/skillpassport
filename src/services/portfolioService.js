@@ -23,8 +23,6 @@ import { supabase } from '../utils/api';
  */
 export const getStudentPortfolioByEmail = async (email) => {
   try {
-    console.log('🔍 Fetching portfolio data for:', email);
-
     // First, get the student record to get their user_id
     const { data: student, error: studentError } = await supabase
       .from('students')
@@ -74,12 +72,6 @@ export const getStudentPortfolioByEmail = async (email) => {
     }
 
     const userId = student.user_id;
-    console.log('✅ Student found, fetching related data for user_id:', userId);
-    console.log('📊 Portfolio fields from DB:', {
-      hobbies: student.hobbies,
-      languages: student.languages,
-      interests: student.interests
-    });
 
     // Fetch all related data in parallel for performance
     const [
@@ -161,7 +153,6 @@ export const getStudentPortfolioByEmail = async (email) => {
       experienceResult.data || []
     );
 
-    console.log('✅ Portfolio data compiled successfully');
     return { success: true, data: portfolioData };
 
   } catch (error) {
