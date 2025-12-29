@@ -108,6 +108,14 @@ function PaymentSuccess() {
           clearPendingUserData();
           setTimeout(() => setEmailStatus('sent'), 2000);
         } else {
+          // User already has an active subscription - show informative toast
+          const message = transactionDetails.message || '';
+          if (message.includes('already has an active subscription')) {
+            toast.success('You already have an active subscription for this plan. Your existing subscription is still valid!', {
+              duration: 5000,
+              icon: '✅',
+            });
+          }
           clearPendingUserData();
           setEmailStatus('sent');
         }

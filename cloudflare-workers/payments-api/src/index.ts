@@ -39,6 +39,8 @@ export interface Env {
   TEST_RAZORPAY_KEY_SECRET?: string;
   // Legacy VITE_ prefixed names (fallback)
   VITE_RAZORPAY_KEY_ID?: string;
+  // Email (Resend)
+  RESEND_API_KEY?: string;
 }
 
 const corsHeaders = {
@@ -157,6 +159,157 @@ async function verifyWebhookSignature(payload: string, signature: string, secret
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
   return generatedSignature === signature;
+}
+
+// ==================== EMAIL FUNCTIONS ====================
+
+/**
+ * Send payment confirmation email using Resend API
+ */
+async function sendPaymentConfirmationEmail(
+  env: Env,
+  email: string,
+  name: string,
+  paymentDetails: {
+    paymentId: string;
+    orderId: string;
+    amount: number;
+    planName: string;
+    billingCycle: string;
+    subscriptionEndDate: string;
+  }
+): Promise<boolean> {
+  if (!env.RESEND_API_KEY) {
+    console.log('RESEND_API_KEY not configured, skipping payment confirmation email');
+    return false;
+  }
+
+  const { paymentId, orderId, amount, planName, billingCycle, subscriptionEndDate } = paymentDetails;
+  
+  const formatAmount = (a: number) => new Intl.NumberFormat('en-IN', { 
+    style: 'currency', 
+    currency: 'INR', 
+    minimumFractionDigits: 0 
+  }).format(a);
+
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Payment Confirmation</title></head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background-color: #f4f7fa;">
+  <table style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 40px; text-align: center; background: linear-gradient(135deg, #10B981 0%, #059669 100%); border-radius: 12px 12px 0 0;">
+              <div style="width: 60px; height: 60px; background: white; border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 32px;">✓</span>
+              </div>
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px;">Payment Successful!</h1>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px;">
+              <p style="color: #374151; font-size: 16px; margin-bottom: 24px;">Hi <strong>${name}</strong>,</p>
+              <p style="color: #374151; font-size: 16px; margin-bottom: 24px;">Thank you for your payment! Your subscription has been activated successfully.</p>
+              
+              <!-- Payment Details Card -->
+              <div style="background-color: #F3F4F6; border-radius: 8px; padding: 24px; margin: 24px 0;">
+                <h3 style="margin: 0 0 16px; color: #1F2937; font-size: 18px;">💳 Payment Details</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #6B7280;">Amount Paid</td>
+                    <td style="padding: 8px 0; color: #1F2937; font-weight: 600; text-align: right;">${formatAmount(amount)}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6B7280;">Payment ID</td>
+                    <td style="padding: 8px 0; color: #1F2937; font-family: monospace; text-align: right;">${paymentId.slice(-12)}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6B7280;">Order ID</td>
+                    <td style="padding: 8px 0; color: #1F2937; font-family: monospace; text-align: right;">${orderId.slice(-12)}</td>
+                  </tr>
+                </table>
+              </div>
+              
+              <!-- Subscription Details Card -->
+              <div style="background-color: #EFF6FF; border-radius: 8px; padding: 24px; margin: 24px 0; border-left: 4px solid #3B82F6;">
+                <h3 style="margin: 0 0 16px; color: #1F2937; font-size: 18px;">✨ Subscription Details</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #6B7280;">Plan</td>
+                    <td style="padding: 8px 0; color: #3B82F6; font-weight: 600; text-align: right;">${planName}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6B7280;">Billing Cycle</td>
+                    <td style="padding: 8px 0; color: #1F2937; text-align: right;">${billingCycle}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6B7280;">Valid Until</td>
+                    <td style="padding: 8px 0; color: #1F2937; text-align: right;">${formatDate(subscriptionEndDate)}</td>
+                  </tr>
+                </table>
+              </div>
+              
+              <!-- CTA Button -->
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="https://skillpassport.rareminds.in/subscription/manage" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">Manage Subscription →</a>
+              </div>
+              
+              <p style="color: #6B7280; font-size: 14px; margin-top: 24px;">If you have any questions, feel free to contact our support team.</p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 40px; background-color: #F9FAFB; border-radius: 0 0 12px 12px; text-align: center;">
+              <p style="margin: 0; color: #9CA3AF; font-size: 12px;">© ${new Date().getFullYear()} Skill Passport by Rareminds. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Skill Passport <payments@rareminds.in>',
+        to: [email],
+        subject: `Payment Confirmed - ${planName} Subscription Activated!`,
+        html: htmlContent,
+      }),
+    });
+
+    if (response.ok) {
+      console.log(`Payment confirmation email sent to ${email}`);
+      return true;
+    } else {
+      const errorData = await response.text();
+      console.error('Failed to send payment confirmation email:', errorData);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error sending payment confirmation email:', error);
+    return false;
+  }
 }
 
 
@@ -406,6 +559,42 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   // Determine billing cycle from plan or order notes
   const billingCycle = plan?.duration || order.plan_name?.toLowerCase().includes('year') ? 'year' : 'month';
   const planAmount = (plan?.price || paymentAmount / 100); // Convert paise to rupees if needed
+  const planType = plan?.name || order.plan_name || 'Standard Plan';
+
+  // Check if user already has an active subscription of the same plan type
+  // This prevents the database trigger from blocking duplicate subscriptions
+  const { data: existingActiveSubscription } = await supabaseAdmin
+    .from('subscriptions')
+    .select('*')
+    .eq('user_id', order.user_id)
+    .eq('plan_type', planType)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (existingActiveSubscription) {
+    // User already has active subscription of this plan type
+    // Return existing subscription instead of trying to create a new one
+    const { data: existingTransaction } = await supabaseAdmin
+      .from('payment_transactions')
+      .select('payment_method, amount')
+      .eq('subscription_id', existingActiveSubscription.id)
+      .maybeSingle();
+
+    return jsonResponse({
+      success: true,
+      verified: true,
+      message: 'User already has an active subscription of this plan type',
+      payment_id: razorpay_payment_id,
+      order_id: razorpay_order_id,
+      user_id: existingActiveSubscription.user_id,
+      user_name: existingActiveSubscription.full_name,
+      user_email: existingActiveSubscription.email,
+      payment_method: existingTransaction?.payment_method || paymentMethod,
+      amount: paymentAmount,
+      subscription: existingActiveSubscription,
+      already_processed: true,
+    });
+  }
 
   // CREATE SUBSCRIPTION RECORD
   const now = new Date().toISOString();
@@ -414,7 +603,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     full_name: fullName,
     email: userEmail,
     phone: userPhone,
-    plan_type: plan?.name || order.plan_name || 'Standard Plan',
+    plan_type: planType,
     plan_amount: planAmount,
     billing_cycle: billingCycle,
     razorpay_payment_id: razorpay_payment_id,
@@ -472,6 +661,16 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     console.error('Error logging transaction:', txnError);
     // Don't fail, subscription is already created
   }
+
+  // Send payment confirmation email
+  await sendPaymentConfirmationEmail(env, userEmail, fullName, {
+    paymentId: razorpay_payment_id,
+    orderId: razorpay_order_id,
+    amount: planAmount,
+    planName: planType,
+    billingCycle: billingCycle,
+    subscriptionEndDate: subscription.subscription_end_date,
+  });
 
   return jsonResponse({
     success: true,
@@ -1141,6 +1340,7 @@ export default {
             supabase_service_role_key: !!env.SUPABASE_SERVICE_ROLE_KEY,
             razorpay_key_id: !!(env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID),
             razorpay_key_secret: !!env.RAZORPAY_KEY_SECRET,
+            resend_api_key: !!env.RESEND_API_KEY,
           };
           const allConfigured = Object.values(configStatus).every(Boolean);
           return jsonResponse({ 
@@ -1160,7 +1360,7 @@ export default {
               'POST /expire-subscriptions',
               'GET  /health',
             ],
-            message: allConfigured ? 'All required secrets are configured' : 'Some required secrets are missing.',
+            message: allConfigured ? 'All required secrets are configured' : 'Some required secrets are missing. Email confirmation requires RESEND_API_KEY.',
           });
         
         default:
