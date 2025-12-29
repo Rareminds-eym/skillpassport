@@ -74,22 +74,30 @@ Required JSON structure:
 async function generateAssessment(env: Env, courseName: string, level: string, questionCount: number) {
   const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
 
-  // Check cache first
-  const { data: existing } = await supabase
-    .from('generated_external_assessment')
-    .select('*')
-    .eq('certificate_name', courseName)
-    .single();
+  // Check cache first (but don't fail if database is unavailable)
+  try {
+    const { data: existing, error: cacheError } = await supabase
+      .from('generated_external_assessment')
+      .select('*')
+      .eq('certificate_name', courseName)
+      .single();
 
-  if (existing) {
-    console.log('✅ Returning cached questions for:', courseName);
-    return {
-      course: courseName,
-      level: existing.assessment_level,
-      total_questions: existing.total_questions,
-      questions: existing.questions,
-      cached: true
-    };
+    if (!cacheError && existing) {
+      console.log('✅ Returning cached questions for:', courseName);
+      return {
+        course: courseName,
+        level: existing.assessment_level,
+        total_questions: existing.total_questions,
+        questions: existing.questions,
+        cached: true
+      };
+    }
+    
+    if (cacheError && cacheError.code !== 'PGRST116') {
+      console.warn('⚠️ Cache check failed, will generate new:', cacheError.message);
+    }
+  } catch (dbError: any) {
+    console.warn('⚠️ Database unavailable, will generate new questions:', dbError.message);
   }
 
   console.log('📝 Generating new questions for:', courseName);
@@ -183,16 +191,26 @@ async function generateAssessment(env: Env, courseName: string, level: string, q
     });
   }
 
-  // Cache to database
-  await supabase.from('generated_external_assessment').insert({
-    certificate_name: courseName,
-    assessment_level: level,
-    total_questions: questionCount,
-    questions: assessment.questions,
-    generated_by: 'claude-ai'
-  });
+  // Cache to database (don't fail if this doesn't work)
+  try {
+    const { error: insertError } = await supabase.from('generated_external_assessment').insert({
+      certificate_name: courseName,
+      assessment_level: level,
+      total_questions: questionCount,
+      questions: assessment.questions,
+      generated_by: 'claude-ai'
+    });
+    
+    if (insertError) {
+      console.warn('⚠️ Could not cache assessment to database:', insertError.message, insertError.code);
+    } else {
+      console.log('✅ Assessment cached to database');
+    }
+  } catch (cacheError: any) {
+    console.warn('⚠️ Database insert exception:', cacheError.message);
+  }
 
-  console.log('✅ Assessment generated and cached');
+  console.log('✅ Assessment generated successfully');
   return assessment;
 }
 

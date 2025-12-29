@@ -122,7 +122,7 @@ const AssessmentPromotionalBanner = ({ isOpen, onClose, getTimeRemaining }) => {
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                 >
-                  Take Assessment
+                  Register
                   <ArrowRight className="h-3 w-3" />
                 </motion.button>
                 <button

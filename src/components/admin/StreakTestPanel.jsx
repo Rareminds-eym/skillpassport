@@ -6,7 +6,7 @@ const StreakTestPanel = () => {
   const [result, setResult] = useState(null);
   const [testEmail, setTestEmail] = useState('');
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  const API_URL = import.meta.env.VITE_EXTERNAL_API_KEY || 'http://localhost:3000';
 
   const handleAction = async (endpoint, body = null) => {
     setLoading(true);

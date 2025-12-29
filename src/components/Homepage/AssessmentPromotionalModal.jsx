@@ -181,7 +181,7 @@ const AssessmentPromotionalModal = ({ isOpen, onClose, getTimeRemaining }) => {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                Start Assessment
+                Register
                 <ChevronRight className="h-4 w-4" />
               </motion.button>
 
