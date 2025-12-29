@@ -152,21 +152,8 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
   try {
     console.log('🎯 Generating assessment for:', courseName, 'Level:', level);
 
-    // First, try to load from database
-    try {
-      const dbAssessment = await loadGeneratedAssessment(courseName);
-      if (dbAssessment) {
-        console.log('✅ Using assessment from database - no AI call needed!');
-        return dbAssessment;
-      }
-      console.log('ℹ️ No existing assessment in database, will generate new one');
-    } catch (dbError) {
-      console.warn('⚠️ Database check failed, will try to generate:', dbError.message);
-      // Continue to generation even if DB check fails
-    }
-
-    // Call backend API instead of Claude directly (to avoid CORS)
-    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    // Call backend API (Cloudflare Worker) to generate assessment
+    const backendUrl = import.meta.env.VITE_EXTERNAL_API_KEY || 'http://localhost:3001';
     const apiUrl = `${backendUrl}/api/assessment/generate`;
 
     console.log('📡 Calling backend API:', apiUrl);
@@ -211,19 +198,6 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
     }
 
     console.log('✅ Assessment validated successfully');
-    
-    // Save to database for future use (don't fail if this doesn't work)
-    if (courseId) {
-      try {
-        const saveResult = await saveGeneratedAssessment(courseName, courseId, assessment);
-        if (saveResult.success) {
-          console.log('✅ Assessment saved to database for future reuse');
-        }
-      } catch (saveError) {
-        console.warn('⚠️ Could not save to database, but assessment is still usable:', saveError.message);
-        // Don't throw - assessment generation succeeded, saving is optional
-      }
-    }
 
     return assessment;
   } catch (error) {

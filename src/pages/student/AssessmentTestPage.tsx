@@ -224,7 +224,7 @@ const TestPage: React.FC = () => {
             console.log('🎯 Using dynamic question generation for:', certificateName);
             
             // Call backend API to generate questions
-            const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            const backendUrl = import.meta.env.VITE_EXTERNAL_API_KEY || 'http://localhost:3001';
             const response = await fetch(`${backendUrl}/api/assessment/generate`, {
               method: 'POST',
               headers: {
