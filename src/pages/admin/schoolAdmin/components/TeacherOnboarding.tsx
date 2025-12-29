@@ -4,11 +4,19 @@ import { supabase } from "../../../../lib/supabaseClient";
 import { validateDocument } from "../../../../utils/teacherValidation";
 import { useUserRole } from "../../../../hooks/useUserRole";
 import RoleDebugger from "../../../../components/debug/RoleDebugger";
+import storageService from "../../../../services/storageService";
 
 interface SubjectExpertise {
   name: string;
   proficiency: "beginner" | "intermediate" | "advanced" | "expert";
   years_experience: number;
+}
+
+interface DocumentUploadProgress {
+  file: string;
+  progress: number;
+  status: 'uploading' | 'completed' | 'error';
+  error?: string;
 }
 
 const TeacherOnboardingPage: React.FC = () => {
@@ -43,8 +51,8 @@ const TeacherOnboardingPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const [generatedTeacherId, setGeneratedTeacherId] = useState<string | null>(null);
+  const [documentUploadProgress, setDocumentUploadProgress] = useState<DocumentUploadProgress[]>([]);
+  const [isUploadingDocuments, setIsUploadingDocuments] = useState(false);
 
   const handleFileChange = (field: keyof typeof documents, files: FileList | null) => {
     if (!files) return;
@@ -95,19 +103,113 @@ const TeacherOnboardingPage: React.FC = () => {
     setSubjects(subjects.filter((_, i) => i !== index));
   };
 
-  const uploadFile = async (file: File, path: string): Promise<string> => {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `${path}/${fileName}`;
+  // Upload documents after teacher creation
+  const uploadDocumentsAfterTeacherCreation = async (teacherId: string): Promise<{
+    degreeUrl: string | null;
+    idProofUrl: string | null;
+    experienceUrls: string[];
+  }> => {
+    const allFiles: File[] = [];
+    const fileTypes: string[] = [];
 
-    const { error: uploadError } = await supabase.storage
-      .from("teacher-documents")
-      .upload(filePath, file);
+    // Collect all files with their types
+    if (documents.degree_certificate) {
+      allFiles.push(documents.degree_certificate);
+      fileTypes.push('degree');
+    }
+    if (documents.id_proof) {
+      allFiles.push(documents.id_proof);
+      fileTypes.push('id-proof');
+    }
+    documents.experience_letters.forEach(file => {
+      allFiles.push(file);
+      fileTypes.push('experience');
+    });
 
-    if (uploadError) throw uploadError;
+    if (allFiles.length === 0) {
+      return { degreeUrl: null, idProofUrl: null, experienceUrls: [] };
+    }
 
-    const { data } = supabase.storage.from("teacher-documents").getPublicUrl(filePath);
-    return data.publicUrl;
+    setIsUploadingDocuments(true);
+    
+    // Initialize progress tracking
+    const progressTracking: DocumentUploadProgress[] = allFiles.map(file => ({
+      file: file.name,
+      progress: 0,
+      status: 'uploading'
+    }));
+    setDocumentUploadProgress(progressTracking);
+
+    const results = {
+      degreeUrl: null as string | null,
+      idProofUrl: null as string | null,
+      experienceUrls: [] as string[]
+    };
+
+    try {
+      for (let i = 0; i < allFiles.length; i++) {
+        const file = allFiles[i];
+        const fileType = fileTypes[i];
+        
+        // Update progress
+        setDocumentUploadProgress(prev => 
+          prev.map((item, idx) => 
+            idx === i ? { ...item, progress: 10, status: 'uploading' } : item
+          )
+        );
+
+        try {
+          // Upload to storage service with real teacher ID
+          const result = await storageService.uploadTeacherDocument(file, teacherId, fileType);
+          
+          if (result.success && result.url) {
+            // Store URL based on file type
+            if (fileType === 'degree') {
+              results.degreeUrl = result.url;
+            } else if (fileType === 'id-proof') {
+              results.idProofUrl = result.url;
+            } else if (fileType === 'experience') {
+              results.experienceUrls.push(result.url);
+            }
+
+            // Update progress to completed
+            setDocumentUploadProgress(prev => 
+              prev.map((item, idx) => 
+                idx === i ? { ...item, progress: 100, status: 'completed' } : item
+              )
+            );
+          } else {
+            // Update progress to error
+            setDocumentUploadProgress(prev => 
+              prev.map((item, idx) => 
+                idx === i ? { 
+                  ...item, 
+                  progress: 0, 
+                  status: 'error', 
+                  error: result.error || 'Upload failed' 
+                } : item
+              )
+            );
+          }
+        } catch (error) {
+          console.error(`Error uploading ${file.name}:`, error);
+          setDocumentUploadProgress(prev => 
+            prev.map((item, idx) => 
+              idx === i ? { 
+                ...item, 
+                progress: 0, 
+                status: 'error', 
+                error: error instanceof Error ? error.message : 'Upload failed' 
+              } : item
+            )
+          );
+        }
+      }
+    } finally {
+      setIsUploadingDocuments(false);
+    }
+
+    return results;
   };
 
   const handleSubmit = async (e: React.FormEvent, action: "draft" | "submit" | "approve" | "reject") => {
@@ -161,7 +263,7 @@ const TeacherOnboardingPage: React.FC = () => {
       // If not found in school_educators, check schools table
       if (!schoolId) {
         console.log("Not found in school_educators, checking schools table...");
-        const { data: schoolData, error: schoolError } = await supabase
+        const { data: schoolData } = await supabase
           .from("schools")
           .select("id")
           .eq("email", userEmail)
@@ -191,21 +293,6 @@ const TeacherOnboardingPage: React.FC = () => {
       }
 
       console.log("Using school_id:", schoolId);
-
-      // Upload documents (only if provided) - AFTER schoolId is confirmed
-      const degreeUrl = documents.degree_certificate
-        ? await uploadFile(documents.degree_certificate, "degrees")
-        : null;
-
-      const idProofUrl = documents.id_proof
-        ? await uploadFile(documents.id_proof, "id-proofs")
-        : null;
-
-      const experienceUrls = documents.experience_letters.length > 0
-        ? await Promise.all(
-            documents.experience_letters.map((file) => uploadFile(file, "experience-letters"))
-          )
-        : [];
 
       // Determine status based on action
       let status = "pending";
@@ -288,7 +375,7 @@ const TeacherOnboardingPage: React.FC = () => {
 
       console.log("Created user record:", userRecord);
 
-      // Step 3: Create educator record in school_educators table
+      // Step 3: Create educator record in school_educators table (without document URLs initially)
       const { data: teacher, error: teacherError } = await supabase
         .from("school_educators")
         .insert({
@@ -302,9 +389,9 @@ const TeacherOnboardingPage: React.FC = () => {
           address: null, // formData doesn't have address field
           qualification: formData.qualification || null,
           role: formData.role,
-          degree_certificate_url: degreeUrl,
-          id_proof_url: idProofUrl,
-          experience_letters_url: experienceUrls.length > 0 ? experienceUrls : null,
+          degree_certificate_url: null, // Will be updated after upload
+          id_proof_url: null, // Will be updated after upload
+          experience_letters_url: null, // Will be updated after upload
           subject_expertise: subjects,
           onboarding_status: status,
           metadata: {
@@ -323,10 +410,64 @@ const TeacherOnboardingPage: React.FC = () => {
         throw new Error(`Failed to create educator record: ${teacherError.message}`);
       }
 
-      setGeneratedTeacherId(teacher.teacher_id || "N/A");
+      const teacherId = teacher.id || teacher.user_id;
+      console.log("✅ Teacher created with ID:", teacherId);
+
+      // Step 4: Upload documents if any exist
+      let documentUrls: {
+        degreeUrl: string | null;
+        idProofUrl: string | null;
+        experienceUrls: string[];
+      } = { degreeUrl: null, idProofUrl: null, experienceUrls: [] };
+      const hasDocuments = documents.degree_certificate || documents.id_proof || documents.experience_letters.length > 0;
+      
+      if (hasDocuments) {
+        console.log(`📁 Uploading documents for teacher ${teacherId}...`);
+        
+        try {
+          documentUrls = await uploadDocumentsAfterTeacherCreation(teacherId);
+          console.log('✅ Documents uploaded:', documentUrls);
+        } catch (uploadError) {
+          console.warn('⚠️ Document upload failed:', uploadError);
+          // Don't fail the entire operation if document upload fails
+          setMessage({
+            type: "error",
+            text: `Teacher created successfully, but some documents failed to upload: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`
+          });
+        }
+      }
+
+      // Step 5: Update teacher record with document URLs (if any were uploaded)
+      if (documentUrls.degreeUrl || documentUrls.idProofUrl || documentUrls.experienceUrls.length > 0) {
+        try {
+          const { error: updateError } = await supabase
+            .from("school_educators")
+            .update({
+              degree_certificate_url: documentUrls.degreeUrl,
+              id_proof_url: documentUrls.idProofUrl,
+              experience_letters_url: documentUrls.experienceUrls.length > 0 ? documentUrls.experienceUrls : null,
+            })
+            .eq('id', teacherId);
+
+          if (updateError) {
+            console.warn('⚠️ Failed to update teacher record with document URLs:', updateError);
+            // Don't fail the operation, documents are uploaded but not linked
+          } else {
+            console.log('✅ Teacher record updated with document URLs');
+          }
+        } catch (updateError) {
+          console.warn('⚠️ Failed to update teacher record with document URLs:', updateError);
+        }
+      }
+
+      const documentCount = (documentUrls.degreeUrl ? 1 : 0) + (documentUrls.idProofUrl ? 1 : 0) + documentUrls.experienceUrls.length;
+      const successMsg = documentCount > 0 
+        ? `Teacher ${action === "draft" ? "saved as draft" : action === "approve" ? "approved" : action === "reject" ? "rejected" : "onboarded"} successfully with ${documentCount} document${documentCount > 1 ? 's' : ''}! Teacher ID: ${teacher.teacher_id || "N/A"}. Login credentials sent to ${formData.email}. Temporary password: ${tempPassword}`
+        : `Teacher ${action === "draft" ? "saved as draft" : action === "approve" ? "approved" : action === "reject" ? "rejected" : "onboarded"} successfully! Teacher ID: ${teacher.teacher_id || "N/A"}. Login credentials sent to ${formData.email}. Temporary password: ${tempPassword}`;
+
       setMessage({
         type: "success",
-        text: `Teacher ${action === "draft" ? "saved as draft" : action === "approve" ? "approved" : action === "reject" ? "rejected" : "onboarded"} successfully! Teacher ID: ${teacher.teacher_id || "N/A"}. Login credentials sent to ${formData.email}. Temporary password: ${tempPassword}`,
+        text: successMsg,
       });
 
       // Reset form
@@ -398,6 +539,42 @@ const TeacherOnboardingPage: React.FC = () => {
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
 
+      {/* Document Upload Progress (shown during upload after teacher creation) */}
+      {isUploadingDocuments && documentUploadProgress.length > 0 && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm font-medium text-blue-900 mb-2">Uploading Documents...</p>
+          <div className="space-y-2">
+            {documentUploadProgress.map((progress, index) => (
+              <div key={index} className="flex items-center space-x-2">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-gray-700 truncate max-w-xs">{progress.file}</span>
+                    <span className="text-xs text-gray-500">
+                      {progress.status === 'completed' ? '✓' : 
+                       progress.status === 'error' ? '✗' : 
+                       `${progress.progress}%`}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        progress.status === 'completed' ? 'bg-green-500' :
+                        progress.status === 'error' ? 'bg-red-500' :
+                        'bg-blue-500'
+                      }`}
+                      style={{ width: `${progress.progress}%` }}
+                    ></div>
+                  </div>
+                  {progress.error && (
+                    <p className="text-xs text-red-600 mt-1">{progress.error}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {message && (
         <div
           className={`mb-6 p-4 rounded-lg ${
@@ -414,16 +591,6 @@ const TeacherOnboardingPage: React.FC = () => {
             )}
             <div className="flex-1">
               <p className="font-medium">{message.text}</p>
-              {Object.keys(validationErrors).length > 0 && (
-                <ul className="mt-2 space-y-1 text-sm">
-                  {Object.entries(validationErrors).map(([field, error]) => (
-                    <li key={field} className="flex items-start gap-2">
-                      <span className="font-semibold capitalize">{field.replace(/_/g, ' ')}:</span>
-                      <span>{error}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
           </div>
         </div>
@@ -542,7 +709,7 @@ const TeacherOnboardingPage: React.FC = () => {
 
         {/* Document Upload */}
         <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Documents (Optional)</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Documents</h3>
           <div className="space-y-4">
             {/* Degree Certificate */}
             <div>
@@ -625,12 +792,9 @@ const TeacherOnboardingPage: React.FC = () => {
         </div>
 
         {/* Subject Expertise */}
-        <div className={`bg-gray-50 rounded-xl p-6 border ${validationErrors.subjects ? 'border-red-300' : 'border-gray-200'}`}>
+        <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Subject Expertise *</h3>
-            {validationErrors.subjects && (
-              <span className="text-sm text-red-600 font-medium">{validationErrors.subjects}</span>
-            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
