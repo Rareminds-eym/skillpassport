@@ -630,20 +630,27 @@ function CollegeSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, on
                                         Next Step
                                     </button>
                                 ) : (
-                                    <button
-                                        type="submit"
-                                        disabled={loading}
-                                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {loading ? (
-                                            <>
-                                                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                                Creating Account...
-                                            </>
-                                        ) : (
-                                            'Create College Account'
+                                    <div className="flex flex-col items-end">
+                                        <button
+                                            type="submit"
+                                            disabled={loading || !otpVerified}
+                                            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {loading ? (
+                                                <>
+                                                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                    Creating Account...
+                                                </>
+                                            ) : (
+                                                'Create College Account'
+                                            )}
+                                        </button>
+                                        {!otpVerified && (
+                                            <p className="mt-2 text-xs text-amber-600">
+                                                Please verify phone with OTP
+                                            </p>
                                         )}
-                                    </button>
+                                    </div>
                                 )}
                             </div>
                         </form>

@@ -1,7 +1,8 @@
-import { AlertCircle, Building, Calendar, ChevronDown, Eye, EyeOff, Mail, Phone, User, X } from 'lucide-react';
+import { AlertCircle, Building, Calendar, CheckCircle, ChevronDown, Eye, EyeOff, Mail, Phone, User, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { signUpWithRole } from '../../services/authService';
+import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 import { checkUniversityCollegeCode, createUniversityCollege, getUniversities } from '../../services/universityService';
 
 function UniversityAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onSwitchToLogin }) {
@@ -604,7 +605,7 @@ function UniversityAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSuc
                                 ) : (
                                     <button
                                         type="submit"
-                                        disabled={loading}
+                                        disabled={loading || !otpVerified}
                                         className="px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
                                     >
                                         {loading ? (
@@ -618,6 +619,13 @@ function UniversityAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSuc
                                     </button>
                                 )}
                             </div>
+
+                            {/* OTP Verification Warning */}
+                            {!otpVerified && step === 3 && (
+                                <p className="text-sm text-amber-600 text-center mt-2">
+                                    Please verify your phone number with OTP to continue
+                                </p>
+                            )}
                         </form>
 
                         {/* Switch to Login */}

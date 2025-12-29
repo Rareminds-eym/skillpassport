@@ -1,6 +1,7 @@
 import { City, State } from 'country-state-city';
 import { useEffect, useRef, useState } from 'react';
 import { capitalizeFirstLetter } from '../../../../../components/Subscription/shared/signupValidation';
+import { sendOtp, verifyOtp as verifyOtpApi } from '../../../../../services/otpService';
 
 // Languages list
 const LANGUAGES = [
@@ -1527,7 +1528,7 @@ const SchoolAdmin = () => {
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting || !recaptchaVerified || !formData.agreeToTerms}
+                disabled={isSubmitting || !recaptchaVerified || !formData.agreeToTerms || !formData.otpVerified}
                 className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
               >
                 {isSubmitting ? (
@@ -1540,6 +1541,13 @@ const SchoolAdmin = () => {
                 )}
               </button>
             </div>
+            
+            {/* OTP Verification Warning */}
+            {!formData.otpVerified && (
+              <p className="text-sm text-amber-600 text-center mt-2">
+                Please verify your phone number with OTP to continue
+              </p>
+            )}
           </div>
         )}
       </form>

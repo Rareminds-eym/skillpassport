@@ -743,11 +743,16 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={loading || emailExists || checkingEmail}
+                  disabled={loading || emailExists || checkingEmail || !otpVerified}
                   className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Creating Account...' : emailExists ? 'Email Already Registered' : 'Sign Up & Continue'}
                 </button>
+                {!otpVerified && (
+                  <p className="mt-2 text-xs text-amber-600 text-center">
+                    Please verify your phone number with OTP to continue
+                  </p>
+                )}
 
                 {/* Login Link */}
                 <div className="text-center pt-2 pb-2">

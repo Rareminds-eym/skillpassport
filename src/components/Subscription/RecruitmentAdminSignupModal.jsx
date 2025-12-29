@@ -1,6 +1,7 @@
-import { AlertCircle, Briefcase, Building2, Calendar, Eye, EyeOff, Globe, Mail, MapPin, Phone, Shield, User, X } from 'lucide-react';
+import { AlertCircle, Briefcase, Building2, Calendar, CheckCircle, Eye, EyeOff, Globe, Mail, MapPin, Phone, Shield, User, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 
 function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onSwitchToLogin }) {
   const [formData, setFormData] = useState({
@@ -932,7 +933,7 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
                 ) : (
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || !otpVerified}
                     className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? (
@@ -946,6 +947,13 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
                   </button>
                 )}
               </div>
+
+              {/* OTP Verification Warning */}
+              {!otpVerified && step === 5 && (
+                <p className="text-sm text-amber-600 text-center mt-2">
+                  Please verify your phone number with OTP to continue
+                </p>
+              )}
             </form>
 
             <div className="mt-6 text-center border-t pt-4">

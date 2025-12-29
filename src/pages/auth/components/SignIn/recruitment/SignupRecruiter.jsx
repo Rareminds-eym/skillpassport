@@ -263,12 +263,17 @@ export default function SignupRecruiter() {
 
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="w-full mt-6 py-3 text-white font-medium rounded-lg shadow-sm transition disabled:opacity-60"
+                  disabled={loading || !otpVerified}
+                  className="w-full mt-6 py-3 text-white font-medium rounded-lg shadow-sm transition disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{ background: `linear-gradient(90deg, ${primary}, ${secondary})` }}
                 >
                   {loading ? "Creating Account..." : "Join Workspace"}
                 </button>
+                {!otpVerified && (
+                  <p className="mt-2 text-xs text-amber-600 text-center">
+                    Please verify your phone number with OTP to continue
+                  </p>
+                )}
 
                 <div className="text-center mt-4 text-sm">
                   <span className="text-gray-600">Already have an account? </span>

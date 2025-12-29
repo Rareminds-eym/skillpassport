@@ -497,14 +497,21 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
                     Next Step
                   </button>
                 ) : (
-                  <button type="submit" disabled={loading || emailExists} className="px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center gap-2">
-                    {loading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Creating...
-                      </>
-                    ) : 'Create Account'}
-                  </button>
+                  <div className="flex flex-col items-end">
+                    <button type="submit" disabled={loading || emailExists || !otpVerified} className="px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                      {loading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Creating...
+                        </>
+                      ) : 'Create Account'}
+                    </button>
+                    {!otpVerified && (
+                      <p className="mt-2 text-xs text-amber-600">
+                        Please verify your phone number with OTP
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </form>

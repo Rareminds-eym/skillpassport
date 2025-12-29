@@ -405,11 +405,16 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
                 )}
                 <button
                   type="submit"
-                  disabled={loading || emailExists}
-                  className="w-full mt-6 py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  disabled={loading || emailExists || !otpVerified}
+                  className="w-full mt-6 py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Creating Account...' : 'Create Account'}
                 </button>
+                {!otpVerified && (
+                  <p className="mt-2 text-xs text-amber-600 text-center">
+                    Please verify your phone number with OTP to continue
+                  </p>
+                )}
                 <div className="mt-4 text-center text-sm text-gray-600">
                   Already have an account?{' '}
                   <button type="button" onClick={handleLoginRedirect} className="text-blue-600 font-medium">

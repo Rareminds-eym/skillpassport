@@ -1,6 +1,7 @@
-import { Calendar, Eye, EyeOff, Globe, Mail, MapPin, Phone, School, User, X } from 'lucide-react';
+import { Calendar, CheckCircle, Eye, EyeOff, Globe, Mail, MapPin, Phone, School, User, X } from 'lucide-react';
 import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 import userApiService from '../../services/userApiService';
 
 function SchoolSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onSwitchToLogin }) {
@@ -605,7 +606,7 @@ function SchoolSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onS
                                 ) : (
                                     <button
                                         type="submit"
-                                        disabled={loading}
+                                        disabled={loading || !otpVerified}
                                         className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {loading ? (
@@ -619,6 +620,13 @@ function SchoolSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onS
                                     </button>
                                 )}
                             </div>
+
+                            {/* OTP Verification Warning */}
+                            {!otpVerified && step === 3 && (
+                                <p className="text-sm text-amber-600 text-center mt-2">
+                                    Please verify your phone number with OTP to continue
+                                </p>
+                            )}
                         </form>
 
                         <div className="mt-6 text-center">
