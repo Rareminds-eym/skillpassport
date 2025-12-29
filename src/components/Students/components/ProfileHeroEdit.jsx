@@ -12,6 +12,7 @@ import {
   ClockIcon,
   ChevronDownIcon,
   MapPinIcon,
+   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -481,12 +482,6 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     return null;
   }, [realStudentData, fetchedInstitutionLocation]);
 
-  // Debug: Log student_id and school fields from database
-  React.useEffect(() => {
-    if (realStudentData) {
-      // Student data loaded
-    }
-  }, [realStudentData, institutionName]);
 
 
   // Generate QR code value once and keep it constant
@@ -772,8 +767,30 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                     <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg border-2 border-white">
                       <AcademicCapIcon className="w-8 h-8 text-white" />
                     </div>
-                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center shadow-md">
-                      <TrophyIcon className="w-3 h-3 text-white" />
+                    {/* Verification Status Badge */}
+                    <div 
+                      className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-md cursor-help ${
+                        realStudentData?.approval_status === 'approved' 
+                          ? 'bg-green-500' 
+                          : realStudentData?.approval_status === 'pending'
+                          ? 'bg-yellow-500'
+                          : 'bg-red-400'
+                      }`}
+                      title={
+                        realStudentData?.approval_status === 'approved' 
+                          ? 'Verified Student - Profile has been Verified' 
+                          : realStudentData?.approval_status === 'pending'
+                          ? 'Pending Verification - Profile is under review'
+                          : 'Unverified - Profile needs verification'
+                      }
+                    >
+                      {realStudentData?.approval_status === 'approved' ? (
+                        <CheckCircleIcon className="w-4 h-4 text-white" />
+                      ) : realStudentData?.approval_status === 'pending' ? (
+                        <ClockIcon className="w-4 h-4 text-white" />
+                      ) : (
+                        <XMarkIcon className="w-4 h-4 text-white" />
+                      )}
                     </div>
                   </div>
                   <div className="flex-1 pt-1">
