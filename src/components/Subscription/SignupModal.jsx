@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { signUpWithRole } from '../../services/authService';
+import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 import { completeStudentRegistration, getAllColleges, getAllSchools } from '../../services/studentService';
 import { getModalContent, parseStudentType } from '../../utils/getEntityContent';
 import SignupFormFields from './shared/SignupFormFields';
@@ -148,8 +149,13 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
     
     setSendingOtp(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setOtpSent(true);
+      const result = await sendOtp(formData.phone);
+      if (result.success) {
+        setOtpSent(true);
+        setErrors(prev => ({ ...prev, phone: '' }));
+      } else {
+        setErrors(prev => ({ ...prev, phone: result.error || 'Failed to send OTP' }));
+      }
     } catch (error) {
       setErrors(prev => ({ ...prev, phone: 'Failed to send OTP. Please try again.' }));
     } finally {
@@ -162,11 +168,16 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
 
     setVerifyingOtp(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setOtpVerified(true);
-      setFormData(prev => ({ ...prev, otpVerified: true }));
+      const result = await verifyOtpApi(formData.phone, formData.otp);
+      if (result.success) {
+        setOtpVerified(true);
+        setFormData(prev => ({ ...prev, otpVerified: true }));
+        setErrors(prev => ({ ...prev, otp: '' }));
+      } else {
+        setErrors(prev => ({ ...prev, otp: result.error || 'Invalid OTP' }));
+      }
     } catch (error) {
-      setErrors(prev => ({ ...prev, otp: 'Invalid OTP. Please try again.' }));
+      setErrors(prev => ({ ...prev, otp: 'Failed to verify OTP. Please try again.' }));
     } finally {
       setVerifyingOtp(false);
     }

@@ -1,7 +1,7 @@
+import { Calendar, Eye, EyeOff, Globe, GraduationCap, Mail, MapPin, Phone, User, X } from 'lucide-react';
 import { useState } from 'react';
-import { X, Eye, EyeOff, GraduationCap, MapPin, Phone, Mail, Globe, Calendar, User } from 'lucide-react';
-import userApiService from '../../services/userApiService';
 import { supabase } from '../../lib/supabaseClient';
+import userApiService from '../../services/userApiService';
 
 function CollegeSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onSwitchToLogin }) {
     const [formData, setFormData] = useState({
@@ -11,6 +11,7 @@ function CollegeSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, on
         password: '',
         confirmPassword: '',
         phone: '',
+        otp: '',
         website: '',
         address: '',
         city: '',
@@ -30,16 +31,73 @@ function CollegeSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, on
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [step, setStep] = useState(1); // 1: Account, 2: College Details, 3: Contact & Dean
+    const [otpSent, setOtpSent] = useState(false);
+    const [otpVerified, setOtpVerified] = useState(false);
+    const [sendingOtp, setSendingOtp] = useState(false);
+    const [verifyingOtp, setVerifyingOtp] = useState(false);
 
     if (!isOpen) return null;
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        let processedValue = value;
+        
+        // Format phone numbers
+        if (name === 'phone' || name === 'deanPhone') {
+            processedValue = value.replace(/\D/g, '').slice(0, 10);
+        }
+        // Format OTP
+        if (name === 'otp') {
+            processedValue = value.replace(/\D/g, '').slice(0, 6);
+        }
+        
         setFormData(prev => ({
             ...prev,
-            [name]: value
+            [name]: processedValue
         }));
         if (error) setError('');
+    };
+
+    const handleSendOtp = async () => {
+        if (!formData.phone || formData.phone.length !== 10) {
+            setError('Please enter a valid 10-digit phone number');
+            return;
+        }
+        setSendingOtp(true);
+        try {
+            const result = await sendOtp(formData.phone);
+            if (result.success) {
+                setOtpSent(true);
+                setError('');
+            } else {
+                setError(result.error || 'Failed to send OTP');
+            }
+        } catch {
+            setError('Failed to send OTP. Please try again.');
+        } finally {
+            setSendingOtp(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        if (!formData.otp || formData.otp.length !== 6) {
+            setError('Please enter a valid 6-digit OTP');
+            return;
+        }
+        setVerifyingOtp(true);
+        try {
+            const result = await verifyOtpApi(formData.phone, formData.otp);
+            if (result.success) {
+                setOtpVerified(true);
+                setError('');
+            } else {
+                setError(result.error || 'Invalid OTP');
+            }
+        } catch {
+            setError('Failed to verify OTP. Please try again.');
+        } finally {
+            setVerifyingOtp(false);
+        }
     };
 
     const validateStep1 = async () => {
@@ -410,22 +468,70 @@ function CollegeSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, on
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">College Phone</label>
-                                            <div className="relative">
-                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <Phone className="h-5 w-5 text-gray-400" />
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">College Phone *</label>
+                                            <div className="flex gap-2">
+                                                <div className="relative flex-1">
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <Phone className="h-5 w-5 text-gray-400" />
+                                                    </div>
+                                                    <input
+                                                        type="tel"
+                                                        name="phone"
+                                                        className={`pl-10 w-full px-3 py-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500 ${otpVerified ? 'border-green-500 bg-green-50' : 'border-gray-300'}`}
+                                                        placeholder="10-digit phone"
+                                                        value={formData.phone}
+                                                        onChange={handleChange}
+                                                        disabled={otpVerified}
+                                                    />
+                                                    {otpVerified && (
+                                                        <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />
+                                                    )}
                                                 </div>
-                                                <input
-                                                    type="tel"
-                                                    name="phone"
-                                                    className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                                                    placeholder="+91 9876543210"
-                                                    value={formData.phone}
-                                                    onChange={handleChange}
-                                                />
+                                                {!otpVerified && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleSendOtp}
+                                                        disabled={sendingOtp || formData.phone.length !== 10}
+                                                        className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                                                    >
+                                                        {sendingOtp ? 'Sending...' : otpSent ? 'Resend' : 'Send OTP'}
+                                                    </button>
+                                                )}
                                             </div>
+                                            {otpVerified && (
+                                                <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
+                                                    <CheckCircle className="w-3 h-3" /> Phone verified
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
+
+                                    {/* OTP Input */}
+                                    {otpSent && !otpVerified && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Enter OTP *</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    name="otp"
+                                                    value={formData.otp}
+                                                    onChange={handleChange}
+                                                    placeholder="Enter 6-digit OTP"
+                                                    maxLength={6}
+                                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-center tracking-widest font-mono"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={handleVerifyOtp}
+                                                    disabled={verifyingOtp || formData.otp.length !== 6}
+                                                    className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {verifyingOtp ? 'Verifying...' : 'Verify'}
+                                                </button>
+                                            </div>
+                                            <p className="mt-1 text-xs text-gray-500">OTP sent to +91 {formData.phone}. Valid for 5 minutes.</p>
+                                        </div>
+                                    )}
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>

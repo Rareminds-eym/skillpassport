@@ -48,8 +48,13 @@ export default function SignupRecruiter() {
     if (!formData.phone || formData.phone.length !== 10) return;
     setSendingOtp(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setOtpSent(true);
+      const result = await sendOtp(formData.phone);
+      if (result.success) {
+        setOtpSent(true);
+        setErrors(prev => ({ ...prev, phone: '' }));
+      } else {
+        setErrors(prev => ({ ...prev, phone: result.error || 'Failed to send OTP.' }));
+      }
     } catch {
       setErrors(prev => ({ ...prev, phone: 'Failed to send OTP.' }));
     } finally {
@@ -61,9 +66,14 @@ export default function SignupRecruiter() {
     if (!formData.otp || formData.otp.length !== 6) return;
     setVerifyingOtp(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setOtpVerified(true);
-      setFormData(prev => ({ ...prev, otpVerified: true }));
+      const result = await verifyOtpApi(formData.phone, formData.otp);
+      if (result.success) {
+        setOtpVerified(true);
+        setFormData(prev => ({ ...prev, otpVerified: true }));
+        setErrors(prev => ({ ...prev, otp: '' }));
+      } else {
+        setErrors(prev => ({ ...prev, otp: result.error || 'Invalid OTP.' }));
+      }
     } catch {
       setErrors(prev => ({ ...prev, otp: 'Invalid OTP.' }));
     } finally {

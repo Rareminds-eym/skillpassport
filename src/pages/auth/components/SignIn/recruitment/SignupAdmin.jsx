@@ -184,8 +184,13 @@ const SignupAdmin = () => {
     if (!formData.adminPhone || formData.adminPhone.length !== 10) return;
     setSendingOtp(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setOtpSent(true);
+      const result = await sendOtp(formData.adminPhone);
+      if (result.success) {
+        setOtpSent(true);
+        setErrors(prev => ({ ...prev, adminPhone: '' }));
+      } else {
+        setErrors(prev => ({ ...prev, adminPhone: result.error || 'Failed to send OTP.' }));
+      }
     } catch {
       setErrors(prev => ({ ...prev, adminPhone: 'Failed to send OTP.' }));
     } finally {
@@ -197,8 +202,13 @@ const SignupAdmin = () => {
     if (!formData.otp || formData.otp.length !== 6) return;
     setVerifyingOtp(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setFormData(prev => ({ ...prev, otpVerified: true }));
+      const result = await verifyOtpApi(formData.adminPhone, formData.otp);
+      if (result.success) {
+        setFormData(prev => ({ ...prev, otpVerified: true }));
+        setErrors(prev => ({ ...prev, otp: '' }));
+      } else {
+        setErrors(prev => ({ ...prev, otp: result.error || 'Invalid OTP.' }));
+      }
     } catch {
       setErrors(prev => ({ ...prev, otp: 'Invalid OTP.' }));
     } finally {
