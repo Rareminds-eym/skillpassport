@@ -83,9 +83,17 @@ export default function DatePicker({
 
   // Check if date is disabled
   const isDateDisabled = (year, month, day) => {
-    const date = new Date(year, month, day);
-    if (minDate && date < new Date(minDate)) return true;
-    if (maxDate && date > new Date(maxDate)) return true;
+    // Normalize month/year for comparison
+    let normalizedYear = year;
+    let normalizedMonth = month;
+    if (month < 0) { normalizedMonth = 11; normalizedYear--; }
+    if (month > 11) { normalizedMonth = 0; normalizedYear++; }
+    
+    // Create date string for comparison (YYYY-MM-DD format)
+    const dateStr = `${normalizedYear}-${String(normalizedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    
+    if (minDate && dateStr < minDate) return true;
+    if (maxDate && dateStr > maxDate) return true;
     return false;
   };
 
@@ -124,8 +132,8 @@ export default function DatePicker({
 
     if (isDateDisabled(year, month, day)) return;
 
-    const newDate = new Date(year, month, day);
-    const formattedDate = newDate.toISOString().split('T')[0];
+    // Create date string in YYYY-MM-DD format to avoid timezone issues
+    const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     
     onChange({ target: { name, value: formattedDate } });
     setIsOpen(false);
@@ -271,14 +279,22 @@ export default function DatePicker({
               {/* Calendar Grid */}
               <div className="grid grid-cols-7 gap-1">
                 {generateCalendarDays().map((item, index) => {
-                  const year = viewDate.getFullYear();
+                  let year = viewDate.getFullYear();
                   let month = viewDate.getMonth();
-                  if (item.isPrev) month--;
-                  if (item.isNext) month++;
+                  
+                  // Adjust month and year for prev/next month days
+                  if (item.isPrev) {
+                    month--;
+                    if (month < 0) { month = 11; year--; }
+                  }
+                  if (item.isNext) {
+                    month++;
+                    if (month > 11) { month = 0; year++; }
+                  }
 
                   const disabled = isDateDisabled(year, month, item.day);
-                  const selected = item.isCurrentMonth && isDateSelected(year, viewDate.getMonth(), item.day);
-                  const today = item.isCurrentMonth && isToday(year, viewDate.getMonth(), item.day);
+                  const selected = isDateSelected(year, month, item.day);
+                  const today = isToday(year, month, item.day);
 
                   return (
                     <button
@@ -306,8 +322,12 @@ export default function DatePicker({
                   type="button"
                   onClick={() => {
                     const today = new Date();
-                    if (!isDateDisabled(today.getFullYear(), today.getMonth(), today.getDate())) {
-                      onChange({ target: { name, value: today.toISOString().split('T')[0] } });
+                    const year = today.getFullYear();
+                    const month = today.getMonth();
+                    const day = today.getDate();
+                    if (!isDateDisabled(year, month, day)) {
+                      const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                      onChange({ target: { name, value: formattedDate } });
                       setIsOpen(false);
                     }
                   }}
