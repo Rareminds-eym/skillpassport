@@ -39,8 +39,8 @@ export interface Env {
   TEST_RAZORPAY_KEY_SECRET?: string;
   // Legacy VITE_ prefixed names (fallback)
   VITE_RAZORPAY_KEY_ID?: string;
-  // Email (Resend)
-  RESEND_API_KEY?: string;
+  // Note: Email sending now uses Supabase Edge Function (send-email) with SMTP
+  // RESEND_API_KEY is no longer needed
 }
 
 const corsHeaders = {
@@ -164,7 +164,59 @@ async function verifyWebhookSignature(payload: string, signature: string, secret
 // ==================== EMAIL FUNCTIONS ====================
 
 /**
- * Send payment confirmation email using Resend API
+ * Send email via Supabase Edge Function (SMTP)
+ * This replaces the old Resend API implementation
+ */
+async function sendEmailViaSupabase(
+  env: Env,
+  to: string,
+  subject: string,
+  html: string,
+  from?: string,
+  fromName?: string
+): Promise<boolean> {
+  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.log('Supabase configuration missing for email sending');
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
+      },
+      body: JSON.stringify({
+        to,
+        subject,
+        html,
+        from,
+        fromName,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Email sending failed:', response.status, errorText);
+      return false;
+    }
+
+    const result = await response.json();
+    console.log('Email sent successfully:', result);
+    return true;
+  } catch (error) {
+    console.error('Failed to send email via Supabase:', error);
+    return false;
+  }
+}
+
+/**
+ * Send payment confirmation email using Supabase Edge Function (SMTP)
  */
 async function sendPaymentConfirmationEmail(
   env: Env,
@@ -179,11 +231,6 @@ async function sendPaymentConfirmationEmail(
     subscriptionEndDate: string;
   }
 ): Promise<boolean> {
-  if (!env.RESEND_API_KEY) {
-    console.log('RESEND_API_KEY not configured, skipping payment confirmation email');
-    return false;
-  }
-
   const { paymentId, orderId, amount, planName, billingCycle, subscriptionEndDate } = paymentDetails;
   
   const formatAmount = (a: number) => new Intl.NumberFormat('en-IN', { 
@@ -283,33 +330,20 @@ async function sendPaymentConfirmationEmail(
 </body>
 </html>`;
 
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Skill Passport <payments@rareminds.in>',
-        to: [email],
-        subject: `Payment Confirmed - ${planName} Subscription Activated!`,
-        html: htmlContent,
-      }),
-    });
+  const success = await sendEmailViaSupabase(
+    env,
+    email,
+    `Payment Confirmed - ${planName} Subscription Activated!`,
+    htmlContent,
+    'payments@rareminds.in',
+    'Skill Passport'
+  );
 
-    if (response.ok) {
-      console.log(`Payment confirmation email sent to ${email}`);
-      return true;
-    } else {
-      const errorData = await response.text();
-      console.error('Failed to send payment confirmation email:', errorData);
-      return false;
-    }
-  } catch (error) {
-    console.error('Error sending payment confirmation email:', error);
-    return false;
+  if (success) {
+    console.log(`Payment confirmation email sent to ${email}`);
   }
+  
+  return success;
 }
 
 
@@ -1340,7 +1374,6 @@ export default {
             supabase_service_role_key: !!env.SUPABASE_SERVICE_ROLE_KEY,
             razorpay_key_id: !!(env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID),
             razorpay_key_secret: !!env.RAZORPAY_KEY_SECRET,
-            resend_api_key: !!env.RESEND_API_KEY,
           };
           const allConfigured = Object.values(configStatus).every(Boolean);
           return jsonResponse({ 
@@ -1360,7 +1393,8 @@ export default {
               'POST /expire-subscriptions',
               'GET  /health',
             ],
-            message: allConfigured ? 'All required secrets are configured' : 'Some required secrets are missing. Email confirmation requires RESEND_API_KEY.',
+            message: allConfigured ? 'All required secrets are configured' : 'Some required secrets are missing.',
+            email_note: 'Email sending uses Supabase Edge Function (send-email) with SMTP. Configure SMTP secrets in Supabase.',
           });
         
         default:

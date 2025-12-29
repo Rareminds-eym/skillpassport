@@ -1,11 +1,64 @@
 /**
- * Email utilities using Resend API
+ * Email utilities using Supabase Edge Function (SMTP)
+ * Completely removed Resend - now uses Supabase's SMTP configuration
  */
 
 import { Env } from '../types';
 import { roleDisplayNames } from '../constants';
 
 const LOGIN_URL = 'https://skillpassport.rareminds.in/login';
+
+/**
+ * Send email via Supabase Edge Function
+ * This function calls the send-email Edge Function which uses SMTP
+ */
+async function sendEmailViaSupabase(
+  env: Env,
+  to: string | string[],
+  subject: string,
+  html: string,
+  from?: string,
+  fromName?: string
+): Promise<boolean> {
+  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error('Supabase configuration missing for email sending');
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
+      },
+      body: JSON.stringify({
+        to,
+        subject,
+        html,
+        from,
+        fromName,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Email sending failed:', response.status, errorText);
+      return false;
+    }
+
+    const result = await response.json();
+    console.log('Email sent successfully:', result);
+    return true;
+  } catch (error) {
+    console.error('Failed to send email via Supabase:', error);
+    return false;
+  }
+}
 
 /**
  * Send welcome email to new user
@@ -18,33 +71,16 @@ export async function sendWelcomeEmail(
   role: string,
   additionalInfo?: string
 ): Promise<boolean> {
-  if (!env.RESEND_API_KEY) {
-    console.log('RESEND_API_KEY not configured, skipping email');
-    return false;
-  }
-
   const roleDisplay = roleDisplayNames[role] || role;
 
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Skill Passport <dev@rareminds.in>',
-        to: [email],
-        subject: `Welcome to Skill Passport - Your ${roleDisplay} Account is Ready!`,
-        html: generateWelcomeEmailHtml(name, email, password, roleDisplay, additionalInfo),
-      }),
-    });
-
-    return response.ok;
-  } catch (error) {
-    console.error('Failed to send welcome email:', error);
-    return false;
-  }
+  return sendEmailViaSupabase(
+    env,
+    email,
+    `Welcome to Skill Passport - Your ${roleDisplay} Account is Ready!`,
+    generateWelcomeEmailHtml(name, email, password, roleDisplay, additionalInfo),
+    'dev@rareminds.in',
+    'Skill Passport'
+  );
 }
 
 /**
@@ -55,38 +91,23 @@ export async function sendPasswordResetEmail(
   email: string,
   otp: string
 ): Promise<boolean> {
-  if (!env.RESEND_API_KEY) {
-    console.log('RESEND_API_KEY not configured, skipping email');
-    return false;
-  }
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2>Password Reset Request</h2>
+      <p>Your verification code is:</p>
+      <h1 style="color: #2563eb; letter-spacing: 5px;">${otp}</h1>
+      <p>This code will expire in 10 minutes.</p>
+    </div>
+  `;
 
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: 'Skill Passport <noreply@rareminds.in>',
-        to: [email],
-        subject: 'Your Password Reset Code',
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Password Reset Request</h2>
-            <p>Your verification code is:</p>
-            <h1 style="color: #2563eb; letter-spacing: 5px;">${otp}</h1>
-            <p>This code will expire in 10 minutes.</p>
-          </div>
-        `,
-      }),
-    });
-
-    return response.ok;
-  } catch (error) {
-    console.error('Failed to send password reset email:', error);
-    return false;
-  }
+  return sendEmailViaSupabase(
+    env,
+    email,
+    'Your Password Reset Code',
+    html,
+    'noreply@rareminds.in',
+    'Skill Passport'
+  );
 }
 
 /**
@@ -106,10 +127,6 @@ export async function sendInterviewReminderEmail(
     interviewer?: string;
   }
 ): Promise<{ success: boolean; emailId?: string; error?: string }> {
-  if (!env.RESEND_API_KEY) {
-    return { success: false, error: 'Email service not configured' };
-  }
-
   const { date, time, duration, meetingLink, meetingType, jobTitle, interviewer } = interviewDetails;
 
   const formatDate = (dateString: string) => {
@@ -148,27 +165,20 @@ export async function sendInterviewReminderEmail(
 </html>`;
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'RareMinds <noreply@rareminds.in>',
-        to: [recipientEmail],
-        subject: `Interview Reminder - ${jobTitle || 'Position'} Interview`,
-        html: htmlContent,
-      }),
-    });
+    const success = await sendEmailViaSupabase(
+      env,
+      recipientEmail,
+      `Interview Reminder - ${jobTitle || 'Position'} Interview`,
+      htmlContent,
+      'noreply@rareminds.in',
+      'RareMinds'
+    );
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      return { success: false, error: `Failed to send email: ${errorData}` };
+    if (success) {
+      return { success: true };
+    } else {
+      return { success: false, error: 'Failed to send email' };
     }
-
-    const emailResult = (await response.json()) as { id?: string };
-    return { success: true, emailId: emailResult.id };
   } catch (error) {
     return { success: false, error: (error as Error).message };
   }
