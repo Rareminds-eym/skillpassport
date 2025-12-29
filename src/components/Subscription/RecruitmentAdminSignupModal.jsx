@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Eye, EyeOff, Building2, MapPin, Phone, Mail, Globe, Calendar, User, Shield, Briefcase, AlertCircle } from 'lucide-react';
+import { AlertCircle, Briefcase, Building2, Calendar, Eye, EyeOff, Globe, Mail, MapPin, Phone, Shield, User, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
 function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onSwitchToLogin }) {
@@ -259,6 +259,9 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
 
       const userId = authData.user.id;
       const nameParts = formData.adminFullName.trim().split(' ');
+      const firstName = capitalizeFirstLetter(nameParts[0] || '');
+      const lastName = capitalizeFirstLetter(nameParts.slice(1).join(' ') || '');
+      const fullName = `${firstName} ${lastName}`.trim();
 
       // 2. Create User Record
       const { error: userError } = await supabase
@@ -266,14 +269,14 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
         .insert({
           id: userId,
           email: formData.adminEmail,
-          firstName: nameParts[0] || '',
-          lastName: nameParts.slice(1).join(' ') || null,
+          firstName: firstName,
+          lastName: lastName,
           role: 'company_admin',
           isActive: true,
           metadata: {
             phone: formData.adminPhone,
             isAdmin: true,
-            fullName: formData.adminFullName
+            fullName: fullName
           }
         });
 

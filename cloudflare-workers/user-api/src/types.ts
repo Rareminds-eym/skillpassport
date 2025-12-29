@@ -62,6 +62,8 @@ export interface StudentSignupRequest {
   email: string;
   password: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
   schoolId: string;
   grade?: string;
@@ -121,6 +123,8 @@ export interface CollegeStudentSignupRequest {
   email: string;
   password: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
   collegeId: string;
   course?: string;
@@ -177,6 +181,8 @@ export interface UniversityStudentSignupRequest {
   email: string;
   password: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
   universityId: string;
   course?: string;
@@ -220,6 +226,8 @@ export interface RecruiterSignupRequest {
   email: string;
   password: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
   companyId: string;
   designation?: string;

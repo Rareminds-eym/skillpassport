@@ -1,27 +1,21 @@
-import { useState, useEffect } from 'react';
-import { X, Eye, EyeOff, Mail, Lock, User, Phone, Building, GraduationCap, ChevronDown, AlertCircle, BookOpen, Calendar } from 'lucide-react';
-import { signUpWithRole } from '../../services/authService';
+import { AlertCircle, BookOpen, Building, Calendar, ChevronDown, GraduationCap, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { signUpWithRole } from '../../services/authService';
 import { getActiveUniversities, getCollegesByUniversity } from '../../services/universityService';
+import SignupFormFields from './shared/SignupFormFields';
+import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from './shared/signupValidation';
 
 export default function UniversityStudentSignupModal({ isOpen, onClose, selectedPlan, studentType, onSignupSuccess, onSwitchToLogin }) {
   const [formData, setFormData] = useState({
-    // Step 1: University & College Selection
+    ...getInitialFormData(),
     universityId: '',
     universityCollegeId: '',
-    // Step 2: Personal Details
-    fullName: '',
-    email: '',
-    phone: '',
     dateOfBirth: '',
     gender: '',
-    // Step 3: Academic Details
     enrollmentNumber: '',
     courseName: '',
-    expectedGraduationDate: '',
-    // Step 4: Account Setup
-    password: '',
-    confirmPassword: ''
+    expectedGraduationDate: ''
   });
 
   const [step, setStep] = useState(1);
@@ -35,9 +29,14 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
   const [loadingColleges, setLoadingColleges] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
 
-  const totalSteps = 4;
-  const stepTitles = ['Institution', 'Personal', 'Academic', 'Account'];
+  const totalSteps = 3;
+  const stepTitles = ['Institution', 'Personal & Location', 'Academic & Account'];
+
 
   // Reset form when modal opens
   useEffect(() => {
@@ -45,15 +44,20 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
       setStep(1);
       setErrors({});
       setFormData({
-        universityId: '', universityCollegeId: '',
-        fullName: '', email: '', phone: '', dateOfBirth: '', gender: '',
-        enrollmentNumber: '', courseName: '', expectedGraduationDate: '',
-        password: '', confirmPassword: ''
+        ...getInitialFormData(),
+        universityId: '',
+        universityCollegeId: '',
+        dateOfBirth: '',
+        gender: '',
+        enrollmentNumber: '',
+        courseName: '',
+        expectedGraduationDate: ''
       });
+      setOtpSent(false);
+      setOtpVerified(false);
       loadUniversities();
     }
   }, [isOpen]);
-
 
   // Load colleges when university changes
   useEffect(() => {
@@ -75,11 +79,7 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
       }
       setCheckingEmail(true);
       try {
-        const { data } = await supabase
-          .from('students')
-          .select('email')
-          .eq('email', email)
-          .maybeSingle();
+        const { data } = await supabase.from('students').select('email').eq('email', email).maybeSingle();
         setEmailExists(!!data);
       } catch {
         setEmailExists(false);
@@ -94,34 +94,51 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
   const loadUniversities = async () => {
     setLoadingUniversities(true);
     const result = await getActiveUniversities();
-    if (result.success) {
-      setUniversities(result.data);
-    }
+    if (result.success) setUniversities(result.data);
     setLoadingUniversities(false);
   };
 
   const loadColleges = async (universityId) => {
     setLoadingColleges(true);
     const result = await getCollegesByUniversity(universityId);
-    if (result.success) {
-      setColleges(result.data);
-    }
+    if (result.success) setColleges(result.data);
     setLoadingColleges(false);
   };
 
-
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    let processedValue = value;
-    if (name === 'phone') {
-      processedValue = value.replace(/\D/g, '').slice(0, 10);
-    }
-    if (name === 'enrollmentNumber') {
-      processedValue = value.toUpperCase().slice(0, 30);
-    }
+    const { name, value, type, checked } = e.target;
+    let processedValue = type === 'checkbox' ? checked : value;
+    if (name === 'phone') processedValue = formatPhoneNumber(value);
+    if (name === 'otp') processedValue = formatOtp(value);
+    if (name === 'enrollmentNumber') processedValue = value.toUpperCase().slice(0, 30);
     setFormData(prev => ({ ...prev, [name]: processedValue }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const handleSendOtp = async () => {
+    if (!formData.phone || formData.phone.length !== 10) return;
+    setSendingOtp(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setOtpSent(true);
+    } catch {
+      setErrors(prev => ({ ...prev, phone: 'Failed to send OTP.' }));
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!formData.otp || formData.otp.length !== 6) return;
+    setVerifyingOtp(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setOtpVerified(true);
+      setFormData(prev => ({ ...prev, otpVerified: true }));
+    } catch {
+      setErrors(prev => ({ ...prev, otp: 'Invalid OTP.' }));
+    } finally {
+      setVerifyingOtp(false);
     }
   };
 
@@ -134,32 +151,21 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
   };
 
   const validateStep2 = () => {
-    const newErrors = {};
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
-    } else if (formData.fullName.trim().length < 3) {
-      newErrors.fullName = 'Name must be at least 3 characters';
-    }
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
-    } else if (emailExists) {
-      newErrors.email = 'This email is already registered';
-    }
-    if (formData.phone && !/^[0-9]{10}$/.test(formData.phone)) {
-      newErrors.phone = 'Please enter a valid 10-digit phone';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const validationErrors = validateSignupFields(formData, {
+      requirePhone: true,
+      requireOtp: false,
+      requireLocation: true,
+      emailExists
+    });
+    // Remove password validation for step 2
+    delete validationErrors.password;
+    delete validationErrors.confirmPassword;
+    delete validationErrors.agreeToTerms;
+    setErrors(validationErrors);
+    return Object.keys(validationErrors).length === 0;
   };
 
   const validateStep3 = () => {
-    // Academic details are optional, so always return true
-    return true;
-  };
-
-  const validateStep4 = () => {
     const newErrors = {};
     if (!formData.password) {
       newErrors.password = 'Password is required';
@@ -173,16 +179,17 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
+    if (!formData.agreeToTerms) {
+      newErrors.agreeToTerms = 'You must agree to the Terms and Privacy Policy';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
 
   const handleNext = () => {
     setErrors({});
     if (step === 1 && validateStep1()) setStep(2);
     else if (step === 2 && validateStep2()) setStep(3);
-    else if (step === 3 && validateStep3()) setStep(4);
   };
 
   const handleBack = () => {
@@ -190,60 +197,64 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
     setStep(prev => Math.max(prev - 1, 1));
   };
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateStep4()) return;
+    if (!validateStep3()) return;
 
     setLoading(true);
     setErrors({});
 
     try {
-      // Step 1: Create auth user
+      const firstName = capitalizeFirstLetter(formData.firstName);
+      const lastName = capitalizeFirstLetter(formData.lastName);
+      const fullName = `${firstName} ${lastName}`.trim();
+      
       const authResult = await signUpWithRole(formData.email, formData.password, {
         role: 'student',
-        name: formData.fullName,
+        name: fullName,
         phone: formData.phone,
         studentType: 'university'
       });
 
       if (!authResult.success) {
-        const errorMessage = authResult.message || 
-          (typeof authResult.error === 'string' && !authResult.error.includes('_') ? authResult.error : null) || 
-          'Registration failed';
-        setErrors({ submit: errorMessage });
+        setErrors({ submit: authResult.message || 'Registration failed' });
         setLoading(false);
         return;
       }
 
       const userId = authResult.user.id;
-      const nameParts = formData.fullName.trim().split(' ');
 
-      // Step 2: Create user record
       const { error: userError } = await supabase.from('users').insert({
         id: userId,
         email: formData.email,
-        firstName: nameParts[0] || '',
-        lastName: nameParts.slice(1).join(' ') || null,
+        firstName: firstName,
+        lastName: lastName,
         role: 'college_student',
         isActive: true
       });
 
       if (userError) console.error('Error creating user record:', userError);
 
-      // Step 3: Create student record
+      // Note: first_name/last_name stored in users table only
       const { error: studentError } = await supabase.from('students').insert({
         user_id: userId,
         email: formData.email,
-        name: formData.fullName,
+        name: fullName,
         contact_number: formData.phone || null,
-        "universityId": formData.universityId,
+        universityId: formData.universityId,
         university_college_id: formData.universityCollegeId,
         student_type: 'university',
-        "enrollmentNumber": formData.enrollmentNumber || null,
+        enrollmentNumber: formData.enrollmentNumber || null,
         course_name: formData.courseName || null,
-        "expectedGraduationDate": formData.expectedGraduationDate || null,
-        "dateOfBirth": formData.dateOfBirth || null,
+        expectedGraduationDate: formData.expectedGraduationDate || null,
+        dateOfBirth: formData.dateOfBirth || null,
         gender: formData.gender || null,
+        country: formData.country,
+        state: formData.state,
+        city: formData.city,
+        preferred_language: formData.preferredLanguage,
+        referral_code: formData.referralCode || null,
         approval_status: 'pending'
       });
 
@@ -254,11 +265,16 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
 
       const userData = {
         id: userId,
-        name: formData.fullName,
+        name: fullName,
+        firstName: firstName,
+        lastName: lastName,
         email: formData.email,
         phone: formData.phone,
         role: 'student',
         studentType: 'university',
+        country: formData.country,
+        state: formData.state,
+        city: formData.city,
         isNewUser: true
       };
 
@@ -274,9 +290,6 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
 
   if (!isOpen) return null;
 
-  const selectedUniversity = universities.find(u => u.id === formData.universityId);
-
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -287,7 +300,6 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
 
         <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full max-h-[90vh] overflow-y-auto">
           <div className="bg-white px-6 pt-6 pb-4">
-            {/* Header */}
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                 <GraduationCap className="h-6 w-6 text-purple-600" />
@@ -298,7 +310,6 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
               </button>
             </div>
 
-            {/* Selected Plan */}
             {selectedPlan && (
               <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-100">
                 <p className="text-sm font-medium text-purple-900">
@@ -311,7 +322,7 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
             <div className="mb-6">
               <div className="flex items-center justify-between relative">
                 <div className="absolute left-0 top-4 w-full h-0.5 bg-gray-200 -z-10"></div>
-                {[1, 2, 3, 4].map((s) => (
+                {[1, 2, 3].map((s) => (
                   <div key={s} className="flex flex-col items-center bg-white px-1">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
                       step >= s ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-500'
@@ -326,14 +337,12 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
               </div>
             </div>
 
-            {/* Error Display */}
-            {(errors.submit || Object.keys(errors).length > 0) && (
+            {errors.submit && (
               <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm border border-red-200 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>{errors.submit || 'Please fix the errors below'}</span>
+                <span>{errors.submit}</span>
               </div>
             )}
-
 
             <form onSubmit={handleSubmit}>
               {/* Step 1: Institution Selection */}
@@ -353,7 +362,7 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
                         value={formData.universityId}
                         onChange={handleChange}
                         disabled={loadingUniversities}
-                        className={`pl-10 w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent appearance-none bg-white ${
+                        className={`pl-10 w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 appearance-none bg-white ${
                           errors.universityId ? 'border-red-500' : 'border-gray-300'
                         }`}
                       >
@@ -376,7 +385,7 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
                         value={formData.universityCollegeId}
                         onChange={handleChange}
                         disabled={!formData.universityId || loadingColleges}
-                        className={`pl-10 w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent appearance-none bg-white disabled:bg-gray-50 ${
+                        className={`pl-10 w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 appearance-none bg-white disabled:bg-gray-50 ${
                           errors.universityCollegeId ? 'border-red-500' : 'border-gray-300'
                         }`}
                       >
@@ -390,123 +399,42 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
                       <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                     </div>
                     {errors.universityCollegeId && <p className="mt-1 text-xs text-red-600">{errors.universityCollegeId}</p>}
-                    {selectedUniversity && colleges.length === 0 && !loadingColleges && (
-                      <p className="mt-1 text-xs text-amber-600">No colleges found for this university</p>
-                    )}
                   </div>
                 </div>
               )}
 
 
-              {/* Step 2: Personal Details */}
+              {/* Step 2: Personal & Location Details */}
               {step === 2 && (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-2 text-purple-600">
-                    <User className="w-5 h-5" />
-                    <span className="font-semibold">Personal Information</span>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <input
-                        type="text"
-                        name="fullName"
-                        value={formData.fullName}
-                        onChange={handleChange}
-                        placeholder="Enter your full name"
-                        className={`pl-10 w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                          errors.fullName ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                      />
-                    </div>
-                    {errors.fullName && <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        placeholder="your.email@example.com"
-                        className={`pl-10 w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                          errors.email ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                      />
-                    </div>
-                    {checkingEmail && <p className="mt-1 text-xs text-purple-600">Checking email...</p>}
-                    {emailExists && !checkingEmail && (
-                      <p className="mt-1 text-xs text-amber-600">
-                        Email already registered. <button type="button" onClick={onSwitchToLogin} className="underline font-medium">Login instead</button>
-                      </p>
-                    )}
-                    {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <input
-                          type="tel"
-                          name="phone"
-                          value={formData.phone}
-                          onChange={handleChange}
-                          placeholder="10-digit number"
-                          className={`pl-10 w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                            errors.phone ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                        />
-                      </div>
-                      {errors.phone && <p className="mt-1 text-xs text-red-600">{errors.phone}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                      <select
-                        name="gender"
-                        value={formData.gender}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      >
-                        <option value="">Select gender</option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <input
-                        type="date"
-                        name="dateOfBirth"
-                        value={formData.dateOfBirth}
-                        onChange={handleChange}
-                        className="pl-10 w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
+                  <SignupFormFields
+                    formData={formData}
+                    errors={errors}
+                    onChange={handleChange}
+                    showPassword={showPassword}
+                    showConfirmPassword={showConfirmPassword}
+                    onTogglePassword={() => setShowPassword(!showPassword)}
+                    onToggleConfirmPassword={() => setShowConfirmPassword(!showConfirmPassword)}
+                    checkingEmail={checkingEmail}
+                    emailExists={emailExists}
+                    onLoginRedirect={onSwitchToLogin}
+                    otpSent={otpSent}
+                    otpVerified={otpVerified}
+                    onSendOtp={handleSendOtp}
+                    onVerifyOtp={handleVerifyOtp}
+                    sendingOtp={sendingOtp}
+                    verifyingOtp={verifyingOtp}
+                  />
                 </div>
               )}
 
-
-              {/* Step 3: Academic Details */}
+              {/* Step 3: Academic & Account */}
               {step === 3 && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-2 text-purple-600">
                     <BookOpen className="w-5 h-5" />
-                    <span className="font-semibold">Academic Information</span>
+                    <span className="font-semibold">Academic & Account Setup</span>
                   </div>
-                  <p className="text-sm text-gray-500 mb-4">These fields are optional but help personalize your experience</p>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Enrollment/Roll Number</label>
@@ -516,7 +444,7 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
                       value={formData.enrollmentNumber}
                       onChange={handleChange}
                       placeholder="e.g., 2024UG001"
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent uppercase"
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg uppercase"
                     />
                   </div>
 
@@ -528,12 +456,12 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
                       value={formData.courseName}
                       onChange={handleChange}
                       placeholder="e.g., B.Tech Computer Science"
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Expected Graduation Date</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Expected Graduation</label>
                     <div className="relative">
                       <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <input
@@ -541,126 +469,42 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
                         name="expectedGraduationDate"
                         value={formData.expectedGraduationDate}
                         onChange={handleChange}
-                        className="pl-10 w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="pl-10 w-full px-3 py-2.5 border border-gray-300 rounded-lg"
                       />
                     </div>
                   </div>
                 </div>
               )}
-
-              {/* Step 4: Account Setup */}
-              {step === 4 && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-2 text-purple-600">
-                    <Lock className="w-5 h-5" />
-                    <span className="font-semibold">Create Your Account</span>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        name="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        placeholder="Min. 8 characters"
-                        className={`pl-10 pr-12 w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                          errors.password ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                    {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
-                    <p className="mt-1 text-xs text-gray-500">Must contain uppercase, lowercase, and number</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password *</label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        placeholder="Re-enter password"
-                        className={`pl-10 pr-12 w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                          errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                    {errors.confirmPassword && <p className="mt-1 text-xs text-red-600">{errors.confirmPassword}</p>}
-                  </div>
-                </div>
-              )}
-
 
               {/* Navigation Buttons */}
               <div className="mt-8 flex justify-between">
                 {step > 1 ? (
-                  <button
-                    type="button"
-                    onClick={handleBack}
-                    className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors"
-                  >
+                  <button type="button" onClick={handleBack} className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium">
                     Back
                   </button>
-                ) : (
-                  <div></div>
-                )}
+                ) : <div></div>}
 
                 {step < totalSteps ? (
-                  <button
-                    type="button"
-                    onClick={handleNext}
-                    disabled={loading}
-                    className="px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition-colors disabled:opacity-50"
-                  >
+                  <button type="button" onClick={handleNext} disabled={loading} className="px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50">
                     Next Step
                   </button>
                 ) : (
-                  <button
-                    type="submit"
-                    disabled={loading || emailExists}
-                    className="px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
-                  >
+                  <button type="submit" disabled={loading || emailExists} className="px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center gap-2">
                     {loading ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         Creating...
                       </>
-                    ) : (
-                      'Create Account'
-                    )}
+                    ) : 'Create Account'}
                   </button>
                 )}
               </div>
             </form>
 
-            {/* Switch to Login */}
             <div className="mt-6 text-center border-t pt-4">
               <p className="text-sm text-gray-600">
                 Already have an account?{' '}
-                <button
-                  type="button"
-                  onClick={onSwitchToLogin}
-                  className="text-purple-600 hover:text-purple-700 font-medium"
-                >
+                <button type="button" onClick={onSwitchToLogin} className="text-purple-600 hover:text-purple-700 font-medium">
                   Login here
                 </button>
               </p>

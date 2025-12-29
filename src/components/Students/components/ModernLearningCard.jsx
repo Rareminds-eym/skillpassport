@@ -12,6 +12,7 @@ import {
     MoreVertical,
     Play,
     Target,
+    Trash2,
     TrendingUp,
     Users,
     Zap
@@ -20,9 +21,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
+import { supabase } from "../../../lib/supabaseClient";
 import { downloadCertificate, getCertificateProxyUrl } from "../../../services/certificateService";
 import { checkAssessmentStatus } from "../../../services/externalAssessmentService";
-import { supabase } from "../../../lib/supabaseClient";
 
 /**
  * Modern Learning Card Component - Completely Redesigned
@@ -32,6 +33,7 @@ import { supabase } from "../../../lib/supabaseClient";
 const ModernLearningCard = ({
   item,
   onEdit,
+  onDelete,
   viewMode = 'grid'
 }) => {
   const navigate = useNavigate();
@@ -788,6 +790,22 @@ const ModernLearningCard = ({
                           {isDownloading ? 'Downloading...' : 'Download Certificate'}
                         </button>
                       )}
+                      {isExternalCourse && onDelete && (
+                        <>
+                          <div className="border-t border-slate-100 my-1" />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowDropdown(false);
+                              onDelete(item);
+                            }}
+                            className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete Certificate
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -844,13 +862,24 @@ const ModernLearningCard = ({
 
             {/* Edit button for external courses */}
             {isExternalCourse && !isCourseEnrollment && (
-              <button
-                onClick={() => onEdit?.(item)}
-                className="p-1.5 sm:p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg sm:rounded-xl transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-105"
-                title="Edit Course"
-              >
-                <Edit className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => onEdit?.(item)}
+                  className="p-1.5 sm:p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg sm:rounded-xl transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-105"
+                  title="Edit Course"
+                >
+                  <Edit className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                </button>
+                {onDelete && (
+                  <button
+                    onClick={() => onDelete(item)}
+                    className="p-1.5 sm:p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg sm:rounded-xl transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-105"
+                    title="Delete Certificate"
+                  >
+                    <Trash2 className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                  </button>
+                )}
+              </div>
             )}
 
             {/* 3-dots menu for courses with certificates */}
@@ -895,6 +924,22 @@ const ModernLearningCard = ({
                         <Download className={`w-4 h-4 ${isDownloading ? 'animate-bounce' : ''}`} />
                         {isDownloading ? 'Downloading...' : 'Download Certificate'}
                       </button>
+                    )}
+                    {isExternalCourse && onDelete && (
+                      <>
+                        <div className="border-t border-slate-100 my-1" />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowDropdown(false);
+                            onDelete(item);
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete Certificate
+                        </button>
+                      </>
                     )}
                   </div>
                 )}

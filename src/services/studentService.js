@@ -72,7 +72,12 @@ export const createStudent = async (studentData, userId) => {
       phone,
       studentType, // 'school', 'college', or 'university'
       schoolId,
-      collegeId
+      collegeId,
+      country,
+      state,
+      city,
+      preferredLanguage,
+      referralCode
     } = studentData;
 
     // Normalize studentType - handle both simple types and hyphenated types
@@ -81,6 +86,7 @@ export const createStudent = async (studentData, userId) => {
     
     // Prepare student record
     // IMPORTANT: id must match userId due to FK constraint students_id_fkey -> users.id
+    // Note: first_name and last_name are stored in public.users table only
     const student = {
       id: userId, // Required: students.id must reference users.id
       user_id: userId,
@@ -90,6 +96,11 @@ export const createStudent = async (studentData, userId) => {
       student_type: normalizedStudentType,
       school_id: schoolId || null,
       college_id: collegeId || null,
+      country: country || null,
+      state: state || null,
+      city: city || null,
+      preferred_language: preferredLanguage || 'en',
+      referral_code: referralCode || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -135,17 +146,24 @@ export const completeStudentRegistration = async (userId, registrationData) => {
   try {
     const {
       fullName,
+      firstName,
+      lastName,
       email,
       phone,
       studentType,
       schoolId,
-      collegeId
+      collegeId,
+      country,
+      state,
+      city,
+      preferredLanguage,
+      referralCode
     } = registrationData;
 
-    // Split name into first and last
-    const nameParts = fullName.trim().split(' ');
-    const firstName = nameParts[0];
-    const lastName = nameParts.slice(1).join(' ') || '';
+    // Use provided firstName/lastName or split from fullName as fallback, and capitalize
+    const finalFirstName = capitalizeFirstLetter(firstName || (fullName ? fullName.trim().split(' ')[0] : ''));
+    const finalLastName = capitalizeFirstLetter(lastName || (fullName ? fullName.trim().split(' ').slice(1).join(' ') : ''));
+    const finalFullName = fullName || `${finalFirstName} ${finalLastName}`.trim();
 
     // Step 1: Create user record
     // Map studentType to user_role - handle both simple types and hyphenated types
@@ -158,8 +176,8 @@ export const completeStudentRegistration = async (userId, registrationData) => {
     };
     const userResult = await createUserRecord(userId, {
       email: email,
-      firstName: firstName,
-      lastName: lastName,
+      firstName: finalFirstName,
+      lastName: finalLastName,
       user_role: userRoleMap[normalizedType] || 'school_student'  // user_role is passed to createUserRecord which maps to 'role' column
     });
 
@@ -167,14 +185,19 @@ export const completeStudentRegistration = async (userId, registrationData) => {
       throw new Error(userResult.error || 'Failed to create user record');
     }
 
-    // Step 2: Create student record
+    // Step 2: Create student record (first_name/last_name stored in users table only)
     const studentResult = await createStudent({
-      name: fullName,
+      name: finalFullName,
       email: email,
       phone: phone,
       studentType: studentType,
       schoolId: schoolId,
-      collegeId: collegeId
+      collegeId: collegeId,
+      country: country,
+      state: state,
+      city: city,
+      preferredLanguage: preferredLanguage,
+      referralCode: referralCode
     }, userId);
 
     if (!studentResult.success) {
