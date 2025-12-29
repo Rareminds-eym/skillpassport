@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { getModalContent } from '../../utils/getEntityContent';
+import DatePicker from './shared/DatePicker';
 import { capitalizeFirstLetter } from './shared/signupValidation';
 
 // Cache for email checks
@@ -475,30 +476,16 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
                 </div>
 
                 {/* Date of Birth */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date of Birth *
-                  </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="date"
-                      name="dateOfBirth"
-                      value={formData.dateOfBirth}
-                      onChange={handleInputChange}
-                      max={new Date().toISOString().split('T')[0]}
-                      className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                        errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    />
-                  </div>
-                  {errors.dateOfBirth && (
-                    <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {errors.dateOfBirth}
-                    </p>
-                  )}
-                </div>
+                <DatePicker
+                  name="dateOfBirth"
+                  label="Date of Birth"
+                  required
+                  value={formData.dateOfBirth}
+                  onChange={handleInputChange}
+                  error={errors.dateOfBirth}
+                  placeholder="Select your date of birth"
+                  maxDate={new Date().toISOString().split('T')[0]}
+                />
 
                 {/* Company Selection */}
                 <div>

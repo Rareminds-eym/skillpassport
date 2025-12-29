@@ -1,7 +1,6 @@
 import { City, Country, State } from 'country-state-city';
 import {
     AlertCircle,
-    Calendar,
     CheckCircle,
     Eye, EyeOff,
     Gift,
@@ -13,6 +12,7 @@ import {
     User
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import DatePicker from './DatePicker';
 
 // Get all countries from the library
 const ALL_COUNTRIES = Country.getAllCountries();
@@ -197,50 +197,16 @@ export default function SignupFormFields({
       </div>
 
       {/* Date of Birth */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Date of Birth <span className="text-red-500">*</span>
-        </label>
-        <div className="relative group">
-          <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-          <input
-            type="date"
-            name="dateOfBirth"
-            value={formData.dateOfBirth || ''}
-            onChange={onChange}
-            max={new Date().toISOString().split('T')[0]}
-            className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none bg-white cursor-pointer hover:border-blue-400 ${
-              errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'
-            } [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:p-1 [&::-webkit-calendar-picker-indicator]:rounded [&::-webkit-calendar-picker-indicator]:hover:bg-blue-50 [&::-webkit-calendar-picker-indicator]:transition-colors`}
-            style={{
-              colorScheme: 'light'
-            }}
-          />
-        </div>
-        {!formData.dateOfBirth && !errors.dateOfBirth && (
-          <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
-            <Calendar className="w-3 h-3" />
-            Select your date of birth
-          </p>
-        )}
-        {formData.dateOfBirth && !errors.dateOfBirth && (
-          <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
-            <CheckCircle className="w-3 h-3" />
-            {new Date(formData.dateOfBirth).toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </p>
-        )}
-        {errors.dateOfBirth && (
-          <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" />
-            {errors.dateOfBirth}
-          </p>
-        )}
-      </div>
+      <DatePicker
+        name="dateOfBirth"
+        label="Date of Birth"
+        required
+        value={formData.dateOfBirth || ''}
+        onChange={onChange}
+        error={errors.dateOfBirth}
+        placeholder="Select your date of birth"
+        maxDate={new Date().toISOString().split('T')[0]}
+      />
 
       {/* Email Address */}
       <div>

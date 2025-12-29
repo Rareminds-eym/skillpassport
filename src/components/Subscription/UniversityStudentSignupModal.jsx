@@ -1,8 +1,9 @@
-import { AlertCircle, BookOpen, Building, Calendar, ChevronDown, GraduationCap, X } from 'lucide-react';
+import { AlertCircle, BookOpen, Building, ChevronDown, GraduationCap, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { signUpWithRole } from '../../services/authService';
 import { getActiveUniversities, getCollegesByUniversity } from '../../services/universityService';
+import DatePicker from './shared/DatePicker';
 import SignupFormFields from './shared/SignupFormFields';
 import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from './shared/signupValidation';
 
@@ -461,19 +462,14 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Expected Graduation</label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <input
-                        type="date"
-                        name="expectedGraduationDate"
-                        value={formData.expectedGraduationDate}
-                        onChange={handleChange}
-                        className="pl-10 w-full px-3 py-2.5 border border-gray-300 rounded-lg"
-                      />
-                    </div>
-                  </div>
+                  <DatePicker
+                    name="expectedGraduationDate"
+                    label="Expected Graduation"
+                    value={formData.expectedGraduationDate}
+                    onChange={handleChange}
+                    placeholder="Select expected graduation date"
+                    minDate={new Date().toISOString().split('T')[0]}
+                  />
                 </div>
               )}
 
