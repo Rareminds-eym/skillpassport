@@ -13,6 +13,33 @@
  */
 
 /**
+ * Determine the focus area (lowest scoring category)
+ * @param {Object} breakdown - Category scores breakdown
+ * @returns {string} - Name of the focus area
+ */
+function determineFocusArea(breakdown) {
+  const categoryNames = {
+    foundational: 'Foundational Skills',
+    century21: '21st Century Skills',
+    digital: 'Digital Skills',
+    behavior: 'Professional Attitude',
+    career: 'Career Readiness'
+  };
+  
+  let lowestCategory = 'foundational';
+  let lowestScore = breakdown.foundational;
+  
+  Object.entries(breakdown).forEach(([key, value]) => {
+    if (key !== 'bonus' && value < lowestScore) {
+      lowestScore = value;
+      lowestCategory = key;
+    }
+  });
+  
+  return categoryNames[lowestCategory] || 'All Areas';
+}
+
+/**
  * Calculate employability score from student profile data
  * @param {Object} studentData - Student profile data from Supabase
  * @returns {Object} - Score, level, and label information
@@ -67,7 +94,7 @@ export function calculateEmployabilityScore(studentData) {
   };
 
   // 1. EDUCATION TABLE -> Foundational Skills
-  if (studentData.education && Array.isArray(studentData.education)) {
+  if (studentData.education && Array.isArray(studentData.education) && studentData.education.length > 0) {
     skillsData.foundational = studentData.education.map(edu => ({
       name: edu.degree || edu.course || 'Academic Background',
       rating: edu.cgpa ? Math.min(5, Math.max(1, parseFloat(edu.cgpa) / 2)) : 3,
@@ -77,7 +104,7 @@ export function calculateEmployabilityScore(studentData) {
   }
 
   // 2. SKILLS TABLE (type='technical') -> Digital Skills  
-  if (studentData.technicalSkills && Array.isArray(studentData.technicalSkills)) {
+  if (studentData.technicalSkills && Array.isArray(studentData.technicalSkills) && studentData.technicalSkills.length > 0) {
     skillsData.digital = studentData.technicalSkills.map(skill => ({
       name: skill.name || skill.skill_name || 'Technical Skill',
       rating: skill.level || skill.proficiency_level || skill.rating || 3,
@@ -87,7 +114,7 @@ export function calculateEmployabilityScore(studentData) {
   }
 
   // 3. SKILLS TABLE (type='soft') -> Behavioral Skills
-  if (studentData.softSkills && Array.isArray(studentData.softSkills)) {
+  if (studentData.softSkills && Array.isArray(studentData.softSkills) && studentData.softSkills.length > 0) {
     skillsData.behavior = studentData.softSkills.map(skill => ({
       name: skill.name || skill.skill_name || 'Soft Skill',
       rating: skill.level || skill.proficiency_level || skill.rating || 3,
@@ -97,7 +124,7 @@ export function calculateEmployabilityScore(studentData) {
   }
 
   // 4. TRAINING TABLE -> Career Skills
-  if (studentData.training && Array.isArray(studentData.training)) {
+  if (studentData.training && Array.isArray(studentData.training) && studentData.training.length > 0) {
     skillsData.career = studentData.training.map(training => ({
       name: training.course || training.title || 'Professional Training',
       rating: training.progress ? Math.min(5, training.progress / 20) : 3, // Convert progress % to 1-5 scale
@@ -107,7 +134,7 @@ export function calculateEmployabilityScore(studentData) {
   }
 
   // 5. PROJECTS TABLE -> 21st Century Skills (Innovation, Problem Solving)
-  if (studentData.projects && Array.isArray(studentData.projects)) {
+  if (studentData.projects && Array.isArray(studentData.projects) && studentData.projects.length > 0) {
     skillsData.century21 = studentData.projects.map(project => ({
       name: `Project: ${project.title || 'Innovation Project'}`,
       rating: project.status === 'completed' ? 4 : 3,
@@ -116,56 +143,42 @@ export function calculateEmployabilityScore(studentData) {
     }));
   }
 
-  // FALLBACK: If separate tables are empty, use profile/individual columns
+  // Check if there's ANY real data from separate tables
   const totalCategorizedSkills = Object.values(skillsData).reduce((sum, arr) => sum + arr.length, 0);
   
-  if (totalCategorizedSkills === 0) {
-    console.log('📊 No data from separate tables, using fallback from individual columns...');
+  // Also check for experience and certificates
+  const hasExperience = studentData.experience && 
+    Array.isArray(studentData.experience) && 
+    studentData.experience.length > 0;
+  
+  const hasCertificates = studentData.certificates &&
+    Array.isArray(studentData.certificates) &&
+    studentData.certificates.length > 0;
+  
+  // If NO data at all from any table, return 0 score
+  if (totalCategorizedSkills === 0 && !hasExperience && !hasCertificates) {
+    // Check if there's at least basic profile info
+    const hasBasicInfo = studentData.name || studentData.email || studentData.university;
     
-    // Create foundational skills from individual columns
-    if (studentData.branch_field || studentData.university) {
-      skillsData.foundational = [{
-        name: studentData.branch_field || 'Academic Background',
-        rating: 3,
-        verified: true,
-        category: 'education'
-      }];
+    if (!hasBasicInfo) {
+      return getDefaultEmployabilityScore();
     }
     
-    // Create digital skills from course data
-    if (studentData.course_name) {
-      skillsData.digital = [{
-        name: studentData.course_name,
-        rating: 3,
-        verified: true,
-        category: 'course'
-      }];
-    }
-    
-    // Create behavioral skills (default set)
-    skillsData.behavior = [
-      { name: 'Communication', rating: 3, verified: false, category: 'default' },
-      { name: 'Teamwork', rating: 3, verified: false, category: 'default' }
-    ];
-    
-    // Create 21st century skills
-    skillsData.century21 = [
-      { name: 'Problem Solving', rating: 3, verified: false, category: 'default' }
-    ];
-    
-    // Create career skills from trainer info
-    if (studentData.trainer_name) {
-      skillsData.career = [{
-        name: 'Professional Training',
-        rating: 3,
-        verified: true,
-        category: 'training'
-      }];
-    } else {
-      skillsData.career = [
-        { name: 'Professional Development', rating: 2, verified: false, category: 'default' }
-      ];
-    }
+    // Has basic profile but no skills/experience data - return minimal score
+    return {
+      employabilityScore: 0,
+      level: "Not Started",
+      label: "Add Skills & Experience",
+      focusArea: "All Areas",
+      breakdown: {
+        foundational: 0,
+        century21: 0,
+        digital: 0,
+        behavior: 0,
+        career: 0,
+        bonus: 0
+      }
+    };
   }
 
   // Compute weighted score
@@ -200,11 +213,6 @@ export function calculateEmployabilityScore(studentData) {
   if (allEvidenceVerified) bonus += 2;
   
   // EXPERIENCE TABLE - Check for work experience/internships
-  const hasExperience = studentData.experience && 
-    Array.isArray(studentData.experience) && 
-    studentData.experience.length > 0;
-  
-  // TRAINING TABLE - Check for training courses
   const hasTraining = studentData.training &&
     Array.isArray(studentData.training) &&
     studentData.training.length > 0;
@@ -218,10 +226,6 @@ export function calculateEmployabilityScore(studentData) {
   if (participatedHackathonOrInternship) bonus += 1;
   
   // CERTIFICATES TABLE - Check for certificates
-  const hasCertificates = studentData.certificates &&
-    Array.isArray(studentData.certificates) &&
-    studentData.certificates.length > 0;
-  
   if (hasCertificates) bonus += 2;
   
   // Additional bonuses from separate tables
@@ -233,63 +237,49 @@ export function calculateEmployabilityScore(studentData) {
     bonus += 1; // Approved projects
   }
   
-  // Additional bonuses for high skill counts from separate tables
-  const totalSkillCount = allSkills.length;
-  const totalTechnicalSkills = studentData.technicalSkills?.length || 0;
-  const totalSoftSkills = studentData.softSkills?.length || 0;
-  
-  if (totalSkillCount >= 10) bonus += 0.5; // Good skill documentation
-  if (totalSkillCount >= 20) bonus += 1; // Many skills documented
-  if (totalTechnicalSkills >= 5) bonus += 0.5; // Strong technical skills
-  if (totalSoftSkills >= 5) bonus += 0.5; // Strong soft skills
-  
-  // EDUCATION TABLE - Education bonus
-  const hasEducation = studentData.education && 
-    Array.isArray(studentData.education) && 
-    studentData.education.length > 0;
-  if (hasEducation) bonus += 0.5;
-  
-  // Multiple education records bonus
-  if (hasEducation && studentData.education.length > 1) bonus += 0.5;
-  
   // Cap bonus at 5
   if (bonus > 5) bonus = 5;
 
   const finalScore = Math.min(totalScore + bonus, 100);
 
-  // If the final score is very low
-  if (finalScore < 20) {
-    return calculateMinimumScore(studentData);
-  }
+  // Create breakdown object
+  const breakdown = {
+    foundational: Math.round(foundationalScore),
+    century21: Math.round(century21Score),
+    digital: Math.round(digitalScore),
+    behavior: Math.round(behaviorScore),
+    career: Math.round(careerScore),
+    bonus: Math.round(bonus * 10) / 10
+  };
+
+  // Determine Focus Area (lowest scoring category)
+  const focusArea = determineFocusArea(breakdown);
 
   // Determine Level
   let level, label;
   if (finalScore >= 85) {
     level = "Excellent";
-    label = "🌟 Industry Ready";
+    label = "Industry Ready";
   } else if (finalScore >= 70) {
     level = "Good";
-    label = "🚀 Emerging Talent";
+    label = "Emerging Talent";
   } else if (finalScore >= 50) {
     level = "Moderate";
-    label = "🌱 Developing";
-  } else {
+    label = "Developing";
+  } else if (finalScore > 0) {
     level = "Needs Support";
-    label = "🔧 Guided Path";
+    label = "Guided Path";
+  } else {
+    level = "Not Started";
+    label = "Add Skills & Experience";
   }
 
   return {
     employabilityScore: Math.round(finalScore),
     level,
     label,
-    breakdown: {
-      foundational: Math.round(foundationalScore),
-      century21: Math.round(century21Score),
-      digital: Math.round(digitalScore),
-      behavior: Math.round(behaviorScore),
-      career: Math.round(careerScore),
-      bonus: Math.round(bonus * 10) / 10 // Round to 1 decimal
-    }
+    focusArea,
+    breakdown
   };
 }
 
@@ -299,15 +289,16 @@ export function calculateEmployabilityScore(studentData) {
  */
 export function getDefaultEmployabilityScore() {
   return {
-    employabilityScore: 45,
-    level: "Needs Support",
-    label: "🔧 Guided Path",
+    employabilityScore: 0,
+    level: "Not Started",
+    label: "Complete Your Profile",
+    focusArea: "All Areas",
     breakdown: {
-      foundational: 40,
-      century21: 35,
-      digital: 50,
-      behavior: 45,
-      career: 30,
+      foundational: 0,
+      century21: 0,
+      digital: 0,
+      behavior: 0,
+      career: 0,
       bonus: 0
     }
   };
@@ -315,102 +306,12 @@ export function getDefaultEmployabilityScore() {
 
 /**
  * Calculate a minimum score based on basic profile information
+ * This is only called when there's actual data but score is very low
  * @param {Object} studentData - Student profile data
  * @returns {Object} Minimum score based on available data
  */
 export function calculateMinimumScore(studentData) {
-  let baseScore = 30; // Minimum base score for being a student
-  
-  // Use individual columns instead of profile JSONB
-  // Basic information bonuses from individual columns
-  if (studentData.name) baseScore += 5;
-  if (studentData.university) baseScore += 10;
-  if (studentData.branch_field) baseScore += 10;
-  if (studentData.course_name) baseScore += 8;
-  if (studentData.email) baseScore += 5;
-  if (studentData.contact_number) baseScore += 3;
-  if (studentData.registration_number) baseScore += 5;
-  
-  // Separate tables bonuses
-  // EDUCATION TABLE bonus
-  if (studentData.education && Array.isArray(studentData.education) && studentData.education.length > 0) {
-    baseScore += 15;
-    // Additional bonus for verified education
-    if (studentData.education.some(edu => edu.verified || edu.approval_status === 'approved')) {
-      baseScore += 5;
-    }
-  }
-  
-  // TRAINING TABLE bonus
-  if (studentData.training && Array.isArray(studentData.training) && studentData.training.length > 0) {
-    baseScore += 10;
-    // Additional bonus for completed training
-    if (studentData.training.some(training => training.status === 'completed')) {
-      baseScore += 5;
-    }
-  }
-  
-  // EXPERIENCE TABLE bonus
-  if (studentData.experience && Array.isArray(studentData.experience) && studentData.experience.length > 0) {
-    baseScore += 12;
-    // Additional bonus for verified experience
-    if (studentData.experience.some(exp => exp.verified || exp.approval_status === 'approved')) {
-      baseScore += 5;
-    }
-  }
-  
-  // SKILLS TABLE bonuses
-  if (studentData.technicalSkills && Array.isArray(studentData.technicalSkills) && studentData.technicalSkills.length > 0) {
-    baseScore += 8;
-  }
-  
-  if (studentData.softSkills && Array.isArray(studentData.softSkills) && studentData.softSkills.length > 0) {
-    baseScore += 6;
-  }
-  
-  // PROJECTS TABLE bonus
-  if (studentData.projects && Array.isArray(studentData.projects) && studentData.projects.length > 0) {
-    baseScore += 10;
-    // Additional bonus for approved projects
-    if (studentData.projects.some(proj => proj.approval_status === 'approved')) {
-      baseScore += 5;
-    }
-  }
-  
-  // CERTIFICATES TABLE bonus
-  if (studentData.certificates && Array.isArray(studentData.certificates) && studentData.certificates.length > 0) {
-    baseScore += 8;
-    // Additional bonus for verified certificates
-    if (studentData.certificates.some(cert => cert.verified || cert.approval_status === 'approved')) {
-      baseScore += 7;
-    }
-  }
-  
-  const finalScore = Math.min(baseScore, 75); // Cap at 75 for minimum score
-  
-  let level, label;
-  if (finalScore >= 70) {
-    level = "Good";
-    label = "🚀 Emerging Talent";
-  } else if (finalScore >= 50) {
-    level = "Moderate";
-    label = "🌱 Developing";
-  } else {
-    level = "Needs Support";
-    label = "🔧 Guided Path";
-  }
-  
-  return {
-    employabilityScore: finalScore,
-    level,
-    label,
-    breakdown: {
-      foundational: Math.round(finalScore * 0.3),
-      century21: Math.round(finalScore * 0.25),
-      digital: Math.round(finalScore * 0.2),
-      behavior: Math.round(finalScore * 0.15),
-      career: Math.round(finalScore * 0.1),
-      bonus: 0
-    }
-  };
+  // This function is deprecated - we now return 0 for empty profiles
+  // Keeping for backward compatibility but it should rarely be called
+  return getDefaultEmployabilityScore();
 }

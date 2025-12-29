@@ -28,6 +28,7 @@ import {
   prepareStudentDataForResume,
 } from "./Generateresumepdf";
 import { generateBadges, getBadgeProgress } from "../../../services/badgeService";
+import { capitalizeName } from "../../../utils/helpers";
 
 function safeParse(jsonLike) {
   if (!jsonLike) return {};
@@ -868,11 +869,11 @@ export default function StudentPublicViewerModern() {
             <div className="flex flex-col md:flex-row gap-6 items-center lg:items-start justify-between">
               {/* Left: Avatar + Info */}
               <div className="flex flex-col md:flex-row items-start gap-5 flex-1 min-w-0">
-                <Avatar src={profile.photo} name={profile.name} size={120} />
+                <Avatar src={profile.photo} name={capitalizeName(profile.name)} size={120} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3 flex-wrap">
                     <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 truncate">
-                      {profile.name || profile.fullName || "Student Name"}
+                      {capitalizeName(profile.name) || capitalizeName(profile.fullName) || "Student Name"}
                     </h1>
                     {profile.verified && (
                       <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200">

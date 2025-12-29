@@ -57,6 +57,24 @@ export interface Student {
   country?: string;
   pincode?: string;
   
+  // Social Links
+  linkedin_link?: string;
+  github_link?: string;
+  twitter_link?: string;
+  facebook_link?: string;
+  instagram_link?: string;
+  youtube_link?: string;
+  portfolio_link?: string;
+  other_social_links?: any[];
+  
+  // Additional fields
+  hobbies?: string[];
+  interests?: string[];
+  languages?: Array<{ name: string; proficiency?: string } | string>;
+  bio?: string;
+  skill_summary?: string;
+  user_id?: string;
+  
   // Profile data (college/university students)
   profile?: {
     name?: string;
