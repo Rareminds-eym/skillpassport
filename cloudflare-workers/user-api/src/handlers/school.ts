@@ -279,7 +279,7 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
           experience_years: body.experienceYears,
           specialization: body.specialization,
           account_status: 'active',
-          verification_status: 'Pending',
+          verification_status: 'pending',
           role: 'subject_teacher',
           onboarding_status: 'active',
           metadata: {

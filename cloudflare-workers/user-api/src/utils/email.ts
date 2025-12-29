@@ -68,7 +68,7 @@ export async function sendPasswordResetEmail(
         Authorization: `Bearer ${env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'SkillPassport <onboarding@resend.dev>',
+        from: 'Skill Passport <noreply@rareminds.in>',
         to: [email],
         subject: 'Your Password Reset Code',
         html: `
