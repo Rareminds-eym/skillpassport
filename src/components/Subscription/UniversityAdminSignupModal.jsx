@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { X, Eye, EyeOff, Building, MapPin, Phone, Mail, Calendar, User, ChevronDown, AlertCircle } from 'lucide-react';
-import { signUpWithRole } from '../../services/authService';
+import { AlertCircle, Building, Calendar, ChevronDown, Eye, EyeOff, Mail, Phone, User, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { getUniversities, checkUniversityCollegeCode, createUniversityCollege } from '../../services/universityService';
+import { signUpWithRole } from '../../services/authService';
+import { checkUniversityCollegeCode, createUniversityCollege, getUniversities } from '../../services/universityService';
 
 function UniversityAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onSwitchToLogin }) {
     const [formData, setFormData] = useState({
@@ -178,11 +178,14 @@ function UniversityAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSuc
 
             // 2. Create User Record (inline - no external dependency)
             const nameParts = formData.deanName.trim().split(' ');
+            const firstName = capitalizeFirstLetter(nameParts[0] || '');
+            const lastName = capitalizeFirstLetter(nameParts.slice(1).join(' ') || '');
+            
             const { error: userError } = await supabase.from('users').insert({
                 id: userId,
                 email: formData.email.toLowerCase(),
-                firstName: nameParts[0] || '',
-                lastName: nameParts.slice(1).join(' ') || '',
+                firstName: firstName,
+                lastName: lastName,
                 role: 'university_admin',
                 isActive: true,
                 metadata: { source: 'university_admin_signup' }

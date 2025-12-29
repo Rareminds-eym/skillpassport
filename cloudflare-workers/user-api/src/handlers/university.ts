@@ -6,14 +6,14 @@
  */
 
 import {
-  Env,
-  UniversityAdminSignupRequest,
-  UniversityEducatorSignupRequest,
-  UniversityStudentSignupRequest,
+    Env,
+    UniversityAdminSignupRequest,
+    UniversityEducatorSignupRequest,
+    UniversityStudentSignupRequest,
 } from '../types';
-import { jsonResponse, validateEmail, splitName, calculateAge } from '../utils/helpers';
-import { getSupabaseAdmin, checkEmailExists, deleteAuthUser } from '../utils/supabase';
 import { sendWelcomeEmail } from '../utils/email';
+import { calculateAge, jsonResponse, splitName, validateEmail } from '../utils/helpers';
+import { checkEmailExists, deleteAuthUser, getSupabaseAdmin } from '../utils/supabase';
 
 /**
  * Handle university admin signup
@@ -194,9 +194,9 @@ export async function handleUniversityEducatorSignup(request: Request, env: Env)
       password: body.password,
       email_confirm: true,
       user_metadata: {
-        first_name: body.firstName,
-        last_name: body.lastName,
-        name: `${body.firstName} ${body.lastName}`,
+        first_name: capitalizeFirstLetter(body.firstName),
+        last_name: capitalizeFirstLetter(body.lastName),
+        name: `${capitalizeFirstLetter(body.firstName)} ${capitalizeFirstLetter(body.lastName)}`,
         role: 'university_educator',
         phone: body.phone,
         university_id: body.universityId,
@@ -210,11 +210,14 @@ export async function handleUniversityEducatorSignup(request: Request, env: Env)
     const userId = authUser.user.id;
 
     try {
+      const firstName = capitalizeFirstLetter(body.firstName);
+      const lastName = capitalizeFirstLetter(body.lastName);
+      
       await supabaseAdmin.from('users').insert({
         id: userId,
         email: body.email.toLowerCase(),
-        firstName: body.firstName,
-        lastName: body.lastName,
+        firstName: firstName,
+        lastName: lastName,
         role: 'university_educator',
         organizationId: body.universityId,
         isActive: true,
@@ -228,8 +231,8 @@ export async function handleUniversityEducatorSignup(request: Request, env: Env)
           user_id: userId,
           university_id: body.universityId,
           email: body.email.toLowerCase(),
-          first_name: body.firstName,
-          last_name: body.lastName,
+          first_name: firstName,
+          last_name: lastName,
           phone: body.phone,
           designation: body.designation,
           department: body.department,
@@ -347,7 +350,9 @@ export async function handleUniversityStudentSignup(request: Request, env: Env):
     const userId = authUser.user.id;
 
     try {
-      const { firstName, lastName } = splitName(body.name);
+      const { firstName, lastName } = body.firstName && body.lastName 
+        ? { firstName: capitalizeFirstLetter(body.firstName), lastName: capitalizeFirstLetter(body.lastName) }
+        : splitName(body.name);
 
       await supabaseAdmin.from('users').insert({
         id: userId,
@@ -362,14 +367,16 @@ export async function handleUniversityStudentSignup(request: Request, env: Env):
       });
 
       const age = calculateAge(body.dateOfBirth || '');
+      const fullName = `${firstName} ${lastName}`.trim();
 
+      // Create students record (first_name/last_name stored in users table only)
       const { data: student, error: studentError } = await supabaseAdmin
         .from('students')
         .insert({
           id: userId,
           user_id: userId,
           email: body.email.toLowerCase(),
-          name: body.name,
+          name: fullName,
           contactNumber: body.phone,
           contact_number: body.phone,
           dateOfBirth: body.dateOfBirth,

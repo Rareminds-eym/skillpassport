@@ -1,6 +1,7 @@
 import { ArrowRight, ArrowUpDown, Award, BarChart3, BookOpen, Filter, GraduationCap, Grid3X3, List, Plus, RefreshCw, Search, TrendingUp, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Pagination from "../../components/educator/Pagination";
 import LearningAnalyticsDashboard from "../../components/Students/components/LearningAnalyticsDashboard";
 import ModernLearningCard from "../../components/Students/components/ModernLearningCard";
 import { TrainingEditModal } from "../../components/Students/components/ProfileEditModals";
@@ -11,7 +12,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentTrainings } from "../../hooks/useStudentTrainings";
-import Pagination from "../../components/educator/Pagination";
+import { supabase } from "../../lib/supabaseClient";
 
 const StatCardSkeleton = () => (
   <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm animate-pulse">
@@ -155,6 +156,8 @@ const MyLearning = () => {
   const [activeModal, setActiveModal] = useState(null);
   const [expandedSkills, setExpandedSkills] = useState({});
   const [editingItem, setEditingItem] = useState(null);
+  const [deletingItem, setDeletingItem] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { trainings = [], loading: trainingsLoading, stats = { total: 0, completed: 0, ongoing: 0 }, refetch: refetchTrainings } = useStudentTrainings(studentId, {
     sortBy, sortDirection, status: statusFilter, approvalStatus: approvalFilter, searchTerm,
@@ -240,6 +243,45 @@ const MyLearning = () => {
 
   const toggleSkillExpand = (id) => setExpandedSkills((prev) => ({ ...prev, [id]: !prev[id] }));
   const handleEditItem = (item) => { setEditingItem(item); setActiveModal("edit"); };
+  const handleDeleteItem = (item) => { setDeletingItem(item); setActiveModal("delete"); };
+  
+  const confirmDelete = async () => {
+    if (!deletingItem) return;
+    
+    setIsDeleting(true);
+    try {
+      // Delete from certificates table first (if exists)
+      await supabase
+        .from('certificates')
+        .delete()
+        .eq('training_id', deletingItem.id);
+      
+      // Delete from skills table (if exists)
+      await supabase
+        .from('skills')
+        .delete()
+        .eq('training_id', deletingItem.id);
+      
+      // Delete from trainings table
+      const { error } = await supabase
+        .from('trainings')
+        .delete()
+        .eq('id', deletingItem.id);
+      
+      if (error) throw error;
+      
+      // Refresh the list
+      await refresh();
+    } catch (error) {
+      console.error('Error deleting certificate:', error);
+      alert('Failed to delete certificate. Please try again.');
+    } finally {
+      setIsDeleting(false);
+      setDeletingItem(null);
+      setActiveModal(null);
+    }
+  };
+  
   const toggleSortDirection = () => handleFilterChange('sortDirection', sortDirection === 'asc' ? 'desc' : 'asc');
   
   const clearFilters = () => { 
@@ -597,6 +639,7 @@ const MyLearning = () => {
                           key={item.id || idx} 
                           item={item} 
                           onEdit={handleEditItem}
+                          onDelete={handleDeleteItem}
                           onContinue={handleContinueLearning}
                           expandedSkills={expandedSkills} 
                           onToggleSkills={toggleSkillExpand}
@@ -689,6 +732,46 @@ const MyLearning = () => {
             data={[editingItem]} 
             singleEditMode={true} 
           />
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {activeModal === "delete" && deletingItem && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
+              <div className="p-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <X className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 text-center mb-2">Delete Certificate?</h3>
+                <p className="text-slate-600 text-center mb-6">
+                  Are you sure you want to delete "<span className="font-semibold">{deletingItem.course || deletingItem.title}</span>"? This will also remove any associated skills and assessment data. This action cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setDeletingItem(null); setActiveModal(null); }}
+                    disabled={isDeleting}
+                    className="flex-1 px-4 py-3 border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    disabled={isDeleting}
+                    className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

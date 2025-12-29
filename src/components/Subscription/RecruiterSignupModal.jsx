@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, Phone, Eye, EyeOff, AlertCircle, Info, Briefcase } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertCircle, Briefcase, Eye, EyeOff, Info, Lock, Mail, Phone, User, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { getModalContent } from '../../utils/getEntityContent';
@@ -229,13 +229,17 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
       const userId = authData.user.id;
 
       // Step 2: Create user record in users table
+      const nameParts = formData.fullName.trim().split(' ');
+      const firstName = capitalizeFirstLetter(nameParts[0] || '');
+      const lastName = capitalizeFirstLetter(nameParts.slice(1).join(' ') || '');
+      
       const { error: userError } = await supabase
         .from('users')
         .insert({
           id: userId,
           email: formData.email,
-          firstName: formData.fullName.split(' ')[0],
-          lastName: formData.fullName.split(' ').slice(1).join(' ') || null,
+          firstName: firstName,
+          lastName: lastName,
           role: 'recruiter',
           isActive: true
         });
@@ -245,12 +249,13 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
         // Continue anyway as auth user was created
       }
 
-      // Step 3: Create recruiter record
+      // Step 3: Create recruiter record (first_name/last_name stored in users table only)
+      const fullName = `${firstName} ${lastName}`.trim();
       const { error: recruiterError } = await supabase
         .from('recruiters')
         .insert({
           user_id: userId,
-          name: formData.fullName,
+          name: fullName,
           email: formData.email,
           phone: formData.phone,
           company_id: formData.companyId,

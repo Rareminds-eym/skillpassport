@@ -270,6 +270,40 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
     setLoading(true);
 
     try {
+      // Check for duplicate certificate
+      if (formData.certificate_url || formData.certificate_id) {
+        let existingCert = null;
+
+        // Check by URL first (URL is globally unique)
+        if (formData.certificate_url) {
+          const { data } = await supabase
+            .from('certificates')
+            .select('id, title')
+            .eq('student_id', studentId)
+            .eq('link', formData.certificate_url)
+            .maybeSingle();
+          existingCert = data;
+        }
+
+        // Check by credential_id + platform combination (credential ID is unique per platform)
+        if (!existingCert && formData.certificate_id && selectedPlatform?.id) {
+          const { data } = await supabase
+            .from('certificates')
+            .select('id, title')
+            .eq('student_id', studentId)
+            .eq('credential_id', formData.certificate_id)
+            .eq('platform', selectedPlatform.id)
+            .maybeSingle();
+          existingCert = data;
+        }
+
+        if (existingCert) {
+          setError(`This certificate has already been added: "${existingCert.title}"`);
+          setLoading(false);
+          return;
+        }
+      }
+
       const { data: training, error: trainingError } = await supabase
         .from('trainings')
         .insert({
