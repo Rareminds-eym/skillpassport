@@ -18,11 +18,10 @@ const ReportHeader = ({ studentInfo }) => (
             <div className="flex justify-between items-start">
                 <div>
                     <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="w-5 h-5 text-yellow-400" />
-                        <span className="text-gray-400 text-base font-medium">AI-Powered Assessment</span>
                     </div>
                     <h1 className="text-3xl md:text-4xl font-bold mb-1">Career Profiling & Skill Development Report</h1>
-                    <p className="text-gray-400 mt-1 text-lg">AI-Powered Career Assessment</p>
+                    <Sparkles className="w-5 h-5 text-yellow-400" />
+                    <span className="text-gray-400 mt-1 text-lg">AI-Powered Career Assessment</span>
                 </div>
                 <img src="/logo.png" alt="SkillPassport" className="h-14 opacity-90 hidden md:block" onError={(e) => e.target.style.display = 'none'} />
             </div>
