@@ -348,7 +348,7 @@ const EducatorAssessmentResults: React.FC = () => {
         // Check if they are a college lecturer
         const { data: collegeLecturerData, error: collegeLecturerError } = await supabase
           .from('college_lecturers')
-          .select('id, collegeId')
+          .select('id, collegeId, department')
           .eq('user_id', userId)
           .maybeSingle();
 
@@ -357,9 +357,46 @@ const EducatorAssessmentResults: React.FC = () => {
         }
 
         if (collegeLecturerData?.collegeId) {
-          // College lecturer
+          // College lecturer - check for course assignments
           schoolId = collegeLecturerData.collegeId;
-          studentsQuery = studentsQuery.eq('college_id', schoolId);
+          
+          // Check if lecturer has any course assignments
+          const { data: courseAssignments, error: courseAssignError } = await supabase
+            .from('college_lecturer_course_assignments')
+            .select('courseId')
+            .eq('lecturerId', collegeLecturerData.id);
+
+          if (!courseAssignError && courseAssignments && courseAssignments.length > 0) {
+            // Lecturer has course assignments - filter students by those courses
+            const assignedCourseIds = courseAssignments.map(a => a.courseId);
+            studentsQuery = studentsQuery
+              .eq('college_id', schoolId)
+              .in('collegeCourseId', assignedCourseIds);
+          } else {
+            // No course assignments - lecturer should see no students
+            // (unless they are an admin, which we check via metadata or role)
+            const isCollegeAdmin = collegeLecturerData.department === 'Administration';
+            
+            if (isCollegeAdmin) {
+              // College admin can see all students in their college
+              studentsQuery = studentsQuery.eq('college_id', schoolId);
+            } else {
+              // Regular lecturer with no assignments - return empty results
+              setResults([]);
+              setSchoolName('');
+              
+              // Get college name for display
+              const { data: collegeData } = await supabase
+                .from('colleges')
+                .select('name')
+                .eq('id', schoolId)
+                .single();
+              
+              setSchoolName(collegeData?.name || '');
+              setLoading(false);
+              return;
+            }
+          }
 
           // Get college name
           const { data: collegeData } = await supabase
@@ -783,7 +820,7 @@ const EducatorAssessmentResults: React.FC = () => {
                 {searchQuery || activeFilterCount > 0
                   ? 'Try adjusting your search or filters'
                   : results.length === 0 && !error
-                    ? 'No students have completed assessments yet, or you may not be assigned to any classes'
+                    ? 'No students have completed assessments yet, or you may not be assigned to any classes/courses. Please contact your administrator to assign you to classes.'
                     : 'No student assessments available yet'}
               </p>
               {activeFilterCount > 0 && (

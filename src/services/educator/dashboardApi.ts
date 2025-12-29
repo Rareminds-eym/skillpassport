@@ -44,7 +44,7 @@ async function getAuthenticatedEducator() {
   // Check if they are a college lecturer
   const { data: collegeLecturerData, error: collegeLecturerError } = await supabase
     .from('college_lecturers')
-    .select('id, collegeId')
+    .select('id, collegeId, department')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -53,15 +53,32 @@ async function getAuthenticatedEducator() {
   }
 
   if (collegeLecturerData?.collegeId) {
+    // Check if lecturer is an admin (department = 'Administration')
+    const isCollegeAdmin = collegeLecturerData.department === 'Administration';
+    
+    // Get assigned course IDs for this lecturer (if not admin)
+    let assignedCourseIds: string[] = [];
+    
+    if (!isCollegeAdmin) {
+      const { data: courseAssignments, error: courseError } = await supabase
+        .from('college_lecturer_course_assignments')
+        .select('courseId')
+        .eq('lecturerId', collegeLecturerData.id);
+
+      if (!courseError && courseAssignments) {
+        assignedCourseIds = courseAssignments.map(assignment => assignment.courseId);
+      }
+    }
+
     return { 
       user, 
       educatorData: { 
         id: collegeLecturerData.id, 
         school_id: collegeLecturerData.collegeId,
-        role: 'lecturer'
+        role: isCollegeAdmin ? 'admin' : 'lecturer'
       }, 
       educatorType: 'college' as const,
-      assignedClassIds: [] // College lecturers see all college students
+      assignedClassIds: assignedCourseIds // For college, this represents course IDs
     };
   }
 
@@ -146,7 +163,22 @@ export const dashboardApi = {
 
       // Check if educator has no class assignments (and is not admin)
       if (educatorType === 'school' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
-        // Educators with no class assignments should see no students
+        // School educators with no class assignments should see no students
+        return {
+          totalStudents: 0,
+          activeStudents: 0,
+          pendingActivities: 0,
+          verifiedActivities: 0,
+          totalActivities: 0,
+          verificationRate: 0,
+          recentActivitiesCount: 0,
+          totalMentorNotes: 0,
+        };
+      }
+
+      // Check if college lecturer has no course assignments (and is not admin)
+      if (educatorType === 'college' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
+        // College lecturers with no course assignments should see no students
         return {
           totalStudents: 0,
           activeStudents: 0,
@@ -177,7 +209,15 @@ export const dashboardApi = {
             .in('school_class_id', assignedClassIds);
         }
       } else if (educatorType === 'college') {
-        studentsQuery = studentsQuery.eq('college_id', educatorData.school_id);
+        if (educatorData.role === 'admin') {
+          // College admins can see all students in their college
+          studentsQuery = studentsQuery.eq('college_id', educatorData.school_id);
+        } else if (assignedClassIds.length > 0) {
+          // Regular lecturers can only see students in their assigned courses
+          studentsQuery = studentsQuery
+            .eq('college_id', educatorData.school_id)
+            .in('collegeCourseId', assignedClassIds);
+        }
       }
 
       const { data: studentsData, error: studentsError } = await studentsQuery;
