@@ -221,7 +221,8 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
         state: formData.state,
         city: formData.city,
         preferredLanguage: formData.preferredLanguage,
-        referralCode: formData.referralCode || null
+        referralCode: formData.referralCode || null,
+        dateOfBirth: formData.dateOfBirth || null
       });
 
       if (!registrationResult.success) {

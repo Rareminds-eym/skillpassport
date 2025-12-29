@@ -41,6 +41,7 @@ export interface SchoolAdminSignupRequest {
   principalName: string;
   principalEmail?: string;
   principalPhone?: string;
+  dateOfBirth?: string;
 }
 
 export interface EducatorSignupRequest {
@@ -56,6 +57,7 @@ export interface EducatorSignupRequest {
   qualification?: string;
   experienceYears?: number;
   specialization?: string;
+  dateOfBirth?: string;
 }
 
 export interface StudentSignupRequest {
@@ -101,6 +103,7 @@ export interface CollegeAdminSignupRequest {
   deanName: string;
   deanEmail?: string;
   deanPhone?: string;
+  dateOfBirth?: string;
 }
 
 export interface CollegeEducatorSignupRequest {
@@ -117,6 +120,7 @@ export interface CollegeEducatorSignupRequest {
   experienceYears?: number;
   specialization?: string;
   dateOfJoining?: string;
+  dateOfBirth?: string;
 }
 
 export interface CollegeStudentSignupRequest {
@@ -160,6 +164,7 @@ export interface UniversityAdminSignupRequest {
   vcName: string;
   vcEmail?: string;
   vcPhone?: string;
+  dateOfBirth?: string;
 }
 
 export interface UniversityEducatorSignupRequest {
@@ -175,6 +180,7 @@ export interface UniversityEducatorSignupRequest {
   qualification?: string;
   experienceYears?: number;
   specialization?: string;
+  dateOfBirth?: string;
 }
 
 export interface UniversityStudentSignupRequest {
@@ -220,6 +226,7 @@ export interface RecruiterAdminSignupRequest {
   contactPersonDesignation?: string;
   contactPersonEmail?: string;
   contactPersonPhone?: string;
+  dateOfBirth?: string;
 }
 
 export interface RecruiterSignupRequest {
@@ -232,6 +239,7 @@ export interface RecruiterSignupRequest {
   companyId: string;
   designation?: string;
   department?: string;
+  dateOfBirth?: string;
 }
 
 // ==================== AUTHENTICATED ENDPOINTS ====================

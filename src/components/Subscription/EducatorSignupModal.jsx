@@ -210,6 +210,7 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
         password: formData.password,
         firstName: firstName,
         lastName: lastName,
+        dateOfBirth: formData.dateOfBirth || undefined,
         phone: formData.phone || undefined,
         country: formData.country,
         state: formData.state,

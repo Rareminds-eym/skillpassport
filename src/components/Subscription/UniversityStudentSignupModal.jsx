@@ -231,7 +231,8 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
         firstName: firstName,
         lastName: lastName,
         role: 'college_student',
-        isActive: true
+        isActive: true,
+        dob: formData.dateOfBirth || null
       });
 
       if (userError) console.error('Error creating user record:', userError);

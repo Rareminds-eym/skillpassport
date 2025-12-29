@@ -85,6 +85,7 @@ export async function handleCollegeAdminSignup(request: Request, env: Env): Prom
         organizationId: null,
         isActive: true,
         phone: body.phone || body.deanPhone,
+        dob: body.dateOfBirth || null,
         metadata: { source: 'college_signup', collegeCode: body.collegeCode },
       });
 
@@ -238,6 +239,7 @@ export async function handleCollegeEducatorSignup(request: Request, env: Env): P
         organizationId: body.collegeId,
         isActive: true,
         phone: body.phone,
+        dob: body.dateOfBirth || null,
         metadata: { source: 'college_educator_signup', collegeId: body.collegeId },
       });
 
@@ -386,6 +388,7 @@ export async function handleCollegeStudentSignup(request: Request, env: Env): Pr
         organizationId: body.collegeId,
         isActive: true,
         phone: body.phone,
+        dob: body.dateOfBirth || null,
         metadata: { source: 'college_student_signup', collegeId: body.collegeId },
       });
 

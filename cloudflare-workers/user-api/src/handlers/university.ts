@@ -82,6 +82,7 @@ export async function handleUniversityAdminSignup(request: Request, env: Env): P
         organizationId: null,
         isActive: true,
         phone: body.phone || body.vcPhone,
+        dob: body.dateOfBirth || null,
         metadata: { source: 'university_signup', universityCode: body.universityCode },
       });
 
@@ -222,6 +223,7 @@ export async function handleUniversityEducatorSignup(request: Request, env: Env)
         organizationId: body.universityId,
         isActive: true,
         phone: body.phone,
+        dob: body.dateOfBirth || null,
         metadata: { source: 'university_educator_signup', universityId: body.universityId },
       });
 
@@ -363,6 +365,7 @@ export async function handleUniversityStudentSignup(request: Request, env: Env):
         organizationId: body.universityId,
         isActive: true,
         phone: body.phone,
+        dob: body.dateOfBirth || null,
         metadata: { source: 'university_student_signup', universityId: body.universityId },
       });
 

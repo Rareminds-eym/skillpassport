@@ -32,6 +32,22 @@ export function validateSignupFields(formData, options = {}) {
     errors.lastName = 'Last name must be at least 2 characters';
   }
 
+  // Date of Birth validation
+  if (!formData.dateOfBirth) {
+    errors.dateOfBirth = 'Date of birth is required';
+  } else {
+    const dob = new Date(formData.dateOfBirth);
+    const today = new Date();
+    const age = today.getFullYear() - dob.getFullYear();
+    if (dob > today) {
+      errors.dateOfBirth = 'Date of birth cannot be in the future';
+    } else if (age < 5) {
+      errors.dateOfBirth = 'You must be at least 5 years old';
+    } else if (age > 120) {
+      errors.dateOfBirth = 'Please enter a valid date of birth';
+    }
+  }
+
   // Email validation
   if (!formData.email?.trim()) {
     errors.email = 'Email is required';
@@ -79,7 +95,7 @@ export function validateSignupFields(formData, options = {}) {
       errors.country = 'Country is required';
     }
     if (!formData.state) {
-      errors.state = 'State / UT is required';
+      errors.state = 'State / Province is required';
     }
     if (!formData.city) {
       errors.city = 'City / District is required';
@@ -102,6 +118,7 @@ export function getInitialFormData() {
   return {
     firstName: '',
     lastName: '',
+    dateOfBirth: '',
     email: '',
     phone: '',
     password: '',

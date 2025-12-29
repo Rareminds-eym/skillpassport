@@ -6,7 +6,7 @@
 
 import { Env, RecruiterAdminSignupRequest, RecruiterSignupRequest } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
-import { jsonResponse, splitName, validateEmail } from '../utils/helpers';
+import { capitalizeFirstLetter, jsonResponse, splitName, validateEmail } from '../utils/helpers';
 import { checkEmailExists, deleteAuthUser, getSupabaseAdmin } from '../utils/supabase';
 
 /**
@@ -76,6 +76,7 @@ export async function handleRecruiterAdminSignup(request: Request, env: Env): Pr
         organizationId: null,
         isActive: true,
         phone: body.phone || body.contactPersonPhone,
+        dob: body.dateOfBirth || null,
         metadata: { source: 'recruiter_admin_signup', companyCode: body.companyCode },
       });
 
@@ -244,6 +245,7 @@ export async function handleRecruiterSignup(request: Request, env: Env): Promise
         organizationId: body.companyId,
         isActive: true,
         phone: body.phone,
+        dob: body.dateOfBirth || null,
         metadata: { source: 'recruiter_signup', companyId: body.companyId },
       });
 

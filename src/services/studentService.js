@@ -6,6 +6,14 @@
 import { supabase } from '../lib/supabaseClient';
 
 /**
+ * Capitalize the first letter of a name
+ */
+const capitalizeFirstLetter = (name) => {
+  if (!name || typeof name !== 'string') return '';
+  return name.trim().charAt(0).toUpperCase() + name.trim().slice(1).toLowerCase();
+};
+
+/**
  * Create a user record in the users table
  * This is required before creating student record due to FK constraint
  * @param {string} userId - Auth user ID
@@ -14,7 +22,7 @@ import { supabase } from '../lib/supabaseClient';
  */
 export const createUserRecord = async (userId, userData) => {
   try {
-    const { email, firstName, lastName, user_role, role } = userData;
+    const { email, firstName, lastName, user_role, role, dateOfBirth } = userData;
 
     const userRecord = {
       id: userId,
@@ -23,6 +31,7 @@ export const createUserRecord = async (userId, userData) => {
       lastName: lastName || null,
       role: role || user_role || 'school_student',
       isActive: true,
+      dob: dateOfBirth || null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -157,7 +166,8 @@ export const completeStudentRegistration = async (userId, registrationData) => {
       state,
       city,
       preferredLanguage,
-      referralCode
+      referralCode,
+      dateOfBirth
     } = registrationData;
 
     // Use provided firstName/lastName or split from fullName as fallback, and capitalize
@@ -178,7 +188,8 @@ export const completeStudentRegistration = async (userId, registrationData) => {
       email: email,
       firstName: finalFirstName,
       lastName: finalLastName,
-      user_role: userRoleMap[normalizedType] || 'school_student'  // user_role is passed to createUserRecord which maps to 'role' column
+      user_role: userRoleMap[normalizedType] || 'school_student',  // user_role is passed to createUserRecord which maps to 'role' column
+      dateOfBirth: dateOfBirth || null
     });
 
     if (!userResult.success) {

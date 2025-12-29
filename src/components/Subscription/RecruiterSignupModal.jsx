@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { getModalContent } from '../../utils/getEntityContent';
+import { capitalizeFirstLetter } from './shared/signupValidation';
 
 // Cache for email checks
 const emailCheckCache = new Map();
@@ -18,6 +19,7 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
     email: '',
     phone: '',
     companyId: '',
+    dateOfBirth: '',
     password: '',
     confirmPassword: ''
   });
@@ -148,6 +150,17 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
       newErrors.phone = 'Please enter a valid 10-digit phone number';
     }
 
+    // Date of Birth validation
+    if (!formData.dateOfBirth) {
+      newErrors.dateOfBirth = 'Date of birth is required';
+    } else {
+      const dob = new Date(formData.dateOfBirth);
+      const today = new Date();
+      if (dob > today) {
+        newErrors.dateOfBirth = 'Date of birth cannot be in the future';
+      }
+    }
+
     // Company validation
     if (!formData.companyId) {
       newErrors.companyId = 'Please select a company';
@@ -241,7 +254,8 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
           firstName: firstName,
           lastName: lastName,
           role: 'recruiter',
-          isActive: true
+          isActive: true,
+          dob: formData.dateOfBirth || null
         });
 
       if (userError) {
@@ -456,6 +470,32 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
                     <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
                       {errors.phone}
+                    </p>
+                  )}
+                </div>
+
+                {/* Date of Birth */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date of Birth *
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="date"
+                      name="dateOfBirth"
+                      value={formData.dateOfBirth}
+                      onChange={handleInputChange}
+                      max={new Date().toISOString().split('T')[0]}
+                      className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                        errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                  </div>
+                  {errors.dateOfBirth && (
+                    <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {errors.dateOfBirth}
                     </p>
                   )}
                 </div>

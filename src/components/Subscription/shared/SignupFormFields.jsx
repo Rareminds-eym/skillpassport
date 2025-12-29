@@ -1,6 +1,7 @@
-import { City, State } from 'country-state-city';
+import { City, Country, State } from 'country-state-city';
 import {
     AlertCircle,
+    Calendar,
     CheckCircle,
     Eye, EyeOff,
     Gift,
@@ -13,34 +14,33 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-// Indian states list
-const INDIAN_STATES = State.getStatesOfCountry('IN');
+// Get all countries from the library
+const ALL_COUNTRIES = Country.getAllCountries();
 
-// Preferred languages
+// Preferred languages - comprehensive list
 const LANGUAGES = [
   { code: 'en', name: 'English' },
-  { code: 'hi', name: 'Hindi' },
-  { code: 'ta', name: 'Tamil' },
-  { code: 'te', name: 'Telugu' },
-  { code: 'kn', name: 'Kannada' },
-  { code: 'ml', name: 'Malayalam' },
-  { code: 'mr', name: 'Marathi' },
-  { code: 'gu', name: 'Gujarati' },
-  { code: 'bn', name: 'Bengali' },
-  { code: 'pa', name: 'Punjabi' },
-  { code: 'or', name: 'Odia' },
-  { code: 'as', name: 'Assamese' },
-];
-
-// Countries list (India as default)
-const COUNTRIES = [
-  { code: 'IN', name: 'India' },
-  { code: 'US', name: 'United States' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'AE', name: 'United Arab Emirates' },
-  { code: 'SG', name: 'Singapore' },
-  { code: 'AU', name: 'Australia' },
-  { code: 'CA', name: 'Canada' },
+  { code: 'hi', name: 'हिन्दी (Hindi)' },
+  { code: 'bn', name: 'বাংলা (Bengali)' },
+  { code: 'te', name: 'తెలుగు (Telugu)' },
+  { code: 'mr', name: 'मराठी (Marathi)' },
+  { code: 'ta', name: 'தமிழ் (Tamil)' },
+  { code: 'gu', name: 'ગુજરાતી (Gujarati)' },
+  { code: 'kn', name: 'ಕನ್ನಡ (Kannada)' },
+  { code: 'ml', name: 'മലയാളം (Malayalam)' },
+  { code: 'pa', name: 'ਪੰਜਾਬੀ (Punjabi)' },
+  { code: 'or', name: 'ଓଡ଼ିଆ (Odia)' },
+  { code: 'as', name: 'অসমীয়া (Assamese)' },
+  { code: 'ur', name: 'اردو (Urdu)' },
+  { code: 'sa', name: 'संस्कृतम् (Sanskrit)' },
+  { code: 'ar', name: 'العربية (Arabic)' },
+  { code: 'fr', name: 'Français (French)' },
+  { code: 'de', name: 'Deutsch (German)' },
+  { code: 'es', name: 'Español (Spanish)' },
+  { code: 'pt', name: 'Português (Portuguese)' },
+  { code: 'zh', name: '中文 (Chinese)' },
+  { code: 'ja', name: '日本語 (Japanese)' },
+  { code: 'ko', name: '한국어 (Korean)' },
 ];
 
 /**
@@ -69,22 +69,61 @@ export default function SignupFormFields({
   verifyingOtp = false,
 }) {
   const [cities, setCities] = useState([]);
+  const [states, setStates] = useState([]);
   const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingStates, setLoadingStates] = useState(false);
+
+  // Load states when country changes
+  useEffect(() => {
+    if (formData.country) {
+      setLoadingStates(true);
+      const stateList = State.getStatesOfCountry(formData.country);
+      setStates(stateList || []);
+      setLoadingStates(false);
+    } else {
+      setStates([]);
+    }
+  }, [formData.country]);
 
   // Load cities when state changes
   useEffect(() => {
-    if (formData.state && formData.country === 'IN') {
+    if (formData.state && formData.country) {
       setLoadingCities(true);
-      const stateObj = INDIAN_STATES.find(s => s.name === formData.state);
+      const stateObj = states.find(s => s.name === formData.state);
       if (stateObj) {
-        const cityList = City.getCitiesOfState('IN', stateObj.isoCode);
-        setCities(cityList);
+        const cityList = City.getCitiesOfState(formData.country, stateObj.isoCode);
+        setCities(cityList || []);
+      } else {
+        setCities([]);
       }
       setLoadingCities(false);
     } else {
       setCities([]);
     }
-  }, [formData.state, formData.country]);
+  }, [formData.state, formData.country, states]);
+
+  const handleCountryChange = (e) => {
+    const selectedCountry = e.target.value;
+    onChange({
+      target: {
+        name: 'country',
+        value: selectedCountry
+      }
+    });
+    // Reset state and city when country changes
+    onChange({
+      target: {
+        name: 'state',
+        value: ''
+      }
+    });
+    onChange({
+      target: {
+        name: 'city',
+        value: ''
+      }
+    });
+  };
 
   const handleStateChange = (e) => {
     const selectedState = e.target.value;
@@ -155,6 +194,52 @@ export default function SignupFormFields({
             </p>
           )}
         </div>
+      </div>
+
+      {/* Date of Birth */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Date of Birth <span className="text-red-500">*</span>
+        </label>
+        <div className="relative group">
+          <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+          <input
+            type="date"
+            name="dateOfBirth"
+            value={formData.dateOfBirth || ''}
+            onChange={onChange}
+            max={new Date().toISOString().split('T')[0]}
+            className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none bg-white cursor-pointer hover:border-blue-400 ${
+              errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'
+            } [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:p-1 [&::-webkit-calendar-picker-indicator]:rounded [&::-webkit-calendar-picker-indicator]:hover:bg-blue-50 [&::-webkit-calendar-picker-indicator]:transition-colors`}
+            style={{
+              colorScheme: 'light'
+            }}
+          />
+        </div>
+        {!formData.dateOfBirth && !errors.dateOfBirth && (
+          <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
+            Select your date of birth
+          </p>
+        )}
+        {formData.dateOfBirth && !errors.dateOfBirth && (
+          <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
+            <CheckCircle className="w-3 h-3" />
+            {new Date(formData.dateOfBirth).toLocaleDateString('en-US', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}
+          </p>
+        )}
+        {errors.dateOfBirth && (
+          <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" />
+            {errors.dateOfBirth}
+          </p>
+        )}
       </div>
 
       {/* Email Address */}
@@ -367,13 +452,14 @@ export default function SignupFormFields({
           <select
             name="country"
             value={formData.country || 'IN'}
-            onChange={onChange}
+            onChange={handleCountryChange}
             className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none bg-white ${
               errors.country ? 'border-red-500' : 'border-gray-300'
             }`}
           >
-            {COUNTRIES.map(country => (
-              <option key={country.code} value={country.code}>
+            <option value="">Select Country</option>
+            {ALL_COUNTRIES.map(country => (
+              <option key={country.isoCode} value={country.isoCode}>
                 {country.name}
               </option>
             ))}
@@ -387,10 +473,10 @@ export default function SignupFormFields({
         )}
       </div>
 
-      {/* State / UT */}
+      {/* State / Province */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          State / UT <span className="text-red-500">*</span>
+          State / Province <span className="text-red-500">*</span>
         </label>
         <div className="relative">
           <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -398,13 +484,15 @@ export default function SignupFormFields({
             name="state"
             value={formData.state || ''}
             onChange={handleStateChange}
-            disabled={formData.country !== 'IN'}
+            disabled={!formData.country || loadingStates}
             className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none bg-white disabled:bg-gray-100 ${
               errors.state ? 'border-red-500' : 'border-gray-300'
             }`}
           >
-            <option value="">Select State / UT</option>
-            {INDIAN_STATES.map(state => (
+            <option value="">
+              {loadingStates ? 'Loading...' : !formData.country ? 'Select country first' : 'Select State / Province'}
+            </option>
+            {states.map(state => (
               <option key={state.isoCode} value={state.name}>
                 {state.name}
               </option>
@@ -533,5 +621,5 @@ export default function SignupFormFields({
 }
 
 // Export constants for use in other components
-export { COUNTRIES, INDIAN_STATES, LANGUAGES };
+export { ALL_COUNTRIES, LANGUAGES };
 

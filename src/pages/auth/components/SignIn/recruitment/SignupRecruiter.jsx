@@ -120,8 +120,6 @@ export default function SignupRecruiter() {
         .insert({
           user_id: authData.user.id,
           name: fullName,
-          first_name: firstName,
-          last_name: lastName,
           email: formData.email,
           phone: formData.phone,
           country: formData.country,
@@ -136,6 +134,21 @@ export default function SignupRecruiter() {
         });
 
       if (recruiterError) throw new Error(recruiterError.message);
+
+      // Create user record in public.users table
+      const { error: userError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email: formData.email,
+          firstName: firstName,
+          lastName: lastName,
+          role: 'recruiter',
+          isActive: true,
+          dob: formData.dateOfBirth || null
+        });
+
+      if (userError) console.error('Error creating user record:', userError);
 
       alert('Account created successfully! Please check your email to verify your account.');
       navigate('/login/recruiter');
