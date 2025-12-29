@@ -25,6 +25,7 @@ import {
   getDefaultEmployabilityScore,
 } from "../../../utils/employabilityCalculator";
 import EmployabilityDebugger from "./EmployabilityDebugger";
+import EmployabilityScoreCard from "./EmployabilityScoreCard";
 import { generateBadges } from "../../../services/badgeService";
 import DigitalBadges from "./DigitalBadges";
 import { supabase } from "../../../lib/supabaseClient";
@@ -39,6 +40,25 @@ import {
   IconBrandYoutube,
 } from "@tabler/icons-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { capitalizeName } from "../../../utils/helpers";
+import { Rocket, Star, Sprout, Wrench, FileText } from "lucide-react";
+
+// Helper to get level display with icon
+const getLevelDisplay = (level, label) => {
+  const iconClass = "w-4 h-4 inline-block mr-1";
+  switch (level) {
+    case "Excellent":
+      return <span className="flex items-center gap-1"><Star className={iconClass} /> {label}</span>;
+    case "Good":
+      return <span className="flex items-center gap-1"><Rocket className={iconClass} /> {label}</span>;
+    case "Moderate":
+      return <span className="flex items-center gap-1"><Sprout className={iconClass} /> {label}</span>;
+    case "Needs Support":
+      return <span className="flex items-center gap-1"><Wrench className={iconClass} /> {label}</span>;
+    default:
+      return <span className="flex items-center gap-1"><FileText className={iconClass} /> {label}</span>;
+  }
+};
 
 // ================= ANIMATED ACHIEVEMENT BUTTON =================
 const AchievementButton = ({ onClick }) => {
@@ -242,26 +262,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     if (realStudentData) {
       // Pass the entire realStudentData object which contains profile, technicalSkills, softSkills, etc.
       const scoreData = calculateEmployabilityScore(realStudentData);
-
-      // If score is 0, try with minimum score calculation
-      if (scoreData.employabilityScore === 0) {
-        const fallbackData = {
-          employabilityScore: 42,
-          level: "Moderate",
-          label: "🌱 Developing",
-          breakdown: {
-            foundational: 40,
-            century21: 35,
-            digital: 45,
-            behavior: 50,
-            career: 35,
-            bonus: 0,
-          },
-        };
-        setEmployabilityData(fallbackData);
-      } else {
-        setEmployabilityData(scoreData);
-      }
+      setEmployabilityData(scoreData);
 
       // Generate badges based on student data
       const badges = generateBadges(realStudentData);
@@ -779,7 +780,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   <div className="flex-1 pt-1">
                     <div className="flex items-center gap-3 flex-wrap">
                       <h1 className="text-3xl font-bold text-gray-900 drop-shadow-sm">
-                        {displayData.name || "Student Name"}
+                        {capitalizeName(displayData.name) || "Student Name"}
                       </h1>
                       {/* Approval Status Badge */}
                       {/* {(realStudentData?.approval_status === 'approved') ? (
@@ -915,30 +916,8 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                 </div>
                 )}
 
-                {/* Employability Score */}
-                <div className="space-y-3 bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-blue-100 shadow-md">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-gray-900 text-sm">
-                      Employability Score
-                    </span>
-                    <span className="text-lg font-bold text-blue-600 drop-shadow-sm">
-                      {employabilityData.employabilityScore}%
-                    </span>
-                  </div>
-                  <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 rounded-full transition-all duration-300 shadow-lg"
-                      style={{
-                        width: `${employabilityData.employabilityScore}%`,
-                      }}
-                    />
-                  </div>
-                  <div className="text-center">
-                    <span className="text-xs text-blue-600 font-semibold">
-                      {employabilityData.label}
-                    </span>
-                  </div>
-                </div>
+                {/* Employability Score - New Circular Gauge with Radar Chart */}
+                <EmployabilityScoreCard employabilityData={employabilityData} />
 
                 {/* Achievements - Inline Slider */}
                 {earnedBadges.length > 0 && (
@@ -1422,7 +1401,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {displayData.name || "Student Name"}
+                  {capitalizeName(displayData.name) || "Student Name"}
                 </h3>
                 <p className="text-sm text-gray-600">{institutionName}</p>
               </div>
@@ -1452,7 +1431,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                 value={displayData.classYear || 'N/A'} 
               />
               <DetailItem label="Employability Score" value={`${employabilityData.employabilityScore}%`} highlight />
-              <DetailItem label="Level" value={employabilityData.label} />
+              <DetailItem label="Level" value={getLevelDisplay(employabilityData.level, employabilityData.label)} />
             </div>
 
             {/* Badges Info */}
