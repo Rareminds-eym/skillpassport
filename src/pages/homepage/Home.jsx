@@ -9,12 +9,16 @@ import {
   FinalCTA,
   HowItWorks,
   ProductWalkthrough,
-  PromotionalModal,
+  AssessmentPromotionalModal,
 } from '../../components/Homepage';
-import { usePromotionalEventContext } from '../../contexts/PromotionalEventContext';
+import { useAssessmentPromotionalContext } from '../../contexts/AssessmentPromotionalContext';
 
 const Home = () => {
-  const { event, showModal, dismissModal, getTimeRemaining } = usePromotionalEventContext();
+  const { 
+    showModal: showAssessmentModal, 
+    dismissModal: dismissAssessmentModal,
+    getTimeRemaining: getAssessmentTimeRemaining
+  } = useAssessmentPromotionalContext();
 
   return (
     <div className="min-h-screen">
@@ -31,12 +35,11 @@ const Home = () => {
       <SecurityCompliance />
       <FinalCTA />
 
-      {/* Promotional Modal - Shows on first visit */}
-      <PromotionalModal
-        event={event}
-        isOpen={showModal}
-        onClose={dismissModal}
-        getTimeRemaining={getTimeRemaining}
+      {/* Assessment Promotional Modal - Shows on first visit */}
+      <AssessmentPromotionalModal
+        isOpen={showAssessmentModal}
+        onClose={dismissAssessmentModal}
+        getTimeRemaining={getAssessmentTimeRemaining}
       />
     </div>
   );
