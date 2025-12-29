@@ -22,11 +22,18 @@ Handles user management operations for the Skill Passport platform.
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key | Client-side operations |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | Admin operations (creating users, bypassing RLS) |
 
-### Optional
+## Email Configuration
 
-| Variable | Description | Default | Usage |
-|----------|-------------|---------|-------|
-| `RESEND_API_KEY` | Resend email service API key | None | Send welcome emails and interview reminders |
+Email sending is handled via Supabase Edge Function (`send-email`) which uses SMTP.
+Configure SMTP settings in Supabase Dashboard → Emails → SMTP Settings.
+
+The following secrets must be set in Supabase Edge Functions:
+- `SMTP_HOST` - SMTP server hostname
+- `SMTP_PORT` - SMTP server port (587 or 465)
+- `SMTP_USER` - SMTP username
+- `SMTP_PASS` - SMTP password
+- `SMTP_FROM_EMAIL` - Default sender email
+- `SMTP_FROM_NAME` - Default sender name
 
 ## Setup Instructions
 
@@ -44,17 +51,26 @@ Set required secrets using Wrangler CLI:
 wrangler secret put VITE_SUPABASE_URL
 wrangler secret put VITE_SUPABASE_ANON_KEY
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-
-# Optional secret for email functionality
-wrangler secret put RESEND_API_KEY
 ```
 
-### 3. Deploy
+### 3. Configure SMTP in Supabase
+Set SMTP secrets for the `send-email` Edge Function:
+
+```bash
+supabase secrets set SMTP_HOST=your-smtp-host
+supabase secrets set SMTP_PORT=587
+supabase secrets set SMTP_USER=your-smtp-user
+supabase secrets set SMTP_PASS=your-smtp-password
+supabase secrets set SMTP_FROM_EMAIL=noreply@rareminds.in
+supabase secrets set SMTP_FROM_NAME="Skill Passport"
+```
+
+### 4. Deploy
 ```bash
 npm run deploy
 ```
 
-### 4. Update Frontend Environment
+### 5. Update Frontend Environment
 Add the worker URL to your `.env`:
 ```env
 VITE_USER_API_URL=https://user-api.your-subdomain.workers.dev
@@ -80,14 +96,14 @@ VITE_USER_API_URL=https://user-api.your-subdomain.workers.dev
 
 ### Event User Creation
 - Creates users from event registrations
-- Sends welcome emails with credentials (if RESEND_API_KEY configured)
+- Sends welcome emails with credentials via SMTP
 - Maps roles to database format
 - Updates event_registrations table
 
 ### Interview Reminders
 - Sends formatted interview reminder emails
 - Includes meeting details and tips
-- Requires RESEND_API_KEY
+- Uses Supabase Edge Function with SMTP
 
 ## Development
 
@@ -112,5 +128,5 @@ The worker includes comprehensive error handling:
 
 - All email addresses are normalized to lowercase
 - Passwords are 12 characters with mixed case, numbers, and special characters
-- Email functionality is optional (worker functions without RESEND_API_KEY)
+- Email functionality uses Supabase Edge Function with SMTP (no external email API needed)
 - RLS policies must allow service role operations on students and school_educators tables
