@@ -105,7 +105,27 @@ export async function sendSms(
   phoneNumber: string,
   message: string,
   env: Env
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
+): Promise<{ success: boolean; messageId?: string; error?: string; debug?: any }> {
+  
+  // Debug: Log environment variables (masked)
+  const debugInfo: any = {
+    timestamp: new Date().toISOString(),
+    phoneNumber,
+    hasAccessKeyId: !!env.AWS_ACCESS_KEY_ID,
+    accessKeyIdPrefix: env.AWS_ACCESS_KEY_ID ? env.AWS_ACCESS_KEY_ID.slice(0, 8) + '...' : 'MISSING',
+    hasSecretKey: !!env.AWS_SECRET_ACCESS_KEY,
+    region: env.AWS_REGION || 'ap-south-1 (default)',
+    senderId: env.SMS_SENDER_ID || 'not set',
+  };
+  
+  console.log('[SNS DEBUG] Starting SMS send:', JSON.stringify(debugInfo));
+  
+  if (!env.AWS_ACCESS_KEY_ID || !env.AWS_SECRET_ACCESS_KEY) {
+    const error = 'AWS credentials not configured';
+    console.error('[SNS DEBUG] Error:', error);
+    return { success: false, error, debug: debugInfo };
+  }
+  
   const config: SnsConfig = {
     accessKeyId: env.AWS_ACCESS_KEY_ID,
     secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
@@ -114,6 +134,8 @@ export async function sendSms(
 
   const host = `sns.${config.region}.amazonaws.com`;
   const endpoint = `https://${host}/`;
+  
+  console.log('[SNS DEBUG] Endpoint:', endpoint);
   
   // Build request parameters
   const params = new URLSearchParams({
@@ -136,11 +158,14 @@ export async function sendSms(
   params.append('MessageAttributes.entry.2.Value.StringValue', 'Transactional');
   
   const body = params.toString();
+  console.log('[SNS DEBUG] Request body params:', body);
   
   // Create timestamp
   const now = new Date();
   const timestamp = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
   const dateStamp = timestamp.slice(0, 8);
+  
+  console.log('[SNS DEBUG] Timestamp:', timestamp, 'DateStamp:', dateStamp);
   
   // Create headers
   const headers: Record<string, string> = {
@@ -163,8 +188,10 @@ export async function sendSms(
   );
   
   headers['Authorization'] = authorization;
+  console.log('[SNS DEBUG] Authorization header created (length):', authorization.length);
   
   try {
+    console.log('[SNS DEBUG] Sending request to AWS SNS...');
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
@@ -173,18 +200,45 @@ export async function sendSms(
     
     const responseText = await response.text();
     
+    console.log('[SNS DEBUG] Response status:', response.status);
+    console.log('[SNS DEBUG] Response body:', responseText);
+    
+    debugInfo.responseStatus = response.status;
+    debugInfo.responseBody = responseText;
+    
     if (!response.ok) {
-      console.error('SNS Error Response:', responseText);
-      return { success: false, error: `SNS Error: ${response.status}` };
+      // Parse AWS error details from XML
+      const errorCodeMatch = responseText.match(/<Code>([^<]+)<\/Code>/);
+      const errorMessageMatch = responseText.match(/<Message>([^<]+)<\/Message>/);
+      const errorCode = errorCodeMatch ? errorCodeMatch[1] : 'Unknown';
+      const errorMessage = errorMessageMatch ? errorMessageMatch[1] : responseText;
+      
+      console.error('[SNS DEBUG] SNS Error:', {
+        status: response.status,
+        errorCode,
+        errorMessage,
+        fullResponse: responseText
+      });
+      
+      return { 
+        success: false, 
+        error: `SNS Error (${errorCode}): ${errorMessage}`,
+        debug: debugInfo
+      };
     }
     
     // Parse message ID from XML response
     const messageIdMatch = responseText.match(/<MessageId>([^<]+)<\/MessageId>/);
     const messageId = messageIdMatch ? messageIdMatch[1] : undefined;
     
-    return { success: true, messageId };
+    console.log('[SNS DEBUG] Success! MessageId:', messageId);
+    debugInfo.messageId = messageId;
+    
+    return { success: true, messageId, debug: debugInfo };
   } catch (error: any) {
-    console.error('SNS Request Error:', error);
-    return { success: false, error: error.message };
+    console.error('[SNS DEBUG] Request Error:', error.message, error.stack);
+    debugInfo.error = error.message;
+    debugInfo.stack = error.stack;
+    return { success: false, error: error.message, debug: debugInfo };
   }
 }
