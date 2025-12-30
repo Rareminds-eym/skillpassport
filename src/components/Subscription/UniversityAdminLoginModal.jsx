@@ -1,8 +1,10 @@
+import { AlertCircle, Building, Eye, EyeOff, Mail, X } from 'lucide-react';
 import { useState } from 'react';
-import { X, Eye, EyeOff, Building, Mail, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 
 function UniversityAdminLoginModal({ isOpen, onClose, selectedPlan, onLoginSuccess, onSwitchToSignup }) {
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -166,7 +168,7 @@ function UniversityAdminLoginModal({ isOpen, onClose, selectedPlan, onLoginSucce
                                 Don't have an account?{' '}
                                 <button
                                     type="button"
-                                    onClick={onSwitchToSignup}
+                                    onClick={() => { onClose(); navigate('/signup'); }}
                                     className="text-purple-600 hover:text-purple-700 font-medium"
                                 >
                                     Register here

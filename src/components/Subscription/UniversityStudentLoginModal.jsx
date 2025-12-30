@@ -1,9 +1,11 @@
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertCircle, Eye, EyeOff, GraduationCap, Lock, Mail, X } from 'lucide-react';
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, Eye, EyeOff, AlertCircle, GraduationCap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function UniversityStudentLoginModal({ isOpen, onClose, selectedPlan, onLoginSuccess, onSwitchToSignup }) {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -220,7 +222,7 @@ export default function UniversityStudentLoginModal({ isOpen, onClose, selectedP
                     Don't have an account?{' '}
                     <button
                       type="button"
-                      onClick={onSwitchToSignup}
+                      onClick={() => { onClose(); navigate('/signup'); }}
                       className="text-purple-600 hover:text-purple-700 font-semibold underline"
                     >
                       Sign up here

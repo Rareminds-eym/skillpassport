@@ -76,18 +76,15 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
   const setStudent = async (studentData: Student) => {
     // Prevent infinite loops by checking if we're already loading the same student
     if (isLoading && student?.email === studentData.email) {
-      console.log('⚠️ Already loading this student, skipping duplicate request');
       return;
     }
 
     // Check if we already have this student's data
     if (student?.email === studentData.email && !isLoading) {
-      console.log('✅ Student data already loaded, skipping duplicate request');
       setIsManuallySet(true); // Still mark as manually set
       return;
     }
 
-    console.log('🔄 Loading student data for:', studentData.email);
     setIsLoading(true);
     setIsManuallySet(true); // Mark as manually set
     
@@ -97,7 +94,6 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
         const result = await getStudentPortfolioByEmail(studentData.email);
 
         if (result.success && result.data) {
-          console.log('✅ Student portfolio data loaded via setStudent');
           _setStudent(result.data as Student);
           loadedUserEmailRef.current = studentData.email; // Mark this student as loaded
         } else {
@@ -118,22 +114,6 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
       setIsLoading(false);
     }
   };
-
-  console.log('🎨 PortfolioProvider render:', {
-    student: student ? { 
-      email: student.email, 
-      name: student.name || student.profile?.name,
-      hasProfile: !!student.profile,
-      hasProjects: !!student.projects,
-      hasSkills: !!student.skills,
-      profileProjects: student.profile?.projects?.length || 0,
-      directProjects: student.projects?.length || 0,
-      profileSkills: student.profile?.skills?.length || 0,
-      directSkills: student.skills?.length || 0
-    } : null,
-    isLoading,
-    isManuallySet
-  });
 
   useEffect(() => {
     // Load saved settings from localStorage with role-based defaults
@@ -175,25 +155,21 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
 
       // Wait for auth to finish loading
       if (authLoading) {
-        console.log('⏳ Waiting for auth to load...');
         return;
       }
 
       // Check if user is authenticated
       if (!user?.email) {
-        console.log('⚠️ No authenticated user found');
         setIsLoading(false);
         return;
       }
 
       // Don't reload if we already have the student data for this user
       if (loadedUserEmailRef.current === user.email) {
-        console.log('✅ Student data already loaded for this user');
         setIsLoading(false);
         return;
       }
 
-      console.log('🔍 Loading student portfolio data for authenticated user:', user.email);
       setIsLoading(true);
 
       try {
@@ -201,22 +177,13 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
         const result = await getStudentPortfolioByEmail(user.email);
 
         if (result.success && result.data) {
-          console.log('✅ Student portfolio data loaded successfully');
-          console.log('📊 Data includes:', {
-            skills: result.data.skills?.length || 0,
-            projects: result.data.projects?.length || 0,
-            education: result.data.education?.length || 0,
-            experience: result.data.experience?.length || 0,
-            certificates: result.data.certificates?.length || 0,
-            training: result.data.training?.length || 0
-          });
           _setStudent(result.data as Student);
           loadedUserEmailRef.current = user.email; // Mark this user as loaded
         } else {
-          console.error('❌ Error fetching student portfolio data:', result.error);
+          // Handle error silently
         }
       } catch (error) {
-        console.error('❌ Error loading student portfolio data:', error);
+        // Handle error silently
       } finally {
         setIsLoading(false);
       }

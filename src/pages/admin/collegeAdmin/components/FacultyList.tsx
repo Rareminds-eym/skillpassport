@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Search, Eye, CheckCircle, Clock, XCircle } from "lucide-react";
+import { Search, Eye, CheckCircle, Clock, XCircle, FileText } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
 import { useAuth } from "../../../../context/AuthContext";
+import FacultyDocumentViewerModal from "../../../../components/admin/modals/FacultyDocumentViewerModal";
 
 interface Faculty {
   id: string;
@@ -26,6 +27,9 @@ interface Faculty {
     created_by?: string;
     subject_expertise?: any[];
     role?: string;
+    degree_certificate_url?: string;
+    id_proof_url?: string;
+    experience_letters_url?: string[];
   };
 }
 
@@ -41,6 +45,10 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [selectedFaculty, setSelectedFaculty] = useState<Faculty | null>(null);
+  
+  // Document viewer modal state
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [selectedFacultyForDocs, setSelectedFacultyForDocs] = useState<Faculty | null>(null);
 
   useEffect(() => {
     if (collegeId) {
@@ -132,6 +140,16 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
     } else {
       console.error('Error updating faculty status:', error);
     }
+  };
+
+  const handleViewDocuments = (faculty: Faculty) => {
+    setSelectedFacultyForDocs(faculty);
+    setShowDocumentModal(true);
+  };
+
+  const handleCloseDocumentModal = () => {
+    setShowDocumentModal(false);
+    setSelectedFacultyForDocs(null);
   };
 
   return (
@@ -245,7 +263,7 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                     Actions
                   </th>
                 </tr>
@@ -299,13 +317,24 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
                       {getStatusBadge(member.accountStatus)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button 
-                        onClick={() => setSelectedFaculty(member)}
-                        className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
-                      >
-                        <Eye className="h-4 w-4" />
-                        View
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => handleViewDocuments(member)}
+                          className="text-blue-600 hover:text-blue-900 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                          title="View Documents"
+                        >
+                          <FileText className="h-4 w-4" />
+                          Docs
+                        </button>
+                        <button 
+                          onClick={() => setSelectedFaculty(member)}
+                          className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1 px-2 py-1 rounded hover:bg-indigo-50 transition-colors"
+                          title="View Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                          View
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -444,6 +473,22 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
           </div>
         </div>
       )}
+      
+      {/* Faculty Document Viewer Modal */}
+      <FacultyDocumentViewerModal
+        isOpen={showDocumentModal}
+        onClose={handleCloseDocumentModal}
+        facultyData={selectedFacultyForDocs ? {
+          name: `${selectedFacultyForDocs.metadata?.first_name || ''} ${selectedFacultyForDocs.metadata?.last_name || ''}`.trim(),
+          email: selectedFacultyForDocs.metadata?.email || '',
+          employeeId: selectedFacultyForDocs.employeeId || selectedFacultyForDocs.id,
+          metadata: {
+            degree_certificate_url: selectedFacultyForDocs.metadata?.degree_certificate_url,
+            id_proof_url: selectedFacultyForDocs.metadata?.id_proof_url,
+            experience_letters_url: selectedFacultyForDocs.metadata?.experience_letters_url
+          }
+        } : null}
+      />
     </div>
   );
 };

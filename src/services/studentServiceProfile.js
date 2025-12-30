@@ -403,8 +403,25 @@ const formattedExperience = tableExperience
       // Profile data (from students.profile JSONB)
       profile: transformedProfile,
 
-      // Legacy flattened access for backward compatibility
+      // Legacy flattened access for backward compatibility - BUT individual columns take precedence
       ...transformedProfile,
+      
+      // CRITICAL FIX: Individual database columns override profile data
+      name: data.name || transformedProfile.name,
+      approval_status: data.approval_status, // This was getting overwritten!
+      age: data.age || transformedProfile.age,
+      date_of_birth: data.date_of_birth || transformedProfile.date_of_birth,
+      contact_number: data.contact_number || transformedProfile.contact_number,
+      university: data.university || transformedProfile.university,
+      branch_field: data.branch_field || transformedProfile.branch_field,
+      // Add other important individual columns
+      github_link: data.github_link || transformedProfile.github_link,
+      linkedin_link: data.linkedin_link || transformedProfile.linkedin_link,
+      twitter_link: data.twitter_link || transformedProfile.twitter_link,
+      facebook_link: data.facebook_link || transformedProfile.facebook_link,
+      instagram_link: data.instagram_link || transformedProfile.instagram_link,
+      portfolio_link: data.portfolio_link || transformedProfile.portfolio_link,
+      youtube_link: data.youtube_link || transformedProfile.youtube_link,
 
       // NOW THESE COME FROM projects table:
       projects: Array.isArray(data.projects)

@@ -5,9 +5,9 @@
  */
 
 import { Env, RecruiterAdminSignupRequest, RecruiterSignupRequest } from '../types';
-import { jsonResponse, validateEmail, splitName } from '../utils/helpers';
-import { getSupabaseAdmin, checkEmailExists, deleteAuthUser } from '../utils/supabase';
 import { sendWelcomeEmail } from '../utils/email';
+import { capitalizeFirstLetter, jsonResponse, splitName, validateEmail } from '../utils/helpers';
+import { checkEmailExists, deleteAuthUser, getSupabaseAdmin } from '../utils/supabase';
 
 /**
  * Handle recruiter admin signup with company creation
@@ -76,6 +76,7 @@ export async function handleRecruiterAdminSignup(request: Request, env: Env): Pr
         organizationId: null,
         isActive: true,
         phone: body.phone || body.contactPersonPhone,
+        dob: body.dateOfBirth || null,
         metadata: { source: 'recruiter_admin_signup', companyCode: body.companyCode },
       });
 
@@ -230,7 +231,10 @@ export async function handleRecruiterSignup(request: Request, env: Env): Promise
     const userId = authUser.user.id;
 
     try {
-      const { firstName, lastName } = splitName(body.name);
+      const { firstName, lastName } = body.firstName && body.lastName 
+        ? { firstName: capitalizeFirstLetter(body.firstName), lastName: capitalizeFirstLetter(body.lastName) }
+        : splitName(body.name);
+      const fullName = `${firstName} ${lastName}`.trim();
 
       await supabaseAdmin.from('users').insert({
         id: userId,
@@ -241,15 +245,17 @@ export async function handleRecruiterSignup(request: Request, env: Env): Promise
         organizationId: body.companyId,
         isActive: true,
         phone: body.phone,
+        dob: body.dateOfBirth || null,
         metadata: { source: 'recruiter_signup', companyId: body.companyId },
       });
 
+      // Create recruiter record (first_name/last_name stored in users table only)
       const { data: recruiter, error: recruiterError } = await supabaseAdmin
         .from('recruiters')
         .insert({
           user_id: userId,
           company_id: body.companyId,
-          name: body.name,
+          name: fullName,
           email: body.email.toLowerCase(),
           phone: body.phone,
           designation: body.designation,

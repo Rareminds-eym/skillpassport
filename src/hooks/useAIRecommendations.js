@@ -26,14 +26,7 @@ export const useAIRecommendations = ({
    * Fetch recommendations from the service
    */
   const fetchRecommendations = useCallback(async (forceRefresh = false) => {
-    console.log('🔍 useAIRecommendations - fetchRecommendations called:', {
-      studentId,
-      enabled,
-      forceRefresh
-    });
-
     if (!studentId || !enabled) {
-      console.log('⚠️ Not fetching: studentId or enabled is false');
       setRecommendations([]);
       setLoading(false);
       return;
@@ -43,31 +36,19 @@ export const useAIRecommendations = ({
       setLoading(true);
       setError(null);
 
-      console.log('🎯 Fetching AI recommendations for student:', studentId);
-
       const result = await AIRecommendationService.getRecommendations(
         studentId, 
         forceRefresh
       );
 
-      console.log('📦 Received result from service:', result);
-
       if (result.success) {
         setRecommendations(result.recommendations || []);
         setCached(result.cached || false);
         setFallback(result.fallback || false);
-        
-        console.log('✅ Received recommendations:', {
-          count: result.recommendations?.length || 0,
-          cached: result.cached,
-          fallback: result.fallback,
-          reason: result.reason
-        });
       } else {
         throw new Error(result.error || 'Failed to fetch recommendations');
       }
     } catch (err) {
-      console.error('❌ Error fetching recommendations:', err);
       setError(err.message || 'Failed to fetch recommendations');
       setRecommendations([]);
     } finally {
@@ -166,19 +147,16 @@ export const useAIRecommendations = ({
     
     try {
       setLoading(true);
-      console.log('🔄 Generating student embedding...');
       
       const result = await AIRecommendationService.generateStudentEmbedding(studentId);
       
       if (result.success) {
-        console.log('✅ Student embedding generated successfully');
         // Fetch fresh recommendations after generating embedding
         await fetchRecommendations(true);
       } else {
         throw new Error(result.error);
       }
     } catch (err) {
-      console.error('❌ Error generating student embedding:', err);
       setError(err.message);
     } finally {
       setLoading(false);

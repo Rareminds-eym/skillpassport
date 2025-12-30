@@ -5,10 +5,10 @@
  * - School Student signup
  */
 
-import { Env, SchoolAdminSignupRequest, EducatorSignupRequest, StudentSignupRequest } from '../types';
-import { jsonResponse, validateEmail, splitName, calculateAge } from '../utils/helpers';
-import { getSupabaseAdmin, checkEmailExists, deleteAuthUser } from '../utils/supabase';
+import { EducatorSignupRequest, Env, SchoolAdminSignupRequest, StudentSignupRequest } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
+import { calculateAge, jsonResponse, splitName, validateEmail } from '../utils/helpers';
+import { checkEmailExists, deleteAuthUser, getSupabaseAdmin } from '../utils/supabase';
 
 /**
  * Handle school admin signup with school creation
@@ -86,6 +86,7 @@ export async function handleSchoolAdminSignup(request: Request, env: Env): Promi
         organizationId: null,
         isActive: true,
         phone: body.phone || body.principalPhone,
+        dob: body.dateOfBirth || null,
         metadata: {
           source: 'school_signup',
           schoolCode: body.schoolCode,
@@ -225,9 +226,9 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
       password: body.password,
       email_confirm: true,
       user_metadata: {
-        first_name: body.firstName,
-        last_name: body.lastName,
-        name: `${body.firstName} ${body.lastName}`,
+        first_name: capitalizeFirstLetter(body.firstName),
+        last_name: capitalizeFirstLetter(body.lastName),
+        name: `${capitalizeFirstLetter(body.firstName)} ${capitalizeFirstLetter(body.lastName)}`,
         role: 'school_educator',
         phone: body.phone,
         school_id: body.schoolId,
@@ -243,15 +244,19 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
 
     try {
       // 2. Create public.users record
+      const firstName = capitalizeFirstLetter(body.firstName);
+      const lastName = capitalizeFirstLetter(body.lastName);
+      
       const { error: userError } = await supabaseAdmin.from('users').insert({
         id: userId,
         email: body.email.toLowerCase(),
-        firstName: body.firstName,
-        lastName: body.lastName,
+        firstName: firstName,
+        lastName: lastName,
         role: 'school_educator',
         organizationId: body.schoolId,
         isActive: true,
         phone: body.phone,
+        dob: body.dateOfBirth || null,
         metadata: {
           source: 'educator_signup',
           schoolId: body.schoolId,
@@ -269,8 +274,8 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
           user_id: userId,
           school_id: body.schoolId,
           email: body.email.toLowerCase(),
-          first_name: body.firstName,
-          last_name: body.lastName,
+          first_name: firstName,
+          last_name: lastName,
           phone_number: body.phone,
           designation: body.designation,
           department: body.department,
@@ -402,7 +407,9 @@ export async function handleStudentSignup(request: Request, env: Env): Promise<R
 
     try {
       // 2. Create public.users record
-      const { firstName, lastName } = splitName(body.name);
+      const { firstName, lastName } = body.firstName && body.lastName 
+        ? { firstName: capitalizeFirstLetter(body.firstName), lastName: capitalizeFirstLetter(body.lastName) }
+        : splitName(body.name);
 
       const { error: userError } = await supabaseAdmin.from('users').insert({
         id: userId,
@@ -413,6 +420,7 @@ export async function handleStudentSignup(request: Request, env: Env): Promise<R
         organizationId: body.schoolId,
         isActive: true,
         phone: body.phone,
+        dob: body.dateOfBirth || null,
         metadata: {
           source: 'student_signup',
           schoolId: body.schoolId,
@@ -425,15 +433,16 @@ export async function handleStudentSignup(request: Request, env: Env): Promise<R
 
       // Calculate age from date of birth
       const age = calculateAge(body.dateOfBirth || '');
+      const fullName = `${firstName} ${lastName}`.trim();
 
-      // 3. Create students record
+      // 3. Create students record (first_name/last_name stored in users table only)
       const { data: student, error: studentError } = await supabaseAdmin
         .from('students')
         .insert({
           id: userId,
           user_id: userId,
           email: body.email.toLowerCase(),
-          name: body.name,
+          name: fullName,
           contactNumber: body.phone,
           contact_number: body.phone,
           dateOfBirth: body.dateOfBirth,

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, Eye, EyeOff, AlertCircle, Check, KeyRound } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertCircle, Check, Eye, EyeOff, KeyRound, Lock, Mail, X } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signIn, sendPasswordResetOtp, verifyOtpAndResetPassword } from '../../services/authService';
+import { sendPasswordResetOtp, signIn, verifyOtpAndResetPassword } from '../../services/authService';
 import { getModalContent } from '../../utils/getEntityContent';
 
 export default function LoginModal({ isOpen, onClose, selectedPlan, studentType, onLoginSuccess, onSwitchToSignup }) {
@@ -169,9 +169,7 @@ export default function LoginModal({ isOpen, onClose, selectedPlan, studentType,
 
   const handleSignupRedirect = () => {
     onClose();
-    if (onSwitchToSignup) {
-      onSwitchToSignup();
-    }
+    navigate('/signup');
   };
 
   return (

@@ -1,8 +1,8 @@
-import { Link, useLocation } from 'react-router-dom';
-import { useState, useEffect, useRef } from 'react';
-import { Menu, X } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { Menu, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -290,7 +290,7 @@ const Header = ({ hasBanner = false }) => {
 
               {/* Signup Button */}
               <Link
-                to="/register"
+                to="/signup"
                 className="signup-button px-5 py-2 text-sm font-extrabold text-red-600 border-2 border-red-300 rounded-full transition-all duration-200"
               >
                 Sign Up
@@ -353,7 +353,7 @@ const Header = ({ hasBanner = false }) => {
                     <div className="text-xs font-bold text-gray-400 uppercase px-2 tracking-wider">Sign Up</div>
                     <div className="mt-2">
                       <Link
-                        to="/register"
+                        to="/signup"
                         onClick={closeMobileMenuWithAnimation}
                         className="signup-button block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 border-2 border-red-300 rounded-lg transition-all duration-200"
                       >

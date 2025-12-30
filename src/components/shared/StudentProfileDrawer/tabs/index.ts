@@ -8,3 +8,4 @@ export { default as CurriculumTab } from './CurriculumTab';
 export { default as ClubsCompetitionsTab } from './ClubsCompetitionsTab';
 export { default as ExamResultsTab } from './ExamResultsTab';
 export { default as NotesTab } from './NotesTab';
+export { default as EventsTab } from './EventsTab';

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext(null);
@@ -20,6 +20,11 @@ export const AuthProvider = ({ children }) => {
 
   // Helper to restore user from localStorage
   const restoreUserFromStorage = useCallback((sessionUser) => {
+    // Always get the latest role from session metadata - check user_role first (set by UnifiedSignup)
+    const sessionRole = sessionUser.user_metadata?.user_role 
+      || sessionUser.user_metadata?.role 
+      || 'user';
+    
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
@@ -30,17 +35,22 @@ export const AuthProvider = ({ children }) => {
           parsedUser.email === sessionUser.email;
         
         if (userMatches) {
-          return parsedUser;
+          // Always update role from session to ensure it's current
+          return {
+            ...parsedUser,
+            role: sessionRole,
+          };
         }
       } catch (e) {
         console.warn('Failed to parse stored user:', e);
       }
     }
+    
     // Create new user data from session
     return {
       id: sessionUser.id,
       email: sessionUser.email,
-      role: sessionUser.user_metadata?.role || 'user',
+      role: sessionRole,
     };
   }, []);
 
@@ -210,11 +220,14 @@ export const AuthProvider = ({ children }) => {
           if (storedUser) {
             try {
               const parsedUser = JSON.parse(storedUser);
-              // Update with latest session data
+              // Update with latest session data - check user_role first
+              const role = session.user.user_metadata?.user_role 
+                || session.user.user_metadata?.role 
+                || parsedUser.role;
               const updatedUser = {
                 ...parsedUser,
                 email: session.user.email,
-                role: session.user.user_metadata?.role || parsedUser.role,
+                role: role,
               };
               setUser(updatedUser);
               localStorage.setItem('user', JSON.stringify(updatedUser));

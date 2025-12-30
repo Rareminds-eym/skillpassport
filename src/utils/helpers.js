@@ -27,6 +27,19 @@ export const getInitials = (name) => {
     .toUpperCase();
 };
 
+/**
+ * Capitalizes the first letter of each word in a name
+ * @param {string} name - The name to capitalize
+ * @returns {string} - The name with first letter of each word capitalized
+ */
+export const capitalizeName = (name) => {
+  if (!name || typeof name !== 'string') return name;
+  return name
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
 export const validateEmail = (email) => {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return re.test(email);

@@ -1,22 +1,21 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Download,
-  ArrowRight,
-  MailCheck,
-  Loader2,
-  Check,
-  Sparkles,
-  Calendar,
-  CreditCard,
-  Clock,
+    ArrowRight,
+    Calendar,
+    Check,
+    Clock,
+    CreditCard,
+    Download,
+    Loader2,
+    MailCheck,
+    Sparkles,
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
 import { downloadReceipt, generateReceiptBase64 } from '../../services/Subscriptions/pdfReceiptGenerator';
 import { uploadPaymentReceipt, getPaymentReceiptUrl } from '../../services/storageApiService';
 import { clearPendingUserData } from '../../utils/authCleanup';
-import useAuth from '../../hooks/useAuth';
-import toast from 'react-hot-toast';
 
 // Receipt Card with clean design
 const ReceiptCard = ({ header, children }) => {
@@ -268,7 +267,13 @@ function PaymentSuccess() {
           email: transactionDetails?.user_email || user?.email || '',
           phone: user?.user_metadata?.phone || null,
         },
-        company: { name: 'RareMinds', address: 'Your Company Address', taxId: 'TAX123456789' },
+        company: { 
+          name: 'RareMinds', 
+          address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001', 
+          taxId: 'GSTIN: 29ABCDE1234F1Z5',
+          phone: '+91 9902326951',
+          email: 'marketing@rareminds.in'
+        },
         generatedAt: new Date().toLocaleString(),
       };
       const filename = `Receipt-${paymentParams.razorpay_payment_id?.slice(-8) || 'payment'}-${new Date().toISOString().split('T')[0]}.pdf`;

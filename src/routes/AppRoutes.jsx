@@ -3,28 +3,30 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import ProtectedRoute from "../components/ProtectedRoute";
 import { SubscriptionProtectedRoute } from "../components/subscription";
 import Loader from "../components/Loader";
+import ProtectedRoute from "../components/ProtectedRoute";
+import ScrollToTop from "../components/ScrollToTop";
 
-import PublicLayout from "../layouts/PublicLayout";
-import PortfolioLayout from "../layouts/PortfolioLayout";
 import AdminLayout from "../layouts/AdminLayout";
+import EducatorLayout from "../layouts/EducatorLayout";
+import PortfolioLayout from "../layouts/PortfolioLayout";
+import PublicLayout from "../layouts/PublicLayout";
 import RecruiterLayout from "../layouts/RecruiterLayout";
 import StudentLayout from "../layouts/StudentLayout";
-import EducatorLayout from "../layouts/EducatorLayout";
 //digital passport
-import { ThemeProvider } from '../context/ThemeContext';
+import StudentDigitalPortfolioNav from '../components/digital-pp/ui/StudentDigitalPortfolioNav';
 import { PortfolioProvider } from '../context/PortfolioContext';
+import { ThemeProvider } from '../context/ThemeContext';
 import { TestProvider } from '../context/assessment/TestContext';
 import HomePage from '../pages/digital-pp/HomePage';
-import DigitalPortfolioPage from '../pages/digital-pp/PortfolioPage';
 import DigitalPassportPage from '../pages/digital-pp/PassportPage';
-import DigitalVideoPortfolioPage from '../pages/digital-pp/VideoPortfolioPage';
+import DigitalPortfolioPage from '../pages/digital-pp/PortfolioPage';
 import DigitalSettingsPage from '../pages/digital-pp/SettingsPage';
-import DigitalThemeSettings from '../pages/digital-pp/settings/ThemeSettings';
-import DigitalLayoutSettings from '../pages/digital-pp/settings/LayoutSettings';
+import DigitalVideoPortfolioPage from '../pages/digital-pp/VideoPortfolioPage';
 import DigitalExportSettings from '../pages/digital-pp/settings/ExportSettings';
-import DigitalSharingSettings from '../pages/digital-pp/settings/SharingSettings';
+import DigitalLayoutSettings from '../pages/digital-pp/settings/LayoutSettings';
 import DigitalProfileSettings from '../pages/digital-pp/settings/ProfileSettings';
-import StudentDigitalPortfolioNav from '../components/digital-pp/ui/StudentDigitalPortfolioNav';
+import DigitalSharingSettings from '../pages/digital-pp/settings/SharingSettings';
+import DigitalThemeSettings from '../pages/digital-pp/settings/ThemeSettings';
 // Duplicate imports removed - using the Digital* prefixed imports above
 
 const Home = lazy(() => import("../pages/homepage/Home"));
@@ -68,6 +70,7 @@ const LoginRecruiter = lazy(() => import("../pages/auth/LoginRecruiter"));
 const LoginAdmin = lazy(() => import("../pages/auth/LoginAdmin"));
 const Register = lazy(() => import("../pages/auth/components/SignIn/Register"));
 const UnifiedLogin = lazy(() => import("../pages/auth/UnifiedLogin"));
+const UnifiedSignup = lazy(() => import("../pages/auth/UnifiedSignup"));
 const UnifiedForgotPassword = lazy(() => import("../pages/auth/UnifiedForgotPassword"));
 const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
 const DebugRoles = lazy(() => import("../pages/auth/DebugRoles"));
@@ -381,6 +384,7 @@ const SchoolAdminDigitalPortfolio = lazy(() =>
 const AppRoutes = () => {
   return (
     <Suspense fallback={<Loader />}>
+      <ScrollToTop />
       <Routes>
         {/* Event Sales - Standalone without layout (no header/footer) */}
         <Route path="/register/plans" element={<EventSales />} />
@@ -399,6 +403,7 @@ const AppRoutes = () => {
 
           {/* Unified Login */}
           <Route path="/login" element={<UnifiedLogin />} />
+          <Route path="/signup" element={<UnifiedSignup />} />
           <Route path="/forgot-password" element={<UnifiedForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/debug-roles" element={<DebugRoles />} />

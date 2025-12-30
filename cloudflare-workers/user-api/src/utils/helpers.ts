@@ -39,9 +39,17 @@ export function validateEmail(email: string): boolean {
  */
 export function splitName(fullName: string): { firstName: string; lastName: string } {
   const nameParts = fullName.trim().split(' ');
-  const firstName = nameParts[0] || fullName;
-  const lastName = nameParts.slice(1).join(' ') || '';
+  const firstName = capitalizeFirstLetter(nameParts[0] || fullName);
+  const lastName = capitalizeFirstLetter(nameParts.slice(1).join(' ') || '');
   return { firstName, lastName };
+}
+
+/**
+ * Capitalize the first letter of a name
+ */
+export function capitalizeFirstLetter(name: string): string {
+  if (!name || typeof name !== 'string') return '';
+  return name.trim().charAt(0).toUpperCase() + name.trim().slice(1).toLowerCase();
 }
 
 /**
