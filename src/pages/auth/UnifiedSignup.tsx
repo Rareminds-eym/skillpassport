@@ -19,7 +19,7 @@ import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 // @ts-ignore - JS module without types
 import DatePicker from '../../components/Subscription/shared/DatePicker';
 
-type UserRole = 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin';
+type UserRole = 'school_student' | 'college_student' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
 interface SignupState {
   firstName: string;
@@ -261,11 +261,13 @@ const UnifiedSignup = () => {
 
   const selectedCountry = COUNTRY_CODES.find(cc => cc.dialCode === state.countryCode) || COUNTRY_CODES[0];
 
-  const allRoles: UserRole[] = ['student', 'educator', 'recruiter', 'school_admin', 'college_admin', 'university_admin'];
+  const allRoles: UserRole[] = ['school_student', 'college_student', 'school_educator', 'college_educator', 'recruiter', 'school_admin', 'college_admin', 'university_admin'];
 
   const getRoleDisplayName = (role: UserRole): string => {
     const names: Record<UserRole, string> = {
-      student: 'Student', recruiter: 'Recruiter', educator: 'Educator',
+      school_student: 'School Student', college_student: 'College Student',
+      school_educator: 'School Educator', college_educator: 'College Educator',
+      recruiter: 'Recruiter',
       school_admin: 'School Administrator', college_admin: 'College Administrator', university_admin: 'University Administrator'
     };
     return names[role];
@@ -385,17 +387,31 @@ const UnifiedSignup = () => {
     try {
       const firstName = state.firstName.charAt(0).toUpperCase() + state.firstName.slice(1).toLowerCase();
       const lastName = state.lastName.charAt(0).toUpperCase() + state.lastName.slice(1).toLowerCase();
-      const fullName = `${firstName} ${lastName} `.trim();
+      const fullName = `${firstName} ${lastName}`.trim();
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: state.email.toLowerCase(), password: state.password,
         options: { data: { full_name: fullName, user_role: state.selectedRole, phone: state.phone } }
       });
-      if (authError) throw new Error(authError.message);
+      
+      if (authError) {
+        console.error('Auth signup error:', authError);
+        // Handle specific error cases
+        if (authError.message.includes('already registered') || authError.message.includes('already exists')) {
+          throw new Error('This email is already registered. Please login instead.');
+        }
+        if (authError.message.includes('password')) {
+          throw new Error('Password must be at least 6 characters long.');
+        }
+        throw new Error(authError.message);
+      }
+      
       if (!authData.user) throw new Error('Failed to create user account');
 
       const userId = authData.user.id;
-      await supabase.from('users').insert({
+      
+      // Insert into users table
+      const { error: userError } = await supabase.from('users').insert({
         id: userId, email: state.email.toLowerCase(), firstName, lastName, role: state.selectedRole, isActive: true,
         metadata: {
           phone: state.phone, fullName, dateOfBirth: state.dateOfBirth, country: state.country,
@@ -403,20 +419,61 @@ const UnifiedSignup = () => {
           referralCode: state.referralCode, registrationDate: new Date().toISOString()
         }
       });
+      if (userError) {
+        console.error('Failed to create user record:', userError);
+        throw new Error('Failed to create user profile');
+      }
 
       // Create role-specific record
-      if (state.selectedRole === 'student') {
-        await supabase.from('students').insert({ user_id: userId, first_name: firstName, last_name: lastName, email: state.email.toLowerCase(), phone: state.phone, date_of_birth: state.dateOfBirth, status: 'active' });
-      } else if (state.selectedRole === 'educator') {
-        await supabase.from('educators').insert({ user_id: userId, first_name: firstName, last_name: lastName, email: state.email.toLowerCase(), phone: state.phone, status: 'active' });
+      if (state.selectedRole === 'school_student' || state.selectedRole === 'college_student') {
+        const studentType = state.selectedRole === 'school_student' ? 'school' : 'college';
+        const { error: studentError } = await supabase.from('students').insert({ 
+          user_id: userId, 
+          name: fullName, 
+          email: state.email.toLowerCase(), 
+          contact_number: state.phone,
+          date_of_birth: state.dateOfBirth || null,
+          student_type: studentType
+        });
+        if (studentError) console.error('Failed to create student record:', studentError);
+      } else if (state.selectedRole === 'school_educator') {
+        // School educators go to school_educators table
+        const { error: educatorError } = await supabase.from('school_educators').insert({ 
+          user_id: userId, 
+          first_name: firstName, 
+          last_name: lastName, 
+          email: state.email.toLowerCase(), 
+          phone_number: state.phone,
+          account_status: 'active'
+        });
+        if (educatorError) console.error('Failed to create school educator record:', educatorError);
+      } else if (state.selectedRole === 'college_educator') {
+        // College educators go to college_lecturers table
+        const { error: educatorError } = await supabase.from('college_lecturers').insert({ 
+          user_id: userId,
+          userId: userId,
+          accountStatus: 'active'
+        });
+        if (educatorError) console.error('Failed to create college educator record:', educatorError);
       } else if (state.selectedRole === 'recruiter') {
-        await supabase.from('recruiters').insert({ user_id: userId, name: fullName, email: state.email.toLowerCase(), phone: state.phone, status: 'active' });
+        // Recruiters table - no status column, uses verificationstatus and isactive
+        const { error: recruiterError } = await supabase.from('recruiters').insert({ 
+          user_id: userId, 
+          name: fullName, 
+          email: state.email.toLowerCase(), 
+          phone: state.phone,
+          verificationstatus: 'pending',
+          isactive: true
+        });
+        if (recruiterError) console.error('Failed to create recruiter record:', recruiterError);
       }
 
       // Map role to entity type for subscription plans
       const entityTypeMap: Record<UserRole, string> = {
-        student: 'student',
-        educator: 'educator',
+        school_student: 'student',
+        college_student: 'college-student',
+        school_educator: 'educator',
+        college_educator: 'college-educator',
         recruiter: 'recruitment-recruiter',
         school_admin: 'school',
         college_admin: 'college',

@@ -1,5 +1,6 @@
 import { Calendar, Check, Clock, Shield, TrendingUp } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import CollegeLoginModal from '../../components/Subscription/CollegeLoginModal';
 import CollegeSignupModal from '../../components/Subscription/CollegeSignupModal';
@@ -185,14 +186,16 @@ function SubscriptionPlans() {
     [isAuthenticated, hasActiveOrPausedSubscription]
   );
 
-  // Show welcome message from signup flow
+  // Show welcome message from signup flow (only once)
   useEffect(() => {
-    if (location.state?.message) {
-      toast.success(location.state.message, { duration: 5000 });
-      // Clear the state to prevent showing the message again on refresh
-      window.history.replaceState({}, document.title);
+    const message = location.state?.message;
+    if (message) {
+      // Clear the state immediately to prevent duplicate toasts
+      navigate(location.pathname + location.search, { replace: true, state: {} });
+      // Show toast after clearing state
+      toast.success(message, { duration: 5000, id: 'signup-success' });
     }
-  }, [location.state?.message]);
+  }, []); // Empty dependency - run only on mount
 
   // Error logging for subscription fetch failures
   useEffect(() => {
