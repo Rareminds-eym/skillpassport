@@ -655,7 +655,7 @@ async function handleUploadPaymentReceipt(request: Request, env: Env): Promise<R
   
   console.log(`[STORAGE-API] R2 credentials verified`);
 
-  let body: { pdfBase64?: string; paymentId?: string; userId?: string; filename?: string };
+  let body: { pdfBase64?: string; paymentId?: string; userId?: string; userName?: string; filename?: string };
   try {
     body = await request.json() as typeof body;
   } catch (parseError) {
@@ -663,11 +663,12 @@ async function handleUploadPaymentReceipt(request: Request, env: Env): Promise<R
     return jsonResponse({ error: 'Invalid JSON body' }, 400);
   }
 
-  const { pdfBase64, paymentId, userId, filename } = body;
+  const { pdfBase64, paymentId, userId, userName, filename } = body;
   
   console.log(`[STORAGE-API] Request params:`);
   console.log(`[STORAGE-API] - paymentId: ${paymentId}`);
   console.log(`[STORAGE-API] - userId: ${userId}`);
+  console.log(`[STORAGE-API] - userName: ${userName || 'NOT PROVIDED'}`);
   console.log(`[STORAGE-API] - filename: ${filename}`);
   console.log(`[STORAGE-API] - pdfBase64 length: ${pdfBase64?.length || 0}`);
 
@@ -690,10 +691,18 @@ async function handleUploadPaymentReceipt(request: Request, env: Env): Promise<R
     return jsonResponse({ error: 'Invalid base64 data' }, 400);
   }
 
-  // Generate unique filename
+  // Generate unique filename with hybrid folder structure: {name}_{short_id}/
   const timestamp = Date.now();
   const sanitizedPaymentId = paymentId.replace(/[^a-zA-Z0-9_-]/g, '');
-  const fileKey = `payment_pdf/${userId}/${sanitizedPaymentId}_${timestamp}.pdf`;
+  
+  // Create folder name: sanitized_name + short user_id (first 8 chars)
+  const shortUserId = userId.substring(0, 8);
+  const sanitizedName = userName 
+    ? userName.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').substring(0, 20)
+    : 'user';
+  const folderName = `${sanitizedName}_${shortUserId}`;
+  
+  const fileKey = `payment_pdf/${folderName}/${sanitizedPaymentId}_${timestamp}.pdf`;
   const finalFilename = filename || `Receipt-${sanitizedPaymentId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
   
   console.log(`[STORAGE-API] File key: ${fileKey}`);

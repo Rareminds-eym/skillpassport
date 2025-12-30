@@ -13,6 +13,7 @@
     "wrangler": "^3.22.1"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.38.4"
+    "@supabase/supabase-js": "^2.38.4",
+    "pdf-lib": "^1.17.1"
   }
 }
