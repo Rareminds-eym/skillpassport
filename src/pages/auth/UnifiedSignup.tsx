@@ -48,41 +48,134 @@ interface SignupState {
 
 const ALL_COUNTRIES = Country.getAllCountries();
 
-// Country codes for phone numbers with flags
+// Country codes for phone numbers with flags - comprehensive list
 const COUNTRY_CODES = [
+  // South Asia
   { code: 'IN', dialCode: '+91', name: 'India', flag: '🇮🇳' },
+  { code: 'PK', dialCode: '+92', name: 'Pakistan', flag: '🇵🇰' },
+  { code: 'BD', dialCode: '+880', name: 'Bangladesh', flag: '🇧🇩' },
+  { code: 'LK', dialCode: '+94', name: 'Sri Lanka', flag: '🇱🇰' },
+  { code: 'NP', dialCode: '+977', name: 'Nepal', flag: '🇳🇵' },
+  { code: 'BT', dialCode: '+975', name: 'Bhutan', flag: '🇧🇹' },
+  { code: 'MV', dialCode: '+960', name: 'Maldives', flag: '🇲🇻' },
+  { code: 'AF', dialCode: '+93', name: 'Afghanistan', flag: '🇦🇫' },
+  // North America
   { code: 'US', dialCode: '+1', name: 'United States', flag: '🇺🇸' },
-  { code: 'GB', dialCode: '+44', name: 'United Kingdom', flag: '🇬🇧' },
   { code: 'CA', dialCode: '+1', name: 'Canada', flag: '🇨🇦' },
-  { code: 'AU', dialCode: '+61', name: 'Australia', flag: '🇦🇺' },
-  { code: 'AE', dialCode: '+971', name: 'UAE', flag: '🇦🇪' },
-  { code: 'SG', dialCode: '+65', name: 'Singapore', flag: '🇸🇬' },
-  { code: 'MY', dialCode: '+60', name: 'Malaysia', flag: '🇲🇾' },
+  { code: 'MX', dialCode: '+52', name: 'Mexico', flag: '🇲🇽' },
+  // Europe
+  { code: 'GB', dialCode: '+44', name: 'United Kingdom', flag: '🇬🇧' },
   { code: 'DE', dialCode: '+49', name: 'Germany', flag: '🇩🇪' },
   { code: 'FR', dialCode: '+33', name: 'France', flag: '🇫🇷' },
   { code: 'IT', dialCode: '+39', name: 'Italy', flag: '🇮🇹' },
   { code: 'ES', dialCode: '+34', name: 'Spain', flag: '🇪🇸' },
   { code: 'NL', dialCode: '+31', name: 'Netherlands', flag: '🇳🇱' },
+  { code: 'BE', dialCode: '+32', name: 'Belgium', flag: '🇧🇪' },
+  { code: 'PT', dialCode: '+351', name: 'Portugal', flag: '🇵🇹' },
+  { code: 'CH', dialCode: '+41', name: 'Switzerland', flag: '🇨🇭' },
+  { code: 'AT', dialCode: '+43', name: 'Austria', flag: '🇦🇹' },
+  { code: 'SE', dialCode: '+46', name: 'Sweden', flag: '🇸🇪' },
+  { code: 'NO', dialCode: '+47', name: 'Norway', flag: '🇳🇴' },
+  { code: 'DK', dialCode: '+45', name: 'Denmark', flag: '🇩🇰' },
+  { code: 'FI', dialCode: '+358', name: 'Finland', flag: '🇫🇮' },
+  { code: 'IE', dialCode: '+353', name: 'Ireland', flag: '🇮🇪' },
+  { code: 'PL', dialCode: '+48', name: 'Poland', flag: '🇵🇱' },
+  { code: 'CZ', dialCode: '+420', name: 'Czech Republic', flag: '🇨🇿' },
+  { code: 'HU', dialCode: '+36', name: 'Hungary', flag: '🇭🇺' },
+  { code: 'RO', dialCode: '+40', name: 'Romania', flag: '🇷🇴' },
+  { code: 'GR', dialCode: '+30', name: 'Greece', flag: '🇬🇷' },
+  { code: 'UA', dialCode: '+380', name: 'Ukraine', flag: '🇺🇦' },
+  { code: 'RU', dialCode: '+7', name: 'Russia', flag: '🇷🇺' },
+  { code: 'TR', dialCode: '+90', name: 'Turkey', flag: '🇹🇷' },
+  // Middle East
+  { code: 'AE', dialCode: '+971', name: 'UAE', flag: '🇦🇪' },
   { code: 'SA', dialCode: '+966', name: 'Saudi Arabia', flag: '🇸🇦' },
   { code: 'QA', dialCode: '+974', name: 'Qatar', flag: '🇶🇦' },
   { code: 'KW', dialCode: '+965', name: 'Kuwait', flag: '🇰🇼' },
   { code: 'OM', dialCode: '+968', name: 'Oman', flag: '🇴🇲' },
   { code: 'BH', dialCode: '+973', name: 'Bahrain', flag: '🇧🇭' },
+  { code: 'IL', dialCode: '+972', name: 'Israel', flag: '🇮🇱' },
+  { code: 'JO', dialCode: '+962', name: 'Jordan', flag: '🇯🇴' },
+  { code: 'LB', dialCode: '+961', name: 'Lebanon', flag: '🇱🇧' },
+  { code: 'IQ', dialCode: '+964', name: 'Iraq', flag: '🇮🇶' },
+  { code: 'IR', dialCode: '+98', name: 'Iran', flag: '🇮🇷' },
+  { code: 'EG', dialCode: '+20', name: 'Egypt', flag: '🇪🇬' },
+  // East Asia
+  { code: 'CN', dialCode: '+86', name: 'China', flag: '🇨🇳' },
   { code: 'JP', dialCode: '+81', name: 'Japan', flag: '🇯🇵' },
   { code: 'KR', dialCode: '+82', name: 'South Korea', flag: '🇰🇷' },
-  { code: 'CN', dialCode: '+86', name: 'China', flag: '🇨🇳' },
-  { code: 'NZ', dialCode: '+64', name: 'New Zealand', flag: '🇳🇿' },
-  { code: 'ZA', dialCode: '+27', name: 'South Africa', flag: '🇿🇦' },
-  { code: 'BR', dialCode: '+55', name: 'Brazil', flag: '🇧🇷' },
-  { code: 'MX', dialCode: '+52', name: 'Mexico', flag: '🇲🇽' },
-  { code: 'PH', dialCode: '+63', name: 'Philippines', flag: '🇵🇭' },
-  { code: 'ID', dialCode: '+62', name: 'Indonesia', flag: '🇮🇩' },
+  { code: 'HK', dialCode: '+852', name: 'Hong Kong', flag: '🇭🇰' },
+  { code: 'TW', dialCode: '+886', name: 'Taiwan', flag: '🇹🇼' },
+  { code: 'MO', dialCode: '+853', name: 'Macau', flag: '🇲🇴' },
+  { code: 'MN', dialCode: '+976', name: 'Mongolia', flag: '🇲🇳' },
+  // Southeast Asia
+  { code: 'SG', dialCode: '+65', name: 'Singapore', flag: '🇸🇬' },
+  { code: 'MY', dialCode: '+60', name: 'Malaysia', flag: '🇲🇾' },
   { code: 'TH', dialCode: '+66', name: 'Thailand', flag: '🇹🇭' },
+  { code: 'ID', dialCode: '+62', name: 'Indonesia', flag: '🇮🇩' },
+  { code: 'PH', dialCode: '+63', name: 'Philippines', flag: '🇵🇭' },
   { code: 'VN', dialCode: '+84', name: 'Vietnam', flag: '🇻🇳' },
-  { code: 'PK', dialCode: '+92', name: 'Pakistan', flag: '🇵🇰' },
-  { code: 'BD', dialCode: '+880', name: 'Bangladesh', flag: '🇧🇩' },
-  { code: 'LK', dialCode: '+94', name: 'Sri Lanka', flag: '🇱🇰' },
-  { code: 'NP', dialCode: '+977', name: 'Nepal', flag: '🇳🇵' },
+  { code: 'MM', dialCode: '+95', name: 'Myanmar', flag: '🇲🇲' },
+  { code: 'KH', dialCode: '+855', name: 'Cambodia', flag: '🇰🇭' },
+  { code: 'LA', dialCode: '+856', name: 'Laos', flag: '🇱🇦' },
+  { code: 'BN', dialCode: '+673', name: 'Brunei', flag: '🇧🇳' },
+  // Oceania
+  { code: 'AU', dialCode: '+61', name: 'Australia', flag: '🇦🇺' },
+  { code: 'NZ', dialCode: '+64', name: 'New Zealand', flag: '🇳🇿' },
+  { code: 'FJ', dialCode: '+679', name: 'Fiji', flag: '🇫🇯' },
+  { code: 'PG', dialCode: '+675', name: 'Papua New Guinea', flag: '🇵🇬' },
+  // Africa
+  { code: 'ZA', dialCode: '+27', name: 'South Africa', flag: '🇿🇦' },
+  { code: 'NG', dialCode: '+234', name: 'Nigeria', flag: '🇳🇬' },
+  { code: 'KE', dialCode: '+254', name: 'Kenya', flag: '🇰🇪' },
+  { code: 'GH', dialCode: '+233', name: 'Ghana', flag: '🇬🇭' },
+  { code: 'ET', dialCode: '+251', name: 'Ethiopia', flag: '🇪🇹' },
+  { code: 'TZ', dialCode: '+255', name: 'Tanzania', flag: '🇹🇿' },
+  { code: 'UG', dialCode: '+256', name: 'Uganda', flag: '🇺🇬' },
+  { code: 'MA', dialCode: '+212', name: 'Morocco', flag: '🇲🇦' },
+  { code: 'DZ', dialCode: '+213', name: 'Algeria', flag: '🇩🇿' },
+  { code: 'TN', dialCode: '+216', name: 'Tunisia', flag: '🇹🇳' },
+  { code: 'ZW', dialCode: '+263', name: 'Zimbabwe', flag: '🇿🇼' },
+  { code: 'MU', dialCode: '+230', name: 'Mauritius', flag: '🇲🇺' },
+  // South America
+  { code: 'BR', dialCode: '+55', name: 'Brazil', flag: '🇧🇷' },
+  { code: 'AR', dialCode: '+54', name: 'Argentina', flag: '🇦🇷' },
+  { code: 'CL', dialCode: '+56', name: 'Chile', flag: '🇨🇱' },
+  { code: 'CO', dialCode: '+57', name: 'Colombia', flag: '🇨🇴' },
+  { code: 'PE', dialCode: '+51', name: 'Peru', flag: '🇵🇪' },
+  { code: 'VE', dialCode: '+58', name: 'Venezuela', flag: '🇻🇪' },
+  { code: 'EC', dialCode: '+593', name: 'Ecuador', flag: '🇪🇨' },
+  { code: 'UY', dialCode: '+598', name: 'Uruguay', flag: '🇺🇾' },
+  { code: 'PY', dialCode: '+595', name: 'Paraguay', flag: '🇵🇾' },
+  { code: 'BO', dialCode: '+591', name: 'Bolivia', flag: '🇧🇴' },
+  // Central America & Caribbean
+  { code: 'PA', dialCode: '+507', name: 'Panama', flag: '🇵🇦' },
+  { code: 'CR', dialCode: '+506', name: 'Costa Rica', flag: '🇨🇷' },
+  { code: 'GT', dialCode: '+502', name: 'Guatemala', flag: '🇬🇹' },
+  { code: 'CU', dialCode: '+53', name: 'Cuba', flag: '🇨🇺' },
+  { code: 'DO', dialCode: '+1', name: 'Dominican Republic', flag: '🇩🇴' },
+  { code: 'JM', dialCode: '+1', name: 'Jamaica', flag: '🇯🇲' },
+  { code: 'TT', dialCode: '+1', name: 'Trinidad & Tobago', flag: '🇹🇹' },
+  { code: 'PR', dialCode: '+1', name: 'Puerto Rico', flag: '🇵🇷' },
+  // Other European
+  { code: 'LU', dialCode: '+352', name: 'Luxembourg', flag: '🇱🇺' },
+  { code: 'SK', dialCode: '+421', name: 'Slovakia', flag: '🇸🇰' },
+  { code: 'SI', dialCode: '+386', name: 'Slovenia', flag: '🇸🇮' },
+  { code: 'HR', dialCode: '+385', name: 'Croatia', flag: '🇭🇷' },
+  { code: 'RS', dialCode: '+381', name: 'Serbia', flag: '🇷🇸' },
+  { code: 'BG', dialCode: '+359', name: 'Bulgaria', flag: '🇧🇬' },
+  { code: 'LT', dialCode: '+370', name: 'Lithuania', flag: '🇱🇹' },
+  { code: 'LV', dialCode: '+371', name: 'Latvia', flag: '🇱🇻' },
+  { code: 'EE', dialCode: '+372', name: 'Estonia', flag: '🇪🇪' },
+  { code: 'CY', dialCode: '+357', name: 'Cyprus', flag: '🇨🇾' },
+  { code: 'MT', dialCode: '+356', name: 'Malta', flag: '🇲🇹' },
+  { code: 'IS', dialCode: '+354', name: 'Iceland', flag: '🇮🇸' },
+  // Central Asia
+  { code: 'KZ', dialCode: '+7', name: 'Kazakhstan', flag: '🇰🇿' },
+  { code: 'UZ', dialCode: '+998', name: 'Uzbekistan', flag: '🇺🇿' },
+  { code: 'AZ', dialCode: '+994', name: 'Azerbaijan', flag: '🇦🇿' },
+  { code: 'GE', dialCode: '+995', name: 'Georgia', flag: '🇬🇪' },
+  { code: 'AM', dialCode: '+374', name: 'Armenia', flag: '🇦🇲' },
 ];
 
 // International Languages
@@ -257,6 +350,7 @@ const UnifiedSignup = () => {
     if (!state.country) { setState(prev => ({ ...prev, error: 'Please select your country' })); return false; }
     if (!state.state) { setState(prev => ({ ...prev, error: 'Please select your state' })); return false; }
     if (!state.city) { setState(prev => ({ ...prev, error: 'Please select your city' })); return false; }
+    if (!state.preferredLanguage) { setState(prev => ({ ...prev, error: 'Please select your preferred language' })); return false; }
     if (!state.agreeToTerms) { setState(prev => ({ ...prev, error: 'Please agree to Terms & Privacy Policy' })); return false; }
     return true;
   };
@@ -418,11 +512,11 @@ const UnifiedSignup = () => {
               <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">First Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">First Name <span className="text-red-500">*</span></label>
                     <input type="text" name="firstName" value={state.firstName} onChange={handleInputChange} placeholder="John" className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Last Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Last Name <span className="text-red-500">*</span></label>
                     <input type="text" name="lastName" value={state.lastName} onChange={handleInputChange} placeholder="Doe" className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none" />
                   </div>
                 </div>
@@ -440,12 +534,12 @@ const UnifiedSignup = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address <span className="text-red-500">*</span></label>
                   <input type="email" name="email" value={state.email} onChange={handleInputChange} placeholder="john@example.com" className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Mobile Number</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Mobile Number <span className="text-red-500">*</span></label>
                   <div className={`flex items-center border rounded-xl bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all ${state.otpVerified ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
                     {/* Custom Country Code Dropdown */}
                     <div className="relative" ref={countryCodeRef}>
@@ -512,7 +606,7 @@ const UnifiedSignup = () => {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Password <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <input type={state.showPassword ? 'text' : 'password'} name="password" value={state.password} onChange={handleInputChange} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none pr-12" placeholder="••••••••" />
                       <button type="button" onClick={() => setState(p => ({ ...p, showPassword: !p.showPassword }))} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -521,7 +615,7 @@ const UnifiedSignup = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <input type={state.showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={state.confirmPassword} onChange={handleInputChange} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none pr-12" placeholder="••••••••" />
                       <button type="button" onClick={() => setState(p => ({ ...p, showConfirmPassword: !p.showConfirmPassword }))} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -543,7 +637,7 @@ const UnifiedSignup = () => {
             {currentStep === 2 && (
               <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">I am a...</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">I am a... <span className="text-red-500">*</span></label>
                   <select name="selectedRole" value={state.selectedRole || ''} onChange={handleInputChange} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none">
                     <option value="">Select your role</option>
                     {allRoles.map(role => <option key={role} value={role}>{getRoleDisplayName(role)}</option>)}
@@ -552,14 +646,14 @@ const UnifiedSignup = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Country</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Country <span className="text-red-500">*</span></label>
                     <select name="country" value={state.country} onChange={handleInputChange} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none">
                       <option value="">Select Country</option>
                       {ALL_COUNTRIES.map(c => <option key={c.isoCode} value={c.isoCode}>{c.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">State</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">State <span className="text-red-500">*</span></label>
                     <select name="state" value={state.state} onChange={handleInputChange} disabled={!state.country} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none disabled:bg-gray-100 disabled:text-gray-400">
                       <option value="">Select State</option>
                       {states.map(s => <option key={s.isoCode} value={s.name}>{s.name}</option>)}
@@ -569,14 +663,14 @@ const UnifiedSignup = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">City</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">City <span className="text-red-500">*</span></label>
                     <select name="city" value={state.city} onChange={handleInputChange} disabled={!state.state} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none disabled:bg-gray-100 disabled:text-gray-400">
                       <option value="">Select City</option>
                       {cities.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Language</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Language <span className="text-red-500">*</span></label>
                     <select name="preferredLanguage" value={state.preferredLanguage} onChange={handleInputChange} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none">
                       {LANGUAGES.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
                     </select>
@@ -594,7 +688,7 @@ const UnifiedSignup = () => {
                       <input type="checkbox" name="agreeToTerms" checked={state.agreeToTerms} onChange={handleInputChange} className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" />
                     </div>
                     <span className="text-sm text-gray-600 leading-relaxed">
-                      I agree to the <a href="/terms" target="_blank" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline">Terms of Service</a> and <a href="/privacy" target="_blank" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline">Privacy Policy</a>.
+                      I agree to the <a href="/terms" target="_blank" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline">Terms of Service</a> and <a href="/privacy" target="_blank" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline">Privacy Policy</a>. <span className="text-red-500">*</span>
                     </span>
                   </label>
                 </div>
