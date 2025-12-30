@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
 import { downloadReceipt, generateReceiptBase64 } from '../../services/Subscriptions/pdfReceiptGenerator';
@@ -302,8 +302,10 @@ function PaymentSuccess() {
   const formatAmount = (a) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(a);
 
   const getDashboardUrl = () => {
-    // Use role from useAuth hook first, then fallback to user metadata
-    const userRole = role || user?.user_metadata?.role || user?.raw_user_meta_data?.role;
+    // Check user_role first (from signup), then role from useAuth, then fallback to user metadata
+    const userRole = user?.user_metadata?.user_role || role || user?.user_metadata?.role || user?.raw_user_meta_data?.user_role || user?.raw_user_meta_data?.role;
+    
+    console.log('getDashboardUrl - userRole:', userRole, 'role from useAuth:', role, 'user_metadata:', user?.user_metadata);
     
     // Map all user roles to their respective dashboard routes
     const dashboardRoutes = {
