@@ -1,24 +1,25 @@
 import { City, Country, State } from 'country-state-city';
 import {
-    AlertCircle,
-    Calendar,
-    CheckCircle,
-    Eye, EyeOff,
-    Gift,
-    Globe,
-    Languages,
-    Loader2,
-    Lock,
-    Mail,
-    MapPin,
-    Phone, User,
-    UserCircle
+  AlertCircle,
+  CheckCircle,
+  Eye, EyeOff,
+  Gift,
+  Globe,
+  Languages,
+  Loader2,
+  Lock,
+  Mail,
+  MapPin,
+  Phone, User,
+  UserCircle
 } from 'lucide-react';
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 // @ts-ignore - JS module without types
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
+// @ts-ignore - JS module without types
+import DatePicker from '../../components/Subscription/shared/DatePicker';
 
 type UserRole = 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
@@ -28,6 +29,7 @@ interface SignupState {
   dateOfBirth: string;
   email: string;
   phone: string;
+  countryCode: string;
   password: string;
   confirmPassword: string;
   selectedRole: UserRole | null;
@@ -49,19 +51,99 @@ interface SignupState {
 }
 
 const ALL_COUNTRIES = Country.getAllCountries();
+
+// Country codes for phone numbers
+const COUNTRY_CODES = [
+  { code: 'IN', dialCode: '+91', name: 'India' },
+  { code: 'US', dialCode: '+1', name: 'United States' },
+  { code: 'GB', dialCode: '+44', name: 'United Kingdom' },
+  { code: 'CA', dialCode: '+1', name: 'Canada' },
+  { code: 'AU', dialCode: '+61', name: 'Australia' },
+  { code: 'AE', dialCode: '+971', name: 'UAE' },
+  { code: 'SG', dialCode: '+65', name: 'Singapore' },
+  { code: 'MY', dialCode: '+60', name: 'Malaysia' },
+  { code: 'DE', dialCode: '+49', name: 'Germany' },
+  { code: 'FR', dialCode: '+33', name: 'France' },
+  { code: 'IT', dialCode: '+39', name: 'Italy' },
+  { code: 'ES', dialCode: '+34', name: 'Spain' },
+  { code: 'NL', dialCode: '+31', name: 'Netherlands' },
+  { code: 'SA', dialCode: '+966', name: 'Saudi Arabia' },
+  { code: 'QA', dialCode: '+974', name: 'Qatar' },
+  { code: 'KW', dialCode: '+965', name: 'Kuwait' },
+  { code: 'OM', dialCode: '+968', name: 'Oman' },
+  { code: 'BH', dialCode: '+973', name: 'Bahrain' },
+  { code: 'JP', dialCode: '+81', name: 'Japan' },
+  { code: 'KR', dialCode: '+82', name: 'South Korea' },
+  { code: 'CN', dialCode: '+86', name: 'China' },
+  { code: 'NZ', dialCode: '+64', name: 'New Zealand' },
+  { code: 'ZA', dialCode: '+27', name: 'South Africa' },
+  { code: 'BR', dialCode: '+55', name: 'Brazil' },
+  { code: 'MX', dialCode: '+52', name: 'Mexico' },
+  { code: 'PH', dialCode: '+63', name: 'Philippines' },
+  { code: 'ID', dialCode: '+62', name: 'Indonesia' },
+  { code: 'TH', dialCode: '+66', name: 'Thailand' },
+  { code: 'VN', dialCode: '+84', name: 'Vietnam' },
+  { code: 'PK', dialCode: '+92', name: 'Pakistan' },
+  { code: 'BD', dialCode: '+880', name: 'Bangladesh' },
+  { code: 'LK', dialCode: '+94', name: 'Sri Lanka' },
+  { code: 'NP', dialCode: '+977', name: 'Nepal' },
+];
+
+// International Languages
 const LANGUAGES = [
-  { code: 'en', name: 'English' }, { code: 'hi', name: 'हिन्दी (Hindi)' },
-  { code: 'bn', name: 'বাংলা (Bengali)' }, { code: 'te', name: 'తెలుగు (Telugu)' },
-  { code: 'mr', name: 'मराठी (Marathi)' }, { code: 'ta', name: 'தமிழ் (Tamil)' },
-  { code: 'gu', name: 'ગુજરાતી (Gujarati)' }, { code: 'kn', name: 'ಕನ್ನಡ (Kannada)' },
-  { code: 'ml', name: 'മലയാളം (Malayalam)' }, { code: 'pa', name: 'ਪੰਜਾਬੀ (Punjabi)' },
+  // Major International Languages
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Español (Spanish)' },
+  { code: 'fr', name: 'Français (French)' },
+  { code: 'de', name: 'Deutsch (German)' },
+  { code: 'pt', name: 'Português (Portuguese)' },
+  { code: 'ru', name: 'Русский (Russian)' },
+  { code: 'zh', name: '中文 (Chinese)' },
+  { code: 'ja', name: '日本語 (Japanese)' },
+  { code: 'ko', name: '한국어 (Korean)' },
+  { code: 'ar', name: 'العربية (Arabic)' },
+  { code: 'it', name: 'Italiano (Italian)' },
+  { code: 'nl', name: 'Nederlands (Dutch)' },
+  { code: 'pl', name: 'Polski (Polish)' },
+  { code: 'tr', name: 'Türkçe (Turkish)' },
+  { code: 'vi', name: 'Tiếng Việt (Vietnamese)' },
+  { code: 'th', name: 'ไทย (Thai)' },
+  { code: 'id', name: 'Bahasa Indonesia' },
+  { code: 'ms', name: 'Bahasa Melayu (Malay)' },
+  { code: 'tl', name: 'Tagalog (Filipino)' },
+  // Indian Languages
+  { code: 'hi', name: 'हिन्दी (Hindi)' },
+  { code: 'bn', name: 'বাংলা (Bengali)' },
+  { code: 'te', name: 'తెలుగు (Telugu)' },
+  { code: 'mr', name: 'मराठी (Marathi)' },
+  { code: 'ta', name: 'தமிழ் (Tamil)' },
+  { code: 'gu', name: 'ગુજરાતી (Gujarati)' },
+  { code: 'kn', name: 'ಕನ್ನಡ (Kannada)' },
+  { code: 'ml', name: 'മലയാളം (Malayalam)' },
+  { code: 'pa', name: 'ਪੰਜਾਬੀ (Punjabi)' },
+  { code: 'or', name: 'ଓଡ଼ିଆ (Odia)' },
+  { code: 'as', name: 'অসমীয়া (Assamese)' },
+  { code: 'ur', name: 'اردو (Urdu)' },
+  // Other Languages
+  { code: 'he', name: 'עברית (Hebrew)' },
+  { code: 'fa', name: 'فارسی (Persian)' },
+  { code: 'sw', name: 'Kiswahili (Swahili)' },
+  { code: 'uk', name: 'Українська (Ukrainian)' },
+  { code: 'el', name: 'Ελληνικά (Greek)' },
+  { code: 'cs', name: 'Čeština (Czech)' },
+  { code: 'sv', name: 'Svenska (Swedish)' },
+  { code: 'da', name: 'Dansk (Danish)' },
+  { code: 'no', name: 'Norsk (Norwegian)' },
+  { code: 'fi', name: 'Suomi (Finnish)' },
+  { code: 'hu', name: 'Magyar (Hungarian)' },
+  { code: 'ro', name: 'Română (Romanian)' },
 ];
 
 const UnifiedSignup = () => {
   const navigate = useNavigate();
-  
+
   const [state, setState] = useState<SignupState>({
-    firstName: '', lastName: '', dateOfBirth: '', email: '', phone: '',
+    firstName: '', lastName: '', dateOfBirth: '', email: '', phone: '', countryCode: '+91',
     password: '', confirmPassword: '', selectedRole: null,
     country: 'IN', state: '', city: '', preferredLanguage: 'en', referralCode: '',
     agreeToTerms: false, otp: '', otpSent: false, otpVerified: false,
@@ -105,17 +187,17 @@ const UnifiedSignup = () => {
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     let processedValue: string | boolean = value;
-    
+
     if (type === 'checkbox') processedValue = (e.target as HTMLInputElement).checked;
-    if (name === 'phone') processedValue = value.replace(/\D/g, '').slice(0, 10);
+    if (name === 'phone') processedValue = value.replace(/\D/g, '').slice(0, 15);
     if (name === 'otp') processedValue = value.replace(/\D/g, '').slice(0, 6);
-    
+
     setState(prev => ({ ...prev, [name]: processedValue, error: '' }));
   };
 
   const handleSendOtp = async () => {
-    if (!state.phone || state.phone.length !== 10) {
-      setState(prev => ({ ...prev, error: 'Please enter a valid 10-digit phone number' }));
+    if (!state.phone || state.phone.length < 7 || state.phone.length > 15) {
+      setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' }));
       return;
     }
     setState(prev => ({ ...prev, sendingOtp: true, error: '' }));
@@ -148,7 +230,7 @@ const UnifiedSignup = () => {
     if (!state.lastName.trim()) { setState(prev => ({ ...prev, error: 'Please enter your last name' })); return false; }
     if (!state.dateOfBirth) { setState(prev => ({ ...prev, error: 'Please enter your date of birth' })); return false; }
     if (!state.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email)) { setState(prev => ({ ...prev, error: 'Please enter a valid email' })); return false; }
-    if (!state.phone || state.phone.length !== 10) { setState(prev => ({ ...prev, error: 'Please enter a valid 10-digit phone' })); return false; }
+    if (!state.phone || state.phone.length < 7 || state.phone.length > 15) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number' })); return false; }
     if (!state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number with OTP' })); return false; }
     if (!state.password || state.password.length < 8) { setState(prev => ({ ...prev, error: 'Password must be at least 8 characters' })); return false; }
     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(state.password)) { setState(prev => ({ ...prev, error: 'Password must contain uppercase, lowercase, and number' })); return false; }
@@ -165,27 +247,29 @@ const UnifiedSignup = () => {
     e.preventDefault();
     if (!validateForm()) return;
     setState(prev => ({ ...prev, loading: true, error: '' }));
-    
+
     try {
       const firstName = state.firstName.charAt(0).toUpperCase() + state.firstName.slice(1).toLowerCase();
       const lastName = state.lastName.charAt(0).toUpperCase() + state.lastName.slice(1).toLowerCase();
       const fullName = `${firstName} ${lastName}`.trim();
-      
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: state.email.toLowerCase(), password: state.password,
         options: { data: { full_name: fullName, user_role: state.selectedRole, phone: state.phone } }
       });
       if (authError) throw new Error(authError.message);
       if (!authData.user) throw new Error('Failed to create user account');
-      
+
       const userId = authData.user.id;
       await supabase.from('users').insert({
         id: userId, email: state.email.toLowerCase(), firstName, lastName, role: state.selectedRole, isActive: true,
-        metadata: { phone: state.phone, fullName, dateOfBirth: state.dateOfBirth, country: state.country, 
-          state: state.state, city: state.city, preferredLanguage: state.preferredLanguage, 
-          referralCode: state.referralCode, registrationDate: new Date().toISOString() }
+        metadata: {
+          phone: state.phone, fullName, dateOfBirth: state.dateOfBirth, country: state.country,
+          state: state.state, city: state.city, preferredLanguage: state.preferredLanguage,
+          referralCode: state.referralCode, registrationDate: new Date().toISOString()
+        }
       });
-      
+
       // Create role-specific record
       if (state.selectedRole === 'student') {
         await supabase.from('students').insert({ user_id: userId, first_name: firstName, last_name: lastName, email: state.email.toLowerCase(), phone: state.phone, date_of_birth: state.dateOfBirth, status: 'active' });
@@ -194,7 +278,7 @@ const UnifiedSignup = () => {
       } else if (state.selectedRole === 'recruiter') {
         await supabase.from('recruiters').insert({ user_id: userId, name: fullName, email: state.email.toLowerCase(), phone: state.phone, status: 'active' });
       }
-      
+
       navigate('/login', { state: { message: 'Account created successfully! Please login.', email: state.email } });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred during signup';
@@ -262,13 +346,15 @@ const UnifiedSignup = () => {
                 </div>
 
                 {/* Date of Birth */}
-                <div>
-                  <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">Date of Birth <span className="text-red-400">*</span></label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input type="date" name="dateOfBirth" value={state.dateOfBirth} onChange={handleInputChange} max={new Date().toISOString().split('T')[0]} className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white" />
-                  </div>
-                </div>
+                <DatePicker
+                  name="dateOfBirth"
+                  label="Date of Birth"
+                  required
+                  value={state.dateOfBirth}
+                  onChange={handleInputChange}
+                  placeholder="Select your date of birth"
+                  maxDate={new Date().toISOString().split('T')[0]}
+                />
 
                 {/* Email */}
                 <div>
@@ -283,13 +369,27 @@ const UnifiedSignup = () => {
                 <div>
                   <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">Mobile Number <span className="text-red-400">*</span></label>
                   <div className="flex gap-2">
+                    {/* Country Code Dropdown */}
+                    <select
+                      name="countryCode"
+                      value={state.countryCode}
+                      onChange={handleInputChange}
+                      disabled={state.otpVerified}
+                      className={`w-24 py-2.5 px-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white appearance-none text-sm font-medium ${state.otpVerified ? 'border-green-500 bg-green-50' : 'border-gray-300'}`}
+                    >
+                      {COUNTRY_CODES.map(cc => (
+                        <option key={cc.code} value={cc.dialCode}>
+                          {cc.dialCode}
+                        </option>
+                      ))}
+                    </select>
                     <div className="relative flex-1">
                       <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <input type="tel" name="phone" value={state.phone} onChange={handleInputChange} placeholder="10-digit number" disabled={state.otpVerified} className={`block w-full pl-10 pr-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white ${state.otpVerified ? 'border-green-500 bg-green-50' : 'border-gray-300'}`} />
+                      <input type="tel" name="phone" value={state.phone} onChange={handleInputChange} placeholder="Phone number" disabled={state.otpVerified} className={`block w-full pl-10 pr-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white ${state.otpVerified ? 'border-green-500 bg-green-50' : 'border-gray-300'}`} />
                       {state.otpVerified && <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />}
                     </div>
                     {!state.otpVerified && (
-                      <button type="button" onClick={handleSendOtp} disabled={state.sendingOtp || state.phone.length !== 10} className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap">
+                      <button type="button" onClick={handleSendOtp} disabled={state.sendingOtp || state.phone.length < 7} className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap">
                         {state.sendingOtp ? 'Sending...' : state.otpSent ? 'Resend' : 'Send OTP'}
                       </button>
                     )}
@@ -307,7 +407,7 @@ const UnifiedSignup = () => {
                         {state.verifyingOtp ? 'Verifying...' : 'Verify'}
                       </button>
                     </div>
-                    <p className="mt-1 text-xs text-white/70 lg:text-gray-500">OTP sent to +91 {state.phone}</p>
+                    <p className="mt-1 text-xs text-white/70 lg:text-gray-500">OTP sent to {state.countryCode} {state.phone}</p>
                   </div>
                 )}
 
