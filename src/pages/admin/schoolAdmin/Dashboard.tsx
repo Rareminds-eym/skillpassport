@@ -11,6 +11,7 @@ import KPIDashboard from "../../../components/admin/KPIDashboard";
 import NotificationBell from "../../../components/admin/schoolAdmin/NotificationBell";
 import { useAuth } from "../../../context/AuthContext";
 import { supabase } from "../../../lib/supabaseClient";
+import { useNavigate } from "react-router-dom";
 
 interface CourseStats {
   category: string;

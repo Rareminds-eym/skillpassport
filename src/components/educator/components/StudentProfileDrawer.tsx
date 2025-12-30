@@ -1019,9 +1019,10 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
   if (!isOpen || !student) return null;
 
   const studentName = (student as any).name || (student as any).student_name || '';
+  const studentId = (student as any).id || (student as any).student_id || '';
   const studentEmail = (student as any).email || (student as any).student_email || '';
 
-  const qrCodeValue = `${window.location.origin}/student/profile/${studentEmail}`;
+  const qrCodeValue = `${window.location.origin}/student/profile/${studentId}`;
 
   // Parse profile data
   let profileData: any = student;

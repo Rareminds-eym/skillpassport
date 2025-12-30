@@ -443,7 +443,7 @@ const AppRoutes = () => {
           />
           <Route path="/debug-qr" element={<DebugQRTest />} />
           <Route
-            path="/student/profile/:email"
+            path="/student/profile/:studentId"
             element={<StudentPublicViewer />}
           />
 

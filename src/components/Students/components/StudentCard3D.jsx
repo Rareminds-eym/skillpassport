@@ -92,7 +92,7 @@ const StudentCard3D = () => {
   const education = studentData.education?.[0] || {};
   const employabilityScore = profile.employability_score || profile.employabilityScore || 0;
   const approvalStatus = studentData.approval_status || 'pending';
-  const qrCodeValue = `${window.location.origin}/student/profile/${email}`;
+  const qrCodeValue = `${window.location.origin}/student/profile/${studentData?.id}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-50 py-12 px-4">

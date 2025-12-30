@@ -227,9 +227,9 @@ const StudentDashboard = () => {
 
   // Generate QR code value once and keep it constant
   const qrCodeValue = React.useMemo(() => {
-    const email = userEmail || "student";
-    return `${window.location.origin}/student/profile/${email}`;
-  }, [userEmail]);
+    const studentId = studentData?.id || "student";
+    return `${window.location.origin}/student/profile/${studentId}`;
+  }, [studentData?.id]);
 
   // Memoize studentSkills to prevent infinite re-renders
   const studentSkills = useMemo(() => {

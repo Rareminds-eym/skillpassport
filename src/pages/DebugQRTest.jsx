@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom';
 const DebugQRTest = () => {
   const navigate = useNavigate();
   
-  const testEmail = 'test@university.edu';
-  const testQRValue = `${window.location.origin}/student/profile/${testEmail}`;
+  const testStudentId = 'test-student-id-123';
+  const testQRValue = `${window.location.origin}/student/profile/${testStudentId}`;
   
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -44,10 +44,10 @@ const DebugQRTest = () => {
               3. Go to Student Dashboard (Requires Login)
             </button>
             <button
-              onClick={() => navigate(`/student/profile/${testEmail}`)}
+              onClick={() => navigate(`/student/profile/${testStudentId}`)}
               className="block w-full text-left px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
             >
-              4. Test 3D Card View (test@university.edu)
+              4. Test 3D Card View (test-student-id-123)
             </button>
           </div>
         </div>
