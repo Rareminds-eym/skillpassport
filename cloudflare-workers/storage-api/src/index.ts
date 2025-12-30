@@ -643,28 +643,51 @@ async function handleListFiles(request: Request, env: Env, courseId: string, les
 // ==================== UPLOAD PAYMENT RECEIPT ====================
 
 async function handleUploadPaymentReceipt(request: Request, env: Env): Promise<Response> {
+  console.log(`[STORAGE-API] ========== UPLOAD PAYMENT RECEIPT START ==========`);
+  
   if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+    console.error(`[STORAGE-API] R2 credentials missing!`);
+    console.error(`[STORAGE-API] CLOUDFLARE_ACCOUNT_ID: ${env.CLOUDFLARE_ACCOUNT_ID ? 'SET' : 'MISSING'}`);
+    console.error(`[STORAGE-API] CLOUDFLARE_R2_ACCESS_KEY_ID: ${env.CLOUDFLARE_R2_ACCESS_KEY_ID ? 'SET' : 'MISSING'}`);
+    console.error(`[STORAGE-API] CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${env.CLOUDFLARE_R2_SECRET_ACCESS_KEY ? 'SET' : 'MISSING'}`);
     return jsonResponse({ error: 'R2 credentials not configured' }, 500);
   }
+  
+  console.log(`[STORAGE-API] R2 credentials verified`);
 
-  const body = await request.json() as {
-    pdfBase64: string;
-    paymentId: string;
-    userId: string;
-    filename?: string;
-  };
+  let body: { pdfBase64?: string; paymentId?: string; userId?: string; filename?: string };
+  try {
+    body = await request.json() as typeof body;
+  } catch (parseError) {
+    console.error(`[STORAGE-API] Failed to parse request body:`, parseError);
+    return jsonResponse({ error: 'Invalid JSON body' }, 400);
+  }
 
   const { pdfBase64, paymentId, userId, filename } = body;
+  
+  console.log(`[STORAGE-API] Request params:`);
+  console.log(`[STORAGE-API] - paymentId: ${paymentId}`);
+  console.log(`[STORAGE-API] - userId: ${userId}`);
+  console.log(`[STORAGE-API] - filename: ${filename}`);
+  console.log(`[STORAGE-API] - pdfBase64 length: ${pdfBase64?.length || 0}`);
 
   if (!pdfBase64 || !paymentId || !userId) {
+    console.error(`[STORAGE-API] Missing required fields`);
     return jsonResponse({ error: 'pdfBase64, paymentId, and userId are required' }, 400);
   }
 
   // Decode base64 to binary
-  const binaryString = atob(pdfBase64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+  let bytes: Uint8Array;
+  try {
+    const binaryString = atob(pdfBase64);
+    bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    console.log(`[STORAGE-API] Decoded base64 to ${bytes.length} bytes`);
+  } catch (decodeError) {
+    console.error(`[STORAGE-API] Failed to decode base64:`, decodeError);
+    return jsonResponse({ error: 'Invalid base64 data' }, 400);
   }
 
   // Generate unique filename
@@ -672,16 +695,23 @@ async function handleUploadPaymentReceipt(request: Request, env: Env): Promise<R
   const sanitizedPaymentId = paymentId.replace(/[^a-zA-Z0-9_-]/g, '');
   const fileKey = `payment_pdf/${userId}/${sanitizedPaymentId}_${timestamp}.pdf`;
   const finalFilename = filename || `Receipt-${sanitizedPaymentId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+  
+  console.log(`[STORAGE-API] File key: ${fileKey}`);
+  console.log(`[STORAGE-API] Final filename: ${finalFilename}`);
 
   const bucketName = env.CLOUDFLARE_R2_BUCKET_NAME || 'skill-echosystem';
+  console.log(`[STORAGE-API] Bucket: ${bucketName}`);
+  
   const r2 = new AwsClient({
     accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID,
     secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
   });
 
   const endpoint = `https://${env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const uploadUrl = `${endpoint}/${bucketName}/${fileKey}`;
+  console.log(`[STORAGE-API] Upload URL: ${uploadUrl}`);
 
-  const uploadRequest = new Request(`${endpoint}/${bucketName}/${fileKey}`, {
+  const uploadRequest = new Request(uploadUrl, {
     method: 'PUT',
     body: bytes,
     headers: {
@@ -690,17 +720,29 @@ async function handleUploadPaymentReceipt(request: Request, env: Env): Promise<R
     },
   });
 
+  console.log(`[STORAGE-API] Signing request...`);
   const signedRequest = await r2.sign(uploadRequest);
+  
+  console.log(`[STORAGE-API] Uploading to R2...`);
+  const startTime = Date.now();
   const response = await fetch(signedRequest);
+  const duration = Date.now() - startTime;
+  
+  console.log(`[STORAGE-API] R2 response in ${duration}ms: ${response.status} ${response.statusText}`);
 
   if (!response.ok) {
-    console.error('R2 upload failed:', response.status, await response.text());
-    return jsonResponse({ error: 'Failed to upload receipt to R2' }, 500);
+    const errorText = await response.text();
+    console.error(`[STORAGE-API] R2 upload failed: ${response.status} - ${errorText}`);
+    return jsonResponse({ error: 'Failed to upload receipt to R2', details: errorText }, 500);
   }
 
   const fileUrl = env.CLOUDFLARE_R2_PUBLIC_URL
     ? `${env.CLOUDFLARE_R2_PUBLIC_URL}/${fileKey}`
     : `https://pub-${env.CLOUDFLARE_ACCOUNT_ID}.r2.dev/${fileKey}`;
+
+  console.log(`[STORAGE-API] ========== UPLOAD SUCCESS ==========`);
+  console.log(`[STORAGE-API] File URL: ${fileUrl}`);
+  console.log(`[STORAGE-API] File Key: ${fileKey}`);
 
   return jsonResponse({
     success: true,
