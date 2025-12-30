@@ -1,25 +1,26 @@
-import { useState, useCallback, useMemo, memo, useEffect } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Check, Shield, Clock, TrendingUp, Calendar } from 'lucide-react';
-import useAuth from '../../hooks/useAuth';
-import SignupModal from '../../components/Subscription/SignupModal';
-import LoginModal from '../../components/Subscription/LoginModal';
-import SchoolSignupModal from '../../components/Subscription/SchoolSignupModal';
-import SchoolLoginModal from '../../components/Subscription/SchoolLoginModal';
-import CollegeSignupModal from '../../components/Subscription/CollegeSignupModal';
+import { Calendar, Check, Clock, Shield, TrendingUp } from 'lucide-react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import CollegeLoginModal from '../../components/Subscription/CollegeLoginModal';
-import EducatorSignupModal from '../../components/Subscription/EducatorSignupModal';
+import CollegeSignupModal from '../../components/Subscription/CollegeSignupModal';
 import EducatorLoginModal from '../../components/Subscription/EducatorLoginModal';
-import RecruiterSignupModal from '../../components/Subscription/RecruiterSignupModal';
+import EducatorSignupModal from '../../components/Subscription/EducatorSignupModal';
+import LoginModal from '../../components/Subscription/LoginModal';
 import RecruiterLoginModal from '../../components/Subscription/RecruiterLoginModal';
+import RecruiterSignupModal from '../../components/Subscription/RecruiterSignupModal';
 import RecruitmentAdminSignupModal from '../../components/Subscription/RecruitmentAdminSignupModal';
-import UniversityAdminSignupModal from '../../components/Subscription/UniversityAdminSignupModal';
+import SchoolLoginModal from '../../components/Subscription/SchoolLoginModal';
+import SchoolSignupModal from '../../components/Subscription/SchoolSignupModal';
+import SignupModal from '../../components/Subscription/SignupModal';
 import UniversityAdminLoginModal from '../../components/Subscription/UniversityAdminLoginModal';
-import UniversityStudentSignupModal from '../../components/Subscription/UniversityStudentSignupModal';
+import UniversityAdminSignupModal from '../../components/Subscription/UniversityAdminSignupModal';
 import UniversityStudentLoginModal from '../../components/Subscription/UniversityStudentLoginModal';
-import { isActiveOrPaused, getStatusColor, calculateDaysRemaining } from '../../utils/subscriptionHelpers';
+import UniversityStudentSignupModal from '../../components/Subscription/UniversityStudentSignupModal';
 import { PAYMENT_CONFIG, isTestPricing } from '../../config/payment';
-import { getEntityContent, parseStudentType } from '../../utils/getEntityContent';
+import useAuth from '../../hooks/useAuth';
+import { getEntityContent } from '../../utils/getEntityContent';
+import { calculateDaysRemaining, getStatusColor, isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 
@@ -185,6 +186,17 @@ function SubscriptionPlans() {
     [isAuthenticated, hasActiveOrPausedSubscription]
   );
 
+  // Show welcome message from signup flow (only once)
+  useEffect(() => {
+    const message = location.state?.message;
+    if (message) {
+      // Clear the state immediately to prevent duplicate toasts
+      navigate(location.pathname + location.search, { replace: true, state: {} });
+      // Show toast after clearing state
+      toast.success(message, { duration: 5000, id: 'signup-success' });
+    }
+  }, []); // Empty dependency - run only on mount
+
   // Error logging for subscription fetch failures
   useEffect(() => {
     if (subscriptionError && isAuthenticated) {
@@ -228,39 +240,10 @@ function SubscriptionPlans() {
       return;
     }
 
-    // For recruitment-admin, show signup modal instead of navigating
-    if (studentType === 'recruitment-admin' && !isAuthenticated) {
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
-      return;
-    }
-
-    // For recruitment-recruiter, show signup modal instead of navigating
-    if (studentType === 'recruitment-recruiter' && !isAuthenticated) {
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
-      return;
-    }
-
-    // For university-admin, show signup modal instead of navigating
-    if (studentType === 'university-admin' && !isAuthenticated) {
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
-      return;
-    }
-
-    // For university-student, show signup modal instead of navigating
-    if (studentType === 'university-student' && !isAuthenticated) {
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
-      return;
-    }
-
     // For upgrade/downgrade or new purchase
     if (!isAuthenticated) {
-      // User not authenticated, show signup modal
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
+      // User not authenticated, redirect to unified signup page
+      navigate('/signup');
     } else {
       // User authenticated, check if they have active or paused subscription
       if (hasActiveOrPausedSubscription) {
@@ -271,7 +254,7 @@ function SubscriptionPlans() {
         navigate('/subscription/payment', { state: { plan, studentType, isUpgrade: !!subscriptionData } });
       }
     }
-  }, [isAuthenticated, user, role, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription]);
+  }, [isAuthenticated, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription]);
 
   const handleSignupSuccess = useCallback(() => {
     // After successful signup, proceed to payment with selected plan

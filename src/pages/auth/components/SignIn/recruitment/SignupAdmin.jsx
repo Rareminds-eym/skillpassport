@@ -184,8 +184,13 @@ const SignupAdmin = () => {
     if (!formData.adminPhone || formData.adminPhone.length !== 10) return;
     setSendingOtp(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setOtpSent(true);
+      const result = await sendOtp(formData.adminPhone);
+      if (result.success) {
+        setOtpSent(true);
+        setErrors(prev => ({ ...prev, adminPhone: '' }));
+      } else {
+        setErrors(prev => ({ ...prev, adminPhone: result.error || 'Failed to send OTP.' }));
+      }
     } catch {
       setErrors(prev => ({ ...prev, adminPhone: 'Failed to send OTP.' }));
     } finally {
@@ -197,8 +202,13 @@ const SignupAdmin = () => {
     if (!formData.otp || formData.otp.length !== 6) return;
     setVerifyingOtp(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setFormData(prev => ({ ...prev, otpVerified: true }));
+      const result = await verifyOtpApi(formData.adminPhone, formData.otp);
+      if (result.success) {
+        setFormData(prev => ({ ...prev, otpVerified: true }));
+        setErrors(prev => ({ ...prev, otp: '' }));
+      } else {
+        setErrors(prev => ({ ...prev, otp: result.error || 'Invalid OTP.' }));
+      }
     } catch {
       setErrors(prev => ({ ...prev, otp: 'Invalid OTP.' }));
     } finally {
@@ -1074,23 +1084,30 @@ const SignupAdmin = () => {
                   Continue
                 </button>
               ) : (
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Creating Workspace...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-5 h-5" />
-                      Create Workspace
-                    </>
+                <div className="flex flex-col flex-1">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !formData.otpVerified}
+                    className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Creating Workspace...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-5 h-5" />
+                        Create Workspace
+                      </>
+                    )}
+                  </button>
+                  {!formData.otpVerified && (
+                    <p className="mt-2 text-xs text-amber-600 text-center">
+                      Please verify your phone number with OTP to continue
+                    </p>
                   )}
-                </button>
+                </div>
               )}
             </div>
           </form>

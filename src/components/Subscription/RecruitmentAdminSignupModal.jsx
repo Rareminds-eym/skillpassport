@@ -1,6 +1,7 @@
-import { AlertCircle, Briefcase, Building2, Calendar, Eye, EyeOff, Globe, Mail, MapPin, Phone, Shield, User, X } from 'lucide-react';
+import { AlertCircle, Briefcase, Building2, Calendar, CheckCircle, Eye, EyeOff, Globe, Mail, MapPin, Phone, Shield, User, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 
 function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onSwitchToLogin }) {
   const [formData, setFormData] = useState({
@@ -29,6 +30,7 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
     adminFullName: '',
     adminEmail: '',
     adminPhone: '',
+    adminOtp: '',
     password: '',
     confirmPassword: ''
   });
@@ -39,6 +41,10 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
   const [checkingCode, setCheckingCode] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
 
   const totalSteps = 5;
 
@@ -91,6 +97,10 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
     if (['phone', 'adminPhone', 'contactPersonPhone'].includes(name)) {
       processedValue = value.replace(/\D/g, '').slice(0, 10);
     }
+    // Format OTP
+    if (name === 'adminOtp') {
+      processedValue = value.replace(/\D/g, '').slice(0, 6);
+    }
     // Format company code
     if (name === 'code') {
       processedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
@@ -102,6 +112,48 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
 
     setFormData(prev => ({ ...prev, [name]: processedValue }));
     if (error) setError('');
+  };
+
+  const handleSendOtp = async () => {
+    if (!formData.adminPhone || formData.adminPhone.length !== 10) {
+      setError('Please enter a valid 10-digit phone number');
+      return;
+    }
+    setSendingOtp(true);
+    try {
+      const result = await sendOtp(formData.adminPhone);
+      if (result.success) {
+        setOtpSent(true);
+        setError('');
+      } else {
+        setError(result.error || 'Failed to send OTP');
+      }
+    } catch {
+      setError('Failed to send OTP. Please try again.');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!formData.adminOtp || formData.adminOtp.length !== 6) {
+      setError('Please enter a valid 6-digit OTP');
+      return;
+    }
+    setVerifyingOtp(true);
+    try {
+      const result = await verifyOtpApi(formData.adminPhone, formData.adminOtp);
+      if (result.success) {
+        setOtpVerified(true);
+        setError('');
+      } else {
+        setError(result.error || 'Invalid OTP');
+      }
+    } catch {
+      setError('Failed to verify OTP. Please try again.');
+    } finally {
+      setVerifyingOtp(false);
+    }
   };
 
   const checkCompanyCode = async (code) => {
@@ -744,20 +796,68 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Your Phone *</label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <input
-                          type="tel"
-                          name="adminPhone"
-                          required
-                          className="pl-10 w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="10-digit phone"
-                          value={formData.adminPhone}
-                          onChange={handleChange}
-                        />
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <input
+                            type="tel"
+                            name="adminPhone"
+                            required
+                            className={`pl-10 w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${otpVerified ? 'border-green-500 bg-green-50' : 'border-gray-300'}`}
+                            placeholder="10-digit phone"
+                            value={formData.adminPhone}
+                            onChange={handleChange}
+                            disabled={otpVerified}
+                          />
+                          {otpVerified && (
+                            <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />
+                          )}
+                        </div>
+                        {!otpVerified && (
+                          <button
+                            type="button"
+                            onClick={handleSendOtp}
+                            disabled={sendingOtp || formData.adminPhone.length !== 10}
+                            className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                          >
+                            {sendingOtp ? 'Sending...' : otpSent ? 'Resend' : 'Send OTP'}
+                          </button>
+                        )}
                       </div>
+                      {otpVerified && (
+                        <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> Phone verified
+                        </p>
+                      )}
                     </div>
                   </div>
+
+                  {/* OTP Input */}
+                  {otpSent && !otpVerified && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Enter OTP *</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          name="adminOtp"
+                          value={formData.adminOtp}
+                          onChange={handleChange}
+                          placeholder="Enter 6-digit OTP"
+                          maxLength={6}
+                          className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center tracking-widest font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleVerifyOtp}
+                          disabled={verifyingOtp || formData.adminOtp.length !== 6}
+                          className="px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {verifyingOtp ? 'Verifying...' : 'Verify'}
+                        </button>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">OTP sent to +91 {formData.adminPhone}. Valid for 5 minutes.</p>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -833,7 +933,7 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
                 ) : (
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || !otpVerified}
                     className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? (
@@ -847,6 +947,13 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
                   </button>
                 )}
               </div>
+
+              {/* OTP Verification Warning */}
+              {!otpVerified && step === 5 && (
+                <p className="text-sm text-amber-600 text-center mt-2">
+                  Please verify your phone number with OTP to continue
+                </p>
+              )}
             </form>
 
             <div className="mt-6 text-center border-t pt-4">

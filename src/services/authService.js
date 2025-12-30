@@ -1,18 +1,17 @@
 import { supabase } from '../lib/supabaseClient';
 import {
-  AUTH_ERROR_CODES,
-  AuthError,
-  validateCredentials,
-  validateEmail,
-  validatePassword,
-  mapSupabaseError,
-  handleAuthError,
-  logAuthEvent,
-  withRetry,
-  withTimeout,
-  buildSuccessResponse,
-  buildErrorResponse,
-  generateCorrelationId,
+    AUTH_ERROR_CODES,
+    AuthError,
+    buildErrorResponse,
+    generateCorrelationId,
+    handleAuthError,
+    logAuthEvent,
+    mapSupabaseError,
+    validateCredentials,
+    validateEmail,
+    validatePassword,
+    withRetry,
+    withTimeout
 } from '../utils/authErrorHandler';
 import userApiService from './userApiService';
 
@@ -69,9 +68,11 @@ export const checkAuthentication = async () => {
       };
     }
 
-    // Extract role from user metadata
-    const role = session.user.raw_user_meta_data?.role ||
+    // Extract role from user metadata - check user_role first (set by UnifiedSignup)
+    const role = session.user.user_metadata?.user_role ||
       session.user.user_metadata?.role ||
+      session.user.raw_user_meta_data?.user_role ||
+      session.user.raw_user_meta_data?.role ||
       null;
 
     logAuthEvent('info', 'Session verified', { correlationId, userId: session.user.id, role });
@@ -335,8 +336,10 @@ export const signIn = async (email, password) => {
       AUTH_TIMEOUT_MS
     );
 
-    const role = data.user?.raw_user_meta_data?.role ||
+    const role = data.user?.user_metadata?.user_role ||
       data.user?.user_metadata?.role ||
+      data.user?.raw_user_meta_data?.user_role ||
+      data.user?.raw_user_meta_data?.role ||
       null;
 
     logAuthEvent('info', 'Sign-in successful', { correlationId, userId: data.user.id, role });
@@ -503,8 +506,10 @@ export const getCurrentUser = async () => {
       };
     }
 
-    const role = user?.raw_user_meta_data?.role ||
+    const role = user?.user_metadata?.user_role ||
       user?.user_metadata?.role ||
+      user?.raw_user_meta_data?.user_role ||
+      user?.raw_user_meta_data?.role ||
       null;
 
     return {

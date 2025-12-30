@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, Briefcase, Eye, EyeOff, Info, Lock, Mail, Phone, User, X } from 'lucide-react';
+import { AlertCircle, Briefcase, CheckCircle, Eye, EyeOff, Info, Lock, Mail, Phone, User, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 import { getModalContent } from '../../utils/getEntityContent';
 import DatePicker from './shared/DatePicker';
 import { capitalizeFirstLetter } from './shared/signupValidation';
@@ -34,6 +35,11 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
   const [existingUserInfo, setExistingUserInfo] = useState(null);
   const [companies, setCompanies] = useState([]);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otp, setOtp] = useState('');
   const navigate = useNavigate();
 
   // Load companies when modal opens
@@ -207,6 +213,58 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
         ...prev,
         [name]: ''
       }));
+    }
+  };
+
+  const handleOtpChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setOtp(value);
+    if (errors.otp) {
+      setErrors(prev => ({ ...prev, otp: '' }));
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!formData.phone || formData.phone.length !== 10) {
+      setErrors(prev => ({ ...prev, phone: 'Please enter a valid 10-digit phone number' }));
+      return;
+    }
+    
+    setSendingOtp(true);
+    try {
+      const result = await sendOtp(formData.phone);
+      if (result.success) {
+        setOtpSent(true);
+        setErrors(prev => ({ ...prev, phone: '' }));
+      } else {
+        setErrors(prev => ({ ...prev, phone: result.error || 'Failed to send OTP' }));
+      }
+    } catch (error) {
+      setErrors(prev => ({ ...prev, phone: 'Failed to send OTP. Please try again.' }));
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp || otp.length !== 6) {
+      setErrors(prev => ({ ...prev, otp: 'Please enter a valid 6-digit OTP' }));
+      return;
+    }
+
+    setVerifyingOtp(true);
+    try {
+      const result = await verifyOtpApi(formData.phone, otp);
+      if (result.success) {
+        setOtpVerified(true);
+        setErrors(prev => ({ ...prev, otp: '' }));
+      } else {
+        setErrors(prev => ({ ...prev, otp: result.error || 'Invalid OTP' }));
+      }
+    } catch (error) {
+      setErrors(prev => ({ ...prev, otp: 'Failed to verify OTP. Please try again.' }));
+    } finally {
+      setVerifyingOtp(false);
     }
   };
 
@@ -449,23 +507,39 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
                   )}
                 </div>
 
-                {/* Phone */}
+                {/* Phone with OTP */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Phone Number *
                   </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="10-digit mobile number"
-                      className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                        errors.phone ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    />
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        placeholder="10-digit mobile number"
+                        disabled={otpVerified}
+                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                          errors.phone ? 'border-red-500' : otpVerified ? 'border-green-500 bg-green-50' : 'border-gray-300'
+                        } ${otpVerified ? 'cursor-not-allowed' : ''}`}
+                      />
+                      {otpVerified && (
+                        <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />
+                      )}
+                    </div>
+                    {!otpVerified && (
+                      <button
+                        type="button"
+                        onClick={handleSendOtp}
+                        disabled={sendingOtp || formData.phone.length !== 10}
+                        className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        {sendingOtp ? 'Sending...' : otpSent ? 'Resend' : 'Send OTP'}
+                      </button>
+                    )}
                   </div>
                   {errors.phone && (
                     <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
@@ -473,7 +547,51 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
                       {errors.phone}
                     </p>
                   )}
+                  {otpVerified && (
+                    <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Phone number verified
+                    </p>
+                  )}
                 </div>
+
+                {/* OTP Input */}
+                {otpSent && !otpVerified && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Enter OTP *
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={otp}
+                        onChange={handleOtpChange}
+                        placeholder="Enter 6-digit OTP"
+                        maxLength={6}
+                        className={`flex-1 px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-center tracking-widest font-mono text-lg ${
+                          errors.otp ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleVerifyOtp}
+                        disabled={verifyingOtp || otp.length !== 6}
+                        className="px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {verifyingOtp ? 'Verifying...' : 'Verify'}
+                      </button>
+                    </div>
+                    {errors.otp && (
+                      <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {errors.otp}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-500">
+                      OTP sent to +91 {formData.phone}. Valid for 5 minutes.
+                    </p>
+                  </div>
+                )}
 
                 {/* Date of Birth */}
                 <DatePicker
@@ -625,11 +743,16 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={loading || emailExists || checkingEmail}
+                  disabled={loading || emailExists || checkingEmail || !otpVerified}
                   className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Creating Account...' : emailExists ? 'Email Already Registered' : 'Sign Up & Continue'}
                 </button>
+                {!otpVerified && (
+                  <p className="mt-2 text-xs text-amber-600 text-center">
+                    Please verify your phone number with OTP to continue
+                  </p>
+                )}
 
                 {/* Login Link */}
                 <div className="text-center pt-2 pb-2">

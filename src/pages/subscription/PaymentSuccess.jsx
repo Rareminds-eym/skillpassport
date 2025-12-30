@@ -1,21 +1,21 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Download,
-  ArrowRight,
-  MailCheck,
-  Loader2,
-  Check,
-  Sparkles,
-  Calendar,
-  CreditCard,
-  Clock,
+    ArrowRight,
+    Calendar,
+    Check,
+    Clock,
+    CreditCard,
+    Download,
+    Loader2,
+    MailCheck,
+    Sparkles,
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
+import useAuth from '../../hooks/useAuth';
 import { downloadReceipt } from '../../services/Subscriptions/pdfReceiptGenerator';
 import { clearPendingUserData } from '../../utils/authCleanup';
-import useAuth from '../../hooks/useAuth';
-import toast from 'react-hot-toast';
 
 // Receipt Card with clean design
 const ReceiptCard = ({ header, children }) => {
@@ -193,8 +193,31 @@ function PaymentSuccess() {
   const formatAmount = (a) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(a);
 
   const getDashboardUrl = () => {
-    const role = user?.user_metadata?.role || user?.raw_user_meta_data?.role;
-    return { educator: '/educator/dashboard', recruiter: '/recruiter/dashboard', admin: '/admin/dashboard' }[role] || '/student/dashboard';
+    // Check multiple possible locations for the role
+    const role = user?.user_metadata?.user_role 
+      || user?.user_metadata?.role 
+      || user?.raw_user_meta_data?.user_role 
+      || user?.raw_user_meta_data?.role;
+    
+    const dashboardRoutes = {
+      // Students
+      school_student: '/student/dashboard',
+      college_student: '/student/dashboard',
+      student: '/student/dashboard',
+      // Educators
+      school_educator: '/educator/dashboard',
+      college_educator: '/educator/dashboard',
+      educator: '/educator/dashboard',
+      // Recruiters
+      recruiter: '/recruiter/dashboard',
+      // Admins
+      school_admin: '/school-admin/dashboard',
+      college_admin: '/college-admin/dashboard',
+      university_admin: '/university-admin/dashboard',
+      admin: '/admin/dashboard',
+    };
+    
+    return dashboardRoutes[role] || '/student/dashboard';
   };
 
   // Loading

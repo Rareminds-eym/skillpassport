@@ -2,6 +2,7 @@ import { AlertCircle, BookOpen, Building, ChevronDown, GraduationCap, X } from '
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { signUpWithRole } from '../../services/authService';
+import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 import { getActiveUniversities, getCollegesByUniversity } from '../../services/universityService';
 import DatePicker from './shared/DatePicker';
 import SignupFormFields from './shared/SignupFormFields';
@@ -120,8 +121,13 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
     if (!formData.phone || formData.phone.length !== 10) return;
     setSendingOtp(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setOtpSent(true);
+      const result = await sendOtp(formData.phone);
+      if (result.success) {
+        setOtpSent(true);
+        setErrors(prev => ({ ...prev, phone: '' }));
+      } else {
+        setErrors(prev => ({ ...prev, phone: result.error || 'Failed to send OTP.' }));
+      }
     } catch {
       setErrors(prev => ({ ...prev, phone: 'Failed to send OTP.' }));
     } finally {
@@ -133,9 +139,14 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
     if (!formData.otp || formData.otp.length !== 6) return;
     setVerifyingOtp(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setOtpVerified(true);
-      setFormData(prev => ({ ...prev, otpVerified: true }));
+      const result = await verifyOtpApi(formData.phone, formData.otp);
+      if (result.success) {
+        setOtpVerified(true);
+        setFormData(prev => ({ ...prev, otpVerified: true }));
+        setErrors(prev => ({ ...prev, otp: '' }));
+      } else {
+        setErrors(prev => ({ ...prev, otp: result.error || 'Invalid OTP.' }));
+      }
     } catch {
       setErrors(prev => ({ ...prev, otp: 'Invalid OTP.' }));
     } finally {
@@ -486,14 +497,21 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
                     Next Step
                   </button>
                 ) : (
-                  <button type="submit" disabled={loading || emailExists} className="px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50 flex items-center gap-2">
-                    {loading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Creating...
-                      </>
-                    ) : 'Create Account'}
-                  </button>
+                  <div className="flex flex-col items-end">
+                    <button type="submit" disabled={loading || emailExists || !otpVerified} className="px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                      {loading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Creating...
+                        </>
+                      ) : 'Create Account'}
+                    </button>
+                    {!otpVerified && (
+                      <p className="mt-2 text-xs text-amber-600">
+                        Please verify your phone number with OTP
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </form>

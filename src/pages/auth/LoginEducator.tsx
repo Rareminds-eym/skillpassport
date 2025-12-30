@@ -1,19 +1,19 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
 import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  AlertCircle,
-  BookOpen,
-  Users,
-  Star,
+    AlertCircle,
+    BookOpen,
+    Eye,
+    EyeOff,
+    Lock,
+    Mail,
+    Star,
+    Users,
 } from "lucide-react";
-import { supabase } from "../../lib/supabaseClient";
-import { useAuth } from "../../context/AuthContext";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import educatorIllustration from "../../../public/login/yyu.png";
+import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../lib/supabaseClient";
 import FeatureCard from "./components/ui/FeatureCard";
 
 export default function LoginEducator() {
@@ -209,7 +209,7 @@ export default function LoginEducator() {
         </a>
         {isLg ? (
           <a
-            href="/educator/signup"
+            href="/signup"
             className="text-[#4f46e5] font-semibold hover:text-[#312e81]"
           >
             Sign up

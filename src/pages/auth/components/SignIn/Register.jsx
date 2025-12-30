@@ -1,28 +1,22 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import educatorIllustration from "../../../../assets/images/auth/Educator-illustration.jpg";
 import loginIllustration from "../../../../assets/images/auth/Recruiter-illustration.png";
 import studentIllustration from "../../../../assets/images/auth/Student-illustration.jpg";
-import educatorIllustration from "../../../../assets/images/auth/Educator-illustration.jpg";
 import LoginModal from '../../../../components/Subscription/LoginModal';
 
 import {
-  CheckCircle,
-  Zap,
-  BarChart3,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  AlertCircle,
-  User,
-  GraduationCap,
-  Briefcase,
-  BadgeCheck,
-  Share2,
-  Activity,
-  Info,
-  X,
+    Activity,
+    BadgeCheck,
+    BarChart3,
+    Briefcase,
+    CheckCircle,
+    Info,
+    Share2,
+    User,
+    X,
+    Zap
 } from "lucide-react";
 import FeatureCard from "../ui/FeatureCard";
 
@@ -765,6 +759,7 @@ export default function UnifiedSignup() {
         }}
         onSwitchToSignup={() => {
           setShowLoginModal(false);
+          navigate('/signup');
         }}
       />
     </div>

@@ -197,9 +197,9 @@ export default function DatePicker({
       {/* Input Display */}
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className={`relative flex items-center w-full px-4 py-3 border-2 rounded-xl cursor-pointer transition-all duration-200 bg-white
-          ${isOpen ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-gray-200 hover:border-blue-400 hover:shadow-sm'}
-          ${error ? 'border-red-500 hover:border-red-500' : ''}
+        className={`relative flex items-center w-full pl-4 pr-4 py-3 border rounded-xl cursor-pointer transition-all duration-200 outline-none
+          ${isOpen ? 'ring-2 ring-blue-500/20 border-blue-500 bg-white' : 'border-gray-200 bg-gray-50 hover:bg-white hover:border-blue-400'}
+          ${error ? 'border-red-500' : ''}
         `}
       >
         <Calendar className={`w-5 h-5 mr-3 transition-colors ${isOpen ? 'text-blue-500' : 'text-gray-400'}`} />
