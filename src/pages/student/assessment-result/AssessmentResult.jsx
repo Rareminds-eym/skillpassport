@@ -260,22 +260,22 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false }) => {
 
     const colorConfig = {
         green: {
-            bg: '#1a2e1a',
-            accent: '#22c55e',
-            accentLight: '#86efac',
-            shadow: 'rgba(34, 197, 94, 0.3)'
+            bg: '#1a2236',
+            accent: '#2563eb',
+            accentLight: '#60a5fa',
+            shadow: 'rgba(37, 99, 235, 0.3)'
         },
         yellow: {
-            bg: '#2e2a1a',
-            accent: '#eab308',
-            accentLight: '#fde047',
-            shadow: 'rgba(234, 179, 8, 0.3)'
+            bg: '#1e293b',
+            accent: '#3b82f6',
+            accentLight: '#93c5fd',
+            shadow: 'rgba(59, 130, 246, 0.3)'
         },
         purple: {
-            bg: '#2a1a2e',
-            accent: '#a855f7',
-            accentLight: '#c084fc',
-            shadow: 'rgba(168, 85, 247, 0.3)'
+            bg: '#1e293b',
+            accent: '#60a5fa',
+            accentLight: '#bfdbfe',
+            shadow: 'rgba(96, 165, 250, 0.3)'
         }
     };
 
@@ -303,8 +303,8 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false }) => {
                             className="relative rounded-[10px] p-[1px]"
                             style={{
                                 width: '100%',
-                                maxWidth: '400px',
-                                minHeight: '350px',
+                                maxWidth: '360px',
+                                minHeight: '280px',
                                 background: `radial-gradient(circle 230px at 0% 0%, ${config.accentLight}, #0c0d0d)`
                             }}
                         >
@@ -320,7 +320,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false }) => {
 
                             {/* Main Card */}
                             <div
-                                className="relative w-full h-full rounded-[9px] border border-[#202222] flex flex-col justify-center p-6"
+                                className="relative w-full h-full rounded-[9px] border border-[#202222] flex flex-col justify-center p-5"
                                 style={{
                                     background: `radial-gradient(circle 280px at 0% 0%, ${config.accent}40, #0c0d0d)`,
                                     backgroundSize: '20px 20px'
