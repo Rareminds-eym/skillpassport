@@ -697,9 +697,19 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
       }
     ],
     "specificOptions": {
-      "highFit": ["4-5 specific, age-appropriate career names they can relate to"],
-      "mediumFit": ["3-4 more career options worth exploring"],
-      "exploreLater": ["2-3 careers to keep in mind for later"]
+      "highFit": [
+        {"name": "Career name 1", "salary": {"min": 3, "max": 6}},
+        {"name": "Career name 2", "salary": {"min": 3, "max": 6}},
+        {"name": "Career name 3", "salary": {"min": 3, "max": 6}}
+      ],
+      "mediumFit": [
+        {"name": "Career name 1", "salary": {"min": 3, "max": 5}},
+        {"name": "Career name 2", "salary": {"min": 3, "max": 5}}
+      ],
+      "exploreLater": [
+        {"name": "Career name 1", "salary": {"min": 2, "max": 5}},
+        {"name": "Career name 2", "salary": {"min": 2, "max": 5}}
+      ]
     }
   },
   "skillGap": {
@@ -713,6 +723,21 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
     "currentStrengths": ["2-3 skills they're already showing"],
     "recommendedTrack": "Clear learning path (e.g., Creative Exploration, STEM Discovery, People & Communication)"
   },
+
+**JOB ROLE GUIDELINES FOR MIDDLE SCHOOL:**
+- Suggest EXCITING, RELATABLE career names that middle schoolers can understand
+- Focus on MODERN roles they see in media/daily life (e.g., "Video Game Designer" not "Software Engineer")
+- Include DIVERSE options: tech, creative, helping, business, science
+- Use SIMPLE, engaging job titles (e.g., "App Creator", "Animal Doctor", "YouTuber/Content Creator")
+- PERSONALIZE based on their RIASEC interests:
+  * High R → Hands-on roles (Robotics Engineer, Wildlife Photographer)
+  * High I → Discovery roles (Space Scientist, Medical Researcher)
+  * High A → Creative roles (Animator, Music Producer, Fashion Designer)
+  * High S → Helping roles (Teacher, Doctor, Social Worker)
+  * High E → Leadership roles (Entrepreneur, Event Planner)
+  * High C → Organized roles (Accountant, Librarian, Data Analyst)
+- Salary ranges should be aspirational but realistic for future reference
+
   "roadmap": {
     "twelveMonthJourney": {
       "phase1": {
@@ -969,11 +994,64 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
       }
     ],
     "specificOptions": {
-      "highFit": ["5-6 specific career titles ranked by fit"],
-      "mediumFit": ["4-5 careers worth considering"],
-      "exploreLater": ["2-3 careers to keep on the radar"]
+      "highFit": [
+        {"name": "Career title 1", "salary": {"min": 4, "max": 10}},
+        {"name": "Career title 2", "salary": {"min": 4, "max": 10}},
+        {"name": "Career title 3", "salary": {"min": 4, "max": 10}},
+        {"name": "Career title 4", "salary": {"min": 4, "max": 10}}
+      ],
+      "mediumFit": [
+        {"name": "Career title 1", "salary": {"min": 3, "max": 8}},
+        {"name": "Career title 2", "salary": {"min": 3, "max": 8}},
+        {"name": "Career title 3", "salary": {"min": 3, "max": 8}}
+      ],
+      "exploreLater": [
+        {"name": "Career title 1", "salary": {"min": 3, "max": 7}},
+        {"name": "Career title 2", "salary": {"min": 3, "max": 7}}
+      ]
     }
   },
+
+**SERIOUS CAREER GUIDANCE - JOB ROLES FOR HIGH SCHOOL (After 12th):**
+
+### PROFESSIONAL CAREER PATHS BY STREAM:
+
+**SCIENCE STREAM (PCM/PCB):**
+- Engineering: Software Engineer, Mechanical Engineer, Civil Engineer, Electrical Engineer, Chemical Engineer
+- Medical: Doctor (MBBS), Dentist (BDS), Physiotherapist, Pharmacist, Veterinarian
+- Research: Research Scientist, Data Scientist, Biotechnologist, Environmental Scientist
+- Technology: AI/ML Engineer, Cybersecurity Analyst, Cloud Architect, Robotics Engineer
+
+**COMMERCE STREAM:**
+- Finance: Chartered Accountant, Financial Analyst, Investment Banker, Actuary
+- Business: Business Analyst, Management Consultant, Operations Manager, Supply Chain Analyst
+- Banking: Bank Manager, Credit Analyst, Risk Analyst, Wealth Manager
+- Accounting: Cost Accountant, Tax Consultant, Auditor, Company Secretary
+
+**ARTS/HUMANITIES STREAM:**
+- Law: Corporate Lawyer, Civil Lawyer, Legal Advisor, Judge (after experience)
+- Media: Journalist, News Anchor, Documentary Filmmaker, Public Relations Manager
+- Psychology: Clinical Psychologist, Counselor, HR Specialist, Organizational Psychologist
+- Civil Services: IAS Officer, IPS Officer, IFS Officer, State Civil Services
+
+**DESIGN & CREATIVE:**
+- Design: UX/UI Designer, Product Designer, Interior Designer, Fashion Designer
+- Architecture: Architect, Urban Planner, Landscape Architect
+- Media Production: Film Director, Animation Director, Game Designer, VFX Artist
+
+### ROLE SELECTION RULES FOR HIGH SCHOOL:
+1. Show ASPIRATIONAL yet ACHIEVABLE career paths after proper education
+2. PERSONALIZE based on RIASEC profile:
+   - R (Realistic): Engineering, Architecture, Pilot, Surgeon
+   - I (Investigative): Research Scientist, Data Scientist, Doctor, Economist
+   - A (Artistic): Designer, Architect, Film Director, Creative Director
+   - S (Social): Psychologist, Teacher, Doctor, Social Worker, HR Manager
+   - E (Enterprising): Entrepreneur, Lawyer, Management Consultant, Investment Banker
+   - C (Conventional): Chartered Accountant, Auditor, Compliance Officer, Actuary
+3. Include EDUCATION PATH for each career (degree requirements)
+4. Show realistic SALARY expectations for entry-level in India (2024-2025)
+5. AVOID: Unrealistic roles, outdated careers, roles requiring 10+ years experience
+
   "skillGap": {
     "priorityA": [
       {"skill": "Critical skill #1", "reason": "2-3 sentences explaining WHY this skill is essential for their target careers, how it will differentiate them in college applications or internships, and what opportunities it unlocks", "targetLevel": "Intermediate", "currentLevel": "Beginner", "howToBuild": "Specific action steps"},
@@ -1341,9 +1419,20 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
       }
     ],
     "specificOptions": {
-      "highFit": ["<role 1>", "<role 2>", "<role 3>"],
-      "mediumFit": ["<role 1>", "<role 2>", "<role 3>"],
-      "exploreLater": ["<role 1>", "<role 2>"]
+      "highFit": [
+        {"name": "<role 1>", "salary": {"min": 4, "max": 12}},
+        {"name": "<role 2>", "salary": {"min": 4, "max": 12}},
+        {"name": "<role 3>", "salary": {"min": 4, "max": 12}}
+      ],
+      "mediumFit": [
+        {"name": "<role 1>", "salary": {"min": 3, "max": 10}},
+        {"name": "<role 2>", "salary": {"min": 3, "max": 10}},
+        {"name": "<role 3>", "salary": {"min": 3, "max": 10}}
+      ],
+      "exploreLater": [
+        {"name": "<role 1>", "salary": {"min": 3, "max": 8}},
+        {"name": "<role 2>", "salary": {"min": 3, "max": 8}}
+      ]
     }
   },
   "skillGap": {
@@ -1481,23 +1570,89 @@ CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL OF THESE:
    - CRITICAL: NO EMPTY ARRAYS! Every cluster needs roles.entry, roles.mid, and domains filled!
    - If you leave any roles or domains empty, the report will be incomplete!
 
-6. SKILL GAP - MANDATORY:
+6. SPECIFIC CAREER OPTIONS WITH SALARY - MANDATORY:
+   - Each role in specificOptions (highFit, mediumFit, exploreLater) MUST be an object with:
+     * name: The job role title (e.g., "Software Developer", "Data Analyst")
+     * salary: Object with min and max values in Indian Lakhs per annum
+   - Salary ranges should reflect realistic ENTRY-LEVEL salaries in the Indian job market (2024-2025)
+   - Example salary ranges for fresh graduates:
+     * Tech roles: 4-12 LPA (e.g., {"min": 4, "max": 12})
+     * Business roles: 3-8 LPA (e.g., {"min": 3, "max": 8})
+     * Creative roles: 3-7 LPA (e.g., {"min": 3, "max": 7})
+     * Healthcare roles: 4-10 LPA (e.g., {"min": 4, "max": 10})
+   - CRITICAL: Every role MUST have a salary object with numeric min and max values!
+
+## SERIOUS CAREER GUIDANCE - JOB ROLE SELECTION (MANDATORY):
+
+### PROFESSIONAL ENTRY-LEVEL ROLES BY DOMAIN (2024-2025 Indian Job Market):
+
+**TECHNOLOGY & ENGINEERING:**
+- Software Development: Junior Software Developer, Associate Software Engineer, Trainee Programmer, Graduate Software Engineer
+- Data & Analytics: Junior Data Analyst, Associate Data Engineer, Business Intelligence Trainee, Analytics Associate
+- AI/ML: Junior ML Engineer, AI Research Associate, Data Science Trainee, NLP Engineer Trainee
+- Cloud & DevOps: Junior DevOps Engineer, Cloud Support Associate, Site Reliability Engineer Trainee, Infrastructure Analyst
+- Cybersecurity: Junior Security Analyst, SOC Analyst, Information Security Associate, Vulnerability Assessment Trainee
+- Quality Assurance: Junior QA Engineer, Test Analyst, Automation Test Engineer Trainee, Quality Assurance Associate
+- Mobile/Web: Junior Mobile Developer, Frontend Developer Trainee, Full Stack Developer Associate, React/Angular Developer
+
+**BUSINESS & MANAGEMENT:**
+- Consulting: Junior Business Analyst, Management Trainee, Associate Consultant, Strategy Analyst
+- Finance: Junior Financial Analyst, Investment Banking Analyst, Credit Analyst, Risk Analyst Trainee
+- Operations: Operations Analyst, Supply Chain Trainee, Process Associate, Logistics Coordinator
+- Marketing: Junior Marketing Executive, Digital Marketing Associate, Brand Executive, Market Research Analyst
+- Sales: Business Development Associate, Inside Sales Executive, Key Account Trainee, Sales Analyst
+- HR: HR Executive Trainee, Talent Acquisition Associate, HR Operations Analyst, Recruitment Coordinator
+
+**CREATIVE & DESIGN:**
+- UX/UI: Junior UX Designer, UI Designer Trainee, Product Designer Associate, Interaction Designer
+- Graphic Design: Junior Graphic Designer, Visual Designer, Brand Designer Trainee, Motion Graphics Artist
+- Content: Content Writer, Technical Writer, Copywriter Trainee, Content Strategist Associate
+- Media: Junior Video Editor, Social Media Executive, Digital Content Creator, Multimedia Designer
+
+**HEALTHCARE & LIFE SCIENCES:**
+- Clinical: Junior Clinical Research Associate, Medical Coder, Healthcare Data Analyst, Pharmacovigilance Associate
+- Biotech: Junior Research Scientist, Lab Analyst, Biotech Research Associate, Quality Control Analyst
+- Healthcare IT: Healthcare IT Analyst, Medical Informatics Trainee, EHR Implementation Associate
+
+**LEGAL & COMPLIANCE:**
+- Legal: Junior Legal Associate, Legal Research Analyst, Contract Analyst, Compliance Associate
+- Regulatory: Regulatory Affairs Associate, Quality Compliance Trainee, Audit Associate
+
+### ROLE SELECTION RULES:
+1. ALL roles MUST be ENTRY-LEVEL (0-2 years experience) - NO senior/lead/manager positions
+2. PERSONALIZE based on RIASEC profile:
+   - R (Realistic): Technical, hands-on roles (DevOps, QA, Network Engineer)
+   - I (Investigative): Research, analytical roles (Data Scientist, Research Analyst, Financial Analyst)
+   - A (Artistic): Creative, design roles (UX Designer, Content Strategist, Brand Designer)
+   - S (Social): People-focused roles (HR, Customer Success, Training Coordinator)
+   - E (Enterprising): Business, leadership roles (Business Development, Sales, Product Associate)
+   - C (Conventional): Structured, detail roles (Compliance, Quality Analyst, Operations)
+3. MATCH to student's STREAM:
+   - CS/IT/Engineering → Technology roles
+   - BBA/MBA/Commerce → Business/Finance roles
+   - Design/Animation → Creative roles
+   - Science/Biotech → Research/Healthcare roles
+   - Arts/Humanities → Content/HR/Legal roles
+4. Include MIX of: Traditional + Emerging + Remote-friendly roles
+5. AVOID: Generic titles, outdated roles, unrealistic positions for freshers
+
+7. SKILL GAP - MANDATORY:
    - priorityA: Must have at least 2 skills with all fields (skill, currentLevel, targetLevel, whyNeeded, howToBuild)
    - priorityB: Must have at least 2 skills
    - learningTracks: Must have at least 2 tracks with all fields
 
-7. ROADMAP - MANDATORY:
+8. ROADMAP - MANDATORY:
    - projects: Must have at least 2 projects with title, purpose, and output
    - internship.types: Must have at least 2 internship types
    - internship.preparation: Must have resume, portfolio, and interview fields filled
    - exposure.activities: Must have at least 2 activities
    - exposure.certifications: Must have at least 2 certifications
 
-8. Be specific to their stream (${assessmentData.stream}) when recommending careers, roles, and skills.
+9. Be specific to their stream (${assessmentData.stream}) when recommending careers, roles, and skills.
 
-9. Provide actionable, encouraging, and SPECIFIC career guidance - avoid generic responses.
+10. Provide actionable, encouraging, and SPECIFIC career guidance - avoid generic responses.
 
-10. ALL arrays must contain actual data - NO empty arrays allowed!`;
+11. ALL arrays must contain actual data - NO empty arrays allowed!`;
 };
 
 /**

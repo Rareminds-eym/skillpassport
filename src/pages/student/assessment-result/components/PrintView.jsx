@@ -4,6 +4,8 @@
  * Margins: 15mm, Content area: ~180mm x 267mm
  * Now supports different grade levels: middle, highschool, after12
  */
+import { formatSalaryRange, getRoleName, getRoleSalary } from '../../../../utils/salaryFormatter';
+
 const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, traitNames }) => {
     if (!results) {
         return (
@@ -573,15 +575,27 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
                 <div style={styles.twoCol}>
                     <div>
                         <h4 style={{fontSize: '10px', fontWeight: 'bold', color: '#166534', margin: '0 0 6px 0'}}>Strong Matches</h4>
-                        {careerFit?.specificOptions?.highFit?.map((career, i) => (
-                            <div key={i} style={{padding: '3px 0', fontSize: '9px'}}>• {career}</div>
-                        ))}
+                        {careerFit?.specificOptions?.highFit?.map((career, i) => {
+                            const name = getRoleName(career);
+                            const salary = formatSalaryRange(getRoleSalary(career));
+                            return (
+                                <div key={i} style={{padding: '3px 0', fontSize: '9px'}}>
+                                    • {name}{salary && <span style={{color: '#166534', marginLeft: '4px'}}>({salary})</span>}
+                                </div>
+                            );
+                        })}
                     </div>
                     <div>
                         <h4 style={{fontSize: '10px', fontWeight: 'bold', color: '#854d0e', margin: '0 0 6px 0'}}>Also Consider</h4>
-                        {careerFit?.specificOptions?.mediumFit?.map((career, i) => (
-                            <div key={i} style={{padding: '3px 0', fontSize: '9px'}}>• {career}</div>
-                        ))}
+                        {careerFit?.specificOptions?.mediumFit?.map((career, i) => {
+                            const name = getRoleName(career);
+                            const salary = formatSalaryRange(getRoleSalary(career));
+                            return (
+                                <div key={i} style={{padding: '3px 0', fontSize: '9px'}}>
+                                    • {name}{salary && <span style={{color: '#854d0e', marginLeft: '4px'}}>({salary})</span>}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
                 </>
@@ -774,13 +788,37 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
                     <tbody>
                         <tr>
                             <td style={{...styles.td, verticalAlign: 'top'}}>
-                                {careerFit?.specificOptions?.highFit?.map((r, i) => <div key={i} style={{padding: '2px 0'}}>• {r}</div>)}
+                                {careerFit?.specificOptions?.highFit?.map((r, i) => {
+                                    const name = getRoleName(r);
+                                    const salary = formatSalaryRange(getRoleSalary(r));
+                                    return (
+                                        <div key={i} style={{padding: '2px 0'}}>
+                                            • {name}{salary && <span style={{color: '#166534', fontSize: '8px', marginLeft: '4px'}}>({salary})</span>}
+                                        </div>
+                                    );
+                                })}
                             </td>
                             <td style={{...styles.td, verticalAlign: 'top'}}>
-                                {careerFit?.specificOptions?.mediumFit?.map((r, i) => <div key={i} style={{padding: '2px 0'}}>• {r}</div>)}
+                                {careerFit?.specificOptions?.mediumFit?.map((r, i) => {
+                                    const name = getRoleName(r);
+                                    const salary = formatSalaryRange(getRoleSalary(r));
+                                    return (
+                                        <div key={i} style={{padding: '2px 0'}}>
+                                            • {name}{salary && <span style={{color: '#854d0e', fontSize: '8px', marginLeft: '4px'}}>({salary})</span>}
+                                        </div>
+                                    );
+                                })}
                             </td>
                             <td style={{...styles.td, verticalAlign: 'top'}}>
-                                {careerFit?.specificOptions?.exploreLater?.map((r, i) => <div key={i} style={{padding: '2px 0'}}>• {r}</div>)}
+                                {careerFit?.specificOptions?.exploreLater?.map((r, i) => {
+                                    const name = getRoleName(r);
+                                    const salary = formatSalaryRange(getRoleSalary(r));
+                                    return (
+                                        <div key={i} style={{padding: '2px 0'}}>
+                                            • {name}{salary && <span style={{color: '#991b1b', fontSize: '8px', marginLeft: '4px'}}>({salary})</span>}
+                                        </div>
+                                    );
+                                })}
                             </td>
                         </tr>
                     </tbody>

@@ -1,5 +1,6 @@
-import { CheckCircle, TrendingUp, Briefcase, Target, Award } from 'lucide-react';
+import { CheckCircle, TrendingUp, Briefcase, Target, Award, IndianRupee } from 'lucide-react';
 import ProgressRing from '../ProgressRing';
+import { formatSalaryRange, getRoleName, getRoleSalary } from '../../../../../utils/salaryFormatter';
 
 // Helper function to get color based on match score (red < 40, yellow 40-70, green > 70)
 const getMatchColor = (score) => {
@@ -160,12 +161,25 @@ const CareerSection = ({ careerFit }) => {
                             <h4 className="font-bold text-green-400 text-base">High Fit</h4>
                         </div>
                         <div className="space-y-2">
-                            {highFit.length > 0 ? highFit.map((role, idx) => (
-                                <div key={idx} className="flex items-center gap-2 p-3 bg-white/5 rounded">
-                                    <span className="w-6 h-6 rounded bg-green-500/30 flex items-center justify-center text-green-400 font-bold text-sm">{idx + 1}</span>
-                                    <span className="text-white text-base">{role}</span>
-                                </div>
-                            )) : (
+                            {highFit.length > 0 ? highFit.map((role, idx) => {
+                                const roleName = getRoleName(role);
+                                const salary = getRoleSalary(role);
+                                const formattedSalary = formatSalaryRange(salary);
+                                return (
+                                    <div key={idx} className="p-3 bg-white/5 rounded">
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-6 h-6 rounded bg-green-500/30 flex items-center justify-center text-green-400 font-bold text-sm">{idx + 1}</span>
+                                            <span className="text-white text-base flex-1">{roleName}</span>
+                                        </div>
+                                        {formattedSalary && (
+                                            <div className="flex items-center gap-1 mt-2 ml-8">
+                                                <IndianRupee className="w-3 h-3 text-green-300" />
+                                                <span className="text-green-300 text-sm">{formattedSalary}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            }) : (
                                 <p className="text-gray-400 text-sm">No high fit roles identified</p>
                             )}
                         </div>
@@ -178,12 +192,25 @@ const CareerSection = ({ careerFit }) => {
                             <h4 className="font-bold text-yellow-400 text-base">Medium Fit</h4>
                         </div>
                         <div className="space-y-2">
-                            {mediumFit.length > 0 ? mediumFit.map((role, idx) => (
-                                <div key={idx} className="flex items-center gap-2 p-3 bg-white/5 rounded">
-                                    <span className="w-6 h-6 rounded bg-yellow-500/30 flex items-center justify-center text-yellow-400 font-bold text-sm">{idx + 1}</span>
-                                    <span className="text-gray-300 text-base">{role}</span>
-                                </div>
-                            )) : (
+                            {mediumFit.length > 0 ? mediumFit.map((role, idx) => {
+                                const roleName = getRoleName(role);
+                                const salary = getRoleSalary(role);
+                                const formattedSalary = formatSalaryRange(salary);
+                                return (
+                                    <div key={idx} className="p-3 bg-white/5 rounded">
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-6 h-6 rounded bg-yellow-500/30 flex items-center justify-center text-yellow-400 font-bold text-sm">{idx + 1}</span>
+                                            <span className="text-gray-300 text-base flex-1">{roleName}</span>
+                                        </div>
+                                        {formattedSalary && (
+                                            <div className="flex items-center gap-1 mt-2 ml-8">
+                                                <IndianRupee className="w-3 h-3 text-yellow-300" />
+                                                <span className="text-yellow-300 text-sm">{formattedSalary}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            }) : (
                                 <p className="text-gray-400 text-sm">No medium fit roles identified</p>
                             )}
                         </div>
@@ -196,12 +223,25 @@ const CareerSection = ({ careerFit }) => {
                             <h4 className="font-bold text-red-400 text-base">Explore Later</h4>
                         </div>
                         <div className="space-y-2">
-                            {exploreLater.length > 0 ? exploreLater.map((role, idx) => (
-                                <div key={idx} className="flex items-center gap-2 p-3 bg-white/5 rounded">
-                                    <span className="w-6 h-6 rounded bg-red-500/30 flex items-center justify-center text-red-400 font-bold text-sm">{idx + 1}</span>
-                                    <span className="text-gray-400 text-base">{role}</span>
-                                </div>
-                            )) : (
+                            {exploreLater.length > 0 ? exploreLater.map((role, idx) => {
+                                const roleName = getRoleName(role);
+                                const salary = getRoleSalary(role);
+                                const formattedSalary = formatSalaryRange(salary);
+                                return (
+                                    <div key={idx} className="p-3 bg-white/5 rounded">
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-6 h-6 rounded bg-red-500/30 flex items-center justify-center text-red-400 font-bold text-sm">{idx + 1}</span>
+                                            <span className="text-gray-400 text-base flex-1">{roleName}</span>
+                                        </div>
+                                        {formattedSalary && (
+                                            <div className="flex items-center gap-1 mt-2 ml-8">
+                                                <IndianRupee className="w-3 h-3 text-red-300" />
+                                                <span className="text-red-300 text-sm">{formattedSalary}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            }) : (
                                 <p className="text-gray-400 text-sm">No roles to explore later</p>
                             )}
                         </div>

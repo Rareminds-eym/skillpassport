@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, useScroll, useTransform } from 'framer-motion';
 import {
     Target,
     Briefcase,
@@ -32,48 +32,134 @@ import {
     RoadmapSection
 } from './components';
 
+// Import UI effects
+import { TextGenerateEffect } from '../../../components/ui/text-generate-effect';
+
 // Import constants and hooks
 import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from './constants';
 import { useAssessmentResults } from './hooks/useAssessmentResults';
 
 /**
- * Animated Path Component - Creates dotted line animation
+ * Gemini-Style Career Path Connector
+ * Animated gradient paths connecting career cards (inspired by Aceternity UI)
  */
-const AnimatedPath = ({ d, delay = 0 }) => {
+const GeminiCareerPath = ({ reverse = false }) => {
     const ref = useRef(null);
-    const isInView = useInView(ref, { once: true, amount: 0.3 });
-    const [pathLength, setPathLength] = useState(2000);
+    const { scrollYProgress } = useScroll({
+        target: ref,
+        offset: ["start end", "end start"]
+    });
 
-    useEffect(() => {
-        if (ref.current) {
-            setPathLength(ref.current.getTotalLength());
-        }
-    }, []);
+    const pathLength = useTransform(scrollYProgress, [0, 0.5], [0, 1]);
+    const opacity = useTransform(scrollYProgress, [0, 0.3], [0, 1]);
 
     return (
-        <motion.path
-            ref={ref}
-            d={d}
-            stroke="black"
-            strokeWidth="5"
-            strokeLinecap="round"
-            fill="none"
-            strokeDasharray="10 15"
-            initial={{
-                strokeDashoffset: pathLength,
-                opacity: 0
-            }}
-            animate={isInView ? {
-                strokeDashoffset: 0,
-                opacity: 1
-            } : {
-                strokeDashoffset: pathLength,
-                opacity: 0
-            }}
-            transition={{ duration: 2, delay, ease: "easeInOut" }}
-        />
+        <div ref={ref} className="relative h-24 md:h-32 lg:h-40 w-full overflow-hidden hidden md:block">
+            <svg
+                width="100%"
+                height="100%"
+                viewBox="0 0 800 160"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="absolute inset-0"
+                preserveAspectRatio="none"
+            >
+                <defs>
+                    <linearGradient id={`geminiGradient${reverse ? 'R' : 'L'}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#1E3A8A" />
+                        <stop offset="25%" stopColor="#3B82F6" />
+                        <stop offset="50%" stopColor="#60A5FA" />
+                        <stop offset="75%" stopColor="#93C5FD" />
+                        <stop offset="100%" stopColor="#BFDBFE" />
+                    </linearGradient>
+                    <filter id="geminiGlow">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                        <feMerge>
+                            <feMergeNode in="coloredBlur" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+                </defs>
+
+                {/* Main flowing path - thickest */}
+                <motion.path
+                    d={reverse 
+                        ? "M800 20 Q 600 20, 500 80 T 200 80 Q 100 80, 0 140"
+                        : "M0 20 Q 200 20, 300 80 T 600 80 Q 700 80, 800 140"
+                    }
+                    stroke={`url(#geminiGradient${reverse ? 'R' : 'L'})`}
+                    strokeWidth="4"
+                    fill="none"
+                    strokeLinecap="round"
+                    filter="url(#geminiGlow)"
+                    style={{
+                        pathLength,
+                        opacity
+                    }}
+                />
+
+                {/* Secondary path */}
+                <motion.path
+                    d={reverse 
+                        ? "M800 30 Q 580 30, 480 90 T 180 90 Q 80 90, 0 150"
+                        : "M0 30 Q 220 30, 320 90 T 620 90 Q 720 90, 800 150"
+                    }
+                    stroke={`url(#geminiGradient${reverse ? 'R' : 'L'})`}
+                    strokeWidth="2.5"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeOpacity="0.6"
+                    filter="url(#geminiGlow)"
+                    style={{
+                        pathLength,
+                        opacity
+                    }}
+                />
+
+                {/* Tertiary path */}
+                <motion.path
+                    d={reverse 
+                        ? "M800 40 Q 560 40, 460 100 T 160 100 Q 60 100, 0 160"
+                        : "M0 40 Q 240 40, 340 100 T 640 100 Q 740 100, 800 160"
+                    }
+                    stroke={`url(#geminiGradient${reverse ? 'R' : 'L'})`}
+                    strokeWidth="1.5"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeOpacity="0.4"
+                    filter="url(#geminiGlow)"
+                    style={{
+                        pathLength,
+                        opacity
+                    }}
+                />
+
+                {/* Fourth path - thinnest */}
+                <motion.path
+                    d={reverse 
+                        ? "M800 50 Q 540 50, 440 110 T 140 110 Q 40 110, 0 170"
+                        : "M0 50 Q 260 50, 360 110 T 660 110 Q 760 110, 800 170"
+                    }
+                    stroke={`url(#geminiGradient${reverse ? 'R' : 'L'})`}
+                    strokeWidth="1"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeOpacity="0.25"
+                    filter="url(#geminiGlow)"
+                    style={{
+                        pathLength,
+                        opacity
+                    }}
+                />
+            </svg>
+        </div>
     );
 };
+
+/**
+ * Animated Path Component - Creates dotted line animation (LEGACY - kept for reference)
+ */
+// const AnimatedPath = ({ d, delay = 0 }) => { ... } // Removed - replaced by GeminiCareerPath
 
 /**
  * Animated Progress Ring Component - Circular percentage display
@@ -178,81 +264,10 @@ const AnimatedProgressRing = ({ percentage, color, delay = 0 }) => {
 };
 
 /**
- * Animated Career Path Component - Dotted line connector
- */
-const AnimatedCareerPath = ({ delay = 0, reverse = false }) => {
-    const ref = useRef(null);
-    const isInView = useInView(ref, { once: true, amount: 0.3 });
-
-    return (
-        <motion.div
-            ref={ref}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.8, delay, ease: "easeOut" }}
-        >
-            <div className="hidden md:flex justify-center md:-mt-10 lg:-mt-8">
-                <div className="relative w-full md:max-w-sm lg:max-w-xl" style={{
-                    transform: reverse ? 'translateX(16%)' : 'translateX(-16%)'
-                }}>
-                    <div style={{ paddingTop: `${(495 / 758) * 100}%` }} />
-                    <svg
-                        viewBox="0 0 758 495"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        preserveAspectRatio="xMidYMid meet"
-                        className="absolute top-0 left-0 w-full h-full"
-                    >
-                        {/* Starting circle */}
-                        <motion.circle
-                            cx={reverse ? "726.556" : "31.4439"}
-                            cy={reverse ? "29.8572" : "29.8572"}
-                            r="11.7417"
-                            fill="white"
-                            stroke="black"
-                            strokeWidth="2.89"
-                            strokeMiterlimit="10"
-                            strokeDasharray="6.93 6.93"
-                            initial={{ scale: 0, rotate: 0 }}
-                            animate={isInView ? { scale: 1, rotate: 360 } : { scale: 0, rotate: 0 }}
-                            transition={{ duration: 0.6, delay: delay + 0.2, ease: "easeOut" }}
-                        />
-
-                        {/* Animated dotted path */}
-                        <AnimatedPath
-                            d={reverse
-                                ? "M693 18.2507C668.797 6.9557 632.826 2.6091 594.88 53.3601C532.468 136.833 520.437 312.778 462.044 370.936C414.568 418.198 370.699 393.22 341.67 365.886C238.732 99.7033 117.664 87.8267 54.5854 287.647C48.0564 308.339 40.8692 333.929 33.954 366.957C26.2841 403.627 21.2821 438.247 18 465"
-                                : "M63 22.2507C87.203 10.9557 123.174 6.6091 161.12 57.3601C223.532 140.833 235.563 316.778 293.956 374.936C341.432 422.198 385.301 397.22 414.33 369.886C517.268 103.703 638.336 91.8267 701.415 291.647C707.944 312.339 715.131 337.929 722.046 370.957C729.716 407.627 734.718 442.247 738 469"
-                            }
-                            delay={delay + 0.3}
-                        />
-
-                        {/* Ending circle */}
-                        <motion.circle
-                            cx={reverse ? "13.7417" : "744.742"}
-                            cy={reverse ? "476.819" : "480.819"}
-                            r="11.7417"
-                            fill="white"
-                            stroke="black"
-                            strokeWidth="2.89"
-                            strokeMiterlimit="10"
-                            strokeDasharray="6.93 6.93"
-                            initial={{ scale: 0, rotate: 0 }}
-                            animate={isInView ? { scale: 1, rotate: 360 } : { scale: 0, rotate: 0 }}
-                            transition={{ duration: 0.6, delay: delay + 2, ease: "easeOut" }}
-                        />
-                    </svg>
-                </div>
-            </div>
-        </motion.div>
-    );
-};
-
-/**
  * Career Card Component
  * Displays individual career recommendation with animation
  */
-const CareerCard = ({ cluster, index, fitType, color, reverse = false }) => {
+const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificRoles = [] }) => {
     const ref = useRef(null);
     const isInView = useInView(ref, { once: true, amount: 0.3 });
 
@@ -280,6 +295,21 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false }) => {
     };
 
     const config = colorConfig[color];
+
+    // Helper to get role name (handles both string and object formats)
+    const getRoleName = (role) => {
+        if (typeof role === 'string') return role;
+        return role?.name || '';
+    };
+
+    // Helper to format salary
+    const formatSalary = (role) => {
+        if (typeof role === 'string') return null;
+        const salary = role?.salary;
+        if (!salary || typeof salary.min !== 'number' || typeof salary.max !== 'number') return null;
+        if (salary.min === salary.max) return `₹${salary.min}L`;
+        return `₹${salary.min}L - ₹${salary.max}L`;
+    };
 
     return (
         <>
@@ -411,6 +441,32 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false }) => {
                                             </p>
                                         </div>
                                     )}
+
+                                    {/* Specific Roles with Salary */}
+                                    {specificRoles && specificRoles.length > 0 && (
+                                        <div className="mt-3 pt-3 border-t border-white/10">
+                                            <h5
+                                                className="text-xs font-bold uppercase mb-2"
+                                                style={{ color: config.accentLight }}
+                                            >
+                                                Top Roles & Salary
+                                            </h5>
+                                            <div className="space-y-1">
+                                                {specificRoles.slice(0, 3).map((role, idx) => {
+                                                    const name = getRoleName(role);
+                                                    const salary = formatSalary(role);
+                                                    return (
+                                                        <div key={idx} className="flex items-center justify-between text-sm">
+                                                            <span className="text-gray-300">{name}</span>
+                                                            {salary && (
+                                                                <span className="text-green-400 font-medium">{salary}</span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -458,7 +514,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false }) => {
                     </motion.div>
                 </motion.div>
             </div>
-            {index < 2 && <AnimatedCareerPath delay={0.4} reverse={reverse} />}
+            {index < 2 && <GeminiCareerPath reverse={index === 0} />}
         </>
     );
 };
@@ -599,46 +655,46 @@ const AssessmentResult = () => {
             />
 
             {/* Web View - Rich UI for screen */}
-            <div className="web-view min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 py-8 px-4">
+            <div className="web-view min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 pt-14 pb-8 px-4">
                 {/* Floating Action Bar */}
                 <div
-                    className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-6xl px-4 transition-transform duration-300 ${
-                        isNavbarVisible ? 'translate-y-0' : '-translate-y-24'
+                    className={`fixed top-0 left-0 right-0 z-50 w-full transition-transform duration-300 ${
+                        isNavbarVisible ? 'translate-y-0' : '-translate-y-full'
                     }`}
                 >
-                    <div className="flex justify-between items-center bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-white/50 p-4">
+                    <div className="flex justify-between items-center bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-200 px-6 py-2">
                         <Button
                             variant="ghost"
                             onClick={() => navigate('/student/dashboard')}
-                            className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                            className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 h-8 text-sm"
                         >
                             <ArrowLeft className="w-4 h-4 mr-2" />
                             Back to Dashboard
                         </Button>
-                        <div className="flex gap-3">
+                        <div className="flex gap-2">
                             <Button
                                 variant="outline"
                                 onClick={handleRetry}
                                 disabled={retrying}
-                                className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                                className="border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-400 h-8 text-sm"
                             >
                                 {retrying ? (
                                     <>
-                                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                        <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
                                         Regenerating...
                                     </>
                                 ) : (
                                     <>
-                                        <RefreshCw className="w-4 h-4 mr-2" />
-                                        Regenerate Report
+                                        <RefreshCw className="w-3 h-3 mr-1.5" />
+                                        Regenerate
                                     </>
                                 )}
                             </Button>
                             <Button
                                 onClick={handlePrint}
-                                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg shadow-indigo-200"
+                                className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium"
                             >
-                                <Download className="w-4 h-4 mr-2" />
+                                <Download className="w-3 h-3 mr-1.5" />
                                 Download PDF
                             </Button>
                         </div>
@@ -681,19 +737,36 @@ const AssessmentResult = () => {
                 )}
 
                 {/* Report Container */}
-                <div className="max-w-6xl mx-auto print:max-w-none print-container pt-24">
+                <div className="max-w-6xl mx-auto print:max-w-none print-container">
                     {/* Header Section */}
                     <ReportHeader studentInfo={studentInfo} />
 
                     {/* Overall Summary Banner */}
-                    <div className="bg-slate-800 rounded-2xl p-6 text-white my-8">
-                        <div className="flex items-start gap-3">
-                            <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                                <Rocket className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-xl mb-2">Overall Career Direction</h4>
-                                <p className="text-gray-300 leading-relaxed text-base">"{results.overallSummary}"</p>
+                    <div className="bg-white rounded-xl shadow-lg overflow-hidden my-8">
+                        <div className="bg-gradient-to-r from-slate-800 to-slate-700 p-6">
+                            <div className="flex items-start gap-3">
+                                <div 
+                                    className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
+                                    style={{
+                                        boxShadow: '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)'
+                                    }}
+                                >
+                                    <img 
+                                        src="/assets/HomePage/RMLogo.webp" 
+                                        alt="RM Logo" 
+                                        className="w-10 h-10 object-contain"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    {results.overallSummary && (
+                                        <TextGenerateEffect 
+                                            words={`"${results.overallSummary}"`}
+                                            className="text-slate-300 text-lg"
+                                            filter={true}
+                                            duration={0.4}
+                                        />
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -762,37 +835,80 @@ const AssessmentResult = () => {
                         </div>
                     </div>*/}
 
-                    {/* Zig-Zag Career Fit View */}
-                    <div className="mb-8 relative py-20">
-                        <div className="max-w-7xl mx-auto px-6 lg:px-6">
-                            <h2 className="text-center font-extrabold text-gray-800 mb-4 text-2xl sm:text-3xl md:text-4xl">Your Career Recommendations</h2>
-                            <p className="text-center text-gray-500 mb-12 text-sm sm:text-base md:text-lg">Personalized job matches based on your assessment</p>
-
-                            {/* Career Cards */}
-                            <CareerCard
-                                cluster={careerFit?.clusters?.find(c => c.fit === 'High')}
-                                index={0}
-                                fitType="HIGH FIT"
-                                color="green"
-                                reverse={false}
+                    {/* Career Recommendations Section */}
+                    <div className="max-w-6xl mx-auto mb-8">
+                        {/* Main Card - Light Glass */}
+                        <div className="relative w-full rounded-xl overflow-hidden bg-white backdrop-blur-xl shadow-lg">
+                            {/* Subtle gradient overlay */}
+                            <div 
+                                className="absolute inset-0 pointer-events-none"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.03), transparent 50%, rgba(147, 197, 253, 0.03))'
+                                }}
                             />
 
-                            <CareerCard
-                                cluster={careerFit?.clusters?.find(c => c.fit === 'Medium')}
-                                index={1}
-                                fitType="MEDIUM FIT"
-                                color="yellow"
-                                reverse={true}
-                            />
+                            {/* Header Section - matching ReportHeader */}
+                            <div className="relative p-6 md:p-8 bg-gradient-to-r from-slate-800 to-slate-700">
+                                <div>
+                                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
+                                        Your Career Recommendations
+                                    </h2>
+                                    {/* Animated Gradient Underline */}
+                                    <div className="relative h-[2px] w-40 md:w-56 mb-2 rounded-full overflow-hidden">
+                                        <div 
+                                            className="absolute inset-0 rounded-full"
+                                            style={{
+                                                background: 'linear-gradient(90deg, #1E3A8A, #3B82F6, #60A5FA, #93C5FD, #BFDBFE)',
+                                                backgroundSize: '200% 100%',
+                                                animation: 'shimmer 3s linear infinite'
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-slate-300 text-sm md:text-base">
+                                        Personalized job matches based on your assessment
+                                    </p>
+                                </div>
+                            </div>
 
-                            <CareerCard
-                                cluster={careerFit?.clusters?.find(c => c.fit !== 'High' && c.fit !== 'Medium')}
-                                index={2}
-                                fitType="EXPLORE LATER"
-                                color="purple"
-                                reverse={false}
-                            />
+                            {/* Career Cards Container */}
+                            <div className="relative p-6 md:p-8 lg:p-10 bg-gray-50">
+                                {/* Career Cards */}
+                                <CareerCard
+                                    cluster={careerFit?.clusters?.find(c => c.fit === 'High')}
+                                    index={0}
+                                    fitType="HIGH FIT"
+                                    color="green"
+                                    reverse={false}
+                                    specificRoles={careerFit?.specificOptions?.highFit || []}
+                                />
+
+                                <CareerCard
+                                    cluster={careerFit?.clusters?.find(c => c.fit === 'Medium')}
+                                    index={1}
+                                    fitType="MEDIUM FIT"
+                                    color="yellow"
+                                    reverse={true}
+                                    specificRoles={careerFit?.specificOptions?.mediumFit || []}
+                                />
+
+                                <CareerCard
+                                    cluster={careerFit?.clusters?.find(c => c.fit !== 'High' && c.fit !== 'Medium')}
+                                    index={2}
+                                    fitType="EXPLORE LATER"
+                                    color="purple"
+                                    reverse={false}
+                                    specificRoles={careerFit?.specificOptions?.exploreLater || []}
+                                />
+                            </div>
                         </div>
+
+                        {/* Keyframes for shimmer animation */}
+                        <style>{`
+                            @keyframes shimmer {
+                                0% { background-position: 200% 0; }
+                                100% { background-position: -200% 0; }
+                            }
+                        `}</style>
                     </div>
                 </div>
 
