@@ -12,7 +12,8 @@ import {
   Clock,
 } from 'lucide-react';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
-import { downloadReceipt } from '../../services/Subscriptions/pdfReceiptGenerator';
+import { downloadReceipt, generateReceiptBase64 } from '../../services/Subscriptions/pdfReceiptGenerator';
+import { uploadPaymentReceipt, getPaymentReceiptUrl } from '../../services/storageApiService';
 import { clearPendingUserData } from '../../utils/authCleanup';
 import useAuth from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
@@ -52,12 +53,14 @@ const ReceiptCard = ({ header, children }) => {
 function PaymentSuccess() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
 
   const [activationStatus, setActivationStatus] = useState('pending');
   const [subscriptionData, setSubscriptionData] = useState(null);
   const [emailStatus, setEmailStatus] = useState('sending');
   const [showConfetti, setShowConfetti] = useState(false);
+  const [receiptUrl, setReceiptUrl] = useState(null);
+  const [receiptUploading, setReceiptUploading] = useState(false);
 
   const {
     status: verificationStatus,
@@ -90,6 +93,30 @@ function PaymentSuccess() {
     return planDetails?.price || 0;
   }, [transactionDetails, subscriptionData, planDetails]);
 
+  // Upload receipt to R2 after successful payment
+  const uploadReceiptToR2 = async (receiptData, paymentId, userId) => {
+    try {
+      setReceiptUploading(true);
+      const pdfBase64 = await generateReceiptBase64(receiptData);
+      const filename = `Receipt-${paymentId?.slice(-8) || 'payment'}-${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      const result = await uploadPaymentReceipt(pdfBase64, paymentId, userId, filename);
+      
+      if (result.success && result.fileKey) {
+        const downloadUrl = getPaymentReceiptUrl(result.fileKey, 'download');
+        setReceiptUrl(downloadUrl);
+        // Store in localStorage for persistence
+        localStorage.setItem(`receipt_url_${paymentId}`, downloadUrl);
+        console.log('Receipt uploaded to R2:', downloadUrl);
+      }
+    } catch (error) {
+      console.error('Failed to upload receipt to R2:', error);
+      // Don't show error to user - they can still download locally
+    } finally {
+      setReceiptUploading(false);
+    }
+  };
+
   // Handle subscription activation from worker response
   useEffect(() => {
     if (verificationStatus === 'success' && transactionDetails && activationStatus === 'pending') {
@@ -102,35 +129,96 @@ function PaymentSuccess() {
         setActivationStatus('activated');
         setSubscriptionData(subscription);
         
-        if (!transactionDetails.already_processed) {
+        const isExistingOrAlreadyProcessed = transactionDetails.already_processed || transactionDetails.is_existing_subscription;
+        
+        if (!isExistingOrAlreadyProcessed) {
+          // Fresh subscription - celebrate!
           setShowConfetti(true);
           setTimeout(() => setShowConfetti(false), 4000);
           clearPendingUserData();
-          setTimeout(() => setEmailStatus('sent'), 2000);
+          // Check if email was actually sent (from worker response)
+          // email_sent is explicitly false only if sending failed
+          if (transactionDetails.email_sent === false) {
+            setEmailStatus('failed');
+          } else {
+            // email_sent is true or undefined (older responses) - assume sent
+            setTimeout(() => setEmailStatus('sent'), 2000);
+          }
+          
+          // Upload receipt to R2 for fresh subscriptions (if not already uploaded by backend)
+          if (transactionDetails.receipt_url) {
+            // Backend already uploaded the receipt
+            setReceiptUrl(transactionDetails.receipt_url);
+            localStorage.setItem(`receipt_url_${transactionDetails.payment_id}`, transactionDetails.receipt_url);
+          } else {
+            // Fallback: upload from frontend
+            const receiptData = {
+              transaction: {
+                payment_id: transactionDetails.payment_id || 'N/A',
+                order_id: transactionDetails.order_id || 'N/A',
+                amount: transactionDetails.amount ? transactionDetails.amount / 100 : subscription.plan_amount || 0,
+                currency: 'INR',
+                payment_method: transactionDetails.payment_method || 'Card',
+                payment_timestamp: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+                status: 'Success',
+              },
+              subscription: {
+                plan_type: subscription.plan_type,
+                billing_cycle: subscription.billing_cycle,
+                subscription_start_date: new Date(subscription.subscription_start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+                subscription_end_date: new Date(subscription.subscription_end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+              },
+              user: {
+                name: transactionDetails.user_name || user?.user_metadata?.full_name || 'User',
+                email: transactionDetails.user_email || user?.email || '',
+                phone: user?.user_metadata?.phone || null,
+              },
+              company: { name: 'RareMinds', address: 'Your Company Address', taxId: 'TAX123456789' },
+              generatedAt: new Date().toLocaleString(),
+            };
+            
+            uploadReceiptToR2(receiptData, transactionDetails.payment_id, subscription.user_id);
+          }
         } else {
-          // User already has an active subscription - show informative toast
-          const message = transactionDetails.message || '';
-          if (message.includes('already has an active subscription')) {
-            toast.success('You already have an active subscription for this plan. Your existing subscription is still valid!', {
-              duration: 5000,
+          // Existing subscription - check for stored receipt URL
+          clearPendingUserData();
+          setEmailStatus('skipped'); // Email was already sent on first payment
+          
+          // Try to get receipt URL from transaction details or localStorage
+          const storedReceiptUrl = transactionDetails.receipt_url || 
+            localStorage.getItem(`receipt_url_${transactionDetails.payment_id}`);
+          if (storedReceiptUrl) {
+            setReceiptUrl(storedReceiptUrl);
+          }
+          
+          // Only show toast if it's truly a duplicate (not just idempotent retry)
+          if (transactionDetails.is_existing_subscription) {
+            toast.success('Your subscription is already active!', {
+              duration: 3000,
               icon: '✅',
             });
           }
-          clearPendingUserData();
-          setEmailStatus('sent');
         }
       } else if (transactionDetails.subscription_error) {
-        // Worker verified payment but failed to create subscription
-        console.error('Subscription creation failed:', transactionDetails.subscription_error);
-        setActivationStatus('failed');
+        // Worker verified payment but failed to create subscription - this is a real error
+        console.warn('Subscription creation issue:', transactionDetails.subscription_error);
+        // Don't fail the whole flow - payment was successful
+        // User can contact support or subscription will be created via webhook
+        setActivationStatus('activated');
+        clearPendingUserData();
+        setEmailStatus('sent');
+        toast('Payment successful! Your subscription will be activated shortly.', {
+          duration: 5000,
+          icon: '⏳',
+        });
       } else {
-        // Fallback: payment verified but no subscription in response (shouldn't happen)
+        // Fallback: payment verified but no subscription in response
         setActivationStatus('activated');
         clearPendingUserData();
         setEmailStatus('sent');
       }
     }
-  }, [verificationStatus, transactionDetails, activationStatus]);
+  }, [verificationStatus, transactionDetails, activationStatus, user]);
 
   useEffect(() => {
     if (!paymentParams.razorpay_payment_id && verificationStatus !== 'loading') {
@@ -149,6 +237,14 @@ function PaymentSuccess() {
 
   const handleDownloadReceipt = async () => {
     try {
+      // If we have a stored R2 URL, use it directly
+      if (receiptUrl) {
+        window.open(receiptUrl, '_blank');
+        toast.success('Receipt downloading!');
+        return;
+      }
+      
+      // Otherwise generate and download locally
       const receiptData = {
         transaction: {
           payment_id: paymentParams.razorpay_payment_id || 'N/A',
@@ -187,8 +283,38 @@ function PaymentSuccess() {
   const formatAmount = (a) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(a);
 
   const getDashboardUrl = () => {
-    const role = user?.user_metadata?.role || user?.raw_user_meta_data?.role;
-    return { educator: '/educator/dashboard', recruiter: '/recruiter/dashboard', admin: '/admin/dashboard' }[role] || '/student/dashboard';
+    // Use role from useAuth hook first, then fallback to user metadata
+    const userRole = role || user?.user_metadata?.role || user?.raw_user_meta_data?.role;
+    
+    // Map all user roles to their respective dashboard routes
+    const dashboardRoutes = {
+      // Admin roles
+      super_admin: '/admin/dashboard',
+      rm_admin: '/admin/dashboard',
+      rm_manager: '/admin/dashboard',
+      admin: '/admin/dashboard',
+      company_admin: '/admin/dashboard',
+      
+      // Institution admin roles
+      school_admin: '/school-admin/dashboard',
+      college_admin: '/college-admin/dashboard',
+      university_admin: '/university-admin/dashboard',
+      
+      // Educator roles
+      educator: '/educator/dashboard',
+      school_educator: '/educator/dashboard',
+      college_educator: '/educator/dashboard',
+      
+      // Recruiter role
+      recruiter: '/recruitment/overview',
+      
+      // Student roles (default fallback)
+      student: '/student/dashboard',
+      school_student: '/student/dashboard',
+      college_student: '/student/dashboard',
+    };
+    
+    return dashboardRoutes[userRole] || '/student/dashboard';
   };
 
   // Loading
@@ -305,13 +431,23 @@ function PaymentSuccess() {
 
         {/* Email Status */}
         <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-sm border border-gray-100">
-          {emailStatus === 'sending' ? (
+          {emailStatus === 'sending' && (
             <Loader2 className="w-5 h-5 text-[#2663EB] animate-spin" />
-          ) : (
+          )}
+          {emailStatus === 'sent' && (
             <MailCheck className="w-5 h-5 text-emerald-500" />
           )}
+          {emailStatus === 'skipped' && (
+            <MailCheck className="w-5 h-5 text-gray-400" />
+          )}
+          {emailStatus === 'failed' && (
+            <MailCheck className="w-5 h-5 text-amber-500" />
+          )}
           <span className="text-sm text-gray-600">
-            {emailStatus === 'sending' ? 'Sending confirmation...' : 'Confirmation sent'}
+            {emailStatus === 'sending' && 'Sending confirmation...'}
+            {emailStatus === 'sent' && 'Confirmation email sent'}
+            {emailStatus === 'skipped' && 'Email already sent previously'}
+            {emailStatus === 'failed' && 'Could not send email'}
           </span>
         </div>
 
@@ -332,9 +468,15 @@ function PaymentSuccess() {
             </button>
             <button
               onClick={handleDownloadReceipt}
-              className="py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 flex items-center justify-center gap-1.5"
+              disabled={receiptUploading}
+              className="py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
-              <Download className="w-4 h-4" /> Receipt
+              {receiptUploading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              Receipt
             </button>
           </div>
         </div>

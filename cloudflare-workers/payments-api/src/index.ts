@@ -39,7 +39,11 @@ export interface Env {
   TEST_RAZORPAY_KEY_SECRET?: string;
   // Legacy VITE_ prefixed names (fallback)
   VITE_RAZORPAY_KEY_ID?: string;
-  // Note: Email sending now uses Supabase Edge Function (send-email) with SMTP
+  // Service binding to email-api worker
+  EMAIL_SERVICE?: Fetcher;
+  // Storage API URL for receipt uploads
+  STORAGE_API_URL?: string;
+  // Note: Email sending now uses Cloudflare Worker (email-api) with SMTP
   // RESEND_API_KEY is no longer needed
 }
 
@@ -163,11 +167,13 @@ async function verifyWebhookSignature(payload: string, signature: string, secret
 
 // ==================== EMAIL FUNCTIONS ====================
 
+const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
+
 /**
- * Send email via Supabase Edge Function (SMTP)
- * This replaces the old Resend API implementation
+ * Send email via Cloudflare Worker (email-api)
+ * Uses Service Binding if available, falls back to HTTP fetch
  */
-async function sendEmailViaSupabase(
+async function sendEmailViaWorker(
   env: Env,
   to: string,
   subject: string,
@@ -175,48 +181,66 @@ async function sendEmailViaSupabase(
   from?: string,
   fromName?: string
 ): Promise<boolean> {
-  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
-  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    console.log('Supabase configuration missing for email sending');
-    return false;
-  }
-
+  console.log(`[EMAIL] Starting email send to: ${to}`);
+  console.log(`[EMAIL] Subject: ${subject}`);
+  console.log(`[EMAIL] From: ${fromName} <${from}>`);
+  
   try {
-    const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceRoleKey}`,
-        'apikey': serviceRoleKey,
-      },
-      body: JSON.stringify({
-        to,
-        subject,
-        html,
-        from,
-        fromName,
-      }),
+    const requestBody = JSON.stringify({
+      to,
+      subject,
+      html,
+      from,
+      fromName,
     });
+    
+    console.log(`[EMAIL] Request body length: ${requestBody.length} chars`);
+    
+    let response: Response;
+    
+    // Use Service Binding if available (more reliable for worker-to-worker)
+    if (env.EMAIL_SERVICE) {
+      console.log(`[EMAIL] Using Service Binding to email-api`);
+      response = await env.EMAIL_SERVICE.fetch('https://email-api/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: requestBody,
+      });
+    } else {
+      // Fallback to HTTP fetch
+      console.log(`[EMAIL] Using HTTP fetch to: ${EMAIL_API_URL}`);
+      response = await fetch(EMAIL_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: requestBody,
+      });
+    }
 
+    console.log(`[EMAIL] Response status: ${response.status}`);
+    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Email sending failed:', response.status, errorText);
+      console.error(`[EMAIL] Failed with status ${response.status}: ${errorText}`);
       return false;
     }
 
-    const result = await response.json();
-    console.log('Email sent successfully:', result);
-    return true;
+    const result = await response.json() as { success?: boolean; message?: string };
+    console.log(`[EMAIL] Success response:`, JSON.stringify(result));
+    return result.success === true;
   } catch (error) {
-    console.error('Failed to send email via Supabase:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[EMAIL] Exception caught: ${errorMessage}`);
+    console.error(`[EMAIL] Error stack:`, error instanceof Error ? error.stack : 'No stack');
     return false;
   }
 }
 
 /**
- * Send payment confirmation email using Supabase Edge Function (SMTP)
+ * Send payment confirmation email using Cloudflare Worker (email-api)
  */
 async function sendPaymentConfirmationEmail(
   env: Env,
@@ -229,9 +253,16 @@ async function sendPaymentConfirmationEmail(
     planName: string;
     billingCycle: string;
     subscriptionEndDate: string;
+    receiptUrl?: string;
   }
 ): Promise<boolean> {
-  const { paymentId, orderId, amount, planName, billingCycle, subscriptionEndDate } = paymentDetails;
+  // Validate email before attempting to send
+  if (!email || !email.includes('@')) {
+    console.error('Invalid or missing email address for payment confirmation:', email);
+    return false;
+  }
+
+  const { paymentId, orderId, amount, planName, billingCycle, subscriptionEndDate, receiptUrl } = paymentDetails;
   
   const formatAmount = (a: number) => new Intl.NumberFormat('en-IN', { 
     style: 'currency', 
@@ -244,6 +275,14 @@ async function sendPaymentConfirmationEmail(
     month: 'long', 
     day: 'numeric' 
   });
+
+  // Receipt download button HTML (only if receiptUrl is provided)
+  const receiptButtonHtml = receiptUrl ? `
+              <!-- Download Receipt Button -->
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${receiptUrl}" style="display: inline-block; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600;">📄 Download Receipt</a>
+              </div>
+  ` : '';
 
   const htmlContent = `
 <!DOCTYPE html>
@@ -307,7 +346,7 @@ async function sendPaymentConfirmationEmail(
                   </tr>
                 </table>
               </div>
-              
+              ${receiptButtonHtml}
               <!-- CTA Button -->
               <div style="text-align: center; margin: 32px 0;">
                 <a href="https://skillpassport.rareminds.in/subscription/manage" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">Manage Subscription →</a>
@@ -330,12 +369,12 @@ async function sendPaymentConfirmationEmail(
 </body>
 </html>`;
 
-  const success = await sendEmailViaSupabase(
+  const success = await sendEmailViaWorker(
     env,
     email,
     `Payment Confirmed - ${planName} Subscription Activated!`,
     htmlContent,
-    'payments@rareminds.in',
+    'noreply@rareminds.in',
     'Skill Passport'
   );
 
@@ -344,6 +383,123 @@ async function sendPaymentConfirmationEmail(
   }
   
   return success;
+}
+
+// ==================== RECEIPT PDF GENERATION & UPLOAD ====================
+
+const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
+
+/**
+ * Generate receipt PDF content as base64
+ * This is a simplified PDF generation for the worker environment
+ */
+function generateReceiptPdfBase64(receiptData: {
+  paymentId: string;
+  orderId: string;
+  amount: number;
+  planName: string;
+  billingCycle: string;
+  subscriptionEndDate: string;
+  userName: string;
+  userEmail: string;
+  paymentMethod: string;
+  paymentDate: string;
+}): string {
+  const { paymentId, orderId, amount, planName, billingCycle, subscriptionEndDate, userName, userEmail, paymentMethod, paymentDate } = receiptData;
+  
+  const formatAmount = (a: number) => new Intl.NumberFormat('en-IN', { 
+    style: 'currency', 
+    currency: 'INR', 
+    minimumFractionDigits: 0 
+  }).format(a);
+
+  // Create a simple text-based receipt (PDF generation in workers is limited)
+  // The frontend will generate the actual PDF, this is for email attachment reference
+  const receiptText = `
+PAYMENT RECEIPT
+================
+
+RareMinds - Skill Passport
+--------------------------
+
+TRANSACTION DETAILS
+Reference: ${paymentId}
+Order ID: ${orderId}
+Date: ${paymentDate}
+Payment Method: ${paymentMethod}
+Status: Success
+
+AMOUNT PAID: ${formatAmount(amount)}
+
+CUSTOMER DETAILS
+Name: ${userName}
+Email: ${userEmail}
+
+SUBSCRIPTION DETAILS
+Plan: ${planName}
+Billing Cycle: ${billingCycle}
+Valid Until: ${subscriptionEndDate}
+
+--------------------------
+Thank you for your payment!
+Generated on: ${new Date().toLocaleString()}
+`;
+
+  // Convert to base64
+  const encoder = new TextEncoder();
+  const data = encoder.encode(receiptText);
+  return btoa(String.fromCharCode(...data));
+}
+
+/**
+ * Upload receipt to R2 storage via storage-api worker
+ */
+async function uploadReceiptToR2(
+  env: Env,
+  pdfBase64: string,
+  paymentId: string,
+  userId: string,
+  filename: string
+): Promise<{ success: boolean; url?: string; fileKey?: string }> {
+  const storageUrl = env.STORAGE_API_URL || STORAGE_API_URL;
+  
+  try {
+    console.log(`[RECEIPT] Uploading receipt for payment ${paymentId} to R2`);
+    
+    const response = await fetch(`${storageUrl}/upload-payment-receipt`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        pdfBase64,
+        paymentId,
+        userId,
+        filename,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[RECEIPT] Upload failed: ${response.status} - ${errorText}`);
+      return { success: false };
+    }
+
+    const result = await response.json() as { success: boolean; url?: string; fileKey?: string };
+    console.log(`[RECEIPT] Upload successful:`, result);
+    return result;
+  } catch (error) {
+    console.error(`[RECEIPT] Upload error:`, error);
+    return { success: false };
+  }
+}
+
+/**
+ * Get receipt download URL from storage-api
+ */
+function getReceiptDownloadUrl(env: Env, fileKey: string): string {
+  const storageUrl = env.STORAGE_API_URL || STORAGE_API_URL;
+  return `${storageUrl}/payment-receipt?key=${encodeURIComponent(fileKey)}&mode=download`;
 }
 
 
@@ -385,6 +541,36 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
 
   if (currency !== 'INR') {
     return jsonResponse({ error: 'Only INR currency is supported' }, 400);
+  }
+
+  // ==================== LAYER 2: CHECK EXISTING SUBSCRIPTION ====================
+  // CRITICAL: Check for active subscription BEFORE creating order
+  // This prevents users from paying when they already have an active subscription
+  const supabaseUrl = getSupabaseUrl(env);
+  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
+  
+  const { data: existingSubscription, error: subCheckError } = await supabaseAdmin
+    .from('subscriptions')
+    .select('id, plan_type, status, subscription_end_date')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (existingSubscription) {
+    // User already has an active subscription - block order creation
+    console.log(`[CREATE-ORDER] Blocked: User ${user.id} already has active ${existingSubscription.plan_type} subscription`);
+    
+    return jsonResponse({
+      error: 'You already have an active subscription',
+      code: 'SUBSCRIPTION_EXISTS',
+      existing_subscription: {
+        id: existingSubscription.id,
+        plan_type: existingSubscription.plan_type,
+        status: existingSubscription.status,
+        end_date: existingSubscription.subscription_end_date,
+      },
+      suggestion: 'Please manage your existing subscription from your account settings, or wait for it to expire before purchasing a new plan.'
+    }, 409); // 409 Conflict
   }
 
   // Rate limiting check
@@ -591,43 +777,124 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   const userPhone = userData?.phone || null;
 
   // Determine billing cycle from plan or order notes
-  const billingCycle = plan?.duration || order.plan_name?.toLowerCase().includes('year') ? 'year' : 'month';
+  // Fix: Use proper parentheses to avoid operator precedence issues
+  let billingCycle = 'month'; // Default to month
+  if (plan?.duration) {
+    billingCycle = plan.duration;
+  } else if (order.plan_name?.toLowerCase().includes('year')) {
+    billingCycle = 'year';
+  }
   const planAmount = (plan?.price || paymentAmount / 100); // Convert paise to rupees if needed
   const planType = plan?.name || order.plan_name || 'Standard Plan';
 
   // Check if user already has an active subscription of the same plan type
-  // This prevents the database trigger from blocking duplicate subscriptions
+  // This handles edge cases: page refresh, webhook race condition, or renewal
   const { data: existingActiveSubscription } = await supabaseAdmin
     .from('subscriptions')
     .select('*')
     .eq('user_id', order.user_id)
-    .eq('plan_type', planType)
     .eq('status', 'active')
     .maybeSingle();
 
   if (existingActiveSubscription) {
-    // User already has active subscription of this plan type
-    // Return existing subscription instead of trying to create a new one
-    const { data: existingTransaction } = await supabaseAdmin
-      .from('payment_transactions')
-      .select('payment_method, amount')
-      .eq('subscription_id', existingActiveSubscription.id)
-      .maybeSingle();
+    // User already has active subscription
+    // Check if this is the same plan type - if so, treat as renewal/extension
+    const isSamePlan = existingActiveSubscription.plan_type?.toLowerCase() === planType?.toLowerCase();
+    const renewalTimestamp = new Date().toISOString();
+    
+    if (isSamePlan) {
+      // Same plan - extend the subscription end date and update payment info
+      const currentEndDate = new Date(existingActiveSubscription.subscription_end_date);
+      const extensionDate = new Date(Math.max(currentEndDate.getTime(), Date.now()));
+      
+      // Add billing cycle duration to the later of current end date or now
+      if (billingCycle.toLowerCase().includes('year')) {
+        extensionDate.setFullYear(extensionDate.getFullYear() + 1);
+      } else {
+        extensionDate.setMonth(extensionDate.getMonth() + 1);
+      }
 
-    return jsonResponse({
-      success: true,
-      verified: true,
-      message: 'User already has an active subscription of this plan type',
-      payment_id: razorpay_payment_id,
-      order_id: razorpay_order_id,
-      user_id: existingActiveSubscription.user_id,
-      user_name: existingActiveSubscription.full_name,
-      user_email: existingActiveSubscription.email,
-      payment_method: existingTransaction?.payment_method || paymentMethod,
-      amount: paymentAmount,
-      subscription: existingActiveSubscription,
-      already_processed: true,
-    });
+      const { data: updatedSubscription, error: updateError } = await supabaseAdmin
+        .from('subscriptions')
+        .update({
+          razorpay_payment_id: razorpay_payment_id,
+          razorpay_order_id: razorpay_order_id,
+          subscription_end_date: extensionDate.toISOString(),
+          updated_at: renewalTimestamp,
+        })
+        .eq('id', existingActiveSubscription.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Error updating subscription for renewal:', updateError);
+      }
+
+      // Log the renewal transaction
+      await supabaseAdmin
+        .from('payment_transactions')
+        .insert([{
+          subscription_id: existingActiveSubscription.id,
+          user_id: order.user_id,
+          razorpay_payment_id: razorpay_payment_id,
+          razorpay_order_id: razorpay_order_id,
+          amount: planAmount,
+          currency: 'INR',
+          status: 'success',
+          payment_method: paymentMethod,
+          created_at: renewalTimestamp,
+        }]);
+
+      // UPDATE razorpay_orders with renewal payment result
+      await supabaseAdmin
+        .from('razorpay_orders')
+        .update({
+          razorpay_payment_id: razorpay_payment_id,
+          payment_method: paymentMethod,
+          subscription_id: existingActiveSubscription.id,
+          updated_at: renewalTimestamp,
+        })
+        .eq('order_id', razorpay_order_id);
+
+      console.log(`[VERIFY-PAYMENT] Renewed subscription for user ${order.user_id}, extended to ${extensionDate.toISOString()}`);
+
+      return jsonResponse({
+        success: true,
+        verified: true,
+        message: 'Subscription renewed successfully! Your subscription has been extended.',
+        payment_id: razorpay_payment_id,
+        order_id: razorpay_order_id,
+        user_id: existingActiveSubscription.user_id,
+        user_name: existingActiveSubscription.full_name,
+        user_email: existingActiveSubscription.email,
+        payment_method: paymentMethod,
+        amount: paymentAmount,
+        subscription: updatedSubscription || existingActiveSubscription,
+        is_renewal: true,
+        new_end_date: extensionDate.toISOString(),
+      });
+    } else {
+      // Different plan type - user is trying to subscribe to a different plan
+      // Return existing subscription info without creating duplicate
+      console.log(`[VERIFY-PAYMENT] User ${order.user_id} has active ${existingActiveSubscription.plan_type}, tried to get ${planType}`);
+      
+      return jsonResponse({
+        success: true,
+        verified: true,
+        message: `You already have an active ${existingActiveSubscription.plan_type} subscription. Payment was processed but no new subscription created.`,
+        payment_id: razorpay_payment_id,
+        order_id: razorpay_order_id,
+        user_id: existingActiveSubscription.user_id,
+        user_name: existingActiveSubscription.full_name,
+        user_email: existingActiveSubscription.email,
+        payment_method: paymentMethod,
+        amount: paymentAmount,
+        subscription: existingActiveSubscription,
+        already_processed: true,
+        is_existing_subscription: true,
+        note: 'Contact support if you need to change your plan.',
+      });
+    }
   }
 
   // CREATE SUBSCRIPTION RECORD
@@ -674,7 +941,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     });
   }
 
-  // LOG PAYMENT TRANSACTION
+  // LOG PAYMENT TRANSACTION (to payment_transactions for backward compatibility)
   const transactionData = {
     subscription_id: subscription.id,
     user_id: order.user_id,
@@ -691,20 +958,79 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     .from('payment_transactions')
     .insert([transactionData]);
 
+  // UPDATE razorpay_orders with payment result (NEW: Single source of truth)
+  await supabaseAdmin
+    .from('razorpay_orders')
+    .update({
+      razorpay_payment_id: razorpay_payment_id,
+      payment_method: paymentMethod,
+      subscription_id: subscription.id,
+      updated_at: now,
+    })
+    .eq('order_id', razorpay_order_id);
+
   if (txnError) {
     console.error('Error logging transaction:', txnError);
     // Don't fail, subscription is already created
   }
 
-  // Send payment confirmation email
-  await sendPaymentConfirmationEmail(env, userEmail, fullName, {
+  // Generate and upload receipt PDF to R2
+  let receiptUrl: string | undefined;
+  try {
+    const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    
+    const receiptPdfBase64 = generateReceiptPdfBase64({
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id,
+      amount: planAmount,
+      planName: planType,
+      billingCycle: billingCycle,
+      subscriptionEndDate: formatDate(subscription.subscription_end_date),
+      userName: fullName,
+      userEmail: userEmail,
+      paymentMethod: paymentMethod,
+      paymentDate: formatDate(now),
+    });
+    
+    const filename = `Receipt-${razorpay_payment_id.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+    const uploadResult = await uploadReceiptToR2(env, receiptPdfBase64, razorpay_payment_id, order.user_id, filename);
+    
+    if (uploadResult.success && uploadResult.fileKey) {
+      receiptUrl = getReceiptDownloadUrl(env, uploadResult.fileKey);
+      console.log(`Receipt uploaded successfully: ${receiptUrl}`);
+      
+      // Store receipt URL in subscription record
+      await supabaseAdmin
+        .from('subscriptions')
+        .update({ receipt_url: receiptUrl })
+        .eq('id', subscription.id);
+    }
+  } catch (receiptError) {
+    console.error('Failed to generate/upload receipt:', receiptError);
+    // Don't fail the payment verification if receipt upload fails
+  }
+
+  // Send payment confirmation email with receipt link
+  console.log(`Attempting to send confirmation email to: ${userEmail}`);
+  const emailSent = await sendPaymentConfirmationEmail(env, userEmail, fullName, {
     paymentId: razorpay_payment_id,
     orderId: razorpay_order_id,
     amount: planAmount,
     planName: planType,
     billingCycle: billingCycle,
     subscriptionEndDate: subscription.subscription_end_date,
+    receiptUrl: receiptUrl,
   });
+
+  if (!emailSent) {
+    console.warn(`Failed to send confirmation email to ${userEmail} for payment ${razorpay_payment_id}`);
+  } else {
+    console.log(`Confirmation email sent successfully to ${userEmail}`);
+  }
 
   return jsonResponse({
     success: true,
@@ -718,6 +1044,8 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     payment_method: paymentMethod,
     amount: paymentAmount,
     subscription: subscription,
+    email_sent: emailSent,
+    receipt_url: receiptUrl,
   });
 }
 
@@ -1167,6 +1495,158 @@ async function handleGetSubscription(request: Request, env: Env): Promise<Respon
   });
 }
 
+// ==================== CHECK SUBSCRIPTION ACCESS ====================
+// Production-ready endpoint for route protection
+
+const GRACE_PERIOD_DAYS = 3;
+
+interface SubscriptionAccessResponse {
+  success: boolean;
+  hasAccess: boolean;
+  accessReason: 'active' | 'paused' | 'grace_period' | 'expired' | 'cancelled' | 'no_subscription';
+  subscription: any | null;
+  showWarning: boolean;
+  warningType?: 'expiring_soon' | 'grace_period' | 'paused';
+  warningMessage?: string;
+  daysUntilExpiry?: number;
+  expiresAt?: string;
+}
+
+async function handleCheckSubscriptionAccess(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticateUser(request, env);
+  if (!auth) {
+    return jsonResponse({ 
+      success: false,
+      hasAccess: false,
+      accessReason: 'no_subscription',
+      subscription: null,
+      showWarning: false,
+      error: 'Unauthorized'
+    }, 401);
+  }
+
+  const { user, supabase } = auth;
+  const now = new Date();
+
+  // Get user's subscription - include recently expired for grace period
+  const gracePeriodDate = new Date(now);
+  gracePeriodDate.setDate(gracePeriodDate.getDate() - GRACE_PERIOD_DAYS);
+
+  const { data: subscription, error } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('user_id', user.id)
+    .in('status', ['active', 'paused'])
+    .gte('subscription_end_date', gracePeriodDate.toISOString())
+    .order('subscription_end_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Subscription access check error:', error);
+    return jsonResponse({ 
+      success: false,
+      hasAccess: false,
+      accessReason: 'no_subscription',
+      subscription: null,
+      showWarning: false,
+      error: 'Failed to check subscription'
+    }, 500);
+  }
+
+  // No subscription found
+  if (!subscription) {
+    // Check if user ever had a subscription (for better UX messaging)
+    const { data: anySubscription } = await supabase
+      .from('subscriptions')
+      .select('id, status, subscription_end_date')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const response: SubscriptionAccessResponse = {
+      success: true,
+      hasAccess: false,
+      accessReason: anySubscription ? 'expired' : 'no_subscription',
+      subscription: anySubscription || null,
+      showWarning: false,
+    };
+
+    return jsonResponse(response);
+  }
+
+  const endDate = new Date(subscription.subscription_end_date);
+  const daysUntilExpiry = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+  // Case 1: Paused subscription - allow access with warning
+  if (subscription.status === 'paused') {
+    const response: SubscriptionAccessResponse = {
+      success: true,
+      hasAccess: true,
+      accessReason: 'paused',
+      subscription,
+      showWarning: true,
+      warningType: 'paused',
+      warningMessage: `Your subscription is paused until ${new Date(subscription.paused_until).toLocaleDateString()}`,
+      daysUntilExpiry,
+      expiresAt: subscription.subscription_end_date,
+    };
+    return jsonResponse(response);
+  }
+
+  // Case 2: Active and not expired
+  if (endDate > now) {
+    const showExpiringWarning = daysUntilExpiry <= 7;
+    
+    const response: SubscriptionAccessResponse = {
+      success: true,
+      hasAccess: true,
+      accessReason: 'active',
+      subscription,
+      showWarning: showExpiringWarning,
+      warningType: showExpiringWarning ? 'expiring_soon' : undefined,
+      warningMessage: showExpiringWarning 
+        ? `Your subscription expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`
+        : undefined,
+      daysUntilExpiry,
+      expiresAt: subscription.subscription_end_date,
+    };
+    return jsonResponse(response);
+  }
+
+  // Case 3: Expired but within grace period
+  if (daysUntilExpiry >= -GRACE_PERIOD_DAYS) {
+    const daysIntoGrace = Math.abs(daysUntilExpiry);
+    const daysLeftInGrace = GRACE_PERIOD_DAYS - daysIntoGrace;
+    
+    const response: SubscriptionAccessResponse = {
+      success: true,
+      hasAccess: true,
+      accessReason: 'grace_period',
+      subscription,
+      showWarning: true,
+      warningType: 'grace_period',
+      warningMessage: `Your subscription expired. You have ${daysLeftInGrace} day${daysLeftInGrace !== 1 ? 's' : ''} left to renew before losing access.`,
+      daysUntilExpiry,
+      expiresAt: subscription.subscription_end_date,
+    };
+    return jsonResponse(response);
+  }
+
+  // Case 4: Expired beyond grace period
+  const response: SubscriptionAccessResponse = {
+    success: true,
+    hasAccess: false,
+    accessReason: 'expired',
+    subscription,
+    showWarning: false,
+    daysUntilExpiry,
+    expiresAt: subscription.subscription_end_date,
+  };
+  return jsonResponse(response);
+}
+
 // ==================== CREATE EVENT ORDER ====================
 
 const MAX_EVENT_AMOUNT_RUPEES = 10000000; // ₹1 crore max
@@ -1353,6 +1833,8 @@ export default {
         // Subscription management endpoints
         case '/get-subscription':
           return await handleGetSubscription(request, env);
+        case '/check-subscription-access':
+          return await handleCheckSubscriptionAccess(request, env);
         case '/cancel-subscription':
           return await handleCancelSubscription(request, env);
         case '/deactivate-subscription':
@@ -1386,6 +1868,7 @@ export default {
               'POST /verify-payment',
               'POST /webhook',
               'GET  /get-subscription',
+              'GET  /check-subscription-access',
               'POST /cancel-subscription',
               'POST /deactivate-subscription',
               'POST /pause-subscription',
@@ -1394,7 +1877,7 @@ export default {
               'GET  /health',
             ],
             message: allConfigured ? 'All required secrets are configured' : 'Some required secrets are missing.',
-            email_note: 'Email sending uses Supabase Edge Function (send-email) with SMTP. Configure SMTP secrets in Supabase.',
+            email_note: 'Email sending uses Cloudflare Worker (email-api) with SMTP.',
           });
         
         default:

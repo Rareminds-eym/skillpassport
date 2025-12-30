@@ -469,6 +469,149 @@ async function handleListFiles(request: Request, env: Env, courseId: string, les
   });
 }
 
+// ==================== UPLOAD PAYMENT RECEIPT ====================
+
+async function handleUploadPaymentReceipt(request: Request, env: Env): Promise<Response> {
+  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+    return jsonResponse({ error: 'R2 credentials not configured' }, 500);
+  }
+
+  const body = await request.json() as {
+    pdfBase64: string;
+    paymentId: string;
+    userId: string;
+    filename?: string;
+  };
+
+  const { pdfBase64, paymentId, userId, filename } = body;
+
+  if (!pdfBase64 || !paymentId || !userId) {
+    return jsonResponse({ error: 'pdfBase64, paymentId, and userId are required' }, 400);
+  }
+
+  // Decode base64 to binary
+  const binaryString = atob(pdfBase64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  // Generate unique filename
+  const timestamp = Date.now();
+  const sanitizedPaymentId = paymentId.replace(/[^a-zA-Z0-9_-]/g, '');
+  const fileKey = `payment_pdf/${userId}/${sanitizedPaymentId}_${timestamp}.pdf`;
+  const finalFilename = filename || `Receipt-${sanitizedPaymentId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+
+  const bucketName = env.CLOUDFLARE_R2_BUCKET_NAME || 'skill-echosystem';
+  const r2 = new AwsClient({
+    accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+    secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+  });
+
+  const endpoint = `https://${env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+
+  const uploadRequest = new Request(`${endpoint}/${bucketName}/${fileKey}`, {
+    method: 'PUT',
+    body: bytes,
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${finalFilename}"`,
+    },
+  });
+
+  const signedRequest = await r2.sign(uploadRequest);
+  const response = await fetch(signedRequest);
+
+  if (!response.ok) {
+    console.error('R2 upload failed:', response.status, await response.text());
+    return jsonResponse({ error: 'Failed to upload receipt to R2' }, 500);
+  }
+
+  const fileUrl = env.CLOUDFLARE_R2_PUBLIC_URL
+    ? `${env.CLOUDFLARE_R2_PUBLIC_URL}/${fileKey}`
+    : `https://pub-${env.CLOUDFLARE_ACCOUNT_ID}.r2.dev/${fileKey}`;
+
+  return jsonResponse({
+    success: true,
+    url: fileUrl,
+    fileKey,
+    filename: finalFilename,
+  });
+}
+
+// ==================== GET PAYMENT RECEIPT ====================
+
+async function handleGetPaymentReceipt(request: Request, env: Env): Promise<Response> {
+  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+    return jsonResponse({ error: 'R2 credentials not configured' }, 500);
+  }
+
+  const url = new URL(request.url);
+  let fileKey = url.searchParams.get('key');
+  const mode = url.searchParams.get('mode') || 'download'; // 'inline' for viewing, 'download' for downloading
+  
+  // Also support extracting key from full URL
+  const fileUrl = url.searchParams.get('url');
+  if (!fileKey && fileUrl) {
+    // Extract key from URL like https://pub-xxx.r2.dev/payment_pdf/...
+    const urlParts = fileUrl.split('.r2.dev/');
+    if (urlParts.length > 1) {
+      fileKey = urlParts[1];
+    } else {
+      // Try extracting from custom domain URL
+      const pathMatch = fileUrl.match(/\/payment_pdf\/(.+)$/);
+      if (pathMatch) {
+        fileKey = `payment_pdf/${pathMatch[1]}`;
+      }
+    }
+  }
+
+  if (!fileKey) {
+    return jsonResponse({ error: 'File key or URL is required' }, 400);
+  }
+
+  const bucketName = env.CLOUDFLARE_R2_BUCKET_NAME || 'skill-echosystem';
+  const r2 = new AwsClient({
+    accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+    secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+  });
+
+  const endpoint = `https://${env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const downloadUrl = `${endpoint}/${bucketName}/${fileKey}`;
+
+  const downloadRequest = new Request(downloadUrl, {
+    method: 'GET',
+  });
+
+  const signedRequest = await r2.sign(downloadRequest);
+  const response = await fetch(signedRequest);
+
+  if (!response.ok) {
+    return jsonResponse({ error: 'Receipt not found or access denied', status: response.status }, response.status);
+  }
+
+  // Get the file content and return it with proper headers
+  const fileContent = await response.arrayBuffer();
+  
+  // Extract filename from key
+  const filename = fileKey.split('/').pop() || 'receipt.pdf';
+  
+  // Set Content-Disposition based on mode
+  const contentDisposition = mode === 'download' 
+    ? `attachment; filename="${filename}"` 
+    : `inline; filename="${filename}"`;
+
+  return new Response(fileContent, {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': contentDisposition,
+      'Content-Length': fileContent.byteLength.toString(),
+    },
+  });
+}
+
 // ==================== MAIN HANDLER ====================
 
 export default {
@@ -490,6 +633,10 @@ export default {
       switch (path) {
         case '/upload':
           return await handleUpload(request, env);
+        case '/upload-payment-receipt':
+          return await handleUploadPaymentReceipt(request, env);
+        case '/payment-receipt':
+          return await handleGetPaymentReceipt(request, env);
         case '/presigned':
           return await handlePresigned(request, env);
         case '/confirm':
@@ -508,11 +655,11 @@ export default {
           return jsonResponse({
             status: 'ok',
             service: 'storage-api',
-            endpoints: ['/upload', '/presigned', '/confirm', '/get-url', '/course-certificate', '/delete', '/files/:courseId/:lessonId', '/extract-content'],
+            endpoints: ['/upload', '/upload-payment-receipt', '/payment-receipt', '/presigned', '/confirm', '/get-url', '/course-certificate', '/delete', '/files/:courseId/:lessonId', '/extract-content'],
             timestamp: new Date().toISOString()
           });
         default:
-          return jsonResponse({ error: 'Not found', availableEndpoints: ['/upload', '/presigned', '/confirm', '/get-url', '/course-certificate', '/delete', '/extract-content'] }, 404);
+          return jsonResponse({ error: 'Not found', availableEndpoints: ['/upload', '/upload-payment-receipt', '/payment-receipt', '/presigned', '/confirm', '/get-url', '/course-certificate', '/delete', '/extract-content'] }, 404);
       }
     } catch (error) {
       console.error('Worker error:', error);

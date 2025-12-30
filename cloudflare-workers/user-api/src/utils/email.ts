@@ -1,18 +1,19 @@
 /**
- * Email utilities using Supabase Edge Function (SMTP)
- * Completely removed Resend - now uses Supabase's SMTP configuration
+ * Email utilities using Cloudflare Worker (email-api)
+ * Migrated from Supabase Edge Function to Cloudflare Worker
  */
 
 import { Env } from '../types';
 import { roleDisplayNames } from '../constants';
 
 const LOGIN_URL = 'https://skillpassport.rareminds.in/login';
+const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
 
 /**
- * Send email via Supabase Edge Function
- * This function calls the send-email Edge Function which uses SMTP
+ * Send email via Cloudflare Worker (email-api)
+ * This function calls the email-api Worker which uses SMTP
  */
-async function sendEmailViaSupabase(
+async function sendEmailViaWorker(
   env: Env,
   to: string | string[],
   subject: string,
@@ -20,21 +21,11 @@ async function sendEmailViaSupabase(
   from?: string,
   fromName?: string
 ): Promise<boolean> {
-  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
-  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    console.error('Supabase configuration missing for email sending');
-    return false;
-  }
-
   try {
-    const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+    const response = await fetch(EMAIL_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceRoleKey}`,
-        'apikey': serviceRoleKey,
       },
       body: JSON.stringify({
         to,
@@ -55,7 +46,7 @@ async function sendEmailViaSupabase(
     console.log('Email sent successfully:', result);
     return true;
   } catch (error) {
-    console.error('Failed to send email via Supabase:', error);
+    console.error('Failed to send email via Worker:', error);
     return false;
   }
 }
@@ -73,7 +64,7 @@ export async function sendWelcomeEmail(
 ): Promise<boolean> {
   const roleDisplay = roleDisplayNames[role] || role;
 
-  return sendEmailViaSupabase(
+  return sendEmailViaWorker(
     env,
     email,
     `Welcome to Skill Passport - Your ${roleDisplay} Account is Ready!`,
@@ -100,7 +91,7 @@ export async function sendPasswordResetEmail(
     </div>
   `;
 
-  return sendEmailViaSupabase(
+  return sendEmailViaWorker(
     env,
     email,
     'Your Password Reset Code',
@@ -165,7 +156,7 @@ export async function sendInterviewReminderEmail(
 </html>`;
 
   try {
-    const success = await sendEmailViaSupabase(
+    const success = await sendEmailViaWorker(
       env,
       recipientEmail,
       `Interview Reminder - ${jobTitle || 'Position'} Interview`,

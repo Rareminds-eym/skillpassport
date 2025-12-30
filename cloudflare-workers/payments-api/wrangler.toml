@@ -4,6 +4,12 @@ compatibility_date = "2024-01-01"
 
 [vars]
 ENVIRONMENT = "production"
+STORAGE_API_URL = "https://storage-api.dark-mode-d021.workers.dev"
+
+# Service binding to email-api worker
+[[services]]
+binding = "EMAIL_SERVICE"
+service = "email-api"
 
 # =============================================================================
 # REQUIRED SECRETS - Set via Cloudflare Dashboard or wrangler CLI

@@ -154,6 +154,38 @@ export async function listFiles(courseId, lessonId, token) {
   return response.json();
 }
 
+/**
+ * Upload a payment receipt PDF to R2 storage
+ * @param {string} pdfBase64 - Base64 encoded PDF content
+ * @param {string} paymentId - Razorpay payment ID
+ * @param {string} userId - User ID
+ * @param {string} filename - Optional custom filename
+ * @param {string} token - Auth token (optional)
+ */
+export async function uploadPaymentReceipt(pdfBase64, paymentId, userId, filename, token) {
+  const response = await fetch(`${getBaseUrl()}/upload-payment-receipt`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ pdfBase64, paymentId, userId, filename }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to upload payment receipt');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get payment receipt download URL
+ * @param {string} fileKey - The R2 file key for the receipt
+ * @param {string} mode - 'download' or 'inline'
+ */
+export function getPaymentReceiptUrl(fileKey, mode = 'download') {
+  return `${getBaseUrl()}/payment-receipt?key=${encodeURIComponent(fileKey)}&mode=${mode}`;
+}
+
 export default {
   uploadFile,
   deleteFile,
@@ -162,4 +194,6 @@ export default {
   confirmUpload,
   getFileUrl,
   listFiles,
+  uploadPaymentReceipt,
+  getPaymentReceiptUrl,
 };

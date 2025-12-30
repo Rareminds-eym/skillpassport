@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
+import { SubscriptionProtectedRoute } from "../components/subscription";
 import Loader from "../components/Loader";
 
 import PublicLayout from "../layouts/PublicLayout";
@@ -648,9 +649,13 @@ const AppRoutes = () => {
         <Route
           path="/student/*"
           element={
-            <ProtectedRoute allowedRoles={["student"]}>
+            <SubscriptionProtectedRoute 
+              allowedRoles={["student", "school_student", "college_student"]}
+              requireSubscription={true}
+              subscriptionFallbackPath="/subscription/plans"
+            >
               <StudentLayout />
-            </ProtectedRoute>
+            </SubscriptionProtectedRoute>
           }
         >
           <Route path="dashboard" element={<StudentDashboard />} />

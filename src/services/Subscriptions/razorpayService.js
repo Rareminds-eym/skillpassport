@@ -68,6 +68,16 @@ export const createRazorpayOrder = async (orderData) => {
     return result;
   } catch (error) {
     console.error('❌ Error creating order:', error);
+    
+    // Check if this is a "subscription exists" error (409 Conflict)
+    if (error.message?.includes('already have an active subscription')) {
+      // Create a custom error with additional info
+      const subscriptionExistsError = new Error(error.message);
+      subscriptionExistsError.code = 'SUBSCRIPTION_EXISTS';
+      subscriptionExistsError.isSubscriptionExists = true;
+      throw subscriptionExistsError;
+    }
+    
     throw error;
   }
 };
@@ -194,7 +204,17 @@ export const initiateRazorpayPayment = async ({ plan, userDetails }) => {
   } catch (error) {
     console.error('❌ Error initiating payment:', error);
 
-    // Redirect to failure page on error
+    // Handle "subscription already exists" error specially
+    if (error.code === 'SUBSCRIPTION_EXISTS' || error.isSubscriptionExists) {
+      const origin = window.location.origin;
+      // Redirect to manage subscription page instead of failure page
+      const manageUrl = new URL('/subscription/manage', origin);
+      manageUrl.searchParams.set('message', 'You already have an active subscription');
+      window.location.href = manageUrl.toString();
+      return;
+    }
+
+    // Redirect to failure page on other errors
     const origin = window.location.origin;
     const failureUrl = new URL('/subscription/payment/failure', origin);
     failureUrl.searchParams.set('error_code', 'INITIALIZATION_ERROR');
