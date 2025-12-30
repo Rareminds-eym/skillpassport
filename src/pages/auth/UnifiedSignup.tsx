@@ -1,19 +1,12 @@
 import { City, Country, State } from 'country-state-city';
 import {
   AlertCircle,
-  ArrowLeft,
   ArrowRight,
   CheckCircle,
   Eye, EyeOff,
-  Gift,
   Globe,
-  Languages,
   Loader2,
-  Lock,
-  Mail,
-  MapPin,
-  Phone, User,
-  UserCircle
+  ShieldCheck
 } from 'lucide-react';
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -316,313 +309,260 @@ const UnifiedSignup = () => {
   };
 
   return (
-    <div className="flex items-center lg:py-8 bg-white">
-      <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 min-h-screen lg:min-h-[700px] overflow-hidden">
-        {/* LEFT SIDE */}
-        <div className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#0a6aba] to-[#09277f] overflow-hidden">
-          <div className="absolute inset-0 z-0">
-            <img src="/login/login.jpg" alt="Signup background" className="w-full h-full object-cover" />
+    <div className="flex min-h-screen bg-white">
+      {/* LEFT SIDE: Branding & Value Prop */}
+      <div className="hidden lg:flex lg:w-5/12 bg-slate-900 relative overflow-hidden flex-col justify-between p-12 text-white">
+        {/* Background Effects */}
+        <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+        <div className="absolute top-1/2 -right-24 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+
+        {/* Logo Area */}
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-10">
+            <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-900/50">
+              <Globe className="w-8 h-8 text-white" />
+            </div>
+            <span className="text-2xl font-bold tracking-tight">SkillPassport</span>
           </div>
-          <div className="relative z-10">
-            <h2 className="text-3xl md:text-4xl text-center font-bold leading-tight">Join Our Platform</h2>
-            <p className="mt-4 max-w-xl text-center text-[#edf2f9]">Create your account and start your journey with us</p>
+
+          <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-6">
+            Start your global career journey today.
+          </h1>
+          <p className="text-lg text-slate-300 leading-relaxed max-w-md">
+            Join thousands of students and professionals accessing verified opportunities worldwide. Secure, transparent, and built for your future.
+          </p>
+        </div>
+
+        {/* Feature Highlights */}
+        <div className="relative z-10 space-y-6">
+          <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors">
+            <div className="p-2 rounded-lg bg-blue-500/20 text-blue-300">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Verified Security</h3>
+              <p className="text-slate-400 text-sm">Your data is encrypted and protected with enterprise-grade security.</p>
+            </div>
           </div>
-          <div className="relative z-10 flex justify-center items-center h-full">
-            <div className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/20 mb-4">
-                <UserCircle className="w-12 h-12" />
-              </div>
-              <h3 className="text-xl font-semibold">Create Account</h3>
-              <p className="text-white/80 text-sm mt-1">Quick & Easy Registration</p>
+
+          <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors">
+            <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300">
+              <Globe className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Global Reach</h3>
+              <p className="text-slate-400 text-sm">Connect with institutions and recruiters from over 30 countries.</p>
             </div>
           </div>
         </div>
 
-        {/* RIGHT SIDE */}
-        <div className="relative flex items-center justify-center px-4 sm:px-8 md:px-12 py-8">
-          <div className="absolute inset-0 lg:hidden bg-gradient-to-br from-[#0a6aba] to-[#09277f]" />
-          <div className="hidden lg:block absolute inset-0 bg-white" />
-          <div className="relative w-full max-w-lg">
-            <div className="text-center mb-6">
-              <h3 className="text-3xl font-bold text-white lg:text-gray-900">Create Account</h3>
-              <p className="text-sm text-white/80 lg:text-gray-600 mt-2">
-                {currentStep === 1 ? 'Step 1: Personal Information' : 'Step 2: Account Setup'}
-              </p>
+        {/* Footer Brand */}
+        <div className="relative z-10 text-sm text-slate-500">
+          © 2024 SkillPassport. All rights reserved.
+        </div>
+      </div>
 
-              {/* Step Indicator */}
-              <div className="flex items-center justify-center gap-4 mt-8 mb-8">
-                <div className="flex flex-col items-center gap-2 relative z-10">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 shadow-md ${currentStep >= 1 ? 'bg-blue-600 text-white shadow-blue-200 ring-2 ring-blue-100 ring-offset-2' : 'bg-gray-100 text-gray-400 border border-gray-200'}`}>1</div>
-                  <span className={`text-xs font-semibold tracking-wide transition-colors duration-300 ${currentStep >= 1 ? 'text-blue-700' : 'text-gray-400'}`}>Personal Info</span>
-                </div>
+      {/* RIGHT SIDE: Form Area */}
+      <div className="flex-1 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-20 xl:px-24 py-12 relative">
+        <div className="w-full max-w-lg space-y-8">
 
-                {/* Connector Line */}
-                <div className="flex-1 max-w-[100px] h-[2px] bg-gray-200 relative -top-3">
-                  <div className={`h-full bg-blue-600 transition-all duration-500 ease-out`} style={{ width: currentStep >= 2 ? '100%' : '0%' }}></div>
-                </div>
-
-                <div className="flex flex-col items-center gap-2 relative z-10">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 shadow-md ${currentStep >= 2 ? 'bg-blue-600 text-white shadow-blue-200 ring-2 ring-blue-100 ring-offset-2' : 'bg-white text-gray-500 border-2 border-gray-200'}`}>2</div>
-                  <span className={`text-xs font-semibold tracking-wide transition-colors duration-300 ${currentStep >= 2 ? 'text-blue-700' : 'text-gray-400'}`}>Account Setup</span>
-                </div>
-              </div>
+          {/* Mobile Logo (Visible only on small screens) */}
+          <div className="lg:hidden flex justify-center mb-8">
+            <div className="bg-blue-600 p-2 rounded-xl shadow-lg">
+              <Globe className="w-6 h-6 text-white" />
             </div>
+          </div>
 
-            <div className="rounded-2xl bg-white shadow-xl ring-1 ring-black/5 p-6 sm:p-8 mx-auto w-full">
-              {state.error && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm font-medium text-red-800">{state.error}</p>
+          <div className="text-center lg:text-left space-y-2">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900">Create your account</h2>
+            <p className="text-gray-500">
+              {currentStep === 1 ? 'Please enter your details to get started.' : 'Almost done! Set up your account preferences.'}
+            </p>
+          </div>
+
+          {/* Stepper Header (Minimalist) */}
+          <div className="flex items-center gap-4 mb-8">
+            <div className={`flex-1 h-2 rounded-full transition-all duration-500 ${currentStep === 1 ? 'bg-blue-600' : 'bg-blue-600'}`}></div>
+            <div className={`flex-1 h-2 rounded-full transition-all duration-500 ${currentStep === 2 ? 'bg-blue-600' : 'bg-gray-100'}`}></div>
+          </div>
+
+          {/* Error Alert */}
+          {state.error && (
+            <div className="p-4 rounded-xl bg-red-50 border border-red-100 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm font-medium text-red-800">{state.error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+
+            {/* STEP 1 FIELDS */}
+            {currentStep === 1 && (
+              <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">First Name</label>
+                    <input type="text" name="firstName" value={state.firstName} onChange={handleInputChange} placeholder="John" className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Last Name</label>
+                    <input type="text" name="lastName" value={state.lastName} onChange={handleInputChange} placeholder="Doe" className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none" />
+                  </div>
                 </div>
-              )}
-              <form onSubmit={handleSubmit} className="space-y-5">
 
-                {/* STEP 1: Personal Information */}
-                {currentStep === 1 && (
-                  <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">First Name <span className="text-red-500">*</span></label>
-                        <div className="relative group">
-                          <User className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                          <input type="text" name="firstName" value={state.firstName} onChange={handleInputChange} placeholder="John" className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none" />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Last Name <span className="text-red-500">*</span></label>
-                        <div className="relative group">
-                          <User className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                          <input type="text" name="lastName" value={state.lastName} onChange={handleInputChange} placeholder="Doe" className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none" />
-                        </div>
-                      </div>
+                <div>
+                  <DatePicker
+                    name="dateOfBirth"
+                    label="Date of Birth"
+                    required
+                    value={state.dateOfBirth}
+                    onChange={handleInputChange}
+                    placeholder="Select date"
+                    maxDate={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+                  <input type="email" name="email" value={state.email} onChange={handleInputChange} placeholder="john@example.com" className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Mobile Number</label>
+                  <div className="flex gap-3">
+                    <div className="relative w-32">
+                      <select name="countryCode" value={state.countryCode} onChange={handleInputChange} disabled={state.otpVerified} className="w-full px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 appearance-none outline-none">
+                        {COUNTRY_CODES.map(cc => <option key={cc.code} value={cc.dialCode}>{cc.code} ({cc.dialCode})</option>)}
+                      </select>
                     </div>
-
-                    {/* Date of Birth */}
-                    <div className="relative group">
-                      <DatePicker
-                        name="dateOfBirth"
-                        label="Date of Birth"
-                        required
-                        value={state.dateOfBirth}
-                        onChange={handleInputChange}
-                        placeholder="Select date"
-                        maxDate={new Date().toISOString().split('T')[0]}
-                      />
+                    <div className="relative flex-1">
+                      <input type="tel" name="phone" value={state.phone} onChange={handleInputChange} placeholder="Phone number" disabled={state.otpVerified} className={`block w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none ${state.otpVerified ? 'border-green-300 bg-green-50 text-green-700' : 'border-gray-200'}`} />
+                      {state.otpVerified && <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />}
                     </div>
-
-                    {/* Email */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email Address <span className="text-red-500">*</span></label>
-                      <div className="relative group">
-                        <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                        <input type="email" name="email" value={state.email} onChange={handleInputChange} placeholder="john.doe@example.com" className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none" />
-                      </div>
-                    </div>
-
-                    {/* Mobile Number with OTP */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Mobile Number <span className="text-red-500">*</span></label>
-                      <div className="flex gap-3">
-                        {/* Country Code Dropdown */}
-                        <div className="relative">
-                          <select
-                            name="countryCode"
-                            value={state.countryCode}
-                            onChange={handleInputChange}
-                            disabled={state.otpVerified}
-                            className={`h-full pl-3 pr-8 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 appearance-none text-sm font-medium outline-none transition-all ${state.otpVerified ? 'border-green-200 bg-green-50 text-green-700' : 'border-gray-200'}`}
-                          >
-                            {COUNTRY_CODES.map(cc => (
-                              <option key={cc.code} value={cc.dialCode}>
-                                {cc.code} ({cc.dialCode})
-                              </option>
-                            ))}
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                            <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                          </div>
-                        </div>
-
-                        <div className="relative flex-1 group">
-                          <Phone className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                          <input type="tel" name="phone" value={state.phone} onChange={handleInputChange} placeholder="Phone number" disabled={state.otpVerified} className={`block w-full pl-11 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none ${state.otpVerified ? 'border-green-200 bg-green-50' : 'border-gray-200'}`} />
-                          {state.otpVerified && <CheckCircle className="absolute right-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />}
-                        </div>
-                        {!state.otpVerified && (
-                          <button type="button" onClick={handleSendOtp} disabled={state.sendingOtp || state.phone.length < 7} className="px-5 py-3 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 shadow-md shadow-blue-200 transition-all active:scale-95 whitespace-nowrap">
-                            {state.sendingOtp ? <Loader2 className="w-5 h-5 animate-spin" /> : state.otpSent ? 'Resend' : 'Send OTP'}
-                          </button>
-                        )}
-                      </div>
-                      {state.otpVerified && <p className="mt-2 text-xs font-medium text-green-600 flex items-center gap-1.5 animate-in slide-in-from-top-1"><CheckCircle className="w-3.5 h-3.5" /> Mobile number verified successfully</p>}
-                    </div>
-
-                    {/* OTP Input */}
-                    {state.otpSent && !state.otpVerified && (
-                      <div>
-                        <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">Enter OTP <span className="text-red-400">*</span></label>
-                        <div className="flex gap-2">
-                          <input type="text" name="otp" value={state.otp} onChange={handleInputChange} placeholder="6-digit OTP" maxLength={6} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-center tracking-widest font-mono" />
-                          <button type="button" onClick={handleVerifyOtp} disabled={state.verifyingOtp || state.otp.length !== 6} className="px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50">
-                            {state.verifyingOtp ? 'Verifying...' : 'Verify'}
-                          </button>
-                        </div>
-                        <p className="mt-1 text-xs text-white/70 lg:text-gray-500">OTP sent to {state.countryCode} {state.phone}</p>
-                      </div>
-                    )}
-
-                    {/* Password */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password <span className="text-red-500">*</span></label>
-                      <div className="relative group">
-                        <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                        <input type={state.showPassword ? 'text' : 'password'} name="password" value={state.password} onChange={handleInputChange} placeholder="Min. 8 characters" className="block w-full pl-11 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none" />
-                        <button type="button" onClick={() => setState(p => ({ ...p, showPassword: !p.showPassword }))} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1">
-                          {state.showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
-                      </div>
-                      <p className="mt-1.5 text-xs text-gray-500 ml-1">Must contain uppercase, lowercase, and number</p>
-                    </div>
-
-                    {/* Confirm Password */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Confirm Password <span className="text-red-500">*</span></label>
-                      <div className="relative group">
-                        <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                        <input type={state.showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={state.confirmPassword} onChange={handleInputChange} placeholder="Re-enter password" className="block w-full pl-11 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none" />
-                        <button type="button" onClick={() => setState(p => ({ ...p, showConfirmPassword: !p.showConfirmPassword }))} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1">
-                          {state.showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <button type="button" onClick={handleNextStep} className="w-full flex items-center justify-center gap-2 py-3.5 px-6 border border-transparent rounded-xl shadow-lg shadow-blue-200 text-white bg-blue-600 hover:bg-blue-700 font-semibold mt-8 transition-all duration-200 active:scale-[0.98]">
-                      Next Step <ArrowRight className="w-4 h-4" />
+                  </div>
+                  {!state.otpVerified && (
+                    <button type="button" onClick={handleSendOtp} disabled={state.sendingOtp || state.phone.length < 7} className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50">
+                      {state.sendingOtp ? 'Sending code...' : state.otpSent ? 'Resend Verification Code' : 'Send Verification Code'}
                     </button>
+                  )}
+                  {state.otpVerified && <p className="mt-2 text-xs font-medium text-green-600 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Verified</p>}
+                </div>
 
-                    <div className="text-center mt-6">
-                      <p className="text-sm text-gray-600">
-                        Already have an account?{' '}
-                        <a href="/login" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors">
-                          Sign in
-                        </a>
-                      </p>
-                    </div>
-                  </>
-                )}
-
-                {/* STEP 2: Account Setup */}
-                {currentStep === 2 && (
-                  <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
-                    {/* User Role / Category */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">User Role / Category <span className="text-red-500">*</span></label>
-                      <div className="relative group">
-                        <UserCircle className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                        <select name="selectedRole" value={state.selectedRole || ''} onChange={handleInputChange} className="block w-full pl-11 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none appearance-none">
-                          <option value="">Select your role...</option>
-                          {allRoles.map(role => <option key={role} value={role}>{getRoleDisplayName(role)}</option>)}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                          <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Country */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Country <span className="text-red-500">*</span></label>
-                      <div className="relative group">
-                        <Globe className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                        <select name="country" value={state.country} onChange={handleInputChange} className="block w-full pl-11 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none appearance-none">
-                          <option value="">Select Country</option>
-                          {ALL_COUNTRIES.map(c => <option key={c.isoCode} value={c.isoCode}>{c.name}</option>)}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                          <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* State / UT */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">State / UT <span className="text-red-500">*</span></label>
-                      <div className="relative group">
-                        <MapPin className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                        <select name="state" value={state.state} onChange={handleInputChange} disabled={!state.country} className="block w-full pl-11 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none appearance-none disabled:bg-gray-100 disabled:text-gray-400">
-                          <option value="">{!state.country ? 'Select country first' : 'Select State / UT'}</option>
-                          {states.map(s => <option key={s.isoCode} value={s.name}>{s.name}</option>)}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                          <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* City / District */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">City / District <span className="text-red-500">*</span></label>
-                      <div className="relative group">
-                        <MapPin className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                        <select name="city" value={state.city} onChange={handleInputChange} disabled={!state.state} className="block w-full pl-11 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none appearance-none disabled:bg-gray-100 disabled:text-gray-400">
-                          <option value="">{!state.state ? 'Select state first' : 'Select City / District'}</option>
-                          {cities.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                          <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Preferred Language */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Preferred Language</label>
-                      <div className="relative group">
-                        <Languages className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                        <select name="preferredLanguage" value={state.preferredLanguage} onChange={handleInputChange} className="block w-full pl-11 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none appearance-none">
-                          {LANGUAGES.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                          <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Referral Code / Partner ID */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Referral Code / Partner ID</label>
-                      <div className="relative group">
-                        <Gift className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                        <input type="text" name="referralCode" value={state.referralCode} onChange={handleInputChange} placeholder="Enter referral code (optional)" className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none" />
-                      </div>
-                      <p className="mt-1.5 text-xs text-gray-500 ml-1">Have a referral code? Enter it here for special benefits</p>
-                    </div>
-
-                    {/* Terms & Privacy Policy */}
-                    <div className="pt-2">
-                      <label className="flex items-start gap-3 cursor-pointer group">
-                        <div className="relative flex items-center">
-                          <input type="checkbox" name="agreeToTerms" checked={state.agreeToTerms} onChange={handleInputChange} className="peer h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition-all cursor-pointer" />
-                        </div>
-                        <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">
-                          I agree to the <a href="/terms" target="_blank" className="text-blue-600 font-medium hover:text-blue-700 hover:underline">Terms of Service</a> and <a href="/privacy" target="_blank" className="text-blue-600 font-medium hover:text-blue-700 hover:underline">Privacy Policy</a> <span className="text-red-500">*</span>
-                        </span>
-                      </label>
-                    </div>
-
-                    <div className="flex gap-4 mt-8">
-                      <button type="button" onClick={handlePrevStep} disabled={state.loading} className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 border border-gray-200 rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 font-semibold transition-all duration-200 active:scale-[0.98]">
-                        <ArrowLeft className="w-4 h-4" /> Back
-                      </button>
-                      <button type="submit" disabled={state.loading || !state.agreeToTerms} className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 border border-transparent rounded-xl shadow-lg shadow-blue-200 text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none font-semibold transition-all duration-200 active:scale-[0.98]">
-                        {state.loading ? (<><Loader2 className="w-5 h-5 animate-spin" /><span>Creating Account...</span></>) : <span>Create Account</span>}
+                {state.otpSent && !state.otpVerified && (
+                  <div className="animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Verification Code</label>
+                    <div className="flex gap-3">
+                      <input type="text" name="otp" value={state.otp} onChange={handleInputChange} placeholder="123456" maxLength={6} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-center tracking-[0.5em] font-mono text-lg transition-all outline-none" />
+                      <button type="button" onClick={handleVerifyOtp} disabled={state.verifyingOtp || state.otp.length !== 6} className="px-6 py-3 bg-gray-900 text-white font-medium rounded-xl hover:bg-gray-800 disabled:opacity-50 transition-colors">
+                        {state.verifyingOtp ? '...' : 'Verify'}
                       </button>
                     </div>
                   </div>
                 )}
-              </form>
-            </div>
-          </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                    <div className="relative">
+                      <input type={state.showPassword ? 'text' : 'password'} name="password" value={state.password} onChange={handleInputChange} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none pr-12" placeholder="••••••••" />
+                      <button type="button" onClick={() => setState(p => ({ ...p, showPassword: !p.showPassword }))} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        {state.showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password</label>
+                    <div className="relative">
+                      <input type={state.showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={state.confirmPassword} onChange={handleInputChange} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none pr-12" placeholder="••••••••" />
+                      <button type="button" onClick={() => setState(p => ({ ...p, showConfirmPassword: !p.showConfirmPassword }))} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        {state.showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <button type="button" onClick={handleNextStep} className="w-full py-4 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                    Continue <ArrowRight className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2 FIELDS */}
+            {currentStep === 2 && (
+              <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">I am a...</label>
+                  <select name="selectedRole" value={state.selectedRole || ''} onChange={handleInputChange} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none">
+                    <option value="">Select your role</option>
+                    {allRoles.map(role => <option key={role} value={role}>{getRoleDisplayName(role)}</option>)}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Country</label>
+                    <select name="country" value={state.country} onChange={handleInputChange} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none">
+                      <option value="">Select Country</option>
+                      {ALL_COUNTRIES.map(c => <option key={c.isoCode} value={c.isoCode}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">State</label>
+                    <select name="state" value={state.state} onChange={handleInputChange} disabled={!state.country} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none disabled:bg-gray-100 disabled:text-gray-400">
+                      <option value="">Select State</option>
+                      {states.map(s => <option key={s.isoCode} value={s.name}>{s.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">City</label>
+                    <select name="city" value={state.city} onChange={handleInputChange} disabled={!state.state} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none disabled:bg-gray-100 disabled:text-gray-400">
+                      <option value="">Select City</option>
+                      {cities.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Language</label>
+                    <select name="preferredLanguage" value={state.preferredLanguage} onChange={handleInputChange} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none">
+                      {LANGUAGES.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Referral Code <span className="text-gray-400 font-normal">(Optional)</span></label>
+                  <input type="text" name="referralCode" value={state.referralCode} onChange={handleInputChange} placeholder="Code" className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none" />
+                </div>
+
+                <div className="pt-2">
+                  <label className="flex items-start gap-3 cursor-pointer group p-3 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors">
+                    <div className="relative flex items-center pt-0.5">
+                      <input type="checkbox" name="agreeToTerms" checked={state.agreeToTerms} onChange={handleInputChange} className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" />
+                    </div>
+                    <span className="text-sm text-gray-600 leading-relaxed">
+                      I agree to the <a href="/terms" target="_blank" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline">Terms of Service</a> and <a href="/privacy" target="_blank" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline">Privacy Policy</a>.
+                    </span>
+                  </label>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button type="button" onClick={handlePrevStep} disabled={state.loading} className="px-6 py-4 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all">Back</button>
+                  <button type="submit" disabled={state.loading || !state.agreeToTerms} className="flex-1 py-4 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {state.loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Create Account</span>}
+                  </button>
+                </div>
+              </div>
+            )}
+          </form>
+
+          <p className="text-center text-sm text-gray-600 mt-8">
+            Already have an account? <a href="/login" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline">Sign in</a>
+          </p>
         </div>
       </div>
     </div>
