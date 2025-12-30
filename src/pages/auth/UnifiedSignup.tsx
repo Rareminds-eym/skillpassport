@@ -12,7 +12,7 @@ import {
     TrendingUp
 } from 'lucide-react';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 // @ts-ignore - JS module without types
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
