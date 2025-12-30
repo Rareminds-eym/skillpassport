@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
 import { downloadReceipt, generateReceiptBase64 } from '../../services/Subscriptions/pdfReceiptGenerator';
 import { getPaymentReceiptUrl, uploadPaymentReceipt } from '../../services/storageApiService';
@@ -121,6 +122,14 @@ function PaymentSuccess() {
     if (verificationStatus === 'success' && transactionDetails && activationStatus === 'pending') {
       setActivationStatus('activating');
       
+      // Debug logging for receipt upload
+      console.log('[PaymentSuccess] Transaction details received:', {
+        payment_id: transactionDetails.payment_id,
+        receipt_url: transactionDetails.receipt_url,
+        receipt_upload_error: transactionDetails.receipt_upload_error,
+        email_sent: transactionDetails.email_sent,
+      });
+      
       // Worker now creates subscription - get it from transactionDetails
       const subscription = transactionDetails?.subscription;
       
@@ -149,7 +158,12 @@ function PaymentSuccess() {
             // Backend already uploaded the receipt
             setReceiptUrl(transactionDetails.receipt_url);
             localStorage.setItem(`receipt_url_${transactionDetails.payment_id}`, transactionDetails.receipt_url);
+            console.log('[PaymentSuccess] Receipt URL from backend:', transactionDetails.receipt_url);
           } else {
+            // Log the error if backend upload failed
+            if (transactionDetails.receipt_upload_error) {
+              console.warn('[PaymentSuccess] Backend receipt upload failed:', transactionDetails.receipt_upload_error);
+            }
             // Fallback: upload from frontend
             const receiptData = {
               transaction: {
