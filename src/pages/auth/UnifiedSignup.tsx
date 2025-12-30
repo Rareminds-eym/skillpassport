@@ -1,6 +1,8 @@
 import { City, Country, State } from 'country-state-city';
 import {
   AlertCircle,
+  ArrowLeft,
+  ArrowRight,
   CheckCircle,
   Eye, EyeOff,
   Gift,
@@ -151,6 +153,7 @@ const UnifiedSignup = () => {
     loading: false, sendingOtp: false, verifyingOtp: false, error: ''
   });
 
+  const [currentStep, setCurrentStep] = useState(1);
   const [states, setStates] = useState<any[]>([]);
   const [cities, setCities] = useState<any[]>([]);
 
@@ -225,7 +228,8 @@ const UnifiedSignup = () => {
     }
   };
 
-  const validateForm = (): boolean => {
+  // Validate Step 1 fields
+  const validateStep1 = (): boolean => {
     if (!state.firstName.trim()) { setState(prev => ({ ...prev, error: 'Please enter your first name' })); return false; }
     if (!state.lastName.trim()) { setState(prev => ({ ...prev, error: 'Please enter your last name' })); return false; }
     if (!state.dateOfBirth) { setState(prev => ({ ...prev, error: 'Please enter your date of birth' })); return false; }
@@ -235,11 +239,36 @@ const UnifiedSignup = () => {
     if (!state.password || state.password.length < 8) { setState(prev => ({ ...prev, error: 'Password must be at least 8 characters' })); return false; }
     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(state.password)) { setState(prev => ({ ...prev, error: 'Password must contain uppercase, lowercase, and number' })); return false; }
     if (state.password !== state.confirmPassword) { setState(prev => ({ ...prev, error: 'Passwords do not match' })); return false; }
+    return true;
+  };
+
+  // Validate Step 2 fields
+  const validateStep2 = (): boolean => {
     if (!state.selectedRole) { setState(prev => ({ ...prev, error: 'Please select a user role' })); return false; }
     if (!state.country) { setState(prev => ({ ...prev, error: 'Please select your country' })); return false; }
     if (!state.state) { setState(prev => ({ ...prev, error: 'Please select your state' })); return false; }
     if (!state.city) { setState(prev => ({ ...prev, error: 'Please select your city' })); return false; }
     if (!state.agreeToTerms) { setState(prev => ({ ...prev, error: 'Please agree to Terms & Privacy Policy' })); return false; }
+    return true;
+  };
+
+  // Handle Next Step
+  const handleNextStep = () => {
+    if (validateStep1()) {
+      setState(prev => ({ ...prev, error: '' }));
+      setCurrentStep(2);
+    }
+  };
+
+  // Handle Previous Step
+  const handlePrevStep = () => {
+    setState(prev => ({ ...prev, error: '' }));
+    setCurrentStep(1);
+  };
+
+  const validateForm = (): boolean => {
+    if (!validateStep1()) return false;
+    if (!validateStep2()) return false;
     return true;
   };
 
@@ -251,7 +280,7 @@ const UnifiedSignup = () => {
     try {
       const firstName = state.firstName.charAt(0).toUpperCase() + state.firstName.slice(1).toLowerCase();
       const lastName = state.lastName.charAt(0).toUpperCase() + state.lastName.slice(1).toLowerCase();
-      const fullName = `${firstName} ${lastName}`.trim();
+      const fullName = `${firstName} ${lastName} `.trim();
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: state.email.toLowerCase(), password: state.password,
@@ -316,219 +345,282 @@ const UnifiedSignup = () => {
           <div className="relative w-full max-w-lg">
             <div className="text-center mb-6">
               <h3 className="text-3xl font-bold text-white lg:text-gray-900">Create Account</h3>
-              <p className="text-sm text-white/80 lg:text-gray-600 mt-2">Fill in your details to get started</p>
+              <p className="text-sm text-white/80 lg:text-gray-600 mt-2">
+                {currentStep === 1 ? 'Step 1: Personal Information' : 'Step 2: Account Setup'}
+              </p>
+
+              {/* Step Indicator */}
+              <div className="flex items-center justify-center gap-4 mt-8 mb-8">
+                <div className="flex flex-col items-center gap-2 relative z-10">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 shadow-md ${currentStep >= 1 ? 'bg-blue-600 text-white shadow-blue-200 ring-2 ring-blue-100 ring-offset-2' : 'bg-gray-100 text-gray-400 border border-gray-200'}`}>1</div>
+                  <span className={`text-xs font-semibold tracking-wide transition-colors duration-300 ${currentStep >= 1 ? 'text-blue-700' : 'text-gray-400'}`}>Personal Info</span>
+                </div>
+
+                {/* Connector Line */}
+                <div className="flex-1 max-w-[100px] h-[2px] bg-gray-200 relative -top-3">
+                  <div className={`h-full bg-blue-600 transition-all duration-500 ease-out`} style={{ width: currentStep >= 2 ? '100%' : '0%' }}></div>
+                </div>
+
+                <div className="flex flex-col items-center gap-2 relative z-10">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 shadow-md ${currentStep >= 2 ? 'bg-blue-600 text-white shadow-blue-200 ring-2 ring-blue-100 ring-offset-2' : 'bg-white text-gray-500 border-2 border-gray-200'}`}>2</div>
+                  <span className={`text-xs font-semibold tracking-wide transition-colors duration-300 ${currentStep >= 2 ? 'text-blue-700' : 'text-gray-400'}`}>Account Setup</span>
+                </div>
+              </div>
             </div>
-            <div className="rounded-2xl bg-transparent lg:bg-white/95 lg:shadow-xl lg:ring-1 lg:ring-black/5 p-5 sm:p-6 lg:p-8 max-h-[75vh] overflow-y-auto">
+
+            <div className="rounded-2xl bg-white shadow-xl ring-1 ring-black/5 p-6 sm:p-8 mx-auto w-full">
               {state.error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-800">{state.error}</p>
+                  <p className="text-sm font-medium text-red-800">{state.error}</p>
                 </div>
               )}
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-5">
 
-                {/* First Name & Last Name */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">First Name <span className="text-red-400">*</span></label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <input type="text" name="firstName" value={state.firstName} onChange={handleInputChange} placeholder="First name" className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white" />
+                {/* STEP 1: Personal Information */}
+                {currentStep === 1 && (
+                  <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">First Name <span className="text-red-500">*</span></label>
+                        <div className="relative group">
+                          <User className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                          <input type="text" name="firstName" value={state.firstName} onChange={handleInputChange} placeholder="John" className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Last Name <span className="text-red-500">*</span></label>
+                        <div className="relative group">
+                          <User className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                          <input type="text" name="lastName" value={state.lastName} onChange={handleInputChange} placeholder="Doe" className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none" />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">Last Name <span className="text-red-400">*</span></label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <input type="text" name="lastName" value={state.lastName} onChange={handleInputChange} placeholder="Last name" className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white" />
+
+                    {/* Date of Birth */}
+                    <div className="relative group">
+                      <DatePicker
+                        name="dateOfBirth"
+                        label="Date of Birth"
+                        required
+                        value={state.dateOfBirth}
+                        onChange={handleInputChange}
+                        placeholder="Select date"
+                        maxDate={new Date().toISOString().split('T')[0]}
+                      />
                     </div>
-                  </div>
-                </div>
 
-                {/* Date of Birth */}
-                <DatePicker
-                  name="dateOfBirth"
-                  label="Date of Birth"
-                  required
-                  value={state.dateOfBirth}
-                  onChange={handleInputChange}
-                  placeholder="Select your date of birth"
-                  maxDate={new Date().toISOString().split('T')[0]}
-                />
-
-                {/* Email */}
-                <div>
-                  <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">Email Address <span className="text-red-400">*</span></label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input type="email" name="email" value={state.email} onChange={handleInputChange} placeholder="you@example.com" className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white" />
-                  </div>
-                </div>
-
-                {/* Mobile Number with OTP */}
-                <div>
-                  <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">Mobile Number <span className="text-red-400">*</span></label>
-                  <div className="flex gap-2">
-                    {/* Country Code Dropdown */}
-                    <select
-                      name="countryCode"
-                      value={state.countryCode}
-                      onChange={handleInputChange}
-                      disabled={state.otpVerified}
-                      className={`w-24 py-2.5 px-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white appearance-none text-sm font-medium ${state.otpVerified ? 'border-green-500 bg-green-50' : 'border-gray-300'}`}
-                    >
-                      {COUNTRY_CODES.map(cc => (
-                        <option key={cc.code} value={cc.dialCode}>
-                          {cc.dialCode}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="relative flex-1">
-                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <input type="tel" name="phone" value={state.phone} onChange={handleInputChange} placeholder="Phone number" disabled={state.otpVerified} className={`block w-full pl-10 pr-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white ${state.otpVerified ? 'border-green-500 bg-green-50' : 'border-gray-300'}`} />
-                      {state.otpVerified && <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />}
+                    {/* Email */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email Address <span className="text-red-500">*</span></label>
+                      <div className="relative group">
+                        <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <input type="email" name="email" value={state.email} onChange={handleInputChange} placeholder="john.doe@example.com" className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none" />
+                      </div>
                     </div>
-                    {!state.otpVerified && (
-                      <button type="button" onClick={handleSendOtp} disabled={state.sendingOtp || state.phone.length < 7} className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap">
-                        {state.sendingOtp ? 'Sending...' : state.otpSent ? 'Resend' : 'Send OTP'}
-                      </button>
+
+                    {/* Mobile Number with OTP */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Mobile Number <span className="text-red-500">*</span></label>
+                      <div className="flex gap-3">
+                        {/* Country Code Dropdown */}
+                        <div className="relative">
+                          <select
+                            name="countryCode"
+                            value={state.countryCode}
+                            onChange={handleInputChange}
+                            disabled={state.otpVerified}
+                            className={`h-full pl-3 pr-8 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 appearance-none text-sm font-medium outline-none transition-all ${state.otpVerified ? 'border-green-200 bg-green-50 text-green-700' : 'border-gray-200'}`}
+                          >
+                            {COUNTRY_CODES.map(cc => (
+                              <option key={cc.code} value={cc.dialCode}>
+                                {cc.code} ({cc.dialCode})
+                              </option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                            <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                          </div>
+                        </div>
+
+                        <div className="relative flex-1 group">
+                          <Phone className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                          <input type="tel" name="phone" value={state.phone} onChange={handleInputChange} placeholder="Phone number" disabled={state.otpVerified} className={`block w-full pl-11 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none ${state.otpVerified ? 'border-green-200 bg-green-50' : 'border-gray-200'}`} />
+                          {state.otpVerified && <CheckCircle className="absolute right-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />}
+                        </div>
+                        {!state.otpVerified && (
+                          <button type="button" onClick={handleSendOtp} disabled={state.sendingOtp || state.phone.length < 7} className="px-5 py-3 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 shadow-md shadow-blue-200 transition-all active:scale-95 whitespace-nowrap">
+                            {state.sendingOtp ? <Loader2 className="w-5 h-5 animate-spin" /> : state.otpSent ? 'Resend' : 'Send OTP'}
+                          </button>
+                        )}
+                      </div>
+                      {state.otpVerified && <p className="mt-2 text-xs font-medium text-green-600 flex items-center gap-1.5 animate-in slide-in-from-top-1"><CheckCircle className="w-3.5 h-3.5" /> Mobile number verified successfully</p>}
+                    </div>
+
+                    {/* OTP Input */}
+                    {state.otpSent && !state.otpVerified && (
+                      <div>
+                        <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">Enter OTP <span className="text-red-400">*</span></label>
+                        <div className="flex gap-2">
+                          <input type="text" name="otp" value={state.otp} onChange={handleInputChange} placeholder="6-digit OTP" maxLength={6} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-center tracking-widest font-mono" />
+                          <button type="button" onClick={handleVerifyOtp} disabled={state.verifyingOtp || state.otp.length !== 6} className="px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50">
+                            {state.verifyingOtp ? 'Verifying...' : 'Verify'}
+                          </button>
+                        </div>
+                        <p className="mt-1 text-xs text-white/70 lg:text-gray-500">OTP sent to {state.countryCode} {state.phone}</p>
+                      </div>
                     )}
-                  </div>
-                  {state.otpVerified && <p className="mt-1 text-xs text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Phone verified</p>}
-                </div>
 
-                {/* OTP Input */}
-                {state.otpSent && !state.otpVerified && (
-                  <div>
-                    <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">Enter OTP <span className="text-red-400">*</span></label>
-                    <div className="flex gap-2">
-                      <input type="text" name="otp" value={state.otp} onChange={handleInputChange} placeholder="6-digit OTP" maxLength={6} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-center tracking-widest font-mono" />
-                      <button type="button" onClick={handleVerifyOtp} disabled={state.verifyingOtp || state.otp.length !== 6} className="px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50">
-                        {state.verifyingOtp ? 'Verifying...' : 'Verify'}
+                    {/* Password */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password <span className="text-red-500">*</span></label>
+                      <div className="relative group">
+                        <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <input type={state.showPassword ? 'text' : 'password'} name="password" value={state.password} onChange={handleInputChange} placeholder="Min. 8 characters" className="block w-full pl-11 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none" />
+                        <button type="button" onClick={() => setState(p => ({ ...p, showPassword: !p.showPassword }))} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1">
+                          {state.showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                      <p className="mt-1.5 text-xs text-gray-500 ml-1">Must contain uppercase, lowercase, and number</p>
+                    </div>
+
+                    {/* Confirm Password */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Confirm Password <span className="text-red-500">*</span></label>
+                      <div className="relative group">
+                        <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <input type={state.showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={state.confirmPassword} onChange={handleInputChange} placeholder="Re-enter password" className="block w-full pl-11 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none" />
+                        <button type="button" onClick={() => setState(p => ({ ...p, showConfirmPassword: !p.showConfirmPassword }))} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1">
+                          {state.showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button type="button" onClick={handleNextStep} className="w-full flex items-center justify-center gap-2 py-3.5 px-6 border border-transparent rounded-xl shadow-lg shadow-blue-200 text-white bg-blue-600 hover:bg-blue-700 font-semibold mt-8 transition-all duration-200 active:scale-[0.98]">
+                      Next Step <ArrowRight className="w-4 h-4" />
+                    </button>
+
+                    <div className="text-center mt-6">
+                      <p className="text-sm text-gray-600">
+                        Already have an account?{' '}
+                        <a href="/login" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors">
+                          Sign in
+                        </a>
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {/* STEP 2: Account Setup */}
+                {currentStep === 2 && (
+                  <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                    {/* User Role / Category */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">User Role / Category <span className="text-red-500">*</span></label>
+                      <div className="relative group">
+                        <UserCircle className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <select name="selectedRole" value={state.selectedRole || ''} onChange={handleInputChange} className="block w-full pl-11 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none appearance-none">
+                          <option value="">Select your role...</option>
+                          {allRoles.map(role => <option key={role} value={role}>{getRoleDisplayName(role)}</option>)}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                          <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Country */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Country <span className="text-red-500">*</span></label>
+                      <div className="relative group">
+                        <Globe className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <select name="country" value={state.country} onChange={handleInputChange} className="block w-full pl-11 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none appearance-none">
+                          <option value="">Select Country</option>
+                          {ALL_COUNTRIES.map(c => <option key={c.isoCode} value={c.isoCode}>{c.name}</option>)}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                          <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* State / UT */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">State / UT <span className="text-red-500">*</span></label>
+                      <div className="relative group">
+                        <MapPin className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <select name="state" value={state.state} onChange={handleInputChange} disabled={!state.country} className="block w-full pl-11 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none appearance-none disabled:bg-gray-100 disabled:text-gray-400">
+                          <option value="">{!state.country ? 'Select country first' : 'Select State / UT'}</option>
+                          {states.map(s => <option key={s.isoCode} value={s.name}>{s.name}</option>)}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                          <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* City / District */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">City / District <span className="text-red-500">*</span></label>
+                      <div className="relative group">
+                        <MapPin className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <select name="city" value={state.city} onChange={handleInputChange} disabled={!state.state} className="block w-full pl-11 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none appearance-none disabled:bg-gray-100 disabled:text-gray-400">
+                          <option value="">{!state.state ? 'Select state first' : 'Select City / District'}</option>
+                          {cities.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                          <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Preferred Language */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Preferred Language</label>
+                      <div className="relative group">
+                        <Languages className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <select name="preferredLanguage" value={state.preferredLanguage} onChange={handleInputChange} className="block w-full pl-11 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none appearance-none">
+                          {LANGUAGES.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                          <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Referral Code / Partner ID */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Referral Code / Partner ID</label>
+                      <div className="relative group">
+                        <Gift className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <input type="text" name="referralCode" value={state.referralCode} onChange={handleInputChange} placeholder="Enter referral code (optional)" className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 outline-none" />
+                      </div>
+                      <p className="mt-1.5 text-xs text-gray-500 ml-1">Have a referral code? Enter it here for special benefits</p>
+                    </div>
+
+                    {/* Terms & Privacy Policy */}
+                    <div className="pt-2">
+                      <label className="flex items-start gap-3 cursor-pointer group">
+                        <div className="relative flex items-center">
+                          <input type="checkbox" name="agreeToTerms" checked={state.agreeToTerms} onChange={handleInputChange} className="peer h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition-all cursor-pointer" />
+                        </div>
+                        <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">
+                          I agree to the <a href="/terms" target="_blank" className="text-blue-600 font-medium hover:text-blue-700 hover:underline">Terms of Service</a> and <a href="/privacy" target="_blank" className="text-blue-600 font-medium hover:text-blue-700 hover:underline">Privacy Policy</a> <span className="text-red-500">*</span>
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="flex gap-4 mt-8">
+                      <button type="button" onClick={handlePrevStep} disabled={state.loading} className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 border border-gray-200 rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 font-semibold transition-all duration-200 active:scale-[0.98]">
+                        <ArrowLeft className="w-4 h-4" /> Back
+                      </button>
+                      <button type="submit" disabled={state.loading || !state.agreeToTerms} className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 border border-transparent rounded-xl shadow-lg shadow-blue-200 text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none font-semibold transition-all duration-200 active:scale-[0.98]">
+                        {state.loading ? (<><Loader2 className="w-5 h-5 animate-spin" /><span>Creating Account...</span></>) : <span>Create Account</span>}
                       </button>
                     </div>
-                    <p className="mt-1 text-xs text-white/70 lg:text-gray-500">OTP sent to {state.countryCode} {state.phone}</p>
                   </div>
                 )}
-
-                {/* Password */}
-                <div>
-                  <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">Password <span className="text-red-400">*</span></label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input type={state.showPassword ? 'text' : 'password'} name="password" value={state.password} onChange={handleInputChange} placeholder="Min. 8 characters" className="block w-full pl-10 pr-12 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white" />
-                    <button type="button" onClick={() => setState(p => ({ ...p, showPassword: !p.showPassword }))} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                      {state.showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                  <p className="mt-1 text-xs text-white/70 lg:text-gray-500">Must contain uppercase, lowercase, and number</p>
-                </div>
-
-                {/* Confirm Password */}
-                <div>
-                  <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">Confirm Password <span className="text-red-400">*</span></label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input type={state.showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={state.confirmPassword} onChange={handleInputChange} placeholder="Re-enter password" className="block w-full pl-10 pr-12 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white" />
-                    <button type="button" onClick={() => setState(p => ({ ...p, showConfirmPassword: !p.showConfirmPassword }))} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                      {state.showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* User Role / Category */}
-                <div>
-                  <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">User Role / Category <span className="text-red-400">*</span></label>
-                  <div className="relative">
-                    <UserCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <select name="selectedRole" value={state.selectedRole || ''} onChange={handleInputChange} className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white appearance-none">
-                      <option value="">Select your role...</option>
-                      {allRoles.map(role => <option key={role} value={role}>{getRoleDisplayName(role)}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Country */}
-                <div>
-                  <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">Country <span className="text-red-400">*</span></label>
-                  <div className="relative">
-                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <select name="country" value={state.country} onChange={handleInputChange} className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white appearance-none">
-                      <option value="">Select Country</option>
-                      {ALL_COUNTRIES.map(c => <option key={c.isoCode} value={c.isoCode}>{c.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {/* State / UT */}
-                <div>
-                  <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">State / UT <span className="text-red-400">*</span></label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <select name="state" value={state.state} onChange={handleInputChange} disabled={!state.country} className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white appearance-none disabled:bg-gray-100">
-                      <option value="">{!state.country ? 'Select country first' : 'Select State / UT'}</option>
-                      {states.map(s => <option key={s.isoCode} value={s.name}>{s.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {/* City / District */}
-                <div>
-                  <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">City / District <span className="text-red-400">*</span></label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <select name="city" value={state.city} onChange={handleInputChange} disabled={!state.state} className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white appearance-none disabled:bg-gray-100">
-                      <option value="">{!state.state ? 'Select state first' : 'Select City / District'}</option>
-                      {cities.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Preferred Language */}
-                <div>
-                  <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">Preferred Language</label>
-                  <div className="relative">
-                    <Languages className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <select name="preferredLanguage" value={state.preferredLanguage} onChange={handleInputChange} className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white appearance-none">
-                      {LANGUAGES.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Referral Code / Partner ID */}
-                <div>
-                  <label className="block text-sm font-medium text-white lg:text-gray-700 mb-1">Referral Code / Partner ID</label>
-                  <div className="relative">
-                    <Gift className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input type="text" name="referralCode" value={state.referralCode} onChange={handleInputChange} placeholder="Enter referral code (optional)" className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white" />
-                  </div>
-                  <p className="mt-1 text-xs text-white/70 lg:text-gray-500">Have a referral code? Enter it here for special benefits</p>
-                </div>
-
-                {/* Terms & Privacy Policy */}
-                <div className="pt-2">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input type="checkbox" name="agreeToTerms" checked={state.agreeToTerms} onChange={handleInputChange} className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
-                    <span className="text-sm text-white lg:text-gray-600">
-                      I agree to the <a href="/terms" target="_blank" className="text-blue-400 lg:text-blue-600 hover:underline">Terms of Service</a> and <a href="/privacy" target="_blank" className="text-blue-400 lg:text-blue-600 hover:underline">Privacy Policy</a> <span className="text-red-400">*</span>
-                    </span>
-                  </label>
-                </div>
-
-                {/* OTP Verification Warning */}
-                {!state.otpVerified && (
-                  <p className="text-sm text-amber-400 lg:text-amber-600 text-center">Please verify your phone number with OTP to continue</p>
-                )}
-
-                {/* Submit Button */}
-                <button type="submit" disabled={state.loading || !state.otpVerified || !state.agreeToTerms} className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed font-medium mt-4">
-                  {state.loading ? (<><Loader2 className="w-5 h-5 animate-spin" /><span>Creating Account...</span></>) : <span>Create Account</span>}
-                </button>
               </form>
-
-              <div className="mt-6 text-center">
-                <p className="text-sm text-white lg:text-gray-600">Already have an account?{' '}<a href="/login" className="font-medium text-white lg:text-blue-600 hover:text-white/80 lg:hover:text-blue-500">Sign in</a></p>
-              </div>
             </div>
           </div>
         </div>
