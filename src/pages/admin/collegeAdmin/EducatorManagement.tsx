@@ -11,7 +11,9 @@ import {
   EnvelopeIcon,
   PhoneIcon,
   BriefcaseIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
+import FacultyDocumentViewerModal from "../../../components/admin/modals/FacultyDocumentViewerModal";
 
 interface Educator {
   id: string;
@@ -22,6 +24,12 @@ interface Educator {
   status: "Active" | "Inactive";
   assignedStudents: number;
   createdAt: string;
+  employeeId?: string;
+  metadata?: {
+    degree_certificate_url?: string;
+    id_proof_url?: string;
+    experience_letters_url?: string[];
+  };
 }
 
 interface FormData {
@@ -43,10 +51,12 @@ const EducatorCard = ({
   educator,
   onEdit,
   onDelete,
+  onViewDocuments,
 }: {
   educator: Educator;
   onEdit: (educator: Educator) => void;
   onDelete: (id: string) => void;
+  onViewDocuments: (educator: Educator) => void;
 }) => {
   const initials = educator.name
     .split(" ")
@@ -103,6 +113,13 @@ const EducatorCard = ({
       </div>
 
       <div className="flex gap-2">
+        <button
+          onClick={() => onViewDocuments(educator)}
+          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 border border-blue-200 rounded-lg text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 hover:border-blue-300 transition-all"
+        >
+          <DocumentTextIcon className="h-4 w-4" />
+          Documents
+        </button>
         <button
           onClick={() => onEdit(educator)}
           className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all"
@@ -168,6 +185,15 @@ const EducatorManagement: React.FC = () => {
       status: "Active",
       assignedStudents: 12,
       createdAt: "2024-01-15T10:00:00Z",
+      employeeId: "FAC001",
+      metadata: {
+        degree_certificate_url: "https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/degrees/sample-degree.pdf",
+        id_proof_url: "https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/id-proofs/sample-id.pdf",
+        experience_letters_url: [
+          "https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/experience-letters/exp1.pdf",
+          "https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/experience-letters/exp2.pdf"
+        ]
+      }
     },
     {
       id: "EDU002",
@@ -178,6 +204,11 @@ const EducatorManagement: React.FC = () => {
       status: "Active",
       assignedStudents: 8,
       createdAt: "2024-01-20T10:00:00Z",
+      employeeId: "FAC002",
+      metadata: {
+        degree_certificate_url: "https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/degrees/sample-degree2.pdf",
+        id_proof_url: "https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/id-proofs/sample-id2.pdf"
+      }
     },
   ]);
 
@@ -191,6 +222,10 @@ const EducatorManagement: React.FC = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Document viewer modal state
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [selectedEducatorForDocs, setSelectedEducatorForDocs] = useState<Educator | null>(null);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -245,6 +280,16 @@ const EducatorManagement: React.FC = () => {
     if (confirm("Are you sure you want to delete this educator?")) {
       setEducators(educators.filter((edu) => edu.id !== id));
     }
+  };
+
+  const handleViewDocuments = (educator: Educator) => {
+    setSelectedEducatorForDocs(educator);
+    setShowDocumentModal(true);
+  };
+
+  const handleCloseDocumentModal = () => {
+    setShowDocumentModal(false);
+    setSelectedEducatorForDocs(null);
   };
 
   const resetForm = () => {
@@ -506,6 +551,7 @@ const EducatorManagement: React.FC = () => {
                     educator={educator}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onViewDocuments={handleViewDocuments}
                   />
                 ))}
               </div>
@@ -513,6 +559,18 @@ const EducatorManagement: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Faculty Document Viewer Modal */}
+      <FacultyDocumentViewerModal
+        isOpen={showDocumentModal}
+        onClose={handleCloseDocumentModal}
+        facultyData={selectedEducatorForDocs ? {
+          name: selectedEducatorForDocs.name,
+          email: selectedEducatorForDocs.email,
+          employeeId: selectedEducatorForDocs.employeeId || selectedEducatorForDocs.id,
+          metadata: selectedEducatorForDocs.metadata
+        } : null}
+      />
     </div>
   );
 };
