@@ -1,19 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
-import { Badge } from '../../components/Students/components/ui/badge';
-import ReactApexChart from 'react-apexcharts';
-import { 
-  TrendingUp, 
-  Calendar, 
-  Briefcase, 
-  Target,
-  Award,
-  Clock,
-  MapPin
+import {
+    Award,
+    Briefcase,
+    Calendar,
+    Clock,
+    MapPin,
+    Target,
+    TrendingUp
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import ReactApexChart from 'react-apexcharts';
 import { supabase } from '../../lib/supabaseClient';
 
 const Analytics = () => {
+  const navigate = useNavigate();
   const [applications, setApplications] = useState([]);
   const [skillsData, setSkillsData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -817,7 +816,7 @@ const Analytics = () => {
             <h3 className="text-xl font-bold text-gray-900 mb-2">No Applications Yet</h3>
             <p className="text-gray-600 text-sm mb-6">Start applying to jobs to see your analytics dashboard</p>
             <button 
-              onClick={() => window.location.href = '/student/opportunities'}
+              onClick={() => navigate('/student/opportunities')}
               className="px-6 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors duration-200"
             >
               Browse Opportunities

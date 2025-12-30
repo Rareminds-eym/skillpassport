@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Calendar, Clock, MapPin, BookOpen, AlertCircle, CheckCircle } from "lucide-react";
+import { AlertCircle, BookOpen, Calendar, CheckCircle, Clock, MapPin } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
 interface TimetableSlot {
@@ -337,12 +337,12 @@ const MyTimetable: React.FC = () => {
 
                     {!slot.lesson_plan_id && (
                       <div className="mt-3">
-                        <a
-                          href="/teacher/lesson-plans/create"
+                        <Link
+                          to="/teacher/lesson-plans/create"
                           className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
                         >
                           + Create Lesson Plan
-                        </a>
+                        </Link>
                       </div>
                     )}
                   </div>

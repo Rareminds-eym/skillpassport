@@ -1,20 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import ReactApexChart from 'react-apexcharts';
-import { 
-  TrendingUp, 
-  Calendar, 
-  Briefcase, 
-  Target,
-  Award,
-  Clock,
-  MapPin
+import {
+    Award,
+    Briefcase,
+    Calendar,
+    Clock,
+    Target,
+    TrendingUp
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import ReactApexChart from 'react-apexcharts';
 import { supabase } from '../../../lib/supabaseClient';
 import TopSkillsInDemand from './TopSkillsInDemand';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 const AnalyticsView = ({ studentId, userEmail }) => {
+  const navigate = useNavigate();
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [debugMode, setDebugMode] = useState(process.env.NODE_ENV === 'development');
@@ -299,7 +298,7 @@ const AnalyticsView = ({ studentId, userEmail }) => {
               <h3 className="text-xl font-bold text-gray-900 mb-2">No Applications Yet</h3>
               <p className="text-gray-600 text-sm mb-6">Start applying to jobs to see your analytics dashboard</p>
               <button 
-                onClick={() => window.location.href = '/student/opportunities'}
+                onClick={() => navigate('/student/opportunities')}
                 className="px-6 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors duration-200"
               >
                 Browse Opportunities

@@ -375,9 +375,9 @@ const UnifiedLogin = () => {
               <div className="mt-6 text-center">
                 <p className="text-sm text-white lg:text-gray-600">
                   Don't have an account?{' '}
-                  <a href="/signup" className="font-medium text-white lg:text-blue-600 hover:text-white/80 lg:hover:text-blue-500">
+                  <Link to="/signup" className="font-medium text-white lg:text-blue-600 hover:text-white/80 lg:hover:text-blue-500">
                     Sign up
-                  </a>
+                  </Link>
                 </p>
               </div>
             </div>

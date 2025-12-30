@@ -1116,9 +1116,9 @@ const SignupAdmin = () => {
         {/* Footer */}
         <div className="text-center mt-6 text-sm text-gray-600">
           Already have an account?{' '}
-          <a href="/login/recruiter" className="text-blue-600 hover:text-blue-700 font-medium">
+          <Link to="/login/recruiter" className="text-blue-600 hover:text-blue-700 font-medium">
             Login here
-          </a>
+          </Link>
         </div>
       </div>
     </div>

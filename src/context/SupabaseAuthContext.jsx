@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { handleAuthError, isJwtExpiryError } from '../utils/authErrorHandler';
 
@@ -322,6 +322,7 @@ export const SupabaseAuthProvider = ({ children }) => {
 export const withAuth = (Component) => {
   return function AuthenticatedComponent(props) {
     const { user, loading } = useSupabaseAuth();
+    const navigate = useNavigate();
 
     if (loading) {
       return (
@@ -333,7 +334,7 @@ export const withAuth = (Component) => {
 
     if (!user) {
       // Redirect to login
-      window.location.href = '/login';
+      navigate('/login');
       return null;
     }
 

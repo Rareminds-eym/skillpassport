@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight,
-  Brain,
-  Sparkles,
-  BookOpen,
-  Send,
-  ThumbsUp,
-  ThumbsDown,
-  Loader2,
-  RefreshCw,
-  History,
-  Plus,
-  LogIn,
-  Trash2,
-  Pencil
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+    BookOpen,
+    Brain,
+    ChevronLeft,
+    ChevronRight,
+    History,
+    Loader2,
+    LogIn,
+    Pencil,
+    Plus,
+    RefreshCw,
+    Send,
+    Sparkles,
+    ThumbsDown,
+    ThumbsUp,
+    Trash2
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useTutorChat } from '../../hooks/useTutorChat';
 // @ts-ignore - AuthContext is a JSX file
@@ -391,12 +391,12 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             <p className="text-sm text-gray-600 mb-6 max-w-xs">
               Please log in to use the AI Tutor and get personalized help with your course.
             </p>
-            <a
-              href="/login"
+            <Link
+              to="/login"
               className="px-6 py-2 bg-violet-600 text-white rounded-xl hover:bg-violet-700 transition-colors font-medium text-sm"
             >
               Log In
-            </a>
+            </Link>
           </div>
         ) : messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center p-6 text-center">

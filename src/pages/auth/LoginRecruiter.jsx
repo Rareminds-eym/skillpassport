@@ -1,21 +1,21 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { useAuth } from "../../context/AuthContext";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import loginIllustration from "../../assets/images/auth/Recruiter-illustration.png";
+import { useAuth } from "../../context/AuthContext";
 
 import {
-  CheckCircle,
-  Zap,
-  BarChart3,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  AlertCircle,
+    AlertCircle,
+    BarChart3,
+    CheckCircle,
+    Eye,
+    EyeOff,
+    Lock,
+    Mail,
+    Zap,
 } from "lucide-react";
-import FeatureCard from "./components/ui/FeatureCard";
 import { loginRecruiter } from "../../services/recruiterProfile";
+import FeatureCard from "./components/ui/FeatureCard";
 
 export default function LoginRecruiter() {
   const [email, setEmail] = useState("");
@@ -171,8 +171,8 @@ export default function LoginRecruiter() {
 
       {/* Links */}
       <div className="flex justify-between mt-4 text-sm">
-        <a
-          href="/resetpassword"
+        <Link
+          to="/resetpassword"
           className={
             isLg
               ? "text-[#e32a18] font-semibold hover:text-[#000000]"
@@ -180,14 +180,14 @@ export default function LoginRecruiter() {
           }
         >
           Forgot password?
-        </a>
+        </Link>
         {isLg ? (
-          <a
-            href="/request-demo"
+          <Link
+            to="/request-demo"
             className="text-[#1d8ad1] font-semibold hover:text-[#5378f1]"
           >
             Request Demo
-          </a>
+          </Link>
         ) : null}
       </div>
     </form>

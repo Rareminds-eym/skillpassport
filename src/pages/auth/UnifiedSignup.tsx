@@ -782,7 +782,7 @@ const UnifiedSignup = () => {
           </form>
 
           <p className="text-center text-sm text-gray-600 mt-8">
-            Already have an account? <a href="/login" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline">Sign in</a>
+            Already have an account? <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline">Sign in</Link>
           </p>
         </div>
       </div>

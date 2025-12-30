@@ -1,21 +1,21 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Search, 
-  ChevronDown,
-  Grid3x3,
-  List,
-  MapPin,
-  Bookmark,
-  BookmarkCheck,
-  Trash2,
-  CheckCircle
+import {
+    Bookmark,
+    BookmarkCheck,
+    CheckCircle,
+    ChevronDown,
+    Grid3x3,
+    List,
+    MapPin,
+    Search,
+    Trash2
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import SavedJobsService from '../../services/savedJobsService';
-import AppliedJobsService from '../../services/appliedJobsService';
+import { useEffect, useMemo, useState } from 'react';
 import OpportunityCard from '../../components/Students/components/OpportunityCard';
 import OpportunityListItem from '../../components/Students/components/OpportunityListItem';
 import OpportunityPreview from '../../components/Students/components/OpportunityPreview';
+import { useAuth } from '../../context/AuthContext';
+import AppliedJobsService from '../../services/appliedJobsService';
+import SavedJobsService from '../../services/savedJobsService';
 
 const SavedJobs = () => {
   const { user } = useAuth();
@@ -369,12 +369,12 @@ const SavedJobs = () => {
             <p className="text-gray-500 mb-6">
               Start saving jobs from the Opportunities page to keep track of interesting positions
             </p>
-            <a
-              href="/student/opportunities"
+            <Link
+              to="/student/opportunities"
               className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Browse Opportunities
-            </a>
+            </Link>
           </div>
         )}
 

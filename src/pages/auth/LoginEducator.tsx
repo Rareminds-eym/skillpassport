@@ -197,8 +197,8 @@ export default function LoginEducator() {
 
       {/* Links */}
       <div className="flex justify-between mt-4 text-sm">
-        <a
-          href="/educator/forgot-password"
+        <Link
+          to="/educator/forgot-password"
           className={
             isLg
               ? "text-[#4f46e5] font-semibold hover:text-[#1e1b4b]"
@@ -206,14 +206,14 @@ export default function LoginEducator() {
           }
         >
           Forgot password?
-        </a>
+        </Link>
         {isLg ? (
-          <a
-            href="/signup"
+          <Link
+            to="/signup"
             className="text-[#4f46e5] font-semibold hover:text-[#312e81]"
           >
             Sign up
-          </a>
+          </Link>
         ) : null}
       </div>
     </form>

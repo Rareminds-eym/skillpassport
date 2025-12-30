@@ -277,9 +277,9 @@ export default function SignupRecruiter() {
 
                 <div className="text-center mt-4 text-sm">
                   <span className="text-gray-600">Already have an account? </span>
-                  <a href="/login/recruiter" className="text-blue-600 font-semibold hover:text-blue-700">
+                  <Link to="/login/recruiter" className="text-blue-600 font-semibold hover:text-blue-700">
                     Login here
-                  </a>
+                  </Link>
                 </div>
               </form>
             </div>

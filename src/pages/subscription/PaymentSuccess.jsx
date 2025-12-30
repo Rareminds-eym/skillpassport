@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
 import { downloadReceipt, generateReceiptBase64 } from '../../services/Subscriptions/pdfReceiptGenerator';
-import { uploadPaymentReceipt, getPaymentReceiptUrl } from '../../services/storageApiService';
+import { getPaymentReceiptUrl, uploadPaymentReceipt } from '../../services/storageApiService';
 import { clearPendingUserData } from '../../utils/authCleanup';
 
 // Receipt Card with clean design
@@ -488,7 +488,7 @@ function PaymentSuccess() {
 
         {/* Help */}
         <p className="text-center text-xs text-gray-400 pt-2">
-          Need help? <a href="/contact" className="text-[#2663EB] font-medium">Contact Support</a>
+          Need help? <Link to="/contact" className="text-[#2663EB] font-medium">Contact Support</Link>
         </p>
       </div>
 
