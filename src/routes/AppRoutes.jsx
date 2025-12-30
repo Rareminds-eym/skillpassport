@@ -1,5 +1,7 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import ProtectedRoute from "../components/ProtectedRoute";
+import { SubscriptionProtectedRoute } from "../components/subscription";
 import Loader from "../components/Loader";
 import ProtectedRoute from "../components/ProtectedRoute";
 import ScrollToTop from "../components/ScrollToTop";
@@ -652,9 +654,13 @@ const AppRoutes = () => {
         <Route
           path="/student/*"
           element={
-            <ProtectedRoute allowedRoles={["student"]}>
+            <SubscriptionProtectedRoute 
+              allowedRoles={["student", "school_student", "college_student"]}
+              requireSubscription={true}
+              subscriptionFallbackPath="/subscription/plans"
+            >
               <StudentLayout />
-            </ProtectedRoute>
+            </SubscriptionProtectedRoute>
           }
         >
           <Route path="dashboard" element={<StudentDashboard />} />

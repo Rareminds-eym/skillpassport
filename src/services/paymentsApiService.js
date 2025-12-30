@@ -6,14 +6,15 @@
  * This ensures security, consistency, and proper audit trails.
  * 
  * AVAILABLE METHODS:
- * - createOrder()           - Create Razorpay order for subscription
- * - createEventOrder()      - Create Razorpay order for events
- * - verifyPayment()         - Verify payment + create subscription
- * - getSubscription()       - Get user's active subscription
- * - cancelSubscription()    - Cancel Razorpay recurring subscription
- * - deactivateSubscription() - Deactivate/cancel subscription
- * - pauseSubscription()     - Pause subscription (1-3 months)
- * - resumeSubscription()    - Resume paused subscription
+ * - createOrder()              - Create Razorpay order for subscription
+ * - createEventOrder()         - Create Razorpay order for events
+ * - verifyPayment()            - Verify payment + create subscription
+ * - getSubscription()          - Get user's active subscription
+ * - checkSubscriptionAccess()  - Check if user has access (for route protection)
+ * - cancelSubscription()       - Cancel Razorpay recurring subscription
+ * - deactivateSubscription()   - Deactivate/cancel subscription
+ * - pauseSubscription()        - Pause subscription (1-3 months)
+ * - resumeSubscription()       - Resume paused subscription
  */
 
 const WORKER_URL = import.meta.env.VITE_PAYMENTS_API_URL;
@@ -140,6 +141,44 @@ export async function getSubscription(token) {
 }
 
 /**
+ * Check subscription access for route protection
+ * Returns detailed access information including grace period handling
+ * @param {string} token - Auth token
+ * @returns {Promise<Object>} Access check result
+ * @returns {boolean} result.hasAccess - Whether user has access
+ * @returns {string} result.accessReason - Reason for access decision
+ * @returns {Object|null} result.subscription - Subscription data if exists
+ * @returns {boolean} result.showWarning - Whether to show warning banner
+ * @returns {string} result.warningType - Type of warning (expiring_soon, grace_period, paused)
+ * @returns {string} result.warningMessage - Warning message to display
+ * @returns {number} result.daysUntilExpiry - Days until subscription expires
+ */
+export async function checkSubscriptionAccess(token) {
+  const response = await fetch(`${getBaseUrl()}/check-subscription-access`, {
+    method: 'GET',
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    // On 401, return no access
+    if (response.status === 401) {
+      return {
+        success: false,
+        hasAccess: false,
+        accessReason: 'no_subscription',
+        subscription: null,
+        showWarning: false,
+      };
+    }
+    
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to check subscription access');
+  }
+
+  return response.json();
+}
+
+/**
  * Cancel a Razorpay recurring subscription
  * Use this for subscriptions with razorpay_subscription_id
  * @param {string} subscriptionId - Razorpay subscription ID
@@ -252,6 +291,7 @@ export default {
   verifyPayment,
   // Subscription management
   getSubscription,
+  checkSubscriptionAccess,
   cancelSubscription,
   deactivateSubscription,
   pauseSubscription,
