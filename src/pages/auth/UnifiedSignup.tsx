@@ -2,12 +2,14 @@ import { City, Country, State } from 'country-state-city';
 import {
     AlertCircle,
     ArrowRight,
+    Award,
     CheckCircle,
     ChevronDown,
     Eye, EyeOff,
     Globe,
     Loader2,
-    ShieldCheck
+    Share2,
+    TrendingUp
 } from 'lucide-react';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -421,55 +423,56 @@ const UnifiedSignup = () => {
   return (
     <div className="flex min-h-screen bg-white">
       {/* LEFT SIDE: Branding & Value Prop */}
-      <div className="hidden lg:flex lg:w-5/12 bg-slate-900 relative overflow-hidden flex-col justify-between p-12 text-white">
+      <div className="hidden lg:flex lg:w-5/12 bg-slate-900 relative overflow-hidden flex-col justify-center p-12 text-white">
         {/* Background Effects */}
         <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
         <div className="absolute top-1/2 -right-24 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
 
-        {/* Logo Area */}
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-10">
-            <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-900/50">
-              <Globe className="w-8 h-8 text-white" />
-            </div>
-            <span className="text-2xl font-bold tracking-tight">SkillPassport</span>
+        {/* Content Container */}
+        <div className="relative z-10 max-w-lg mx-auto space-y-16">
+          {/* Hero Text */}
+          <div className="space-y-4">
+            <h1 className="text-4xl md:text-5xl font-bold leading-tight">
+              Empower Students. Verify Real Skills.
+            </h1>
+            <p className="text-lg text-slate-300 leading-relaxed">
+              Guide students and verify their skills for better opportunities.
+            </p>
           </div>
 
-          <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-6">
-            Start your global career journey today.
-          </h1>
-          <p className="text-lg text-slate-300 leading-relaxed max-w-md">
-            Join thousands of students and professionals accessing verified opportunities worldwide. Secure, transparent, and built for your future.
-          </p>
-        </div>
-
-        {/* Feature Highlights */}
-        <div className="relative z-10 space-y-6">
-          <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors">
-            <div className="p-2 rounded-lg bg-blue-500/20 text-blue-300">
-              <ShieldCheck className="w-6 h-6" />
+          {/* Feature Highlights */}
+          <div className="space-y-5">
+            <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors">
+              <div className="p-2 rounded-lg bg-blue-500/20 text-blue-300">
+                <Award className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Showcase verified skills</h3>
+                <p className="text-slate-400 text-sm">Display your authenticated credentials to stand out.</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-lg">Verified Security</h3>
-              <p className="text-slate-400 text-sm">Your data is encrypted and protected with enterprise-grade security.</p>
+
+            <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors">
+              <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300">
+                <Share2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Share with recruiters worldwide</h3>
+                <p className="text-slate-400 text-sm">Connect with employers across the globe instantly.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors">
+              <div className="p-2 rounded-lg bg-purple-500/20 text-purple-300">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Track employability score</h3>
+                <p className="text-slate-400 text-sm">Monitor and improve your career readiness metrics.</p>
+              </div>
             </div>
           </div>
-
-          <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors">
-            <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300">
-              <Globe className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg">Global Reach</h3>
-              <p className="text-slate-400 text-sm">Connect with institutions and recruiters from over 30 countries.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer Brand */}
-        <div className="relative z-10 text-sm text-slate-500">
-          © 2024 SkillPassport. All rights reserved.
         </div>
       </div>
 
