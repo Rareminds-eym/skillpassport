@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import Loader from "../components/Loader";
 import ProtectedRoute from "../components/ProtectedRoute";
+import ScrollToTop from "../components/ScrollToTop";
 
 import AdminLayout from "../layouts/AdminLayout";
 import EducatorLayout from "../layouts/EducatorLayout";
@@ -381,6 +382,7 @@ const SchoolAdminDigitalPortfolio = lazy(() =>
 const AppRoutes = () => {
   return (
     <Suspense fallback={<Loader />}>
+      <ScrollToTop />
       <Routes>
         {/* Event Sales - Standalone without layout (no header/footer) */}
         <Route path="/register/plans" element={<EventSales />} />
