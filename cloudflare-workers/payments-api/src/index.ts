@@ -460,37 +460,77 @@ async function uploadReceiptToR2(
   paymentId: string,
   userId: string,
   filename: string
-): Promise<{ success: boolean; url?: string; fileKey?: string }> {
+): Promise<{ success: boolean; url?: string; fileKey?: string; error?: string }> {
   const storageUrl = env.STORAGE_API_URL || STORAGE_API_URL;
+  const uploadEndpoint = `${storageUrl}/upload-payment-receipt`;
+  
+  console.log(`[RECEIPT] ========== RECEIPT UPLOAD START ==========`);
+  console.log(`[RECEIPT] Payment ID: ${paymentId}`);
+  console.log(`[RECEIPT] User ID: ${userId}`);
+  console.log(`[RECEIPT] Filename: ${filename}`);
+  console.log(`[RECEIPT] Storage URL: ${storageUrl}`);
+  console.log(`[RECEIPT] Upload Endpoint: ${uploadEndpoint}`);
+  console.log(`[RECEIPT] Base64 length: ${pdfBase64.length} chars`);
   
   try {
-    console.log(`[RECEIPT] Uploading receipt for payment ${paymentId} to R2`);
+    const requestBody = JSON.stringify({
+      pdfBase64,
+      paymentId,
+      userId,
+      filename,
+    });
     
-    const response = await fetch(`${storageUrl}/upload-payment-receipt`, {
+    console.log(`[RECEIPT] Request body size: ${requestBody.length} bytes`);
+    console.log(`[RECEIPT] Sending POST request to storage-api...`);
+    
+    const startTime = Date.now();
+    const response = await fetch(uploadEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        pdfBase64,
-        paymentId,
-        userId,
-        filename,
-      }),
+      body: requestBody,
     });
+    const duration = Date.now() - startTime;
+    
+    console.log(`[RECEIPT] Response received in ${duration}ms`);
+    console.log(`[RECEIPT] Response status: ${response.status} ${response.statusText}`);
+    console.log(`[RECEIPT] Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
+
+    const responseText = await response.text();
+    console.log(`[RECEIPT] Response body: ${responseText.substring(0, 500)}`);
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[RECEIPT] Upload failed: ${response.status} - ${errorText}`);
-      return { success: false };
+      console.error(`[RECEIPT] Upload FAILED: ${response.status} - ${responseText}`);
+      return { success: false, error: `HTTP ${response.status}: ${responseText}` };
     }
 
-    const result = await response.json() as { success: boolean; url?: string; fileKey?: string };
-    console.log(`[RECEIPT] Upload successful:`, result);
+    let result: { success: boolean; url?: string; fileKey?: string };
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error(`[RECEIPT] Failed to parse response JSON: ${parseError}`);
+      return { success: false, error: `Invalid JSON response: ${responseText.substring(0, 100)}` };
+    }
+    
+    console.log(`[RECEIPT] Parsed result:`, JSON.stringify(result));
+    
+    if (result.success && result.fileKey) {
+      console.log(`[RECEIPT] ========== RECEIPT UPLOAD SUCCESS ==========`);
+      console.log(`[RECEIPT] File Key: ${result.fileKey}`);
+      console.log(`[RECEIPT] URL: ${result.url}`);
+    } else {
+      console.warn(`[RECEIPT] Upload returned success=${result.success}, fileKey=${result.fileKey}`);
+    }
+    
     return result;
   } catch (error) {
-    console.error(`[RECEIPT] Upload error:`, error);
-    return { success: false };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : 'No stack trace';
+    console.error(`[RECEIPT] ========== RECEIPT UPLOAD ERROR ==========`);
+    console.error(`[RECEIPT] Error message: ${errorMessage}`);
+    console.error(`[RECEIPT] Error stack: ${errorStack}`);
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -976,6 +1016,12 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
 
   // Generate and upload receipt PDF to R2
   let receiptUrl: string | undefined;
+  let receiptUploadError: string | undefined;
+  console.log(`[VERIFY-PAYMENT] ========== STARTING RECEIPT GENERATION ==========`);
+  console.log(`[VERIFY-PAYMENT] Subscription ID: ${subscription.id}`);
+  console.log(`[VERIFY-PAYMENT] Payment ID: ${razorpay_payment_id}`);
+  console.log(`[VERIFY-PAYMENT] User ID: ${order.user_id}`);
+  
   try {
     const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { 
       year: 'numeric', 
@@ -983,6 +1029,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       day: 'numeric' 
     });
     
+    console.log(`[VERIFY-PAYMENT] Generating receipt PDF base64...`);
     const receiptPdfBase64 = generateReceiptPdfBase64({
       paymentId: razorpay_payment_id,
       orderId: razorpay_order_id,
@@ -995,22 +1042,45 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       paymentMethod: paymentMethod,
       paymentDate: formatDate(now),
     });
+    console.log(`[VERIFY-PAYMENT] Receipt PDF base64 generated, length: ${receiptPdfBase64.length}`);
     
     const filename = `Receipt-${razorpay_payment_id.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+    console.log(`[VERIFY-PAYMENT] Calling uploadReceiptToR2 with filename: ${filename}`);
+    
     const uploadResult = await uploadReceiptToR2(env, receiptPdfBase64, razorpay_payment_id, order.user_id, filename);
+    console.log(`[VERIFY-PAYMENT] Upload result:`, JSON.stringify(uploadResult));
     
     if (uploadResult.success && uploadResult.fileKey) {
       receiptUrl = getReceiptDownloadUrl(env, uploadResult.fileKey);
-      console.log(`Receipt uploaded successfully: ${receiptUrl}`);
+      console.log(`[VERIFY-PAYMENT] Receipt URL generated: ${receiptUrl}`);
       
       // Store receipt URL in subscription record
-      await supabaseAdmin
+      console.log(`[VERIFY-PAYMENT] Updating subscription ${subscription.id} with receipt_url...`);
+      const { error: updateError } = await supabaseAdmin
         .from('subscriptions')
         .update({ receipt_url: receiptUrl })
         .eq('id', subscription.id);
+      
+      if (updateError) {
+        console.error(`[VERIFY-PAYMENT] Failed to update subscription with receipt_url:`, updateError);
+        receiptUploadError = `DB update failed: ${updateError.message}`;
+      } else {
+        console.log(`[VERIFY-PAYMENT] ========== RECEIPT SAVED SUCCESSFULLY ==========`);
+      }
+    } else {
+      console.warn(`[VERIFY-PAYMENT] Receipt upload failed or missing fileKey`);
+      console.warn(`[VERIFY-PAYMENT] uploadResult.success: ${uploadResult.success}`);
+      console.warn(`[VERIFY-PAYMENT] uploadResult.fileKey: ${uploadResult.fileKey}`);
+      console.warn(`[VERIFY-PAYMENT] uploadResult.error: ${uploadResult.error}`);
+      receiptUploadError = uploadResult.error || 'Upload returned success=false or missing fileKey';
     }
   } catch (receiptError) {
-    console.error('Failed to generate/upload receipt:', receiptError);
+    const errorMsg = receiptError instanceof Error ? receiptError.message : String(receiptError);
+    const errorStack = receiptError instanceof Error ? receiptError.stack : 'No stack';
+    console.error(`[VERIFY-PAYMENT] ========== RECEIPT GENERATION/UPLOAD FAILED ==========`);
+    console.error(`[VERIFY-PAYMENT] Error: ${errorMsg}`);
+    console.error(`[VERIFY-PAYMENT] Stack: ${errorStack}`);
+    receiptUploadError = errorMsg;
     // Don't fail the payment verification if receipt upload fails
   }
 
@@ -1046,6 +1116,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     subscription: subscription,
     email_sent: emailSent,
     receipt_url: receiptUrl,
+    receipt_upload_error: receiptUploadError,
   });
 }
 
