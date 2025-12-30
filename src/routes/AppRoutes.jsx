@@ -1,10 +1,9 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
-import ProtectedRoute from "../components/ProtectedRoute";
-import { SubscriptionProtectedRoute } from "../components/subscription";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import Loader from "../components/Loader";
 import ProtectedRoute from "../components/ProtectedRoute";
 import ScrollToTop from "../components/ScrollToTop";
+import { SubscriptionProtectedRoute } from "../components/subscription";
 
 import AdminLayout from "../layouts/AdminLayout";
 import EducatorLayout from "../layouts/EducatorLayout";
