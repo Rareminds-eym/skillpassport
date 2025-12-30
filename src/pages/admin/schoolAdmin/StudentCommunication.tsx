@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { 
   MagnifyingGlassIcon,
@@ -14,16 +14,18 @@ import {
   ArrowUturnLeftIcon,
   ChevronLeftIcon,
   TrashIcon,
-  AcademicCapIcon,
+  UserGroupIcon,
   ChatBubbleLeftRightIcon,
   XMarkIcon,
-  UserGroupIcon
+  AcademicCapIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import MessageService, { Conversation } from '../../../services/messageService';
 import { supabase } from '../../../lib/supabaseClient';
 import { useEducatorMessages } from '../../../hooks/useEducatorMessages.js';
+import { useEducatorAdminMessages } from '../../../hooks/useEducatorAdminMessages.js';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../../../context/AuthContext.jsx';
 import { useGlobalPresence } from '../../../context/GlobalPresenceContext';
@@ -32,9 +34,11 @@ import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../../hooks/useNotificationBroadcast';
 import DeleteConversationModal from '../../../components/messaging/DeleteConversationModal';
 import NewStudentConversationModal from '../../../components/messaging/NewStudentConversationModal';
+import NewSchoolAdminEducatorConversationModal from '../../../components/messaging/NewSchoolAdminEducatorConversationModal';
 
 const StudentCommunication = () => {
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,8 +50,21 @@ const StudentCommunication = () => {
     contactName: '' 
   });
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
+  const [showNewEducatorConversationModal, setShowNewEducatorConversationModal] = useState(false);
+  const [showTabDropdown, setShowTabDropdown] = useState(false);
+  const [isTabSwitching, setIsTabSwitching] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const markedAsReadRef = useRef<Set<string>>(new Set());
+  const tabDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Tab management
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (tabFromUrl && ['students', 'educators'].includes(tabFromUrl)) {
+      return tabFromUrl;
+    }
+    return 'students'; // Default to students
+  });
   
   // Get school admin ID from auth
   const { user } = useAuth();
@@ -83,7 +100,7 @@ const StudentCommunication = () => {
   const schoolId = schoolData?.school_id;
   
   // Fetch active conversations with students using the same pattern as educator
-  const { data: activeConversations = [], isLoading: loadingActive, refetch: refetchActive } = useQuery({
+  const { data: activeStudentConversations = [], isLoading: loadingActiveStudents, refetch: refetchActiveStudents } = useQuery({
     queryKey: ['school-admin-conversations', schoolId, 'active'],
     queryFn: async () => {
       if (!schoolId) return [];
@@ -110,8 +127,8 @@ const StudentCommunication = () => {
     refetchOnMount: 'always',
   });
 
-  // Fetch archived conversations
-  const { data: archivedConversations = [], isLoading: loadingArchived, refetch: refetchArchived } = useQuery({
+  // Fetch archived student conversations
+  const { data: archivedStudentConversations = [], isLoading: loadingArchivedStudents, refetch: refetchArchivedStudents } = useQuery({
     queryKey: ['school-admin-conversations', schoolId, 'archived'],
     queryFn: async () => {
       if (!schoolId) return [];
@@ -138,14 +155,89 @@ const StudentCommunication = () => {
     refetchOnMount: 'always',
   });
 
-  const conversations = showArchived ? archivedConversations : activeConversations;
-  const loadingConversations = showArchived ? loadingArchived : loadingActive;
-  
-  // Fetch messages for selected conversation
-  const { messages, isLoading: loadingMessages, sendMessage, isSending } = useEducatorMessages({
-    conversationId: selectedConversationId,
-    enabled: !!selectedConversationId,
+  // Fetch active educator conversations
+  const { data: activeEducatorConversations = [], isLoading: loadingActiveEducators, refetch: refetchActiveEducators } = useQuery({
+    queryKey: ['school-admin-educator-conversations', schoolId, 'active'],
+    queryFn: async () => {
+      if (!schoolId) return [];
+      const { data, error } = await supabase
+        .from('conversations')
+        .select(`
+          *,
+          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url),
+          school:schools(id, name)
+        `)
+        .eq('school_id', schoolId)
+        .eq('conversation_type', 'educator_admin')
+        .eq('deleted_by_admin', false)
+        .order('last_message_at', { ascending: false, nullsFirst: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!schoolId,
+    staleTime: 60000,
+    gcTime: 5 * 60 * 1000,
+    refetchInterval: false,
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
   });
+
+  // Fetch archived educator conversations
+  const { data: archivedEducatorConversations = [], isLoading: loadingArchivedEducators, refetch: refetchArchivedEducators } = useQuery({
+    queryKey: ['school-admin-educator-conversations', schoolId, 'archived'],
+    queryFn: async () => {
+      if (!schoolId) return [];
+      const { data, error } = await supabase
+        .from('conversations')
+        .select(`
+          *,
+          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url),
+          school:schools(id, name)
+        `)
+        .eq('school_id', schoolId)
+        .eq('conversation_type', 'educator_admin')
+        .eq('status', 'archived')
+        .order('last_message_at', { ascending: false, nullsFirst: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!schoolId,
+    staleTime: 60000,
+    gcTime: 5 * 60 * 1000,
+    refetchInterval: false,
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
+  });
+
+  // Get current conversations based on active tab and archived state
+  const conversations = activeTab === 'students' 
+    ? (showArchived ? archivedStudentConversations : activeStudentConversations)
+    : (showArchived ? archivedEducatorConversations : activeEducatorConversations);
+    
+  const loadingConversations = activeTab === 'students'
+    ? (showArchived ? loadingArchivedStudents : loadingActiveStudents)
+    : (showArchived ? loadingArchivedEducators : loadingActiveEducators);
+    
+  const refetchConversations = activeTab === 'students'
+    ? (showArchived ? refetchArchivedStudents : refetchActiveStudents)
+    : (showArchived ? refetchArchivedEducators : refetchActiveEducators);
+  
+  // Fetch messages for selected conversation - call both hooks unconditionally
+  const studentMessages = useEducatorMessages({
+    conversationId: activeTab === 'students' ? selectedConversationId : null,
+    enabled: activeTab === 'students' && !!selectedConversationId,
+  });
+
+  const educatorMessages = useEducatorAdminMessages({
+    conversationId: activeTab === 'educators' ? selectedConversationId : null,
+    enabled: activeTab === 'educators' && !!selectedConversationId,
+  });
+
+  // Select the appropriate messages based on active tab
+  const { messages, isLoading: loadingMessages, sendMessage, isSending } = 
+    activeTab === 'students' ? studentMessages : educatorMessages;
 
   // Use shared global presence context
   const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
@@ -178,6 +270,52 @@ const StudentCommunication = () => {
     showToast: true,
     enabled: !!schoolAdminId
   });
+
+  // Close dropdown when clicking outside
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    if (tabDropdownRef.current && !tabDropdownRef.current.contains(event.target as Node)) {
+      setShowTabDropdown(false);
+    }
+  }, []);
+  
+  useEffect(() => {
+    if (showTabDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showTabDropdown, handleClickOutside]);
+
+  // Handle tab changes from URL parameter
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    const newTab = tabFromUrl === 'educators' ? 'educators' : 'students';
+    
+    if (newTab !== activeTab) {
+      console.log('🔄 Tab switching from', activeTab, 'to', newTab);
+      setIsTabSwitching(true);
+      setActiveTab(newTab);
+      setSelectedConversationId(null);
+      
+      // Force fetch data for the new tab
+      if (schoolId) {
+        console.log('🚀 Triggering fetch for new tab:', newTab);
+        
+        let fetchPromise = Promise.resolve();
+        
+        if (newTab === 'students' && refetchActiveStudents) {
+          fetchPromise = refetchActiveStudents();
+        } else if (newTab === 'educators' && refetchActiveEducators) {
+          fetchPromise = refetchActiveEducators();
+        }
+        
+        fetchPromise.finally(() => {
+          setTimeout(() => setIsTabSwitching(false), 300);
+        });
+      } else {
+        setIsTabSwitching(false);
+      }
+    }
+  }, [searchParams, activeTab, schoolId, refetchActiveStudents, refetchActiveEducators]);
 
   // Subscribe to conversation updates
   useEffect(() => {
@@ -220,7 +358,7 @@ const StudentCommunication = () => {
         console.log('🎯 Auto-creating conversation with student:', targetStudent);
         
         // Check if conversation already exists
-        const existingConversation = activeConversations.find(conv => 
+        const existingConversation = activeStudentConversations.find(conv => 
           conv.student_id === targetStudent.targetStudentId
         );
         
@@ -242,7 +380,7 @@ const StudentCommunication = () => {
         console.log('✅ Conversation created:', conversation);
         
         // Refresh conversations to include the new one
-        await refetchActive();
+        await refetchActiveStudents();
         
         // Select the new conversation
         setSelectedConversationId(conversation.id);
@@ -256,13 +394,13 @@ const StudentCommunication = () => {
     };
 
     createConversationWithStudent();
-  }, [targetStudent, schoolId, activeConversations, loadingConversations, refetchActive]);
+  }, [targetStudent, schoolId, activeStudentConversations, loadingConversations, refetchActiveStudents]);
   
   // Mark messages as read when conversation is selected
   useEffect(() => {
     if (!selectedConversationId || !schoolAdminId) return;
     
-    const conversation = activeConversations.find(c => c.id === selectedConversationId);
+    const conversation = conversations.find(c => c.id === selectedConversationId);
     const hasUnread = (conversation?.admin_unread_count || 0) > 0;
     
     if (!hasUnread) return;
@@ -272,8 +410,10 @@ const StudentCommunication = () => {
     markedAsReadRef.current.add(markKey);
     
     // Optimistically update the UI
-    queryClient.setQueryData<typeof activeConversations>(
-      ['school-admin-conversations', schoolId, 'active'],
+    queryClient.setQueryData<typeof conversations>(
+      activeTab === 'students' 
+        ? ['school-admin-conversations', schoolId, 'active']
+        : ['school-admin-educator-conversations', schoolId, 'active'],
       (oldData) => {
         if (!oldData) return oldData;
         return oldData.map(conv => 
@@ -288,9 +428,9 @@ const StudentCommunication = () => {
       .catch(err => {
         console.error('Failed to mark as read:', err);
         markedAsReadRef.current.delete(markKey);
-        refetchActive();
+        refetchConversations();
       });
-  }, [selectedConversationId, schoolAdminId, activeConversations, queryClient, refetchActive, schoolId]);
+  }, [selectedConversationId, schoolAdminId, conversations, queryClient, refetchConversations, schoolId, activeTab]);
   
   // Delete mutation
   const deleteMutation = useMutation({
@@ -320,8 +460,7 @@ const StudentCommunication = () => {
     },
     onError: () => {
       toast.error('Failed to delete conversation');
-      refetchActive();
-      refetchArchived();
+      refetchConversations();
     },
     onSuccess: (_data, variables) => {
       queryClient.setQueryData(['school-admin-conversations', schoolId, 'active'], (old: any) => {
@@ -344,8 +483,7 @@ const StudentCommunication = () => {
     },
     onSuccess: () => {
       toast.success('Conversation restored');
-      refetchActive();
-      refetchArchived();
+      refetchConversations();
     }
   });
   
@@ -363,15 +501,18 @@ const StudentCommunication = () => {
         : MessageService.unarchiveConversation(conversationId)
       );
       
-      await Promise.all([refetchActive(), refetchArchived()]);
+      await Promise.all([
+        activeTab === 'students' 
+          ? (showArchived ? refetchArchivedStudents() : refetchActiveStudents())
+          : (showArchived ? refetchArchivedEducators() : refetchActiveEducators())
+      ]);
     } catch (error) {
       console.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error);
-      refetchActive();
-      refetchArchived();
+      refetchConversations();
     } finally {
       setTimeout(() => setIsTransitioning(false), 300);
     }
-  }, [selectedConversationId, refetchActive, refetchArchived]);
+  }, [selectedConversationId, refetchConversations, activeTab, showArchived, refetchArchivedStudents, refetchActiveStudents, refetchArchivedEducators, refetchActiveEducators]);
 
   // Handle new conversation creation
   const handleNewConversation = useCallback(async (studentId: string, subject: string) => {
@@ -381,8 +522,8 @@ const StudentCommunication = () => {
       console.log('🆕 Creating new conversation with student:', studentId, 'subject:', subject);
       
       // Check if conversation already exists
-      const existingConversation = activeConversations.find(conv => 
-        conv.student_id === studentId
+      const existingConversation = (activeTab === 'students' ? activeStudentConversations : activeEducatorConversations).find(conv => 
+        activeTab === 'students' ? conv.student_id === studentId : conv.educator_id === studentId
       );
       
       if (existingConversation) {
@@ -403,7 +544,7 @@ const StudentCommunication = () => {
       console.log('✅ New conversation created:', conversation);
       
       // Refresh conversations to include the new one
-      await refetchActive();
+      await (activeTab === 'students' ? refetchActiveStudents() : refetchActiveEducators());
       
       // Select the new conversation
       setSelectedConversationId(conversation.id);
@@ -415,7 +556,65 @@ const StudentCommunication = () => {
       console.error('❌ Error creating conversation:', error);
       toast.error('Failed to start conversation');
     }
-  }, [schoolId, activeConversations, refetchActive]);
+  }, [schoolId, activeStudentConversations, activeEducatorConversations, refetchActiveStudents, refetchActiveEducators, activeTab]);
+
+  // Handle new educator conversation creation
+  const handleNewEducatorConversation = useCallback(async ({ educatorId, educatorUserId, subject, initialMessage }: { educatorId: string; educatorUserId: string; subject: string; initialMessage: string }) => {
+    if (!schoolId || !schoolAdminId) return;
+    
+    try {
+      console.log('🆕 Creating new conversation with educator:', { educatorId, subject });
+      
+      // Check if conversation already exists
+      const existingConversation = activeEducatorConversations.find(conv => 
+        conv.educator_id === educatorId && conv.subject === subject
+      );
+      
+      if (existingConversation) {
+        console.log('✅ Found existing conversation:', existingConversation.id);
+        setSelectedConversationId(existingConversation.id);
+        setShowNewEducatorConversationModal(false);
+        toast.success('Opened existing conversation');
+        return;
+      }
+      
+      // Create new conversation
+      const conversation = await MessageService.getOrCreateEducatorAdminConversation(
+        educatorId,
+        schoolId,
+        subject
+      );
+      
+      console.log('✅ New educator conversation created:', conversation);
+      
+      // Send the initial message
+      if (initialMessage.trim()) {
+        await MessageService.sendMessage({
+          conversationId: conversation.id,
+          senderId: schoolAdminId,
+          senderType: 'school_admin',
+          receiverId: educatorId,
+          receiverType: 'educator',
+          messageText: initialMessage
+        });
+      }
+      
+      // Refresh conversations to include the new one
+      await refetchActiveEducators();
+      
+      // Switch to educators tab and select the new conversation
+      setActiveTab('educators');
+      setSearchParams({ tab: 'educators' }, { replace: true });
+      setSelectedConversationId(conversation.id);
+      setShowNewEducatorConversationModal(false);
+      
+      toast.success('New conversation started with educator');
+      
+    } catch (error) {
+      console.error('❌ Error creating educator conversation:', error);
+      toast.error('Failed to start conversation with educator');
+    }
+  }, [schoolId, schoolAdminId, activeEducatorConversations, refetchActiveEducators, setSearchParams]);
 
   // Handle delete conversation
   const handleDeleteConversation = useCallback(async () => {
@@ -455,62 +654,81 @@ const StudentCommunication = () => {
     const activeConversations = conversations.filter((conv: any) => !conv._pendingDelete);
 
     const contacts = activeConversations.map((conv: any) => {
-      // Use direct student fields instead of profile JSONB
-      const studentName = conv.student?.name || conv.student?.email || 'Student';
-      const studentEmail = conv.student?.email || '';
-      const studentUniversity = conv.student?.university || '';
-      const studentBranch = conv.student?.branch_field || '';
-      const subject = conv.subject || 'General Discussion';
-      
-      // Build role string with university and branch info
-      let role = subject;
-      if (studentEmail) {
-        role += ` • ${studentEmail}`;
+      if (activeTab === 'students') {
+        // Student conversations
+        const studentName = conv.student?.name || conv.student?.email || 'Student';
+        const studentEmail = conv.student?.email || '';
+        const studentUniversity = conv.student?.university || '';
+        const studentBranch = conv.student?.branch_field || '';
+        const subject = conv.subject || 'General Discussion';
+        
+        // Build role string with university and branch info
+        let role = subject;
+        if (studentEmail) {
+          role += ` • ${studentEmail}`;
+        }
+        if (studentUniversity) {
+          role += ` • ${studentUniversity}`;
+        }
+        if (studentBranch) {
+          role += ` (${studentBranch})`;
+        }
+        
+        return {
+          id: conv.id,
+          name: studentName,
+          role: role,
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=3B82F6&color=fff`,
+          lastMessage: conv.last_message_preview || 'No messages yet',
+          online: isUserOnlineGlobal(conv.student_id),
+          time: conv.last_message_at 
+            ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
+            : 'No messages',
+          unread: conv.admin_unread_count || 0,
+          studentId: conv.student_id,
+          subject: conv.subject,
+          type: 'student'
+        };
+      } else {
+        // Educator conversations
+        const educatorName = `${conv.educator?.first_name || ''} ${conv.educator?.last_name || ''}`.trim() || 
+                             conv.educator?.email || 'Educator';
+        const educatorEmail = conv.educator?.email || '';
+        const subject = conv.subject || 'General Discussion';
+        
+        // Build role string
+        let role = `Educator • ${subject}`;
+        if (educatorEmail) {
+          role += ` • ${educatorEmail}`;
+        }
+        
+        return {
+          id: conv.id,
+          name: educatorName,
+          role: role,
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=3B82F6&color=fff`,
+          lastMessage: conv.last_message_preview || 'No messages yet',
+          online: isUserOnlineGlobal(conv.educator?.user_id),
+          time: conv.last_message_at 
+            ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
+            : 'No messages',
+          unread: conv.admin_unread_count || 0,
+          educatorId: conv.educator_id,
+          subject: conv.subject,
+          type: 'educator'
+        };
       }
-      if (studentUniversity) {
-        role += ` • ${studentUniversity}`;
-      }
-      if (studentBranch) {
-        role += ` (${studentBranch})`;
-      }
-      
-      return {
-        id: conv.id,
-        name: studentName,
-        role: role,
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=3B82F6&color=fff`,
-        lastMessage: conv.last_message_preview || 'No messages yet',
-        online: isUserOnlineGlobal(conv.student_id),
-        time: conv.last_message_at 
-          ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
-          : 'No messages',
-        unread: conv.admin_unread_count || 0,
-        studentId: conv.student_id,
-        subject: conv.subject,
-        // Additional searchable fields
-        studentEmail: studentEmail,
-        university: studentUniversity,
-        branch: studentBranch,
-      };
     });
 
     if (!searchQuery) return contacts;
     
     const query = searchQuery.toLowerCase();
     return contacts.filter(c => 
-      // Basic info
       c.name.toLowerCase().includes(query) || 
-      c.studentEmail.toLowerCase().includes(query) ||
-      // Subject info
       c.role.toLowerCase().includes(query) ||
-      c.subject.toLowerCase().includes(query) ||
-      // University info
-      c.university.toLowerCase().includes(query) ||
-      c.branch.toLowerCase().includes(query) ||
-      // Message content
       c.lastMessage.toLowerCase().includes(query)
     );
-  }, [conversations, searchQuery, isUserOnlineGlobal]);
+  }, [conversations, searchQuery, isUserOnlineGlobal, activeTab]);
 
   const currentChat = useMemo(() => 
     filteredContacts.find(c => c.id === selectedConversationId),
@@ -522,25 +740,62 @@ const StudentCommunication = () => {
     if (!messageInput.trim() || !currentChat || !schoolAdminId) return;
     
     try {
-      await sendMessage({
-        senderId: schoolAdminId,
-        senderType: 'school_admin',
-        receiverId: currentChat.studentId,
-        receiverType: 'student',
-        messageText: messageInput,
-        subject: currentChat.subject
-      });
-      
-      // Send notification to student
-      try {
-        await sendNotification(currentChat.studentId, {
-          title: 'New Message from School Admin',
-          message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
-          type: 'message',
-          link: `/student/messages?tab=admin&conversation=${selectedConversationId}`
+      if (activeTab === 'students') {
+        // Send message to student
+        await sendMessage({
+          senderId: schoolAdminId,
+          senderType: 'school_admin',
+          receiverId: currentChat.studentId,
+          receiverType: 'student',
+          messageText: messageInput,
+          subject: currentChat.subject
         });
-      } catch (notifError) {
-        // Silent fail
+        
+        // Send notification to student
+        try {
+          await sendNotification(currentChat.studentId, {
+            title: 'New Message from School Admin',
+            message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+            type: 'message',
+            link: `/student/messages?tab=admin&conversation=${selectedConversationId}`
+          });
+        } catch (notifError) {
+          // Silent fail
+        }
+      } else {
+        // Send message to educator
+        // Find educator user ID
+        const { data: educator, error: educatorError } = await supabase
+          .from('school_educators')
+          .select('user_id')
+          .eq('id', currentChat.educatorId)
+          .single();
+        
+        if (educatorError || !educator) {
+          toast.error('Could not find educator');
+          return;
+        }
+
+        await sendMessage({
+          senderId: schoolAdminId,
+          senderType: 'school_admin',
+          receiverId: educator.user_id,
+          receiverType: 'educator',
+          messageText: messageInput,
+          subject: currentChat.subject
+        });
+        
+        // Send notification to educator
+        try {
+          await sendNotification(educator.user_id, {
+            title: 'New Message from School Admin',
+            message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+            type: 'message',
+            link: `/educator/communication?tab=admin&conversation=${selectedConversationId}`
+          });
+        } catch (notifError) {
+          // Silent fail
+        }
       }
       
       setMessageInput('');
@@ -548,7 +803,7 @@ const StudentCommunication = () => {
     } catch (error) {
       console.error('Error sending message:', error);
     }
-  }, [messageInput, currentChat, schoolAdminId, sendMessage, sendNotification, selectedConversationId, setTyping]);
+  }, [messageInput, currentChat, schoolAdminId, sendMessage, sendNotification, selectedConversationId, setTyping, activeTab]);
 
   // Handle typing in input
   const handleInputChange = useCallback((value: string) => {
@@ -581,52 +836,170 @@ const StudentCommunication = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <h1 className="text-2xl font-bold mb-6">Student Communication</h1>
+      <h1 className="text-2xl font-bold mb-6">Communication Center</h1>
 
-      {/* Student Messages Section */}
+      {/* Messages Section */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200 mb-6">
         <div className="flex h-[600px]">
           {/* Left Panel - Contacts List */}
           <div className="w-full md:w-[400px] border-r border-gray-200 flex flex-col">
-            {/* Search Header */}
+            {/* Header with Tabs */}
             <div className="px-6 py-5 border-b border-gray-200">
-              <div className="flex items-center gap-3 mb-4">
-                {showArchived && (
-                  <button
-                    onClick={() => setShowArchived(false)}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                    title="Back to messages"
-                  >
-                    <ChevronLeftIcon className="w-5 h-5 text-gray-700" />
-                  </button>
-                )}
-                <UserGroupIcon className="w-6 h-6 text-blue-600" />
-                <div className="flex flex-col flex-1">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {showArchived ? 'Archived Messages' : 'Student Messages'}
-                  </h2>
-                  {searchQuery && (
-                    <p className="text-sm text-gray-500 mt-1">
-                      {filteredContacts.length} conversation{filteredContacts.length !== 1 ? 's' : ''} found for "{searchQuery}"
-                    </p>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Messages</h2>
+                
+                <div className="flex items-center gap-2">
+                  {/* New Button - Show for both tabs */}
+                  {!showArchived && (
+                    <button
+                      onClick={() => {
+                        if (activeTab === 'students') {
+                          setShowNewConversationModal(true);
+                        } else {
+                          setShowNewEducatorConversationModal(true);
+                        }
+                      }}
+                      className={`px-3 py-2 ${
+                        activeTab === 'students' 
+                          ? 'bg-blue-600 hover:bg-blue-700' 
+                          : 'bg-green-600 hover:bg-green-700'
+                      } text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2`}
+                      title={`Start new conversation with ${activeTab === 'students' ? 'student' : 'educator'}`}
+                    >
+                      {activeTab === 'students' ? (
+                        <UserGroupIcon className="w-4 h-4" />
+                      ) : (
+                        <AcademicCapIcon className="w-4 h-4" />
+                      )}
+                      New
+                    </button>
                   )}
+                  
+                  {/* Tab Dropdown */}
+                  <div className="relative" ref={tabDropdownRef}>
+                    <button
+                      onClick={() => setShowTabDropdown(!showTabDropdown)}
+                      className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        {activeTab === 'students' && (
+                          <>
+                            <UserGroupIcon className="w-4 h-4 text-blue-600" />
+                            <span className="text-sm font-medium text-gray-900">Students</span>
+                            {activeStudentConversations.length > 0 && (
+                              <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                                {activeStudentConversations.length}
+                              </span>
+                            )}
+                          </>
+                        )}
+                        {activeTab === 'educators' && (
+                          <>
+                            <AcademicCapIcon className="w-4 h-4 text-green-600" />
+                            <span className="text-sm font-medium text-gray-900">Educators</span>
+                            {activeEducatorConversations.length > 0 && (
+                              <span className="bg-green-100 text-green-600 text-xs px-2 py-0.5 rounded-full">
+                                {activeEducatorConversations.length}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      <ChevronDownIcon className={`w-4 h-4 text-gray-500 transition-transform ${showTabDropdown ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {/* Dropdown Menu */}
+                    {showTabDropdown && (
+                      <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                        <div className="py-1">
+                          {/* Students Tab */}
+                          <button
+                            onClick={async () => {
+                              console.log('🔄 Switching to students tab');
+                              setIsTabSwitching(true);
+                              setActiveTab('students');
+                              setSelectedConversationId(null);
+                              setSearchParams({ tab: 'students' }, { replace: true });
+                              setShowTabDropdown(false);
+                              
+                              // Force refetch for students tab
+                              if (schoolId && refetchActiveStudents) {
+                                console.log('🚀 Refetching student conversations');
+                                try {
+                                  await refetchActiveStudents();
+                                } finally {
+                                  setTimeout(() => setIsTabSwitching(false), 300);
+                                }
+                              } else {
+                                setIsTabSwitching(false);
+                              }
+                            }}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                              activeTab === 'students' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                            }`}
+                          >
+                            <UserGroupIcon className={`w-4 h-4 ${activeTab === 'students' ? 'text-blue-600' : 'text-gray-500'}`} />
+                            <div className="flex-1">
+                              <div className="font-medium">Students</div>
+                              <div className="text-xs text-gray-500">Student messages and inquiries</div>
+                            </div>
+                            {activeStudentConversations.length > 0 && (
+                              <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                                {activeStudentConversations.length}
+                              </span>
+                            )}
+                          </button>
+                          
+                          {/* Educators Tab */}
+                          <button
+                            onClick={async () => {
+                              console.log('🔄 Switching to educators tab');
+                              setIsTabSwitching(true);
+                              setActiveTab('educators');
+                              setSelectedConversationId(null);
+                              setSearchParams({ tab: 'educators' }, { replace: true });
+                              setShowTabDropdown(false);
+                              
+                              // Force refetch for educators tab
+                              if (schoolId && refetchActiveEducators) {
+                                console.log('🚀 Refetching educator conversations');
+                                try {
+                                  await refetchActiveEducators();
+                                } finally {
+                                  setTimeout(() => setIsTabSwitching(false), 300);
+                                }
+                              } else {
+                                setIsTabSwitching(false);
+                              }
+                            }}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                              activeTab === 'educators' ? 'bg-green-50 text-green-700' : 'text-gray-700'
+                            }`}
+                          >
+                            <AcademicCapIcon className={`w-4 h-4 ${activeTab === 'educators' ? 'text-green-600' : 'text-gray-500'}`} />
+                            <div className="flex-1">
+                              <div className="font-medium">Educators</div>
+                              <div className="text-xs text-gray-500">Teacher and faculty messages</div>
+                            </div>
+                            {activeEducatorConversations.length > 0 && (
+                              <span className="bg-green-100 text-green-600 text-xs px-2 py-0.5 rounded-full">
+                                {activeEducatorConversations.length}
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                {!showArchived && (
-                  <button
-                    onClick={() => setShowNewConversationModal(true)}
-                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-                    title="Start new conversation"
-                  >
-                    <ChatBubbleLeftRightIcon className="w-4 h-4" />
-                    New
-                  </button>
-                )}
               </div>
+              
+              {/* Search */}
               <div className="relative">
                 <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search by student name, email, subject, or university..."
+                  placeholder={`Search ${activeTab === 'students' ? 'student' : 'educator'} conversations...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -651,7 +1024,9 @@ const StudentCommunication = () => {
             {/* Contacts List */}
             <div className="flex-1 overflow-y-auto relative">
               {/* Archived Button */}
-              {!showArchived && !loadingArchived && archivedConversations.length > 0 && (
+              {!showArchived && 
+               !(activeTab === 'students' ? loadingArchivedStudents : loadingArchivedEducators) && 
+               (activeTab === 'students' ? archivedStudentConversations : archivedEducatorConversations).length > 0 && (
                 <button
                   onClick={() => {
                     setShowArchived(true);
@@ -667,7 +1042,7 @@ const StudentCommunication = () => {
                     <div className="text-left">
                       <h3 className="font-bold text-gray-900 text-sm">Archived</h3>
                       <p className="text-xs text-gray-500">
-                        {archivedConversations.length} conversation{archivedConversations.length !== 1 ? 's' : ''}
+                        {(activeTab === 'students' ? archivedStudentConversations : archivedEducatorConversations).length} conversation{(activeTab === 'students' ? archivedStudentConversations : archivedEducatorConversations).length !== 1 ? 's' : ''}
                       </p>
                     </div>
                   </div>
@@ -689,22 +1064,30 @@ const StudentCommunication = () => {
               ) : filteredContacts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full p-6 text-center">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <AcademicCapIcon className="w-8 h-8 text-gray-400" />
+                    {activeTab === 'students' ? (
+                      <UserGroupIcon className="w-8 h-8 text-gray-400" />
+                    ) : (
+                      <AcademicCapIcon className="w-8 h-8 text-gray-400" />
+                    )}
                   </div>
                   <p className="text-gray-600 text-sm font-medium">
                     {showArchived 
                       ? 'No archived conversations' 
                       : searchQuery 
                       ? `No conversations found for "${searchQuery}"` 
-                      : 'No student messages yet'
+                      : activeTab === 'students' 
+                      ? 'No student messages yet'
+                      : 'No educator messages yet'
                     }
                   </p>
                   <p className="text-gray-400 text-xs mt-2 mb-4">
                     {showArchived 
                       ? 'Archived conversations will appear here' 
                       : searchQuery 
-                      ? 'Try searching by student name, email, subject, or university' 
-                      : 'Students will message you about school matters'
+                      ? `Try searching by ${activeTab === 'students' ? 'student name, email, subject, or university' : 'educator name, email, or subject'}` 
+                      : activeTab === 'students'
+                      ? 'Students will message you about school matters'
+                      : 'Educators will message you about teaching matters'
                     }
                   </p>
                   {searchQuery && (
@@ -715,7 +1098,7 @@ const StudentCommunication = () => {
                       Clear Search
                     </button>
                   )}
-                  {!showArchived && !searchQuery && (
+                  {!showArchived && !searchQuery && activeTab === 'students' && (
                     <div className="space-y-3">
                       <button
                         onClick={() => setShowNewConversationModal(true)}
@@ -734,6 +1117,28 @@ const StudentCommunication = () => {
                         className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
                       >
                         Waiting for Students
+                      </button>
+                    </div>
+                  )}
+                  {!showArchived && !searchQuery && activeTab === 'educators' && (
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => setShowNewEducatorConversationModal(true)}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        <AcademicCapIcon className="w-4 h-4" />
+                        Contact Educator
+                      </button>
+                      <button
+                        onClick={() => {
+                          toast('Educators will also initiate conversations with you from their Communication page', {
+                            icon: 'ℹ️',
+                            duration: 4000,
+                          });
+                        }}
+                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Waiting for Educators
                       </button>
                     </div>
                   )}
@@ -954,7 +1359,7 @@ const StudentCommunication = () => {
                             handleSendMessage(e);
                           }
                         }}
-                        placeholder="Type your message..."
+                        placeholder={`Type your message to ${activeTab === 'students' ? 'student' : 'educator'}...`}
                         className="w-full pl-4 pr-12 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm bg-white transition-all"
                         rows={1}
                         style={{ minHeight: '44px', maxHeight: '100px' }}
@@ -992,7 +1397,7 @@ const StudentCommunication = () => {
                     Select a conversation
                   </h3>
                   <p className="text-gray-500 leading-relaxed">
-                    Choose a conversation from the list to start messaging with students
+                    Choose a conversation from the list to start messaging with {activeTab === 'students' ? 'students' : 'educators'}
                   </p>
                 </div>
               </div>
@@ -1017,6 +1422,14 @@ const StudentCommunication = () => {
         onConversationCreated={({ studentId, subject, initialMessage }) => {
           handleNewConversation(studentId, subject, initialMessage);
         }}
+        schoolId={schoolId}
+      />
+
+      {/* New Educator Conversation Modal */}
+      <NewSchoolAdminEducatorConversationModal
+        isOpen={showNewEducatorConversationModal}
+        onClose={() => setShowNewEducatorConversationModal(false)}
+        onConversationCreated={handleNewEducatorConversation}
         schoolId={schoolId}
       />
     </div>

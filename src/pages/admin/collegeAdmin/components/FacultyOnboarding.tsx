@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Upload, FileText, CheckCircle, AlertCircle, X } from "lucide-react";
+import { Upload, FileText, CheckCircle, AlertCircle, X, Loader2 } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
+import { uploadFile, uploadMultipleFiles, validateFile, UploadResult } from "../../../../services/fileUploadService";
 
 interface SubjectExpertise {
   name: string;
@@ -34,6 +35,12 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
     experience_letters: [] as File[],
   });
 
+  const [uploadStatus, setUploadStatus] = useState({
+    degree_certificate: { uploading: false, uploaded: false, url: null as string | null, error: null as string | null },
+    id_proof: { uploading: false, uploaded: false, url: null as string | null, error: null as string | null },
+    experience_letters: { uploading: false, uploaded: false, urls: [] as string[], error: null as string | null },
+  });
+
   const [subjects, setSubjects] = useState<SubjectExpertise[]>([]);
   
   const [currentSubject, setCurrentSubject] = useState<SubjectExpertise>({
@@ -60,18 +67,102 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
     "Other",
   ];
 
-  const handleFileChange = (field: keyof typeof documents, files: FileList | null) => {
+  const handleFileChange = async (field: keyof typeof documents, files: FileList | null) => {
     if (!files) return;
 
     const fileArray = Array.from(files);
     
+    // Validate files
+    for (const file of fileArray) {
+      const validation = validateFile(file, {
+        maxSize: 10, // 10MB
+        allowedTypes: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+      });
+      
+      if (!validation.valid) {
+        setMessage({ type: "error", text: `${file.name}: ${validation.error}` });
+        return;
+      }
+    }
+
     if (field === "experience_letters") {
       setDocuments((prev) => ({
         ...prev,
         experience_letters: [...prev.experience_letters, ...fileArray],
       }));
+      
+      // Upload files immediately
+      setUploadStatus(prev => ({
+        ...prev,
+        experience_letters: { ...prev.experience_letters, uploading: true, error: null }
+      }));
+
+      try {
+        const results = await uploadMultipleFiles(fileArray, 'teachers/experience-letters');
+        const successfulUploads = results.filter(r => r.success);
+        const failedUploads = results.filter(r => !r.success);
+
+        if (failedUploads.length > 0) {
+          throw new Error(`Failed to upload ${failedUploads.length} files`);
+        }
+
+        setUploadStatus(prev => ({
+          ...prev,
+          experience_letters: {
+            uploading: false,
+            uploaded: true,
+            urls: [...prev.experience_letters.urls, ...successfulUploads.map(r => r.url!)],
+            error: null
+          }
+        }));
+
+        setMessage({ type: "success", text: `Successfully uploaded ${successfulUploads.length} experience letters` });
+      } catch (error) {
+        setUploadStatus(prev => ({
+          ...prev,
+          experience_letters: { ...prev.experience_letters, uploading: false, error: (error as Error).message }
+        }));
+        setMessage({ type: "error", text: `Upload failed: ${(error as Error).message}` });
+      }
     } else {
       setDocuments((prev) => ({ ...prev, [field]: fileArray[0] }));
+      
+      // Upload file immediately
+      setUploadStatus(prev => ({
+        ...prev,
+        [field]: { uploading: true, uploaded: false, url: null, error: null }
+      }));
+
+      try {
+        const folderMap = {
+          degree_certificate: 'teachers/degrees',
+          id_proof: 'teachers/id-proofs'
+        };
+
+        const result = await uploadFile(fileArray[0], folderMap[field]);
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Upload failed');
+        }
+
+        setUploadStatus(prev => ({
+          ...prev,
+          [field]: {
+            uploading: false,
+            uploaded: true,
+            url: result.url!,
+            error: null
+          }
+        }));
+
+        setMessage({ type: "success", text: `Successfully uploaded ${field.replace('_', ' ')}` });
+      } catch (error) {
+        setUploadStatus(prev => ({
+          ...prev,
+          [field]: { uploading: false, uploaded: false, url: null, error: (error as Error).message }
+        }));
+        setMessage({ type: "error", text: `Upload failed: ${(error as Error).message}` });
+      }
     }
   };
 
@@ -79,6 +170,15 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
     setDocuments((prev) => ({
       ...prev,
       experience_letters: prev.experience_letters.filter((_, i) => i !== index),
+    }));
+    
+    // Also remove from upload status
+    setUploadStatus(prev => ({
+      ...prev,
+      experience_letters: {
+        ...prev.experience_letters,
+        urls: prev.experience_letters.urls.filter((_, i) => i !== index)
+      }
     }));
   };
 
@@ -90,21 +190,6 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
 
   const removeSubject = (index: number) => {
     setSubjects(subjects.filter((_, i) => i !== index));
-  };
-
-  const uploadFile = async (file: File, path: string): Promise<string> => {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `${path}/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("faculty-documents")
-      .upload(filePath, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data } = supabase.storage.from("faculty-documents").getPublicUrl(filePath);
-    return data.publicUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,20 +220,10 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
     }
 
     try {
-      // Upload documents (only if provided)
-      const degreeUrl = documents.degree_certificate
-        ? await uploadFile(documents.degree_certificate, "degrees")
-        : null;
-
-      const idProofUrl = documents.id_proof
-        ? await uploadFile(documents.id_proof, "id-proofs")
-        : null;
-
-      const experienceUrls = documents.experience_letters.length > 0
-        ? await Promise.all(
-            documents.experience_letters.map((file) => uploadFile(file, "experience-letters"))
-          )
-        : [];
+      // Use uploaded file URLs from upload status
+      const degreeUrl = uploadStatus.degree_certificate.url;
+      const idProofUrl = uploadStatus.id_proof.url;
+      const experienceUrls = uploadStatus.experience_letters.urls;
 
       // Get current user email
       const userEmail = localStorage.getItem('userEmail');
@@ -288,6 +363,11 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
         role: "lecturer" 
       });
       setDocuments({ degree_certificate: null, id_proof: null, experience_letters: [] });
+      setUploadStatus({
+        degree_certificate: { uploading: false, uploaded: false, url: null, error: null },
+        id_proof: { uploading: false, uploaded: false, url: null, error: null },
+        experience_letters: { uploading: false, uploaded: false, urls: [], error: null },
+      });
       setSubjects([]);
     } catch (error: any) {
       setMessage({ type: "error", text: error.message || "Failed to onboard faculty member" });
@@ -469,7 +549,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
 
         {/* Document Upload */}
         <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Documents (Optional)</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Documents</h3>
           <div className="space-y-4">
             {/* Degree Certificate */}
             <div>
@@ -477,38 +557,92 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                 Degree Certificate
               </label>
               <div className="flex items-center gap-3">
-                <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 cursor-pointer transition">
-                  <Upload className="h-5 w-5 text-gray-400" />
-                  <span className="text-sm text-gray-600">
-                    {documents.degree_certificate?.name || "Upload degree certificate"}
+                <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition ${
+                  uploadStatus.degree_certificate.uploaded 
+                    ? 'border-green-300 bg-green-50' 
+                    : uploadStatus.degree_certificate.uploading
+                    ? 'border-blue-300 bg-blue-50'
+                    : 'border-gray-300 hover:border-indigo-500'
+                }`}>
+                  {uploadStatus.degree_certificate.uploading ? (
+                    <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                  ) : uploadStatus.degree_certificate.uploaded ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <Upload className="h-5 w-5 text-gray-400" />
+                  )}
+                  <span className={`text-sm ${
+                    uploadStatus.degree_certificate.uploaded 
+                      ? 'text-green-700' 
+                      : uploadStatus.degree_certificate.uploading
+                      ? 'text-blue-700'
+                      : 'text-gray-600'
+                  }`}>
+                    {uploadStatus.degree_certificate.uploading 
+                      ? "Uploading..." 
+                      : uploadStatus.degree_certificate.uploaded
+                      ? `✓ ${documents.degree_certificate?.name || "Uploaded"}`
+                      : documents.degree_certificate?.name || "Upload degree certificate"
+                    }
                   </span>
                   <input
                     type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                     onChange={(e) => handleFileChange("degree_certificate", e.target.files)}
                     className="hidden"
+                    disabled={uploadStatus.degree_certificate.uploading}
                   />
                 </label>
               </div>
+              {uploadStatus.degree_certificate.error && (
+                <p className="mt-1 text-sm text-red-600">{uploadStatus.degree_certificate.error}</p>
+              )}
             </div>
 
             {/* ID Proof */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">ID Proof</label>
               <div className="flex items-center gap-3">
-                <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 cursor-pointer transition">
-                  <Upload className="h-5 w-5 text-gray-400" />
-                  <span className="text-sm text-gray-600">
-                    {documents.id_proof?.name || "Upload ID proof"}
+                <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition ${
+                  uploadStatus.id_proof.uploaded 
+                    ? 'border-green-300 bg-green-50' 
+                    : uploadStatus.id_proof.uploading
+                    ? 'border-blue-300 bg-blue-50'
+                    : 'border-gray-300 hover:border-indigo-500'
+                }`}>
+                  {uploadStatus.id_proof.uploading ? (
+                    <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                  ) : uploadStatus.id_proof.uploaded ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <Upload className="h-5 w-5 text-gray-400" />
+                  )}
+                  <span className={`text-sm ${
+                    uploadStatus.id_proof.uploaded 
+                      ? 'text-green-700' 
+                      : uploadStatus.id_proof.uploading
+                      ? 'text-blue-700'
+                      : 'text-gray-600'
+                  }`}>
+                    {uploadStatus.id_proof.uploading 
+                      ? "Uploading..." 
+                      : uploadStatus.id_proof.uploaded
+                      ? `✓ ${documents.id_proof?.name || "Uploaded"}`
+                      : documents.id_proof?.name || "Upload ID proof"
+                    }
                   </span>
                   <input
                     type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                     onChange={(e) => handleFileChange("id_proof", e.target.files)}
                     className="hidden"
+                    disabled={uploadStatus.id_proof.uploading}
                   />
                 </label>
               </div>
+              {uploadStatus.id_proof.error && (
+                <p className="mt-1 text-sm text-red-600">{uploadStatus.id_proof.error}</p>
+              )}
             </div>
 
             {/* Experience Letters */}
@@ -517,30 +651,54 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                 Experience Letters
               </label>
               <div className="space-y-2">
-                <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 cursor-pointer transition">
-                  <Upload className="h-5 w-5 text-gray-400" />
-                  <span className="text-sm text-gray-600">Upload experience letters</span>
+                <label className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition ${
+                  uploadStatus.experience_letters.uploading
+                    ? 'border-blue-300 bg-blue-50'
+                    : 'border-gray-300 hover:border-indigo-500'
+                }`}>
+                  {uploadStatus.experience_letters.uploading ? (
+                    <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                  ) : (
+                    <Upload className="h-5 w-5 text-gray-400" />
+                  )}
+                  <span className={`text-sm ${
+                    uploadStatus.experience_letters.uploading ? 'text-blue-700' : 'text-gray-600'
+                  }`}>
+                    {uploadStatus.experience_letters.uploading ? "Uploading..." : "Upload experience letters"}
+                  </span>
                   <input
                     type="file"
                     multiple
-                    accept=".pdf,.jpg,.jpeg,.png"
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                     onChange={(e) => handleFileChange("experience_letters", e.target.files)}
                     className="hidden"
+                    disabled={uploadStatus.experience_letters.uploading}
                   />
                 </label>
+                {uploadStatus.experience_letters.error && (
+                  <p className="text-sm text-red-600">{uploadStatus.experience_letters.error}</p>
+                )}
                 {documents.experience_letters.map((file, index) => (
                   <div
                     key={index}
                     className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
                   >
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-gray-400" />
+                      {uploadStatus.experience_letters.urls[index] ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <FileText className="h-4 w-4 text-gray-400" />
+                      )}
                       <span className="text-sm text-gray-700">{file.name}</span>
+                      {uploadStatus.experience_letters.urls[index] && (
+                        <span className="text-xs text-green-600">✓ Uploaded</span>
+                      )}
                     </div>
                     <button
                       type="button"
                       onClick={() => removeExperienceLetter(index)}
                       className="text-red-500 hover:text-red-700"
+                      disabled={uploadStatus.experience_letters.uploading}
                     >
                       <X className="h-4 w-4" />
                     </button>

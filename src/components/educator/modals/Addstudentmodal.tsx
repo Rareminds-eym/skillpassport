@@ -3,6 +3,14 @@ import { XMarkIcon, UserPlusIcon, DocumentArrowUpIcon, ArrowDownTrayIcon, CheckC
 import { supabase } from '../../../lib/supabaseClient'
 import Papa from 'papaparse'
 import userApiService from '../../../services/userApiService'
+import storageService from '../../../services/storageService'
+
+interface DocumentUploadProgress {
+  file: string
+  progress: number
+  status: 'uploading' | 'completed' | 'error'
+  error?: string
+}
 
 // Validated row interface for enhanced preview
 interface ValidatedStudent {
@@ -52,8 +60,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [validatedStudents, setValidatedStudents] = useState<ValidatedStudent[]>([])
   const [showEnhancedPreview, setShowEnhancedPreview] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
-  const [createdStudentPassword, setCreatedStudentPassword] = useState<string | null>(null)
-  const [createdStudentEmail, setCreatedStudentEmail] = useState<string | null>(null)
+  const [documentUploadProgress, setDocumentUploadProgress] = useState<DocumentUploadProgress[]>([])
+  const [isUploadingDocuments, setIsUploadingDocuments] = useState(false)
 
   const [formData, setFormData] = useState<StudentFormData>({
     name: '',
@@ -113,8 +121,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setCsvFile(null)
       setValidatedStudents([])
       setShowEnhancedPreview(false)
-      setCreatedStudentPassword(null)
-      setCreatedStudentEmail(null)
+      setDocumentUploadProgress([])
+      setIsUploadingDocuments(false)
     }
   }, [isOpen])
 
@@ -252,19 +260,47 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
       console.log('✅ User authenticated:', userEmail, 'School ID:', schoolId, 'College ID:', collegeId, 'Role:', userRole)
 
+      // Refresh session to ensure we have a valid token
+      console.log('🔄 Refreshing session...')
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+      
+      if (refreshError) {
+        console.warn('Session refresh failed:', refreshError)
+        // Try to get existing session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError || !session) {
+          console.error('No valid session available')
+          throw new Error('Authentication expired. Please login again.')
+        }
+        
+        console.log('🔑 Using existing session')
+      } else {
+        console.log('✅ Session refreshed successfully')
+      }
+
+      const finalSession = refreshData?.session || (await supabase.auth.getSession()).data.session
+      
+      if (!finalSession) {
+        throw new Error('No active session. Please login again.')
+      }
+
+      const token = finalSession.access_token
+
+      if (!token) {
+        console.error('No access token in session')
+        throw new Error('No authentication token available')
+      }
+
+      console.log('🔑 Token obtained, length:', token.length)
+      console.log('🌐 API URL:', import.meta.env.VITE_USER_API_URL)
+
       // Call Cloudflare Worker via userApiService
       console.log('Calling create-student via userApiService with data:', {
         name: formData.name,
         email: formData.email,
         contactNumber: formData.contactNumber
       })
-
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
-
-      if (!token) {
-        throw new Error('No authentication token available')
-      }
 
       const data = await userApiService.createStudent({
         userEmail: userEmail,
@@ -293,12 +329,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           university: formData.university.trim() || null,
           bloodGroup: formData.bloodGroup || null,
           approval_status: 'approved',
-          student_type: 'educator_added',
-          documents: formData.documents.map(file => ({
-            name: file.name,
-            size: file.size,
-            type: file.type
-          }))
+          student_type: 'educator_added'
+          // Note: No documents sent initially
         }
       }, token)
       console.log('Edge Function Response:', JSON.stringify(data, null, 2))
@@ -309,12 +341,43 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         throw new Error(data?.error || data?.details || 'Failed to create student')
       }
 
-      // Clear any stored credentials
-      setCreatedStudentPassword(null)
-      setCreatedStudentEmail(null)
+      const studentId = data.data?.studentId || data.data?.authUserId
+      if (!studentId) {
+        throw new Error('Student created but no ID returned')
+      }
 
-      // Show success message without password
-      const successMsg = `✅ Student "${formData.name}" added successfully!`
+      console.log('✅ Student created with ID:', studentId)
+
+      // Step 2: Upload documents if any exist
+      let uploadedDocuments: Array<{name: string, url: string, size: number, type: string}> = []
+      if (formData.documents.length > 0) {
+        console.log(`📁 Uploading ${formData.documents.length} documents...`)
+        
+        try {
+          uploadedDocuments = await uploadDocumentsAfterStudentCreation(formData.documents, studentId)
+          console.log('✅ Documents uploaded:', uploadedDocuments.length)
+        } catch (uploadError) {
+          console.warn('⚠️ Document upload failed:', uploadError)
+          // Don't fail the entire operation if document upload fails
+          setError(`Student created successfully, but some documents failed to upload: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`)
+        }
+      }
+
+      // Step 3: Update student record with document URLs (if any were uploaded)
+      if (uploadedDocuments.length > 0) {
+        try {
+          await updateStudentDocuments(studentId, uploadedDocuments)
+          console.log('✅ Student record updated with document URLs')
+        } catch (updateError) {
+          console.warn('⚠️ Failed to update student record with document URLs:', updateError)
+          // Don't fail the operation, documents are uploaded but not linked
+        }
+      }
+
+      // Show success message
+      const successMsg = uploadedDocuments.length > 0 
+        ? `✅ Student "${formData.name}" created successfully with ${uploadedDocuments.length} document${uploadedDocuments.length > 1 ? 's' : ''}!`
+        : `✅ Student "${formData.name}" created successfully!`
 
       setSuccess(successMsg)
       setError(null)
@@ -400,7 +463,16 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     return null
   }
 
-  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const removeDocument = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      documents: prev.documents.filter((_, i) => i !== index)
+    }))
+  }
+
+  // Simple document selection (no immediate upload)
+  const handleDocumentSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     const validFiles = files.filter(file => {
       const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg']
@@ -412,17 +484,112 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setError('Some files were rejected. Only PDF, JPG, PNG files under 5MB are allowed.')
     }
 
+    if (validFiles.length === 0) return
+
+    // Add files to local state (keep in browser memory)
     setFormData(prev => ({
       ...prev,
       documents: [...prev.documents, ...validFiles].slice(0, 5) // Max 5 files
     }))
+
+    setError(null) // Clear any previous errors
   }
 
-  const removeDocument = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      documents: prev.documents.filter((_, i) => i !== index)
+  // Upload documents after student creation
+  const uploadDocumentsAfterStudentCreation = async (files: File[], studentId: string): Promise<Array<{name: string, url: string, size: number, type: string}>> => {
+    if (files.length === 0) return []
+
+    setIsUploadingDocuments(true)
+    const uploadedDocs: Array<{name: string, url: string, size: number, type: string}> = []
+    
+    // Initialize progress tracking
+    const progressTracking: DocumentUploadProgress[] = files.map(file => ({
+      file: file.name,
+      progress: 0,
+      status: 'uploading'
     }))
+    setDocumentUploadProgress(progressTracking)
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        
+        // Update progress
+        setDocumentUploadProgress(prev => 
+          prev.map((item, idx) => 
+            idx === i ? { ...item, progress: 10, status: 'uploading' } : item
+          )
+        )
+
+        try {
+          // Upload to storage service with real student ID
+          const result = await storageService.uploadStudentDocument(file, studentId, 'general')
+          
+          if (result.success && result.url) {
+            uploadedDocs.push({
+              name: file.name,
+              url: result.url,
+              size: file.size,
+              type: file.type
+            })
+
+            // Update progress to completed
+            setDocumentUploadProgress(prev => 
+              prev.map((item, idx) => 
+                idx === i ? { ...item, progress: 100, status: 'completed' } : item
+              )
+            )
+          } else {
+            // Update progress to error
+            setDocumentUploadProgress(prev => 
+              prev.map((item, idx) => 
+                idx === i ? { 
+                  ...item, 
+                  progress: 0, 
+                  status: 'error', 
+                  error: result.error || 'Upload failed' 
+                } : item
+              )
+            )
+          }
+        } catch (error) {
+          console.error(`Error uploading ${file.name}:`, error)
+          setDocumentUploadProgress(prev => 
+            prev.map((item, idx) => 
+              idx === i ? { 
+                ...item, 
+                progress: 0, 
+                status: 'error', 
+                error: error instanceof Error ? error.message : 'Upload failed' 
+              } : item
+            )
+          )
+        }
+      }
+    } finally {
+      setIsUploadingDocuments(false)
+    }
+
+    return uploadedDocs
+  }
+
+  // Update student record with document URLs
+  const updateStudentDocuments = async (studentId: string, documents: Array<{name: string, url: string, size: number, type: string}>) => {
+    try {
+      // Get fresh token
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      if (!token) {
+        throw new Error('No authentication token available for document update')
+      }
+
+      // Use the API service to update documents
+      await userApiService.updateStudentDocuments(studentId, documents, token)
+    } catch (error) {
+      console.error('Error updating student documents:', error)
+      throw error
+    }
   }
 
   const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -867,22 +1034,24 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
             setUploadProgress({ current: 0, total: validStudents.length })
 
-            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
             for (let i = 0; i < validStudents.length; i += BATCH_SIZE) {
               const batch = validStudents.slice(i, i + BATCH_SIZE)
 
               const batchPromises = batch.map(async ({ row, data }) => {
                 try {
+                  const { data: { session } } = await supabase.auth.getSession()
+                  const token = session?.access_token
+
+                  if (!token) {
+                    throw new Error('No authentication token available')
+                  }
+
                   const response = await userApiService.createStudent({
                     userEmail: userEmail,
                     schoolId: schoolId,
                     collegeId: collegeId,
                     student: data
-                  },
-                    (await supabase.auth.getSession()).data.session?.access_token
-                  )
+                  }, token)
 
                   // Map response to match expected format if needed, or adjust check below
                   // userApiService returns { success: true, data: ... } or { success: false, error: ... }
@@ -1349,7 +1518,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                             type="file"
                             multiple
                             accept=".pdf,.jpg,.jpeg,.png"
-                            onChange={handleDocumentUpload}
+                            onChange={handleDocumentSelection}
                             className="hidden"
                           />
                         </label>
@@ -1360,20 +1529,57 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     </div>
                   </div>
 
-                  {/* Display uploaded documents */}
+                  {/* Document Upload Progress (shown during upload after student creation) */}
+                  {isUploadingDocuments && documentUploadProgress.length > 0 && (
+                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-sm font-medium text-blue-900 mb-2">Uploading Documents...</p>
+                      <div className="space-y-2">
+                        {documentUploadProgress.map((progress, index) => (
+                          <div key={index} className="flex items-center space-x-2">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs text-gray-700 truncate max-w-xs">{progress.file}</span>
+                                <span className="text-xs text-gray-500">
+                                  {progress.status === 'completed' ? '✓' : 
+                                   progress.status === 'error' ? '✗' : 
+                                   `${progress.progress}%`}
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                <div
+                                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                                    progress.status === 'completed' ? 'bg-green-500' :
+                                    progress.status === 'error' ? 'bg-red-500' :
+                                    'bg-blue-500'
+                                  }`}
+                                  style={{ width: `${progress.progress}%` }}
+                                ></div>
+                              </div>
+                              {progress.error && (
+                                <p className="text-xs text-red-600 mt-1">{progress.error}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Display selected documents (kept in browser memory) */}
                   {formData.documents.length > 0 && (
                     <div className="mt-3 space-y-2">
-                      <p className="text-sm font-medium text-gray-700">Uploaded Documents:</p>
+                      <p className="text-sm font-medium text-gray-700">Selected Documents:</p>
                       {formData.documents.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                        <div key={index} className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded-md">
                           <div className="flex items-center space-x-2">
-                            <DocumentArrowUpIcon className="h-4 w-4 text-gray-500" />
+                            <DocumentArrowUpIcon className="h-4 w-4 text-blue-600" />
                             <span className="text-sm text-gray-700 truncate max-w-xs">
                               {file.name}
                             </span>
                             <span className="text-xs text-gray-500">
                               ({(file.size / 1024 / 1024).toFixed(2)} MB)
                             </span>
+                            <span className="text-xs text-blue-600 font-medium">Ready to upload</span>
                           </div>
                           <button
                             type="button"
@@ -1384,6 +1590,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                           </button>
                         </div>
                       ))}
+                      <p className="text-xs text-gray-500 italic">
+                        Documents will be uploaded after student is created
+                      </p>
                     </div>
                   )}
                 </div>

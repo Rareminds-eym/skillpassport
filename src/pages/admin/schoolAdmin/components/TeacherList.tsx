@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Search, Eye, CheckCircle, Clock, XCircle } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
 import { useAuth } from "../../../../context/AuthContext";
+import DocumentViewerModal from "../../../../components/admin/modals/DocumentViewerModal";
 
 interface Teacher {
   id: string;
@@ -15,6 +16,9 @@ interface Teacher {
   role: string;
   school_id: string;
   created_at: string;
+  degree_certificate_url?: string;
+  id_proof_url?: string;
+  experience_letters_url?: string[];
   metadata?: {
     temporary_password?: string;
     password_created_at?: string;
@@ -31,6 +35,8 @@ const TeacherListPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [schoolId, setSchoolId] = useState<string | null>(null);
+  const [showDocumentViewer, setShowDocumentViewer] = useState(false);
+  const [documentViewerTeacher, setDocumentViewerTeacher] = useState<Teacher | null>(null);
 
   useEffect(() => {
     if (user?.email) {
@@ -198,6 +204,15 @@ const TeacherListPage: React.FC = () => {
     }
   };
 
+  const handleViewDocuments = (teacher: Teacher) => {
+    setDocumentViewerTeacher(teacher);
+    setShowDocumentViewer(true);
+  };
+
+  const hasDocuments = (teacher: Teacher) => {
+    return teacher.degree_certificate_url || teacher.id_proof_url || (teacher.experience_letters_url && teacher.experience_letters_url.length > 0);
+  };
+
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
@@ -359,13 +374,27 @@ const TeacherListPage: React.FC = () => {
                       {getStatusBadge(teacher.onboarding_status)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button
-                        onClick={() => setSelectedTeacher(teacher)}
-                        className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
-                      >
-                        <Eye className="h-4 w-4" />
-                        View
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setSelectedTeacher(teacher)}
+                          className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
+                        >
+                          <Eye className="h-4 w-4" />
+                          View
+                        </button>
+                        {hasDocuments(teacher) && (
+                          <button
+                            onClick={() => handleViewDocuments(teacher)}
+                            className="text-green-600 hover:text-green-900 flex items-center gap-1 ml-2"
+                            title="View Documents"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Docs
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -488,6 +517,24 @@ const TeacherListPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Document Viewer Modal */}
+      {showDocumentViewer && documentViewerTeacher && (
+        <DocumentViewerModal
+          isOpen={showDocumentViewer}
+          onClose={() => {
+            setShowDocumentViewer(false);
+            setDocumentViewerTeacher(null);
+          }}
+          documents={{
+            degreeUrl: documentViewerTeacher.degree_certificate_url,
+            idProofUrl: documentViewerTeacher.id_proof_url,
+            experienceUrls: documentViewerTeacher.experience_letters_url,
+          }}
+          personName={`${documentViewerTeacher.first_name} ${documentViewerTeacher.last_name}`}
+          personType="teacher"
+        />
       )}
       </div>
     </div>

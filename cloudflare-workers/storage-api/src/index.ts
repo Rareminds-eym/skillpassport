@@ -337,7 +337,178 @@ async function handleGetFileUrl(request: Request, env: Env): Promise<Response> {
   });
 }
 
-// ==================== COURSE CERTIFICATE (PROXY) ====================
+// ==================== DOCUMENT ACCESS (PROXY) ====================
+
+async function handleDocumentAccess(request: Request, env: Env): Promise<Response> {
+  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+    return jsonResponse({ error: 'R2 credentials not configured' }, 500);
+  }
+
+  const url = new URL(request.url);
+  let fileKey = url.searchParams.get('key');
+  const mode = url.searchParams.get('mode') || 'inline'; // 'inline' for viewing, 'download' for downloading
+  
+  // Also support extracting key from full URL
+  const fileUrl = url.searchParams.get('url');
+  if (!fileKey && fileUrl) {
+    // Extract key from various URL formats
+    if (fileUrl.includes('.r2.dev/')) {
+      const urlParts = fileUrl.split('.r2.dev/');
+      if (urlParts.length > 1) {
+        fileKey = urlParts[1];
+      }
+    } else if (fileUrl.includes('/teachers/') || fileUrl.includes('/students/')) {
+      // Extract from storage API URLs
+      const pathMatch = fileUrl.match(/\/(teachers|students)\/(.+)$/);
+      if (pathMatch) {
+        fileKey = `${pathMatch[1]}/${pathMatch[2]}`;
+      }
+    }
+  }
+
+  if (!fileKey) {
+    return jsonResponse({ error: 'File key or URL is required' }, 400);
+  }
+
+  const bucketName = env.CLOUDFLARE_R2_BUCKET_NAME || 'skill-echosystem';
+  const r2 = new AwsClient({
+    accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+    secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+  });
+
+  const endpoint = `https://${env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const downloadUrl = `${endpoint}/${bucketName}/${fileKey}`;
+
+  const downloadRequest = new Request(downloadUrl, {
+    method: 'GET',
+  });
+
+  const signedRequest = await r2.sign(downloadRequest);
+  const response = await fetch(signedRequest);
+
+  if (!response.ok) {
+    return jsonResponse({ error: 'File not found or access denied', status: response.status }, response.status);
+  }
+
+  // Get the file content and return it with proper headers
+  const fileContent = await response.arrayBuffer();
+  const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
+  
+  // Extract filename from key
+  const filename = fileKey.split('/').pop() || 'document';
+  
+  // Set Content-Disposition based on mode
+  const contentDisposition = mode === 'download' 
+    ? `attachment; filename="${filename}"` 
+    : `inline; filename="${filename}"`;
+
+  return new Response(fileContent, {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      'Content-Type': contentType,
+      'Content-Disposition': contentDisposition,
+      'Content-Length': fileContent.byteLength.toString(),
+      'Cache-Control': 'private, max-age=3600', // Cache for 1 hour
+    },
+  });
+}
+
+// ==================== SIGNED URL FOR DOCUMENT ACCESS ====================
+
+async function handleSignedUrl(request: Request, env: Env): Promise<Response> {
+  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+    return jsonResponse({ error: 'R2 credentials not configured' }, 500);
+  }
+
+  const body = await request.json() as {
+    url?: string;
+    fileKey?: string;
+    expiresIn?: number;
+  };
+
+  const { url: fileUrl, fileKey: providedKey, expiresIn = 3600 } = body;
+
+  let fileKey = providedKey;
+
+  // Extract file key from URL if not provided directly
+  if (!fileKey && fileUrl) {
+    if (fileUrl.includes('.r2.dev/')) {
+      const urlParts = fileUrl.split('.r2.dev/');
+      if (urlParts.length > 1) {
+        fileKey = urlParts[1];
+      }
+    } else if (fileUrl.includes('/teachers/') || fileUrl.includes('/students/')) {
+      const pathMatch = fileUrl.match(/\/(teachers|students)\/(.+)$/);
+      if (pathMatch) {
+        fileKey = `${pathMatch[1]}/${pathMatch[2]}`;
+      }
+    }
+  }
+
+  if (!fileKey) {
+    return jsonResponse({ error: 'File key or URL is required' }, 400);
+  }
+
+  // Generate a signed URL that proxies through our document access endpoint
+  const baseUrl = new URL(request.url).origin;
+  const signedUrl = `${baseUrl}/document-access?key=${encodeURIComponent(fileKey)}&mode=inline`;
+
+  return jsonResponse({
+    success: true,
+    signedUrl,
+    expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+  });
+}
+
+// ==================== BATCH SIGNED URLS ====================
+
+async function handleSignedUrls(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as {
+    urls: string[];
+    expiresIn?: number;
+  };
+
+  const { urls, expiresIn = 3600 } = body;
+
+  if (!urls || !Array.isArray(urls)) {
+    return jsonResponse({ error: 'URLs array is required' }, 400);
+  }
+
+  const signedUrls: Record<string, string> = {};
+  const baseUrl = new URL(request.url).origin;
+
+  for (const fileUrl of urls) {
+    let fileKey: string | null = null;
+
+    // Extract file key from URL
+    if (fileUrl.includes('.r2.dev/')) {
+      const urlParts = fileUrl.split('.r2.dev/');
+      if (urlParts.length > 1) {
+        fileKey = urlParts[1];
+      }
+    } else if (fileUrl.includes('/teachers/') || fileUrl.includes('/students/')) {
+      const pathMatch = fileUrl.match(/\/(teachers|students)\/(.+)$/);
+      if (pathMatch) {
+        fileKey = `${pathMatch[1]}/${pathMatch[2]}`;
+      }
+    }
+
+    if (fileKey) {
+      const signedUrl = `${baseUrl}/document-access?key=${encodeURIComponent(fileKey)}&mode=inline`;
+      signedUrls[fileUrl] = signedUrl;
+    } else {
+      // Fallback to original URL if we can't extract the key
+      signedUrls[fileUrl] = fileUrl;
+    }
+  }
+
+  return jsonResponse({
+    success: true,
+    signedUrls,
+    expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+  });
+}
 
 async function handleCourseCertificate(request: Request, env: Env): Promise<Response> {
   if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
@@ -497,6 +668,12 @@ export default {
         case '/get-url':
         case '/get-file-url':
           return await handleGetFileUrl(request, env);
+        case '/document-access':
+          return await handleDocumentAccess(request, env);
+        case '/signed-url':
+          return await handleSignedUrl(request, env);
+        case '/signed-urls':
+          return await handleSignedUrls(request, env);
         case '/course-certificate':
           return await handleCourseCertificate(request, env);
         case '/delete':
@@ -508,11 +685,11 @@ export default {
           return jsonResponse({
             status: 'ok',
             service: 'storage-api',
-            endpoints: ['/upload', '/presigned', '/confirm', '/get-url', '/course-certificate', '/delete', '/files/:courseId/:lessonId', '/extract-content'],
+            endpoints: ['/upload', '/presigned', '/confirm', '/get-url', '/document-access', '/signed-url', '/signed-urls', '/course-certificate', '/delete', '/files/:courseId/:lessonId', '/extract-content'],
             timestamp: new Date().toISOString()
           });
         default:
-          return jsonResponse({ error: 'Not found', availableEndpoints: ['/upload', '/presigned', '/confirm', '/get-url', '/course-certificate', '/delete', '/extract-content'] }, 404);
+          return jsonResponse({ error: 'Not found', availableEndpoints: ['/upload', '/presigned', '/confirm', '/get-url', '/document-access', '/signed-url', '/signed-urls', '/course-certificate', '/delete', '/extract-content'] }, 404);
       }
     } catch (error) {
       console.error('Worker error:', error);

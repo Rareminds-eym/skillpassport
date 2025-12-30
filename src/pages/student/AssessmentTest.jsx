@@ -50,6 +50,26 @@ import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentServ
 import { useAssessment } from '../../hooks/useAssessment';
 import { useAuth } from '../../context/AuthContext';
 import * as assessmentService from '../../services/assessmentService';
+import { supabase } from '../../lib/supabaseClient';
+
+// Helper function to determine grade level from student's grade
+const getGradeLevelFromGrade = (grade) => {
+    if (!grade) return null;
+    const gradeNum = parseInt(grade, 10);
+    if (isNaN(gradeNum)) {
+        // Handle non-numeric grades like "12th", "10th"
+        const match = grade.match(/(\d+)/);
+        if (match) {
+            const num = parseInt(match[1], 10);
+            if (num >= 6 && num <= 8) return 'middle';
+            if (num >= 9 && num <= 12) return 'highschool';
+        }
+        return null;
+    }
+    if (gradeNum >= 6 && gradeNum <= 8) return 'middle';
+    if (gradeNum >= 9 && gradeNum <= 12) return 'highschool';
+    return null;
+};
 
 const AssessmentTest = () => {
     const navigate = useNavigate();
@@ -84,6 +104,8 @@ const AssessmentTest = () => {
     const [showGradeSelection, setShowGradeSelection] = useState(false); // Show grade level selection first
     const [studentStream, setStudentStream] = useState(null);
     const [showStreamSelection, setShowStreamSelection] = useState(false); // Start false, set true after check
+    const [showCategorySelection, setShowCategorySelection] = useState(false); // Show Science/Commerce/Arts selection
+    const [selectedCategory, setSelectedCategory] = useState(null); // 'science', 'commerce', 'arts'
     const [timeRemaining, setTimeRemaining] = useState(null);
     const [useDatabase, setUseDatabase] = useState(false); // Track if using database mode
 
@@ -99,7 +121,80 @@ const AssessmentTest = () => {
     // TEST MODE - Auto-fill answers for development/testing
     const [testMode, setTestMode] = useState(false);
     const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
+    // skillpassport.pages.dev shows all options, localhost and skilldevelopment.rareminds.in filter by grade
+    const shouldShowAllOptions = window.location.hostname === 'skillpassport.pages.dev';
+    const shouldFilterByGrade = window.location.hostname === 'localhost' || 
+                                 window.location.hostname === 'skilldevelopment.rareminds.in';
     const [sectionTimings, setSectionTimings] = useState({}); // Track time spent on each section
+    
+    // Student grade from database
+    const [studentGrade, setStudentGrade] = useState(null);
+    const [studentSchoolClassId, setStudentSchoolClassId] = useState(null);
+    const [isCollegeStudent, setIsCollegeStudent] = useState(false);
+    const [loadingStudentGrade, setLoadingStudentGrade] = useState(true);
+    
+    // Fetch student's grade from database (either from student.grade or from school_classes.grade)
+    useEffect(() => {
+        const fetchStudentGrade = async () => {
+            console.log('Fetching student grade for user:', user?.id, user?.email);
+            console.log('shouldFilterByGrade:', shouldFilterByGrade);
+            
+            if (!user?.id) {
+                console.log('No user id, skipping grade fetch');
+                setLoadingStudentGrade(false);
+                return;
+            }
+            
+            try {
+                // First try to get student by user_id with school_class grade joined
+                let { data: student, error } = await supabase
+                    .from('students')
+                    .select('grade, school_class_id, school_id, university_college_id, school_classes:school_class_id(grade)')
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+                
+                console.log('Student by user_id:', student, error);
+                
+                // If not found by user_id, try by email
+                if (!student && user.email) {
+                    const result = await supabase
+                        .from('students')
+                        .select('grade, school_class_id, school_id, university_college_id, school_classes:school_class_id(grade)')
+                        .eq('email', user.email)
+                        .maybeSingle();
+                    student = result.data;
+                    error = result.error;
+                    console.log('Student by email:', student, error);
+                }
+                
+                if (error) {
+                    console.error('Error fetching student grade:', error);
+                } else if (student) {
+                    console.log('Student grade data found:', student);
+                    
+                    // Check if student is a college student (has university_college_id but no school_id)
+                    const isCollege = student.university_college_id && !student.school_id;
+                    console.log('Is college student:', isCollege);
+                    setIsCollegeStudent(isCollege);
+                    
+                    // Use student.grade first, if not available use grade from school_classes
+                    const effectiveGrade = student.grade || student.school_classes?.grade;
+                    console.log('Effective grade:', effectiveGrade);
+                    
+                    setStudentGrade(effectiveGrade);
+                    setStudentSchoolClassId(student.school_class_id);
+                } else {
+                    console.log('No student found for this user');
+                }
+            } catch (err) {
+                console.error('Error fetching student grade:', err);
+            } finally {
+                setLoadingStudentGrade(false);
+            }
+        };
+        
+        fetchStudentGrade();
+    }, [user?.id, user?.email, shouldFilterByGrade]);
 
     // Auto-fill all answers for test mode
     const autoFillAllAnswers = () => {
@@ -532,7 +627,43 @@ const AssessmentTest = () => {
         ];
     }, [dbQuestions, studentStream, gradeLevel]);
 
-    const streams = [
+    // Stream categories for After 12th
+    const streamCategories = [
+        { id: 'science', label: 'Science', icon: '🔬', description: 'Engineering, Medical, Pure Sciences' },
+        { id: 'commerce', label: 'Commerce', icon: '📊', description: 'Business, Finance, Accounting' },
+        { id: 'arts', label: 'Arts/Humanities', icon: '📚', description: 'Literature, Social Sciences, Design' }
+    ];
+
+    // Streams grouped by category
+    const streamsByCategory = {
+        science: [
+            { id: 'cs', label: 'B.Sc Computer Science / B.Tech CS/IT' },
+            { id: 'engineering', label: 'B.Tech / B.E (Other Engineering)' },
+            { id: 'medical', label: 'MBBS / BDS / Nursing' },
+            { id: 'pharmacy', label: 'B.Pharm / Pharm.D' },
+            { id: 'bsc', label: 'B.Sc (Physics/Chemistry/Biology/Maths)' },
+            { id: 'animation', label: 'B.Sc Animation / Game Design' }
+        ],
+        commerce: [
+            { id: 'bba', label: 'BBA General' },
+            { id: 'bca', label: 'BCA General' },
+            { id: 'dm', label: 'BBA Digital Marketing' },
+            { id: 'bcom', label: 'B.Com / B.Com (Hons)' },
+            { id: 'ca', label: 'CA / CMA / CS' },
+            { id: 'finance', label: 'BBA Finance / Banking' }
+        ],
+        arts: [
+            { id: 'ba', label: 'BA (English/History/Political Science)' },
+            { id: 'journalism', label: 'BA Journalism / Mass Communication' },
+            { id: 'design', label: 'B.Des / Fashion Design' },
+            { id: 'law', label: 'BA LLB / BBA LLB' },
+            { id: 'psychology', label: 'BA/B.Sc Psychology' },
+            { id: 'finearts', label: 'BFA / Visual Arts' }
+        ]
+    };
+
+    // Get streams based on selected category (for backward compatibility)
+    const streams = selectedCategory ? streamsByCategory[selectedCategory] : [
         { id: 'cs', label: 'B.Sc Computer Science / B.Tech CS/IT' },
         { id: 'bca', label: 'BCA General' },
         { id: 'bba', label: 'BBA General' },
@@ -735,9 +866,16 @@ const AssessmentTest = () => {
 
             setShowSectionIntro(true);
         } else {
-            // For after 12th, show stream selection
-            setShowStreamSelection(true);
+            // For after 12th, show category selection (Science/Commerce/Arts)
+            setShowCategorySelection(true);
         }
+    };
+
+    // Handle category selection (Science/Commerce/Arts)
+    const handleCategorySelect = (categoryId) => {
+        setSelectedCategory(categoryId);
+        setShowCategorySelection(false);
+        setShowStreamSelection(true);
     };
 
     const handleStreamSelect = async (streamId) => {
@@ -1130,6 +1268,74 @@ const AssessmentTest = () => {
 
     // Grade Level Selection Screen
     if (showGradeSelection) {
+        // Determine which grade level to show based on student's grade
+        const detectedGradeLevel = getGradeLevelFromGrade(studentGrade);
+        
+        // Check if student has incomplete profile (no grade and not college student)
+        const hasIncompleteProfile = shouldFilterByGrade && !detectedGradeLevel && !isCollegeStudent;
+        
+        // Show loading while fetching student grade (only when filtering)
+        if (loadingStudentGrade && shouldFilterByGrade) {
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+                    <div className="text-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-4" />
+                        <p className="text-gray-600">Loading...</p>
+                    </div>
+                </div>
+            );
+        }
+        
+        // Show message to complete profile if no grade/class info
+        if (hasIncompleteProfile) {
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+                    <Card className="w-full max-w-2xl border-none shadow-2xl">
+                        <CardContent className="p-8">
+                            <div className="text-center mb-8">
+                                <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                                    <AlertCircle className="w-8 h-8 text-white" />
+                                </div>
+                                <h1 className="text-3xl font-bold text-gray-800 mb-2">Complete Your Profile</h1>
+                                <p className="text-gray-600">Please update your personal information to take the assessment</p>
+                            </div>
+
+                            <div className="bg-amber-50 rounded-xl p-6 mb-6 border border-amber-200">
+                                <div className="flex gap-3">
+                                    <AlertCircle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-semibold text-amber-800 mb-2">Missing Information</p>
+                                        <p className="text-sm text-amber-700">
+                                            We couldn't determine your grade level or class. Please go to your profile settings and update your:
+                                        </p>
+                                        <ul className="text-sm text-amber-700 mt-2 list-disc list-inside space-y-1">
+                                            <li>Grade/Class information (for school students)</li>
+                                            <li>College/University details (for college students)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Button
+                                onClick={() => navigate('/student/settings')}
+                                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white py-6 text-lg shadow-lg"
+                            >
+                                Go to Profile Settings
+                            </Button>
+                            
+                            <Button
+                                variant="outline"
+                                onClick={() => navigate('/student/dashboard')}
+                                className="w-full mt-3 py-4"
+                            >
+                                Back to Dashboard
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
+            );
+        }
+        
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
                 <Card className="w-full max-w-2xl border-none shadow-2xl">
@@ -1145,7 +1351,8 @@ const AssessmentTest = () => {
                         <div className="space-y-4">
                             <Label className="text-sm font-semibold text-gray-700">Choose Your Grade Level</Label>
 
-                            {/* Grades 6-8 (Middle School) */}
+                            {/* Grades 6-8 (Middle School) - Show if: show all OR not filtering OR grade is 6-8 */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || detectedGradeLevel === 'middle') && (
                             <button
                                 onClick={() => handleGradeSelect('middle')}
                                 className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
@@ -1165,8 +1372,10 @@ const AssessmentTest = () => {
                                     </div>
                                 </div>
                             </button>
+                            )}
 
-                            {/* Grades 9-12 (High School) */}
+                            {/* Grades 9-12 (High School) - Show if: show all OR not filtering OR grade is 9-12 */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || detectedGradeLevel === 'highschool') && (
                             <button
                                 onClick={() => handleGradeSelect('highschool')}
                                 className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
@@ -1186,8 +1395,10 @@ const AssessmentTest = () => {
                                     </div>
                                 </div>
                             </button>
+                            )}
 
-                            {/* After 12th (College Level) */}
+                            {/* After 12th (College Level) - Show if: show all OR not filtering OR is college student */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || isCollegeStudent) && (
                             <button
                                 onClick={() => handleGradeSelect('after12')}
                                 className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
@@ -1207,6 +1418,7 @@ const AssessmentTest = () => {
                                     </div>
                                 </div>
                             </button>
+                            )}
                         </div>
 
                         <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
@@ -1224,7 +1436,8 @@ const AssessmentTest = () => {
         );
     }
 
-    if (showStreamSelection) {
+    // Category Selection Screen (Science/Commerce/Arts)
+    if (showCategorySelection) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
                 <Card className="w-full max-w-2xl border-none shadow-2xl">
@@ -1234,7 +1447,75 @@ const AssessmentTest = () => {
                                 <Award className="w-8 h-8 text-white" />
                             </div>
                             <h1 className="text-3xl font-bold text-gray-800 mb-2">Career Assessment - After 12th</h1>
-                            <p className="text-gray-600">Let's personalize your assessment based on your stream/course</p>
+                            <p className="text-gray-600">Select your stream category to continue</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <Label className="text-sm font-semibold text-gray-700">Choose Your Stream Category</Label>
+                            
+                            {streamCategories.map((category) => (
+                                <button
+                                    key={category.id}
+                                    onClick={() => handleCategorySelect(category.id)}
+                                    className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                    <div className="relative z-10">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-3xl">{category.icon}</span>
+                                                <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">{category.label}</h3>
+                                            </div>
+                                            <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
+                                                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-gray-600 group-hover:text-gray-700 ml-12">{category.description}</p>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                            <div className="flex gap-3">
+                                <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                                <div className="text-sm text-blue-700">
+                                    <p className="font-semibold mb-1">Personalized Assessment</p>
+                                    <p>Your assessment will be customized based on your selected stream to provide relevant career guidance.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowCategorySelection(false);
+                                setShowGradeSelection(true);
+                            }}
+                            className="w-full mt-4 py-4"
+                        >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to Grade Selection
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    if (showStreamSelection) {
+        const categoryLabel = streamCategories.find(c => c.id === selectedCategory)?.label || 'Your Stream';
+        
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+                <Card className="w-full max-w-2xl border-none shadow-2xl">
+                    <CardContent className="p-8">
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                                <Award className="w-8 h-8 text-white" />
+                            </div>
+                            <h1 className="text-3xl font-bold text-gray-800 mb-2">Career Assessment - {categoryLabel}</h1>
+                            <p className="text-gray-600">Select your specific course/program</p>
                         </div>
 
                         {questionsError && (
@@ -1247,7 +1528,7 @@ const AssessmentTest = () => {
                         )}
 
                         <div className="space-y-3">
-                            <Label className="text-sm font-semibold text-gray-700">Select Your Stream/Course</Label>
+                            <Label className="text-sm font-semibold text-gray-700">Select Your Course/Program</Label>
                             {streams.map((stream) => (
                                 <button
                                     key={stream.id}
@@ -1305,6 +1586,19 @@ const AssessmentTest = () => {
                                 )}
                             </div>
                         )}
+                        
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowStreamSelection(false);
+                                setShowCategorySelection(true);
+                                setSelectedCategory(null);
+                            }}
+                            className="w-full mt-4 py-4"
+                        >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to Category Selection
+                        </Button>
                     </CardContent>
                 </Card>
             </div>
