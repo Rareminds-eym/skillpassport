@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   ClipboardDocumentListIcon,
   EyeIcon,
@@ -10,7 +9,6 @@ import {
   AcademicCapIcon,
   ChartBarIcon,
   XMarkIcon,
-  UserIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { supabase } from '../../../lib/supabaseClient';
@@ -142,91 +140,98 @@ const AssessmentCard = ({
   onView: () => void;
 }) => {
   return (
-    <div
-      className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer group"
-      onClick={onView}
-    >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center space-x-3 flex-1 min-w-0">
-          <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-semibold text-lg">
-              {result.student_name?.charAt(0)?.toUpperCase() || '?'}
+    <div className="group bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-lg transition-all duration-300 overflow-hidden">
+      {/* Header with gradient */}
+      <div className="bg-gray-50 p-4 border-b border-gray-100">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center space-x-3 flex-1 min-w-0">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-semibold text-lg">
+                {result.student_name?.charAt(0)?.toUpperCase() || '?'}
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                {result.student_name || 'Unknown Student'}
+              </h3>
+              <p className="text-sm text-gray-600 truncate">{result.student_email}</p>
+            </div>
+          </div>
+          <div className="flex flex-col items-end space-y-1 ml-3">
+            <span className="text-xs font-medium px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+              {result.stream_id?.toUpperCase() || 'N/A'}
+            </span>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full ${
+                result.status === 'completed'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-yellow-100 text-yellow-700'
+              }`}
+            >
+              {result.status}
             </span>
           </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
-              {result.student_name || 'Unknown Student'}
-            </h3>
-            <p className="text-sm text-gray-600 truncate">{result.student_email}</p>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        {/* RIASEC Code */}
+        {result.riasec_code && (
+          <div className="mb-4 pb-3 border-b border-gray-100">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="bg-blue-50 rounded-lg p-1">
+                <SparklesIcon className="h-4 w-4 text-blue-500" />
+              </div>
+              <span className="text-xs font-medium text-gray-700">RIASEC Code</span>
+            </div>
+            <div className="flex gap-1">
+              {result.riasec_code
+                .split('')
+                .slice(0, 6)
+                .map((letter, idx) => (
+                  <span
+                    key={idx}
+                    className="w-7 h-7 flex items-center justify-center bg-blue-50 text-blue-700 font-bold text-sm rounded"
+                  >
+                    {letter}
+                  </span>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Scores */}
+        <div className="flex justify-between items-center mb-4">
+          <ScoreBadge score={result.aptitude_overall} label="Aptitude" />
+          <ScoreBadge score={result.knowledge_score} label="Knowledge" />
+          <div className="flex flex-col items-center">
+            <ReadinessBadge readiness={result.employability_readiness} />
+            <span className="text-xs text-gray-500 mt-1">Employability</span>
           </div>
         </div>
-        <div className="flex flex-col items-end space-y-1 ml-3">
-          <span className="text-xs font-medium px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full">
-            {result.stream_id?.toUpperCase() || 'N/A'}
+
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          <span className="text-xs text-gray-500">
+            {new Date(result.created_at).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })}
           </span>
-          <span
-            className={`text-xs px-2 py-0.5 rounded ${
-              result.status === 'completed'
-                ? 'bg-green-100 text-green-700'
-                : 'bg-yellow-100 text-yellow-700'
-            }`}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onView();
+            }}
+            className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors text-xs font-medium"
           >
-            {result.status}
-          </span>
+            <div className="bg-blue-100 rounded p-0.5 mr-1.5">
+              <EyeIcon className="h-3.5 w-3.5 text-blue-600" />
+            </div>
+            View Details
+          </button>
         </div>
-      </div>
-
-      {/* RIASEC Code */}
-      {result.riasec_code && (
-        <div className="mb-4 pb-3 border-b border-gray-100">
-          <div className="flex items-center gap-2 mb-2">
-            <SparklesIcon className="h-4 w-4 text-indigo-500" />
-            <span className="text-xs font-medium text-gray-700">RIASEC Code</span>
-          </div>
-          <div className="flex gap-1">
-            {result.riasec_code
-              .split('')
-              .slice(0, 6)
-              .map((letter, idx) => (
-                <span
-                  key={idx}
-                  className="w-7 h-7 flex items-center justify-center bg-indigo-50 text-indigo-700 font-bold text-sm rounded"
-                >
-                  {letter}
-                </span>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* Scores */}
-      <div className="flex justify-between items-center mb-4">
-        <ScoreBadge score={result.aptitude_overall} label="Aptitude" />
-        <ScoreBadge score={result.knowledge_score} label="Knowledge" />
-        <div className="flex flex-col items-center">
-          <ReadinessBadge readiness={result.employability_readiness} />
-          <span className="text-xs text-gray-500 mt-1">Employability</span>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-        <span className="text-xs text-gray-500">
-          {new Date(result.created_at).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-          })}
-        </span>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onView();
-          }}
-          className="inline-flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors text-xs font-medium"
-        >
-          <EyeIcon className="h-3.5 w-3.5 mr-1.5" />
-          View Details
-        </button>
       </div>
     </div>
   );
@@ -292,7 +297,6 @@ END OF OLD Detail Modal Component */
 
 // Main Component
 const SchoolAdminAssessmentResults: React.FC = () => {
-  const navigate = useNavigate();
   // @ts-ignore - AuthContext is a .jsx file
   const { user } = useAuth();
 
@@ -305,7 +309,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(24);
+  const [itemsPerPage] = useState(9);
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('date');
 
@@ -603,7 +607,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
       <div className="p-6 bg-white border-b border-gray-200">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-9">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
               Student Assessment Results
@@ -615,28 +619,48 @@ const SchoolAdminAssessmentResults: React.FC = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-4 gap-4 mb-4">
-          <div className="bg-indigo-50 rounded-lg p-4">
-            <p className="text-sm text-indigo-600 font-medium">Total Assessments</p>
-            <p className="text-2xl font-bold text-indigo-700">{stats.total}</p>
+        <div className="grid grid-cols-4 gap-5 mb-10">
+          <div className="bg-indigo-50 rounded-xl p-5 hover:shadow-md transition-all duration-200 h-24 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-indigo-600 font-medium mb-1">Total Assessments</p>
+              <p className="text-2xl font-bold text-indigo-700">{stats.total}</p>
+            </div>
+            <div className="bg-indigo-100 rounded-lg p-3">
+              <ClipboardDocumentListIcon className="h-6 w-6 text-indigo-600" />
+            </div>
           </div>
-          <div className="bg-green-50 rounded-lg p-4">
-            <p className="text-sm text-green-600 font-medium">Completed</p>
-            <p className="text-2xl font-bold text-green-700">{stats.completed}</p>
+          <div className="bg-green-50 rounded-xl p-5 hover:shadow-md transition-all duration-200 h-24 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-green-600 font-medium mb-1">Completed</p>
+              <p className="text-2xl font-bold text-green-700">{stats.completed}</p>
+            </div>
+            <div className="bg-green-100 rounded-lg p-3">
+              <ChartBarIcon className="h-6 w-6 text-green-600" />
+            </div>
           </div>
-          <div className="bg-blue-50 rounded-lg p-4">
-            <p className="text-sm text-blue-600 font-medium">Avg Aptitude</p>
-            <p className="text-2xl font-bold text-blue-700">{stats.avgAptitude}%</p>
+          <div className="bg-blue-50 rounded-xl p-5 hover:shadow-md transition-all duration-200 h-24 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-blue-600 font-medium mb-1">Avg Aptitude</p>
+              <p className="text-2xl font-bold text-blue-700">{stats.avgAptitude}%</p>
+            </div>
+            <div className="bg-blue-100 rounded-lg p-3">
+              <AcademicCapIcon className="h-6 w-6 text-blue-600" />
+            </div>
           </div>
-          <div className="bg-purple-50 rounded-lg p-4">
-            <p className="text-sm text-purple-600 font-medium">Avg Knowledge</p>
-            <p className="text-2xl font-bold text-purple-700">{stats.avgKnowledge}%</p>
+          <div className="bg-purple-50 rounded-xl p-5 hover:shadow-md transition-all duration-200 h-24 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-purple-600 font-medium mb-1">Avg Knowledge</p>
+              <p className="text-2xl font-bold text-purple-700">{stats.avgKnowledge}%</p>
+            </div>
+            <div className="bg-purple-100 rounded-lg p-3">
+              <SparklesIcon className="h-6 w-6 text-purple-600" />
+            </div>
           </div>
         </div>
 
         {/* Search and Controls */}
         <div className="flex items-center gap-4">
-          <div className="flex-1 max-w-xl">
+          <div className="flex-1 max-w-3xl">
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
@@ -647,7 +671,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
 
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            className="inline-flex items-center px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
@@ -658,23 +682,23 @@ const SchoolAdminAssessmentResults: React.FC = () => {
             )}
           </button>
 
-          <div className="flex rounded-lg shadow-sm">
+          <div className="flex rounded-lg shadow-sm border border-gray-300">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-lg border ${
+              className={`px-3 py-2.5 text-sm font-medium rounded-l-lg transition-colors ${
                 viewMode === 'grid'
-                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700 border'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
               }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-lg border-t border-r border-b ${
+              className={`px-3 py-2.5 text-sm font-medium rounded-r-lg border-l transition-colors ${
                 viewMode === 'table'
-                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700 border-t border-r border-b'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'
               }`}
             >
               <TableCellsIcon className="h-4 w-4" />
@@ -684,7 +708,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
           >
             <option value="date">Sort: Latest</option>
             <option value="name">Sort: Name</option>
@@ -745,24 +769,36 @@ const SchoolAdminAssessmentResults: React.FC = () => {
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {error ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-800">Error: {error}</p>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+              <div className="bg-red-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4">
+                <XMarkIcon className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-red-900 mb-2">Error Loading Results</h3>
+              <p className="text-red-800 mb-4">{error}</p>
+              <button
+                onClick={fetchResults}
+                className="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Try Again
+              </button>
             </div>
           ) : paginatedResults.length === 0 ? (
-            <div className="text-center py-12">
-              <ClipboardDocumentListIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <div className="text-center py-16">
+              <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+                <ClipboardDocumentListIcon className="h-10 w-10 text-gray-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 No assessment results found
               </h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
                 {searchQuery || activeFilterCount > 0
-                  ? 'Try adjusting your search or filters'
-                  : 'No student assessments available yet'}
+                  ? 'Try adjusting your search terms or clearing filters to see more results.'
+                  : 'No student assessments have been completed yet. Results will appear here once students complete their assessments.'}
               </p>
               {activeFilterCount > 0 && (
                 <button
                   onClick={handleClearFilters}
-                  className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                  className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
                 >
                   Clear all filters
                 </button>
@@ -770,14 +806,21 @@ const SchoolAdminAssessmentResults: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="mb-4 text-sm text-gray-600">
-                Showing {startIndex + 1}-
-                {Math.min(endIndex, filteredResults.length)} of{' '}
-                {filteredResults.length} results
-              </div>
+              {/* <div className="mb-6 text-sm text-gray-600 flex items-center justify-between">
+                <span>
+                  Showing {startIndex + 1}-
+                  {Math.min(endIndex, filteredResults.length)} of{' '}
+                  {filteredResults.length} results
+                </span>
+                {totalPages > 1 && (
+                  <span className="text-xs text-gray-500">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                )}
+              </div> */}
 
               {viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {paginatedResults.map((result) => (
                     <AssessmentCard
                       key={result.id}
@@ -787,42 +830,42 @@ const SchoolAdminAssessmentResults: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+                <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Student
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Stream
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           RIASEC
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Aptitude
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Knowledge
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Readiness
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Date
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {paginatedResults.map((result) => (
-                        <tr key={result.id} className="hover:bg-gray-50">
+                      {paginatedResults.map((result, index) => (
+                        <tr key={result.id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
                                 <span className="text-white font-semibold text-sm">
                                   {result.student_name?.charAt(0)?.toUpperCase() ||
                                     '?'}
@@ -839,19 +882,19 @@ const SchoolAdminAssessmentResults: React.FC = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
+                            <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
                               {result.stream_id?.toUpperCase() || 'N/A'}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-bold text-indigo-600">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-bold text-blue-600">
                             {result.riasec_code || '-'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             {result.aptitude_overall !== null
                               ? `${result.aptitude_overall}%`
                               : '-'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             {result.knowledge_score !== null
                               ? `${result.knowledge_score}%`
                               : '-'}
@@ -867,8 +910,11 @@ const SchoolAdminAssessmentResults: React.FC = () => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <button
                               onClick={() => handleViewResult(result)}
-                              className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                              className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors text-xs font-medium"
                             >
+                              <div className="bg-blue-100 rounded p-0.5 mr-1.5">
+                                <EyeIcon className="h-3.5 w-3.5 text-blue-600" />
+                              </div>
                               View
                             </button>
                           </td>
@@ -878,29 +924,70 @@ const SchoolAdminAssessmentResults: React.FC = () => {
                   </table>
                 </div>
               )}
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="mt-6 flex items-center justify-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-sm text-gray-600">
+                 {/* <div className="mb-6 text-sm text-gray-600 flex items-center justify-between">
+                <span>
+                  Showing {startIndex + 1}-
+                  {Math.min(endIndex, filteredResults.length)} of{' '}
+                  {filteredResults.length} results
+                </span>
+                {totalPages > 1 && (
+                  <span className="text-xs text-gray-500">
                     Page {currentPage} of {totalPages}
                   </span>
-                  <button
-                    onClick={() =>
-                      setCurrentPage((p) => Math.min(totalPages, p + 1))
-                    }
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50"
-                  >
-                    Next
-                  </button>
+                )}
+              </div> */}
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-8 flex items-center justify-center">
+                  <nav className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Previous
+                    </button>
+                    
+                    {/* Page Numbers */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                              currentPage === pageNum
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <button
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next
+                    </button>
+                  </nav>
                 </div>
               )}
             </>

@@ -41,6 +41,14 @@ const Header: React.FC<HeaderProps> = ({
     navigate("/login");
   };
 
+  // Get settings path based on role (same logic as sidebar)
+  const getSettingsPath = () => {
+    if (user?.role === "school_admin") return "/school-admin/settings";
+    if (user?.role === "college_admin") return "/college-admin/settings";
+    if (user?.role === "university_admin") return "/university-admin/settings";
+    return "/college-admin/settings";
+  };
+
   // Fallbacks
   const userName = user?.name || "Admin User";
   const userRoleLabel =
@@ -122,7 +130,7 @@ const Header: React.FC<HeaderProps> = ({
                 <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
                   <div className="py-1">
                     <button
-                      onClick={() => navigate("/college-admin/settings")}
+                      onClick={() => navigate(getSettingsPath())}
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
                       Settings
