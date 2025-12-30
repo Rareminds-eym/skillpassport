@@ -174,7 +174,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 
   const tabs = getTabsConfig();
   const actions = getActionsConfig();
-  const qrCodeValue = `${window.location.origin}/student/profile/${student.email}`;
+  const qrCodeValue = `${window.location.origin}/student/profile/${student.id}`;
 
   const renderTabContent = () => {
     switch (activeTab) {

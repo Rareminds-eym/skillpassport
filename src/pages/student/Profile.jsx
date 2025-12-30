@@ -4,19 +4,18 @@ import StudentPublicViewer from '../../components/Students/components/StudentPub
 import { useAuth } from '../../context/AuthContext';
 
 const Profile = () => {
-  const { email } = useParams(); // Get email from URL if viewing someone else's profile
+  const { studentId } = useParams(); // Get studentId from URL if viewing someone else's profile
   const location = useLocation();
   const { user } = useAuth();
   
-  // If accessed with email param and it's not the current user, show public viewer
-  // This happens when QR code is scanned
-  const isQRScan = email && email !== user?.email;
+  // If accessed with studentId param, show public viewer (QR code scan)
+  const isQRScan = studentId;
   
   if (isQRScan) {
     return <StudentPublicViewer />;
   }
   
-  return <ProfileEditSection profileEmail={email} />;
+  return <ProfileEditSection />;
 };
 
 export default Profile;

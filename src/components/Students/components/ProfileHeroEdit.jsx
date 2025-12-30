@@ -487,9 +487,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
   // Generate QR code value once and keep it constant
   const qrCodeValue = React.useMemo(() => {
-    const email = userEmail || "student";
-    return `${window.location.origin}/student/profile/${email}`;
-  }, [userEmail]);
+    const studentId = realStudentData?.id || "student";
+    return `${window.location.origin}/student/profile/${studentId}`;
+  }, [realStudentData?.id]);
 
   // Copy link to clipboard
   const handleCopyLink = () => {
