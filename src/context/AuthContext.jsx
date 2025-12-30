@@ -25,11 +25,6 @@ export const AuthProvider = ({ children }) => {
       || sessionUser.user_metadata?.role 
       || 'user';
     
-    console.log('=== AuthContext restoreUserFromStorage DEBUG ===');
-    console.log('sessionUser:', sessionUser);
-    console.log('sessionUser.user_metadata:', sessionUser.user_metadata);
-    console.log('detected sessionRole:', sessionRole);
-    
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
@@ -41,13 +36,10 @@ export const AuthProvider = ({ children }) => {
         
         if (userMatches) {
           // Always update role from session to ensure it's current
-          const updatedUser = {
+          return {
             ...parsedUser,
             role: sessionRole,
           };
-          console.log('Returning updated user with role:', sessionRole);
-          console.log('=== END DEBUG ===');
-          return updatedUser;
         }
       } catch (e) {
         console.warn('Failed to parse stored user:', e);
@@ -55,9 +47,6 @@ export const AuthProvider = ({ children }) => {
     }
     
     // Create new user data from session
-    console.log('Creating new user with role:', sessionRole);
-    console.log('=== END DEBUG ===');
-    
     return {
       id: sessionUser.id,
       email: sessionUser.email,

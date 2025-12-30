@@ -22,20 +22,11 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { isAuthenticated, role, loading } = useAuth();
   const location = useLocation();
 
-  console.log('=== ProtectedRoute DEBUG ===');
-  console.log('pathname:', location.pathname);
-  console.log('isAuthenticated:', isAuthenticated);
-  console.log('role from useAuth:', role);
-  console.log('allowedRoles:', allowedRoles);
-  console.log('loading:', loading);
-
   if (loading) {
-    console.log('Still loading, showing Loader');
     return <Loader />;
   }
 
   if (!isAuthenticated) {
-    console.log('Not authenticated, redirecting...');
     // Redirect to student login if path includes 'student', else default to '/'
     if (location.pathname.includes('student')) {
       return <Navigate to="/login/student" replace />;
@@ -45,17 +36,11 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
 
   // Check if user's role (or its category) is in allowed roles
   const roleCategory = getRoleCategory(role);
-  console.log('roleCategory:', roleCategory);
-  
   const hasAccess = allowedRoles.length === 0 || 
     allowedRoles.includes(role) || 
     allowedRoles.includes(roleCategory);
-  
-  console.log('hasAccess:', hasAccess);
-  console.log('=== END ProtectedRoute DEBUG ===');
 
   if (!hasAccess) {
-    console.log('No access, redirecting to /');
     return <Navigate to="/" replace />;
   }
 

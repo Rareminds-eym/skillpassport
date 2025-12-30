@@ -1,13 +1,13 @@
 import {
-  ArrowRight,
-  Calendar,
-  Check,
-  Clock,
-  CreditCard,
-  Download,
-  Loader2,
-  MailCheck,
-  Sparkles,
+    ArrowRight,
+    Calendar,
+    Check,
+    Clock,
+    CreditCard,
+    Download,
+    Loader2,
+    MailCheck,
+    Sparkles,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -199,12 +199,6 @@ function PaymentSuccess() {
       || user?.raw_user_meta_data?.user_role 
       || user?.raw_user_meta_data?.role;
     
-    console.log('=== PaymentSuccess getDashboardUrl DEBUG ===');
-    console.log('user object:', user);
-    console.log('user?.user_metadata:', user?.user_metadata);
-    console.log('user?.raw_user_meta_data:', user?.raw_user_meta_data);
-    console.log('detected role:', role);
-    
     const dashboardRoutes = {
       // Students
       school_student: '/student/dashboard',
@@ -223,10 +217,7 @@ function PaymentSuccess() {
       admin: '/admin/dashboard',
     };
     
-    const url = dashboardRoutes[role] || '/student/dashboard';
-    console.log('navigating to:', url);
-    console.log('=== END DEBUG ===');
-    return url;
+    return dashboardRoutes[role] || '/student/dashboard';
   };
 
   // Loading
