@@ -1,14 +1,15 @@
 import { City, Country, State } from 'country-state-city';
 import {
-  AlertCircle,
-  ArrowRight,
-  CheckCircle,
-  Eye, EyeOff,
-  Globe,
-  Loader2,
-  ShieldCheck
+    AlertCircle,
+    ArrowRight,
+    CheckCircle,
+    ChevronDown,
+    Eye, EyeOff,
+    Globe,
+    Loader2,
+    ShieldCheck
 } from 'lucide-react';
-import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 // @ts-ignore - JS module without types
@@ -47,41 +48,41 @@ interface SignupState {
 
 const ALL_COUNTRIES = Country.getAllCountries();
 
-// Country codes for phone numbers
+// Country codes for phone numbers with flags
 const COUNTRY_CODES = [
-  { code: 'IN', dialCode: '+91', name: 'India' },
-  { code: 'US', dialCode: '+1', name: 'United States' },
-  { code: 'GB', dialCode: '+44', name: 'United Kingdom' },
-  { code: 'CA', dialCode: '+1', name: 'Canada' },
-  { code: 'AU', dialCode: '+61', name: 'Australia' },
-  { code: 'AE', dialCode: '+971', name: 'UAE' },
-  { code: 'SG', dialCode: '+65', name: 'Singapore' },
-  { code: 'MY', dialCode: '+60', name: 'Malaysia' },
-  { code: 'DE', dialCode: '+49', name: 'Germany' },
-  { code: 'FR', dialCode: '+33', name: 'France' },
-  { code: 'IT', dialCode: '+39', name: 'Italy' },
-  { code: 'ES', dialCode: '+34', name: 'Spain' },
-  { code: 'NL', dialCode: '+31', name: 'Netherlands' },
-  { code: 'SA', dialCode: '+966', name: 'Saudi Arabia' },
-  { code: 'QA', dialCode: '+974', name: 'Qatar' },
-  { code: 'KW', dialCode: '+965', name: 'Kuwait' },
-  { code: 'OM', dialCode: '+968', name: 'Oman' },
-  { code: 'BH', dialCode: '+973', name: 'Bahrain' },
-  { code: 'JP', dialCode: '+81', name: 'Japan' },
-  { code: 'KR', dialCode: '+82', name: 'South Korea' },
-  { code: 'CN', dialCode: '+86', name: 'China' },
-  { code: 'NZ', dialCode: '+64', name: 'New Zealand' },
-  { code: 'ZA', dialCode: '+27', name: 'South Africa' },
-  { code: 'BR', dialCode: '+55', name: 'Brazil' },
-  { code: 'MX', dialCode: '+52', name: 'Mexico' },
-  { code: 'PH', dialCode: '+63', name: 'Philippines' },
-  { code: 'ID', dialCode: '+62', name: 'Indonesia' },
-  { code: 'TH', dialCode: '+66', name: 'Thailand' },
-  { code: 'VN', dialCode: '+84', name: 'Vietnam' },
-  { code: 'PK', dialCode: '+92', name: 'Pakistan' },
-  { code: 'BD', dialCode: '+880', name: 'Bangladesh' },
-  { code: 'LK', dialCode: '+94', name: 'Sri Lanka' },
-  { code: 'NP', dialCode: '+977', name: 'Nepal' },
+  { code: 'IN', dialCode: '+91', name: 'India', flag: '🇮🇳' },
+  { code: 'US', dialCode: '+1', name: 'United States', flag: '🇺🇸' },
+  { code: 'GB', dialCode: '+44', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'CA', dialCode: '+1', name: 'Canada', flag: '🇨🇦' },
+  { code: 'AU', dialCode: '+61', name: 'Australia', flag: '🇦🇺' },
+  { code: 'AE', dialCode: '+971', name: 'UAE', flag: '🇦🇪' },
+  { code: 'SG', dialCode: '+65', name: 'Singapore', flag: '🇸🇬' },
+  { code: 'MY', dialCode: '+60', name: 'Malaysia', flag: '🇲🇾' },
+  { code: 'DE', dialCode: '+49', name: 'Germany', flag: '🇩🇪' },
+  { code: 'FR', dialCode: '+33', name: 'France', flag: '🇫🇷' },
+  { code: 'IT', dialCode: '+39', name: 'Italy', flag: '🇮🇹' },
+  { code: 'ES', dialCode: '+34', name: 'Spain', flag: '🇪🇸' },
+  { code: 'NL', dialCode: '+31', name: 'Netherlands', flag: '🇳🇱' },
+  { code: 'SA', dialCode: '+966', name: 'Saudi Arabia', flag: '🇸🇦' },
+  { code: 'QA', dialCode: '+974', name: 'Qatar', flag: '🇶🇦' },
+  { code: 'KW', dialCode: '+965', name: 'Kuwait', flag: '🇰🇼' },
+  { code: 'OM', dialCode: '+968', name: 'Oman', flag: '🇴🇲' },
+  { code: 'BH', dialCode: '+973', name: 'Bahrain', flag: '🇧🇭' },
+  { code: 'JP', dialCode: '+81', name: 'Japan', flag: '🇯🇵' },
+  { code: 'KR', dialCode: '+82', name: 'South Korea', flag: '🇰🇷' },
+  { code: 'CN', dialCode: '+86', name: 'China', flag: '🇨🇳' },
+  { code: 'NZ', dialCode: '+64', name: 'New Zealand', flag: '🇳🇿' },
+  { code: 'ZA', dialCode: '+27', name: 'South Africa', flag: '🇿🇦' },
+  { code: 'BR', dialCode: '+55', name: 'Brazil', flag: '🇧🇷' },
+  { code: 'MX', dialCode: '+52', name: 'Mexico', flag: '🇲🇽' },
+  { code: 'PH', dialCode: '+63', name: 'Philippines', flag: '🇵🇭' },
+  { code: 'ID', dialCode: '+62', name: 'Indonesia', flag: '🇮🇩' },
+  { code: 'TH', dialCode: '+66', name: 'Thailand', flag: '🇹🇭' },
+  { code: 'VN', dialCode: '+84', name: 'Vietnam', flag: '🇻🇳' },
+  { code: 'PK', dialCode: '+92', name: 'Pakistan', flag: '🇵🇰' },
+  { code: 'BD', dialCode: '+880', name: 'Bangladesh', flag: '🇧🇩' },
+  { code: 'LK', dialCode: '+94', name: 'Sri Lanka', flag: '🇱🇰' },
+  { code: 'NP', dialCode: '+977', name: 'Nepal', flag: '🇳🇵' },
 ];
 
 // International Languages
@@ -149,6 +150,21 @@ const UnifiedSignup = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [states, setStates] = useState<any[]>([]);
   const [cities, setCities] = useState<any[]>([]);
+  const [countryCodeDropdownOpen, setCountryCodeDropdownOpen] = useState(false);
+  const countryCodeRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (countryCodeRef.current && !countryCodeRef.current.contains(event.target as Node)) {
+        setCountryCodeDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedCountry = COUNTRY_CODES.find(cc => cc.dialCode === state.countryCode) || COUNTRY_CODES[0];
 
   const allRoles: UserRole[] = ['student', 'educator', 'recruiter', 'school_admin', 'college_admin', 'university_admin'];
 
@@ -430,14 +446,47 @@ const UnifiedSignup = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Mobile Number</label>
-                  <div className="flex gap-3">
-                    <div className="relative w-32">
-                      <select name="countryCode" value={state.countryCode} onChange={handleInputChange} disabled={state.otpVerified} className="w-full px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 appearance-none outline-none">
-                        {COUNTRY_CODES.map(cc => <option key={cc.code} value={cc.dialCode}>{cc.code} ({cc.dialCode})</option>)}
-                      </select>
+                  <div className={`flex items-center border rounded-xl bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all ${state.otpVerified ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
+                    {/* Custom Country Code Dropdown */}
+                    <div className="relative" ref={countryCodeRef}>
+                      <button
+                        type="button"
+                        onClick={() => !state.otpVerified && setCountryCodeDropdownOpen(!countryCodeDropdownOpen)}
+                        disabled={state.otpVerified}
+                        className="flex items-center gap-2 h-full pl-4 pr-3 py-3 bg-transparent text-sm font-medium text-gray-700 outline-none cursor-pointer hover:bg-gray-100 rounded-l-xl transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        <span className="text-xl">{selectedCountry.flag}</span>
+                        <span className="text-gray-700">{selectedCountry.dialCode}</span>
+                        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${countryCodeDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      
+                      {/* Dropdown Menu */}
+                      {countryCodeDropdownOpen && (
+                        <div className="absolute top-full left-0 mt-1 w-64 max-h-72 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1">
+                          {COUNTRY_CODES.map(cc => (
+                            <button
+                              key={cc.code}
+                              type="button"
+                              onClick={() => {
+                                setState(prev => ({ ...prev, countryCode: cc.dialCode }));
+                                setCountryCodeDropdownOpen(false);
+                              }}
+                              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-blue-50 transition-colors ${state.countryCode === cc.dialCode ? 'bg-blue-50 text-blue-700' : 'text-gray-700'}`}
+                            >
+                              <span className="text-xl">{cc.flag}</span>
+                              <span className="flex-1 font-medium">{cc.name}</span>
+                              <span className="text-gray-500 text-sm">{cc.dialCode}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
+
+                    {/* Divider */}
+                    <div className="h-6 w-px bg-gray-300"></div>
+
                     <div className="relative flex-1">
-                      <input type="tel" name="phone" value={state.phone} onChange={handleInputChange} placeholder="Phone number" disabled={state.otpVerified} className={`block w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none ${state.otpVerified ? 'border-green-300 bg-green-50 text-green-700' : 'border-gray-200'}`} />
+                      <input type="tel" name="phone" value={state.phone} onChange={handleInputChange} placeholder="Phone number" disabled={state.otpVerified} className="block w-full px-3 py-3 bg-transparent border-none outline-none text-gray-900 placeholder-gray-400" />
                       {state.otpVerified && <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />}
                     </div>
                   </div>
