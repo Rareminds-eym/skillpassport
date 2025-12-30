@@ -7,22 +7,15 @@
  * Usage:
  * <SubscriptionGate 
  *   fallback={<UpgradePrompt />}
- *   requiredPlan="pro"
+ *   requiredPlan="professional"
  * >
  *   <PremiumFeature />
  * </SubscriptionGate>
  */
 
-import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { Link } from 'react-router-dom';
-
-// Plan hierarchy for comparison
-const PLAN_HIERARCHY = {
-  basic: 1,
-  pro: 2,
-  professional: 2,
-  enterprise: 3,
-};
+import { PLAN_HIERARCHY } from '../../config/subscriptionPlans';
+import { useSubscriptionContext } from '../../context/SubscriptionContext';
 
 const DefaultFallback = ({ requiredPlan }) => (
   <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-lg p-6 text-center">

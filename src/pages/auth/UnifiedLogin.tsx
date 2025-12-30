@@ -1,6 +1,6 @@
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucide-react';
 import { ChangeEvent, FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getUserRole } from '../../services/roleLookupService';
 import { signIn, UserRole } from '../../services/unifiedAuthService';

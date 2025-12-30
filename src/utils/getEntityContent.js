@@ -1,4 +1,4 @@
-import { getPlanPrice } from '../config/payment';
+import { getSubscriptionPlans, PLAN_IDS } from '../config/subscriptionPlans';
 
 /**
  * Parse student type to extract entity and role
@@ -187,183 +187,312 @@ export function getModalContent(studentType) {
 
 /**
  * Get plans with role-specific features
+ * Uses the new 4-tier commercially strong subscription model
  */
 function getPlansForRole(role, entity) {
-    const basePrice = {
-        basic: getPlanPrice('basic'),
-        pro: getPlanPrice('pro'),
-        enterprise: getPlanPrice('enterprise')
-    };
+    // Get base plans from the new subscription config
+    const basePlans = getSubscriptionPlans();
+    
+    // Role-specific feature overrides for display purposes
+    const roleFeatureOverrides = getRoleSpecificFeatures(role, entity);
+    
+    // Map base plans with role-specific features
+    return basePlans.map(plan => ({
+        ...plan,
+        features: roleFeatureOverrides[plan.id] || plan.features
+    }));
+}
 
-    // Student-specific features
+/**
+ * Get role-specific feature descriptions
+ * These customize the generic plan features for specific user roles
+ */
+function getRoleSpecificFeatures(role, entity) {
+    // Student-specific features (school/college/university)
     const studentFeatures = {
-        basic: [
+        [PLAN_IDS.BASIC]: [
             'Access to basic skill assessments',
             'Create digital portfolio',
-            'Limited profile visibility to recruiters',
+            'Standard skill catalog access',
+            'Pre-built learning pathways',
             'Basic career resources',
-            'Email support'
+            'Standard completion certificates',
+            'Basic analytics dashboard',
+            'Email support (business hours)'
         ],
-        pro: [
+        [PLAN_IDS.PROFESSIONAL]: [
             'All Basic features',
             'Advanced skill assessments & certifications',
+            'Custom learning pathway builder',
             'Priority profile visibility to recruiters',
             'Personalized career recommendations',
             'Resume builder & templates',
+            'Custom certificate templates',
+            'Cohort & skill-gap analytics',
             'Interview preparation resources',
-            'Priority support'
+            'Priority support + onboarding'
         ],
-        enterprise: [
+        [PLAN_IDS.ENTERPRISE]: [
             'All Professional features',
             'Custom skill assessment creation',
+            'Role-based catalog access',
             'Premium recruiter visibility',
             'One-on-one career counseling sessions',
             'Exclusive job opportunities',
+            'Custom certificates + verification',
+            'Skill-gap heatmaps & benchmarks',
             'LinkedIn profile optimization',
-            '24/7 Premium support',
-            'Dedicated career advisor'
+            'Dedicated support, SLA 24×5',
+            'Named Customer Success Manager'
+        ],
+        [PLAN_IDS.ECOSYSTEM]: [
+            'All Enterprise features',
+            'Custom enterprise skill framework',
+            'Advanced pathways & automation',
+            'Verified credentials & digital badges',
+            'Advanced analytics & benchmarking',
+            'Multi-institution access',
+            'Full API access for integrations',
+            '24/7 support + SLA',
+            'Named Customer Success Manager',
+            'Custom implementation support'
         ]
     };
 
     // Educator-specific features
     const educatorFeatures = {
-        basic: [
+        [PLAN_IDS.BASIC]: [
             'Manage up to 50 students',
             'Basic student analytics',
             'Assignment tracking',
             'Grade management',
-            'Email support'
+            'Standard skill catalog',
+            'Pre-built learning pathways',
+            'Basic reminders',
+            'Email support (business hours)'
         ],
-        pro: [
+        [PLAN_IDS.PROFESSIONAL]: [
             'All Basic features',
             'Manage up to 200 students',
+            'Cohort management',
             'Advanced student analytics & insights',
             'Custom assignment creation',
+            'Question banks & graded assignments',
             'Progress tracking & reports',
+            'Custom pathway builder',
             'Parent communication tools',
-            'Curriculum planning resources',
-            'Priority support'
+            'Campaigns & nudges',
+            'Priority support + onboarding'
         ],
-        enterprise: [
+        [PLAN_IDS.ENTERPRISE]: [
             'All Professional features',
-            'Unlimited student management',
+            'Manage up to 500 students',
+            'Multi-department cohorts',
             'Institution-wide analytics',
             'Custom curriculum builder',
+            'Rubrics + project evaluation',
             'Automated grading & feedback',
+            'Skill-gap heatmaps + benchmarks',
             'Integration with LMS platforms',
-            'Professional development resources',
-            '24/7 Premium support',
-            'Dedicated account manager'
+            'Automation + smart nudges',
+            'Dedicated support, SLA 24×5',
+            'Named Customer Success Manager'
+        ],
+        [PLAN_IDS.ECOSYSTEM]: [
+            'All Enterprise features',
+            'Unlimited student management',
+            'Multi-LOB cohorts',
+            'Advanced assessments & rubrics',
+            'Verified credentials & digital badges',
+            'Advanced analytics & benchmarking',
+            'Full HRIS/LMS integrations',
+            'Intelligent automation',
+            '24/7 support + SLA',
+            'Named Customer Success Manager',
+            'Implementation services included'
         ]
     };
 
-    // Admin-specific features
+    // Admin-specific features (school/college/university)
     const adminFeatures = {
-        basic: [
-            'Manage up to 100 users',
+        [PLAN_IDS.BASIC]: [
+            'Up to 1,000 learners',
+            '2 admin accounts',
+            'Logo + primary color branding',
             'Basic institution analytics',
             'User role management',
+            'Standard skill catalog',
             'Basic reporting',
-            'Email support'
+            'Email support (business hours)'
         ],
-        pro: [
+        [PLAN_IDS.PROFESSIONAL]: [
             'All Basic features',
-            'Manage up to 500 users',
+            'Up to 2,000 learners',
+            'Up to 5 admins/managers',
+            'Advanced branding options',
+            'Cohort management',
             'Advanced institution-wide analytics',
             'Bulk user operations',
-            'Custom branding & white-labeling',
-            'Compliance & audit reports',
-            'API access for integrations',
-            'Priority support'
+            'Custom pathway builder',
+            'CSV data exports',
+            'Campaigns & nudges',
+            'SSO available as add-on',
+            'Priority support + onboarding'
         ],
-        enterprise: [
+        [PLAN_IDS.ENTERPRISE]: [
             'All Professional features',
-            'Unlimited user management',
+            'Up to 5,000 learners',
+            'Up to 10 admins/managers',
+            'Advanced branding + sub-portals',
+            'Multi-department cohorts',
+            'Up to 5 TB storage',
             'Enterprise-grade analytics & BI',
             'Multi-campus management',
             'Advanced security & SSO',
-            'Custom integrations & workflows',
-            'Dedicated infrastructure',
-            '24/7 Premium support',
-            'Dedicated account manager',
-            'SLA guarantees'
+            'User provisioning (SCIM)',
+            'Full API + webhooks',
+            'Standard HRIS/LMS integrations',
+            'Audit logs & retention',
+            'Dedicated support, SLA 24×5',
+            'Named Customer Success Manager',
+            'Implementation & migration support'
+        ],
+        [PLAN_IDS.ECOSYSTEM]: [
+            'All Enterprise features',
+            'Unlimited learners (contracted)',
+            'Unlimited admin roles',
+            'Multi-brand, multi-portal',
+            'Multi-LOB cohorts',
+            'Unlimited storage (negotiated)',
+            'Custom enterprise skill framework',
+            'Advanced analytics & benchmarking',
+            'BI connectors (Power BI / Tableau)',
+            'Full HRIS/LMS integrations',
+            'Contractual data residency',
+            'Intelligent automation',
+            '24/7 support + SLA',
+            'Named Customer Success Manager',
+            'Custom SLA agreements'
         ]
     };
 
     // University Admin-specific features
     const universityAdminFeatures = {
-        basic: [
+        [PLAN_IDS.BASIC]: [
             'Manage single college under university',
+            'Up to 1,000 students',
+            '2 admin accounts',
             'Basic student management',
             'Standard course management',
             'Basic analytics dashboard',
-            'Email support'
+            'Email support (business hours)'
         ],
-        pro: [
+        [PLAN_IDS.PROFESSIONAL]: [
             'All Basic features',
+            'Up to 2,000 students',
+            'Up to 5 admins/managers',
             'Advanced student analytics',
             'Faculty management tools',
             'Custom course creation',
+            'Cohort management',
             'Placement tracking',
             'Parent communication portal',
-            'Priority support'
+            'Priority support + onboarding'
         ],
-        enterprise: [
+        [PLAN_IDS.ENTERPRISE]: [
             'All Professional features',
+            'Up to 5,000 students',
+            'Up to 10 admins/managers',
             'Multi-department management',
             'Advanced placement analytics',
             'Industry partnership tools',
-            'Custom integrations & API access',
-            'Dedicated account manager',
-            '24/7 Premium support',
+            'Skill-gap heatmaps + benchmarks',
+            'SSO (SAML/OIDC) included',
+            'Full API + webhooks',
+            'Audit logs & retention',
+            'Dedicated support, SLA 24×5',
+            'Named Customer Success Manager'
+        ],
+        [PLAN_IDS.ECOSYSTEM]: [
+            'All Enterprise features',
+            'Unlimited students (contracted)',
+            'Unlimited admin roles',
+            'Multi-campus, multi-portal',
+            'Advanced analytics & benchmarking',
+            'Full HRIS/LMS integrations',
+            'Verified credentials & digital badges',
+            'Contractual data residency',
+            '24/7 support + SLA',
+            'Named Customer Success Manager',
             'Custom SLA agreements'
         ]
     };
 
     // Recruitment Admin-specific features
     const recruitmentAdminFeatures = {
-        basic: [
+        [PLAN_IDS.BASIC]: [
             'Create company workspace',
-            'Manage up to 5 recruiters',
+            'Up to 1,000 candidate profiles',
+            '2 admin accounts',
             'Basic candidate database access',
             'Standard job posting',
             'Basic analytics dashboard',
-            'Email support'
+            'Email support (business hours)'
         ],
-        pro: [
+        [PLAN_IDS.PROFESSIONAL]: [
             'All Basic features',
-            'Manage up to 20 recruiters',
+            'Up to 2,000 candidate profiles',
+            'Up to 5 admins/managers',
             'Advanced candidate search & filters',
             'AI-powered candidate matching',
             'Custom hiring workflows',
             'Team collaboration tools',
-            'Advanced analytics & reports',
-            'Priority support'
+            'Cohort & skill-gap analytics',
+            'CSV data exports',
+            'Priority support + onboarding'
         ],
-        enterprise: [
+        [PLAN_IDS.ENTERPRISE]: [
             'All Professional features',
-            'Unlimited team members',
+            'Up to 5,000 candidate profiles',
+            'Up to 10 admins/managers',
             'Premium candidate database access',
-            'Custom integrations & API access',
-            'White-label branding',
-            'Dedicated account manager',
-            'Custom SLA agreements',
-            '24/7 Premium support',
-            'Advanced security & compliance'
+            'Advanced branding + sub-portals',
+            'Multi-department hiring',
+            'Skill-gap heatmaps + benchmarks',
+            'SSO (SAML/OIDC) included',
+            'Full API + webhooks',
+            'Standard HRIS integrations',
+            'Audit logs & retention',
+            'Dedicated support, SLA 24×5',
+            'Named Customer Success Manager'
+        ],
+        [PLAN_IDS.ECOSYSTEM]: [
+            'All Enterprise features',
+            'Unlimited candidate profiles',
+            'Unlimited admin roles',
+            'Multi-brand, multi-portal',
+            'Advanced analytics & benchmarking',
+            'BI connectors (Power BI / Tableau)',
+            'Full HRIS integrations',
+            'Contractual data residency',
+            '24/7 support + SLA',
+            'Named Customer Success Manager',
+            'Custom SLA agreements'
         ]
     };
 
     // Recruiter-specific features
     const recruiterFeatures = {
-        basic: [
+        [PLAN_IDS.BASIC]: [
             'Join company workspace',
             'Basic candidate search',
             'Up to 10 active job postings',
             'Limited AI recommendations',
             'Standard application tracking',
-            'Email support'
+            'Basic analytics',
+            'Email support (business hours)'
         ],
-        pro: [
+        [PLAN_IDS.PROFESSIONAL]: [
             'All Basic features',
             'Advanced search filters',
             'Unlimited job postings',
@@ -371,69 +500,48 @@ function getPlansForRole(role, entity) {
             'Priority candidate visibility',
             'Resume parsing & analysis',
             'Interview scheduling tools',
-            'Priority support'
+            'Cohort analytics',
+            'Priority support + onboarding'
         ],
-        enterprise: [
+        [PLAN_IDS.ENTERPRISE]: [
             'All Professional features',
             'Custom hiring workflows',
             'Bulk candidate operations',
             'Advanced analytics dashboard',
+            'Skill-gap heatmaps',
             'Integration with ATS systems',
-            'Dedicated account manager',
-            'API access',
-            '24/7 Premium support',
+            'Automation + smart nudges',
+            'Dedicated support, SLA 24×5',
+            'Named Customer Success Manager'
+        ],
+        [PLAN_IDS.ECOSYSTEM]: [
+            'All Enterprise features',
+            'Advanced assessments & rubrics',
+            'Advanced analytics & benchmarking',
+            'Full ATS/HRIS integrations',
+            'Intelligent automation',
+            '24/7 support + SLA',
+            'Named Customer Success Manager',
             'Custom reporting'
         ]
     };
 
     // Determine which feature set to use based on entity and role
-    let features;
     if (entity === 'recruitment') {
         if (role === 'admin') {
-            features = recruitmentAdminFeatures;
+            return recruitmentAdminFeatures;
         } else if (role === 'recruiter') {
-            features = recruiterFeatures;
-        } else {
-            features = studentFeatures; // fallback
+            return recruiterFeatures;
         }
     } else if (entity === 'university' && role === 'admin') {
-        features = universityAdminFeatures;
-    } else {
-        const featureMap = {
-            student: studentFeatures,
-            educator: educatorFeatures,
-            admin: adminFeatures
-        };
-        features = featureMap[role] || studentFeatures;
+        return universityAdminFeatures;
     }
-
-    return [
-        {
-            id: 'basic',
-            name: 'Basic',
-            price: basePrice.basic,
-            duration: 'month',
-            features: features.basic,
-            color: 'bg-blue-600',
-            recommended: false
-        },
-        {
-            id: 'pro',
-            name: 'Professional',
-            price: basePrice.pro,
-            duration: 'month',
-            features: features.pro,
-            color: 'bg-blue-600',
-            recommended: true
-        },
-        {
-            id: 'enterprise',
-            name: 'Enterprise',
-            price: basePrice.enterprise,
-            duration: 'month',
-            features: features.enterprise,
-            color: 'bg-blue-600',
-            recommended: false
-        }
-    ];
+    
+    const featureMap = {
+        student: studentFeatures,
+        educator: educatorFeatures,
+        admin: adminFeatures
+    };
+    
+    return featureMap[role] || studentFeatures;
 }

@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { AlertCircle, BarChart3, CheckCircle, Zap } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import loginIllustration from "../../../../../assets/images/auth/Recruiter-illustration.png";
 import SignupFormFields from "../../../../../components/Subscription/shared/SignupFormFields";
 import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from "../../../../../components/Subscription/shared/signupValidation";
