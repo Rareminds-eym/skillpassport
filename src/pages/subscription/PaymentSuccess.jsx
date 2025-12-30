@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
 import { downloadReceipt, generateReceiptBase64 } from '../../services/Subscriptions/pdfReceiptGenerator';
 import { getPaymentReceiptUrl, uploadPaymentReceipt } from '../../services/storageApiService';
@@ -54,6 +55,7 @@ function PaymentSuccess() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, role } = useAuth();
+  const { refreshAccess } = useSubscriptionContext();
 
   const [activationStatus, setActivationStatus] = useState('pending');
   const [subscriptionData, setSubscriptionData] = useState(null);
@@ -136,6 +138,8 @@ function PaymentSuccess() {
       if (subscription) {
         setActivationStatus('activated');
         setSubscriptionData(subscription);
+        // Refresh global subscription context to update guards
+        refreshAccess();
         
         const isExistingOrAlreadyProcessed = transactionDetails.already_processed || transactionDetails.is_existing_subscription;
         
@@ -231,7 +235,7 @@ function PaymentSuccess() {
         setEmailStatus('sent');
       }
     }
-  }, [verificationStatus, transactionDetails, activationStatus, user]);
+  }, [verificationStatus, transactionDetails, activationStatus, user, refreshAccess]);
 
   useEffect(() => {
     if (!paymentParams.razorpay_payment_id && verificationStatus !== 'loading') {

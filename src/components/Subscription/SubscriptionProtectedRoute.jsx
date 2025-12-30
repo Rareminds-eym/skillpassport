@@ -15,7 +15,7 @@
 
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useSubscriptionContext, ACCESS_REASONS } from '../../context/SubscriptionContext';
+import { ACCESS_REASONS, useSubscriptionContext } from '../../context/SubscriptionContext';
 import Loader from '../Loader';
 import SubscriptionBanner from './SubscriptionBanner';
 
@@ -37,6 +37,7 @@ const SubscriptionProtectedRoute = ({
     warningType,
     warningMessage,
     error: subscriptionError,
+    isRefetching,
   } = useSubscriptionContext();
 
   // Step 1: Wait for auth to load
@@ -64,7 +65,9 @@ const SubscriptionProtectedRoute = ({
   }
 
   // Step 5: Wait for subscription check to complete
-  if (subscriptionLoading) {
+  // Step 5: Wait for subscription check to complete
+  // If loading (first load) or if we don't have access but are refetching (checking if we gained access)
+  if (subscriptionLoading || (!hasAccess && isRefetching)) {
     return <Loader />;
   }
 
