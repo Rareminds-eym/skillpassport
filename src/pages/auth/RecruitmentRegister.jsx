@@ -1,20 +1,20 @@
+import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import loginIllustration from "../../assets/images/auth/Recruiter-illustration.png";
 
 import {
-  CheckCircle,
-  Zap,
-  BarChart3,
-  Info,
-  X,
-  User,
-  Briefcase,
-  GraduationCap,
+    BarChart3,
+    Briefcase,
+    CheckCircle,
+    GraduationCap,
+    Info,
+    User,
+    X,
+    Zap,
 } from "lucide-react";
-import FeatureCard from "./components/ui/FeatureCard";
 import RecruitmentAdminPlansModal from "../../components/Subscription/RecruitmentAdminPlansModal";
+import FeatureCard from "./components/ui/FeatureCard";
 
 export default function RecruitmentRegister() {
   const [activeTab, setActiveTab] = useState("recruitment");
@@ -54,7 +54,7 @@ export default function RecruitmentRegister() {
     } 
     // If recruiter is selected, go directly to signup
     else if (recruitmentType === "recruiter") {
-      navigate("/signup/recruitment-recruiter");
+      navigate("/signup");
     }
     // Otherwise continue to next step
     else if (currentStep < totalSteps) {
@@ -80,7 +80,7 @@ export default function RecruitmentRegister() {
       if (recruitmentType === "admin") {
         setShowPlansModal(true);
       } else {
-        navigate("/signup/recruitment-recruiter");
+        navigate("/signup");
       }
     } else if (subscriptionType === "view") {
       // Navigate to view plans

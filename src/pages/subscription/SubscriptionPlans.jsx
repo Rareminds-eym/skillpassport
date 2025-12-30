@@ -240,39 +240,10 @@ function SubscriptionPlans() {
       return;
     }
 
-    // For recruitment-admin, show signup modal instead of navigating
-    if (studentType === 'recruitment-admin' && !isAuthenticated) {
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
-      return;
-    }
-
-    // For recruitment-recruiter, show signup modal instead of navigating
-    if (studentType === 'recruitment-recruiter' && !isAuthenticated) {
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
-      return;
-    }
-
-    // For university-admin, show signup modal instead of navigating
-    if (studentType === 'university-admin' && !isAuthenticated) {
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
-      return;
-    }
-
-    // For university-student, show signup modal instead of navigating
-    if (studentType === 'university-student' && !isAuthenticated) {
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
-      return;
-    }
-
     // For upgrade/downgrade or new purchase
     if (!isAuthenticated) {
-      // User not authenticated, show signup modal
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
+      // User not authenticated, redirect to unified signup page
+      navigate('/signup');
     } else {
       // User authenticated, check if they have active or paused subscription
       if (hasActiveOrPausedSubscription) {
@@ -283,7 +254,7 @@ function SubscriptionPlans() {
         navigate('/subscription/payment', { state: { plan, studentType, isUpgrade: !!subscriptionData } });
       }
     }
-  }, [isAuthenticated, user, role, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription]);
+  }, [isAuthenticated, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription]);
 
   const handleSignupSuccess = useCallback(() => {
     // After successful signup, proceed to payment with selected plan
