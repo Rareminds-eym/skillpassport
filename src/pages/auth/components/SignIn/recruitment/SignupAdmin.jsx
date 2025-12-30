@@ -1,7 +1,7 @@
 import { City, State } from 'country-state-city';
 import { AlertCircle, Building2, CheckCircle2, Eye, EyeOff, Gift, Globe, Languages, Loader2, MapPin, Phone, Shield, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { capitalizeFirstLetter } from '../../../../../components/Subscription/shared/signupValidation';
 import { supabase } from '../../../../../lib/supabaseClient';
 

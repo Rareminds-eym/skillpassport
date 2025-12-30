@@ -49,4 +49,5 @@ export interface ApiResponse<T = any> {
   message?: string;
   data?: T;
   error?: string;
+  debug?: any; // Debug information for troubleshooting
 }

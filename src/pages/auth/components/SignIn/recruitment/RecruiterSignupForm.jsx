@@ -1,6 +1,6 @@
 import { Eye, EyeOff } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../../../lib/supabaseClient';
 
 const RecruiterSignupForm = ({ onSuccess, onSwitchToLogin }) => {

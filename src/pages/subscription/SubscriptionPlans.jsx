@@ -28,6 +28,7 @@ import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQu
 const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRemaining, allPlans }) => {
   const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
   const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
+  const isContactSales = plan.contactSales;
 
   return (
     <div
@@ -56,14 +57,32 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
 
       <div className="mb-6">
         <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
+        {plan.tagline && (
+          <p className="text-sm text-gray-500 mt-1">{plan.tagline}</p>
+        )}
         <div className="mt-4 flex items-baseline">
-          <span className="text-4xl font-bold tracking-tight text-gray-900">
-            ₹{plan.price}
-          </span>
-          <span className="ml-1 text-xl font-semibold text-gray-600">
-            /{plan.duration}
-          </span>
+          {isContactSales ? (
+            <span className="text-2xl font-bold tracking-tight text-gray-900">
+              Contact Sales
+            </span>
+          ) : (
+            <>
+              <span className="text-4xl font-bold tracking-tight text-gray-900">
+                ₹{plan.price}
+              </span>
+              <span className="ml-1 text-xl font-semibold text-gray-600">
+                /{plan.duration}
+              </span>
+            </>
+          )}
         </div>
+
+        {/* Positioning summary */}
+        {plan.positioning && (
+          <p className="mt-3 text-sm text-gray-600 italic">
+            {plan.positioning}
+          </p>
+        )}
 
         {/* Days Remaining for Current Plan */}
         {isCurrentPlan && daysRemaining !== null && (
@@ -78,13 +97,18 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
         )}
       </div>
 
-      <ul className="mb-8 space-y-4 flex-1">
-        {plan.features.map((feature, index) => (
+      <ul className="mb-8 space-y-4 flex-1 max-h-80 overflow-y-auto">
+        {plan.features.slice(0, 10).map((feature, index) => (
           <li key={index} className="flex items-start">
             <Check className="h-6 w-6 text-green-500 flex-shrink-0" />
-            <span className="ml-3 text-gray-600">{feature}</span>
+            <span className="ml-3 text-gray-600 text-sm">{feature}</span>
           </li>
         ))}
+        {plan.features.length > 10 && (
+          <li className="text-sm text-blue-600 font-medium ml-9">
+            +{plan.features.length - 10} more features
+          </li>
+        )}
       </ul>
 
       {/* Action Buttons */}
@@ -101,6 +125,13 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
             Manage Subscription
           </button>
         </div>
+      ) : isContactSales ? (
+        <a
+          href="mailto:sales@skillpassport.in?subject=Enterprise%20Ecosystem%20Plan%20Inquiry"
+          className="w-full py-3 px-6 rounded-lg font-medium transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 shadow-md"
+        >
+          Contact Sales
+        </a>
       ) : (
         <button
           onClick={() => onSelect(plan)}
@@ -476,7 +507,7 @@ function SubscriptionPlans() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8 mt-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
               {plans.map((plan) => (
                 <PlanCard
                   key={plan.id}

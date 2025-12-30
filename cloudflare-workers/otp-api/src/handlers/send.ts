@@ -85,12 +85,29 @@ export async function sendOtp(body: SendOtpRequest, env: Env): Promise<Response>
     
     // Send SMS via AWS SNS
     const message = `Your verification code is ${otp}. Valid for ${expiryMinutes} minutes. Do not share this code with anyone.`;
+    console.log('[SEND OTP] Calling sendSms for:', formattedPhone);
+    
     const smsResult = await sendSms(formattedPhone, message, env);
     
+    console.log('[SEND OTP] SMS Result:', JSON.stringify({
+      success: smsResult.success,
+      messageId: smsResult.messageId,
+      error: smsResult.error,
+      hasDebug: !!smsResult.debug
+    }));
+    
     if (!smsResult.success) {
-      console.error('SMS sending failed:', smsResult.error);
+      console.error('[SEND OTP] SMS sending failed:', smsResult.error);
+      console.error('[SEND OTP] Debug info:', JSON.stringify(smsResult.debug));
       return jsonResponse(
-        { success: false, error: 'Failed to send OTP. Please try again.' },
+        { 
+          success: false, 
+          error: 'Failed to send OTP. Please try again.',
+          debug: {
+            smsError: smsResult.error,
+            snsDebug: smsResult.debug
+          }
+        },
         500
       );
     }
@@ -98,12 +115,15 @@ export async function sendOtp(body: SendOtpRequest, env: Env): Promise<Response>
     // Log request for rate limiting
     await logOtpRequest(supabase, formattedPhone);
     
+    console.log('[SEND OTP] Success! OTP sent to:', formattedPhone.slice(0, -4) + '****');
+    
     return jsonResponse({
       success: true,
       message: 'OTP sent successfully',
       data: {
         phone: formattedPhone.slice(0, -4) + '****', // Mask phone number
         expiresIn: expiryMinutes * 60, // seconds
+        messageId: smsResult.messageId, // Include for debugging
       },
     });
   } catch (error: any) {

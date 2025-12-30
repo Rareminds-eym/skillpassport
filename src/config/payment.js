@@ -93,15 +93,19 @@ const isDevEnvironment = () => {
 // Test pricing (₹1 for all plans)
 const TEST_PRICES = {
   basic: '1',
-  pro: '1',
+  professional: '1',
+  pro: '1', // Legacy alias
   enterprise: '1',
+  ecosystem: '1',
 };
 
 // Production pricing (actual prices)
 const PRODUCTION_PRICES = {
   basic: '499',
-  pro: '999',
-  enterprise: '1999',
+  professional: '999',
+  pro: '999', // Legacy alias
+  enterprise: '2999',
+  ecosystem: null, // Contact sales
 };
 
 // Export configuration
