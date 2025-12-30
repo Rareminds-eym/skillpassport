@@ -21,6 +21,7 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 export interface Env {
   // Supabase - support both naming conventions
@@ -41,7 +42,9 @@ export interface Env {
   VITE_RAZORPAY_KEY_ID?: string;
   // Service binding to email-api worker
   EMAIL_SERVICE?: Fetcher;
-  // Storage API URL for receipt uploads
+  // Service binding to storage-api worker (for worker-to-worker communication)
+  STORAGE_SERVICE?: Fetcher;
+  // Storage API URL for receipt uploads (fallback for external calls)
   STORAGE_API_URL?: string;
   // Note: Email sending now uses Cloudflare Worker (email-api) with SMTP
   // RESEND_API_KEY is no longer needed
@@ -264,6 +267,9 @@ async function sendPaymentConfirmationEmail(
 
   const { paymentId, orderId, amount, planName, billingCycle, subscriptionEndDate, receiptUrl } = paymentDetails;
   
+  console.log(`[EMAIL] receiptUrl received: ${receiptUrl || 'NOT PROVIDED'}`);
+  console.log(`[EMAIL] Will include receipt button: ${receiptUrl ? 'YES' : 'NO'}`);
+  
   const formatAmount = (a: number) => new Intl.NumberFormat('en-IN', { 
     style: 'currency', 
     currency: 'INR', 
@@ -390,10 +396,11 @@ async function sendPaymentConfirmationEmail(
 const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
 
 /**
- * Generate receipt PDF content as base64
- * This is a simplified PDF generation for the worker environment
+ * Generate receipt PDF content as base64 using pdf-lib
+ * Creates a proper PDF document that can be opened by any PDF reader
+ * SIMPLIFIED VERSION for Cloudflare Workers compatibility
  */
-function generateReceiptPdfBase64(receiptData: {
+async function generateReceiptPdfBase64(receiptData: {
   paymentId: string;
   orderId: string;
   amount: number;
@@ -404,98 +411,180 @@ function generateReceiptPdfBase64(receiptData: {
   userEmail: string;
   paymentMethod: string;
   paymentDate: string;
-}): string {
+}): Promise<string> {
   const { paymentId, orderId, amount, planName, billingCycle, subscriptionEndDate, userName, userEmail, paymentMethod, paymentDate } = receiptData;
   
-  const formatAmount = (a: number) => new Intl.NumberFormat('en-IN', { 
-    style: 'currency', 
-    currency: 'INR', 
-    minimumFractionDigits: 0 
-  }).format(a);
+  console.log(`[PDF-GEN] ========== STARTING PDF GENERATION ==========`);
+  console.log(`[PDF-GEN] Payment ID: ${paymentId}`);
+  
+  const formatAmount = (a: number) => `Rs. ${a.toLocaleString('en-IN')}`;
 
-  // Create a simple text-based receipt (PDF generation in workers is limited)
-  // The frontend will generate the actual PDF, this is for email attachment reference
-  const receiptText = `
-PAYMENT RECEIPT
-================
-
-RareMinds - Skill Passport
---------------------------
-
-TRANSACTION DETAILS
-Reference: ${paymentId}
-Order ID: ${orderId}
-Date: ${paymentDate}
-Payment Method: ${paymentMethod}
-Status: Success
-
-AMOUNT PAID: ${formatAmount(amount)}
-
-CUSTOMER DETAILS
-Name: ${userName}
-Email: ${userEmail}
-
-SUBSCRIPTION DETAILS
-Plan: ${planName}
-Billing Cycle: ${billingCycle}
-Valid Until: ${subscriptionEndDate}
-
---------------------------
-Thank you for your payment!
-Generated on: ${new Date().toLocaleString()}
-`;
-
-  // Convert to base64
-  const encoder = new TextEncoder();
-  const data = encoder.encode(receiptText);
-  return btoa(String.fromCharCode(...data));
+  try {
+    // Create a new PDF document
+    console.log(`[PDF-GEN] Step 1: Creating PDF document...`);
+    const pdfDoc = await PDFDocument.create();
+    console.log(`[PDF-GEN] Step 1: Done`);
+    
+    // Embed font
+    console.log(`[PDF-GEN] Step 2: Embedding font...`);
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    console.log(`[PDF-GEN] Step 2: Done`);
+    
+    // Add a page
+    console.log(`[PDF-GEN] Step 3: Adding page...`);
+    const page = pdfDoc.addPage([595, 842]); // A4
+    const { height } = page.getSize();
+    console.log(`[PDF-GEN] Step 3: Done`);
+    
+    // Simple text drawing
+    console.log(`[PDF-GEN] Step 4: Drawing text...`);
+    let y = height - 50;
+    
+    // Title
+    page.drawText('PAYMENT RECEIPT', { x: 50, y, size: 24, font: boldFont, color: rgb(0.15, 0.39, 0.92) });
+    y -= 40;
+    
+    page.drawText('RareMinds - Skill Passport', { x: 50, y, size: 12, font, color: rgb(0.4, 0.4, 0.4) });
+    y -= 50;
+    
+    // Transaction Details
+    page.drawText('Transaction Details', { x: 50, y, size: 14, font: boldFont, color: rgb(0.1, 0.1, 0.1) });
+    y -= 25;
+    
+    page.drawText(`Reference: ${paymentId}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+    y -= 18;
+    page.drawText(`Order ID: ${orderId}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+    y -= 18;
+    page.drawText(`Date: ${paymentDate}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+    y -= 18;
+    page.drawText(`Payment Method: ${paymentMethod}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+    y -= 18;
+    page.drawText(`Status: Success`, { x: 50, y, size: 10, font, color: rgb(0.13, 0.77, 0.37) });
+    y -= 40;
+    
+    // Amount
+    page.drawText('Amount Paid', { x: 50, y, size: 14, font: boldFont, color: rgb(0.1, 0.1, 0.1) });
+    y -= 25;
+    page.drawText(formatAmount(amount), { x: 50, y, size: 20, font: boldFont, color: rgb(0.15, 0.39, 0.92) });
+    y -= 50;
+    
+    // Customer Details
+    page.drawText('Customer Details', { x: 50, y, size: 14, font: boldFont, color: rgb(0.1, 0.1, 0.1) });
+    y -= 25;
+    page.drawText(`Name: ${userName}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+    y -= 18;
+    page.drawText(`Email: ${userEmail}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+    y -= 40;
+    
+    // Subscription Details
+    page.drawText('Subscription Details', { x: 50, y, size: 14, font: boldFont, color: rgb(0.1, 0.1, 0.1) });
+    y -= 25;
+    page.drawText(`Plan: ${planName}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+    y -= 18;
+    page.drawText(`Billing Cycle: ${billingCycle}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+    y -= 18;
+    page.drawText(`Valid Until: ${subscriptionEndDate}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+    y -= 50;
+    
+    // Footer
+    page.drawText('Thank you for your payment!', { x: 50, y, size: 12, font: boldFont, color: rgb(0.15, 0.39, 0.92) });
+    y -= 20;
+    page.drawText('For support: marketing@rareminds.in', { x: 50, y, size: 9, font, color: rgb(0.5, 0.5, 0.5) });
+    y -= 15;
+    page.drawText(`Generated: ${new Date().toLocaleString()}`, { x: 50, y, size: 8, font, color: rgb(0.6, 0.6, 0.6) });
+    
+    console.log(`[PDF-GEN] Step 4: Done`);
+    
+    // Save PDF
+    console.log(`[PDF-GEN] Step 5: Saving PDF...`);
+    const pdfBytes = await pdfDoc.save();
+    console.log(`[PDF-GEN] Step 5: Done - ${pdfBytes.length} bytes`);
+    
+    // Convert to base64
+    console.log(`[PDF-GEN] Step 6: Converting to base64...`);
+    let binary = '';
+    for (let i = 0; i < pdfBytes.length; i++) {
+      binary += String.fromCharCode(pdfBytes[i]);
+    }
+    const base64 = btoa(binary);
+    console.log(`[PDF-GEN] Step 6: Done - ${base64.length} chars`);
+    
+    console.log(`[PDF-GEN] ========== PDF GENERATION SUCCESS ==========`);
+    return base64;
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : 'No stack';
+    console.error(`[PDF-GEN] ========== PDF GENERATION FAILED ==========`);
+    console.error(`[PDF-GEN] Error: ${errorMsg}`);
+    console.error(`[PDF-GEN] Stack: ${errorStack}`);
+    throw error;
+  }
 }
 
 /**
  * Upload receipt to R2 storage via storage-api worker
+ * Uses Service Binding if available (required for worker-to-worker communication)
  */
 async function uploadReceiptToR2(
   env: Env,
   pdfBase64: string,
   paymentId: string,
   userId: string,
-  filename: string
+  filename: string,
+  userName?: string
 ): Promise<{ success: boolean; url?: string; fileKey?: string; error?: string }> {
-  const storageUrl = env.STORAGE_API_URL || STORAGE_API_URL;
-  const uploadEndpoint = `${storageUrl}/upload-payment-receipt`;
-  
   console.log(`[RECEIPT] ========== RECEIPT UPLOAD START ==========`);
   console.log(`[RECEIPT] Payment ID: ${paymentId}`);
   console.log(`[RECEIPT] User ID: ${userId}`);
+  console.log(`[RECEIPT] User Name: ${userName || 'NOT PROVIDED'}`);
   console.log(`[RECEIPT] Filename: ${filename}`);
-  console.log(`[RECEIPT] Storage URL: ${storageUrl}`);
-  console.log(`[RECEIPT] Upload Endpoint: ${uploadEndpoint}`);
   console.log(`[RECEIPT] Base64 length: ${pdfBase64.length} chars`);
+  console.log(`[RECEIPT] STORAGE_SERVICE binding available: ${!!env.STORAGE_SERVICE}`);
   
   try {
     const requestBody = JSON.stringify({
       pdfBase64,
       paymentId,
       userId,
+      userName,
       filename,
     });
     
     console.log(`[RECEIPT] Request body size: ${requestBody.length} bytes`);
-    console.log(`[RECEIPT] Sending POST request to storage-api...`);
     
+    let response: Response;
     const startTime = Date.now();
-    const response = await fetch(uploadEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: requestBody,
-    });
-    const duration = Date.now() - startTime;
     
+    // Use Service Binding if available (required for worker-to-worker communication)
+    if (env.STORAGE_SERVICE) {
+      console.log(`[RECEIPT] Using Service Binding to storage-api`);
+      response = await env.STORAGE_SERVICE.fetch('https://storage-api/upload-payment-receipt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: requestBody,
+      });
+    } else {
+      // Fallback to HTTP fetch (will fail with error 1042 for same-account workers)
+      const storageUrl = env.STORAGE_API_URL || STORAGE_API_URL;
+      const uploadEndpoint = `${storageUrl}/upload-payment-receipt`;
+      console.log(`[RECEIPT] Using HTTP fetch to: ${uploadEndpoint}`);
+      console.warn(`[RECEIPT] WARNING: HTTP fetch may fail with error 1042 for same-account workers`);
+      
+      response = await fetch(uploadEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: requestBody,
+      });
+    }
+    
+    const duration = Date.now() - startTime;
     console.log(`[RECEIPT] Response received in ${duration}ms`);
     console.log(`[RECEIPT] Response status: ${response.status} ${response.statusText}`);
-    console.log(`[RECEIPT] Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
 
     const responseText = await response.text();
     console.log(`[RECEIPT] Response body: ${responseText.substring(0, 500)}`);
@@ -1030,7 +1119,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     });
     
     console.log(`[VERIFY-PAYMENT] Generating receipt PDF base64...`);
-    const receiptPdfBase64 = generateReceiptPdfBase64({
+    const receiptPdfBase64 = await generateReceiptPdfBase64({
       paymentId: razorpay_payment_id,
       orderId: razorpay_order_id,
       amount: planAmount,
@@ -1047,7 +1136,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     const filename = `Receipt-${razorpay_payment_id.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
     console.log(`[VERIFY-PAYMENT] Calling uploadReceiptToR2 with filename: ${filename}`);
     
-    const uploadResult = await uploadReceiptToR2(env, receiptPdfBase64, razorpay_payment_id, order.user_id, filename);
+    const uploadResult = await uploadReceiptToR2(env, receiptPdfBase64, razorpay_payment_id, order.user_id, filename, fullName);
     console.log(`[VERIFY-PAYMENT] Upload result:`, JSON.stringify(uploadResult));
     
     if (uploadResult.success && uploadResult.fileKey) {
@@ -1086,6 +1175,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
 
   // Send payment confirmation email with receipt link
   console.log(`Attempting to send confirmation email to: ${userEmail}`);
+  console.log(`[VERIFY-PAYMENT] receiptUrl for email: ${receiptUrl || 'NOT SET'}`);
   const emailSent = await sendPaymentConfirmationEmail(env, userEmail, fullName, {
     paymentId: razorpay_payment_id,
     orderId: razorpay_order_id,
@@ -1946,10 +2036,118 @@ export default {
               'POST /resume-subscription',
               'POST /expire-subscriptions',
               'GET  /health',
+              'GET  /debug-storage',
             ],
             message: allConfigured ? 'All required secrets are configured' : 'Some required secrets are missing.',
             email_note: 'Email sending uses Cloudflare Worker (email-api) with SMTP.',
+            storage_api_url: env.STORAGE_API_URL || STORAGE_API_URL,
           });
+        
+        // Debug endpoint to test storage connection
+        case '/debug-storage':
+          const storageUrl = env.STORAGE_API_URL || STORAGE_API_URL;
+          console.log(`[DEBUG-STORAGE] Testing storage API`);
+          console.log(`[DEBUG-STORAGE] STORAGE_SERVICE binding available: ${!!env.STORAGE_SERVICE}`);
+          
+          try {
+            let healthResponse: Response;
+            let uploadResponse: Response;
+            
+            // Test the storage API health endpoint
+            console.log(`[DEBUG-STORAGE] Fetching health endpoint...`);
+            
+            if (env.STORAGE_SERVICE) {
+              console.log(`[DEBUG-STORAGE] Using Service Binding`);
+              healthResponse = await env.STORAGE_SERVICE.fetch('https://storage-api/health');
+            } else {
+              console.log(`[DEBUG-STORAGE] Using HTTP fetch (may fail with error 1042)`);
+              healthResponse = await fetch(`${storageUrl}/health`, {
+                headers: { 'User-Agent': 'payments-api-worker' },
+              });
+            }
+            
+            console.log(`[DEBUG-STORAGE] Health response status: ${healthResponse.status}`);
+            const healthText = await healthResponse.text();
+            console.log(`[DEBUG-STORAGE] Health response body: ${healthText}`);
+            
+            let healthData;
+            try {
+              healthData = JSON.parse(healthText);
+            } catch {
+              healthData = { raw: healthText };
+            }
+            
+            // Test a simple upload
+            const testBase64 = btoa('Test receipt content for debugging');
+            const testPaymentId = `debug_${Date.now()}`;
+            const testUserId = 'debug_user';
+            
+            console.log(`[DEBUG-STORAGE] Attempting test upload...`);
+            
+            if (env.STORAGE_SERVICE) {
+              uploadResponse = await env.STORAGE_SERVICE.fetch('https://storage-api/upload-payment-receipt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  pdfBase64: testBase64,
+                  paymentId: testPaymentId,
+                  userId: testUserId,
+                  filename: 'debug-test.pdf',
+                }),
+              });
+            } else {
+              uploadResponse = await fetch(`${storageUrl}/upload-payment-receipt`, {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'User-Agent': 'payments-api-worker',
+                },
+                body: JSON.stringify({
+                  pdfBase64: testBase64,
+                  paymentId: testPaymentId,
+                  userId: testUserId,
+                  filename: 'debug-test.pdf',
+                }),
+              });
+            }
+            
+            const uploadStatus = uploadResponse.status;
+            const uploadText = await uploadResponse.text();
+            console.log(`[DEBUG-STORAGE] Upload response status: ${uploadStatus}`);
+            console.log(`[DEBUG-STORAGE] Upload response body: ${uploadText}`);
+            
+            let uploadData;
+            try {
+              uploadData = JSON.parse(uploadText);
+            } catch {
+              uploadData = { raw: uploadText };
+            }
+            
+            return jsonResponse({
+              storage_service_binding: !!env.STORAGE_SERVICE,
+              storage_api_url: storageUrl,
+              storage_health: {
+                status: healthResponse.status,
+                data: healthData,
+              },
+              test_upload: {
+                status: uploadStatus,
+                response: uploadData,
+              },
+              env_storage_url: env.STORAGE_API_URL || 'not set (using default)',
+              default_storage_url: STORAGE_API_URL,
+            });
+          } catch (storageError) {
+            console.error(`[DEBUG-STORAGE] Error:`, storageError);
+            return jsonResponse({
+              storage_service_binding: !!env.STORAGE_SERVICE,
+              storage_api_url: storageUrl,
+              error: (storageError as Error).message,
+              error_stack: (storageError as Error).stack,
+              env_storage_url: env.STORAGE_API_URL || 'not set (using default)',
+              default_storage_url: STORAGE_API_URL,
+            }, 500);
+          }
         
         default:
           return jsonResponse({ error: 'Not found' }, 404);
