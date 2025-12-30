@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { checkAuthentication } from '../services/authService';
-import { 
-  logAuthEvent, 
-  generateCorrelationId,
-  AUTH_ERROR_CODES,
+import {
+    AUTH_ERROR_CODES,
+    generateCorrelationId,
+    logAuthEvent,
 } from '../utils/authErrorHandler';
 
 /**
@@ -125,8 +125,11 @@ export const useAuth = () => {
     if (!isMountedRef.current) return;
     
     if (session && session.user) {
-      const userRole = session.user.raw_user_meta_data?.role || 
+      // Check for user_role first (set by UnifiedSignup), then fall back to role
+      const userRole = session.user.user_metadata?.user_role ||
                       session.user.user_metadata?.role || 
+                      session.user.raw_user_meta_data?.user_role ||
+                      session.user.raw_user_meta_data?.role || 
                       null;
       
       safeSetState(setUser, session.user);
