@@ -413,7 +413,25 @@ const UnifiedSignup = () => {
         await supabase.from('recruiters').insert({ user_id: userId, name: fullName, email: state.email.toLowerCase(), phone: state.phone, status: 'active' });
       }
 
-      navigate('/login', { state: { message: 'Account created successfully! Please login.', email: state.email } });
+      // Map role to entity type for subscription plans
+      const entityTypeMap: Record<UserRole, string> = {
+        student: 'student',
+        educator: 'educator',
+        recruiter: 'recruitment-recruiter',
+        school_admin: 'school',
+        college_admin: 'college',
+        university_admin: 'university-admin'
+      };
+      const entityType = state.selectedRole ? entityTypeMap[state.selectedRole] : 'student';
+
+      // Redirect to subscription plans page to choose a plan
+      navigate(`/subscription/plans/${entityType}/purchase`, { 
+        state: { 
+          message: 'Account created successfully! Please choose a plan to continue.',
+          email: state.email,
+          userId: userId
+        } 
+      });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred during signup';
       setState(prev => ({ ...prev, loading: false, error: errorMessage }));
