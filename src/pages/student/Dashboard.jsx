@@ -209,6 +209,7 @@ const StudentDashboard = () => {
     recommendations: assessmentRecommendations,
     loading: recommendationsLoading,
     hasAssessment,
+    hasInProgressAssessment,
   } = useAssessmentRecommendations(studentId, !!studentId && !isViewingOthersProfile);
 
   const [activeModal, setActiveModal] = useState(null);
@@ -696,6 +697,8 @@ const StudentDashboard = () => {
           <p className="text-gray-900 text-base leading-normal font-medium">
             {hasAssessment 
               ? "You've completed your assessment! View your personalized career insights and recommendations."
+              : hasInProgressAssessment
+              ? "You have an assessment in progress. Continue where you left off to get your personalized career roadmap."
               : "Take our comprehensive assessment to discover your strengths and get a personalized career roadmap."
             }
           </p>
@@ -715,6 +718,15 @@ const StudentDashboard = () => {
               >
                 <Eye className="w-5 h-5 mr-2" />
                 View Results
+              </Button>
+            ) : hasInProgressAssessment ? (
+              <Button
+                onClick={() => navigate("/student/assessment/test")}
+                className="w-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
+              >
+                <Clock className="w-5 h-5 mr-2" />
+                Continue Assessment
+                <ChevronRight className="w-5 h-5 ml-2" />
               </Button>
             ) : (
               <Button

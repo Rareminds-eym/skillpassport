@@ -112,7 +112,9 @@ const CareerSection = ({ careerFit }) => {
                                             <span className="w-14 text-sm font-medium text-gray-500 pt-1">Entry</span>
                                             <div className="flex-1 flex flex-wrap gap-1">
                                                 {cluster.roles?.entry?.length > 0 ? cluster.roles.entry.map((r, i) => (
-                                                    <span key={i} className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm">{r}</span>
+                                                    <span key={i} className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm">
+                                                        {typeof r === 'object' ? r.name : r}
+                                                    </span>
                                                 )) : <span className="text-gray-400 text-sm">Not specified</span>}
                                             </div>
                                         </div>
@@ -120,7 +122,9 @@ const CareerSection = ({ careerFit }) => {
                                             <span className="w-14 text-sm font-medium text-gray-500 pt-1">Mid</span>
                                             <div className="flex-1 flex flex-wrap gap-1">
                                                 {cluster.roles?.mid?.length > 0 ? cluster.roles.mid.map((r, i) => (
-                                                    <span key={i} className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-sm">{r}</span>
+                                                    <span key={i} className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-sm">
+                                                        {typeof r === 'object' ? r.name : r}
+                                                    </span>
                                                 )) : <span className="text-gray-400 text-sm">Not specified</span>}
                                             </div>
                                         </div>
@@ -130,7 +134,9 @@ const CareerSection = ({ careerFit }) => {
                                     <h5 className="text-sm font-bold text-gray-500 uppercase mb-2">Related Domains</h5>
                                     <div className="flex flex-wrap gap-1">
                                         {cluster.domains?.length > 0 ? cluster.domains.map((d, i) => (
-                                            <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm">{d}</span>
+                                            <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm">
+                                                {typeof d === 'object' ? d.name : d}
+                                            </span>
                                         )) : <span className="text-gray-400 text-sm">Not specified</span>}
                                     </div>
                                 </div>

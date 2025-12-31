@@ -16,7 +16,10 @@ import {
     Code,
     Zap,
     Loader2,
-    ArrowLeft
+    ArrowLeft,
+    FlaskConical,
+    BarChart3,
+    BookOpen
 } from 'lucide-react';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
@@ -46,10 +49,14 @@ import {
 // Import Gemini assessment service
 import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentService';
 
+// Import AI question generation service for Aptitude & Knowledge
+import { loadCareerAssessmentQuestions, STREAM_KNOWLEDGE_PROMPTS } from '../../services/careerAssessmentAIService';
+
 // Import database services
 import { useAssessment } from '../../hooks/useAssessment';
 import { useAuth } from '../../context/AuthContext';
 import * as assessmentService from '../../services/assessmentService';
+
 import { supabase } from '../../lib/supabaseClient';
 
 // Helper function to determine grade level from student's grade
@@ -130,6 +137,7 @@ const AssessmentTest = () => {
     // Student grade from database
     const [studentGrade, setStudentGrade] = useState(null);
     const [studentSchoolClassId, setStudentSchoolClassId] = useState(null);
+    const [studentId, setStudentId] = useState(null); // Student record ID for AI question saving
     const [isCollegeStudent, setIsCollegeStudent] = useState(false);
     const [loadingStudentGrade, setLoadingStudentGrade] = useState(true);
     
@@ -149,7 +157,7 @@ const AssessmentTest = () => {
                 // First try to get student by user_id with school_class grade joined
                 let { data: student, error } = await supabase
                     .from('students')
-                    .select('grade, school_class_id, school_id, university_college_id, school_classes:school_class_id(grade)')
+                    .select('id, grade, school_class_id, school_id, university_college_id, school_classes:school_class_id(grade)')
                     .eq('user_id', user.id)
                     .maybeSingle();
                 
@@ -159,7 +167,7 @@ const AssessmentTest = () => {
                 if (!student && user.email) {
                     const result = await supabase
                         .from('students')
-                        .select('grade, school_class_id, school_id, university_college_id, school_classes:school_class_id(grade)')
+                        .select('id, grade, school_class_id, school_id, university_college_id, school_classes:school_class_id(grade)')
                         .eq('email', user.email)
                         .maybeSingle();
                     student = result.data;
@@ -171,6 +179,9 @@ const AssessmentTest = () => {
                     console.error('Error fetching student grade:', error);
                 } else if (student) {
                     console.log('Student grade data found:', student);
+                    
+                    // Save student ID for AI question saving
+                    setStudentId(student.id);
                     
                     // Check if student is a college student (has university_college_id but no school_id)
                     const isCollege = student.university_college_id && !student.school_id;
@@ -227,6 +238,84 @@ const AssessmentTest = () => {
         
         setAnswers(filledAnswers);
         console.log('Test Mode: Auto-filled', Object.keys(filledAnswers).length, 'answers');
+    };
+
+    // Skip to Aptitude section (section 5) - fills first 4 sections and jumps to aptitude
+    const skipToAptitude = () => {
+        if (!sections || sections.length === 0) return;
+        
+        const filledAnswers = {};
+        
+        // Only fill first 4 sections (RIASEC, Big Five, Work Values, Employability)
+        sections.slice(0, 4).forEach(section => {
+            section.questions.forEach(question => {
+                const questionId = `${section.id}_${question.id}`;
+                
+                if (question.partType === 'sjt') {
+                    const options = question.options || [];
+                    if (options.length >= 2) {
+                        filledAnswers[questionId] = {
+                            best: options[0],
+                            worst: options[options.length - 1]
+                        };
+                    }
+                } else if (section.responseScale) {
+                    filledAnswers[questionId] = 3;
+                } else if (question.options && question.options.length > 0) {
+                    filledAnswers[questionId] = question.correct || question.options[0];
+                }
+            });
+        });
+        
+        setAnswers(filledAnswers);
+        // Jump to section 5 (Aptitude - index 4)
+        const aptitudeIndex = sections.findIndex(s => s.id === 'aptitude');
+        if (aptitudeIndex >= 0) {
+            setCurrentSectionIndex(aptitudeIndex);
+            setCurrentQuestionIndex(0);
+            setShowSectionIntro(true);
+            setShowSectionComplete(false);
+        }
+        console.log('Test Mode: Skipped to Aptitude section, filled', Object.keys(filledAnswers).length, 'answers');
+    };
+
+    // Skip to Knowledge section (section 6) - fills first 5 sections and jumps to knowledge
+    const skipToKnowledge = () => {
+        if (!sections || sections.length === 0) return;
+        
+        const filledAnswers = {};
+        
+        // Fill first 5 sections (RIASEC, Big Five, Work Values, Employability, Aptitude)
+        sections.slice(0, 5).forEach(section => {
+            section.questions.forEach(question => {
+                const questionId = `${section.id}_${question.id}`;
+                
+                if (question.partType === 'sjt') {
+                    const options = question.options || [];
+                    if (options.length >= 2) {
+                        filledAnswers[questionId] = {
+                            best: options[0],
+                            worst: options[options.length - 1]
+                        };
+                    }
+                } else if (section.responseScale) {
+                    filledAnswers[questionId] = 3;
+                } else if (question.options && question.options.length > 0) {
+                    filledAnswers[questionId] = question.correct || question.options[0];
+                }
+            });
+        });
+        
+        setAnswers(filledAnswers);
+        // Jump to section 6 (Knowledge - index 5)
+        const knowledgeIndex = sections.findIndex(s => s.id === 'knowledge');
+        if (knowledgeIndex >= 0) {
+            setCurrentSectionIndex(knowledgeIndex);
+            setCurrentQuestionIndex(0);
+            setShowSectionIntro(true);
+            setShowSectionComplete(false);
+        }
+        console.log('Test Mode: Skipped to Knowledge section, filled', Object.keys(filledAnswers).length, 'answers');
     };
 
     // Skip to last section for quick testing
@@ -434,19 +523,87 @@ const AssessmentTest = () => {
         placeholder: dbQ.placeholder             // For text input questions
     });
 
-    // Get questions for a section - from database or fallback
+    // State for AI-generated questions (aptitude & knowledge for after12)
+    const [aiQuestions, setAiQuestions] = useState({ aptitude: null, knowledge: null });
+    const [aiQuestionsLoading, setAiQuestionsLoading] = useState(false);
+
+    // Load AI questions for after12 students
+    useEffect(() => {
+        const loadAIQuestions = async () => {
+            // Only require gradeLevel and studentStream - studentId is optional for saving
+            if (gradeLevel === 'after12' && studentStream) {
+                setAiQuestionsLoading(true);
+                try {
+                    console.log('🤖 Loading AI questions for stream:', studentStream, 'studentId:', studentId || 'not set yet');
+                    // Pass studentId and attemptId for save/resume functionality (optional)
+                    const questions = await loadCareerAssessmentQuestions(
+                        studentStream, 
+                        gradeLevel, 
+                        studentId || null, 
+                        currentAttempt?.id || null
+                    );
+                    setAiQuestions(questions);
+                    console.log('✅ AI questions loaded:', {
+                        aptitude: questions.aptitude?.length || 0,
+                        knowledge: questions.knowledge?.length || 0
+                    });
+                } catch (error) {
+                    console.warn('Failed to load AI questions, will use fallback:', error);
+                }
+                setAiQuestionsLoading(false);
+            }
+        };
+        loadAIQuestions();
+    }, [gradeLevel, studentStream, studentId, currentAttempt?.id]);
+
+    // Get questions for a section - from database or AI (no fallback for after12)
     const getQuestionsForSection = (sectionId) => {
+        // Helper to normalize AI question format (AI uses 'question', UI expects 'text')
+        const normalizeAIQuestion = (q) => ({
+            ...q,
+            text: q.question || q.text, // Map 'question' to 'text' for UI compatibility
+            correct: q.correct_answer || q.correct // Map 'correct_answer' to 'correct'
+        });
+
+        // For after12 grade level, use AI questions ONLY for aptitude and knowledge
+        if (gradeLevel === 'after12') {
+            if (sectionId === 'aptitude') {
+                if (aiQuestionsLoading) {
+                    console.log('⏳ AI aptitude questions still loading...');
+                    return []; // Return empty while loading
+                }
+                if (aiQuestions.aptitude?.length > 0) {
+                    console.log('✅ Using AI-generated aptitude questions:', aiQuestions.aptitude.length);
+                    return aiQuestions.aptitude.map(normalizeAIQuestion);
+                }
+                console.log('⚠️ No AI aptitude questions available yet');
+                return []; // No fallback - wait for AI
+            }
+            if (sectionId === 'knowledge') {
+                if (aiQuestionsLoading) {
+                    console.log('⏳ AI knowledge questions still loading...');
+                    return []; // Return empty while loading
+                }
+                if (aiQuestions.knowledge?.length > 0) {
+                    console.log('✅ Using AI-generated knowledge questions:', aiQuestions.knowledge.length);
+                    return aiQuestions.knowledge.map(normalizeAIQuestion);
+                }
+                console.log('⚠️ No AI knowledge questions available yet');
+                return []; // No fallback - wait for AI
+            }
+        }
+
+        // Try database questions for other sections
         if (dbQuestions && dbQuestions[sectionId]?.questions) {
             return dbQuestions[sectionId].questions.map(transformDbQuestion);
         }
-        // Fallback to hardcoded questions
+        
+        // Fallback to hardcoded questions for non-AI sections only
         switch (sectionId) {
             case 'riasec': return fallbackRiasecQuestions;
-            case 'aptitude': return getAllAptitudeQuestions();
             case 'bigfive': return fallbackBigFiveQuestions;
             case 'values': return fallbackWorkValuesQuestions;
             case 'employability': return fallbackEmployabilityQuestions;
-            case 'knowledge': return fallbackStreamKnowledgeQuestions[studentStream] || [];
             default: return [];
         }
     };
@@ -607,11 +764,11 @@ const AssessmentTest = () => {
             color: "amber",
             questions: getQuestionsForSection('aptitude'),
             isTimed: true,
-            timeLimit: 15 * 60, // 15 minutes for last 20 questions (shared timer)
+            timeLimit: 15 * 60, // Fallback shared timer
             isAptitude: true,
-            individualTimeLimit: 60, // 1 minute per question for first 30 questions
-            individualQuestionCount: 30, // First 30 questions have individual timers
-            instruction: "Choose the correct answer. First 30 questions: 1 minute each. Last 20 questions: 15 minutes total."
+            individualTimeLimit: 60, // 1 minute per question
+            get individualQuestionCount() { return this.questions.length; }, // All questions have individual timers
+            instruction: "Choose the correct answer. You have 1 minute per question."
         },
         {
             id: 'knowledge',
@@ -625,40 +782,40 @@ const AssessmentTest = () => {
             instruction: "Choose the best answer for each question."
         }
         ];
-    }, [dbQuestions, studentStream, gradeLevel]);
+    }, [dbQuestions, studentStream, gradeLevel, aiQuestions, aiQuestionsLoading]);
 
     // Stream categories for After 12th
     const streamCategories = [
-        { id: 'science', label: 'Science', icon: '🔬', description: 'Engineering, Medical, Pure Sciences' },
-        { id: 'commerce', label: 'Commerce', icon: '📊', description: 'Business, Finance, Accounting' },
-        { id: 'arts', label: 'Arts/Humanities', icon: '📚', description: 'Literature, Social Sciences, Design' }
+        { id: 'science', label: 'Science', icon: <FlaskConical className="w-7 h-7 text-blue-600" />, description: 'Engineering, Medical, Pure Sciences' },
+        { id: 'commerce', label: 'Commerce', icon: <BarChart3 className="w-7 h-7 text-green-600" />, description: 'Business, Finance, Accounting' },
+        { id: 'arts', label: 'Arts/Humanities', icon: <BookOpen className="w-7 h-7 text-purple-600" />, description: 'Literature, Social Sciences, Design' }
     ];
 
-    // Streams grouped by category
+    // Streams grouped by category with RIASEC mappings for AI recommendations
     const streamsByCategory = {
         science: [
-            { id: 'cs', label: 'B.Sc Computer Science / B.Tech CS/IT' },
-            { id: 'engineering', label: 'B.Tech / B.E (Other Engineering)' },
-            { id: 'medical', label: 'MBBS / BDS / Nursing' },
-            { id: 'pharmacy', label: 'B.Pharm / Pharm.D' },
-            { id: 'bsc', label: 'B.Sc (Physics/Chemistry/Biology/Maths)' },
-            { id: 'animation', label: 'B.Sc Animation / Game Design' }
+            { id: 'cs', label: 'B.Sc Computer Science / B.Tech CS/IT', riasec: ['I', 'C', 'R'], aptitudeStrengths: ['logical', 'numerical', 'abstract'] },
+            { id: 'engineering', label: 'B.Tech / B.E (Other Engineering)', riasec: ['R', 'I', 'C'], aptitudeStrengths: ['numerical', 'spatial', 'logical'] },
+            { id: 'medical', label: 'MBBS / BDS / Nursing', riasec: ['I', 'S', 'R'], aptitudeStrengths: ['verbal', 'logical', 'numerical'] },
+            { id: 'pharmacy', label: 'B.Pharm / Pharm.D', riasec: ['I', 'C', 'S'], aptitudeStrengths: ['numerical', 'verbal', 'logical'] },
+            { id: 'bsc', label: 'B.Sc (Physics/Chemistry/Biology/Maths)', riasec: ['I', 'R', 'C'], aptitudeStrengths: ['numerical', 'logical', 'abstract'] },
+            { id: 'animation', label: 'B.Sc Animation / Game Design', riasec: ['A', 'I', 'R'], aptitudeStrengths: ['spatial', 'abstract', 'logical'] }
         ],
         commerce: [
-            { id: 'bba', label: 'BBA General' },
-            { id: 'bca', label: 'BCA General' },
-            { id: 'dm', label: 'BBA Digital Marketing' },
-            { id: 'bcom', label: 'B.Com / B.Com (Hons)' },
-            { id: 'ca', label: 'CA / CMA / CS' },
-            { id: 'finance', label: 'BBA Finance / Banking' }
+            { id: 'bba', label: 'BBA General', riasec: ['E', 'S', 'C'], aptitudeStrengths: ['verbal', 'numerical', 'logical'] },
+            { id: 'bca', label: 'BCA General', riasec: ['I', 'C', 'E'], aptitudeStrengths: ['logical', 'numerical', 'abstract'] },
+            { id: 'dm', label: 'BBA Digital Marketing', riasec: ['E', 'A', 'S'], aptitudeStrengths: ['verbal', 'abstract', 'logical'] },
+            { id: 'bcom', label: 'B.Com / B.Com (Hons)', riasec: ['C', 'E', 'I'], aptitudeStrengths: ['numerical', 'logical', 'verbal'] },
+            { id: 'ca', label: 'CA / CMA / CS', riasec: ['C', 'I', 'E'], aptitudeStrengths: ['numerical', 'logical', 'verbal'] },
+            { id: 'finance', label: 'BBA Finance / Banking', riasec: ['E', 'C', 'I'], aptitudeStrengths: ['numerical', 'logical', 'verbal'] }
         ],
         arts: [
-            { id: 'ba', label: 'BA (English/History/Political Science)' },
-            { id: 'journalism', label: 'BA Journalism / Mass Communication' },
-            { id: 'design', label: 'B.Des / Fashion Design' },
-            { id: 'law', label: 'BA LLB / BBA LLB' },
-            { id: 'psychology', label: 'BA/B.Sc Psychology' },
-            { id: 'finearts', label: 'BFA / Visual Arts' }
+            { id: 'ba', label: 'BA (English/History/Political Science)', riasec: ['S', 'A', 'I'], aptitudeStrengths: ['verbal', 'abstract', 'logical'] },
+            { id: 'journalism', label: 'BA Journalism / Mass Communication', riasec: ['A', 'S', 'E'], aptitudeStrengths: ['verbal', 'abstract', 'logical'] },
+            { id: 'design', label: 'B.Des / Fashion Design', riasec: ['A', 'R', 'E'], aptitudeStrengths: ['spatial', 'abstract', 'verbal'] },
+            { id: 'law', label: 'BA LLB / BBA LLB', riasec: ['E', 'S', 'I'], aptitudeStrengths: ['verbal', 'logical', 'abstract'] },
+            { id: 'psychology', label: 'BA/B.Sc Psychology', riasec: ['S', 'I', 'A'], aptitudeStrengths: ['verbal', 'logical', 'abstract'] },
+            { id: 'finearts', label: 'BFA / Visual Arts', riasec: ['A', 'R', 'S'], aptitudeStrengths: ['spatial', 'abstract', 'verbal'] }
         ]
     };
 
@@ -872,12 +1029,36 @@ const AssessmentTest = () => {
     };
 
     // Handle category selection (Science/Commerce/Arts)
-    const handleCategorySelect = (categoryId) => {
+    // After selecting category, go directly to assessment (no stream selection)
+    const handleCategorySelect = async (categoryId) => {
         setSelectedCategory(categoryId);
         setShowCategorySelection(false);
-        setShowStreamSelection(true);
+        
+        // Mark that user has started an assessment
+        setAssessmentStarted(true);
+        
+        // Use category as the stream for now - specific course will be recommended after assessment
+        const streamId = categoryId; // 'science', 'commerce', or 'arts'
+        setStudentStream(streamId);
+
+        // Load questions from database
+        await loadQuestionsFromDatabase(streamId, gradeLevel || 'after12');
+
+        setShowSectionIntro(true);
+
+        // Try to create a database attempt if user is logged in
+        if (user?.id) {
+            try {
+                await startAssessment(streamId, gradeLevel || 'after12');
+                setUseDatabase(true);
+                console.log('Assessment attempt created in database for category:', categoryId);
+            } catch (err) {
+                console.log('Could not create database attempt, using localStorage mode:', err.message);
+            }
+        }
     };
 
+    // handleStreamSelect is kept for backward compatibility but not used in new flow
     const handleStreamSelect = async (streamId) => {
         // Mark that user has started an assessment to prevent re-checking
         setAssessmentStarted(true);
@@ -981,6 +1162,176 @@ const AssessmentTest = () => {
         }
     };
 
+    // Generate course recommendations based on assessment results
+    const generateCourseRecommendations = (analysisResults) => {
+        try {
+            // Get all courses from all categories
+            const allCourses = [
+                ...streamsByCategory.science,
+                ...streamsByCategory.commerce,
+                ...streamsByCategory.arts
+            ];
+
+            if (allCourses.length === 0) return [];
+
+            // Extract scores from analysis results
+            const riasec = analysisResults?.riasec || {};
+            const riasecScores = riasec.scores || {}; // { R: 15, I: 12, A: 8, ... }
+            const riasecMaxScore = riasec.maxScore || 20;
+            const riasecTopThree = riasec.topThree || []; // ['R', 'I', 'A']
+            
+            const aptitudeResults = analysisResults?.aptitude || {};
+            const aptitudeScores = aptitudeResults.scores || {}; // { verbal: {percentage: 80}, numerical: {percentage: 70}, ... }
+            const aptitudeTopStrengths = aptitudeResults.topStrengths || [];
+            
+            const bigFive = analysisResults?.bigFive || {};
+            // Big Five scores are 0-5 scale
+            
+            console.log('📊 Generating recommendations with:', {
+                riasecScores,
+                riasecTopThree,
+                aptitudeScores,
+                aptitudeTopStrengths,
+                bigFive
+            });
+            
+            // Calculate match scores for each course
+            const courseMatches = allCourses.map(course => {
+                let matchScore = 0;
+                let matchReasons = [];
+                
+                // RIASEC matching (40% weight)
+                // Check if course's RIASEC types match student's top interests
+                if (course.riasec && course.riasec.length > 0) {
+                    let riasecMatchPoints = 0;
+                    
+                    course.riasec.forEach(type => {
+                        const typeUpper = type.toUpperCase();
+                        const score = riasecScores[typeUpper] || 0;
+                        const percentage = (score / riasecMaxScore) * 100;
+                        
+                        // Bonus if this type is in student's top 3
+                        if (riasecTopThree.includes(typeUpper)) {
+                            riasecMatchPoints += percentage * 1.5; // 50% bonus for top 3
+                        } else {
+                            riasecMatchPoints += percentage;
+                        }
+                    });
+                    
+                    const avgRiasecMatch = riasecMatchPoints / course.riasec.length;
+                    matchScore += avgRiasecMatch * 0.4;
+                    
+                    // Add reason if strong match
+                    const matchingTopTypes = course.riasec.filter(type => 
+                        riasecTopThree.includes(type.toUpperCase())
+                    );
+                    if (matchingTopTypes.length > 0) {
+                        matchReasons.push(`Aligns with your ${matchingTopTypes.join(', ')} interests`);
+                    }
+                }
+                
+                // Aptitude matching (35% weight)
+                if (course.aptitudeStrengths && course.aptitudeStrengths.length > 0) {
+                    let aptitudeMatchPoints = 0;
+                    
+                    course.aptitudeStrengths.forEach(strength => {
+                        const strengthLower = strength.toLowerCase();
+                        const scoreData = aptitudeScores[strengthLower];
+                        const percentage = scoreData?.percentage || 0;
+                        
+                        // Bonus if this is in student's top strengths
+                        const isTopStrength = aptitudeTopStrengths.some(s => 
+                            s.toLowerCase().includes(strengthLower) || strengthLower.includes(s.toLowerCase())
+                        );
+                        
+                        if (isTopStrength) {
+                            aptitudeMatchPoints += percentage * 1.3; // 30% bonus
+                        } else {
+                            aptitudeMatchPoints += percentage;
+                        }
+                    });
+                    
+                    const avgAptitudeMatch = aptitudeMatchPoints / course.aptitudeStrengths.length;
+                    matchScore += avgAptitudeMatch * 0.35;
+                    
+                    // Add reason if strong aptitude match
+                    if (avgAptitudeMatch > 60) {
+                        matchReasons.push(`Strong aptitude in required skills`);
+                    }
+                }
+                
+                // Personality fit (25% weight)
+                // Big Five scores are 0-5, convert to percentage
+                const O = ((bigFive.O || 3) / 5) * 100; // Openness
+                const C = ((bigFive.C || 3) / 5) * 100; // Conscientiousness
+                const E = ((bigFive.E || 3) / 5) * 100; // Extraversion
+                const A = ((bigFive.A || 3) / 5) * 100; // Agreeableness
+                const N = ((bigFive.N || 3) / 5) * 100; // Neuroticism (lower is better for most careers)
+                
+                let personalityFit = 50; // Base score
+                
+                // Adjust based on course type
+                if (course.id === 'cs' || course.id === 'bca' || course.id === 'engineering') {
+                    // Tech/Engineering: High Openness, High Conscientiousness
+                    personalityFit = (O * 0.4) + (C * 0.4) + ((100 - N) * 0.2);
+                    if (O > 70) matchReasons.push('Your curiosity suits technical fields');
+                } else if (course.id === 'bba' || course.id === 'dm' || course.id === 'finance') {
+                    // Business: High Extraversion, High Conscientiousness
+                    personalityFit = (E * 0.4) + (C * 0.3) + (A * 0.3);
+                    if (E > 70) matchReasons.push('Your outgoing nature fits business roles');
+                } else if (course.id === 'design' || course.id === 'finearts' || course.id === 'animation') {
+                    // Creative: High Openness, Moderate Extraversion
+                    personalityFit = (O * 0.5) + (E * 0.2) + ((100 - C) * 0.3); // Less structure-focused
+                    if (O > 75) matchReasons.push('Your creativity aligns with design fields');
+                } else if (course.id === 'medical' || course.id === 'pharmacy' || course.id === 'psychology') {
+                    // Healthcare: High Agreeableness, High Conscientiousness
+                    personalityFit = (A * 0.4) + (C * 0.4) + ((100 - N) * 0.2);
+                    if (A > 70) matchReasons.push('Your empathy suits healthcare careers');
+                } else if (course.id === 'law' || course.id === 'journalism') {
+                    // Communication-heavy: High Extraversion, High Openness
+                    personalityFit = (E * 0.35) + (O * 0.35) + (C * 0.3);
+                } else if (course.id === 'bcom' || course.id === 'ca') {
+                    // Accounting: High Conscientiousness, Lower Openness OK
+                    personalityFit = (C * 0.5) + ((100 - N) * 0.3) + (A * 0.2);
+                    if (C > 75) matchReasons.push('Your attention to detail suits accounting');
+                } else {
+                    // Default: balanced approach
+                    personalityFit = (O * 0.25) + (C * 0.25) + (E * 0.2) + (A * 0.2) + ((100 - N) * 0.1);
+                }
+                
+                matchScore += personalityFit * 0.25;
+                
+                // Ensure score is between 0-100
+                matchScore = Math.min(100, Math.max(0, matchScore));
+                
+                // Determine category
+                const category = streamsByCategory.science.find(s => s.id === course.id) ? 'Science' :
+                                streamsByCategory.commerce.find(s => s.id === course.id) ? 'Commerce' : 'Arts';
+                
+                return {
+                    courseId: course.id,
+                    courseName: course.label,
+                    matchScore: Math.round(matchScore),
+                    matchLevel: matchScore >= 75 ? 'Excellent' : matchScore >= 60 ? 'Good' : matchScore >= 45 ? 'Fair' : 'Low',
+                    reasons: matchReasons.slice(0, 3), // Max 3 reasons
+                    category: category
+                };
+            });
+            
+            // Sort by match score and return top 5 recommendations
+            const topRecommendations = courseMatches
+                .sort((a, b) => b.matchScore - a.matchScore)
+                .slice(0, 5);
+            
+            console.log('✅ Top recommendations:', topRecommendations);
+            return topRecommendations;
+                
+        } catch (error) {
+            console.error('Error generating course recommendations:', error);
+            return [];
+        }
+    };
+
     const handleNextSection = () => {
         // Save timing for current section before moving
         const currentSectionId = currentSection?.id;
@@ -1073,6 +1424,12 @@ const AssessmentTest = () => {
             );
 
             if (geminiResults) {
+                // Add course recommendations for after12 students
+                if (gradeLevel === 'after12') {
+                    geminiResults.courseRecommendations = generateCourseRecommendations(geminiResults);
+                    console.log('✅ Course recommendations generated:', geminiResults.courseRecommendations);
+                }
+
                 // Save AI-analyzed results to localStorage (backward compatibility)
                 localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
                 console.log('Gemini analysis complete:', geminiResults);
@@ -1463,14 +1820,16 @@ const AssessmentTest = () => {
                                     <div className="relative z-10">
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="flex items-center gap-3">
-                                                <span className="text-3xl">{category.icon}</span>
+                                                <div className="w-12 h-12 rounded-xl bg-gray-50 group-hover:bg-indigo-50 flex items-center justify-center transition-colors">
+                                                    {category.icon}
+                                                </div>
                                                 <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">{category.label}</h3>
                                             </div>
                                             <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
                                                 <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
                                             </div>
                                         </div>
-                                        <p className="text-sm text-gray-600 group-hover:text-gray-700 ml-12">{category.description}</p>
+                                        <p className="text-sm text-gray-600 group-hover:text-gray-700 ml-15 pl-0.5">{category.description}</p>
                                     </div>
                                 </button>
                             ))}
@@ -1480,8 +1839,8 @@ const AssessmentTest = () => {
                             <div className="flex gap-3">
                                 <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                                 <div className="text-sm text-blue-700">
-                                    <p className="font-semibold mb-1">Personalized Assessment</p>
-                                    <p>Your assessment will be customized based on your selected stream to provide relevant career guidance.</p>
+                                    <p className="font-semibold mb-1">How It Works</p>
+                                    <p>After completing the assessment, we'll recommend the best courses/programs for you based on your interests, aptitude, and personality.</p>
                                 </div>
                             </div>
                         </div>
@@ -1503,106 +1862,13 @@ const AssessmentTest = () => {
         );
     }
 
+    // Stream selection is no longer shown - students go directly from category to assessment
+    // The specific course/program is recommended after assessment completion based on scores
     if (showStreamSelection) {
-        const categoryLabel = streamCategories.find(c => c.id === selectedCategory)?.label || 'Your Stream';
-        
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-                <Card className="w-full max-w-2xl border-none shadow-2xl">
-                    <CardContent className="p-8">
-                        <div className="text-center mb-8">
-                            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                <Award className="w-8 h-8 text-white" />
-                            </div>
-                            <h1 className="text-3xl font-bold text-gray-800 mb-2">Career Assessment - {categoryLabel}</h1>
-                            <p className="text-gray-600">Select your specific course/program</p>
-                        </div>
-
-                        {questionsError && (
-                            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                <p className="text-sm text-amber-700">
-                                    <AlertCircle className="w-4 h-4 inline mr-1" />
-                                    Using offline questions. Some features may be limited.
-                                </p>
-                            </div>
-                        )}
-
-                        <div className="space-y-3">
-                            <Label className="text-sm font-semibold text-gray-700">Select Your Course/Program</Label>
-                            {streams.map((stream) => (
-                                <button
-                                    key={stream.id}
-                                    onClick={() => handleStreamSelect(stream.id)}
-                                    className="w-full p-5 bg-white/80 backdrop-blur-sm border border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-200 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden hover:z-20"
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                    <div className="flex items-center justify-between relative z-10">
-                                        <span className="font-semibold text-gray-800 group-hover:text-indigo-700 text-lg tracking-tight">{stream.label}</span>
-                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
-                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
-                                        </div>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                            <div className="flex gap-3">
-                                <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                                <div className="text-sm text-blue-700">
-                                    <p className="font-semibold mb-1">What to expect:</p>
-                                    <ul className="space-y-1 text-sm">
-                                        <li>• 6 assessment sections covering interests, personality, values, skills, and knowledge</li>
-                                        <li>• Approximately 45-60 minutes to complete</li>
-                                        <li>• Your responses are private and used only for career guidance</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Dev Mode Toggle - Only visible in development */}
-                        {isDevMode && (
-                            <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Zap className="w-5 h-5 text-amber-600" />
-                                        <span className="text-sm font-semibold text-amber-800">Dev Mode</span>
-                                    </div>
-                                    <button
-                                        onClick={() => setTestMode(!testMode)}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                                            testMode 
-                                                ? 'bg-amber-600 text-white' 
-                                                : 'bg-amber-200 text-amber-700 hover:bg-amber-300'
-                                        }`}
-                                    >
-                                        {testMode ? 'ON' : 'OFF'}
-                                    </button>
-                                </div>
-                                {testMode && (
-                                    <p className="text-xs text-amber-700 mt-2">
-                                        Test mode enabled. Auto-fill and skip controls will be available.
-                                    </p>
-                                )}
-                            </div>
-                        )}
-                        
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setShowStreamSelection(false);
-                                setShowCategorySelection(true);
-                                setSelectedCategory(null);
-                            }}
-                            className="w-full mt-4 py-4"
-                        >
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Category Selection
-                        </Button>
-                    </CardContent>
-                </Card>
-            </div>
-        );
+        // Redirect to category selection if somehow reached
+        setShowStreamSelection(false);
+        setShowCategorySelection(true);
+        return null;
     }
 
     return (
@@ -1617,9 +1883,22 @@ const AssessmentTest = () => {
                         </div>
                         <span className="text-sm font-medium text-gray-700">Career Assessment</span>
                     </div>
-                    <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-full">
-                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
-                        <span className="text-sm font-semibold text-indigo-700">{Math.round(progress)}% Complete</span>
+                    <div className="flex items-center gap-2">
+                        {/* Test Mode Toggle - Only in dev mode */}
+                        {isDevMode && !testMode && (
+                            <button
+                                onClick={() => setTestMode(true)}
+                                className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-xs font-semibold hover:bg-amber-200 transition-all flex items-center gap-1"
+                                title="Enable Test Mode for quick testing"
+                            >
+                                <Zap className="w-3 h-3" />
+                                Test Mode
+                            </button>
+                        )}
+                        <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-full">
+                            <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+                            <span className="text-sm font-semibold text-indigo-700">{Math.round(progress)}% Complete</span>
+                        </div>
                     </div>
                 </div>
 
@@ -1630,12 +1909,24 @@ const AssessmentTest = () => {
                             <Zap className="w-4 h-4 text-amber-600" />
                             <span className="text-sm font-semibold text-amber-800">Test Mode Active</span>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                             <button
                                 onClick={autoFillAllAnswers}
                                 className="px-3 py-1.5 bg-amber-200 text-amber-800 rounded-lg text-xs font-semibold hover:bg-amber-300 transition-all"
                             >
                                 Auto-fill All
+                            </button>
+                            <button
+                                onClick={skipToAptitude}
+                                className="px-3 py-1.5 bg-purple-500 text-white rounded-lg text-xs font-semibold hover:bg-purple-600 transition-all"
+                            >
+                                → Aptitude (AI)
+                            </button>
+                            <button
+                                onClick={skipToKnowledge}
+                                className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-semibold hover:bg-blue-600 transition-all"
+                            >
+                                → Knowledge (AI)
                             </button>
                             <button
                                 onClick={skipToLastSection}
@@ -1954,13 +2245,37 @@ const AssessmentTest = () => {
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
-                                    <Button
-                                        onClick={handleStartSection}
-                                        className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-10 py-6 text-lg shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 rounded-xl font-bold tracking-wide"
-                                    >
-                                        Start Section
-                                        <ChevronRight className="w-5 h-5 ml-2" />
-                                    </Button>
+                                    {/* Show loading state for AI sections with no questions */}
+                                    {(currentSection.id === 'aptitude' || currentSection.id === 'knowledge') && 
+                                     currentSection.questions.length === 0 ? (
+                                        <div className="flex flex-col items-center gap-4">
+                                            {aiQuestionsLoading ? (
+                                                <>
+                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                                    <p className="text-gray-600">Loading AI-generated questions...</p>
+                                                    <p className="text-sm text-gray-400">This may take up to 30 seconds</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p className="text-red-600 font-medium">Failed to load questions</p>
+                                                    <Button
+                                                        onClick={() => window.location.reload()}
+                                                        className="bg-red-600 hover:bg-red-700 text-white px-6 py-3"
+                                                    >
+                                                        Retry
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <Button
+                                            onClick={handleStartSection}
+                                            className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-10 py-6 text-lg shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 rounded-xl font-bold tracking-wide"
+                                        >
+                                            Start Section
+                                            <ChevronRight className="w-5 h-5 ml-2" />
+                                        </Button>
+                                    )}
                                 </motion.div>
                             </motion.div>
                         ) : (
@@ -2098,7 +2413,11 @@ const AssessmentTest = () => {
 
                                         <div className="flex items-center gap-3 text-sm text-gray-600">
                                             <Users className="w-4 h-4" />
-                                            <span>Question {currentQuestionIndex + 1} / {currentSection.questions.length}</span>
+                                            <span>Question {currentQuestionIndex + 1} / {
+                                                (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 :
+                                                (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 :
+                                                currentSection.questions.length
+                                            }</span>
                                         </div>
 
                                         {currentSection.isTimed ? (
@@ -2110,7 +2429,7 @@ const AssessmentTest = () => {
                                                             <span>Question Time: {formatTime(aptitudeQuestionTimer)}</span>
                                                         </div>
                                                         <div className="text-xs text-gray-500">
-                                                            Q {currentQuestionIndex + 1}/30 (1 min each)
+                                                            Q {currentQuestionIndex + 1}/{Math.min(currentSection.individualQuestionCount || 30, currentSection.questions.length)} (1 min each)
                                                         </div>
                                                     </div>
                                                 ) : (
@@ -2120,7 +2439,7 @@ const AssessmentTest = () => {
                                                             <span>Time Left: {formatTime(timeRemaining || 0)}</span>
                                                         </div>
                                                         <div className="text-xs text-gray-500">
-                                                            Q {currentQuestionIndex + 1 - 30}/20 (15 min shared)
+                                                            Q {currentQuestionIndex + 1 - (currentSection.individualQuestionCount || 30)}/{currentSection.questions.length - (currentSection.individualQuestionCount || 30)} (15 min shared)
                                                         </div>
                                                     </div>
                                                 )
@@ -2206,7 +2525,11 @@ const AssessmentTest = () => {
                                             >
                                                 <div className="mb-6">
                                                     <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 block">
-                                                        Question {currentQuestionIndex + 1} / {currentSection.questions.length}
+                                                        Question {currentQuestionIndex + 1} / {
+                                                            (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 :
+                                                            (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 :
+                                                            currentSection.questions.length
+                                                        }
                                                     </span>
                                                     <h3 className="text-2xl md:text-3xl font-medium text-gray-800 leading-snug">
                                                         {currentQuestion.text}
