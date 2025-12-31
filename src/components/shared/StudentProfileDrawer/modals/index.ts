@@ -5,3 +5,4 @@ export { default as ExportModal } from './ExportModal';
 export { default as ApprovalModal } from './ApprovalModal';
 export { default as PromotionModal } from './PromotionModal';
 export { default as GraduationModal } from './GraduationModal';
+export { default as DocumentsModal } from './DocumentsModal';

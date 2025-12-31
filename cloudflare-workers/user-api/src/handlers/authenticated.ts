@@ -351,3 +351,81 @@ export async function handleCreateTeacher(request: Request, env: Env): Promise<R
     return jsonResponse({ error: (error as Error).message }, 400);
   }
 }
+
+/**
+ * Handle updating student documents
+ */
+export async function handleUpdateStudentDocuments(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticateUser(request, env);
+  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const { supabaseAdmin } = auth;
+
+  const body = await request.json() as {
+    studentId: string;
+    documents: Array<{
+      name: string;
+      url: string;
+      size: number;
+      type: string;
+    }>;
+  };
+
+  const { studentId, documents } = body;
+
+  if (!studentId) {
+    return jsonResponse({ error: 'Missing required field: studentId' }, 400);
+  }
+
+  if (!documents || !Array.isArray(documents)) {
+    return jsonResponse({ error: 'Missing or invalid documents array' }, 400);
+  }
+
+  try {
+    // Validate that the student exists
+    const { data: existingStudent, error: fetchError } = await supabaseAdmin
+      .from('students')
+      .select('id, documents')
+      .eq('id', studentId)
+      .single();
+
+    if (fetchError || !existingStudent) {
+      return jsonResponse({ error: 'Student not found' }, 404);
+    }
+
+    // Format documents for storage
+    const formattedDocuments = documents.map(doc => ({
+      url: doc.url,
+      name: doc.name,
+      type: doc.type || 'general',
+      uploadedAt: new Date().toISOString(),
+      size: doc.size || 0
+    }));
+
+    // Get existing documents and merge with new ones
+    const existingDocuments = existingStudent.documents || [];
+    const updatedDocuments = [...existingDocuments, ...formattedDocuments];
+
+    // Update student record with documents
+    const { error: updateError } = await supabaseAdmin
+      .from('students')
+      .update({ documents: updatedDocuments })
+      .eq('id', studentId);
+
+    if (updateError) {
+      return jsonResponse({ error: `Failed to update student documents: ${updateError.message}` }, 500);
+    }
+
+    return jsonResponse({
+      success: true,
+      message: `Successfully updated documents for student ${studentId}`,
+      data: {
+        studentId,
+        documentsCount: formattedDocuments.length,
+        totalDocuments: updatedDocuments.length
+      }
+    });
+  } catch (error) {
+    return jsonResponse({ error: (error as Error).message }, 500);
+  }
+}

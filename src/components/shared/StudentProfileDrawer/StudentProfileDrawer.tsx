@@ -29,6 +29,7 @@ import {
   ApprovalModal,
   PromotionModal,
   GraduationModal,
+  DocumentsModal,
 } from './modals';
 
 // Tabs
@@ -80,6 +81,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [showGraduationModal, setShowGraduationModal] = useState(false);
+  const [showDocumentsModal, setShowDocumentsModal] = useState(false);
 
   // Custom hooks
   const {
@@ -443,6 +445,14 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                       View Portfolio
                     </button>
 
+                    <button
+                      onClick={() => setShowDocumentsModal(true)}
+                      className="inline-flex items-center px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
+                    >
+                      <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
+                      Documents
+                    </button>
+
                     {/* Student Management Actions - Only for Admins */}
                     {actions.showApproval && (
                       <button
@@ -573,6 +583,13 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           loading={actionLoading}
         />
       )}
+
+      {/* Documents Modal */}
+      <DocumentsModal
+        isOpen={showDocumentsModal}
+        onClose={() => setShowDocumentsModal(false)}
+        student={student}
+      />
     </div>
   );
 };
