@@ -8,6 +8,55 @@ import {
     ArrowPathIcon,
     AcademicCapIcon
 } from '@heroicons/react/24/outline';
+import NotificationModal from '../ui/NotificationModal';
+
+// Helper function to extract file key from R2 URL
+const extractFileKey = (fileUrl: string): string | null => {
+  if (fileUrl.includes('.r2.dev/')) {
+    const urlParts = fileUrl.split('.r2.dev/');
+    if (urlParts.length > 1) {
+      return urlParts[1];
+    }
+  }
+  return null;
+};
+
+// Helper function to generate accessible file URL
+const getAccessibleFileUrl = (fileUrl: string) => {
+  const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL;
+  if (!storageApiUrl) {
+    return fileUrl;
+  }
+  
+  // Extract file key and use key parameter for better reliability
+  const fileKey = extractFileKey(fileUrl);
+  
+  if (fileKey) {
+    return `${storageApiUrl}/document-access?key=${encodeURIComponent(fileKey)}&mode=inline`;
+  } else {
+    // Fallback to url parameter
+    return `${storageApiUrl}/document-access?url=${encodeURIComponent(fileUrl)}&mode=inline`;
+  }
+};
+
+// Helper function to open file with error handling
+const openFile = async (fileUrl: string, fileName: string = 'file') => {
+  try {
+    const accessibleUrl = getAccessibleFileUrl(fileUrl);
+    
+    // Test if the URL is accessible
+    const testResponse = await fetch(accessibleUrl, { method: 'HEAD' });
+    
+    if (testResponse.ok) {
+      window.open(accessibleUrl, '_blank');
+    } else {
+      window.open(fileUrl, '_blank');
+    }
+  } catch (error) {
+    // Fallback to direct URL
+    window.open(fileUrl, '_blank');
+  }
+};
 
 interface Student {
     student_assignment_id: string;
@@ -74,6 +123,15 @@ const GradingModal = ({ isOpen, onClose, assignment, onGradeSubmitted }: Grading
     const [submitting, setSubmitting] = useState(false);
     const [filterStatus, setFilterStatus] = useState('all');
     const [showMobileGrading, setShowMobileGrading] = useState(false);
+    
+    // Notification modal state
+    const [showNotification, setShowNotification] = useState(false);
+    const [notification, setNotification] = useState({ type: 'info' as const, title: '', message: '' });
+
+    const showNotificationModal = (type: 'error' | 'success' | 'warning' | 'info', title: string, message: string) => {
+        setNotification({ type, title, message });
+        setShowNotification(true);
+    };
 
     useEffect(() => {
         if (isOpen && assignment) {
@@ -97,13 +155,13 @@ const GradingModal = ({ isOpen, onClose, assignment, onGradeSubmitted }: Grading
 
     const handleGradeSubmit = async () => {
         if (!selectedStudent || !gradeData.grade_received || !assignment) {
-            alert('Please enter a grade');
+            showNotificationModal('warning', 'Missing Information', 'Please enter a grade');
             return;
         }
 
         const gradeValue = parseFloat(gradeData.grade_received);
         if (isNaN(gradeValue) || gradeValue < 0 || gradeValue > assignment.totalPoints) {
-            alert(`Grade must be between 0 and ${assignment.totalPoints}`);
+            showNotificationModal('error', 'Invalid Grade', `Grade must be between 0 and ${assignment.totalPoints}`);
             return;
         }
 
@@ -135,10 +193,9 @@ const GradingModal = ({ isOpen, onClose, assignment, onGradeSubmitted }: Grading
                 onGradeSubmitted();
             }
 
-            alert('Grade submitted successfully');
+            showNotificationModal('success', 'Grade Submitted', 'Grade has been submitted successfully');
         } catch (error) {
-            console.error('Error submitting grade:', error);
-            alert('Failed to submit grade');
+            showNotificationModal('error', 'Submission Failed', 'Failed to submit grade. Please try again.');
         } finally {
             setSubmitting(false);
         }
@@ -312,16 +369,32 @@ const GradingModal = ({ isOpen, onClose, assignment, onGradeSubmitted }: Grading
                                                         </p>
                                                     </div>
                                                 )}
-                                                {selectedStudent.submission_url && (
-                                                    <div className="mt-2">
-                                                        <a
-                                                            href={selectedStudent.submission_url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-emerald-600 hover:text-emerald-700 text-sm underline break-all"
-                                                        >
-                                                            View Submission Link
-                                                        </a>
+                                                {selectedStudent.submission_files && selectedStudent.submission_files.length > 0 && (
+                                                    <div className="mt-3 pt-3 border-t border-gray-200">
+                                                        <span className="text-gray-600 block mb-2">Submitted Files:</span>
+                                                        <div className="space-y-2">
+                                                            {selectedStudent.submission_files.map((file, index) => (
+                                                                <div key={file.attachment_id || index} className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                                                                        </svg>
+                                                                        <span className="text-sm font-medium text-blue-900">{file.original_filename}</span>
+                                                                        {file.file_size && (
+                                                                            <span className="text-xs text-blue-600">
+                                                                                ({(file.file_size / 1024 / 1024).toFixed(2)} MB)
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => openFile(file.file_url, file.original_filename)}
+                                                                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                                                                    >
+                                                                        View
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -597,16 +670,32 @@ const GradingModal = ({ isOpen, onClose, assignment, onGradeSubmitted }: Grading
                                                         </p>
                                                     </div>
                                                 )}
-                                                {selectedStudent.submission_url && (
-                                                    <div className="mt-2">
-                                                        <a
-                                                            href={selectedStudent.submission_url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-emerald-600 hover:text-emerald-700 text-xs underline break-all"
-                                                        >
-                                                            View Link
-                                                        </a>
+                                                {selectedStudent.submission_files && selectedStudent.submission_files.length > 0 && (
+                                                    <div className="mt-3 pt-3 border-t border-gray-200">
+                                                        <span className="text-gray-600 block mb-2">Submitted Files:</span>
+                                                        <div className="space-y-2">
+                                                            {selectedStudent.submission_files.map((file, index) => (
+                                                                <div key={file.attachment_id || index} className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200">
+                                                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                                        <svg className="w-3 h-3 text-blue-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                                                                        </svg>
+                                                                        <span className="text-xs font-medium text-blue-900 truncate">{file.original_filename}</span>
+                                                                        {file.file_size && (
+                                                                            <span className="text-xs text-blue-600 shrink-0">
+                                                                                ({(file.file_size / 1024 / 1024).toFixed(1)}MB)
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => openFile(file.file_url, file.original_filename)}
+                                                                        className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors shrink-0"
+                                                                    >
+                                                                        View
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -708,6 +797,15 @@ const GradingModal = ({ isOpen, onClose, assignment, onGradeSubmitted }: Grading
                     </div>
                 )}
             </div>
+            
+            {/* Notification Modal */}
+            <NotificationModal
+                isOpen={showNotification}
+                onClose={() => setShowNotification(false)}
+                title={notification.title}
+                message={notification.message}
+                type={notification.type}
+            />
         </div>
     );
 };

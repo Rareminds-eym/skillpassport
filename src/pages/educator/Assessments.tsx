@@ -1,4 +1,4 @@
-import { useState, useMemo, ChangeEvent, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     PlusIcon,
     MagnifyingGlassIcon,
@@ -20,15 +20,18 @@ import {
     createAssignmentsForClasses,
     getAssignmentsByEducator,
     deleteAssignment,
-    addAssignmentAttachment,
     assignToStudents,
-    getAssignmentStatistics
+    getAssignmentStatistics,
+    getInstructionFiles
 } from '../../services/educator/assignmentsService';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import StudentSelectionModal from '../../components/educator/StudentSelectionModal';
 import GradingModal from '@/components/educator/GradingModal';
+import AssignmentFileUpload from '../../components/educator/AssignmentFileUpload';
 import { useEducatorSchool } from '../../hooks/useEducatorSchool';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import NotificationModal from '../../components/ui/NotificationModal';
 
 // Configuration
 const SKILL_AREAS = ['Creativity', 'Collaboration', 'Critical Thinking', 'Leadership', 'Communication', 'Problem Solving'];
@@ -212,6 +215,13 @@ const Assessments = () => {
     const [newlyCreatedAssignmentId, setNewlyCreatedAssignmentId] = useState<string | null>(null);
     const [selectedClassesForAssignment, setSelectedClassesForAssignment] = useState<string[]>([]);
     const [assignedClasses, setAssignedClasses] = useState<Array<{ id: string; name: string }>>([]);
+    
+    // Modal states
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+    const [showNotification, setShowNotification] = useState(false);
+    const [notification, setNotification] = useState<{ type: 'error' | 'success' | 'warning' | 'info', title: string, message: string }>({ type: 'info', title: '', message: '' });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // New Task Form State - Matching database schema
     const [newTask, setNewTask] = useState({
@@ -233,7 +243,18 @@ const Assessments = () => {
     });
     const [additionalSkills, setAdditionalSkills] = useState<string[]>([]);
     const [customSkill, setCustomSkill] = useState('');
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
+    const [existingFiles, setExistingFiles] = useState<any[]>([]);
+    const [drawerInstructionFiles, setDrawerInstructionFiles] = useState<any[]>([]);
+    const [fileUpdateTrigger, setFileUpdateTrigger] = useState(0); // Force re-render trigger
+    const fileUploadRef = React.useRef<{ uploadStagedFiles: (assignmentId: string) => Promise<any[]> }>(null);
     const allSkills = useMemo(() => [...SKILL_AREAS, ...additionalSkills], [additionalSkills]);
+
+    const showNotificationModal = (type: 'error' | 'success' | 'warning' | 'info', title: string, message: string) => {
+        setNotification({ type, title, message });
+        setShowNotification(true);
+    };
 
     // Reset form when modal closes
     useEffect(() => {
@@ -256,7 +277,6 @@ const Assessments = () => {
                     try {
                         const parsedUser = JSON.parse(storedUser);
                         educatorId = parsedUser.educator_id;
-                        console.log('Using educator_id from localStorage:', educatorId);
                     } catch (e) {
                         console.error('Error parsing stored user:', e);
                     }
@@ -276,7 +296,6 @@ const Assessments = () => {
 
                         if (educatorData && !educatorError) {
                             educatorId = educatorData.id;
-                            console.log('Fetched educator_id from database:', educatorId);
                         }
                     }
                 }
@@ -286,7 +305,6 @@ const Assessments = () => {
                     const devEducatorId = localStorage.getItem('dev_educator_id');
                     if (devEducatorId) {
                         educatorId = devEducatorId;
-                        console.log('Using dev educator_id:', educatorId);
                     }
                 }
 
@@ -398,9 +416,11 @@ const Assessments = () => {
 
     const handleCreateTask = async () => {
         try {
+            setIsUploading(true);
+            
             // Use AuthContext user
             if (!isAuthenticated || !user) {
-                alert('Please log in to create assignments');
+                showNotificationModal('error', 'Authentication Required', 'Please log in to create assignments');
                 return;
             }
 
@@ -408,12 +428,21 @@ const Assessments = () => {
             const educatorName = user.full_name || user.email || 'Educator';
 
             if (!educatorId) {
-                alert('Educator profile not found. Please contact administrator.');
+                showNotificationModal('error', 'Profile Error', 'Educator profile not found. Please contact administrator.');
                 return;
             }
 
             if (newTask.assignedTo.length === 0) {
-                alert('Please select at least one class to assign the task.');
+                showNotificationModal('warning', 'Missing Classes', 'Please select at least one class to assign the task.');
+                return;
+            }
+
+            // Get token for file uploads
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token || user?.access_token;
+
+            if (!token) {
+                showNotificationModal('error', 'Authentication Error', 'Authentication required. Please log in again.');
                 return;
             }
 
@@ -427,7 +456,7 @@ const Assessments = () => {
                 educator_name: educatorName,
                 total_points: newTask.totalPoints,
                 assignment_type: newTask.assignmentType,
-                skill_outcomes: newTask.skillTags,
+                skill_outcomes: newTask.skillTags, // Keep as array
                 document_pdf: newTask.documentPdf || null,
                 due_date: newTask.deadline,
                 available_from: newTask.availableFrom || new Date().toISOString(),
@@ -449,6 +478,16 @@ const Assessments = () => {
 
                 if (error) {
                     throw error;
+                }
+
+                // Upload any staged files if they exist (using the new staged approach)
+                if (fileUploadRef.current) {
+                    try {
+                        await fileUploadRef.current.uploadStagedFiles(selectedTask.id);
+                    } catch (uploadError) {
+                        console.error('Failed to upload staged files:', uploadError);
+                        // Continue with assignment update even if file upload fails
+                    }
                 }
 
                 // Update the task in the UI
@@ -476,18 +515,19 @@ const Assessments = () => {
                 resetTaskForm();
                 return;
             } else {
-                // Create new assignments - one row per selected class
+                // Create new assignments with staged file upload
                 const createdAssignments = await createAssignmentsForClasses(baseAssignmentData, newTask.assignedTo);
 
-                // Add attachments to each created assignment
-                for (const assignment of createdAssignments) {
-                    for (const attachment of newTask.attachments) {
-                        await addAssignmentAttachment(assignment.assignment_id, {
-                            file_name: attachment,
-                            file_type: 'application/pdf',
-                            file_size: 0,
-                            file_url: ''
-                        });
+                // Then upload staged files to each assignment
+                if (selectedFiles.length > 0 && fileUploadRef.current) {
+                    for (const assignment of createdAssignments) {
+                        try {
+                            const uploadResults = await fileUploadRef.current.uploadStagedFiles(assignment.assignment_id);
+                            assignment.instruction_files = uploadResults;
+                        } catch (uploadError) {
+                            console.error('Failed to upload files for assignment:', assignment.assignment_id, uploadError);
+                            // Continue with other assignments even if one fails
+                        }
                     }
                 }
 
@@ -505,7 +545,7 @@ const Assessments = () => {
                     averageScore: 0,
                     totalStudents: 0,
                     totalPoints: assignment.total_points,
-                    attachments: newTask.attachments,
+                    attachments: assignment.instruction_files?.map((f: any) => f.file_name) || [],
                     rubric: []
                 }));
 
@@ -521,7 +561,27 @@ const Assessments = () => {
             }
         } catch (err) {
             console.error('Error creating assignment:', err);
-            alert('Failed to create assignment. Please try again.');
+            showNotificationModal('error', 'Creation Failed', 'Failed to create assignment. Please try again.');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const confirmDeleteTask = async () => {
+        if (!taskToDelete) return;
+
+        setIsDeleting(true);
+        try {
+            await deleteAssignment(taskToDelete.id);
+            setTasks(tasks.filter(t => t.id !== taskToDelete.id));
+            showNotificationModal('success', 'Task Deleted', 'Assignment has been successfully deleted.');
+        } catch (err) {
+            console.error('Error deleting assignment:', err);
+            showNotificationModal('error', 'Delete Failed', 'Failed to delete assignment. Please try again.');
+        } finally {
+            setIsDeleting(false);
+            setShowDeleteConfirm(false);
+            setTaskToDelete(null);
         }
     };
 
@@ -545,6 +605,9 @@ const Assessments = () => {
         });
         setAdditionalSkills([]);
         setCustomSkill('');
+        setSelectedFiles([]);
+        setIsUploading(false);
+        setExistingFiles([]);
     };
 
     const handleSkillToggle = (skill: string) => {
@@ -582,11 +645,16 @@ const Assessments = () => {
         }));
     };
 
-    const handleAttachmentChange = (event: ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(event.target.files ?? []);
-        if (!files.length) {
-            return;
-        }
+    // New file upload handlers
+    const handleFilesSelected = (files: File[]) => {
+        setSelectedFiles(prev => {
+            // Remove duplicates based on file name and size
+            const existingFileKeys = prev.map(f => `${f.name}-${f.size}`);
+            const newFiles = files.filter(f => !existingFileKeys.includes(`${f.name}-${f.size}`));
+            return [...prev, ...newFiles];
+        });
+        
+        // Also update the legacy attachments array for UI consistency
         setNewTask(prev => ({
             ...prev,
             attachments: Array.from(new Set([
@@ -594,7 +662,76 @@ const Assessments = () => {
                 ...files.map(file => file.name)
             ]))
         }));
-        event.target.value = '';
+    };
+
+    const handleFilesUploaded = (uploadResults: any[]) => {
+        // Files are already saved to database by the upload service
+        // Update the attachments list for UI consistency
+        setNewTask(prev => ({
+            ...prev,
+            attachments: Array.from(new Set([
+                ...prev.attachments,
+                ...uploadResults.map(result => result.file_name)
+            ]))
+        }));
+    };
+
+    const handleFileDeleted = async (fileId: string) => {
+        // Remove from existing files list
+        setExistingFiles(prev => {
+            const newList = prev.filter(file => file.attachment_id !== fileId);
+            
+            // Force re-render after state update
+            setTimeout(() => setFileUpdateTrigger(prev => prev + 1), 0);
+            
+            return newList;
+        });
+        
+        // Also remove from attachments list
+        const deletedFile = existingFiles.find(file => file.attachment_id === fileId);
+        if (deletedFile) {
+            setNewTask(prev => ({
+                ...prev,
+                attachments: prev.attachments.filter(name => name !== deletedFile.file_name)
+            }));
+        } else {
+            console.warn('⚠️ [PARENT WARNING] Could not find deleted file in existingFiles list');
+        }
+
+        // Also remove from drawer files if they're loaded
+        setDrawerInstructionFiles(prev => {
+            const newList = prev.filter(file => file.attachment_id !== fileId);
+            return newList;
+        });
+
+        // If drawer is open and showing the same assignment, refresh the drawer files
+        if (showDetailDrawer && selectedTask && selectedTask.id) {
+            try {
+                await fetchInstructionFilesForDrawer(selectedTask.id);
+            } catch (error) {
+                console.error('❌ [DRAWER REFRESH ERROR] Failed to refresh drawer files:', error);
+            }
+        }
+
+        // CRITICAL: Force refresh of existing files for the edit modal
+        if (selectedTask && selectedTask.id) {
+            try {
+                const freshFiles = await getInstructionFiles(selectedTask.id);
+                setExistingFiles(freshFiles);
+            } catch (error) {
+                console.error('❌ [FORCE REFRESH ERROR] Failed to fetch fresh files:', error);
+            }
+        }
+    };
+
+    const fetchInstructionFilesForDrawer = async (assignmentId: string) => {
+        try {
+            const files = await getInstructionFiles(assignmentId);
+            setDrawerInstructionFiles(files);
+        } catch (error) {
+            console.error('Error fetching instruction files:', error);
+            setDrawerInstructionFiles([]);
+        }
     };
 
     const handleStudentsAssigned = async (studentIds: string[]) => {
@@ -620,7 +757,7 @@ const Assessments = () => {
             resetTaskForm();
         } catch (err) {
             console.error('Error assigning students:', err);
-            alert('Failed to assign students. Please try again.');
+            showNotificationModal('error', 'Assignment Failed', 'Failed to assign students. Please try again.');
         }
     };
 
@@ -818,20 +955,30 @@ const Assessments = () => {
                             key={task.id}
                             task={task}
                             assignedClasses={assignedClasses}
-                            onView={(task) => {
+                            onView={async (task) => {
                                 setSelectedTask(task);
                                 setShowDetailDrawer(true);
+                                // Fetch detailed instruction files for the drawer
+                                await fetchInstructionFilesForDrawer(task.id);
                             }}
                             onEdit={async (task) => {
                                 // Fetch full assignment details from database first
                                 try {
                                     const { data: assignment, error } = await supabase
                                         .from('assignments')
-                                        .select('*')
+                                        .select(`
+                                            *,
+                                            assignment_attachments (*)
+                                        `)
                                         .eq('assignment_id', task.id)
                                         .single();
 
                                     if (!error && assignment) {
+                                        // Get instruction files (educator files - no STUDENT: prefix)
+                                        const instructionFiles = assignment.assignment_attachments?.filter(
+                                            (att: any) => !att.file_name.startsWith('STUDENT:')
+                                        ) || [];
+
                                         // Populate form with full assignment data
                                         setNewTask({
                                             title: assignment.title,
@@ -842,25 +989,32 @@ const Assessments = () => {
                                             totalPoints: assignment.total_points || 100,
                                             assignmentType: assignment.assignment_type || 'project',
                                             status: assignment.is_deleted ? 'Closed' : 'Active',
-                                            skillTags: assignment.skill_outcomes || [],
+                                            skillTags: typeof assignment.skill_outcomes === 'string' 
+                                                ? assignment.skill_outcomes.split(', ').filter(Boolean)
+                                                : Array.isArray(assignment.skill_outcomes) 
+                                                    ? assignment.skill_outcomes 
+                                                    : [],
                                             assignedTo: assignment.assign_classes ? [assignment.assign_classes] : [],
                                             deadline: assignment.due_date ? assignment.due_date.replace('Z', '').slice(0, 16) : '',
                                             availableFrom: assignment.available_from ? assignment.available_from.replace('Z', '').slice(0, 16) : '',
                                             allowLateSubmissions: assignment.allow_late_submission ?? true,
-                                            attachments: [],
+                                            attachments: instructionFiles.map((file: any) => file.file_name),
                                             documentPdf: assignment.document_pdf || ''
                                         });
+                                        
+                                        // Store existing files for the file upload component
+                                        setExistingFiles(instructionFiles);
                                         
                                         // Set selected task and open modal after data is populated
                                         setSelectedTask(task);
                                         setShowTaskModal(true);
                                     } else {
                                         console.error('Error fetching assignment:', error);
-                                        alert('Failed to load assignment details');
+                                        showNotificationModal('error', 'Load Error', 'Failed to load assignment details');
                                     }
                                 } catch (err) {
                                     console.error('Error fetching assignment details:', err);
-                                    alert('Failed to load assignment details');
+                                    showNotificationModal('error', 'Load Error', 'Failed to load assignment details');
                                 }
                             }}
                             onAssess={(task) => {
@@ -873,15 +1027,8 @@ const Assessments = () => {
                                 setShowStudentSelectionModal(true);
                             }}
                             onDelete={async (task) => {
-                                if (confirm(`Delete task "${task.title}"?`)) {
-                                    try {
-                                        await deleteAssignment(task.id);
-                                        setTasks(tasks.filter(t => t.id !== task.id));
-                                    } catch (err) {
-                                        console.error('Error deleting assignment:', err);
-                                        alert('Failed to delete assignment');
-                                    }
-                                }
+                                setTaskToDelete(task);
+                                setShowDeleteConfirm(true);
                             }}
                         />
                     ))}
@@ -1109,27 +1256,25 @@ const Assessments = () => {
                             </div>
 
                             <div>
-                                <h3 className="text-sm font-semibold text-gray-900 mb-3">Attachments</h3>
-                                <label className="flex flex-col items-center justify-center w-full px-6 py-8 border-2 border-dashed border-gray-300 rounded-2xl text-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition-colors">
-                                    <DocumentArrowUpIcon className="h-6 w-6 text-emerald-500 mb-2" />
-                                    <span className="text-sm font-medium text-emerald-700">Upload PDF or Word documents</span>
-                                    <span className="text-xs text-gray-500 mt-1">PDF, DOC, DOCX files supported</span>
-                                    <input
-                                        type="file"
-                                        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                        multiple
-                                        onChange={handleAttachmentChange}
-                                        className="hidden"
-                                    />
-                                </label>
-                                {newTask.attachments.length > 0 && (
-                                    <div className="mt-3 space-y-2">
-                                        {newTask.attachments.map((file: string, index: number) => (
-                                            <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                                <DocumentArrowUpIcon className="h-5 w-5 text-gray-400" />
-                                                <span className="text-sm text-gray-700 truncate">{file}</span>
-                                            </div>
-                                        ))}
+                                <h3 className="text-sm font-semibold text-gray-900 mb-3">Instruction Files</h3>
+                                <AssignmentFileUpload
+                                    ref={fileUploadRef}
+                                    key={`file-upload-${selectedTask?.id}-${fileUpdateTrigger}`}
+                                    assignmentId={selectedTask?.id || undefined}
+                                    existingFiles={existingFiles}
+                                    onFilesSelected={handleFilesSelected}
+                                    onFilesUploaded={handleFilesUploaded}
+                                    onFileDeleted={handleFileDeleted}
+                                    maxFiles={5}
+                                    acceptedTypes={['.pdf', '.doc', '.docx', '.txt', '.jpg', '.png']}
+                                    className="w-full"
+                                    mode="staged"
+                                />
+                                
+                                {/* Show selected files count for both create and edit modes */}
+                                {selectedFiles.length > 0 && (
+                                    <div className="mt-2 text-sm text-emerald-600 bg-emerald-50 p-2 rounded border border-emerald-200">
+                                        <strong>{selectedFiles.length}</strong> file{selectedFiles.length !== 1 ? 's' : ''} ready to upload when assignment is {selectedTask ? 'updated' : 'created'}.
                                     </div>
                                 )}
                             </div>
@@ -1148,10 +1293,18 @@ const Assessments = () => {
                                 </button>
                                 <button
                                     onClick={handleCreateTask}
-                                    disabled={!newTask.title || !newTask.courseName || !newTask.deadline || newTask.skillTags.length === 0 || newTask.assignedTo.length === 0}
-                                    className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                                    disabled={!newTask.title || !newTask.courseName || !newTask.deadline || newTask.skillTags.length === 0 || newTask.assignedTo.length === 0 || isUploading}
+                                    className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2"
                                 >
-                                    {selectedTask ? 'Update Assignment' : (newTask.status === 'Active' ? 'Publish Assignment' : 'Save as Draft')}
+                                    {isUploading && (
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    )}
+                                    {isUploading 
+                                        ? 'Creating...' 
+                                        : selectedTask 
+                                            ? 'Update Assignment' 
+                                            : (newTask.status === 'Active' ? 'Publish Assignment' : 'Save as Draft')
+                                    }
                                 </button>
                             </div>
                         </div>
@@ -1162,7 +1315,10 @@ const Assessments = () => {
             {/* Detail Drawer */}
             {showDetailDrawer && selectedTask && (
                 <div className="fixed inset-0 z-50 overflow-hidden">
-                    <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowDetailDrawer(false)} />
+                    <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => {
+                        setShowDetailDrawer(false);
+                        setDrawerInstructionFiles([]);
+                    }} />
                     <div className="fixed inset-y-0 right-0 max-w-2xl w-full bg-white shadow-xl flex flex-col">
                         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                             <div>
@@ -1170,7 +1326,10 @@ const Assessments = () => {
                                 <StatusBadge status={selectedTask.status} />
                             </div>
                             <button
-                                onClick={() => setShowDetailDrawer(false)}
+                                onClick={() => {
+                                    setShowDetailDrawer(false);
+                                    setDrawerInstructionFiles([]);
+                                }}
                                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                             >
                                 <XMarkIcon className="h-6 w-6 text-gray-400" />
@@ -1266,15 +1425,50 @@ const Assessments = () => {
                                 </div>
 
                                 <div>
-                                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Attachments</h3>
-                                    <div className="space-y-2">
-                                        {selectedTask.attachments.map((file: string, idx: number) => (
-                                            <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer">
-                                                <DocumentArrowUpIcon className="h-5 w-5 text-gray-400" />
-                                                <span className="text-sm text-gray-700">{file}</span>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Instruction Files</h3>
+                                    {drawerInstructionFiles && drawerInstructionFiles.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {drawerInstructionFiles.map((file: any, idx: number) => (
+                                                <div key={file.attachment_id || idx} className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors">
+                                                    <DocumentArrowUpIcon className="h-5 w-5 text-blue-600" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium text-gray-900 truncate">{file.file_name}</p>
+                                                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                            <span>{file.file_size ? `${Math.round(file.file_size / 1024)} KB` : 'Unknown size'}</span>
+                                                            <span>•</span>
+                                                            <span>{file.file_type || 'Unknown type'}</span>
+                                                            {file.uploaded_date && (
+                                                                <>
+                                                                    <span>•</span>
+                                                                    <span>Uploaded {new Date(file.uploaded_date).toLocaleDateString()}</span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {file.file_url && (
+                                                        <a
+                                                            href={file.file_url.includes('/document-access') 
+                                                                ? file.file_url 
+                                                                : `${import.meta.env.VITE_STORAGE_API_URL}/document-access?url=${encodeURIComponent(file.file_url)}&mode=inline`
+                                                            }
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="p-1 hover:bg-blue-200 rounded transition-colors"
+                                                            title="View/Download file"
+                                                        >
+                                                            <DocumentArrowUpIcon className="h-4 w-4 text-blue-600" />
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-6 text-gray-500">
+                                            <DocumentArrowUpIcon className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                                            <p className="text-sm">No instruction files attached</p>
+                                            <p className="text-xs mt-1">Files uploaded during assignment creation will appear here</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1282,7 +1476,9 @@ const Assessments = () => {
                         <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
                             <div className="flex items-center gap-3">
                                 <button
-                                    onClick={() => alert(`Assessing submissions for: ${selectedTask.title}`)}
+                                    onClick={() => {
+                                        setShowGradingModal(true);
+                                    }}
                                     className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
                                 >
                                     Assess Submissions
@@ -1290,6 +1486,7 @@ const Assessments = () => {
                                 <button
                                     onClick={() => {
                                         setShowDetailDrawer(false);
+                                        setDrawerInstructionFiles([]);
                                         setShowTaskModal(true);
                                     }}
                                     className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
@@ -1326,6 +1523,31 @@ const Assessments = () => {
                     onGradeSubmitted={handleGradeSubmitted}
                 />
             )}
+            
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showDeleteConfirm}
+                onClose={() => {
+                    setShowDeleteConfirm(false);
+                    setTaskToDelete(null);
+                }}
+                onConfirm={confirmDeleteTask}
+                title="Delete Assignment"
+                message={`Are you sure you want to delete "${taskToDelete?.title}"? This action cannot be undone.`}
+                type="danger"
+                confirmText="Delete"
+                cancelText="Cancel"
+                isLoading={isDeleting}
+            />
+            
+            {/* Notification Modal */}
+            <NotificationModal
+                isOpen={showNotification}
+                onClose={() => setShowNotification(false)}
+                title={notification.title}
+                message={notification.message}
+                type={notification.type}
+            />
         </div>
     );
 };

@@ -1,9 +1,11 @@
 import { supabase } from '../lib/supabaseClient';
+import storageApiService from './storageApiService';
 
 /**
  * Assignments Service
  * Handles all database operations for student assignments
  * Uses the student_assignments junction table to link students with assignments
+ * Enhanced with file upload support for student submissions
  */
 
 /**
@@ -52,7 +54,7 @@ export const getAssignmentsByStudentId = async (studentId) => {
       `)
       .eq('student_id', uid)               // <-- FIXED
       .eq('is_deleted', false)
-      .order('assignments(due_date)', { ascending: true });
+      .order('assignments(created_date)', { ascending: false }); // Show newest assignments first
 
     if (error) throw error;
 
@@ -499,6 +501,202 @@ export const updateStudentAssignment = async (studentAssignmentId, updateData) =
     return data;
   } catch (error) {
     console.error('Error updating student assignment:', error);
+    throw error;
+  }
+};
+
+// =====================================================
+// NEW FILE SUBMISSION FUNCTIONS FOR STUDENTS
+// =====================================================
+
+/**
+ * Submit assignment with staged files (files uploaded only when submitting)
+ * @param {string} studentAssignmentId - Student assignment UUID
+ * @param {Array<File>} files - Array of files to upload
+ * @param {string} studentId - Student UUID (from students table)
+ * @param {string} assignmentId - Assignment UUID
+ * @param {string} token - Auth token
+ * @returns {Promise<Object>} Submission result
+ */
+export const submitAssignmentWithStagedFiles = async (studentAssignmentId, files, studentId, assignmentId, token) => {
+  try {
+    if (files.length === 0) {
+      // No files to upload, just update status
+      const { data, error } = await supabase
+        .from('student_assignments')
+        .update({
+          status: 'submitted',
+          submission_type: 'text',
+          submission_date: new Date().toISOString(),
+          completed_date: new Date().toISOString(),
+          updated_date: new Date().toISOString()
+        })
+        .eq('student_assignment_id', studentAssignmentId)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      return data;
+    }
+
+    // Upload files to R2 storage
+    const uploadPromises = files.map(async (file) => {
+      const timestamp = Date.now();
+      const filename = `assignments/${assignmentId}/submissions/${studentAssignmentId}/${timestamp}_${file.name}`;
+      return await storageApiService.uploadFile(file, { filename }, token);
+    });
+    
+    const uploadResults = await Promise.all(uploadPromises);
+    
+    // Save files to assignment_attachments with STUDENT: prefix
+    const attachmentPromises = files.map(async (file, index) => {
+      const uploadResult = uploadResults[index];
+      
+      return await supabase
+        .from('assignment_attachments')
+        .insert({
+          assignment_id: assignmentId,
+          file_name: `STUDENT:${studentAssignmentId}:${file.name}`, // ✅ STUDENT FILE (with prefix)
+          file_type: file.type,
+          file_size: file.size,
+          file_url: uploadResult.url // Store original R2 URL
+        })
+        .select()
+        .single();
+    });
+    
+    await Promise.all(attachmentPromises);
+    
+    // Update student assignment status
+    const fileNames = files.map(file => file.name).join(',');
+    const { data, error } = await supabase
+      .from('student_assignments')
+      .update({
+        status: 'submitted',
+        submission_type: 'file', // ✅ Fixed: use 'file' not 'files'
+        submission_content: fileNames, // Store file names for reference
+        submission_url: uploadResults[0]?.url || null, // Store first file URL for backward compatibility
+        submission_date: new Date().toISOString(),
+        completed_date: new Date().toISOString(),
+        updated_date: new Date().toISOString()
+      })
+      .eq('student_assignment_id', studentAssignmentId)
+      .select()
+      .single();
+      
+    if (error) throw error;
+    
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Get student's own submission files
+ * @param {string} assignmentId - Assignment UUID
+ * @param {string} studentAssignmentId - Student assignment UUID
+ * @returns {Promise<Array>} List of student's submission files
+ */
+export const getStudentSubmissionFiles = async (assignmentId, studentAssignmentId) => {
+  try {
+    const { data, error } = await supabase
+      .from('assignment_attachments')
+      .select('*')
+      .eq('assignment_id', assignmentId)
+      .like('file_name', `STUDENT:${studentAssignmentId}:%`) // ✅ Only this student's files
+      .order('uploaded_date', { ascending: false });
+      
+    if (error) throw error;
+    
+    // Add original filename without prefix
+    const filesWithOriginalNames = data?.map(file => ({
+      ...file,
+      original_filename: file.file_name.replace(/^STUDENT:[^:]+:/, '')
+    })) || [];
+    
+    return filesWithOriginalNames;
+  } catch (error) {
+    console.error('Error fetching student submission files:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get assignment with instruction files and student's submission files
+ * @param {string} studentId - Student UUID (from students table)
+ * @param {string} assignmentId - Assignment UUID
+ * @returns {Promise<Object>} Assignment with instruction files and student's submission files
+ */
+export const getAssignmentWithFiles = async (studentId, assignmentId) => {
+  try {
+    // Get basic assignment data
+    const assignment = await getAssignmentWithAttachments(studentId, assignmentId);
+    
+    // Get instruction files (educator files - no prefix)
+    const { data: instructionFiles, error: instructionError } = await supabase
+      .from('assignment_attachments')
+      .select('*')
+      .eq('assignment_id', assignmentId)
+      .not('file_name', 'like', 'STUDENT:%') // ✅ Only educator files
+      .order('uploaded_date', { ascending: false });
+      
+    if (instructionError) throw instructionError;
+    
+    // Get student's submission files
+    const submissionFiles = await getStudentSubmissionFiles(assignmentId, assignment.student_assignment_id);
+    
+    return {
+      ...assignment,
+      instruction_files: instructionFiles || [],
+      submission_files: submissionFiles
+    };
+  } catch (error) {
+    console.error('Error fetching assignment with files:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete student's submission file
+ * @param {string} attachmentId - Attachment UUID
+ * @param {string} studentAssignmentId - Student assignment UUID (for verification)
+ * @param {string} token - Auth token
+ * @returns {Promise<boolean>} Success status
+ */
+export const deleteStudentSubmissionFile = async (attachmentId, studentAssignmentId, token) => {
+  try {
+    // Get file info and verify it belongs to this student
+    const { data: attachment, error: fetchError } = await supabase
+      .from('assignment_attachments')
+      .select('file_url, file_name')
+      .eq('attachment_id', attachmentId)
+      .like('file_name', `STUDENT:${studentAssignmentId}:%`) // ✅ Verify ownership
+      .single();
+      
+    if (fetchError) throw fetchError;
+    
+    // Extract file key from URL for R2 deletion
+    const fileKey = attachment.file_url.split('/').pop();
+    
+    // Delete from R2 storage
+    try {
+      await storageApiService.deleteFile(fileKey, token);
+    } catch (storageError) {
+      console.warn('Failed to delete file from storage:', storageError);
+      // Continue with database deletion even if storage deletion fails
+    }
+    
+    // Delete from database
+    const { error } = await supabase
+      .from('assignment_attachments')
+      .delete()
+      .eq('attachment_id', attachmentId);
+      
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error deleting student submission file:', error);
     throw error;
   }
 };

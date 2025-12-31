@@ -33,28 +33,50 @@ export async function uploadFile(file, { folder = 'uploads', filename, contentTy
   if (filename) formData.append('filename', filename);
   if (contentType) formData.append('contentType', contentType);
 
-  const response = await fetch(`${getBaseUrl()}/upload`, {
-    method: 'POST',
-    headers: getAuthHeaders(token, true),
-    body: formData,
-  });
+  try {
+    const response = await fetch(`${getBaseUrl()}/upload`, {
+      method: 'POST',
+      headers: getAuthHeaders(token, true),
+      body: formData,
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to upload file');
+    if (!response.ok) {
+      let errorDetails;
+      try {
+        errorDetails = await response.json();
+      } catch (e) {
+        errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
+      }
+      
+      // Provide more specific error messages
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please refresh the page and log in again.');
+      } else if (response.status === 403) {
+        throw new Error('Access denied. You may not have permission to upload files.');
+      } else if (response.status === 413) {
+        throw new Error('File too large. Please choose a smaller file.');
+      } else if (response.status >= 500) {
+        throw new Error('Server error. Please try again later.');
+      } else {
+        throw new Error(errorDetails.error || `Upload failed with status ${response.status}`);
+      }
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    throw error;
   }
-
-  return response.json();
 }
 
 /**
  * Delete a file from R2 storage
  */
-export async function deleteFile(fileKey, token) {
+export async function deleteFile(fileUrl, token) {
   const response = await fetch(`${getBaseUrl()}/delete`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ fileKey }),
+    body: JSON.stringify({ url: fileUrl }),
   });
 
   if (!response.ok) {
