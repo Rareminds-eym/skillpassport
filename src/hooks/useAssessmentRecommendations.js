@@ -2,12 +2,15 @@
  * Hook to fetch and process assessment-based training recommendations
  */
 import { useState, useEffect } from 'react';
-import { getLatestResult } from '../services/assessmentService';
+import { getLatestResult, getInProgressAttempt } from '../services/assessmentService';
 
 export const useAssessmentRecommendations = (studentId, enabled = true) => {
   const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [hasCompletedAssessment, setHasCompletedAssessment] = useState(false);
+  const [hasInProgressAssessment, setHasInProgressAssessment] = useState(false);
+  const [inProgressAttempt, setInProgressAttempt] = useState(null);
 
   useEffect(() => {
     if (!studentId || !enabled) {
@@ -20,12 +23,33 @@ export const useAssessmentRecommendations = (studentId, enabled = true) => {
         setLoading(true);
         setError(null);
 
+        // Check for in-progress assessment first
+        try {
+          const inProgress = await getInProgressAttempt(studentId);
+          if (inProgress) {
+            setHasInProgressAssessment(true);
+            setInProgressAttempt(inProgress);
+          } else {
+            setHasInProgressAssessment(false);
+            setInProgressAttempt(null);
+          }
+        } catch (err) {
+          console.warn('Error checking in-progress assessment:', err);
+          setHasInProgressAssessment(false);
+        }
+
         const result = await getLatestResult(studentId);
         
         if (!result) {
           setRecommendations(null);
+          setHasCompletedAssessment(false);
           setLoading(false);
           return;
+        }
+        
+        // Mark as having completed assessment if result exists with completed status
+        if (result.status === 'completed') {
+          setHasCompletedAssessment(true);
         }
 
         // Extract recommendations from assessment results
@@ -98,6 +122,10 @@ export const useAssessmentRecommendations = (studentId, enabled = true) => {
     recommendations,
     loading,
     error,
-    hasAssessment: !!recommendations,
+    // hasAssessment is true if there's a completed result, even without detailed recommendations
+    hasAssessment: hasCompletedAssessment || !!recommendations,
+    // New: check for in-progress assessment
+    hasInProgressAssessment,
+    inProgressAttempt,
   };
 };

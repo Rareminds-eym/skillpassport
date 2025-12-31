@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import assessmentRoutes from './routes/assessment.js';
+import careerAssessmentRoutes from './routes/careerAssessment.js';
 
 // Load environment variables from root .env
 dotenv.config({ path: '../.env' });
@@ -20,9 +21,11 @@ app.get('/api/health', (req, res) => {
 
 // Routes
 app.use('/api/assessment', assessmentRoutes);
+app.use('/api/career-assessment', careerAssessmentRoutes);
 
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Backend server running on http://localhost:${PORT}`);
   console.log(`📡 Assessment API: http://localhost:${PORT}/api/assessment/generate`);
+  console.log(`📡 Career Assessment API: http://localhost:${PORT}/api/career-assessment/generate-knowledge`);
 });

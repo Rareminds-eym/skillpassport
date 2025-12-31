@@ -4,6 +4,22 @@
  * Margins: 15mm, Content area: ~180mm x 267mm
  * Now supports different grade levels: middle, highschool, after12
  */
+
+// Helper function to safely render items that might be objects or strings
+const safeRender = (item) => {
+    if (item === null || item === undefined) return '';
+    if (typeof item === 'object') {
+        return item.name || item.title || item.skill || JSON.stringify(item);
+    }
+    return String(item);
+};
+
+// Helper to safely join array items
+const safeJoin = (arr, separator = ', ') => {
+    if (!arr || !Array.isArray(arr)) return '';
+    return arr.map(safeRender).join(separator);
+};
+
 const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, traitNames }) => {
     if (!results) {
         return (
@@ -555,7 +571,7 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
                             <p style={{fontSize: '9px', color: '#4b5563', margin: '6px 0'}}>{cluster.summary}</p>
                             {cluster.roles?.entry && (
                                 <div style={{fontSize: '9px', marginTop: '8px'}}>
-                                    <strong>Example Careers:</strong> {cluster.roles.entry.join(', ')}
+                                    <strong>Example Careers:</strong> {safeJoin(cluster.roles.entry)}
                                 </div>
                             )}
                         </div>
@@ -567,13 +583,13 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
                     <div>
                         <h4 style={{fontSize: '10px', fontWeight: 'bold', color: '#166534', margin: '0 0 6px 0'}}>Strong Matches</h4>
                         {careerFit?.specificOptions?.highFit?.map((career, i) => (
-                            <div key={i} style={{padding: '3px 0', fontSize: '9px'}}>• {career}</div>
+                            <div key={i} style={{padding: '3px 0', fontSize: '9px'}}>• {safeRender(career)}</div>
                         ))}
                     </div>
                     <div>
                         <h4 style={{fontSize: '10px', fontWeight: 'bold', color: '#854d0e', margin: '0 0 6px 0'}}>Also Consider</h4>
                         {careerFit?.specificOptions?.mediumFit?.map((career, i) => (
-                            <div key={i} style={{padding: '3px 0', fontSize: '9px'}}>• {career}</div>
+                            <div key={i} style={{padding: '3px 0', fontSize: '9px'}}>• {safeRender(career)}</div>
                         ))}
                     </div>
                 </div>
@@ -745,10 +761,10 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
                             )}
                             <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '9px'}}>
                                 <div>
-                                    <strong>Entry Roles:</strong> {cluster.roles?.entry?.join(', ') || 'N/A'}
+                                    <strong>Entry Roles:</strong> {safeJoin(cluster.roles?.entry) || 'N/A'}
                                 </div>
                                 <div style={{textAlign: 'right'}}>
-                                    <strong>Mid Roles:</strong> {cluster.roles?.mid?.join(', ') || 'N/A'}
+                                    <strong>Mid Roles:</strong> {safeJoin(cluster.roles?.mid) || 'N/A'}
                                 </div>
                             </div>
                         </div>
@@ -767,13 +783,13 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
                     <tbody>
                         <tr>
                             <td style={{...styles.td, verticalAlign: 'top'}}>
-                                {careerFit?.specificOptions?.highFit?.map((r, i) => <div key={i} style={{padding: '2px 0'}}>• {r}</div>)}
+                                {careerFit?.specificOptions?.highFit?.map((r, i) => <div key={i} style={{padding: '2px 0'}}>• {safeRender(r)}</div>)}
                             </td>
                             <td style={{...styles.td, verticalAlign: 'top'}}>
-                                {careerFit?.specificOptions?.mediumFit?.map((r, i) => <div key={i} style={{padding: '2px 0'}}>• {r}</div>)}
+                                {careerFit?.specificOptions?.mediumFit?.map((r, i) => <div key={i} style={{padding: '2px 0'}}>• {safeRender(r)}</div>)}
                             </td>
                             <td style={{...styles.td, verticalAlign: 'top'}}>
-                                {careerFit?.specificOptions?.exploreLater?.map((r, i) => <div key={i} style={{padding: '2px 0'}}>• {r}</div>)}
+                                {careerFit?.specificOptions?.exploreLater?.map((r, i) => <div key={i} style={{padding: '2px 0'}}>• {safeRender(r)}</div>)}
                             </td>
                         </tr>
                     </tbody>

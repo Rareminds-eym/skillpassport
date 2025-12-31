@@ -425,10 +425,7 @@ export const getInProgressAttempt = async (studentId) => {
     .select(`
       *,
       stream:personal_assessment_streams(*),
-      responses:personal_assessment_responses(
-        *,
-        question:personal_assessment_questions(*)
-      )
+      responses:personal_assessment_responses(*)
     `)
     .eq('student_id', studentId)
     .eq('status', 'in_progress')
