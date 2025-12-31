@@ -1,5 +1,5 @@
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { ArrowRight, BookOpen, Clock, Download, Eye, Flame, GraduationCap, TrendingUp, Trophy } from 'lucide-react';
+import { ArrowRight, BookOpen, Clock, Download, Eye, Filter, Flame, GraduationCap, Play, TrendingUp, Trophy } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -843,6 +843,11 @@ const WeeklyLearningTracker = () => {
   const [stats, setStats] = useState({ totalMinutes: 0, completedLessons: 0, completedModules: 0, completedCourses: 0, currentStreak: 0 });
   const [loading, setLoading] = useState(true);
   
+  // Course filter state
+  const [selectedCourseId, setSelectedCourseId] = useState(null); // null = "All Courses"
+  const [rawProgressData, setRawProgressData] = useState([]); // Store raw data for filtering
+  const [rawEnrollments, setRawEnrollments] = useState([]); // Store enrollments for filtering
+  
   // Refs to prevent duplicate fetches and track component mount
   const isFetchingRef = useRef(false);
   const isMountedRef = useRef(true);
@@ -904,15 +909,39 @@ const WeeklyLearningTracker = () => {
       
       // Fetch all data in parallel with single queries (no N+1)
       const [
-        { data: progressData },
-        { data: enrollments }
+        { data: progressData, error: progressError },
+        { data: enrollments, error: enrollmentsError }
       ] = await Promise.all([
         supabase.from('student_course_progress').select('*').eq('student_id', user.id),
-        supabase.from('course_enrollments').select('*, courses(course_id, title)').eq('student_id', user.id)
+        supabase.from('course_enrollments').select('*').eq('student_id', user.id)
       ]);
 
-      // Get all course IDs from enrollments
+      // Debug logging
+      console.log('📊 WeeklyLearningTracker - Fetched enrollments:', {
+        userId: user.id,
+        progressCount: progressData?.length || 0,
+        enrollmentsCount: enrollments?.length || 0,
+        progressError,
+        enrollmentsError
+      });
+
+      // Get all course IDs from enrollments and fetch course titles separately
       const courseIds = (enrollments || []).map(e => e.course_id).filter(Boolean);
+      
+      // Fetch course titles
+      let courseTitles = {};
+      if (courseIds.length > 0) {
+        const { data: coursesData } = await supabase
+          .from('courses')
+          .select('course_id, title')
+          .in('course_id', courseIds);
+        
+        (coursesData || []).forEach(course => {
+          courseTitles[course.course_id] = course.title;
+        });
+      }
+      
+      console.log('📊 WeeklyLearningTracker - Course titles:', courseTitles);
       
       // Batch fetch all modules for all courses in one query
       let allModules = [];
@@ -943,7 +972,7 @@ const WeeklyLearningTracker = () => {
 
       // Calculate course progress using the batched data
       const courseProgress = (enrollments || []).map(enrollment => {
-        const courseTitle = enrollment.courses?.title || 'Untitled Course';
+        const courseTitle = courseTitles[enrollment.course_id] || enrollment.course_title || 'Untitled Course';
         
         // Get modules for this course
         const courseModules = allModules.filter(m => m.course_id === enrollment.course_id);
@@ -973,6 +1002,15 @@ const WeeklyLearningTracker = () => {
         isFetchingRef.current = false;
         return;
       }
+      
+      // Store raw data for course filtering
+      setRawProgressData(progressData || []);
+      setRawEnrollments(enrollments || []);
+      
+      console.log('📊 WeeklyLearningTracker - Setting courseData:', {
+        courseProgressCount: courseProgress.length,
+        courses: courseProgress.map(c => ({ id: c.courseId, name: c.courseName, rate: c.completionRate }))
+      });
       
       setCourseData(courseProgress.sort((a, b) => b.completionRate - a.completionRate));
 
@@ -1021,17 +1059,91 @@ const WeeklyLearningTracker = () => {
     }
   };
 
+  // Filter progress data based on selected course
+  const filteredProgressData = useMemo(() => {
+    if (!selectedCourseId) return rawProgressData;
+    return rawProgressData.filter(p => p.course_id === selectedCourseId);
+  }, [rawProgressData, selectedCourseId]);
+
+  // Calculate filtered week data based on selected course
+  const filteredWeekData = useMemo(() => {
+    if (!selectedCourseId) return weekData;
+    
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const curr = new Date();
+    const weekDates = [];
+    const first = curr.getDate() - curr.getDay() + 1;
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(curr);
+      date.setDate(first + i);
+      weekDates.push(date);
+    }
+
+    return dayNames.map((day, index) => {
+      const currentDate = weekDates[index];
+      const dayStart = new Date(currentDate); dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(currentDate); dayEnd.setHours(23, 59, 59, 999);
+
+      const dayLessons = filteredProgressData.filter(p => {
+        const accessDate = new Date(p.last_accessed);
+        return accessDate >= dayStart && accessDate <= dayEnd;
+      });
+
+      const totalSeconds = dayLessons.reduce((sum, p) => sum + Math.min(p.time_spent_seconds || 0, 3600), 0);
+      const minutes = Math.min(Math.round(totalSeconds / 60), 480);
+
+      return { day, minutes };
+    });
+  }, [weekData, filteredProgressData, selectedCourseId]);
+
+  // Calculate filtered stats based on selected course
+  const filteredStats = useMemo(() => {
+    if (!selectedCourseId) return stats;
+
+    const totalMinutes = filteredWeekData.reduce((sum, d) => sum + d.minutes, 0);
+    const completedLessons = filteredProgressData.filter(p => p.status === 'completed').length;
+    const completedModules = new Set(filteredProgressData.map(p => p.module_id)).size;
+    const filteredEnrollments = rawEnrollments.filter(e => e.course_id === selectedCourseId);
+    const completedCourses = filteredEnrollments.filter(e => e.completed_at !== null).length;
+
+    // Calculate streak for filtered data
+    let streak = 0;
+    const currentDayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+    for (let i = currentDayIndex; i >= 0; i--) {
+      if (filteredWeekData[i]?.minutes > 0) streak++;
+      else break;
+    }
+
+    return {
+      totalMinutes,
+      completedLessons,
+      completedModules,
+      completedCourses,
+      currentStreak: streak
+    };
+  }, [stats, filteredWeekData, filteredProgressData, rawEnrollments, selectedCourseId]);
+
   const derivedStats = useMemo(() => {
-    const activeDays = weekData.filter(d => d.minutes > 0).length;
-    const avgMinutes = activeDays > 0 ? Math.round(stats.totalMinutes / activeDays) : 0;
-    const mostProductiveDay = weekData.reduce((max, d) => d.minutes > max.minutes ? d : max, { day: '-', minutes: 0 });
+    const dataToUse = selectedCourseId ? filteredWeekData : weekData;
+    const statsToUse = selectedCourseId ? filteredStats : stats;
+    
+    const activeDays = dataToUse.filter(d => d.minutes > 0).length;
+    const avgMinutes = activeDays > 0 ? Math.round(statsToUse.totalMinutes / activeDays) : 0;
+    const mostProductiveDay = dataToUse.reduce((max, d) => d.minutes > max.minutes ? d : max, { day: '-', minutes: 0 });
     return { avgMinutes, mostProductiveDay: mostProductiveDay.day, activeDays };
-  }, [weekData, stats.totalMinutes]);
+  }, [weekData, filteredWeekData, stats, filteredStats, selectedCourseId]);
 
   const lastInProgressCourse = useMemo(() => courseData.find(c => c.completionRate > 0 && c.completionRate < 100) || courseData.find(c => c.completionRate === 0), [courseData]);
   const completedCount = courseData.filter(c => c.completionRate === 100).length;
   const inProgressCount = courseData.filter(c => c.completionRate > 0 && c.completionRate < 100).length;
   const notStartedCount = courseData.filter(c => c.completionRate === 0).length;
+
+  // Get selected course name for display
+  const selectedCourseName = useMemo(() => {
+    if (!selectedCourseId) return 'All Courses';
+    const course = courseData.find(c => c.courseId === selectedCourseId);
+    return course?.courseName || 'All Courses';
+  }, [selectedCourseId, courseData]);
 
   if (loading) {
     return (
@@ -1041,23 +1153,74 @@ const WeeklyLearningTracker = () => {
     );
   }
 
+  // Use filtered data when course is selected
+  const displayStats = selectedCourseId ? filteredStats : stats;
+  const displayWeekData = selectedCourseId ? filteredWeekData : weekData;
+
   return (
     <div className="space-y-4">
       {/* Row 1: Continue Learning Hero (Full Width) */}
       <ContinueLearningHero course={lastInProgressCourse} onContinue={handleCourseClick} />
 
+      {/* Course Filter Row - Always visible */}
+      <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-700">Filter by Course:</span>
+          </div>
+          <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-md">
+            {courseData.length > 0 ? (
+              <>
+                <select
+                  value={selectedCourseId || ''}
+                  onChange={(e) => setSelectedCourseId(e.target.value || null)}
+                  className="flex-1 h-10 px-3 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer hover:bg-gray-100"
+                >
+                  <option value="">All Courses</option>
+                  {courseData.map((course) => (
+                    <option key={course.courseId} value={course.courseId}>
+                      {course.courseName} ({course.completionRate}%)
+                    </option>
+                  ))}
+                </select>
+                {selectedCourseId && (
+                  <button
+                    onClick={() => setSelectedCourseId(null)}
+                    className="px-3 h-10 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-all whitespace-nowrap"
+                  >
+                    Clear
+                  </button>
+                )}
+              </>
+            ) : (
+              <div className="flex-1 h-10 px-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center text-sm text-gray-400">
+                No enrolled courses yet
+              </div>
+            )}
+          </div>
+        </div>
+        {selectedCourseId && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <p className="text-xs text-gray-500">
+              Showing stats for: <span className="font-semibold text-blue-600">{selectedCourseName}</span>
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Row 2: Weekly Overview + Daily Chart (Bento Grid) */}
       <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-5">
-          <WeeklyOverviewCard stats={stats} activeDays={derivedStats.activeDays} />
+        <div className="col-span-12 lg:col-span-5">
+          <WeeklyOverviewCard stats={displayStats} activeDays={derivedStats.activeDays} />
         </div>
-        <div className="col-span-7">
-          <DailyChartCard weekData={weekData} derivedStats={derivedStats} />
+        <div className="col-span-12 lg:col-span-7">
+          <DailyChartCard weekData={displayWeekData} derivedStats={derivedStats} />
         </div>
       </div>
 
       {/* Row 3: Compact Achievements (Full Width) */}
-      <CompactAchievementsRow stats={stats} courseData={courseData} />
+      <CompactAchievementsRow stats={displayStats} courseData={courseData} />
 
       {/* Row 4: Courses Section (Full Width) */}
       <CoursesSection 
