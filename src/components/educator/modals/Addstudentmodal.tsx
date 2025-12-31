@@ -189,8 +189,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   }
 
   const validateForm = (): boolean => {
+    // Basic Information - Required fields
     if (!formData.name.trim()) {
-      setError('Name is required')
+      setError('Full Name is required')
       return false
     }
     if (!formData.email.trim()) {
@@ -202,13 +203,110 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       return false
     }
     if (!formData.contactNumber.trim()) {
-      setError('Contact number is required')
+      setError('Contact Number is required')
       return false
     }
-    if (formData.rollNumber && !validateRollNumber(formData.rollNumber)) {
+    if (!validatePhoneFormat(formData.contactNumber)) {
+      setError('Invalid contact number format')
+      return false
+    }
+    
+    // Enrollment Information - Required fields
+    if (!formData.enrollmentNumber.trim()) {
+      setError('Enrollment Number is required')
+      return false
+    }
+    if (!formData.rollNumber.trim()) {
+      setError('Roll Number is required')
+      return false
+    }
+    if (!validateRollNumber(formData.rollNumber)) {
       setError('Roll number must be 3-20 characters long and contain only letters, numbers, and hyphens')
       return false
     }
+    
+    // Category & Quota Information - Required fields
+    if (!formData.category.trim()) {
+      setError('Category is required')
+      return false
+    }
+    if (!formData.quota.trim()) {
+      setError('Quota is required')
+      return false
+    }
+    
+    // Personal Information - Required fields
+    if (!formData.dateOfBirth.trim()) {
+      setError('Date of Birth is required')
+      return false
+    }
+    if (!formData.gender.trim()) {
+      setError('Gender is required')
+      return false
+    }
+    if (!formData.bloodGroup.trim()) {
+      setError('Blood Group is required')
+      return false
+    }
+    
+    // Guardian Information - Required fields
+    if (!formData.guardianName.trim()) {
+      setError('Guardian Name is required')
+      return false
+    }
+    if (!formData.guardianPhone.trim()) {
+      setError('Guardian Phone is required')
+      return false
+    }
+    if (!validatePhoneFormat(formData.guardianPhone)) {
+      setError('Invalid guardian phone number format')
+      return false
+    }
+    if (!formData.guardianEmail.trim()) {
+      setError('Guardian Email is required')
+      return false
+    }
+    if (!validateEmail(formData.guardianEmail)) {
+      setError('Invalid guardian email format')
+      return false
+    }
+    if (!formData.guardianRelation.trim()) {
+      setError('Guardian Relation is required')
+      return false
+    }
+    
+    // Address Information - Required fields
+    if (!formData.address.trim()) {
+      setError('Address is required')
+      return false
+    }
+    if (!formData.city.trim()) {
+      setError('City is required')
+      return false
+    }
+    if (!formData.state.trim()) {
+      setError('State is required')
+      return false
+    }
+    if (!formData.country.trim()) {
+      setError('Country is required')
+      return false
+    }
+    if (!formData.pincode.trim()) {
+      setError('Pincode is required')
+      return false
+    }
+    if (!formData.district.trim()) {
+      setError('District is required')
+      return false
+    }
+    
+    // Document Upload - Required (at least one document)
+    if (formData.documents.length === 0) {
+      setError('At least one document is required')
+      return false
+    }
+    
     return true
   }
 
@@ -1244,7 +1342,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Enrollment Number</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Enrollment Number<span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     value={formData.enrollmentNumber}
@@ -1257,6 +1355,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Roll Number
+                    <span className="text-red-500">*</span>
                     <span className="text-xs text-gray-500 ml-1">(3-20 chars, letters/numbers/hyphens only)</span>
                   </label>
                   <input
@@ -1282,7 +1381,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category<span className="text-red-500">*</span></label>
                   <select
                     value={formData.category}
                     onChange={(e) => handleInputChange('category', e.target.value)}
@@ -1299,7 +1398,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Quota</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Quota<span className="text-red-500">*</span></label>
                   <select
                     value={formData.quota}
                     onChange={(e) => handleInputChange('quota', e.target.value)}
@@ -1318,7 +1417,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date of Birth <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="date"
                     value={formData.dateOfBirth}
@@ -1328,7 +1429,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Gender <span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={formData.gender}
                     onChange={(e) => handleInputChange('gender', e.target.value)}
@@ -1342,7 +1445,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Blood Group <span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={formData.bloodGroup}
                     onChange={(e) => handleInputChange('bloodGroup', e.target.value)}
@@ -1366,7 +1471,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Guardian Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Guardian Name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     value={formData.guardianName}
@@ -1377,7 +1484,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Guardian Phone</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Guardian Phone <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="tel"
                     value={formData.guardianPhone}
@@ -1388,7 +1497,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Guardian Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Guardian Email <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="email"
                     value={formData.guardianEmail}
@@ -1399,7 +1510,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Relation</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Relation <span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={formData.guardianRelation}
                     onChange={(e) => handleInputChange('guardianRelation', e.target.value)}
@@ -1419,7 +1532,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Address <span className="text-red-500">*</span>
+                  </label>
                   <textarea
                     value={formData.address}
                     onChange={(e) => handleInputChange('address', e.target.value)}
@@ -1430,7 +1545,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    City <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     value={formData.city}
@@ -1441,7 +1558,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    State <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     value={formData.state}
@@ -1452,7 +1571,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Country <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     value={formData.country}
@@ -1463,7 +1584,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pincode</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Pincode <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     value={formData.pincode}
@@ -1474,7 +1597,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    District <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     value={formData.district}
@@ -1497,12 +1622,14 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
                 {/* Document Upload Section */}
                 <div className="md:col-span-2 mt-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3 border-b pb-2">Document Upload</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3 border-b pb-2">
+                    Document Upload <span className="text-red-500">*</span>
+                  </h4>
                 </div>
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Upload Documents
+                    Upload Documents <span className="text-red-500">*</span>
                     <span className="text-xs text-gray-500 ml-1">(PDF, JPG, PNG - Max 5MB each, up to 5 files)</span>
                   </label>
 

@@ -36,7 +36,7 @@ export {
 } from './utility';
 
 // Authenticated handlers
-export { handleCreateStudent, handleCreateTeacher } from './authenticated';
+export { handleCreateStudent, handleCreateTeacher, handleUpdateStudentDocuments } from './authenticated';
 
 // Event handlers
 export { handleCreateEventUser, handleSendInterviewReminder } from './events';
