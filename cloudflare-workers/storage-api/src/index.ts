@@ -96,9 +96,49 @@ async function handleDelete(request: Request, env: Env): Promise<Response> {
     return jsonResponse({ error: 'URL is required' }, 400);
   }
 
-  // Extract filename from URL
-  const urlParts = url.split('/');
-  const filename = urlParts.slice(-2).join('/');
+  // Extract filename from URL - handle both direct R2 URLs and proxy URLs
+  let filename = '';
+  
+  if (url.includes('.r2.dev/')) {
+    // Direct R2 URL: https://pub-xxx.r2.dev/assignments/...
+    const urlParts = url.split('.r2.dev/');
+    if (urlParts.length > 1) {
+      filename = urlParts[1];
+    }
+  } else if (url.includes('/document-access?url=')) {
+    // Proxy URL - extract the original R2 URL first
+    try {
+      const proxyUrl = new URL(url);
+      const originalUrl = decodeURIComponent(proxyUrl.searchParams.get('url') || '');
+      if (originalUrl.includes('.r2.dev/')) {
+        const urlParts = originalUrl.split('.r2.dev/');
+        if (urlParts.length > 1) {
+          filename = urlParts[1];
+        }
+      }
+    } catch (e) {
+      return jsonResponse({ error: 'Invalid proxy URL format' }, 400);
+    }
+  } else if (url.includes('/document-access?key=')) {
+    // Proxy URL with key parameter
+    try {
+      const proxyUrl = new URL(url);
+      const fileKey = decodeURIComponent(proxyUrl.searchParams.get('key') || '');
+      if (fileKey) {
+        filename = fileKey;
+      }
+    } catch (e) {
+      return jsonResponse({ error: 'Invalid proxy URL format' }, 400);
+    }
+  } else {
+    return jsonResponse({ error: 'Unsupported URL format' }, 400);
+  }
+
+  if (!filename) {
+    return jsonResponse({ error: 'Could not extract filename from URL' }, 400);
+  }
+
+  console.log('Deleting file:', { originalUrl: url, extractedFilename: filename });
 
   const bucketName = env.CLOUDFLARE_R2_BUCKET_NAME || 'skill-echosystem';
   const r2 = new AwsClient({
@@ -116,12 +156,16 @@ async function handleDelete(request: Request, env: Env): Promise<Response> {
   const response = await fetch(signedRequest);
 
   if (!response.ok && response.status !== 204) {
-    return jsonResponse({ error: 'Delete failed' }, 500);
+    console.error('R2 delete failed:', { status: response.status, statusText: response.statusText });
+    return jsonResponse({ error: 'Delete failed', status: response.status }, 500);
   }
+
+  console.log('File deleted successfully from R2:', filename);
 
   return jsonResponse({
     success: true,
     message: 'File deleted successfully',
+    filename: filename
   });
 }
 
