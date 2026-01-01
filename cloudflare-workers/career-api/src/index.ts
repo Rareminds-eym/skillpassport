@@ -835,9 +835,20 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
       }
     ],
     "specificOptions": {
-      "highFit": ["<role 1>", "<role 2>", "<role 3>"],
-      "mediumFit": ["<role 1>", "<role 2>", "<role 3>"],
-      "exploreLater": ["<role 1>", "<role 2>"]
+      "highFit": [
+        {"name": "<role 1>", "salary": {"min": <number in lakhs>, "max": <number in lakhs>}},
+        {"name": "<role 2>", "salary": {"min": <number in lakhs>, "max": <number in lakhs>}},
+        {"name": "<role 3>", "salary": {"min": <number in lakhs>, "max": <number in lakhs>}}
+      ],
+      "mediumFit": [
+        {"name": "<role 1>", "salary": {"min": <number in lakhs>, "max": <number in lakhs>}},
+        {"name": "<role 2>", "salary": {"min": <number in lakhs>, "max": <number in lakhs>}},
+        {"name": "<role 3>", "salary": {"min": <number in lakhs>, "max": <number in lakhs>}}
+      ],
+      "exploreLater": [
+        {"name": "<role 1>", "salary": {"min": <number in lakhs>, "max": <number in lakhs>}},
+        {"name": "<role 2>", "salary": {"min": <number in lakhs>, "max": <number in lakhs>}}
+      ]
     }
   },
   "skillGap": {
@@ -974,23 +985,89 @@ CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL OF THESE:
    - CRITICAL: NO EMPTY ARRAYS! Every cluster needs roles.entry, roles.mid, and domains filled!
    - If you leave any roles or domains empty, the report will be incomplete!
 
-6. SKILL GAP - MANDATORY:
+6. SPECIFIC CAREER OPTIONS WITH SALARY - MANDATORY:
+   - Each role in specificOptions (highFit, mediumFit, exploreLater) MUST be an object with:
+     * name: The job role title (e.g., "Software Developer", "Data Analyst")
+     * salary: Object with min and max values in Indian Lakhs per annum
+   - Salary ranges should reflect realistic ENTRY-LEVEL salaries in the Indian job market (2024-2025)
+   - Example salary ranges for fresh graduates:
+     * Tech roles: 4-12 LPA (e.g., {"min": 4, "max": 12})
+     * Business roles: 3-8 LPA (e.g., {"min": 3, "max": 8})
+     * Creative roles: 3-7 LPA (e.g., {"min": 3, "max": 7})
+     * Healthcare roles: 4-10 LPA (e.g., {"min": 4, "max": 10})
+   - CRITICAL: Every role MUST have a salary object with numeric min and max values!
+
+## SERIOUS CAREER GUIDANCE - JOB ROLE SELECTION (MANDATORY):
+
+### PROFESSIONAL ENTRY-LEVEL ROLES BY DOMAIN (2024-2025 Indian Job Market):
+
+**TECHNOLOGY & ENGINEERING:**
+- Software Development: Junior Software Developer, Associate Software Engineer, Trainee Programmer, Graduate Software Engineer
+- Data & Analytics: Junior Data Analyst, Associate Data Engineer, Business Intelligence Trainee, Analytics Associate
+- AI/ML: Junior ML Engineer, AI Research Associate, Data Science Trainee, NLP Engineer Trainee
+- Cloud & DevOps: Junior DevOps Engineer, Cloud Support Associate, Site Reliability Engineer Trainee, Infrastructure Analyst
+- Cybersecurity: Junior Security Analyst, SOC Analyst, Information Security Associate, Vulnerability Assessment Trainee
+- Quality Assurance: Junior QA Engineer, Test Analyst, Automation Test Engineer Trainee, Quality Assurance Associate
+- Mobile/Web: Junior Mobile Developer, Frontend Developer Trainee, Full Stack Developer Associate, React/Angular Developer
+
+**BUSINESS & MANAGEMENT:**
+- Consulting: Junior Business Analyst, Management Trainee, Associate Consultant, Strategy Analyst
+- Finance: Junior Financial Analyst, Investment Banking Analyst, Credit Analyst, Risk Analyst Trainee
+- Operations: Operations Analyst, Supply Chain Trainee, Process Associate, Logistics Coordinator
+- Marketing: Junior Marketing Executive, Digital Marketing Associate, Brand Executive, Market Research Analyst
+- Sales: Business Development Associate, Inside Sales Executive, Key Account Trainee, Sales Analyst
+- HR: HR Executive Trainee, Talent Acquisition Associate, HR Operations Analyst, Recruitment Coordinator
+
+**CREATIVE & DESIGN:**
+- UX/UI: Junior UX Designer, UI Designer Trainee, Product Designer Associate, Interaction Designer
+- Graphic Design: Junior Graphic Designer, Visual Designer, Brand Designer Trainee, Motion Graphics Artist
+- Content: Content Writer, Technical Writer, Copywriter Trainee, Content Strategist Associate
+- Media: Junior Video Editor, Social Media Executive, Digital Content Creator, Multimedia Designer
+
+**HEALTHCARE & LIFE SCIENCES:**
+- Clinical: Junior Clinical Research Associate, Medical Coder, Healthcare Data Analyst, Pharmacovigilance Associate
+- Biotech: Junior Research Scientist, Lab Analyst, Biotech Research Associate, Quality Control Analyst
+- Healthcare IT: Healthcare IT Analyst, Medical Informatics Trainee, EHR Implementation Associate
+
+**LEGAL & COMPLIANCE:**
+- Legal: Junior Legal Associate, Legal Research Analyst, Contract Analyst, Compliance Associate
+- Regulatory: Regulatory Affairs Associate, Quality Compliance Trainee, Audit Associate
+
+### ROLE SELECTION RULES:
+1. ALL roles MUST be ENTRY-LEVEL (0-2 years experience) - NO senior/lead/manager positions
+2. PERSONALIZE based on RIASEC profile:
+   - R (Realistic): Technical, hands-on roles (DevOps, QA, Network Engineer)
+   - I (Investigative): Research, analytical roles (Data Scientist, Research Analyst, Financial Analyst)
+   - A (Artistic): Creative, design roles (UX Designer, Content Strategist, Brand Designer)
+   - S (Social): People-focused roles (HR, Customer Success, Training Coordinator)
+   - E (Enterprising): Business, leadership roles (Business Development, Sales, Product Associate)
+   - C (Conventional): Structured, detail roles (Compliance, Quality Analyst, Operations)
+3. MATCH to student's STREAM:
+   - CS/IT/Engineering → Technology roles
+   - BBA/MBA/Commerce → Business/Finance roles
+   - Design/Animation → Creative roles
+   - Science/Biotech → Research/Healthcare roles
+   - Arts/Humanities → Content/HR/Legal roles
+4. Include MIX of: Traditional + Emerging + Remote-friendly roles
+5. AVOID: Generic titles, outdated roles, unrealistic positions for freshers
+
+7. SKILL GAP - MANDATORY:
    - priorityA: Must have at least 2 skills with all fields (skill, currentLevel, targetLevel, whyNeeded, howToBuild)
    - priorityB: Must have at least 2 skills
    - learningTracks: Must have at least 2 tracks with all fields
 
-7. ROADMAP - MANDATORY:
+8. ROADMAP - MANDATORY:
    - projects: Must have at least 2 projects with title, purpose, and output
    - internship.types: Must have at least 2 internship types
    - internship.preparation: Must have resume, portfolio, and interview fields filled
    - exposure.activities: Must have at least 2 activities
    - exposure.certifications: Must have at least 2 certifications
 
-8. Be specific to their stream (${assessmentData.stream}) when recommending careers, roles, and skills.
+9. Be specific to their stream (${assessmentData.stream}) when recommending careers, roles, and skills.
 
-9. Provide actionable, encouraging, and SPECIFIC career guidance - avoid generic responses.
+10. Provide actionable, encouraging, and SPECIFIC career guidance - avoid generic responses.
 
-10. ALL arrays must contain actual data - NO empty arrays allowed!`;
+11. ALL arrays must contain actual data - NO empty arrays allowed!`;
 };
 
 async function handleAnalyzeAssessment(request: Request, env: Env): Promise<Response> {

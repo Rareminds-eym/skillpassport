@@ -107,7 +107,7 @@ const AssessmentTest = () => {
     const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [answers, setAnswers] = useState({});
-    const [gradeLevel, setGradeLevel] = useState(null); // 'middle' (6-8) or 'after12' (After 12th)
+    const [gradeLevel, setGradeLevel] = useState(null); // 'middle' (6-8), 'highschool' (9-12), 'after12' (After 12th), or 'college'
     const [showGradeSelection, setShowGradeSelection] = useState(false); // Show grade level selection first
     const [studentStream, setStudentStream] = useState(null);
     const [showStreamSelection, setShowStreamSelection] = useState(false); // Start false, set true after check
@@ -689,8 +689,10 @@ const AssessmentTest = () => {
             ];
         }
 
-        // For after 12th, show full comprehensive assessment
-        return [
+        // For after 12th and college, show full comprehensive assessment
+        // Currently both use the same sections, but can be customized differently if needed
+        if (gradeLevel === 'after12' || gradeLevel === 'college') {
+            return [
         {
             id: 'riasec',
             title: 'Career Interests',
@@ -827,6 +829,9 @@ const AssessmentTest = () => {
         { id: 'dm', label: 'BBA Digital Marketing' },
         { id: 'animation', label: 'B.Sc Animation' }
     ];
+
+    // Select appropriate streams based on grade level
+    const streams = gradeLevel === 'after12' ? after12Streams : collegeStreams;
 
     // Calculate progress
     const currentSection = sections[currentSectionIndex];
@@ -1820,6 +1825,27 @@ const AssessmentTest = () => {
                                 <div className="relative z-10">
                                     <div className="flex items-center justify-between mb-2">
                                         <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">After 12th</h3>
+                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
+                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">Students who have completed 12th grade</p>
+                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                                        <Clock className="w-4 h-4" />
+                                        <span>Assessment: (35-45 minutes)</span>
+                                    </div>
+                                </div>
+                            </button>
+
+                            {/* College */}
+                            <button
+                                onClick={() => handleGradeSelect('college')}
+                                className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">College</h3>
                                         <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
                                             <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
                                         </div>
