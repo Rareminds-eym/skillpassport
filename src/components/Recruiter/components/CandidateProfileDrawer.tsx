@@ -705,9 +705,10 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
   if (!isOpen || !candidate) return null;
 
   const candidateName = (candidate as any).name || (candidate as any).candidate_name || '';
+  const candidateId = (candidate as any).id || (candidate as any).candidate_id || '';
   const candidateEmail = (candidate as any).email || (candidate as any).candidate_email || '';
 
-  const qrCodeValue = `${window.location.origin}/student/profile/${candidateEmail}`;
+  const qrCodeValue = `${window.location.origin}/student/profile/${candidateId}`;
 
   // Parse profile data if it's a string/object and prepare helpers
   let profileData: any = candidate;

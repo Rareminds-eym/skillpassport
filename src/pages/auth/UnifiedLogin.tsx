@@ -1,10 +1,10 @@
-import { useState, FormEvent, ChangeEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, AlertCircle, Loader2, UserCircle } from 'lucide-react';
-import { signIn, UserRole } from '../../services/unifiedAuthService';
-import { getUserRole } from '../../services/roleLookupService';
-import { redirectToRoleDashboard } from '../../utils/roleBasedRouter';
+import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucide-react';
+import { ChangeEvent, FormEvent, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { getUserRole } from '../../services/roleLookupService';
+import { signIn, UserRole } from '../../services/unifiedAuthService';
+import { redirectToRoleDashboard } from '../../utils/roleBasedRouter';
 
 interface LoginState {
   email: string;
@@ -375,9 +375,9 @@ const UnifiedLogin = () => {
               <div className="mt-6 text-center">
                 <p className="text-sm text-white lg:text-gray-600">
                   Don't have an account?{' '}
-                  <a href="/register" className="font-medium text-white lg:text-blue-600 hover:text-white/80 lg:hover:text-blue-500">
+                  <Link to="/signup" className="font-medium text-white lg:text-blue-600 hover:text-white/80 lg:hover:text-blue-500">
                     Sign up
-                  </a>
+                  </Link>
                 </p>
               </div>
             </div>

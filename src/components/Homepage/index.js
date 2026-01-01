@@ -10,4 +10,5 @@ export { default as CaseHighlights } from './CaseHighlights';
 export { default as FinalCTA } from './FinalCTA';
 export { default as PromotionalModal } from './PromotionalModal';
 export { default as PromotionalBanner } from './PromotionalBanner';
-
+export { default as AssessmentPromotionalModal } from './AssessmentPromotionalModal';
+export { default as AssessmentPromotionalBanner } from './AssessmentPromotionalBanner';

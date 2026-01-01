@@ -403,8 +403,25 @@ const formattedExperience = tableExperience
       // Profile data (from students.profile JSONB)
       profile: transformedProfile,
 
-      // Legacy flattened access for backward compatibility
+      // Legacy flattened access for backward compatibility - BUT individual columns take precedence
       ...transformedProfile,
+      
+      // CRITICAL FIX: Individual database columns override profile data
+      name: data.name || transformedProfile.name,
+      approval_status: data.approval_status, // This was getting overwritten!
+      age: data.age || transformedProfile.age,
+      date_of_birth: data.date_of_birth || transformedProfile.date_of_birth,
+      contact_number: data.contact_number || transformedProfile.contact_number,
+      university: data.university || transformedProfile.university,
+      branch_field: data.branch_field || transformedProfile.branch_field,
+      // Add other important individual columns
+      github_link: data.github_link || transformedProfile.github_link,
+      linkedin_link: data.linkedin_link || transformedProfile.linkedin_link,
+      twitter_link: data.twitter_link || transformedProfile.twitter_link,
+      facebook_link: data.facebook_link || transformedProfile.facebook_link,
+      instagram_link: data.instagram_link || transformedProfile.instagram_link,
+      portfolio_link: data.portfolio_link || transformedProfile.portfolio_link,
+      youtube_link: data.youtube_link || transformedProfile.youtube_link,
 
       // NOW THESE COME FROM projects table:
       projects: Array.isArray(data.projects)
@@ -467,6 +484,462 @@ const formattedExperience = tableExperience
     return { success: true, data: mergedData };
   } catch (err) {
     console.error('❌ getStudentByEmail exception:', err);
+    return { success: false, error: err.message };
+  }
+};
+
+/**
+ * Fetch student data by student ID from Supabase
+ * @param {string} studentId - Student ID (UUID)
+ * @returns {Promise<Object>} Student data
+ */
+export const getStudentById = async (studentId) => {
+  try {
+    // console.log('🔍 Fetching student data for ID:', studentId);
+
+    let { data, error } = await supabase
+      .from('students')
+      .select(`
+        *,
+        schools:school_id (
+          id,
+          name,
+          code,
+          city,
+          state
+        ),
+        university_colleges:university_college_id (
+          id,
+          name,
+          code,
+          universities:university_id (
+            id,
+            name,
+            district,
+            state
+          )
+        ),
+        skill_passports (
+          id,
+          projects,
+          certificates,
+          assessments,
+          status,
+          aiVerification,
+          nsqfLevel,
+          skills,
+          createdAt,
+          updatedAt
+        ),
+        projects (
+          id,
+          title,
+          description,
+          status,
+          start_date,
+          end_date,
+          duration,
+          organization,
+          tech_stack,
+          demo_link,
+          github_link,
+          enabled,
+          approval_status,
+          created_at,
+          updated_at,
+          certificate_url,
+          video_url,
+          ppt_url
+        ),
+        certificates (*),
+        experience (
+        *
+        ),
+        skills(*),
+        trainings (*),
+        education (*) 
+      `)
+      .eq('id', studentId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('❌ Supabase error:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data) {
+      return { success: false, error: 'No data found for this student ID.' };
+    }
+
+    // Use the same data processing logic as getStudentByEmail
+    const email = data.email;
+    
+    // Since we no longer have a JSONB profile column, we'll create a profile object from individual columns
+    const profileData = {
+      name: data.name || 'Student',
+      email: data.email || email,
+      age: data.age,
+      dateOfBirth: data.date_of_birth || data.dateOfBirth,
+      phone: formatPhoneNumber(data.contact_number || data.contactNumber, data.contact_dial_code),
+      alternatePhone: formatPhoneNumber(data.alternate_number),
+      district: data.district_name,
+      university: data.university,
+      department: data.branch_field,
+      college: data.college_school_name,
+      registrationNumber: data.registration_number,
+      
+      // Guardian info
+      guardianName: data.guardianName,
+      guardianPhone: data.guardianPhone,
+      guardianEmail: data.guardianEmail,
+      guardianRelation: data.guardianRelation,
+      
+      // Personal details
+      gender: data.gender,
+      bloodGroup: data.bloodGroup,
+      bio: data.bio,
+      
+      // Location
+      address: data.address,
+      city: data.city,
+      state: data.state,
+      country: data.country,
+      pincode: data.pincode,
+      
+      // Social links
+      github_link: data.github_link,
+      linkedin_link: data.linkedin_link,
+      twitter_link: data.twitter_link,
+      facebook_link: data.facebook_link,
+      instagram_link: data.instagram_link,
+      portfolio_link: data.portfolio_link,
+      youtube_link: data.youtube_link,
+      other_social_links: data.other_social_links || [],
+      
+      // Files
+      resumeUrl: data.resumeUrl,
+      profilePicture: data.profilePicture,
+      
+      // School/College specific
+      grade: data.grade,
+      section: data.section,
+      roll_number: data.roll_number,
+      admission_number: data.admission_number,
+      
+      // Additional fields
+      hobbies: data.hobbies || [],
+      languages: data.languages || [],
+      interests: data.interests || [],
+      
+      // Generate passport ID from registration number
+      passportId: data.registration_number ? `SP-${data.registration_number}` : 'SP-0000',
+      verified: true,
+      employabilityScore: 75,
+      cgpa: data.currentCgpa || 'N/A',
+      photo: generateAvatar(data.name)
+    };
+
+    // Transform profile data to consistent format
+    const transformedProfile = transformProfileData(profileData, email, data);
+
+    // Extract skill_passports data (if exists)
+    const passport = data.skill_passports || {};
+    
+    // Format skills from skills table
+    const tableSkills = Array.isArray(data?.skills) ? data.skills : [];
+    const technicalSkills = tableSkills
+      .filter(skill => skill.type === 'technical')
+      .map(skill => ({
+        id: skill.id,
+        name: skill.name,
+        level: skill.level || 3,
+        description: skill.description || '',
+        verified: skill.verified || false,
+        enabled: skill.enabled ?? true,
+        approval_status: skill.approval_status || 'pending',
+        createdAt: skill.created_at,
+        updatedAt: skill.updated_at,
+      }));
+
+    const softSkills = tableSkills
+      .filter(skill => skill.type === 'soft')
+      .map(skill => ({
+        id: skill.id,
+        name: skill.name,
+        level: skill.level || 3,
+        type: skill.name.toLowerCase(), // For UI compatibility
+        description: skill.description || '',
+        verified: skill.verified || false,
+        enabled: skill.enabled ?? true,
+        approval_status: skill.approval_status || 'pending',
+        createdAt: skill.created_at,
+        updatedAt: skill.updated_at,
+      }));
+
+    // Format education from education table
+    const tableEducation = Array.isArray(data?.education) ? data.education : [];
+    const formattedEducation = tableEducation.map((edu) => ({
+      id: edu.id,
+      level: edu.level || "Bachelor's",
+      degree: edu.degree || "",
+      department: edu.department || "",
+      university: edu.university || "",
+      yearOfPassing: edu.year_of_passing || "",
+      cgpa: edu.cgpa || "",
+      status: edu.status || "ongoing",
+      approval_status: edu.approval_status || "pending",
+      verified: edu.approval_status === "approved",
+      processing: edu.approval_status !== "approved",
+      enabled: edu.enabled !== undefined ? edu.enabled : true,
+      createdAt: edu.created_at,
+      updatedAt: edu.updated_at,
+    }));
+
+    const tableTrainings = Array.isArray(data?.trainings) ? data.trainings : [];
+
+    // Filter to only approved/verified trainings first
+    const approvedTrainings = tableTrainings.filter(
+      (train) => train.approval_status === 'approved' || 
+                 train.approval_status === 'verified' ||
+                 train.approval_status === 'pending'
+    );
+
+    // Fetch all training IDs (only from approved trainings)
+    const trainingIds = approvedTrainings.map(t => t.id).filter(Boolean);
+
+    // Only fetch certificates and skills if there are approved trainings
+    let trainingCertificates = [];
+    let trainingSkills = [];
+
+    if (trainingIds.length > 0) {
+      // Fetch all certificates linked to these trainings
+      const { data: certData } = await supabase
+        .from('certificates')
+        .select('training_id, link')
+        .in('training_id', trainingIds);
+      
+      trainingCertificates = certData || [];
+
+      // Fetch all skills linked to these trainings
+      const { data: skillsData } = await supabase
+        .from('skills')
+        .select('training_id, name')
+        .in('training_id', trainingIds)
+        .eq('type', 'technical');
+      
+      trainingSkills = skillsData || [];
+    }
+
+    const formattedTrainings = approvedTrainings.map((train) => {
+      // Find certificate for this specific training
+      const cert = trainingCertificates.find(c => c.training_id === train.id);
+      
+      // Find skills for this specific training
+      const skills = trainingSkills
+        .filter(s => s.training_id === train.id)
+        .map(s => s.name);
+
+      return {
+        id: train.id,
+        title: train.title || "",
+        course: train.title || "",
+        organization: train.organization || "",
+        provider: train.organization || "",
+        start_date: train.start_date,
+        end_date: train.end_date,
+        startDate: train.start_date,
+        endDate: train.end_date,
+        duration: train.duration || "",
+        description: train.description || "",
+        
+        // From trainings table
+        status: train.status || "ongoing",
+        completedModules: train.completed_modules || 0,
+        totalModules: train.total_modules || 0,
+        hoursSpent: train.hours_spent || 0,
+        
+        // IMPORTANT: Include course_id and source for internal/external detection
+        course_id: train.course_id || null,
+        source: train.source || null,
+        
+        // From certificates table (linked by training_id)
+        certificateUrl: cert?.link || "",
+        
+        // From skills table (linked by training_id)
+        skills: skills,
+        
+        approval_status: train.approval_status,
+        verified: true, // Already filtered, so all are verified
+        processing: false, // Already filtered, so won't be pending
+        enabled: true, // Already filtered, so all are enabled
+        createdAt: train.created_at,
+        updatedAt: train.updated_at,
+      };
+    });
+
+    const tableCertificates = Array.isArray(data?.certificates) ? data.certificates : [];
+    const formattedTableCertificates = tableCertificates.map((certificate) => {
+      const issuedOnValue = certificate?.issued_on || certificate?.issuedOn || null;
+      const issuedOnFormatted = issuedOnValue ? new Date(issuedOnValue).toISOString().split("T")[0] : "";
+      const approvalSource = certificate?.approval_status || certificate?.status || "pending";
+      const approvalStatus = typeof approvalSource === "string" ? approvalSource.toLowerCase() : "pending";
+      const statusSource = certificate?.status || (certificate?.enabled === false ? "disabled" : "active");
+      const statusValue = typeof statusSource === "string" ? statusSource.toLowerCase() : "active";
+      const documentUrlValue = certificate?.link || null;
+      return {
+        id: certificate?.id,
+        title: certificate?.title || "",
+        issuer: certificate?.issuer || "",
+        issuedOn: issuedOnFormatted,
+        level: certificate?.level || "",
+        description: certificate?.description || "",
+        credentialId: certificate?.credential_id || "",
+        link: certificate?.link || "",
+        status: statusValue,
+        approval_status: approvalStatus,
+        verified: approvalStatus === "approved",
+        processing: approvalStatus !== "approved",
+        enabled: statusValue !== "disabled",
+        document_url: documentUrlValue,
+        documentLink: documentUrlValue || "",
+        createdAt: certificate?.created_at,
+        updatedAt: certificate?.updated_at,
+      };
+    });
+
+    const passportCertificates = Array.isArray(passport.certificates)
+      ? passport.certificates.map((certificate) => ({
+        ...certificate,
+        verifiedAt:
+          certificate?.verified === true || certificate?.status === 'verified'
+            ? certificate?.verifiedAt || certificate?.updatedAt || certificate?.createdAt
+            : null,
+      }))
+      : [];
+
+    const mergedCertificates = formattedTableCertificates.length > 0 ? formattedTableCertificates : passportCertificates;
+
+    const tableExperience = Array.isArray(data?.experience) ? data.experience : [];
+    const formattedExperience = tableExperience
+      .map((exp) => ({
+        id: exp.id,
+        organization: exp.organization || "",
+        role: exp.role || "",
+        start_date: exp.start_date,
+        end_date: exp.end_date,
+        duration: exp.duration || "",
+        verified: exp.verified || exp.approval_status === 'approved' || exp.approval_status === 'verified',
+        approval_status: exp.approval_status || "pending",
+        processing: exp.approval_status === 'pending',
+        enabled: exp.enabled !== undefined ? exp.enabled : true,
+        createdAt: exp.created_at,
+        updatedAt: exp.updated_at,
+      }));
+
+    // Merge: database fields + profile fields + passport fields
+    const mergedData = {
+      id: data.id,
+      student_id: data.student_id,
+      universityId: data.universityId,
+      email: data.email || transformedProfile.email,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+
+      // School/University College linkage
+      school_id: data.school_id,
+      university_college_id: data.university_college_id,
+      school: data.schools || null,
+      universityCollege: data.university_colleges || null,
+
+      // School Information Fields
+      grade: data.grade,
+      section: data.section,
+      roll_number: data.roll_number,
+      admission_number: data.admission_number,
+
+      // Profile data (from students.profile JSONB)
+      profile: transformedProfile,
+
+      // Legacy flattened access for backward compatibility - BUT individual columns take precedence
+      ...transformedProfile,
+      
+      // CRITICAL FIX: Individual database columns override profile data
+      name: data.name || transformedProfile.name,
+      approval_status: data.approval_status, // This was getting overwritten!
+      age: data.age || transformedProfile.age,
+      date_of_birth: data.date_of_birth || transformedProfile.date_of_birth,
+      contact_number: data.contact_number || transformedProfile.contact_number,
+      university: data.university || transformedProfile.university,
+      branch_field: data.branch_field || transformedProfile.branch_field,
+      // Add other important individual columns
+      github_link: data.github_link || transformedProfile.github_link,
+      linkedin_link: data.linkedin_link || transformedProfile.linkedin_link,
+      twitter_link: data.twitter_link || transformedProfile.twitter_link,
+      facebook_link: data.facebook_link || transformedProfile.facebook_link,
+      instagram_link: data.instagram_link || transformedProfile.instagram_link,
+      portfolio_link: data.portfolio_link || transformedProfile.portfolio_link,
+      youtube_link: data.youtube_link || transformedProfile.youtube_link,
+
+      // NOW THESE COME FROM projects table:
+      projects: Array.isArray(data.projects)
+        ? data.projects
+        .filter((project) => 
+        project.approval_status === 'verified' || 
+        project.approval_status === 'approved'
+      )
+        .map((project) => ({
+          ...project,
+          // Map database column names to UI expected names
+          id: project.id,
+          title: project.title,
+          description: project.description,
+          status: project.status,
+          start_date: project.start_date,
+          end_date: project.end_date,
+          duration: project.duration,
+          tech: project.tech_stack, // UI expects 'tech' array
+          tech_stack: project.tech_stack,
+          link: project.demo_link, // UI expects 'link' for demo link
+          demo_link: project.demo_link,
+          organization: project.organization,
+          github: project.github_link, // UI expects 'github'
+          github_link: project.github_link,
+          github_url: project.github_link,
+          certificate_url: project.certificate_url,
+          video_url: project.video_url,
+          ppt_url: project.ppt_url,
+          approval_status: project.approval_status,
+          created_at: project.created_at,
+          updated_at: project.updated_at,
+          enabled: project.enabled ?? true, // Default to enabled for UI
+          verifiedAt:
+            project?.approval_status === 'approved' || project?.status === 'verified'
+              ? project?.updated_at || project?.created_at
+              : null
+        }))
+        : [],
+      certificates: mergedCertificates,
+      assessments: passport.assessments || [],
+      technicalSkills: technicalSkills.length > 0 ? technicalSkills : transformedProfile.technicalSkills,
+      softSkills: softSkills.length > 0 ? softSkills : transformedProfile.softSkills,
+      training: formattedTrainings.length > 0 ? formattedTrainings : transformedProfile.training,
+      experience: formattedExperience,
+      education: formattedEducation.length > 0 ? formattedEducation : transformedProfile.education,
+
+      // Passport metadata:
+      passportId: passport.id,
+      passportStatus: passport.status,
+      aiVerification: passport.aiVerification,
+      nsqfLevel: passport.nsqfLevel,
+      passportSkills: passport.skills || [],
+
+      // Raw data for debugging
+      rawData: data
+    };
+
+    return { success: true, data: mergedData };
+  } catch (err) {
+    console.error('❌ getStudentById exception:', err);
     return { success: false, error: err.message };
   }
 };

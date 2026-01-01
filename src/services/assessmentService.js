@@ -270,6 +270,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
     knowledge_details: geminiResults.knowledge || null,
     career_fit: geminiResults.careerFit || null,
     skill_gap: geminiResults.skillGap || null,
+    skill_gap_courses: geminiResults.skillGapCourses || null,
     roadmap: geminiResults.roadmap || null,
     profile_snapshot: geminiResults.profileSnapshot || null,
     timing_analysis: geminiResults.timingAnalysis || null,
@@ -289,6 +290,11 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   });
 
   // Save results
+  console.log('=== Inserting into personal_assessment_results ===');
+  console.log('Attempt ID:', attemptId);
+  console.log('Student ID:', studentId);
+  console.log('Stream ID:', streamId);
+  
   const { data: results, error: resultsError } = await supabase
     .from('personal_assessment_results')
     .insert(dataToInsert)
@@ -296,17 +302,27 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
     .single();
 
   if (resultsError) {
-    console.error('Error inserting results:', resultsError);
+    console.error('❌ Error inserting results:', resultsError);
+    console.error('Full error object:', JSON.stringify(resultsError, null, 2));
     console.error('Error details:', {
       code: resultsError.code,
       message: resultsError.message,
       details: resultsError.details,
-      hint: resultsError.hint
+      hint: resultsError.hint,
+      status: resultsError.status,
+      statusText: resultsError.statusText
     });
+    
+    // Check if it's an RLS error
+    if (resultsError.code === '42501' || resultsError.message?.includes('policy')) {
+      console.error('🔒 This appears to be an RLS (Row Level Security) policy error');
+      console.error('The student_id in the insert must match auth.uid()');
+    }
+    
     throw resultsError;
   }
 
-  console.log('Results saved successfully:', results.id);
+  console.log('✅ Results saved successfully:', results.id);
   return results;
 };
 
@@ -425,10 +441,7 @@ export const getInProgressAttempt = async (studentId) => {
     .select(`
       *,
       stream:personal_assessment_streams(*),
-      responses:personal_assessment_responses(
-        *,
-        question:personal_assessment_questions(*)
-      )
+      responses:personal_assessment_responses(*)
     `)
     .eq('student_id', studentId)
     .eq('status', 'in_progress')

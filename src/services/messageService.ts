@@ -1385,6 +1385,80 @@ export class MessageService {
       throw error;
     }
   }
+
+  /**
+   * Get or create conversation between educator and school admin
+   * For school-related discussions, issues, etc.
+   */
+  static async getOrCreateEducatorAdminConversation(
+    educatorId: string,
+    schoolId: string,
+    subject?: string
+  ): Promise<Conversation> {
+    const cacheKey = `educator_admin:${educatorId}:${schoolId}:${subject || 'general'}`;
+    
+    // Deduplicate concurrent requests
+    if (pendingRequests.has(cacheKey)) {
+      return pendingRequests.get(cacheKey)!;
+    }
+
+    const request = this._getOrCreateEducatorAdminConversationInternal(
+      educatorId,
+      schoolId,
+      subject
+    );
+    
+    pendingRequests.set(cacheKey, request);
+    
+    try {
+      const result = await request;
+      return result;
+    } finally {
+      pendingRequests.delete(cacheKey);
+    }
+  }
+
+  private static async _getOrCreateEducatorAdminConversationInternal(
+    educatorId: string,
+    schoolId: string,
+    subject?: string
+  ): Promise<Conversation> {
+    try {
+      // Use the database function for consistency
+      const { data, error } = await supabase
+        .rpc('get_or_create_educator_admin_conversation', {
+          p_educator_id: educatorId,
+          p_school_id: schoolId,
+          p_subject: subject || 'General Discussion'
+        });
+
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        throw new Error('Failed to create educator-admin conversation');
+      }
+
+      const conversationId = data[0].conversation_id;
+      
+      // Fetch the full conversation details
+      const { data: conversation, error: fetchError } = await supabase
+        .from('conversations')
+        .select(`
+          *,
+          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url),
+          school:schools(id, name)
+        `)
+        .eq('id', conversationId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      
+      return conversation;
+    } catch (error) {
+      console.error('Error creating educator-admin conversation:', error);
+      throw error;
+    }
+  }
 }
 
 export default MessageService;

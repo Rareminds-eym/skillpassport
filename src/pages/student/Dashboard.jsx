@@ -209,6 +209,7 @@ const StudentDashboard = () => {
     recommendations: assessmentRecommendations,
     loading: recommendationsLoading,
     hasAssessment,
+    hasInProgressAssessment,
   } = useAssessmentRecommendations(studentId, !!studentId && !isViewingOthersProfile);
 
   const [activeModal, setActiveModal] = useState(null);
@@ -227,9 +228,9 @@ const StudentDashboard = () => {
 
   // Generate QR code value once and keep it constant
   const qrCodeValue = React.useMemo(() => {
-    const email = userEmail || "student";
-    return `${window.location.origin}/student/profile/${email}`;
-  }, [userEmail]);
+    const studentId = studentData?.id || "student";
+    return `${window.location.origin}/student/profile/${studentId}`;
+  }, [studentData?.id]);
 
   // Memoize studentSkills to prevent infinite re-renders
   const studentSkills = useMemo(() => {
@@ -296,34 +297,19 @@ const StudentDashboard = () => {
   } = useStudentRealtimeActivities(userEmail, 10);
 
   // Debug log for authentication and student data
-  useEffect(() => {
-    console.log({
-      studentData: studentData?.id,
-      loading: authStudentLoading,
-      error: authStudentError,
-    });
-  }, [studentData, authStudentLoading, authStudentError]);
+  // useEffect(() => {
+  //   // Authentication and student data loaded
+  // }, [studentData, authStudentLoading, authStudentError]);
 
   // Debug log for opportunities
-  useEffect(() => {
-    console.log({
-      opportunities,
-      loading: opportunitiesLoading,
-      error: opportunitiesError,
-      count: opportunities?.length,
-    });
-  }, [opportunities, opportunitiesLoading, opportunitiesError]);
+  // useEffect(() => {
+  //   // Opportunities data loaded
+  // }, [opportunities, opportunitiesLoading, opportunitiesError]);
 
   // Debug log for recent updates
-  useEffect(() => {
-    console.log({
-      recentUpdates,
-      loading: recentUpdatesLoading,
-      error: recentUpdatesError,
-      count: recentUpdates?.length,
-      userEmail,
-    });
-  }, [recentUpdates, recentUpdatesLoading, recentUpdatesError, userEmail]);
+  // useEffect(() => {
+  //   // Recent updates data loaded
+  // }, [recentUpdates, recentUpdatesLoading, recentUpdatesError, userEmail]);
 
   // Poll for new opportunities and refresh Recent Updates
   useEffect(() => {
@@ -345,9 +331,6 @@ const StudentDashboard = () => {
 
           // Refresh Recent Updates to show the new opportunity
           setTimeout(() => {
-            console.log(
-              "🔄 Refreshing Recent Updates after new opportunity..."
-            );
             refreshRecentUpdates();
           }, 1000); // Small delay to ensure DB trigger has fired
         }
@@ -375,22 +358,15 @@ const StudentDashboard = () => {
   useEffect(() => {
     const testSupabaseDirectly = async () => {
       try {
-        console.log({
-          url: import.meta.env.VITE_SUPABASE_URL ? "Set" : "Missing",
-          key: import.meta.env.VITE_SUPABASE_ANON_KEY ? "Set" : "Missing",
-        });
-
         const { data, error, count } = await supabase
           .from("opportunities")
           .select("*", { count: "exact" });
 
         // Run debug for recent updates (commented out to prevent automatic execution)
         // await debugRecentUpdates();
-        console.log(
-          "ℹ️ To debug recent updates, run: await window.debugRecentUpdates() in console"
-        );
+        // To debug recent updates, run: await window.debugRecentUpdates() in console
       } catch (err) {
-        console.error("🧪 Direct test error:", err);
+        // Handle error silently
       }
     };
 
@@ -552,16 +528,6 @@ const StudentDashboard = () => {
 
   // Determine institution info from student data (using individual columns)
   const institutionInfo = React.useMemo(() => {
-    // Debug: Log student data structure
-    console.log('🏫 Institution Debug:', {
-      school_id: studentData?.school_id,
-      university_college_id: studentData?.university_college_id,
-      university: studentData?.university, // Individual column
-      college_school_name: studentData?.college_school_name, // Individual column
-      school: studentData?.school,
-      universityCollege: studentData?.universityCollege,
-    });
-
     // Priority: school_id takes precedence if both exist
     if (studentData?.school_id && studentData?.school) {
       return {
@@ -731,6 +697,8 @@ const StudentDashboard = () => {
           <p className="text-gray-900 text-base leading-normal font-medium">
             {hasAssessment 
               ? "You've completed your assessment! View your personalized career insights and recommendations."
+              : hasInProgressAssessment
+              ? "You have an assessment in progress. Continue where you left off to get your personalized career roadmap."
               : "Take our comprehensive assessment to discover your strengths and get a personalized career roadmap."
             }
           </p>
@@ -750,6 +718,15 @@ const StudentDashboard = () => {
               >
                 <Eye className="w-5 h-5 mr-2" />
                 View Results
+              </Button>
+            ) : hasInProgressAssessment ? (
+              <Button
+                onClick={() => navigate("/student/assessment/test")}
+                className="w-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
+              >
+                <Clock className="w-5 h-5 mr-2" />
+                Continue Assessment
+                <ChevronRight className="w-5 h-5 ml-2" />
               </Button>
             ) : (
               <Button
@@ -945,16 +922,6 @@ const StudentDashboard = () => {
               </p>
             </div>
           )} */}
-          
-          {(() => {
-            console.log({
-              loading: opportunitiesLoading,
-              error: opportunitiesError,
-              opportunities,
-              count: opportunities?.length,
-            });
-            return null;
-          })()}
           {opportunitiesLoading ? (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -1014,24 +981,6 @@ const StudentDashboard = () => {
               // University/College students: Show ALL opportunities (internships + jobs)
               filteredOpportunities = opportunities; // Show everything
             }
-
-            // Debug logging for opportunity filtering
-            console.log('🎯 Opportunity Filtering Debug:', {
-              isSchoolStudent,
-              isUniversityStudent,
-              studentGrade,
-              gradeRange: studentGrade ? 
-                (parseInt(studentGrade) >= 6 && parseInt(studentGrade) <= 8 ? 'Grades 6-8 (Internships Only)' :
-                 parseInt(studentGrade) >= 9 ? 'Grade 9+ (All Opportunities)' : 'Other Grade') : 'No Grade',
-              totalOpportunities: opportunities.length,
-              filteredCount: filteredOpportunities.length,
-              studentData: {
-                school_id: studentData?.school_id,
-                school_class_id: studentData?.school_class_id,
-                university_college_id: studentData?.university_college_id,
-                grade: studentData?.grade
-              }
-            });
 
             return (
               <>

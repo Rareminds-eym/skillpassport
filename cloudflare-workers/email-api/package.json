@@ -1,0 +1,15 @@
+{
+  "name": "email-api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "worker-mailer": "^1.2.1"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

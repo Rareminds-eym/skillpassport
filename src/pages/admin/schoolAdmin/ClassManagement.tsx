@@ -1142,7 +1142,7 @@ const ClassManagement = () => {
               Showing <span className="font-medium">{filteredClasses.length}</span> result{filteredClasses.length === 1 ? "" : "s"}
               {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
             </p>
-            <button
+            {/* <button
               onClick={() => {
                 setSelectedClass(null)
                 setShowAddModal(true)
@@ -1152,7 +1152,7 @@ const ClassManagement = () => {
             >
               <PlusCircleIcon className="h-4 w-4 mr-2" />
               Add New Class
-            </button>
+            </button> */}
           </div>
 
           <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">

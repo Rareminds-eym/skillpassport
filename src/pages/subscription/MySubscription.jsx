@@ -20,7 +20,8 @@ import {
   HelpCircle,
   Mail,
   Home,
-  ArrowLeft
+  ArrowLeft,
+  LayoutDashboard
 } from 'lucide-react';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
@@ -277,6 +278,36 @@ function MySubscription() {
     // Navigate to support page or open support modal
     navigate('/support?topic=billing');
   };
+
+  // Get role-specific dashboard URL
+  const getDashboardUrl = useCallback(() => {
+    const userRole = user?.user_metadata?.role || user?.raw_user_meta_data?.role || role;
+    
+    const dashboardRoutes = {
+      // Admin roles
+      super_admin: '/admin/dashboard',
+      rm_admin: '/admin/dashboard',
+      rm_manager: '/admin/dashboard',
+      admin: '/admin/dashboard',
+      company_admin: '/admin/dashboard',
+      // Institution admin roles
+      school_admin: '/school-admin/dashboard',
+      college_admin: '/college-admin/dashboard',
+      university_admin: '/university-admin/dashboard',
+      // Educator roles
+      educator: '/educator/dashboard',
+      school_educator: '/educator/dashboard',
+      college_educator: '/educator/dashboard',
+      // Recruiter role
+      recruiter: '/recruitment/overview',
+      // Student roles
+      student: '/student/dashboard',
+      school_student: '/student/dashboard',
+      college_student: '/student/dashboard',
+    };
+    
+    return dashboardRoutes[userRole] || '/student/dashboard';
+  }, [user, role]);
 
   // Fetch billing history from database (with caching)
   const fetchBillingHistory = useCallback(async (force = false) => {
@@ -760,6 +791,18 @@ function MySubscription() {
                 <h3 className="text-sm font-medium text-neutral-900">Quick Actions</h3>
               </div>
               <div className="p-4 space-y-2">
+                {/* Go to Dashboard - Primary CTA */}
+                <button
+                  onClick={() => navigate(getDashboardUrl())}
+                  className="w-full flex items-center justify-between px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors group"
+                >
+                  <span className="flex items-center gap-2">
+                    <LayoutDashboard className="w-4 h-4" />
+                    Go to Dashboard
+                  </span>
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+
                 <button
                   onClick={handleUpgradePlan}
                   className="w-full flex items-center justify-between px-4 py-2.5 bg-neutral-900 text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors group"

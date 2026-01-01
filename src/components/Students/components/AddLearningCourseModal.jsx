@@ -270,6 +270,40 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
     setLoading(true);
 
     try {
+      // Check for duplicate certificate
+      if (formData.certificate_url || formData.certificate_id) {
+        let existingCert = null;
+
+        // Check by URL first (URL is globally unique)
+        if (formData.certificate_url) {
+          const { data } = await supabase
+            .from('certificates')
+            .select('id, title')
+            .eq('student_id', studentId)
+            .eq('link', formData.certificate_url)
+            .maybeSingle();
+          existingCert = data;
+        }
+
+        // Check by credential_id + platform combination (credential ID is unique per platform)
+        if (!existingCert && formData.certificate_id && selectedPlatform?.id) {
+          const { data } = await supabase
+            .from('certificates')
+            .select('id, title')
+            .eq('student_id', studentId)
+            .eq('credential_id', formData.certificate_id)
+            .eq('platform', selectedPlatform.id)
+            .maybeSingle();
+          existingCert = data;
+        }
+
+        if (existingCert) {
+          setError(`This certificate has already been added: "${existingCert.title}"`);
+          setLoading(false);
+          return;
+        }
+      }
+
       const { data: training, error: trainingError } = await supabase
         .from('trainings')
         .insert({
@@ -291,7 +325,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
 
       if (trainingError) throw trainingError;
 
-      if (formData.certificate_url) {
+      if (formData.certificate_url || formData.certificate_id) {
         await supabase.from('certificates').insert({
           student_id: studentId,
           training_id: training.id,
@@ -299,14 +333,14 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
           issuer: formData.organization || selectedPlatform?.name,
           issued_on: formData.completion_date || new Date().toISOString().split('T')[0],
           link: formData.certificate_url,
+          credential_id: formData.certificate_id,
           level: formData.difficulty || null,
-          description: formData.description,
+          description: formData.description || null,
           approval_status: 'approved',
           enabled: true,
-          platform: selectedPlatform?.id,
-          certificate_id: formData.certificate_id,
-          instructor: formData.instructor,
-          category: formData.category
+          platform: selectedPlatform?.id || null,
+          instructor: formData.instructor || null,
+          category: formData.category || null
         });
       }
 

@@ -17,6 +17,7 @@ import {
 import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { capitalizeName } from '../../../utils/helpers';
 
 const StudentCard3D = () => {
   const { email } = useParams();
@@ -91,7 +92,7 @@ const StudentCard3D = () => {
   const education = studentData.education?.[0] || {};
   const employabilityScore = profile.employability_score || profile.employabilityScore || 0;
   const approvalStatus = studentData.approval_status || 'pending';
-  const qrCodeValue = `${window.location.origin}/student/profile/${email}`;
+  const qrCodeValue = `${window.location.origin}/student/profile/${studentData?.id}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-50 py-12 px-4">
@@ -153,7 +154,7 @@ const StudentCard3D = () => {
                       )}
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2 flex-wrap">
-                          <h2 className="text-2xl font-bold text-white">{profile.name || 'Student Name'}</h2>
+                          <h2 className="text-2xl font-bold text-white">{capitalizeName(profile.name) || 'Student Name'}</h2>
                           {approvalStatus === 'approved' && (
                             <Badge className="bg-green-500 text-white border-0 px-3 py-1 text-xs font-semibold rounded-full shadow-md flex items-center gap-1.5">
                               <CheckCircle className="w-3.5 h-3.5" />

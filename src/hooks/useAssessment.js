@@ -48,22 +48,25 @@ export const useAssessment = () => {
       if (attempt) {
         setCurrentAttempt(attempt);
         // Restore responses from the attempt
-        // We need to map section_id to section_name for the frontend format
         const restoredResponses = {};
         
-        // First, get sections to map IDs to names
-        const sectionsData = await assessmentService.fetchSections();
-        const sectionIdToName = {};
-        sectionsData.forEach(s => {
-          sectionIdToName[s.id] = s.name;
-        });
+        // Get sections to map IDs to names (for regular database questions)
+        let sectionIdToName = {};
+        try {
+          const sectionsData = await assessmentService.fetchSections();
+          sectionsData.forEach(s => {
+            sectionIdToName[s.id] = s.name;
+          });
+        } catch (e) {
+          console.warn('Could not fetch sections for response restoration:', e);
+        }
         
         attempt.responses?.forEach(r => {
-          const sectionName = sectionIdToName[r.question?.section_id];
-          if (sectionName) {
-            // Use format: sectionName_questionId (e.g., "riasec_uuid-123")
-            const questionKey = `${sectionName}_${r.question_id}`;
-            restoredResponses[questionKey] = r.response_value;
+          if (r.question_id && r.response_value !== null) {
+            // For regular questions with section info, use sectionName_questionId format
+            // For AI questions (no section info), just use the question_id
+            // The frontend will match by question UUID
+            restoredResponses[r.question_id] = r.response_value;
           }
         });
         setResponses(restoredResponses);

@@ -6,14 +6,14 @@
  */
 
 import {
-  Env,
-  CollegeAdminSignupRequest,
-  CollegeEducatorSignupRequest,
-  CollegeStudentSignupRequest,
+    CollegeAdminSignupRequest,
+    CollegeEducatorSignupRequest,
+    CollegeStudentSignupRequest,
+    Env,
 } from '../types';
-import { jsonResponse, validateEmail, splitName, calculateAge } from '../utils/helpers';
-import { getSupabaseAdmin, checkEmailExists, deleteAuthUser } from '../utils/supabase';
 import { sendWelcomeEmail } from '../utils/email';
+import { calculateAge, jsonResponse, splitName, validateEmail } from '../utils/helpers';
+import { checkEmailExists, deleteAuthUser, getSupabaseAdmin } from '../utils/supabase';
 
 /**
  * Handle college admin signup with college creation
@@ -85,6 +85,7 @@ export async function handleCollegeAdminSignup(request: Request, env: Env): Prom
         organizationId: null,
         isActive: true,
         phone: body.phone || body.deanPhone,
+        dob: body.dateOfBirth || null,
         metadata: { source: 'college_signup', collegeCode: body.collegeCode },
       });
 
@@ -210,9 +211,9 @@ export async function handleCollegeEducatorSignup(request: Request, env: Env): P
       password: body.password,
       email_confirm: true,
       user_metadata: {
-        first_name: body.firstName,
-        last_name: body.lastName,
-        name: `${body.firstName} ${body.lastName}`,
+        first_name: capitalizeFirstLetter(body.firstName),
+        last_name: capitalizeFirstLetter(body.lastName),
+        name: `${capitalizeFirstLetter(body.firstName)} ${capitalizeFirstLetter(body.lastName)}`,
         role: 'college_educator',
         phone: body.phone,
         college_id: body.collegeId,
@@ -226,15 +227,19 @@ export async function handleCollegeEducatorSignup(request: Request, env: Env): P
     const userId = authUser.user.id;
 
     try {
+      const firstName = capitalizeFirstLetter(body.firstName);
+      const lastName = capitalizeFirstLetter(body.lastName);
+      
       await supabaseAdmin.from('users').insert({
         id: userId,
         email: body.email.toLowerCase(),
-        firstName: body.firstName,
-        lastName: body.lastName,
+        firstName: firstName,
+        lastName: lastName,
         role: 'college_educator',
         organizationId: body.collegeId,
         isActive: true,
         phone: body.phone,
+        dob: body.dateOfBirth || null,
         metadata: { source: 'college_educator_signup', collegeId: body.collegeId },
       });
 
@@ -255,8 +260,8 @@ export async function handleCollegeEducatorSignup(request: Request, env: Env): P
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           metadata: {
-            firstName: body.firstName,
-            lastName: body.lastName,
+            firstName: firstName,
+            lastName: lastName,
             email: body.email.toLowerCase(),
             phone: body.phone,
             designation: body.designation,
@@ -370,7 +375,9 @@ export async function handleCollegeStudentSignup(request: Request, env: Env): Pr
     const userId = authUser.user.id;
 
     try {
-      const { firstName, lastName } = splitName(body.name);
+      const { firstName, lastName } = body.firstName && body.lastName 
+        ? { firstName: capitalizeFirstLetter(body.firstName), lastName: capitalizeFirstLetter(body.lastName) }
+        : splitName(body.name);
 
       await supabaseAdmin.from('users').insert({
         id: userId,
@@ -381,18 +388,21 @@ export async function handleCollegeStudentSignup(request: Request, env: Env): Pr
         organizationId: body.collegeId,
         isActive: true,
         phone: body.phone,
+        dob: body.dateOfBirth || null,
         metadata: { source: 'college_student_signup', collegeId: body.collegeId },
       });
 
       const age = calculateAge(body.dateOfBirth || '');
+      const fullName = `${firstName} ${lastName}`.trim();
 
+      // Create students record (first_name/last_name stored in users table only)
       const { data: student, error: studentError } = await supabaseAdmin
         .from('students')
         .insert({
           id: userId,
           user_id: userId,
           email: body.email.toLowerCase(),
-          name: body.name,
+          name: fullName,
           contactNumber: body.phone,
           contact_number: body.phone,
           dateOfBirth: body.dateOfBirth,

@@ -1,9 +1,10 @@
+import { AlertCircle, ArrowLeft, Check, KeyRound, Mail } from 'lucide-react';
 import React, { useState } from 'react';
-import { Mail, KeyRound, ArrowLeft, Check, AlertCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import userApiService from '../../services/userApiService';
 
 export default function ForgotPassword() {
+  const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2>(1); // 1: Send OTP, 2: Verify & Reset
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -98,7 +99,7 @@ export default function ForgotPassword() {
 
       // Redirect to login after 2 seconds
       setTimeout(() => {
-        window.location.href = '/auth/login-student';
+        navigate('/auth/login-student');
       }, 2000);
     } catch (error: any) {
       setMessage({

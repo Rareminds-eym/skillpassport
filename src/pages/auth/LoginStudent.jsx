@@ -1,23 +1,23 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { useAuth } from "../../context/AuthContext";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import studentIllustration from "../../assets/images/auth/Student-illustration.jpg";
+import { useAuth } from "../../context/AuthContext";
 
 // Lucide icons
 import {
-  BadgeCheck,
-  Share2,
-  Activity,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  AlertCircle,
+    Activity,
+    AlertCircle,
+    BadgeCheck,
+    Eye,
+    EyeOff,
+    Lock,
+    Mail,
+    Share2,
 } from "lucide-react";
 
-import FeatureCard from "./components/ui/FeatureCard";
 import { loginStudent } from "../../services/studentAuthService";
+import FeatureCard from "./components/ui/FeatureCard";
 
 export default function LoginStudent() {
   const [email, setEmail] = useState("");
@@ -184,8 +184,8 @@ export default function LoginStudent() {
 
         {/* Links */}
         <div className="flex justify-between mt-4 text-sm">
-          <a
-            href="/resetpassword"
+          <Link
+            to="/resetpassword"
             className={
               isLg
                 ? "text-[#e32a18] font-semibold hover:text-[#000000]"
@@ -193,7 +193,7 @@ export default function LoginStudent() {
             }
           >
             Forgot password?
-          </a>
+          </Link>
           {isLg ? <></> : <></>}
         </div>
       </form>

@@ -1,17 +1,17 @@
+import {
+    BookOpen,
+    ChevronRight,
+    Clock,
+    GraduationCap,
+    UserPlus,
+} from "lucide-react";
 import React, { useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
-import {
-  GraduationCap,
-  ChevronRight,
-  Clock,
-  UserPlus,
-  BookOpen,
-} from "lucide-react";
 import KPIDashboard from "../../../components/admin/KPIDashboard";
+import NotificationBell from "../../../components/admin/schoolAdmin/NotificationBell";
 import { useAuth } from "../../../context/AuthContext";
 import { supabase } from "../../../lib/supabaseClient";
-import NotificationBell from "../../../components/admin/schoolAdmin/NotificationBell";
-import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 interface CourseStats {
   category: string;
@@ -36,6 +36,7 @@ interface ProgramOverviewItem {
 
 const SchoolDashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [schoolId, setSchoolId] = useState<string | undefined>(undefined);
   const [courseStats, setCourseStats] = useState<CourseStats[]>([]);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>(
@@ -233,12 +234,12 @@ const SchoolDashboard: React.FC = () => {
   const handleNotificationClick = (notification: any) => {
     if (notification.viewAll) {
       // Navigate to verifications page
-      window.location.href = "/school-admin/students/verifications";
+      navigate("/school-admin/students/verifications");
       return;
     }
 
     // Navigate to verifications page for individual notifications
-    window.location.href = "/school-admin/students/verifications";
+    navigate("/school-admin/students/verifications");
   };
 
   // ===== Chart Data - Dynamic from Database =====

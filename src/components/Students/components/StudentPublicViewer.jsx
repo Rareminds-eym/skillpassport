@@ -19,7 +19,7 @@ import {
   ExternalLink,
   FolderGit2,
 } from "lucide-react";
-import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
+import { useStudentDataById } from "../../../hooks/useStudentDataById";
 import { useNavigate, useParams } from "react-router-dom";
 import { useToast } from "../../../hooks/use-toast";
 import { useAuth } from "../../../context/AuthContext";
@@ -28,6 +28,7 @@ import {
   prepareStudentDataForResume,
 } from "./Generateresumepdf";
 import { generateBadges, getBadgeProgress } from "../../../services/badgeService";
+import { capitalizeName } from "../../../utils/helpers";
 
 function safeParse(jsonLike) {
   if (!jsonLike) return {};
@@ -163,12 +164,12 @@ function Donut({ value }) {
   );
 }
 
-export default function StudentPublicViewerModern() {
-  const { user } = useAuth();
+export default function StudentPublicViewer() {
+  const { user, loading: authLoading } = useAuth();
   // const navigate = useNavigate();
   const { toast } = useToast();
-  const { email } = useParams();
-  const { studentData, loading, error } = useStudentDataByEmail(email);
+  const { studentId } = useParams();
+  const { studentData, loading, error } = useStudentDataById(studentId);
   const qrCodeValue = window.location.href;
   const [copied, setCopied] = useState(false);
   const raw = studentData;
@@ -334,26 +335,30 @@ export default function StudentPublicViewerModern() {
     }
   };
 
-  if (
-    !user ||
-    (user.role?.toLowerCase() === "student" && user.email !== email) ||
-    (user.role?.toLowerCase() !== "student" &&
-      user.role?.toLowerCase() !== "recruiter")
-  ) {
+  // Strict authentication-based access control
+  // Only authenticated users can view student profiles
+  if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-10 max-w-md text-center border border-gray-200">
+        <div className="bg-white p-10 max-w-md text-center border border-gray-200 rounded-lg shadow-lg">
           <User className="w-20 h-20 text-gray-300 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Access Restricted
+            Authentication Required
           </h2>
-          <p className="text-gray-600">
-            Only authorized recruiters can view student profiles.
+          <p className="text-gray-600 mb-6">
+            You must be logged in to view student profiles.
           </p>
+          <a
+            href="/login"
+            className="inline-block w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-center"
+          >
+            Login
+          </a>
         </div>
       </div>
     );
   }
+
   //  const dummyStudentData = {
   //   idx: 0,
   //   id: "009466e7-2e55-4700-9480-e086dcae62d4",
@@ -770,6 +775,121 @@ export default function StudentPublicViewerModern() {
     }
   };
 
+  // Show loading while authentication is being checked
+  if (authLoading) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-purple-50/30 py-10 px-4 animate-pulse">
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Header Skeleton */}
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8 flex flex-col md:flex-row items-center md:items-start gap-6">
+            {/* Avatar Skeleton */}
+            <div className="w-24 h-24 bg-gray-200 rounded-xl"></div>
+            
+            {/* Profile Info Skeleton */}
+            <div className="flex-1 space-y-4 text-center md:text-left">
+              <div className="space-y-2">
+                <div className="h-8 bg-gray-200 rounded w-48 mx-auto md:mx-0"></div>
+                <div className="h-4 bg-gray-200 rounded w-32 mx-auto md:mx-0"></div>
+              </div>
+              <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                <div className="h-6 bg-gray-200 rounded-full w-24"></div>
+              </div>
+            </div>
+            
+            {/* QR Code Skeleton */}
+            <div className="w-32 h-32 bg-gray-200 rounded-lg"></div>
+          </div>
+
+          {/* Stats Cards Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-6 bg-gray-200 rounded w-24"></div>
+                  <div className="w-16 h-16 bg-gray-200 rounded-full"></div>
+                </div>
+                <div className="h-8 bg-gray-200 rounded w-16"></div>
+              </div>
+            ))}
+          </div>
+
+          {/* Content Sections Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Skills Section */}
+              <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8">
+                <div className="h-6 bg-gray-200 rounded w-32 mb-6"></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="border border-gray-100 rounded-2xl p-4">
+                      <div className="h-5 bg-gray-200 rounded w-24 mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-16 mb-3"></div>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((j) => (
+                          <div key={j} className="w-4 h-4 bg-gray-200 rounded-full"></div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Projects Section */}
+              <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8">
+                <div className="h-6 bg-gray-200 rounded w-24 mb-6"></div>
+                <div className="space-y-4">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="border border-gray-100 rounded-2xl p-6">
+                      <div className="h-5 bg-gray-200 rounded w-32 mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-full mb-3"></div>
+                      <div className="flex gap-2">
+                        <div className="h-6 bg-gray-200 rounded-full w-16"></div>
+                        <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-8">
+              {/* Contact Info */}
+              <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8">
+                <div className="h-6 bg-gray-200 rounded w-24 mb-6"></div>
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-9 h-9 bg-gray-200 rounded-lg"></div>
+                      <div className="flex-1">
+                        <div className="h-3 bg-gray-200 rounded w-12 mb-1"></div>
+                        <div className="h-4 bg-gray-200 rounded w-32"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Education */}
+              <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8">
+                <div className="h-6 bg-gray-200 rounded w-20 mb-6"></div>
+                <div className="space-y-4">
+                  <div className="border border-gray-100 rounded-2xl p-4">
+                    <div className="h-5 bg-gray-200 rounded w-28 mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-24 mb-1"></div>
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-purple-50/30 py-10 px-4 animate-pulse">
@@ -859,6 +979,39 @@ export default function StudentPublicViewerModern() {
     );
   }
 
+  // NOW do access control after we have the student data loaded
+  // Role-based access control
+  const userRole = user.role?.toLowerCase();
+  const isStudent = userRole === "student";
+  const isRecruiter = userRole === "recruiter";
+  const isEducator = userRole === "educator" || userRole === "school_educator" || userRole === "college_educator";
+  const isAdmin = userRole?.includes("admin") || userRole === "principal" || userRole === "it_admin";
+
+  // Check if user has permission to view this student profile
+  const hasAccess = isStudent || // Students can view all student profiles
+                   isRecruiter || // Recruiters can view all student profiles
+                   isEducator || // Educators can view student profiles (TODO: add institution check)
+                   isAdmin; // Admins can view student profiles (TODO: add institution check)
+
+  if (!hasAccess) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6">
+        <div className="bg-white p-10 max-w-md text-center border border-gray-200 rounded-lg shadow-lg">
+          <User className="w-20 h-20 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Access Denied
+          </h2>
+          <p className="text-gray-600">
+            You don't have permission to view this student profile.
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Role: {user.role || 'Unknown'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <main className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-purple-50/30 py-8 px-4 sm:py-12">
@@ -868,11 +1021,11 @@ export default function StudentPublicViewerModern() {
             <div className="flex flex-col md:flex-row gap-6 items-center lg:items-start justify-between">
               {/* Left: Avatar + Info */}
               <div className="flex flex-col md:flex-row items-start gap-5 flex-1 min-w-0">
-                <Avatar src={profile.photo} name={profile.name} size={120} />
+                <Avatar src={profile.photo} name={capitalizeName(profile.name)} size={120} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3 flex-wrap">
                     <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 truncate">
-                      {profile.name || profile.fullName || "Student Name"}
+                      {capitalizeName(profile.name) || capitalizeName(profile.fullName) || "Student Name"}
                     </h1>
                     {profile.verified && (
                       <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200">

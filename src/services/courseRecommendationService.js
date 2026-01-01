@@ -167,7 +167,6 @@ export const fetchCoursesWithEmbeddings = async () => {
     }
 
     if (!courses || courses.length === 0) {
-      console.log('No courses with embeddings found');
       return [];
     }
 
@@ -397,7 +396,6 @@ export const getRecommendedCourses = async (assessmentResults) => {
     const courses = await fetchCoursesWithEmbeddings();
     
     if (courses.length === 0) {
-      console.log('No courses with embeddings available');
       return [];
     }
 
@@ -432,7 +430,6 @@ export const getRecommendedCourses = async (assessmentResults) => {
       .slice(0, MAX_RECOMMENDATIONS)
       .map(({ _similarity, ...course }) => course); // Remove internal similarity field
 
-    console.log(`Found ${recommendations.length} course recommendations`);
     return recommendations;
   } catch (error) {
     console.error('Error getting course recommendations:', error);
@@ -451,8 +448,6 @@ export const getRecommendedCourses = async (assessmentResults) => {
  * Requirements: 6.3
  */
 const fallbackKeywordMatching = async (assessmentResults) => {
-  console.log('Using fallback keyword matching for course recommendations');
-  
   try {
     // Extract keywords from assessment results
     const keywords = [];
@@ -601,7 +596,6 @@ export const getCoursesForSkillGap = async (skillGap, allCoursesWithEmbeddings =
       skill_gap_addressed: skillName
     }));
 
-    console.log(`Found ${coursesWithExplanations.length} courses for skill gap: ${skillName}`);
     return coursesWithExplanations;
   } catch (error) {
     console.error(`Error getting courses for skill gap "${skillName}":`, error);
@@ -938,7 +932,6 @@ export const saveRecommendations = async (
       throw new Error(`Database error: ${error.message}`);
     }
 
-    console.log(`Saved ${data?.length || 0} course recommendations for student ${studentId}`);
     return data || [];
   } catch (error) {
     console.error('Error saving recommendations:', error);
@@ -1070,7 +1063,6 @@ export const getAndSaveRecommendations = async (studentId, assessmentResults, as
     const recommendations = await getRecommendedCourses(assessmentResults);
     
     if (recommendations.length === 0) {
-      console.log('No recommendations to save');
       return [];
     }
 
@@ -1118,7 +1110,6 @@ export const fetchCoursesBySkillType = async (skillType) => {
     }
 
     if (!courses || courses.length === 0) {
-      console.log(`No ${skillType} courses with embeddings found`);
       return [];
     }
 
@@ -1243,8 +1234,6 @@ export const getRecommendedCoursesByType = async (assessmentResults, maxPerType 
       .slice(0, maxPerType)
       .map(({ _similarity, ...course }) => course);
 
-    console.log(`Found ${rankedTechnical.length} technical and ${rankedSoft.length} soft skill courses`);
-    
     return {
       technical: rankedTechnical,
       soft: rankedSoft

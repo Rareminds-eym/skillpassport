@@ -1,8 +1,10 @@
+import { Eye, EyeOff, GraduationCap, Lock, Mail, X } from 'lucide-react';
 import { useState } from 'react';
-import { X, Mail, Lock, Eye, EyeOff, GraduationCap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { signIn } from '../../services/authService';
 
 function CollegeLoginModal({ isOpen, onClose, selectedPlan, onLoginSuccess, onSwitchToSignup }) {
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -134,7 +136,7 @@ function CollegeLoginModal({ isOpen, onClose, selectedPlan, onLoginSuccess, onSw
                             <p className="text-sm text-gray-600">
                                 Don't have a college account?{' '}
                                 <button
-                                    onClick={onSwitchToSignup}
+                                    onClick={() => { onClose(); navigate('/signup'); }}
                                     className="font-medium text-blue-600 hover:text-blue-500"
                                 >
                                     Register College

@@ -1079,7 +1079,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
 
   if (!isOpen || !student) return null;
 
-  const qrCodeValue = `${window.location.origin}/student/profile/${student.email}`;
+  const qrCodeValue = `${window.location.origin}/student/profile/${student.id}`;
 
   const formatLabel = (key: string) => key
     .replace(/_/g, ' ')

@@ -36,6 +36,14 @@ import {
   updateAssignmentStatus,
 } from '../../services/assignmentsService';
 
+// Helper function to parse date as local time (avoiding timezone conversion)
+const parseAsLocalDate = (dateString) => {
+  if (!dateString) return new Date();
+  // Remove timezone info and parse as local time
+  const dueDateStr = dateString.replace('Z', '').replace('+00:00', '').replace('T', ' ');
+  return new Date(dueDateStr);
+};
+
 // Helper function to transform database assignment to UI format
 const transformAssignment = (dbAssignment) => ({
   // Core identifiers
@@ -78,7 +86,10 @@ const transformAssignment = (dbAssignment) => ({
   
   // Late tracking
   isLate: dbAssignment.is_late,
-  latePenalty: dbAssignment.late_penalty
+  latePenalty: dbAssignment.late_penalty,
+  
+  // Late submission policy
+  allowLateSubmission: dbAssignment.allow_late_submission
 });
 
 const Assignments = () => {
@@ -155,14 +166,23 @@ const [submissionData, setSubmissionData] = useState({
     return uniqueCourses.sort();
   }, [assignments]);
 
-  // Handle status change
   const handleStatusChange = async (assignmentId, newStatus) => {
     try {
-      // Find the assignment to get student_assignment_id
+      // Find the assignment to get student_assignment_id and check late submission policy
       const assignment = assignments.find(a => a.id === assignmentId);
       if (!assignment) {
         console.error('Assignment not found:', assignmentId);
         return;
+      }
+
+      // Validate late submission if trying to submit
+      if (newStatus === 'submitted') {
+        if (!canSubmitAssignment(assignment)) {
+          setToastMessage('❌ Late submission not allowed for this assignment');
+          setShowStatusToast(true);
+          setTimeout(() => setShowStatusToast(false), 4000);
+          return;
+        }
       }
 
       // Optimistically update UI
@@ -206,7 +226,16 @@ const [submissionData, setSubmissionData] = useState({
       setTimeout(() => setShowStatusToast(false), 3000);
     } catch (error) {
       console.error('Error updating assignment status:', error);
-      // Optionally: revert optimistic update or show error toast
+      // Revert optimistic update on error
+      const [assignmentsData] = await Promise.all([
+        getAssignmentsByStudentId(studentId)
+      ]);
+      const transformedAssignments = assignmentsData.map(transformAssignment);
+      setAssignments(transformedAssignments);
+      
+      setToastMessage('❌ Failed to update status. Please try again.');
+      setShowStatusToast(true);
+      setTimeout(() => setShowStatusToast(false), 4000);
     }
   };
 
@@ -262,16 +291,105 @@ const [submissionData, setSubmissionData] = useState({
   };
 
   const getDaysRemaining = (dueDate) => {
-    const today = new Date();
-    const due = new Date(dueDate);
-    const diffTime = due - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const now = new Date();
     
-    if (diffDays < 0) return <span className="text-red-600 text-sm font-medium">Overdue</span>;
-    if (diffDays === 0) return <span className="text-orange-600 text-sm font-medium">Due Today</span>;
-    if (diffDays === 1) return <span className="text-orange-500 text-sm font-medium">Due Tomorrow</span>;
-    if (diffDays <= 3) return <span className="text-orange-500 text-sm">{diffDays} days left</span>;
-    return <span className="text-gray-600 text-sm">{diffDays} days left</span>;
+    // Parse the due date and treat it as local time
+    const dueDateStr = dueDate.replace('Z', '').replace('+00:00', '').replace('T', ' ');
+    const localDue = new Date(dueDateStr);
+    
+    // Calculate difference in milliseconds
+    const diffTime = localDue.getTime() - now.getTime();
+    
+    // If overdue, calculate how many days/hours overdue
+    if (diffTime < 0) {
+      const overdueDays = Math.floor(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
+      const overdueHours = Math.floor((Math.abs(diffTime) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      
+      if (overdueDays > 0) {
+        return <span className="text-red-600 text-sm font-medium">{overdueDays} day{overdueDays > 1 ? 's' : ''} overdue</span>;
+      } else if (overdueHours > 0) {
+        return <span className="text-red-600 text-sm font-medium">{overdueHours} hour{overdueHours > 1 ? 's' : ''} overdue</span>;
+      } else {
+        return <span className="text-red-600 text-sm font-medium">Just overdue</span>;
+      }
+    }
+    
+    // If not overdue, calculate remaining time
+    const remainingDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const remainingHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const remainingMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (remainingDays > 1) {
+      return <span className="text-gray-600 text-sm">{remainingDays} days left</span>;
+    } else if (remainingDays === 1) {
+      return <span className="text-orange-500 text-sm font-medium">Due Tomorrow</span>;
+    } else if (remainingHours > 1) {
+      return <span className="text-orange-600 text-sm font-medium">{remainingHours} hours left</span>;
+    } else if (remainingHours === 1) {
+      return <span className="text-orange-600 text-sm font-medium">1 hour left</span>;
+    } else if (remainingMinutes > 0) {
+      return <span className="text-red-500 text-sm font-medium">{remainingMinutes} minutes left</span>;
+    } else {
+      return <span className="text-orange-600 text-sm font-medium">Due now</span>;
+    }
+  };
+
+  const isOverdue = (dueDate) => {
+    const now = new Date();
+    
+    // Parse the due date and treat it as local time
+    const dueDateStr = dueDate.replace('Z', '').replace('+00:00', '').replace('T', ' ');
+    const localDue = new Date(dueDateStr);
+    
+    return localDue < now;
+  };
+
+  const isAssignmentOverdue = (assignment) => {
+    // If assignment was submitted, check if it was submitted on time
+    if (assignment.submittedDate) {
+      const submissionDate = new Date(assignment.submittedDate);
+      const dueDateStr = assignment.dueDate.replace('Z', '').replace('+00:00', '').replace('T', ' ');
+      const localDue = new Date(dueDateStr);
+      
+      // If submitted before due date, it's not overdue regardless of current time
+      return submissionDate > localDue;
+    }
+    
+    // If not submitted, check if current time is past due date
+    return isOverdue(assignment.dueDate);
+  };
+
+  const getAssignmentTimeStatus = (assignment) => {
+    // If assignment was submitted, show submission status instead of overdue
+    if (assignment.submittedDate) {
+      const submissionDate = new Date(assignment.submittedDate);
+      const dueDateStr = assignment.dueDate.replace('Z', '').replace('+00:00', '').replace('T', ' ');
+      const localDue = new Date(dueDateStr);
+      
+      if (submissionDate <= localDue) {
+        return <span className="text-green-600 text-sm font-medium">Submitted</span>;
+      } else {
+        return <span className="text-orange-600 text-sm font-medium">Submitted late</span>;
+      }
+    }
+    
+    // If not submitted, show time remaining or overdue
+    return getDaysRemaining(assignment.dueDate);
+  };
+
+  const canSubmitAssignment = (assignment) => {
+    // Can submit if not already submitted/graded
+    if (assignment.status === 'submitted' || assignment.status === 'graded') {
+      return false;
+    }
+    
+    // If not overdue, can always submit
+    if (!isOverdue(assignment.dueDate)) {
+      return true;
+    }
+    
+    // If overdue, can only submit if late submission is allowed
+    return assignment.allowLateSubmission === true;
   };
 
   // Calendar helper functions
@@ -299,7 +417,7 @@ const [submissionData, setSubmissionData] = useState({
   const getAssignmentsForDate = (date) => {
     if (!date) return [];
     return filteredAssignments.filter(assignment => {
-      const dueDate = new Date(assignment.dueDate);
+      const dueDate = parseAsLocalDate(assignment.dueDate);
       return (
         dueDate.getDate() === date.getDate() &&
         dueDate.getMonth() === date.getMonth() &&
@@ -313,7 +431,7 @@ const [submissionData, setSubmissionData] = useState({
     if (!date) return [];
     return filteredAssignments.filter(assignment => {
       if (!assignment.available_from) return false;
-      const availableDate = new Date(assignment.available_from);
+      const availableDate = parseAsLocalDate(assignment.available_from);
       return (
         availableDate.getDate() === date.getDate() &&
         availableDate.getMonth() === date.getMonth() &&
@@ -327,8 +445,8 @@ const [submissionData, setSubmissionData] = useState({
     if (!date) return [];
     return filteredAssignments.filter(assignment => {
       if (!assignment.available_from) return false;
-      const availableDate = new Date(assignment.available_from);
-      const dueDate = new Date(assignment.dueDate);
+      const availableDate = parseAsLocalDate(assignment.available_from);
+      const dueDate = parseAsLocalDate(assignment.dueDate);
       const checkDate = new Date(date);
       
       // Set all to start of day for accurate comparison
@@ -908,7 +1026,7 @@ const [submissionData, setSubmissionData] = useState({
                                       <div className="flex items-center gap-2 text-[10px] text-red-400">
                                         <span>⏰</span>
                                         <span className="flex-1">Due date:</span>
-                                        <span className="font-semibold">{new Date(assignment.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                        <span className="font-semibold">{parseAsLocalDate(assignment.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                                       </div>
                                       <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-2">
                                         <span>📊</span>
@@ -927,7 +1045,7 @@ const [submissionData, setSubmissionData] = useState({
                           {assignmentsOnDate.length > 0 && (
                             <div className="space-y-1">
                               {assignmentsOnDate.slice(0, 2).map(assignment => {
-                                const assignmentDue = new Date(assignment.dueDate);
+                                const assignmentDue = parseAsLocalDate(assignment.dueDate);
                                 const isOverdue = assignmentDue < new Date() && 
                                                 assignment.status !== 'submitted' && 
                                                 assignment.status !== 'graded';
@@ -1053,7 +1171,7 @@ const [submissionData, setSubmissionData] = useState({
                                       {/* Warnings */}
                                       {isOverdue && (
                                         <div className="text-red-300 mt-2 font-medium text-[10px] bg-red-900/30 rounded px-2 py-1">
-                                          ⚠️ {Math.ceil((new Date() - new Date(assignment.dueDate)) / (1000 * 60 * 60 * 24))} days overdue
+                                          ⚠️ {Math.ceil((new Date() - parseAsLocalDate(assignment.dueDate)) / (1000 * 60 * 60 * 24))} days overdue
                                         </div>
                                       )}
                                       
@@ -1106,36 +1224,41 @@ const [submissionData, setSubmissionData] = useState({
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-xl font-bold text-gray-900">{assignment.title}</h3>
                       
-                      {/* Status Change Dropdown - Student can only change to certain statuses */}
-                      <div className="relative group">
-                        <select
-                          value={assignment.status}
-                          onChange={(e) => handleStatusChange(assignment.id, e.target.value)}
-                          disabled={assignment.status === 'graded'}
-                          title={assignment.status === 'graded' ? 'Graded assignments cannot be changed' : 'Click to change assignment status'}
-                          className={`appearance-none cursor-pointer pl-3 pr-8 py-1.5 rounded-lg text-xs font-medium border transition-all hover:shadow-sm ${
-                            assignment.status === 'todo'
-                              ? 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-400 hover:bg-gray-100'
-                              : assignment.status === 'in-progress'
-                                ? 'bg-blue-50 text-blue-700 border-blue-200 hover:border-blue-400 hover:bg-blue-100'
-                                : assignment.status === 'submitted'
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-100'
-                                  : 'bg-green-50 text-green-700 border-green-200 opacity-75 cursor-not-allowed'
-                          }`}
-                        >
-                          <option value="todo">📋 To Do</option>
-                          <option value="in-progress">⚡ In Progress</option>
-                          <option value="submitted">📤 Submitted</option>
-                          {assignment.status === 'graded' && <option value="graded">✅ Graded</option>}
-                        </select>
-                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
-                        
-                        {/* Tooltip on hover */}
-                        <div className="absolute left-0 -bottom-8 hidden group-hover:block z-10 w-48 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-lg">
-                          Click to update status
-                          <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45" />
+                      {/* Status Change Dropdown - Only show if can submit or assignment allows status changes */}
+                      {(canSubmitAssignment(assignment) || !isOverdue(assignment.dueDate) || assignment.status === 'in-progress') && assignment.status !== 'graded' ? (
+                        <div className="relative group">
+                          <select
+                            value={assignment.status}
+                            onChange={(e) => handleStatusChange(assignment.id, e.target.value)}
+                            disabled={assignment.status === 'graded'}
+                            title={assignment.status === 'graded' ? 'Graded assignments cannot be changed' : 'Click to change assignment status'}
+                            className={`appearance-none cursor-pointer pl-3 pr-8 py-1.5 rounded-lg text-xs font-medium border transition-all hover:shadow-sm ${
+                              assignment.status === 'todo'
+                                ? 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-400 hover:bg-gray-100'
+                                : assignment.status === 'in-progress'
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200 hover:border-blue-400 hover:bg-blue-100'
+                                  : assignment.status === 'submitted'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-100'
+                                    : 'bg-green-50 text-green-700 border-green-200 opacity-75 cursor-not-allowed'
+                            }`}
+                          >
+                            <option value="todo">📋 To Do</option>
+                            <option value="in-progress">⚡ In Progress</option>
+                            {canSubmitAssignment(assignment) && <option value="submitted">📤 Submitted</option>}
+                            {assignment.status === 'graded' && <option value="graded">✅ Graded</option>}
+                          </select>
+                          <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
+                          
+                          <div className="absolute left-0 -bottom-8 hidden group-hover:block z-10 w-48 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-lg">
+                            Click to update status
+                            <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45" />
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        /* Show status as read-only badge when dropdown is not available */
+                        getStatusBadge(assignment.status)
+                      )}
+
                       
                       {getPriorityBadge(assignment.priority)}
                     </div>
@@ -1230,14 +1353,14 @@ const [submissionData, setSubmissionData] = useState({
                       <CalendarIcon className="w-4 h-4 text-red-400" />
                       <span className="text-gray-600">Due:</span>
                       <span className="font-semibold text-gray-900">
-                        {new Date(assignment.dueDate).toLocaleDateString('en-US', {
+                        {parseAsLocalDate(assignment.dueDate).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric'
                         })}
                       </span>
                     </div>
-                    {getDaysRemaining(assignment.dueDate)}
+                    {getAssignmentTimeStatus(assignment)}
                   </div>
 
                   {assignment.submittedDate && (
@@ -1264,7 +1387,8 @@ const [submissionData, setSubmissionData] = useState({
                     <Eye className="w-4 h-4 mr-2" />
                     View Details
                   </Button>
-                  {assignment.status === 'todo' || assignment.status === 'in-progress' ? (
+                  {/* Submit Assignment button that changes status */}
+                  {canSubmitAssignment(assignment) ? (
                     <Button
                       size="sm"
                       variant="outline"
@@ -1274,12 +1398,41 @@ const [submissionData, setSubmissionData] = useState({
                       <Upload className="w-4 h-4 mr-2" />
                       Submit Assignment
                     </Button>
+                  ) : assignment.status === 'todo' || assignment.status === 'in-progress' ? (
+                    <div className="flex items-center gap-2 text-sm text-red-600">
+                      <AlertCircle className="w-4 h-4" />
+                      <span className="font-medium">Late submission not allowed</span>
+                    </div>
                   ) : assignment.status === 'submitted' ? (
                     <div className="flex items-center gap-2 text-sm text-emerald-600">
                       <Clock className="w-4 h-4" />
                       <span className="font-medium">Awaiting instructor grade</span>
                     </div>
                   ) : null}
+                  
+                  
+                  {/* Show submission status only */}
+                  {assignment.status === 'submitted' ? (
+                    <div className="flex items-center gap-2 text-sm text-emerald-600">
+                      <Clock className="w-4 h-4" />
+                      <span className="font-medium">Awaiting instructor grade</span>
+                    </div>
+                  ) : assignment.status === 'graded' ? (
+                    <div className="flex items-center gap-2 text-sm text-green-600">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span className="font-medium">Graded</span>
+                    </div>
+                  ) : canSubmitAssignment(assignment) ? (
+                    <div className="flex items-center gap-2 text-sm text-blue-600">
+                      <Clock className="w-4 h-4" />
+                      <span className="font-medium">Ready for submission</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-red-600">
+                      <AlertCircle className="w-4 h-4" />
+                      <span className="font-medium">Late submission not allowed</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))
@@ -1375,7 +1528,7 @@ const [submissionData, setSubmissionData] = useState({
                   <CalendarIcon className="w-4 h-4 text-red-400" />
                   <span className="text-gray-600">Due:</span>
                   <span className="font-semibold text-gray-900">
-                    {new Date(selectedAssignment.dueDate).toLocaleDateString('en-US', {
+                    {parseAsLocalDate(selectedAssignment.dueDate).toLocaleDateString('en-US', {
                       weekday: 'long',
                       month: 'long',
                       day: 'numeric',
@@ -1384,7 +1537,7 @@ const [submissionData, setSubmissionData] = useState({
                   </span>
                 </div>
                 <span className="mx-2 text-gray-300">•</span>
-                {getDaysRemaining(selectedAssignment.dueDate)}
+                {getAssignmentTimeStatus(selectedAssignment)}
               </div>
             </div>
 
@@ -1414,7 +1567,7 @@ const [submissionData, setSubmissionData] = useState({
                       <CheckCircle2 className="w-4 h-4 text-green-600" />
                       <span className="text-gray-700">Submitted on:</span>
                       <span className="font-semibold text-gray-900">
-                        {new Date(selectedAssignment.submittedDate).toLocaleDateString('en-US', {
+                        {parseAsLocalDate(selectedAssignment.submittedDate).toLocaleDateString('en-US', {
                           month: 'long',
                           day: 'numeric',
                           year: 'numeric',
@@ -1475,7 +1628,17 @@ const [submissionData, setSubmissionData] = useState({
                 >
                   Close
                 </Button>
-                {selectedAssignment.status === 'completed' ? (
+                {canSubmitAssignment(selectedAssignment) ? (
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <Upload className="w-4 h-4 mr-2" />
+                    {selectedAssignment.status === 'in-progress' ? 'Update Submission' : 'Submit Assignment'}
+                  </Button>
+                ) : selectedAssignment.status !== 'submitted' && selectedAssignment.status !== 'graded' && isOverdue(selectedAssignment.dueDate) && !selectedAssignment.allowLateSubmission ? (
+                  <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg border border-red-200">
+                    <AlertCircle className="w-4 h-4" />
+                    <span className="font-medium">Late submission not allowed</span>
+                  </div>
+                ) : selectedAssignment.status === 'submitted' ? (
                   <Button
                     variant="outline"
                     className="border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -1483,12 +1646,7 @@ const [submissionData, setSubmissionData] = useState({
                     <Download className="w-4 h-4 mr-2" />
                     Download Submission
                   </Button>
-                ) : (
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                    <Upload className="w-4 h-4 mr-2" />
-                    {selectedAssignment.status === 'in-progress' ? 'Update Submission' : 'Submit Assignment'}
-                  </Button>
-                )}
+                ) : null}
               </div>
             </div>
           </div>

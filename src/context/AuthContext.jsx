@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext(null);
@@ -20,7 +20,33 @@ export const AuthProvider = ({ children }) => {
 
   // Helper to restore user from localStorage
   const restoreUserFromStorage = useCallback((sessionUser) => {
+    // Always get the latest role from session metadata - check user_role first (set by UnifiedSignup)
+    let sessionRole = sessionUser.user_metadata?.user_role 
+      || sessionUser.user_metadata?.role 
+      || 'user';
+    
+    // Handle legacy "admin" role - preserve the stored user's role if it's more specific
+    // This allows both school_admin and college_admin to work with "admin" in metadata
     const storedUser = localStorage.getItem('user');
+    if (storedUser && sessionRole === 'admin') {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        const userMatches = 
+          parsedUser.user_id === sessionUser.id || 
+          parsedUser.id === sessionUser.id ||
+          parsedUser.email === sessionUser.email;
+        
+        if (userMatches && parsedUser.role && 
+            ['school_admin', 'college_admin', 'university_admin'].includes(parsedUser.role)) {
+          // Use the more specific role from localStorage instead of generic "admin"
+          console.log('🔄 Using stored admin role:', parsedUser.role, 'instead of generic "admin"');
+          sessionRole = parsedUser.role;
+        }
+      } catch (e) {
+        console.warn('Failed to parse stored user for admin role mapping:', e);
+      }
+    }
+    
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
@@ -30,17 +56,22 @@ export const AuthProvider = ({ children }) => {
           parsedUser.email === sessionUser.email;
         
         if (userMatches) {
-          return parsedUser;
+          // Always update role from session to ensure it's current
+          return {
+            ...parsedUser,
+            role: sessionRole,
+          };
         }
       } catch (e) {
         console.warn('Failed to parse stored user:', e);
       }
     }
+    
     // Create new user data from session
     return {
       id: sessionUser.id,
       email: sessionUser.email,
-      role: sessionUser.user_metadata?.role || 'user',
+      role: sessionRole,
     };
   }, []);
 
@@ -210,11 +241,22 @@ export const AuthProvider = ({ children }) => {
           if (storedUser) {
             try {
               const parsedUser = JSON.parse(storedUser);
-              // Update with latest session data
+              // Update with latest session data - but preserve specific admin roles
+              let role = session.user.user_metadata?.user_role 
+                || session.user.user_metadata?.role 
+                || parsedUser.role;
+              
+              // Handle legacy "admin" role - preserve the stored user's role if it's more specific
+              if (role === 'admin' && parsedUser.role && 
+                  ['school_admin', 'college_admin', 'university_admin'].includes(parsedUser.role)) {
+                console.log('🔄 Preserving stored admin role:', parsedUser.role, 'instead of generic "admin"');
+                role = parsedUser.role;
+              }
+              
               const updatedUser = {
                 ...parsedUser,
                 email: session.user.email,
-                role: session.user.user_metadata?.role || parsedUser.role,
+                role: role,
               };
               setUser(updatedUser);
               localStorage.setItem('user', JSON.stringify(updatedUser));

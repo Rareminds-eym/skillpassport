@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../../../lib/supabaseClient';
 import { Eye, EyeOff } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { supabase } from '../../../../../lib/supabaseClient';
 
 const RecruiterSignupForm = ({ onSuccess, onSwitchToLogin }) => {
   const navigate = useNavigate();
@@ -487,9 +487,9 @@ const RecruiterSignupForm = ({ onSuccess, onSwitchToLogin }) => {
                 Login here
               </button>
             ) : (
-              <a href="/login/recruiter" className="text-blue-600 hover:text-blue-700 font-medium">
+              <Link to="/login/recruiter" className="text-blue-600 hover:text-blue-700 font-medium">
                 Login here
-              </a>
+              </Link>
             )}
           </p>
         </div>

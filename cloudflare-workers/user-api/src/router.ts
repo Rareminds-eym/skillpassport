@@ -34,6 +34,7 @@ import {
   // Authenticated
   handleCreateStudent,
   handleCreateTeacher,
+  handleUpdateStudentDocuments,
   // Events
   handleCreateEventUser,
   handleSendInterviewReminder,
@@ -83,6 +84,7 @@ const routes: Record<string, Route> = {
   // ===== AUTHENTICATED =====
   '/create-student': { method: 'POST', handler: handleCreateStudent },
   '/create-teacher': { method: 'POST', handler: handleCreateTeacher },
+  '/update-student-documents': { method: 'POST', handler: handleUpdateStudentDocuments },
   '/create-event-user': { method: 'POST', handler: handleCreateEventUser },
   '/send-interview-reminder': { method: 'POST', handler: handleSendInterviewReminder },
   '/reset-password': { method: 'POST', handler: handleResetPassword },

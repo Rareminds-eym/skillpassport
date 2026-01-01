@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   XMarkIcon,
   PhoneIcon,
@@ -29,6 +29,7 @@ import {
   ApprovalModal,
   PromotionModal,
   GraduationModal,
+  DocumentsModal,
 } from './modals';
 
 // Tabs
@@ -43,6 +44,7 @@ import {
   ClubsCompetitionsTab,
   ExamResultsTab,
   NotesTab,
+  EventsTab,
 } from './tabs';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 
@@ -56,6 +58,14 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [copied, setCopied] = useState(false);
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll tabs container to start when drawer opens
+  useEffect(() => {
+    if (isOpen && tabsContainerRef.current) {
+      tabsContainerRef.current.scrollLeft = 0;
+    }
+  }, [isOpen]);
 
   // Reset active tab when defaultTab changes or drawer opens
   React.useEffect(() => {
@@ -71,6 +81,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [showGraduationModal, setShowGraduationModal] = useState(false);
+  const [showDocumentsModal, setShowDocumentsModal] = useState(false);
 
   // Custom hooks
   const {
@@ -126,6 +137,9 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     // Add exam results tab
     baseTabs.push({ key: 'exam-results', label: 'Exam Results' });
 
+    // Add Events tab for all students
+    baseTabs.push({ key: 'events', label: 'Events' });
+
     // For school educators: show school-specific tabs
     if (userRole === 'school_educator' || (userRole.includes('admin') && student.school_id)) {
       baseTabs.push({ key: 'curriculum', label: 'Curriculum & Lessons' });
@@ -134,7 +148,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     
     // For college educators: show college-specific tabs
     if (userRole === 'college_educator' || (userRole.includes('admin') && student.college_id && !student.school_id)) {
-      baseTabs.push({ key: 'clubs', label: 'Events & Activities' });
+      baseTabs.push({ key: 'clubs', label: 'Clubs & Activities' });
     }
 
     // Add notes tab for admins only
@@ -162,7 +176,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 
   const tabs = getTabsConfig();
   const actions = getActionsConfig();
-  const qrCodeValue = `${window.location.origin}/student/profile/${student.email}`;
+  const qrCodeValue = `${window.location.origin}/student/profile/${student.id}`;
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -188,6 +202,13 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       case 'exam-results':
         return (
           <ExamResultsTab
+            student={student}
+            loading={false}
+          />
+        );
+      case 'events':
+        return (
+          <EventsTab
             student={student}
             loading={false}
           />
@@ -380,28 +401,18 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               </div>
 
               {/* Tabs */}
-              <div className="border-b border-gray-200 overflow-y-hidden">
-                <nav className="-mb-px flex space-x-2 sm:space-x-4 lg:space-x-8 px-4 sm:px-6" aria-label="Tabs">
+              <div 
+                ref={tabsContainerRef}
+                className="border-b border-gray-200 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+              >
+                <nav className="-mb-px flex space-x-2 sm:space-x-4 lg:space-x-6 px-4 sm:px-6 whitespace-nowrap" aria-label="Tabs">
                   {tabs.map((tab) => (
                     <TabButton
                       key={tab.key}
                       active={activeTab === tab.key}
                       onClick={() => setActiveTab(tab.key)}
                     >
-                      <span className="hidden sm:inline">{tab.label}</span>
-                      <span className="sm:hidden">
-                        {tab.shortLabel || 
-                         (tab.key === 'overview' ? 'Overview' :
-                          tab.key === 'academic' ? 'Academic' :
-                          tab.key === 'courses' ? 'Courses' :
-                          tab.key === 'projects' ? 'Projects' :
-                          tab.key === 'certificates' ? 'Certs' :
-                          tab.key === 'assessments' ? 'Tests' :
-                          tab.key === 'exam-results' ? 'Exams' :
-                          tab.key === 'curriculum' ? 'Curriculum' :
-                          tab.key === 'clubs' ? 'Clubs' :
-                          'Notes')}
-                      </span>
+                      <span className="whitespace-nowrap">{tab.label}</span>
                     </TabButton>
                   ))}
                 </nav>
@@ -432,6 +443,14 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                     >
                       <File className="h-4 w-4 mr-2" />
                       View Portfolio
+                    </button>
+
+                    <button
+                      onClick={() => setShowDocumentsModal(true)}
+                      className="inline-flex items-center px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
+                    >
+                      <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
+                      Documents
                     </button>
 
                     {/* Student Management Actions - Only for Admins */}
@@ -564,6 +583,13 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           loading={actionLoading}
         />
       )}
+
+      {/* Documents Modal */}
+      <DocumentsModal
+        isOpen={showDocumentsModal}
+        onClose={() => setShowDocumentsModal(false)}
+        student={student}
+      />
     </div>
   );
 };

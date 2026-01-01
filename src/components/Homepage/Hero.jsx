@@ -6,26 +6,19 @@ const Hero = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Load Calendly CSS
     const link = document.createElement('link');
     link.href = 'https://assets.calendly.com/assets/external/widget.css';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
 
-    // Load Calendly widget script
     const script = document.createElement('script');
     script.src = 'https://assets.calendly.com/assets/external/widget.js';
     script.async = true;
     document.body.appendChild(script);
 
     return () => {
-      // Cleanup on unmount
-      if (link.parentNode) {
-        link.parentNode.removeChild(link);
-      }
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
+      if (link.parentNode) link.parentNode.removeChild(link);
+      if (script.parentNode) script.parentNode.removeChild(script);
     };
   }, []);
 
@@ -34,94 +27,85 @@ const Hero = () => {
     if (nextSection) {
       nextSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
-      // Fallback: scroll by viewport height
       window.scrollBy({ top: window.innerHeight, behavior: 'smooth' });
     }
   };
 
   const openCalendly = () => {
     if (window.Calendly) {
-      window.Calendly.initPopupWidget({
-        url: 'https://calendly.com/d/cxdd-5y9-vr5'
-      });
+      window.Calendly.initPopupWidget({ url: 'https://calendly.com/d/cxdd-5y9-vr5' });
     } else {
-      // If script not loaded yet, open in new tab as fallback
       window.open('https://calendly.com/d/cxdd-5y9-vr5', '_blank');
     }
   };
 
   return (
-    <section className="relative flex items-center min-h-screen">
-      {/* Responsive background images */}
-      <style>{`
-        .hero-bg {
-          background-image: url(/assets/HomePage/Mobile_banner.jpg);
-          background-size: cover;
-          background-position: center;
-          background-repeat: no-repeat;
-        }
-        @media (min-width: 768px) {
-          .hero-bg {
-            background-image: url(/assets/HomePage/Hero-bg.jpg);
-          }
-        }
-      `}</style>
-      <div className="hero-bg absolute inset-0 -z-10" />
-      <div className="w-full px-6 sm:px-8 py-12 sm:py-16 lg:px-12 mt-5 sm:mt-0">
-        <div className="max-w-3xl">
-          {/* Main Heading */}
-          <h1 className="text-black font-black mb-4 mt-20 sm:mb-8 leading-tight text-[25px] sm:text-4xl md:text-5xl lg:text-6xl">
-            <span className="block">Verified Skills.</span>
-            <span className="block">Visible Workforce.</span>
-            <span className="relative inline-block">
-              Measurable Impact.
-              <span
-                className="absolute inset-x-0 -z-10 rounded"
-                style={{ bottom: '4px', height: '16px', backgroundColor: '#FFD700' }}
-              />
-            </span>
-          </h1>
+    <section className="relative w-full">
+      {/* Desktop Banner */}
+      <img
+        src="/banner-desktop3.jpg"
+        alt="Rareminds Skill Passport Hero"
+        className="hidden md:block w-full h-auto"
+      />
+      {/* Mobile Banner */}
+      <img
+        src="/banner-mobile3.jpg"
+        alt="Rareminds Skill Passport Hero"
+        className="block md:hidden w-full h-auto"
+      />
 
-          {/* Subheading */}
-          <p className="text-black font-medium mb-8 sm:mb-10 max-w-lg text-[16px] sm:text-lg md:text-xl leading-relaxed">
-            The Rareminds Skill Passport gives enterprises a single source of truth for employee
-            capabilities — turning training outcomes into real-time talent intelligence.
-          </p>
+      {/* Text & Buttons Overlay */}
+      <div className="absolute inset-0 flex items-start pt-4 md:items-center md:pt-0 md:justify-end">
+        <div className="w-full md:w-auto px-6 sm:px-8 lg:px-12 md:pr-16 lg:pr-24">
+          <div className="max-w-3xl md:max-w-xl">
+            {/* Welcome Text */}
+            {/* <h2 className="text-black text-lg sm:text-xl md:text-3xl mb-2">Welcome To</h2> */}
+            
+            {/* Main Heading */}
+            <h1 className="text-black font-black mb-2 sm:mb-4 leading-tight text-[20px] sm:text-2xl md:text-4xl lg:text-5xl whitespace-nowrap">
+              Track Your Skills & Progress.
+            </h1>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-5">
-            {/* Book a Demo group */}
-            <div className="flex items-center gap-2 group">
-              <button
-                onClick={openCalendly}
-                className="h-9 sm:h-14 px-4 sm:px-8 rounded-full bg-[#e63b2e] text-white text-xs sm:text-base font-bold uppercase tracking-wide shadow-[0_6px_20px_rgba(230,59,46,0.4)] hover:brightness-110 transition-all"
-              >
-                BOOK A DEMO
-              </button>
-              <button
-                onClick={openCalendly}
-                aria-label="Open demo"
-                className="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-[#e63b2e] text-white shadow-[0_6px_20px_rgba(230,59,46,0.4)] flex items-center justify-center hover:brightness-110 transition-all group-hover:-translate-x-1"
-              >
-                <ArrowUpRight className="w-4 h-4 sm:w-6 sm:h-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-10deg]" style={{ strokeWidth: 2.5 }} />
-              </button>
-            </div>
+            {/* Subheading */}
+            <p className="text-black font-medium mb-8 sm:mb-10 max-w-lg text-[14px] sm:text-lg md:text-xl leading-relaxed">
+              Earn, Badge, Certify Your Growth.
+            </p>
 
-            {/* Explore Dashboard group */}
-            <div className="flex items-center gap-2 group">
-              <button
-                onClick={() => navigate('/login/student')}
-                className="h-9 sm:h-14 px-4 sm:px-8 rounded-full bg-white text-black text-xs sm:text-base font-bold uppercase tracking-wide border-2 border-black hover:bg-gray-50 transition-all"
-              >
-                EXPLORE DASHBOARD
-              </button>
-              <button
-                onClick={() => navigate('/login/student')}
-                aria-label="Open dashboard"
-                className="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-white text-black border-2 border-black flex items-center justify-center transition-all group-hover:-translate-x-1 group-hover:bg-black group-hover:text-white"
-              >
-                <ArrowUpRight className="w-4 h-4 sm:w-6 sm:h-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-10deg]" style={{ strokeWidth: 2.5 }} />
-              </button>
+            {/* CTA Buttons */}
+            <div className="flex flex-row items-center gap-3 sm:gap-5 flex-wrap sm:flex-nowrap">
+              {/* Book a Demo */}
+              <div className="flex items-center gap-2 group">
+                <button
+                  onClick={openCalendly}
+                  className="h-9 sm:h-14 px-4 sm:px-8 rounded-full bg-[#e63b2e] text-white text-xs sm:text-base font-bold uppercase tracking-wide shadow-[0_6px_20px_rgba(230,59,46,0.4)] hover:brightness-110 transition-all whitespace-nowrap"
+                >
+                  BOOK A DEMO
+                </button>
+                <button
+                  onClick={openCalendly}
+                  aria-label="Open demo"
+                  className="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-[#e63b2e] text-white shadow-[0_6px_20px_rgba(230,59,46,0.4)] flex items-center justify-center hover:brightness-110 transition-all group-hover:-translate-x-1"
+                >
+                  <ArrowUpRight className="w-4 h-4 sm:w-6 sm:h-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-10deg]" style={{ strokeWidth: 2.5 }} />
+                </button>
+              </div>
+
+              {/* Explore Dashboard */}
+              <div className="flex items-center gap-2 group">
+                <button
+                  onClick={() => navigate('/login/student')}
+                  className="h-9 sm:h-14 px-4 sm:px-8 rounded-full bg-white text-black text-xs sm:text-base font-bold uppercase tracking-wide border-2 border-black hover:bg-gray-50 transition-all whitespace-nowrap"
+                >
+                  EXPLORE DASHBOARD
+                </button>
+                <button
+                  onClick={() => navigate('/login/student')}
+                  aria-label="Open dashboard"
+                  className="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-white text-black border-2 border-black flex items-center justify-center transition-all group-hover:-translate-x-1 group-hover:bg-black group-hover:text-white"
+                >
+                  <ArrowUpRight className="w-4 h-4 sm:w-6 sm:h-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-10deg]" style={{ strokeWidth: 2.5 }} />
+                </button>
+              </div>
             </div>
           </div>
         </div>

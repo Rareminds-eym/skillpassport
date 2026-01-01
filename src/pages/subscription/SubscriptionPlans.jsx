@@ -1,25 +1,26 @@
-import { useState, useCallback, useMemo, memo, useEffect } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Check, Shield, Clock, TrendingUp, Calendar } from 'lucide-react';
-import useAuth from '../../hooks/useAuth';
-import SignupModal from '../../components/Subscription/SignupModal';
-import LoginModal from '../../components/Subscription/LoginModal';
-import SchoolSignupModal from '../../components/Subscription/SchoolSignupModal';
-import SchoolLoginModal from '../../components/Subscription/SchoolLoginModal';
-import CollegeSignupModal from '../../components/Subscription/CollegeSignupModal';
+import { Calendar, Check, Clock, Shield, TrendingUp } from 'lucide-react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import CollegeLoginModal from '../../components/Subscription/CollegeLoginModal';
-import EducatorSignupModal from '../../components/Subscription/EducatorSignupModal';
+import CollegeSignupModal from '../../components/Subscription/CollegeSignupModal';
 import EducatorLoginModal from '../../components/Subscription/EducatorLoginModal';
-import RecruiterSignupModal from '../../components/Subscription/RecruiterSignupModal';
+import EducatorSignupModal from '../../components/Subscription/EducatorSignupModal';
+import LoginModal from '../../components/Subscription/LoginModal';
 import RecruiterLoginModal from '../../components/Subscription/RecruiterLoginModal';
+import RecruiterSignupModal from '../../components/Subscription/RecruiterSignupModal';
 import RecruitmentAdminSignupModal from '../../components/Subscription/RecruitmentAdminSignupModal';
-import UniversityAdminSignupModal from '../../components/Subscription/UniversityAdminSignupModal';
+import SchoolLoginModal from '../../components/Subscription/SchoolLoginModal';
+import SchoolSignupModal from '../../components/Subscription/SchoolSignupModal';
+import SignupModal from '../../components/Subscription/SignupModal';
 import UniversityAdminLoginModal from '../../components/Subscription/UniversityAdminLoginModal';
-import UniversityStudentSignupModal from '../../components/Subscription/UniversityStudentSignupModal';
+import UniversityAdminSignupModal from '../../components/Subscription/UniversityAdminSignupModal';
 import UniversityStudentLoginModal from '../../components/Subscription/UniversityStudentLoginModal';
-import { isActiveOrPaused, getStatusColor, calculateDaysRemaining } from '../../utils/subscriptionHelpers';
+import UniversityStudentSignupModal from '../../components/Subscription/UniversityStudentSignupModal';
 import { PAYMENT_CONFIG, isTestPricing } from '../../config/payment';
-import { getEntityContent, parseStudentType } from '../../utils/getEntityContent';
+import useAuth from '../../hooks/useAuth';
+import { getEntityContent } from '../../utils/getEntityContent';
+import { calculateDaysRemaining, getStatusColor, isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 
@@ -27,6 +28,7 @@ import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQu
 const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRemaining, allPlans }) => {
   const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
   const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
+  const isContactSales = plan.contactSales;
 
   return (
     <div
@@ -55,14 +57,32 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
 
       <div className="mb-6">
         <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
+        {plan.tagline && (
+          <p className="text-sm text-gray-500 mt-1">{plan.tagline}</p>
+        )}
         <div className="mt-4 flex items-baseline">
-          <span className="text-4xl font-bold tracking-tight text-gray-900">
-            ₹{plan.price}
-          </span>
-          <span className="ml-1 text-xl font-semibold text-gray-600">
-            /{plan.duration}
-          </span>
+          {isContactSales ? (
+            <span className="text-2xl font-bold tracking-tight text-gray-900">
+              Contact Sales
+            </span>
+          ) : (
+            <>
+              <span className="text-4xl font-bold tracking-tight text-gray-900">
+                ₹{plan.price}
+              </span>
+              <span className="ml-1 text-xl font-semibold text-gray-600">
+                /{plan.duration}
+              </span>
+            </>
+          )}
         </div>
+
+        {/* Positioning summary */}
+        {plan.positioning && (
+          <p className="mt-3 text-sm text-gray-600 italic">
+            {plan.positioning}
+          </p>
+        )}
 
         {/* Days Remaining for Current Plan */}
         {isCurrentPlan && daysRemaining !== null && (
@@ -77,13 +97,18 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
         )}
       </div>
 
-      <ul className="mb-8 space-y-4 flex-1">
-        {plan.features.map((feature, index) => (
+      <ul className="mb-8 space-y-4 flex-1 max-h-80 overflow-y-auto">
+        {plan.features.slice(0, 10).map((feature, index) => (
           <li key={index} className="flex items-start">
             <Check className="h-6 w-6 text-green-500 flex-shrink-0" />
-            <span className="ml-3 text-gray-600">{feature}</span>
+            <span className="ml-3 text-gray-600 text-sm">{feature}</span>
           </li>
         ))}
+        {plan.features.length > 10 && (
+          <li className="text-sm text-blue-600 font-medium ml-9">
+            +{plan.features.length - 10} more features
+          </li>
+        )}
       </ul>
 
       {/* Action Buttons */}
@@ -100,6 +125,13 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
             Manage Subscription
           </button>
         </div>
+      ) : isContactSales ? (
+        <a
+          href="mailto:sales@skillpassport.in?subject=Enterprise%20Ecosystem%20Plan%20Inquiry"
+          className="w-full py-3 px-6 rounded-lg font-medium transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 shadow-md"
+        >
+          Contact Sales
+        </a>
       ) : (
         <button
           onClick={() => onSelect(plan)}
@@ -185,6 +217,17 @@ function SubscriptionPlans() {
     [isAuthenticated, hasActiveOrPausedSubscription]
   );
 
+  // Show welcome message from signup flow (only once)
+  useEffect(() => {
+    const message = location.state?.message;
+    if (message) {
+      // Clear the state immediately to prevent duplicate toasts
+      navigate(location.pathname + location.search, { replace: true, state: {} });
+      // Show toast after clearing state
+      toast.success(message, { duration: 5000, id: 'signup-success' });
+    }
+  }, []); // Empty dependency - run only on mount
+
   // Error logging for subscription fetch failures
   useEffect(() => {
     if (subscriptionError && isAuthenticated) {
@@ -228,39 +271,10 @@ function SubscriptionPlans() {
       return;
     }
 
-    // For recruitment-admin, show signup modal instead of navigating
-    if (studentType === 'recruitment-admin' && !isAuthenticated) {
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
-      return;
-    }
-
-    // For recruitment-recruiter, show signup modal instead of navigating
-    if (studentType === 'recruitment-recruiter' && !isAuthenticated) {
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
-      return;
-    }
-
-    // For university-admin, show signup modal instead of navigating
-    if (studentType === 'university-admin' && !isAuthenticated) {
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
-      return;
-    }
-
-    // For university-student, show signup modal instead of navigating
-    if (studentType === 'university-student' && !isAuthenticated) {
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
-      return;
-    }
-
     // For upgrade/downgrade or new purchase
     if (!isAuthenticated) {
-      // User not authenticated, show signup modal
-      setPlanToSelect(plan);
-      setShowSignupModal(true);
+      // User not authenticated, redirect to unified signup page
+      navigate('/signup');
     } else {
       // User authenticated, check if they have active or paused subscription
       if (hasActiveOrPausedSubscription) {
@@ -271,7 +285,7 @@ function SubscriptionPlans() {
         navigate('/subscription/payment', { state: { plan, studentType, isUpgrade: !!subscriptionData } });
       }
     }
-  }, [isAuthenticated, user, role, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription]);
+  }, [isAuthenticated, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription]);
 
   const handleSignupSuccess = useCallback(() => {
     // After successful signup, proceed to payment with selected plan
@@ -493,7 +507,7 @@ function SubscriptionPlans() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8 mt-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
               {plans.map((plan) => (
                 <PlanCard
                   key={plan.id}

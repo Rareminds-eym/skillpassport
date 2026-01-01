@@ -5,6 +5,7 @@ export interface Env {
   VITE_SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   VITE_OPENROUTER_API_KEY: string;
+  OPENROUTER_API_KEY?: string; // Alternative key name
   EMBEDDING_SERVICE_URL?: string;
 }
 

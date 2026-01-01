@@ -1,33 +1,33 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
 import {
-  FunnelIcon,
-  TableCellsIcon,
-  Squares2X2Icon,
-  EyeIcon,
-  ChevronDownIcon,
-  XMarkIcon,
-  UserGroupIcon,
-  ClipboardDocumentCheckIcon,
-  ArrowPathIcon,
-  PlusCircleIcon,
-  CalendarDaysIcon,
-  EnvelopeIcon,
-  ClockIcon,
-  PencilIcon
+    ArrowPathIcon,
+    CalendarDaysIcon,
+    ChevronDownIcon,
+    ClipboardDocumentCheckIcon,
+    ClockIcon,
+    EnvelopeIcon,
+    EyeIcon,
+    FunnelIcon,
+    PencilIcon,
+    PlusCircleIcon,
+    Squares2X2Icon,
+    TableCellsIcon,
+    UserGroupIcon,
+    XMarkIcon
 } from "@heroicons/react/24/outline"
+import { useEffect, useMemo, useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import SearchBar from "../../components/common/SearchBar"
 import { useClasses } from "../../hooks/useClasses"
-import { useEducatorSchool } from "../../hooks/useEducatorSchool"
 import { useEducatorId } from "../../hooks/useEducatorId"
+import { useEducatorSchool } from "../../hooks/useEducatorSchool"
 // @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from "../../context/AuthContext"
-import ManageStudentsModal from "../../components/educator/ManageStudentsModal"
-import { createClass, EducatorClass, updateClass } from "../../services/classService"
-import { supabase } from "../../lib/supabaseClient"
 import toast from "react-hot-toast"
+import ManageStudentsModal from "../../components/educator/ManageStudentsModal"
 import Pagination from "../../components/educator/Pagination"
+import { useAuth } from "../../context/AuthContext"
+import { supabase } from "../../lib/supabaseClient"
+import { createClass, EducatorClass, updateClass } from "../../services/classService"
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen)
@@ -663,12 +663,12 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
         >
           Create New Class
         </button>
-        <a
-          href="/educator/classes/import"
+        <Link
+          to="/educator/classes/import"
           className="inline-flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
           Import from CSV
-        </a>
+        </Link>
       </div>
     </div>
   )
@@ -938,7 +938,8 @@ const ClassesPage = () => {
     filters.performanceBands.length
 
   const isLoading = loading || schoolLoading || educatorIdLoading
-  const hasError = error || educatorIdError
+  // Only show actual errors, not "Educator record not found" which is expected for new educators
+  const hasError = error && error !== 'Educator record not found'
   const isEmpty = !isLoading && paginatedClasses.length === 0 && !hasError && !searchQuery && totalFilters === 0
 
   return (
@@ -1168,7 +1169,7 @@ const ClassesPage = () => {
             )}
             {!isLoading && hasError && (
               <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-md p-4">
-                {error || educatorIdError || "Failed to load classes"}
+                {error || "Failed to load classes"}
               </div>
             )}
             {!isLoading && isEmpty && <EmptyState onCreate={() => setShowAddClassModal(true)} />}

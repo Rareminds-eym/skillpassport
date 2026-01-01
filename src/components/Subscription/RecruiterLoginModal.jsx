@@ -1,7 +1,7 @@
+import { Eye, EyeOff, Lock, Mail, X } from 'lucide-react';
 import { useState } from 'react';
-import { X, Eye, EyeOff, Mail, Lock } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../lib/supabaseClient';
 
 function RecruiterLoginModal({ isOpen, onClose, onLoginSuccess, onSwitchToSignup }) {
     const navigate = useNavigate();
@@ -162,7 +162,7 @@ function RecruiterLoginModal({ isOpen, onClose, onLoginSuccess, onSwitchToSignup
                     <p className="text-gray-600">
                         Don't have an account?{' '}
                         <button
-                            onClick={onSwitchToSignup}
+                            onClick={() => { onClose(); navigate('/signup'); }}
                             className="text-blue-600 hover:text-blue-700 font-medium"
                         >
                             Sign up here

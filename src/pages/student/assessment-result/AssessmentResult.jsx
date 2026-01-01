@@ -9,7 +9,11 @@ import {
     AlertCircle,
     RefreshCw,
     ArrowLeft,
-    X
+    X,
+    GraduationCap,
+    CheckCircle2,
+    Star,
+    TrendingUp
 } from 'lucide-react';
 import { Button } from '../../../components/Students/components/ui/button';
 import {
@@ -976,39 +980,126 @@ const AssessmentResult = () => {
                         </div>
                     </div>*/}
 
-                    {/* Career Recommendations Section */}
-                    <div className="max-w-6xl mx-auto mb-8">
-                        {/* Main Card - Light Glass */}
-                        <div className="relative w-full rounded-xl overflow-hidden bg-white backdrop-blur-xl shadow-lg">
-                            {/* Subtle gradient overlay */}
-                            <div 
-                                className="absolute inset-0 pointer-events-none"
-                                style={{
-                                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.03), transparent 50%, rgba(147, 197, 253, 0.03))'
-                                }}
-                            />
-
-                            {/* Header Section - matching ReportHeader */}
-                            <div className="relative p-6 md:p-8 bg-gradient-to-r from-slate-800 to-slate-700">
-                                <div>
-                                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
-                                        Your Career Recommendations
-                                    </h2>
-                                    {/* Animated Gradient Underline */}
-                                    <div className="relative h-[2px] w-40 md:w-56 mb-2 rounded-full overflow-hidden">
-                                        <div 
-                                            className="absolute inset-0 rounded-full"
-                                            style={{
-                                                background: 'linear-gradient(90deg, #1E3A8A, #3B82F6, #60A5FA, #93C5FD, #BFDBFE)',
-                                                backgroundSize: '200% 100%',
-                                                animation: 'shimmer 3s linear infinite'
-                                            }}
-                                        />
-                                    </div>
-                                    <p className="text-slate-300 text-sm md:text-base">
-                                        Personalized job matches based on your assessment
-                                    </p>
+                    {/* Course Recommendations Section - Only for after12 students */}
+                    {gradeLevel === 'after12' && results.courseRecommendations && results.courseRecommendations.length > 0 && (
+                        <div className="mb-8">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+                                    <GraduationCap className="w-6 h-6 text-white" />
                                 </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-800">Recommended Programs for You</h2>
+                                    <p className="text-gray-500">Based on your assessment scores and interests</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {results.courseRecommendations.slice(0, 5).map((course, index) => (
+                                    <div 
+                                        key={course.courseId}
+                                        className={`relative bg-white rounded-xl border-2 p-5 transition-all hover:shadow-lg ${
+                                            index === 0 ? 'border-emerald-300 shadow-emerald-100 shadow-lg' : 'border-gray-100'
+                                        }`}
+                                    >
+                                        {/* Rank Badge */}
+                                        <div className={`absolute -top-3 -right-3 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg ${
+                                            index === 0 ? 'bg-gradient-to-br from-emerald-500 to-teal-600' :
+                                            index === 1 ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
+                                            'bg-gradient-to-br from-gray-400 to-gray-500'
+                                        }`}>
+                                            #{index + 1}
+                                        </div>
+
+                                        {/* Top Pick Badge */}
+                                        {index === 0 && (
+                                            <div className="flex items-center gap-1 text-emerald-600 text-xs font-semibold mb-2">
+                                                <Star className="w-3 h-3 fill-current" />
+                                                TOP RECOMMENDATION
+                                            </div>
+                                        )}
+
+                                        {/* Course Name */}
+                                        <h3 className="font-semibold text-gray-800 text-lg mb-2 pr-8">{course.courseName}</h3>
+
+                                        {/* Category Badge */}
+                                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-3 ${
+                                            course.category === 'Science' ? 'bg-blue-100 text-blue-700' :
+                                            course.category === 'Commerce' ? 'bg-amber-100 text-amber-700' :
+                                            'bg-purple-100 text-purple-700'
+                                        }`}>
+                                            {course.category}
+                                        </span>
+
+                                        {/* Match Score */}
+                                        <div className="mb-3">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-sm text-gray-600">Match Score</span>
+                                                <span className={`font-bold ${
+                                                    course.matchScore >= 80 ? 'text-emerald-600' :
+                                                    course.matchScore >= 65 ? 'text-blue-600' :
+                                                    'text-gray-600'
+                                                }`}>
+                                                    {course.matchScore}%
+                                                </span>
+                                            </div>
+                                            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                <div 
+                                                    className={`h-full rounded-full transition-all ${
+                                                        course.matchScore >= 80 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' :
+                                                        course.matchScore >= 65 ? 'bg-gradient-to-r from-blue-400 to-blue-500' :
+                                                        'bg-gradient-to-r from-gray-300 to-gray-400'
+                                                    }`}
+                                                    style={{ width: `${course.matchScore}%` }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Match Level */}
+                                        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
+                                            course.matchLevel === 'Excellent' ? 'bg-emerald-50 text-emerald-700' :
+                                            course.matchLevel === 'Good' ? 'bg-blue-50 text-blue-700' :
+                                            'bg-gray-50 text-gray-600'
+                                        }`}>
+                                            {course.matchLevel === 'Excellent' && <TrendingUp className="w-3 h-3" />}
+                                            {course.matchLevel} Match
+                                        </div>
+
+                                        {/* Reasons */}
+                                        {course.reasons && course.reasons.length > 0 && (
+                                            <div className="mt-3 pt-3 border-t border-gray-100">
+                                                <p className="text-xs font-medium text-gray-500 mb-2">Why this fits you:</p>
+                                                <ul className="space-y-1">
+                                                    {course.reasons.slice(0, 2).map((reason, idx) => (
+                                                        <li key={idx} className="flex items-start gap-2 text-xs text-gray-600">
+                                                            <CheckCircle2 className="w-3 h-3 text-emerald-500 mt-0.5 flex-shrink-0" />
+                                                            {reason}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Guidance Note */}
+                            <div className="mt-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">
+                                <div className="flex gap-3">
+                                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                    <div className="text-sm text-amber-800">
+                                        <p className="font-semibold mb-1">Next Steps</p>
+                                        <p>Research these programs at universities you're interested in. Consider factors like curriculum, faculty expertise, placement records, location, and your personal preferences when making your final decision.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Overall Summary Banner */}
+                    <div className="bg-slate-800 rounded-2xl p-6 text-white">
+                        <div className="flex items-start gap-3">
+                            <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                                <Rocket className="w-6 h-6" />
                             </div>
 
                             {/* Career Cards Container */}
