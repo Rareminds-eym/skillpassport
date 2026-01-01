@@ -27,6 +27,11 @@ import { fetchOpportunities } from './context/opportunities';
 import { buildCareerProgressContext } from './context/progress';
 import { buildStudentContext } from './context/student';
 
+// Helper to get OpenRouter API key (supports both variable names)
+const getOpenRouterKey = (env: Env): string | undefined => {
+  return env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY;
+};
+
 // ==================== CAREER CHAT HANDLER ====================
 
 async function handleCareerChat(request: Request, env: Env): Promise<Response> {
@@ -226,7 +231,7 @@ async function streamCareerResponse(params: StreamParams): Promise<Response> {
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${env.VITE_OPENROUTER_API_KEY}`,
+            'Authorization': `Bearer ${getOpenRouterKey(env)}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': env.VITE_SUPABASE_URL || '',
             'X-Title': 'Career AI Assistant'
@@ -1026,7 +1031,7 @@ async function handleAnalyzeAssessment(request: Request, env: Env): Promise<Resp
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.VITE_OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${getOpenRouterKey(env)}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': env.VITE_SUPABASE_URL || '',
         'X-Title': 'Assessment Analyzer'
@@ -1050,8 +1055,23 @@ async function handleAnalyzeAssessment(request: Request, env: Env): Promise<Resp
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[AI ERROR]', response.status, errorText);
-      return jsonResponse({ error: `AI service error: ${response.status}` }, 500);
+      console.error('[ASSESSMENT AI ERROR]', response.status, errorText);
+      // Parse error for better message
+      let errorMessage = `AI service error: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.error?.message) {
+          errorMessage = errorJson.error.message;
+        } else if (errorJson.error?.code) {
+          errorMessage = `${errorJson.error.code}: ${response.status}`;
+        }
+      } catch {
+        // Use raw error text if not JSON
+        if (response.status === 402) {
+          errorMessage = 'OpenRouter API credits exhausted. Please add funds at https://openrouter.ai/credits';
+        }
+      }
+      return jsonResponse({ error: `AI service error: ${errorMessage}` }, 500);
     }
 
     const data = await response.json() as any;
@@ -1155,7 +1175,7 @@ ${resumeText.slice(0, 15000)}
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.VITE_OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${getOpenRouterKey(env)}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': env.VITE_SUPABASE_URL || '',
         'X-Title': 'Resume Parser'
@@ -1230,7 +1250,7 @@ export default {
     try {
       // Route requests
       if (path === '/chat' || path === '/career-ai-chat') {
-        if (!env.VITE_OPENROUTER_API_KEY) {
+        if (!getOpenRouterKey(env)) {
           return jsonResponse({ error: 'AI service not configured' }, 500);
         }
         return await handleCareerChat(request, env);
@@ -1241,7 +1261,7 @@ export default {
       }
 
       if (path === '/analyze-assessment') {
-        if (!env.VITE_OPENROUTER_API_KEY) {
+        if (!getOpenRouterKey(env)) {
           return jsonResponse({ error: 'AI service not configured' }, 500);
         }
         return await handleAnalyzeAssessment(request, env);
@@ -1252,7 +1272,7 @@ export default {
       }
 
       if (path === '/parse-resume') {
-        if (!env.VITE_OPENROUTER_API_KEY) {
+        if (!getOpenRouterKey(env)) {
           return jsonResponse({ error: 'AI service not configured' }, 500);
         }
         return await handleParseResume(request, env);

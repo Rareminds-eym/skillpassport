@@ -1434,18 +1434,74 @@ const AssessmentTest = () => {
                 localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
                 console.log('Gemini analysis complete:', geminiResults);
 
-                // Save results to database if in database mode
-                if (useDatabase && currentAttempt?.id) {
+                // Save results to database
+                console.log('=== Database Save Debug ===');
+                console.log('useDatabase:', useDatabase);
+                console.log('currentAttempt:', currentAttempt);
+                console.log('currentAttempt?.id:', currentAttempt?.id);
+                console.log('user?.id:', user?.id);
+                
+                // Get attempt ID - either from currentAttempt or fetch the latest in-progress attempt
+                let attemptId = currentAttempt?.id;
+                
+                if (!attemptId && user?.id) {
+                    console.log('No currentAttempt, fetching latest attempt from database...');
                     try {
-                        const dbResults = await completeAssessment(geminiResults, finalTimings);
-                        console.log('Results saved to database:', dbResults);
+                        const { data: latestAttempt } = await supabase
+                            .from('personal_assessment_attempts')
+                            .select('id, stream_id, grade_level')
+                            .eq('student_id', user.id)
+                            .eq('status', 'in_progress')
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+                            .single();
+                        
+                        if (latestAttempt) {
+                            attemptId = latestAttempt.id;
+                            console.log('Found latest attempt:', attemptId);
+                        }
+                    } catch (fetchErr) {
+                        console.log('Could not fetch latest attempt:', fetchErr.message);
+                    }
+                }
+                
+                // Save to database if we have an attempt
+                if (attemptId) {
+                    try {
+                        console.log('Attempting to save results to database with attemptId:', attemptId);
+                        
+                        // If currentAttempt is null, call completeAttempt directly
+                        if (currentAttempt?.id) {
+                            const dbResults = await completeAssessment(geminiResults, finalTimings);
+                            console.log('✅ Results saved to database via hook:', dbResults);
+                        } else {
+                            // Direct call to assessmentService
+                            const dbResults = await assessmentService.completeAttempt(
+                                attemptId,
+                                user.id,
+                                studentStream,
+                                gradeLevel || 'after12',
+                                geminiResults,
+                                finalTimings
+                            );
+                            console.log('✅ Results saved to database directly:', dbResults);
+                        }
+                        
                         // Navigate with attemptId for database retrieval
-                        navigate(`/student/assessment/result?attemptId=${currentAttempt.id}`);
+                        navigate(`/student/assessment/result?attemptId=${attemptId}`);
                     } catch (dbErr) {
-                        console.error('Failed to save to database, results still in localStorage:', dbErr);
+                        console.error('❌ Failed to save to database:', dbErr);
+                        console.error('Error details:', {
+                            message: dbErr.message,
+                            code: dbErr.code,
+                            details: dbErr.details,
+                            hint: dbErr.hint
+                        });
+                        // Still navigate to results (localStorage has the data)
                         navigate('/student/assessment/result');
                     }
                 } else {
+                    console.log('No attemptId available, navigating without database save');
                     navigate('/student/assessment/result');
                 }
             } else {
