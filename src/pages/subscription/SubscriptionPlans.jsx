@@ -1,4 +1,4 @@
-import { Calendar, Check, Clock, Shield, TrendingUp } from 'lucide-react';
+import { Calendar, Check, ChevronDown, ChevronUp, Clock, Shield, TrendingUp, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -24,15 +24,183 @@ import { calculateDaysRemaining, getStatusColor, isActiveOrPaused } from '../../
 
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 
+// Feature comparison data based on the commercial spec
+const FEATURE_COMPARISON = {
+  'Capacity': {
+    'Learners': ['Up to 1,000', 'Up to 2,000', 'Up to 5,000', 'Unlimited / Contracted'],
+    'Admins / Managers': ['2 admins', 'Up to 5', 'Up to 10', 'Unlimited roles'],
+  },
+  'Branding & Experience': {
+    'Branding': ['Logo + primary color', 'Advanced branding', 'Advanced + sub-portals', 'Multi-brand, multi-portal'],
+    'Skill Catalog': ['Standard catalog', 'Standard + curated', 'Role-based, custom taxonomy', 'Custom enterprise framework'],
+    'Learning Pathways': ['Pre-built pathways', 'Custom pathway builder', 'Rules & prerequisites', 'Advanced pathways & automation'],
+  },
+  'Program Management': {
+    'Cohort Management': [false, true, 'Multi-department', 'Multi-LOB'],
+    'Content Uploads': ['Shared storage', 'Expanded storage', 'Up to 5 TB', 'Unlimited / negotiated'],
+    'Assessments': ['Quizzes', 'Question banks, graded', 'Rubrics + project eval', 'Advanced assessments'],
+    'Certificates': ['Standard completion', 'Custom + expiry', 'Custom + verification', 'Verified credentials & badges'],
+  },
+  'Analytics & Insights': {
+    'Learner Analytics': ['Basic dashboards', 'Cohort & skill-gap', 'Heatmaps + benchmarks', 'Advanced benchmarking'],
+    'Data Export': [false, 'CSV exports', 'BI-ready exports', 'BI connectors'],
+  },
+  'Engagement & Automation': {
+    'Notifications & Nudges': ['Basic reminders', 'Campaigns & nudges', 'Automation + smart', 'Intelligent automation'],
+  },
+  'Integrations & Extensibility': {
+    'SSO (SAML / OIDC)': [false, 'Add-on', true, true],
+    'User Provisioning (SCIM)': [false, false, 'Included / Add-on', true],
+    'API & Webhooks': [false, 'Limited / Add-on', 'Full API + webhooks', 'Full access'],
+    'LMS / HR Integrations': [false, 'Lightweight', 'Standard HRIS / LMS', 'Full integrations'],
+  },
+  'Security & Compliance': {
+    'Audit Logs & Retention': [false, false, true, true],
+    'Data Residency / DPA': [false, false, 'DPA support', 'Contractual / regional'],
+  },
+  'Support & Success': {
+    'Support': ['Email (business hrs)', 'Priority + onboarding', 'Dedicated, SLA 24×5', '24/7 + SLA'],
+    'Customer Success Manager': [false, false, 'Named CSM', 'Named CSM'],
+    'Implementation Services': [false, false, 'Included', 'Included / Optional'],
+  },
+};
+
+// Feature Comparison Table Component
+const FeatureComparisonTable = memo(({ plans }) => {
+  const [expandedCategories, setExpandedCategories] = useState({});
+  const [showComparison, setShowComparison] = useState(false);
+
+  const toggleCategory = (category) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  };
+
+  const renderValue = (value) => {
+    if (value === true) {
+      return <Check className="h-5 w-5 text-green-500 mx-auto" />;
+    }
+    if (value === false) {
+      return <X className="h-5 w-5 text-gray-300 mx-auto" />;
+    }
+    return <span className="text-xs text-gray-700">{value}</span>;
+  };
+
+  if (!showComparison) {
+    return (
+      <div className="mt-12 text-center">
+        <button
+          onClick={() => setShowComparison(true)}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-700 font-medium hover:border-blue-300 hover:bg-blue-50 transition-all"
+        >
+          <ChevronDown className="h-5 w-5" />
+          View Detailed Feature Comparison
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-12">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Detailed Feature Comparison</h2>
+        <button
+          onClick={() => setShowComparison(false)}
+          className="text-gray-500 hover:text-gray-700 flex items-center gap-1 text-sm"
+        >
+          <ChevronUp className="h-4 w-4" />
+          Hide
+        </button>
+      </div>
+      
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        {/* Header */}
+        <div className="grid grid-cols-5 bg-gray-50 border-b">
+          <div className="p-4 font-semibold text-gray-700">Feature</div>
+          {plans.map((plan) => (
+            <div key={plan.id} className="p-4 text-center">
+              <div className="font-bold text-gray-900">{plan.name}</div>
+              <div className="text-xs text-gray-500">{plan.tagline}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Categories */}
+        {Object.entries(FEATURE_COMPARISON).map(([category, features]) => (
+          <div key={category} className="border-b last:border-b-0">
+            {/* Category Header */}
+            <button
+              onClick={() => toggleCategory(category)}
+              className="w-full grid grid-cols-5 bg-gray-100 hover:bg-gray-150 transition-colors"
+            >
+              <div className="col-span-5 p-3 flex items-center gap-2 text-left">
+                {expandedCategories[category] ? (
+                  <ChevronUp className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                )}
+                <span className="font-semibold text-gray-800 text-sm">{category}</span>
+              </div>
+            </button>
+
+            {/* Features */}
+            {expandedCategories[category] && (
+              <div>
+                {Object.entries(features).map(([feature, values]) => (
+                  <div key={feature} className="grid grid-cols-5 border-t border-gray-100 hover:bg-gray-50">
+                    <div className="p-3 text-sm text-gray-600">{feature}</div>
+                    {values.map((value, index) => (
+                      <div key={index} className="p-3 text-center flex items-center justify-center">
+                        {renderValue(value)}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Positioning Summary */}
+      <div className="mt-8 grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+          <h4 className="font-bold text-blue-900 mb-1">Basic</h4>
+          <p className="text-sm text-blue-700">Validate learning outcomes with minimal setup.</p>
+        </div>
+        <div className="bg-green-50 rounded-lg p-4 border border-green-100">
+          <h4 className="font-bold text-green-900 mb-1">Professional</h4>
+          <p className="text-sm text-green-700">Actively manage cohorts, skills, and engagement.</p>
+        </div>
+        <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
+          <h4 className="font-bold text-purple-900 mb-1">Enterprise</h4>
+          <p className="text-sm text-purple-700">Govern learning at scale with automation and compliance.</p>
+        </div>
+        <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
+          <h4 className="font-bold text-indigo-900 mb-1">Enterprise Ecosystem</h4>
+          <p className="text-sm text-indigo-700">Power extended learning across organizations and partners.</p>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+FeatureComparisonTable.displayName = 'FeatureComparisonTable';
+
 // Memoized PlanCard component
 const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRemaining, allPlans }) => {
+  const [showAllFeatures, setShowAllFeatures] = useState(false);
   const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
   const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
   const isContactSales = plan.contactSales;
+  
+  const displayedFeatures = showAllFeatures ? plan.features : plan.features.slice(0, 8);
+  const hasMoreFeatures = plan.features.length > 8;
 
   return (
     <div
-      className={`relative rounded-2xl bg-white p-8 shadow-lg flex flex-col transition-all ${
+      className={`relative rounded-2xl bg-white p-6 shadow-lg flex flex-col transition-all h-full ${
         isCurrentPlan ? 'ring-2 ring-green-500 shadow-xl' : plan.recommended ? 'ring-2 ring-blue-600' : ''
       }`}
     >
@@ -55,22 +223,22 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
         </div>
       )}
 
-      <div className="mb-6">
-        <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
+      <div className="mb-4">
+        <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
         {plan.tagline && (
-          <p className="text-sm text-gray-500 mt-1">{plan.tagline}</p>
+          <p className="text-sm text-blue-600 font-medium mt-1">{plan.tagline}</p>
         )}
-        <div className="mt-4 flex items-baseline">
+        <div className="mt-3 flex items-baseline">
           {isContactSales ? (
-            <span className="text-2xl font-bold tracking-tight text-gray-900">
+            <span className="text-xl font-bold tracking-tight text-gray-900">
               Contact Sales
             </span>
           ) : (
             <>
-              <span className="text-4xl font-bold tracking-tight text-gray-900">
+              <span className="text-3xl font-bold tracking-tight text-gray-900">
                 ₹{plan.price}
               </span>
-              <span className="ml-1 text-xl font-semibold text-gray-600">
+              <span className="ml-1 text-lg font-semibold text-gray-500">
                 /{plan.duration}
               </span>
             </>
@@ -79,14 +247,14 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
 
         {/* Positioning summary */}
         {plan.positioning && (
-          <p className="mt-3 text-sm text-gray-600 italic">
+          <p className="mt-2 text-xs text-gray-500 italic leading-relaxed">
             {plan.positioning}
           </p>
         )}
 
         {/* Days Remaining for Current Plan */}
         {isCurrentPlan && daysRemaining !== null && (
-          <div className="mt-3 flex items-center gap-2 text-sm">
+          <div className="mt-2 flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-green-600" />
             <span className={`font-medium ${
               daysRemaining <= 7 ? 'text-red-600' : daysRemaining <= 15 ? 'text-orange-600' : 'text-green-600'
@@ -97,56 +265,100 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
         )}
       </div>
 
-      <ul className="mb-8 space-y-4 flex-1 max-h-80 overflow-y-auto">
-        {plan.features.slice(0, 10).map((feature, index) => (
-          <li key={index} className="flex items-start">
-            <Check className="h-6 w-6 text-green-500 flex-shrink-0" />
-            <span className="ml-3 text-gray-600 text-sm">{feature}</span>
-          </li>
-        ))}
-        {plan.features.length > 10 && (
-          <li className="text-sm text-blue-600 font-medium ml-9">
-            +{plan.features.length - 10} more features
-          </li>
+      {/* Capacity Limits */}
+      {plan.limits && (
+        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+          <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Capacity</h4>
+          <div className="space-y-1 text-xs text-gray-600">
+            <div className="flex justify-between">
+              <span>Learners:</span>
+              <span className="font-medium text-gray-900">
+                {typeof plan.limits.learners === 'number' 
+                  ? `Up to ${plan.limits.learners.toLocaleString()}` 
+                  : plan.limits.learners}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Admins:</span>
+              <span className="font-medium text-gray-900">
+                {typeof plan.limits.admins === 'number' 
+                  ? `${plan.limits.admins}` 
+                  : plan.limits.admins}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Storage:</span>
+              <span className="font-medium text-gray-900 text-right max-w-[120px] truncate" title={plan.limits.storage}>
+                {plan.limits.storage}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Features List */}
+      <div className="flex-1 mb-4">
+        <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Features</h4>
+        <ul className="space-y-2">
+          {displayedFeatures.map((feature, index) => (
+            <li key={index} className="flex items-start">
+              <Check className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+              <span className="ml-2 text-gray-600 text-xs leading-relaxed">{feature}</span>
+            </li>
+          ))}
+        </ul>
+        {hasMoreFeatures && (
+          <button
+            onClick={() => setShowAllFeatures(!showAllFeatures)}
+            className="mt-2 text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+          >
+            {showAllFeatures ? (
+              <>Show less</>
+            ) : (
+              <>+{plan.features.length - 8} more features</>
+            )}
+          </button>
         )}
-      </ul>
+      </div>
 
       {/* Action Buttons */}
-      {isCurrentPlan ? (
-        <div className="space-y-3">
-          <div className="w-full py-3 px-6 rounded-lg font-medium bg-green-50 border-2 border-green-200 text-green-800 text-center flex items-center justify-center gap-2">
-            <Check className="h-5 w-5" />
-            Your Current Plan
+      <div className="mt-auto">
+        {isCurrentPlan ? (
+          <div className="space-y-2">
+            <div className="w-full py-2.5 px-4 rounded-lg font-medium bg-green-50 border-2 border-green-200 text-green-800 text-center flex items-center justify-center gap-2 text-sm">
+              <Check className="h-4 w-4" />
+              Your Current Plan
+            </div>
+            <button
+              onClick={() => onSelect(plan)}
+              className="w-full py-2.5 px-4 rounded-lg font-medium border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all text-sm"
+            >
+              Manage Subscription
+            </button>
           </div>
+        ) : isContactSales ? (
+          <a
+            href="mailto:sales@skillpassport.in?subject=Enterprise%20Ecosystem%20Plan%20Inquiry"
+            className="w-full py-2.5 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 shadow-md text-sm"
+          >
+            Contact Sales
+          </a>
+        ) : (
           <button
             onClick={() => onSelect(plan)}
-            className="w-full py-3 px-6 rounded-lg font-medium border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all"
+            className={`w-full py-2.5 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 text-sm ${
+              isUpgrade
+                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-md'
+                : plan.recommended
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300'
+            }`}
           >
-            Manage Subscription
+            {isUpgrade && <TrendingUp className="h-4 w-4" />}
+            {subscriptionData ? (isUpgrade ? 'Upgrade Plan' : isDowngrade ? 'Switch to This Plan' : 'Select Plan') : 'Select Plan'}
           </button>
-        </div>
-      ) : isContactSales ? (
-        <a
-          href="mailto:sales@skillpassport.in?subject=Enterprise%20Ecosystem%20Plan%20Inquiry"
-          className="w-full py-3 px-6 rounded-lg font-medium transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 shadow-md"
-        >
-          Contact Sales
-        </a>
-      ) : (
-        <button
-          onClick={() => onSelect(plan)}
-          className={`w-full py-3 px-6 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-            isUpgrade
-              ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-md'
-              : plan.recommended
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300'
-          }`}
-        >
-          {isUpgrade && <TrendingUp className="h-5 w-5" />}
-          {subscriptionData ? (isUpgrade ? 'Upgrade Plan' : isDowngrade ? 'Switch to This Plan' : 'Select Plan') : 'Select Plan'}
-        </button>
-      )}
+        )}
+      </div>
     </div>
   );
 });
@@ -520,6 +732,9 @@ function SubscriptionPlans() {
                 />
               ))}
             </div>
+
+            {/* Feature Comparison Table */}
+            <FeatureComparisonTable plans={plans} />
       </div>
 
       {/* Signup Modal */}
