@@ -1,20 +1,11 @@
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { createRequire } from 'module';
 import { defineConfig } from 'vite';
 
-const require = createRequire(import.meta.url);
-
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   base: '/',
-  plugins: [
-    react({
-      babel: {
-        plugins: mode === 'development' ? [[require.resolve('@locator/babel-jsx'), {}]] : [],
-      },
-    }),
-  ],
+  plugins: [react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -54,4 +45,4 @@ export default defineConfig(({ mode }) => ({
       port: 3000
     }
   },
-}));
+});
