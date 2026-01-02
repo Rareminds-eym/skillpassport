@@ -1834,8 +1834,10 @@ const AssessmentTest = () => {
                                     </div>
                                 </div>
                             </button>
+                            )}
 
                             {/* College */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || isCollegeStudent) && (
                             <button
                                 onClick={() => handleGradeSelect('college')}
                                 className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
