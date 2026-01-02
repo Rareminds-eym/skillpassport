@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 import { useSupabaseAuth } from '../../context/SupabaseAuthContext';
 import { getActiveSubscription } from '../../services/Subscriptions/subscriptionService';
@@ -18,40 +18,17 @@ const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
 const formatSubscriptionData = (data) => {
   if (!data) return null;
 
+  // Map plan_type to plan ID - now matches database plan_code
   const planTypeMap = {
     'basic': 'basic',
-    'professional': 'pro',
-    'enterprise': 'enterprise'
-  };
-
-  const planFeatures = {
-    basic: [
-      'Access to basic skill assessments',
-      'Limited profile visibility',
-      'Basic analytics',
-      'Email support'
-    ],
-    pro: [
-      'All Basic features',
-      'Advanced skill assessments',
-      'Priority profile visibility',
-      'Detailed analytics',
-      'Priority support',
-      'Personalized recommendations'
-    ],
-    enterprise: [
-      'All Professional features',
-      'Custom skill assessments',
-      'Premium profile visibility',
-      'Advanced analytics',
-      '24/7 Premium support',
-      'Custom integrations',
-      'Dedicated account manager'
-    ]
+    'professional': 'professional',
+    'pro': 'professional',
+    'enterprise': 'enterprise',
+    'ecosystem': 'ecosystem'
   };
 
   const planType = data.plan_type?.toLowerCase() || 'basic';
-  const planId = planTypeMap[planType] || 'basic';
+  const planId = planTypeMap[planType] || planType;
 
   return {
     id: data.id, // Subscription ID for cancellation
@@ -59,7 +36,7 @@ const formatSubscriptionData = (data) => {
     status: data.status,
     startDate: data.subscription_start_date,
     endDate: data.subscription_end_date,
-    features: planFeatures[planId] || [],
+    features: data.features || [], // Features will be fetched from plans API
     autoRenew: data.auto_renew !== false,
     nextBillingDate: data.subscription_end_date,
     paymentStatus: data.status === 'active' ? 'success' : 'pending',

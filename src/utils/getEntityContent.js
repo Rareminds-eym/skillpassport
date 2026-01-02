@@ -1,4 +1,37 @@
-import { getSubscriptionPlans, PLAN_IDS } from '../config/subscriptionPlans';
+import { getSubscriptionPlans, PLAN_IDS, getSimplifiedPlanFeatures } from '../config/subscriptionPlans';
+
+// Cache for database plans
+let cachedDbPlans = null;
+let cacheTimestamp = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Set database plans from hook (called by components that fetch from Supabase)
+ * @param {Array} plans - Plans fetched from database
+ */
+export function setDatabasePlans(plans) {
+  cachedDbPlans = plans;
+  cacheTimestamp = Date.now();
+}
+
+/**
+ * Get cached database plans if available and not expired
+ * @returns {Array|null} Cached plans or null
+ */
+export function getCachedDatabasePlans() {
+  if (cachedDbPlans && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURATION)) {
+    return cachedDbPlans;
+  }
+  return null;
+}
+
+/**
+ * Clear the plans cache
+ */
+export function clearPlansCache() {
+  cachedDbPlans = null;
+  cacheTimestamp = null;
+}
 
 /**
  * Parse student type to extract entity and role
@@ -187,10 +220,22 @@ export function getModalContent(studentType) {
 
 /**
  * Get plans with role-specific features
- * Uses the new 4-tier commercially strong subscription model
+ * Uses database plans if available, falls back to config
  */
 function getPlansForRole(role, entity) {
-    // Get base plans from the new subscription config
+    // Check for cached database plans first
+    const dbPlans = getCachedDatabasePlans();
+    
+    if (dbPlans && dbPlans.length > 0) {
+        // Use database plans with role-specific feature overrides
+        const roleFeatureOverrides = getRoleSpecificFeatures(role, entity);
+        return dbPlans.map(plan => ({
+            ...plan,
+            features: roleFeatureOverrides[plan.id] || plan.features
+        }));
+    }
+    
+    // Fallback to hardcoded config plans
     const basePlans = getSubscriptionPlans();
     
     // Role-specific feature overrides for display purposes

@@ -19,7 +19,8 @@ import UniversityStudentLoginModal from '../../components/Subscription/Universit
 import UniversityStudentSignupModal from '../../components/Subscription/UniversityStudentSignupModal';
 import { PAYMENT_CONFIG, isTestPricing } from '../../config/payment';
 import useAuth from '../../hooks/useAuth';
-import { getEntityContent } from '../../utils/getEntityContent';
+import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
+import { getEntityContent, setDatabasePlans, parseStudentType } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, getStatusColor, isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
@@ -159,15 +160,46 @@ function SubscriptionPlans() {
   const [planToSelect, setPlanToSelect] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { type, mode } = useParams();
+  const { type } = useParams();
   
   // Use new authentication hook
-  const { isAuthenticated, user, role, loading: authLoading } = useAuth();
+  const { isAuthenticated, user, loading: authLoading } = useAuth();
   
-  // Get dynamic content based on entity type
-  const { title, subtitle, heroMessage, plans, ctaText, entity, role: pageRole } = useMemo(() => {
+  // Parse entity and role from type
+  const { entity, role: pageRole } = useMemo(() => parseStudentType(type || 'student'), [type]);
+  
+  // Fetch plans from database
+  const { 
+    plans: dbPlans, 
+    loading: plansLoading, 
+    error: plansError 
+  } = useSubscriptionPlansData({
+    businessType: 'b2b',
+    entityType: entity,
+    roleType: pageRole
+  });
+  
+  // Cache database plans for getEntityContent fallback
+  useEffect(() => {
+    if (dbPlans && dbPlans.length > 0) {
+      setDatabasePlans(dbPlans);
+    }
+  }, [dbPlans]);
+  
+  // Get dynamic content based on entity type (uses cached db plans if available)
+  const { title, subtitle, heroMessage, plans: configPlans, ctaText } = useMemo(() => {
     return getEntityContent(type || 'student');
-  }, [type]);
+  }, [type, dbPlans]); // Re-compute when dbPlans change
+  
+  // Use database plans if available, otherwise fall back to config plans
+  const plans = useMemo(() => {
+    if (dbPlans && dbPlans.length > 0) {
+      // Apply role-specific features from getEntityContent
+      const { plans: plansWithFeatures } = getEntityContent(type || 'student');
+      return plansWithFeatures;
+    }
+    return configPlans;
+  }, [dbPlans, configPlans, type]);
 
   const studentType = type || 'student';
 
@@ -194,10 +226,10 @@ function SubscriptionPlans() {
   
   const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionQuery();
 
-  // Combined loading state - wait for both auth and subscription data
+  // Combined loading state - wait for auth, subscription, and plans data
   const isFullyLoaded = useMemo(
-    () => !authLoading && !subscriptionLoading,
-    [authLoading, subscriptionLoading]
+    () => !authLoading && !subscriptionLoading && !plansLoading,
+    [authLoading, subscriptionLoading, plansLoading]
   );
 
   // Memoize subscription status checks for better performance
@@ -376,6 +408,15 @@ function SubscriptionPlans() {
                 Retry
               </button>
             </div>
+          </div>
+        )}
+        
+        {/* Error banner for plans fetch failures */}
+        {plansError && (
+          <div className="mb-6 bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
+            <p className="text-yellow-800 font-medium">
+              Using cached plan data. Some information may be outdated.
+            </p>
           </div>
         )}
         {/* Enhanced subscription status banner - Show only for authenticated users with active or paused subscription */}
