@@ -884,7 +884,7 @@ const AssessmentResult = () => {
                 {/* Report Container */}
                 <div className="max-w-6xl mx-auto print:max-w-none print-container">
                     {/* Header Section */}
-                    <ReportHeader studentInfo={studentInfo} />
+                    <ReportHeader studentInfo={studentInfo} gradeLevel={gradeLevel} />
 
                     {/* Overall Summary Banner */}
                     <div className="bg-white rounded-xl shadow-lg overflow-hidden my-8">
@@ -1095,16 +1095,43 @@ const AssessmentResult = () => {
                         </div>
                     )}
 
-                    {/* Overall Summary Banner */}
-                    <div className="bg-slate-800 rounded-2xl p-6 text-white">
-                        <div className="flex items-start gap-3">
-                            <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                                <Rocket className="w-6 h-6" />
+                    {/* Career Recommendations Section - Matching ReportHeader styling */}
+                    <div className="mb-8">
+                        {/* Main Card - Light Glass */}
+                        <div className="relative w-full rounded-xl overflow-hidden bg-white backdrop-blur-xl shadow-lg">
+                            {/* Subtle gradient overlay */}
+                            <div 
+                                className="absolute inset-0 pointer-events-none"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.03), transparent 50%, rgba(147, 197, 253, 0.03))'
+                                }}
+                            />
+
+                            {/* Header Section */}
+                            <div className="relative p-6 md:p-8 bg-gradient-to-r from-slate-800 to-slate-700">
+                                <div>
+                                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
+                                        Your Career Recommendations
+                                    </h2>
+                                    {/* Animated Gradient Underline */}
+                                    <div className="relative h-[2px] w-40 md:w-56 mb-2 rounded-full overflow-hidden">
+                                        <div 
+                                            className="absolute inset-0 rounded-full"
+                                            style={{
+                                                background: 'linear-gradient(90deg, #1E3A8A, #3B82F6, #60A5FA, #93C5FD, #BFDBFE)',
+                                                backgroundSize: '200% 100%',
+                                                animation: 'shimmer 3s linear infinite'
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-slate-300 text-sm md:text-base">
+                                        Personalized job matches based on your assessment
+                                    </p>
+                                </div>
                             </div>
 
                             {/* Career Cards Container */}
-                            <div className="relative p-6 md:p-8 lg:p-10 bg-gray-50">
-                                {/* Career Cards */}
+                            <div className="relative px-6 md:px-8 py-6 bg-gray-50">
                                 <CareerCard
                                     cluster={careerFit?.clusters?.find(c => c.fit === 'High')}
                                     index={0}

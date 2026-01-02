@@ -3,14 +3,46 @@
  * Clean, modern glass effect with blue accents
  */
 
-const ReportHeader = ({ studentInfo }) => {
+const ReportHeader = ({ studentInfo, gradeLevel }) => {
+    // Debug
+    console.log('ReportHeader gradeLevel:', gradeLevel);
+    console.log('ReportHeader studentInfo:', studentInfo);
+    
+    // Determine the label and value for the grade/course field based on grade level
+    const getGradeCourseField = () => {
+        const level = gradeLevel?.toLowerCase();
+        if (level === 'middle' || level === 'high' || level === 'middleschool' || level === 'highschool') {
+            return { label: 'Grade', value: studentInfo.grade || '—' };
+        } else if (level === 'after12' || level === 'after12th' || level === '12th') {
+            return { label: 'Grade', value: studentInfo.grade || '12th' };
+        } else if (level === 'college' || level === 'university') {
+            return { label: 'Course', value: studentInfo.courseName || '—' };
+        }
+        // Default fallback
+        return { label: 'Grade', value: studentInfo.grade || '—' };
+    };
+
+    // Determine the institution label based on grade level
+    const getInstitutionLabel = () => {
+        const level = gradeLevel?.toLowerCase();
+        if (level === 'middle' || level === 'high' || level === 'middleschool' || level === 'highschool') {
+            return 'School';
+        } else if (level === 'after12' || level === 'after12th' || level === '12th' || level === 'college' || level === 'university') {
+            return 'College';
+        }
+        return 'School'; // Default to School instead of Institution
+    };
+
+    const gradeCourseField = getGradeCourseField();
+    const institutionLabel = getInstitutionLabel();
+
     const infoItems = [
         { label: 'Student Name', value: studentInfo.name },
-        { label: 'Register No.', value: studentInfo.regNo },
-        { label: 'Programme/Stream', value: studentInfo.stream },
-        { label: 'College', value: studentInfo.college, truncate: true },
+        { label: 'Registration No.', value: studentInfo.regNo },
+        { label: 'Programme/Stream', value: studentInfo.stream || studentInfo.branchField || '—' },
+        { label: gradeCourseField.label, value: gradeCourseField.value },
+        { label: institutionLabel, value: studentInfo.college, truncate: true },
         { label: 'Assessment Date', value: new Date().toLocaleDateString() },
-        { label: 'Assessor', value: 'SkillPassport AI' },
     ];
 
     return (
@@ -57,17 +89,17 @@ const ReportHeader = ({ studentInfo }) => {
                 </div>
 
                 {/* Info Cards Grid */}
-                <div className="relative px-12 md:px-8 py-6 bg-gray-50">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-8 ">
+                <div className="relative px-6 md:px-8 py-6 bg-gray-50">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
                         {infoItems.map((item, index) => (
                             <div
                                 key={index}
-                                className="group relative p-4 rounded-lg bg-white border border-gray-200 shadow-sm transition-all duration-300 hover:shadow-md"
+                                className="group relative p-4 rounded-lg bg-white border border-gray-200 shadow-sm transition-all duration-300 hover:shadow-md space-y-0.5"
                             >
-                                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                                <p className="text-sm text-blue-600 font-medium mb-1.5">
                                     {item.label}
                                 </p>
-                                <p className={`font-semibold text-gray-800 text-sm md:text-base ${item.truncate ? 'truncate max-w-[180px]' : ''}`}>
+                                <p className={`font-medium text-slate-900 text-base md:text-lg ${item.truncate ? 'line-clamp-2' : ''}`}>
                                     {item.value}
                                 </p>
                             </div>
