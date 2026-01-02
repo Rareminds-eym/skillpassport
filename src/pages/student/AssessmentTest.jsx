@@ -784,6 +784,7 @@ const AssessmentTest = () => {
             instruction: "Choose the best answer for each question."
         }
         ];
+        }
     }, [dbQuestions, studentStream, gradeLevel, aiQuestions, aiQuestionsLoading]);
 
     // Stream categories for After 12th
@@ -829,9 +830,6 @@ const AssessmentTest = () => {
         { id: 'dm', label: 'BBA Digital Marketing' },
         { id: 'animation', label: 'B.Sc Animation' }
     ];
-
-    // Select appropriate streams based on grade level
-    const streams = gradeLevel === 'after12' ? after12Streams : collegeStreams;
 
     // Calculate progress
     const currentSection = sections[currentSectionIndex];
@@ -1836,8 +1834,10 @@ const AssessmentTest = () => {
                                     </div>
                                 </div>
                             </button>
+                            )}
 
                             {/* College */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || isCollegeStudent) && (
                             <button
                                 onClick={() => handleGradeSelect('college')}
                                 className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"

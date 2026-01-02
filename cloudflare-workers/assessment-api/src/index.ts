@@ -195,29 +195,30 @@ async function callOpenRouterWithRetry(
 // ============================================
 // APTITUDE QUESTION GENERATION
 // ============================================
+// Categories with specific question counts to match UI expectations (total: 50)
 const APTITUDE_CATEGORIES = [
-  { id: 'verbal', name: 'Verbal Reasoning', description: 'Language comprehension, vocabulary, analogies' },
-  { id: 'numerical', name: 'Numerical Ability', description: 'Mathematical reasoning, data interpretation' },
-  { id: 'logical', name: 'Logical Reasoning', description: 'Pattern recognition, deductive reasoning' },
-  { id: 'spatial', name: 'Spatial Reasoning', description: 'Visual-spatial relationships, mental rotation' },
-  { id: 'abstract', name: 'Abstract Reasoning', description: 'Pattern completion, sequence identification' }
+  { id: 'verbal', name: 'Verbal Reasoning', description: 'Language comprehension, vocabulary, analogies', count: 8 },
+  { id: 'numerical', name: 'Numerical Ability', description: 'Mathematical reasoning, data interpretation', count: 8 },
+  { id: 'abstract', name: 'Abstract / Logical Reasoning', description: 'Pattern recognition, deductive reasoning, sequences', count: 8 },
+  { id: 'spatial', name: 'Spatial / Mechanical Reasoning', description: 'Visual-spatial relationships, gears, rotation', count: 6 },
+  { id: 'clerical', name: 'Clerical Speed & Accuracy', description: 'String comparison, attention to detail - mark Same or Different', count: 20 }
 ];
 
 const APTITUDE_PROMPT = `You are an expert psychometric assessment creator. Generate aptitude test questions for {{STREAM_NAME}} stream career assessment.
 
-Generate {{QUESTIONS_PER_CATEGORY}} questions for EACH of these categories:
+Generate questions for these categories with EXACT counts:
 {{CATEGORIES}}
 
 IMPORTANT CONTEXT - This is for {{STREAM_NAME}} stream students:
 {{STREAM_CONTEXT}}
 
 Question Requirements:
-1. All questions must be MCQ with exactly 4 options
+1. All questions must be MCQ with exactly 4 options (except Clerical which has 2 options: "Same" or "Different")
 2. Each question must have exactly ONE correct answer
 3. Mix difficulty levels: 40% easy, 40% medium, 20% hard
 4. Questions should be culturally neutral and fair
 5. Test cognitive abilities with examples relevant to {{STREAM_NAME}} field
-6. Use scenarios, examples, and contexts from {{STREAM_NAME}} domain where possible
+6. For Clerical Speed & Accuracy: Generate string comparison questions like "AB7K9 — AB7K9" where user marks "Same" or "Different"
 
 Output Format - Respond with ONLY valid JSON:
 {
@@ -244,25 +245,25 @@ const STREAM_CONTEXTS: Record<string, { name: string; context: string }> = {
     name: 'Science',
     context: `- Verbal: Use scientific terminology, research papers context, lab reports
 - Numerical: Include physics calculations, chemistry equations, biology statistics
-- Logical: Use scientific method reasoning, hypothesis testing scenarios
-- Spatial: Include molecular structures, anatomical diagrams, physics diagrams
-- Abstract: Use patterns from nature, scientific data visualization`
+- Abstract/Logical: Use scientific method reasoning, hypothesis testing scenarios, patterns
+- Spatial/Mechanical: Include molecular structures, anatomical diagrams, physics diagrams, gears
+- Clerical: Use alphanumeric codes like lab sample IDs, chemical formulas comparison`
   },
   'commerce': {
     name: 'Commerce',
     context: `- Verbal: Use business terminology, financial reports, market analysis context
 - Numerical: Include profit/loss calculations, interest rates, accounting problems
-- Logical: Use business decision scenarios, market trend analysis
-- Spatial: Include charts, graphs, organizational structures
-- Abstract: Use patterns from financial data, economic trends`
+- Abstract/Logical: Use business decision scenarios, market trend analysis, patterns
+- Spatial/Mechanical: Include charts, graphs, organizational structures
+- Clerical: Use invoice numbers, account codes, transaction IDs comparison`
   },
   'arts': {
     name: 'Arts/Humanities',
     context: `- Verbal: Use literary terminology, historical texts, philosophical concepts
 - Numerical: Include statistics from social sciences, historical data analysis
-- Logical: Use ethical dilemmas, historical cause-effect scenarios
-- Spatial: Include art compositions, architectural layouts, map reading
-- Abstract: Use patterns from art, cultural symbols, design elements`
+- Abstract/Logical: Use ethical dilemmas, historical cause-effect scenarios, patterns
+- Spatial/Mechanical: Include art compositions, architectural layouts, map reading
+- Clerical: Use reference codes, catalog numbers, citation IDs comparison`
   }
 };
 
@@ -343,12 +344,13 @@ Required JSON structure:
 
 // ============================================
 // APTITUDE QUESTION GENERATION (Per-student with save/resume)
-// Generates 50 questions in two batches of 25 each
+// Generates 50 questions total: verbal(8) + numerical(8) + abstract(8) + spatial(6) + clerical(20)
+// Split into 2 batches to avoid token limits
 // ============================================
 async function generateAptitudeQuestions(
   env: Env, 
   streamId: string, 
-  questionsPerCategory: number = 5,
+  questionsPerCategory: number = 5, // ignored, using APTITUDE_CATEGORIES.count instead
   studentId?: string,
   attemptId?: string
 ) {
@@ -384,12 +386,14 @@ async function generateAptitudeQuestions(
     throw new Error('No API key configured (OpenRouter or Claude)');
   }
 
-  // Helper function to generate one batch
-  async function generateBatch(batchNum: number, questionsPerCat: number): Promise<any[]> {
-    const categoriesText = APTITUDE_CATEGORIES.map(c => `- ${c.name}: ${c.description}`).join('\n');
-    const streamContext = STREAM_CONTEXTS[streamId] || STREAM_CONTEXTS['science'];
+  const streamContext = STREAM_CONTEXTS[streamId] || STREAM_CONTEXTS['science'];
+
+  // Helper function to generate questions for specific categories
+  async function generateBatch(batchNum: number, categories: typeof APTITUDE_CATEGORIES): Promise<any[]> {
+    const categoriesText = categories.map(c => `- ${c.name} (${c.count} questions): ${c.description}`).join('\n');
+    const totalQuestions = categories.reduce((sum, c) => sum + c.count, 0);
+    
     const prompt = APTITUDE_PROMPT
-      .replace(/\{\{QUESTIONS_PER_CATEGORY\}\}/g, String(questionsPerCat))
       .replace(/\{\{CATEGORIES\}\}/g, categoriesText)
       .replace(/\{\{STREAM_NAME\}\}/g, streamContext.name)
       .replace(/\{\{STREAM_CONTEXT\}\}/g, streamContext.context);
@@ -398,7 +402,7 @@ async function generateAptitudeQuestions(
     
     // Try Claude first, fallback to OpenRouter with retry
     if (claudeKey) {
-      console.log(`🔑 Batch ${batchNum}: Using Claude API`);
+      console.log(`🔑 Batch ${batchNum}: Using Claude API for ${totalQuestions} questions`);
       try {
         const response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -409,9 +413,9 @@ async function generateAptitudeQuestions(
           },
           body: JSON.stringify({
             model: 'claude-3-haiku-20240307',
-            max_tokens: 4096,
+            max_tokens: 6000,
             temperature: 0.7 + (batchNum * 0.05),
-            system: 'You are an expert psychometric assessment creator. Generate ONLY valid JSON.',
+            system: `You are an expert psychometric assessment creator. Generate EXACTLY ${totalQuestions} questions total. Generate ONLY valid JSON.`,
             messages: [{ role: 'user', content: prompt }]
           })
         });
@@ -427,7 +431,7 @@ async function generateAptitudeQuestions(
         if (openRouterKey) {
           console.log(`🔑 Batch ${batchNum}: Claude failed, trying OpenRouter with retry`);
           jsonText = await callOpenRouterWithRetry(openRouterKey, [
-            { role: 'system', content: 'You are an expert psychometric assessment creator. Generate ONLY valid JSON.' },
+            { role: 'system', content: `You are an expert psychometric assessment creator. Generate EXACTLY ${totalQuestions} questions total. Generate ONLY valid JSON.` },
             { role: 'user', content: prompt }
           ]);
         } else {
@@ -435,9 +439,9 @@ async function generateAptitudeQuestions(
         }
       }
     } else if (openRouterKey) {
-      console.log(`🔑 Batch ${batchNum}: Using OpenRouter with retry`);
+      console.log(`🔑 Batch ${batchNum}: Using OpenRouter with retry for ${totalQuestions} questions`);
       jsonText = await callOpenRouterWithRetry(openRouterKey, [
-        { role: 'system', content: 'You are an expert psychometric assessment creator. Generate ONLY valid JSON.' },
+        { role: 'system', content: `You are an expert psychometric assessment creator. Generate EXACTLY ${totalQuestions} questions total. Generate ONLY valid JSON.` },
         { role: 'user', content: prompt }
       ]);
     } else {
@@ -449,25 +453,41 @@ async function generateAptitudeQuestions(
     return result.questions || [];
   }
 
-  // Generate two batches of 25 questions each (5 per category × 5 categories = 25)
-  console.log('📦 Generating batch 1 (25 questions)...');
-  const batch1 = await generateBatch(1, 5);
+  // Batch 1: verbal(8) + numerical(8) + abstract(8) = 24 questions
+  const batch1Categories = APTITUDE_CATEGORIES.filter(c => ['verbal', 'numerical', 'abstract'].includes(c.id));
+  console.log('📦 Generating batch 1 (verbal + numerical + abstract = 24 questions)...');
+  const batch1 = await generateBatch(1, batch1Categories);
   console.log(`✅ Batch 1 complete: ${batch1.length} questions`);
 
   // Wait 3 seconds between batches to avoid rate limits
   console.log('⏳ Waiting 3s before batch 2...');
   await delay(3000);
 
-  console.log('📦 Generating batch 2 (25 questions)...');
-  const batch2 = await generateBatch(2, 5);
+  // Batch 2: spatial(6) + clerical(20) = 26 questions
+  const batch2Categories = APTITUDE_CATEGORIES.filter(c => ['spatial', 'clerical'].includes(c.id));
+  console.log('📦 Generating batch 2 (spatial + clerical = 26 questions)...');
+  const batch2 = await generateBatch(2, batch2Categories);
   console.log(`✅ Batch 2 complete: ${batch2.length} questions`);
 
-  // Combine batches and assign UUIDs
-  const allQuestions = [...batch1, ...batch2].map((q: any, idx: number) => ({
-    ...q,
-    id: generateUUID(),
-    originalIndex: idx + 1
-  }));
+  // Combine batches and assign UUIDs + module info
+  const allQuestions = [...batch1, ...batch2].map((q: any, idx: number) => {
+    // Map category to moduleTitle for UI display
+    const categoryToModule: Record<string, string> = {
+      'verbal': 'A) Verbal Reasoning',
+      'numerical': 'B) Numerical Ability',
+      'abstract': 'C) Abstract / Logical Reasoning',
+      'spatial': 'D) Spatial / Mechanical Reasoning',
+      'clerical': 'E) Clerical Speed & Accuracy'
+    };
+    
+    return {
+      ...q,
+      id: generateUUID(),
+      originalIndex: idx + 1,
+      subtype: q.category,
+      moduleTitle: categoryToModule[q.category] || q.category
+    };
+  });
 
   console.log(`✅ Total aptitude questions generated: ${allQuestions.length}`);
 

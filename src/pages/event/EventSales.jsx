@@ -26,7 +26,6 @@ import {
 } from 'lucide-react';
 import { memo, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { isTestPricing } from '../../config/payment';
 import Header from '../../layouts/Header';
 import { supabase } from '../../lib/supabaseClient';
 import paymentsApiService from '../../services/paymentsApiService';
@@ -1039,12 +1038,6 @@ function EventSales() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       <StepProgress currentStep={step} steps={steps} />
-
-      {isTestPricing() && (
-        <div className="max-w-3xl mx-auto px-4 mb-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center text-amber-700 text-sm">🧪 Test Mode</div>
-        </div>
-      )}
 
       <div className="max-w-3xl mx-auto px-4 pb-32">
         {/* Step 1: Role Selection */}
