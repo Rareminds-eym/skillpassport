@@ -1047,7 +1047,7 @@ const CourseMapping: React.FC = () => {
     // ).length;
 
     return (
-        <div className="flex flex-col h-screen p-4 sm:p-6 lg:p-8">
+        <div className="min-h-full flex flex-col p-4 sm:p-6 lg:p-8">
             {/* Header */}
             <div className=" mb-2">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
