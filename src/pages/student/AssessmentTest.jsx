@@ -784,6 +784,7 @@ const AssessmentTest = () => {
             instruction: "Choose the best answer for each question."
         }
         ];
+        }
     }, [dbQuestions, studentStream, gradeLevel, aiQuestions, aiQuestionsLoading]);
 
     // Stream categories for After 12th
