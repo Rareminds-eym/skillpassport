@@ -568,16 +568,6 @@ function SubscriptionPlans() {
           ))}
         </div>
 
-        {/* Trust Indicators */}
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-gray-500 text-sm">
-          {['Secure Payments', '24/7 Support', 'Cancel Anytime'].map((item) => (
-            <div key={item} className="flex items-center gap-2">
-              <Check className="h-4 w-4 text-blue-600" />
-              <span>{item}</span>
-            </div>
-          ))}
-        </div>
-
         {/* Feature Comparison */}
         <FeatureComparisonTable plans={plans} />
 
