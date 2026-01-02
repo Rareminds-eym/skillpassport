@@ -80,6 +80,7 @@ export const usePaymentVerification = ({
         if (stored) {
           const planDetails = JSON.parse(stored);
           plan = {
+            id: planDetails.id,       // plan_id for foreign key reference
             name: planDetails.name,
             price: planDetails.price,
             duration: planDetails.duration,
