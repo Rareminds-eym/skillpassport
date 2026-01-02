@@ -17,7 +17,6 @@ import UniversityAdminLoginModal from '../../components/Subscription/UniversityA
 import UniversityAdminSignupModal from '../../components/Subscription/UniversityAdminSignupModal';
 import UniversityStudentLoginModal from '../../components/Subscription/UniversityStudentLoginModal';
 import UniversityStudentSignupModal from '../../components/Subscription/UniversityStudentSignupModal';
-import { PAYMENT_CONFIG, isTestPricing } from '../../config/payment';
 import useAuth from '../../hooks/useAuth';
 import { getEntityContent } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, getStatusColor, isActiveOrPaused } from '../../utils/subscriptionHelpers';
@@ -685,15 +684,6 @@ function SubscriptionPlans() {
                 </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Test Mode Indicator */}
-        {isTestPricing() && (
-          <div className="mb-6 bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 text-center">
-            <p className="text-yellow-800 font-semibold">
-              🧪 Test Mode: All plans are ₹1 for testing on {PAYMENT_CONFIG.HOSTNAME}
-            </p>
           </div>
         )}
 
