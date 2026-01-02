@@ -41,6 +41,18 @@ const DefaultFallback = ({ requiredPlan }) => (
   </div>
 );
 
+/**
+ * Get plan level from hierarchy array
+ * @param {string} planId - Plan ID to check
+ * @returns {number} Plan level (index in hierarchy)
+ */
+const getPlanLevel = (planId) => {
+  if (!planId) return -1;
+  const normalizedPlan = planId.toLowerCase();
+  const index = PLAN_HIERARCHY.indexOf(normalizedPlan);
+  return index >= 0 ? index : -1;
+};
+
 const SubscriptionGate = ({ 
   children, 
   fallback,
@@ -65,8 +77,8 @@ const SubscriptionGate = ({
 
   // Check plan level if specified
   if (requiredPlan && subscription) {
-    const userPlanLevel = PLAN_HIERARCHY[subscription.plan_type?.toLowerCase()] || 0;
-    const requiredPlanLevel = PLAN_HIERARCHY[requiredPlan.toLowerCase()] || 0;
+    const userPlanLevel = getPlanLevel(subscription.plan_type);
+    const requiredPlanLevel = getPlanLevel(requiredPlan);
 
     if (userPlanLevel < requiredPlanLevel) {
       return fallback || <DefaultFallback requiredPlan={requiredPlan} />;
