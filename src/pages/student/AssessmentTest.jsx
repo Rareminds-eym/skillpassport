@@ -831,9 +831,6 @@ const AssessmentTest = () => {
         { id: 'animation', label: 'B.Sc Animation' }
     ];
 
-    // Select appropriate streams based on grade level
-    const streams = gradeLevel === 'after12' ? after12Streams : collegeStreams;
-
     // Calculate progress
     const currentSection = sections[currentSectionIndex];
     const totalQuestions = sections.reduce((sum, section) => sum + section.questions.length, 0);
