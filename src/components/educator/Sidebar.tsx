@@ -19,6 +19,7 @@ import {
   ClipboardDocumentCheckIcon
   // Icons from Heroicons
 } from "@heroicons/react/24/outline";
+import { useEducatorSchool } from "../../hooks/useEducatorSchool";
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -39,6 +40,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Get educator school/college info to determine if they are a "rareminds" educator
+  const { school, college, educatorType, loading: educatorLoading } = useEducatorSchool();
+  
+  // Educator is "rareminds" if they are not associated with any school or college
+  const isRaremindsEducator = !educatorLoading && !school && !college && educatorType === null;
 
   // allow both groups open
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -57,8 +64,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     setOpenGroups((prev) => ({ ...prev, [group]: !prev[group] }));
   };
 
-  // collapsible groups
-  const navGroups = [
+  // collapsible groups - only shown for school/college educators
+  const navGroups = isRaremindsEducator ? [] : [
     {
       title: "Classroom Management",
       key: "management",
@@ -114,14 +121,27 @@ const Sidebar: React.FC<SidebarProps> = ({
   // single items before & after dropdowns
   const topItem = { name: "Dashboard", path: "/educator/dashboard", icon: HomeIcon };
   const aiCopilotItem = { name: "Teaching Intelligence", path: "/educator/ai-copilot", icon: SparklesIcon };
-  const bottomItems = [
-    { name: "Digital Portfolio", path: "/educator/digital-portfolio", icon: FolderIcon },
-    { name: "Analytics", path: "/educator/analytics", icon: ChartBarIcon },
-    { name: "Reports", path: "/educator/reports", icon: DocumentChartBarIcon },
-    { name: "Media Manager", path: "/educator/media", icon: PhotoIcon },
-    { name: "Communication", path: "/educator/communication", icon: ChatBubbleLeftRightIcon },
-    { name: "Settings", path: "/educator/settings", icon: Cog6ToothIcon },
-  ];
+  
+  // For rareminds educators: only show Courses, Dashboard, Teaching Intelligence, Digital Portfolio, Communication, Settings
+  // For school/college educators: show all items
+  const coursesItem = { name: "Courses", path: "/educator/browse-courses", icon: BookOpenIcon };
+  
+  const bottomItems = isRaremindsEducator 
+    ? [
+        // Rareminds educators only see these items
+        { name: "Digital Portfolio", path: "/educator/digital-portfolio", icon: FolderIcon },
+        { name: "Communication", path: "/educator/communication", icon: ChatBubbleLeftRightIcon },
+        { name: "Settings", path: "/educator/settings", icon: Cog6ToothIcon },
+      ]
+    : [
+        // School/College educators see all items
+        { name: "Digital Portfolio", path: "/educator/digital-portfolio", icon: FolderIcon },
+        { name: "Analytics", path: "/educator/analytics", icon: ChartBarIcon },
+        { name: "Reports", path: "/educator/reports", icon: DocumentChartBarIcon },
+        { name: "Media Manager", path: "/educator/media", icon: PhotoIcon },
+        { name: "Communication", path: "/educator/communication", icon: ChatBubbleLeftRightIcon },
+        { name: "Settings", path: "/educator/settings", icon: Cog6ToothIcon },
+      ];
 
   return (
     <aside
@@ -174,7 +194,30 @@ const Sidebar: React.FC<SidebarProps> = ({
           <span className="ml-auto text-xs font-semibold px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full flex-shrink-0">NEW</span>
         </button>
 
-        {/* 2️⃣ Dropdowns */}
+        {/* 📚 Courses - Only shown as standalone for Rareminds educators */}
+        {isRaremindsEducator && (
+          <button
+            onClick={() => handleNavigation(coursesItem.name, coursesItem.path)}
+            className={classNames(
+              location.pathname.startsWith(coursesItem.path)
+                ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
+                : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
+              "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
+            )}
+          >
+            <coursesItem.icon
+              className={classNames(
+                location.pathname.startsWith(coursesItem.path)
+                  ? "text-indigo-600"
+                  : "text-gray-400 group-hover:text-indigo-500",
+                "h-5 w-5 flex-shrink-0"
+              )}
+            />
+            <span>{coursesItem.name}</span>
+          </button>
+        )}
+
+        {/* 2️⃣ Dropdowns - Only shown for school/college educators */}
         {navGroups.map((group) => (
           <div key={group.key} className="pt-3 border-t border-gray-100">
             <button
