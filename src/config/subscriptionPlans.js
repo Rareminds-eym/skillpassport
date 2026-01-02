@@ -1,437 +1,425 @@
 /**
- * Subscription Plans Configuration
- * Commercially Strong Version with 4 Tiers
- * 
- * Tiers:
- * - Basic: Pilot & Individual Learning
- * - Professional: Team Enablement
- * - Enterprise: Governance & Scale
- * - Enterprise Ecosystem: Extended & Regulated Scale
+ * Subscription Plans Configuration - Commercially Strong Version
+ * Centralized configuration for all subscription tiers
  */
 
-import { getPlanPrice } from './payment';
-
-// Plan IDs
 export const PLAN_IDS = {
   BASIC: 'basic',
   PROFESSIONAL: 'professional',
   ENTERPRISE: 'enterprise',
-  ECOSYSTEM: 'ecosystem'
+  ECOSYSTEM: 'enterprise_ecosystem',
 };
 
-// Plan hierarchy for comparison
-export const PLAN_HIERARCHY = {
-  [PLAN_IDS.BASIC]: 1,
-  [PLAN_IDS.PROFESSIONAL]: 2,
-  [PLAN_IDS.ENTERPRISE]: 3,
-  [PLAN_IDS.ECOSYSTEM]: 4
-};
-
-// Core plan limits
-export const PLAN_LIMITS = {
-  [PLAN_IDS.BASIC]: {
-    learners: 1000,
-    admins: 2,
-    storage: 'Shared storage (documents & light media)',
-    idealFor: 'Individuals, pilots, small teams validating learning'
-  },
-  [PLAN_IDS.PROFESSIONAL]: {
-    learners: 2000,
-    admins: 5,
-    storage: 'Expanded shared storage',
-    idealFor: 'Growing teams and L&D functions running active programs'
-  },
-  [PLAN_IDS.ENTERPRISE]: {
-    learners: 5000,
-    admins: 10,
-    storage: 'Up to 5 TB (expandable)',
-    idealFor: 'Large organizations with multi-department rollout'
-  },
-  [PLAN_IDS.ECOSYSTEM]: {
-    learners: 'Unlimited / Contracted',
-    admins: 'Unlimited roles',
-    storage: 'Unlimited / negotiated',
-    idealFor: 'Large enterprises, regulated orgs, external ecosystems'
-  }
-};
-
-// Feature categories with plan availability
-export const FEATURE_CATEGORIES = {
-  brandingExperience: {
-    name: 'Branding & Experience',
-    features: {
-      branding: {
-        name: 'Branding',
-        [PLAN_IDS.BASIC]: 'Logo + primary color',
-        [PLAN_IDS.PROFESSIONAL]: 'Advanced branding',
-        [PLAN_IDS.ENTERPRISE]: 'Advanced branding + sub-portals',
-        [PLAN_IDS.ECOSYSTEM]: 'Multi-brand, multi-portal'
-      },
-      skillCatalog: {
-        name: 'Skill Catalog',
-        [PLAN_IDS.BASIC]: 'Standard catalog',
-        [PLAN_IDS.PROFESSIONAL]: 'Standard + curated',
-        [PLAN_IDS.ENTERPRISE]: 'Role-based catalog, custom taxonomy',
-        [PLAN_IDS.ECOSYSTEM]: 'Custom enterprise skill framework'
-      },
-      learningPathways: {
-        name: 'Learning Pathways',
-        [PLAN_IDS.BASIC]: 'Pre-built pathways',
-        [PLAN_IDS.PROFESSIONAL]: 'Custom pathway builder',
-        [PLAN_IDS.ENTERPRISE]: 'Rules & prerequisites',
-        [PLAN_IDS.ECOSYSTEM]: 'Advanced pathways & automation'
-      }
-    }
-  },
-  programManagement: {
-    name: 'Program Management',
-    features: {
-      cohortManagement: {
-        name: 'Cohort Management',
-        [PLAN_IDS.BASIC]: false,
-        [PLAN_IDS.PROFESSIONAL]: true,
-        [PLAN_IDS.ENTERPRISE]: 'Multi-department cohorts',
-        [PLAN_IDS.ECOSYSTEM]: 'Multi-LOB cohorts'
-      },
-      contentUploads: {
-        name: 'Content Uploads',
-        [PLAN_IDS.BASIC]: 'Shared storage (documents & light media)',
-        [PLAN_IDS.PROFESSIONAL]: 'Expanded shared storage',
-        [PLAN_IDS.ENTERPRISE]: 'Up to 5 TB (expandable)',
-        [PLAN_IDS.ECOSYSTEM]: 'Unlimited / negotiated'
-      },
-      assessments: {
-        name: 'Assessments',
-        [PLAN_IDS.BASIC]: 'Quizzes',
-        [PLAN_IDS.PROFESSIONAL]: 'Question banks, graded assignments',
-        [PLAN_IDS.ENTERPRISE]: 'Rubrics + project evaluation',
-        [PLAN_IDS.ECOSYSTEM]: 'Advanced assessments & rubrics'
-      },
-      certificates: {
-        name: 'Certificates',
-        [PLAN_IDS.BASIC]: 'Standard completion',
-        [PLAN_IDS.PROFESSIONAL]: 'Custom templates + expiry',
-        [PLAN_IDS.ENTERPRISE]: 'Custom certificates + verification',
-        [PLAN_IDS.ECOSYSTEM]: 'Verified credentials & digital badges'
-      }
-    }
-  },
-  analyticsInsights: {
-    name: 'Analytics & Insights',
-    features: {
-      learnerAnalytics: {
-        name: 'Learner Analytics',
-        [PLAN_IDS.BASIC]: 'Basic dashboards',
-        [PLAN_IDS.PROFESSIONAL]: 'Cohort & skill-gap analytics',
-        [PLAN_IDS.ENTERPRISE]: 'Skill-gap heatmaps + benchmarks',
-        [PLAN_IDS.ECOSYSTEM]: 'Advanced analytics & benchmarking'
-      },
-      dataExport: {
-        name: 'Data Export',
-        [PLAN_IDS.BASIC]: false,
-        [PLAN_IDS.PROFESSIONAL]: 'CSV exports',
-        [PLAN_IDS.ENTERPRISE]: 'BI-ready exports (optional)',
-        [PLAN_IDS.ECOSYSTEM]: 'BI connectors (Power BI / Tableau)'
-      }
-    }
-  },
-  engagementAutomation: {
-    name: 'Engagement & Automation',
-    features: {
-      notificationsNudges: {
-        name: 'Notifications & Nudges',
-        [PLAN_IDS.BASIC]: 'Basic reminders',
-        [PLAN_IDS.PROFESSIONAL]: 'Campaigns & nudges',
-        [PLAN_IDS.ENTERPRISE]: 'Automation + smart nudges',
-        [PLAN_IDS.ECOSYSTEM]: 'Intelligent automation'
-      }
-    }
-  },
-  integrationsExtensibility: {
-    name: 'Integrations & Extensibility',
-    features: {
-      sso: {
-        name: 'SSO (SAML / OIDC)',
-        [PLAN_IDS.BASIC]: false,
-        [PLAN_IDS.PROFESSIONAL]: 'Available as add-on',
-        [PLAN_IDS.ENTERPRISE]: true,
-        [PLAN_IDS.ECOSYSTEM]: true
-      },
-      userProvisioning: {
-        name: 'User Provisioning (SCIM)',
-        [PLAN_IDS.BASIC]: false,
-        [PLAN_IDS.PROFESSIONAL]: false,
-        [PLAN_IDS.ENTERPRISE]: 'Included / Add-on',
-        [PLAN_IDS.ECOSYSTEM]: true
-      },
-      apiWebhooks: {
-        name: 'API & Webhooks',
-        [PLAN_IDS.BASIC]: false,
-        [PLAN_IDS.PROFESSIONAL]: 'Limited / Add-on',
-        [PLAN_IDS.ENTERPRISE]: 'Full API + webhooks',
-        [PLAN_IDS.ECOSYSTEM]: 'Full access'
-      },
-      lmsHrIntegrations: {
-        name: 'LMS / HR Integrations',
-        [PLAN_IDS.BASIC]: false,
-        [PLAN_IDS.PROFESSIONAL]: 'Lightweight integrations',
-        [PLAN_IDS.ENTERPRISE]: 'Standard HRIS / LMS',
-        [PLAN_IDS.ECOSYSTEM]: 'Full HRIS / LMS integrations'
-      }
-    }
-  },
-  securityCompliance: {
-    name: 'Security, Compliance & Governance',
-    features: {
-      auditLogs: {
-        name: 'Audit Logs & Retention',
-        [PLAN_IDS.BASIC]: false,
-        [PLAN_IDS.PROFESSIONAL]: false,
-        [PLAN_IDS.ENTERPRISE]: true,
-        [PLAN_IDS.ECOSYSTEM]: true
-      },
-      dataResidency: {
-        name: 'Data Residency / DPA',
-        [PLAN_IDS.BASIC]: false,
-        [PLAN_IDS.PROFESSIONAL]: false,
-        [PLAN_IDS.ENTERPRISE]: 'DPA support available',
-        [PLAN_IDS.ECOSYSTEM]: 'Contractual / regional residency'
-      }
-    }
-  },
-  supportSuccess: {
-    name: 'Support & Success',
-    features: {
-      support: {
-        name: 'Support',
-        [PLAN_IDS.BASIC]: 'Email (business hours)',
-        [PLAN_IDS.PROFESSIONAL]: 'Priority support + onboarding',
-        [PLAN_IDS.ENTERPRISE]: 'Dedicated support, SLA 24×5',
-        [PLAN_IDS.ECOSYSTEM]: '24/7 support + SLA'
-      },
-      customerSuccessManager: {
-        name: 'Customer Success Manager',
-        [PLAN_IDS.BASIC]: false,
-        [PLAN_IDS.PROFESSIONAL]: false,
-        [PLAN_IDS.ENTERPRISE]: 'Named CSM',
-        [PLAN_IDS.ECOSYSTEM]: 'Named CSM'
-      },
-      implementationServices: {
-        name: 'Implementation Services',
-        [PLAN_IDS.BASIC]: false,
-        [PLAN_IDS.PROFESSIONAL]: false,
-        [PLAN_IDS.ENTERPRISE]: 'Implementation & migration support',
-        [PLAN_IDS.ECOSYSTEM]: 'Included / Optional'
-      }
-    }
-  }
-};
-
-// Positioning summaries
-export const PLAN_POSITIONING = {
-  [PLAN_IDS.BASIC]: 'Validate learning outcomes with minimal setup.',
-  [PLAN_IDS.PROFESSIONAL]: 'Actively manage cohorts, skills, and engagement.',
-  [PLAN_IDS.ENTERPRISE]: 'Govern learning at scale with automation and compliance.',
-  [PLAN_IDS.ECOSYSTEM]: 'Power extended learning across organizations, partners, and regulated environments.'
-};
+export const PLAN_HIERARCHY = [
+  PLAN_IDS.BASIC,
+  PLAN_IDS.PROFESSIONAL,
+  PLAN_IDS.ENTERPRISE,
+  PLAN_IDS.ECOSYSTEM,
+];
 
 /**
- * Get feature list for a specific plan (for display in plan cards)
- */
-export function getPlanFeatureList(planId) {
-  const limits = PLAN_LIMITS[planId];
-  const features = [];
-
-  // Add limits
-  features.push(`Up to ${typeof limits.learners === 'number' ? limits.learners.toLocaleString() : limits.learners} learners`);
-  features.push(`${typeof limits.admins === 'number' ? `Up to ${limits.admins}` : limits.admins} admins/managers`);
-
-  // Add key features from each category
-  Object.values(FEATURE_CATEGORIES).forEach(category => {
-    Object.values(category.features).forEach(feature => {
-      const value = feature[planId];
-      if (value && value !== false) {
-        if (typeof value === 'string') {
-          features.push(`${feature.name}: ${value}`);
-        } else if (value === true) {
-          features.push(feature.name);
-        }
-      }
-    });
-  });
-
-  return features;
-}
-
-/**
- * Get simplified feature list for plan cards (most important features)
- */
-export function getSimplifiedPlanFeatures(planId) {
-  const limits = PLAN_LIMITS[planId];
-  
-  const featuresByPlan = {
-    [PLAN_IDS.BASIC]: [
-      `Up to ${limits.learners.toLocaleString()} learners`,
-      `${limits.admins} admin accounts`,
-      'Logo + primary color branding',
-      'Standard skill catalog',
-      'Pre-built learning pathways',
-      'Basic quizzes & assessments',
-      'Standard completion certificates',
-      'Basic analytics dashboards',
-      'Basic reminders & notifications',
-      'Email support (business hours)'
-    ],
-    [PLAN_IDS.PROFESSIONAL]: [
-      `Up to ${limits.learners.toLocaleString()} learners`,
-      `Up to ${limits.admins} admins/managers`,
-      'Advanced branding options',
-      'Standard + curated skill catalog',
-      'Custom pathway builder',
-      'Cohort management',
-      'Question banks & graded assignments',
-      'Custom certificate templates + expiry',
-      'Cohort & skill-gap analytics',
-      'CSV data exports',
-      'Campaigns & nudges',
-      'SSO available as add-on',
-      'Lightweight LMS/HR integrations',
-      'Priority support + onboarding'
-    ],
-    [PLAN_IDS.ENTERPRISE]: [
-      `Up to ${limits.learners.toLocaleString()} learners`,
-      `Up to ${limits.admins} admins/managers`,
-      'Advanced branding + sub-portals',
-      'Role-based catalog, custom taxonomy',
-      'Rules & prerequisites for pathways',
-      'Multi-department cohorts',
-      'Up to 5 TB storage (expandable)',
-      'Rubrics + project evaluation',
-      'Custom certificates + verification',
-      'Skill-gap heatmaps + benchmarks',
-      'BI-ready exports',
-      'Automation + smart nudges',
-      'SSO (SAML/OIDC) included',
-      'User provisioning (SCIM)',
-      'Full API + webhooks',
-      'Standard HRIS/LMS integrations',
-      'Audit logs & retention',
-      'DPA support available',
-      'Dedicated support, SLA 24×5',
-      'Named Customer Success Manager',
-      'Implementation & migration support'
-    ],
-    [PLAN_IDS.ECOSYSTEM]: [
-      'Unlimited / Contracted learners',
-      'Unlimited admin roles',
-      'Multi-brand, multi-portal',
-      'Custom enterprise skill framework',
-      'Advanced pathways & automation',
-      'Multi-LOB cohorts',
-      'Unlimited storage (negotiated)',
-      'Advanced assessments & rubrics',
-      'Verified credentials & digital badges',
-      'Advanced analytics & benchmarking',
-      'BI connectors (Power BI / Tableau)',
-      'Intelligent automation',
-      'SSO (SAML/OIDC) included',
-      'User provisioning (SCIM) included',
-      'Full API access',
-      'Full HRIS/LMS integrations',
-      'Audit logs & retention',
-      'Contractual / regional data residency',
-      '24/7 support + SLA',
-      'Named Customer Success Manager',
-      'Implementation services included'
-    ]
-  };
-
-  return featuresByPlan[planId] || [];
-}
-
-/**
- * Get all subscription plans with pricing
+ * Get all subscription plans with full feature details
  */
 export function getSubscriptionPlans() {
-  return [
-    {
+  return {
+    [PLAN_IDS.BASIC]: {
       id: PLAN_IDS.BASIC,
       name: 'Basic',
-      tagline: 'Pilot & Individual Learning',
-      price: getPlanPrice(PLAN_IDS.BASIC),
-      duration: 'month',
-      features: getSimplifiedPlanFeatures(PLAN_IDS.BASIC),
-      limits: PLAN_LIMITS[PLAN_IDS.BASIC],
-      positioning: PLAN_POSITIONING[PLAN_IDS.BASIC],
-      color: 'bg-slate-600',
-      recommended: false,
-      contactSales: false
+      subtitle: 'Pilot & Individual Learning',
+      description: 'Validate learning outcomes with minimal setup',
+      idealFor: 'Individuals, pilots, small teams validating learning',
+      price: 499,
+      currency: '₹',
+      period: 'month',
+      popular: false,
+      limits: {
+        learners: 1000,
+        admins: 2,
+        storage: 'Shared storage',
+      },
+      features: {
+        brandingExperience: {
+          branding: 'Logo + primary color',
+          skillCatalog: 'Standard catalog',
+          learningPathways: 'Pre-built pathways',
+        },
+        programManagement: {
+          cohortManagement: false,
+          contentUploads: 'Shared storage (documents & light media)',
+          assessments: 'Quizzes',
+          certificates: 'Standard completion',
+        },
+        analyticsInsights: {
+          learnerAnalytics: 'Basic dashboards',
+          dataExport: false,
+        },
+        engagementAutomation: {
+          notificationsNudges: 'Basic reminders',
+        },
+        integrationsExtensibility: {
+          sso: false,
+          userProvisioning: false,
+          apiWebhooks: false,
+          lmsHrIntegrations: false,
+        },
+        securityCompliance: {
+          auditLogs: false,
+          dataResidency: false,
+        },
+        supportSuccess: {
+          support: 'Email (business hours)',
+          customerSuccessManager: false,
+          implementationServices: false,
+        },
+      },
+      featureList: [
+        'Up to 1,000 learners',
+        '2 admins',
+        'Logo + primary color branding',
+        'Standard skill catalog',
+        'Pre-built learning pathways',
+        'Shared storage for documents',
+        'Quizzes & assessments',
+        'Standard completion certificates',
+        'Basic learner dashboards',
+        'Basic reminders & notifications',
+        'Email support (business hours)',
+      ],
     },
-    {
+    [PLAN_IDS.PROFESSIONAL]: {
       id: PLAN_IDS.PROFESSIONAL,
       name: 'Professional',
-      tagline: 'Team Enablement',
-      price: getPlanPrice(PLAN_IDS.PROFESSIONAL),
-      duration: 'month',
-      features: getSimplifiedPlanFeatures(PLAN_IDS.PROFESSIONAL),
-      limits: PLAN_LIMITS[PLAN_IDS.PROFESSIONAL],
-      positioning: PLAN_POSITIONING[PLAN_IDS.PROFESSIONAL],
-      color: 'bg-blue-600',
-      recommended: true,
-      contactSales: false
+      subtitle: 'Team Enablement',
+      description: 'Actively manage cohorts, skills, and engagement',
+      idealFor: 'Growing teams and L&D functions running active programs',
+      price: 999,
+      currency: '₹',
+      period: 'month',
+      popular: true,
+      limits: {
+        learners: 2000,
+        admins: 5,
+        storage: 'Expanded shared storage',
+      },
+      features: {
+        brandingExperience: {
+          branding: 'Advanced branding',
+          skillCatalog: 'Standard + curated',
+          learningPathways: 'Custom pathway builder',
+        },
+        programManagement: {
+          cohortManagement: true,
+          contentUploads: 'Expanded shared storage',
+          assessments: 'Question banks, graded assignments',
+          certificates: 'Custom templates + expiry',
+        },
+        analyticsInsights: {
+          learnerAnalytics: 'Cohort & skill-gap analytics',
+          dataExport: 'CSV exports',
+        },
+        engagementAutomation: {
+          notificationsNudges: 'Campaigns & nudges',
+        },
+        integrationsExtensibility: {
+          sso: 'Available as add-on',
+          userProvisioning: false,
+          apiWebhooks: 'Limited / Add-on',
+          lmsHrIntegrations: 'Lightweight integrations',
+        },
+        securityCompliance: {
+          auditLogs: false,
+          dataResidency: false,
+        },
+        supportSuccess: {
+          support: 'Priority support + onboarding',
+          customerSuccessManager: false,
+          implementationServices: false,
+        },
+      },
+      featureList: [
+        'Up to 2,000 learners',
+        'Up to 5 admins/managers',
+        'Advanced branding options',
+        'Standard + curated skill catalog',
+        'Custom pathway builder',
+        'Cohort management',
+        'Expanded shared storage',
+        'Question banks & graded assignments',
+        'Custom certificate templates + expiry',
+        'Cohort & skill-gap analytics',
+        'CSV data exports',
+        'Campaigns & smart nudges',
+        'SSO available as add-on',
+        'Lightweight LMS/HR integrations',
+        'Priority support + onboarding',
+      ],
     },
-    {
+    [PLAN_IDS.ENTERPRISE]: {
       id: PLAN_IDS.ENTERPRISE,
       name: 'Enterprise',
-      tagline: 'Governance & Scale',
-      price: getPlanPrice(PLAN_IDS.ENTERPRISE),
-      duration: 'month',
-      features: getSimplifiedPlanFeatures(PLAN_IDS.ENTERPRISE),
-      limits: PLAN_LIMITS[PLAN_IDS.ENTERPRISE],
-      positioning: PLAN_POSITIONING[PLAN_IDS.ENTERPRISE],
-      color: 'bg-purple-600',
-      recommended: false,
-      contactSales: false
+      subtitle: 'Governance & Scale',
+      description: 'Govern learning at scale with automation and compliance',
+      idealFor: 'Large organizations with multi-department rollout',
+      price: 2999,
+      currency: '₹',
+      period: 'month',
+      popular: false,
+      limits: {
+        learners: 5000,
+        admins: 10,
+        storage: 'Up to 5 TB (expandable)',
+      },
+      features: {
+        brandingExperience: {
+          branding: 'Advanced branding + sub-portals',
+          skillCatalog: 'Role-based catalog, custom taxonomy',
+          learningPathways: 'Rules & prerequisites',
+        },
+        programManagement: {
+          cohortManagement: 'Multi-department cohorts',
+          contentUploads: 'Up to 5 TB (expandable)',
+          assessments: 'Rubrics + project evaluation',
+          certificates: 'Custom certificates + verification',
+        },
+        analyticsInsights: {
+          learnerAnalytics: 'Skill-gap heatmaps + benchmarks',
+          dataExport: 'BI-ready exports (optional)',
+        },
+        engagementAutomation: {
+          notificationsNudges: 'Automation + smart nudges',
+        },
+        integrationsExtensibility: {
+          sso: true,
+          userProvisioning: 'Included / Add-on',
+          apiWebhooks: 'Full API + webhooks',
+          lmsHrIntegrations: 'Standard HRIS / LMS',
+        },
+        securityCompliance: {
+          auditLogs: true,
+          dataResidency: 'DPA support available',
+        },
+        supportSuccess: {
+          support: 'Dedicated support, SLA 24×5',
+          customerSuccessManager: 'Named CSM',
+          implementationServices: 'Implementation & migration support',
+        },
+      },
+      featureList: [
+        'Up to 5,000 learners',
+        'Up to 10 admins/managers',
+        'Advanced branding + sub-portals',
+        'Role-based catalog, custom taxonomy',
+        'Rules & prerequisites for pathways',
+        'Multi-department cohorts',
+        'Up to 5 TB storage (expandable)',
+        'Rubrics + project evaluation',
+        'Custom certificates + verification',
+        'Skill-gap heatmaps + benchmarks',
+        'BI-ready data exports',
+        'Automation + smart nudges',
+        'SSO (SAML / OIDC) included',
+        'SCIM user provisioning',
+        'Full API + webhooks access',
+        'Standard HRIS / LMS integrations',
+        'Audit logs & retention',
+        'DPA support available',
+        'Dedicated support, SLA 24×5',
+        'Named Customer Success Manager',
+        'Implementation & migration support',
+      ],
     },
-    {
+    [PLAN_IDS.ECOSYSTEM]: {
       id: PLAN_IDS.ECOSYSTEM,
       name: 'Enterprise Ecosystem',
-      tagline: 'Extended & Regulated Scale',
-      price: null, // Contact sales
-      duration: 'custom',
-      features: getSimplifiedPlanFeatures(PLAN_IDS.ECOSYSTEM),
-      limits: PLAN_LIMITS[PLAN_IDS.ECOSYSTEM],
-      positioning: PLAN_POSITIONING[PLAN_IDS.ECOSYSTEM],
-      color: 'bg-gradient-to-r from-purple-600 to-indigo-600',
-      recommended: false,
-      contactSales: true
-    }
-  ];
+      subtitle: 'Extended & Regulated Scale',
+      description: 'Power extended learning across organizations, partners, and regulated environments',
+      idealFor: 'Large enterprises, regulated orgs, external ecosystems',
+      price: null, // Contact Sales
+      currency: '₹',
+      period: 'month',
+      popular: false,
+      contactSales: true,
+      limits: {
+        learners: 'Unlimited / Contracted',
+        admins: 'Unlimited roles',
+        storage: 'Unlimited / negotiated',
+      },
+      features: {
+        brandingExperience: {
+          branding: 'Multi-brand, multi-portal',
+          skillCatalog: 'Custom enterprise skill framework',
+          learningPathways: 'Advanced pathways & automation',
+        },
+        programManagement: {
+          cohortManagement: 'Multi-LOB cohorts',
+          contentUploads: 'Unlimited / negotiated',
+          assessments: 'Advanced assessments & rubrics',
+          certificates: 'Verified credentials & digital badges',
+        },
+        analyticsInsights: {
+          learnerAnalytics: 'Advanced analytics & benchmarking',
+          dataExport: 'BI connectors (Power BI / Tableau)',
+        },
+        engagementAutomation: {
+          notificationsNudges: 'Intelligent automation',
+        },
+        integrationsExtensibility: {
+          sso: true,
+          userProvisioning: true,
+          apiWebhooks: 'Full access',
+          lmsHrIntegrations: 'Full HRIS / LMS integrations',
+        },
+        securityCompliance: {
+          auditLogs: true,
+          dataResidency: 'Contractual / regional residency',
+        },
+        supportSuccess: {
+          support: '24/7 support + SLA',
+          customerSuccessManager: 'Named CSM',
+          implementationServices: 'Included / Optional',
+        },
+      },
+      featureList: [
+        'Unlimited learners (contracted)',
+        'Unlimited admin roles',
+        'Multi-brand, multi-portal support',
+        'Custom enterprise skill framework',
+        'Advanced pathways & automation',
+        'Multi-LOB cohorts',
+        'Unlimited storage (negotiated)',
+        'Advanced assessments & rubrics',
+        'Verified credentials & digital badges',
+        'Advanced analytics & benchmarking',
+        'BI connectors (Power BI / Tableau)',
+        'Intelligent automation',
+        'SSO (SAML / OIDC) included',
+        'SCIM user provisioning included',
+        'Full API + webhooks access',
+        'Full HRIS / LMS integrations',
+        'Audit logs & retention',
+        'Contractual / regional data residency',
+        '24/7 support + SLA',
+        'Named Customer Success Manager',
+        'Implementation services included',
+      ],
+    },
+  };
 }
 
 /**
- * Check if a plan is higher than another
+ * Feature comparison matrix for display
  */
-export function isPlanHigher(planA, planB) {
-  return (PLAN_HIERARCHY[planA] || 0) > (PLAN_HIERARCHY[planB] || 0);
+export const FEATURE_CATEGORIES = {
+  limits: {
+    label: 'Capacity',
+    features: [
+      { key: 'learners', label: 'Learners' },
+      { key: 'admins', label: 'Admins / Managers' },
+      { key: 'storage', label: 'Storage' },
+    ],
+  },
+  brandingExperience: {
+    label: 'Branding & Experience',
+    features: [
+      { key: 'branding', label: 'Branding' },
+      { key: 'skillCatalog', label: 'Skill Catalog' },
+      { key: 'learningPathways', label: 'Learning Pathways' },
+    ],
+  },
+  programManagement: {
+    label: 'Program Management',
+    features: [
+      { key: 'cohortManagement', label: 'Cohort Management' },
+      { key: 'contentUploads', label: 'Content Uploads' },
+      { key: 'assessments', label: 'Assessments' },
+      { key: 'certificates', label: 'Certificates' },
+    ],
+  },
+  analyticsInsights: {
+    label: 'Analytics & Insights',
+    features: [
+      { key: 'learnerAnalytics', label: 'Learner Analytics' },
+      { key: 'dataExport', label: 'Data Export' },
+    ],
+  },
+  engagementAutomation: {
+    label: 'Engagement & Automation',
+    features: [
+      { key: 'notificationsNudges', label: 'Notifications & Nudges' },
+    ],
+  },
+  integrationsExtensibility: {
+    label: 'Integrations & Extensibility',
+    features: [
+      { key: 'sso', label: 'SSO (SAML / OIDC)' },
+      { key: 'userProvisioning', label: 'User Provisioning (SCIM)' },
+      { key: 'apiWebhooks', label: 'API & Webhooks' },
+      { key: 'lmsHrIntegrations', label: 'LMS / HR Integrations' },
+    ],
+  },
+  securityCompliance: {
+    label: 'Security, Compliance & Governance',
+    features: [
+      { key: 'auditLogs', label: 'Audit Logs & Retention' },
+      { key: 'dataResidency', label: 'Data Residency / DPA' },
+    ],
+  },
+  supportSuccess: {
+    label: 'Support & Success',
+    features: [
+      { key: 'support', label: 'Support' },
+      { key: 'customerSuccessManager', label: 'Customer Success Manager' },
+      { key: 'implementationServices', label: 'Implementation Services' },
+    ],
+  },
+};
+
+/**
+ * Check if a plan has access to a specific feature
+ */
+export function hasFeatureAccess(planId, category, featureKey) {
+  const plans = getSubscriptionPlans();
+  const plan = plans[planId];
+  if (!plan) return false;
+  
+  if (category === 'limits') {
+    return plan.limits?.[featureKey];
+  }
+  
+  const featureValue = plan.features?.[category]?.[featureKey];
+  return featureValue !== false && featureValue !== undefined;
 }
 
 /**
- * Get plan by ID
+ * Get feature value for display
  */
-export function getPlanById(planId) {
-  return getSubscriptionPlans().find(p => p.id === planId);
+export function getFeatureValue(planId, category, featureKey) {
+  const plans = getSubscriptionPlans();
+  const plan = plans[planId];
+  if (!plan) return null;
+  
+  if (category === 'limits') {
+    return plan.limits?.[featureKey];
+  }
+  
+  return plan.features?.[category]?.[featureKey];
+}
+
+/**
+ * Check if user's plan meets minimum required plan
+ */
+export function meetsMinimumPlan(userPlanId, requiredPlanId) {
+  const userIndex = PLAN_HIERARCHY.indexOf(userPlanId);
+  const requiredIndex = PLAN_HIERARCHY.indexOf(requiredPlanId);
+  return userIndex >= requiredIndex;
 }
 
 export default {
   PLAN_IDS,
   PLAN_HIERARCHY,
-  PLAN_LIMITS,
   FEATURE_CATEGORIES,
-  PLAN_POSITIONING,
   getSubscriptionPlans,
-  getPlanFeatureList,
-  getSimplifiedPlanFeatures,
-  isPlanHigher,
-  getPlanById
+  hasFeatureAccess,
+  getFeatureValue,
+  meetsMinimumPlan,
 };

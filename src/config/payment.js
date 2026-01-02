@@ -96,7 +96,8 @@ const TEST_PRICES = {
   professional: '1',
   pro: '1', // Legacy alias
   enterprise: '1',
-  ecosystem: '1',
+  enterprise_ecosystem: '1',
+  ecosystem: '1', // Alias
 };
 
 // Production pricing (actual prices)
@@ -105,7 +106,8 @@ const PRODUCTION_PRICES = {
   professional: '999',
   pro: '999', // Legacy alias
   enterprise: '2999',
-  ecosystem: null, // Contact sales
+  enterprise_ecosystem: null, // Contact sales
+  ecosystem: null, // Alias - Contact sales
 };
 
 // Export configuration

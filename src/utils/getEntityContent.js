@@ -191,15 +191,31 @@ export function getModalContent(studentType) {
  */
 function getPlansForRole(role, entity) {
     // Get base plans from the new subscription config
-    const basePlans = getSubscriptionPlans();
+    const basePlansObj = getSubscriptionPlans();
+    
+    // Convert to array and sort by hierarchy
+    const basePlans = [
+        basePlansObj[PLAN_IDS.BASIC],
+        basePlansObj[PLAN_IDS.PROFESSIONAL],
+        basePlansObj[PLAN_IDS.ENTERPRISE],
+        basePlansObj[PLAN_IDS.ECOSYSTEM]
+    ];
     
     // Role-specific feature overrides for display purposes
     const roleFeatureOverrides = getRoleSpecificFeatures(role, entity);
     
-    // Map base plans with role-specific features
+    // Map base plans with role-specific features and format for display
     return basePlans.map(plan => ({
-        ...plan,
-        features: roleFeatureOverrides[plan.id] || plan.features
+        id: plan.id,
+        name: plan.name,
+        tagline: plan.subtitle,
+        positioning: plan.description,
+        price: plan.price ? String(plan.price) : null,
+        duration: plan.period,
+        recommended: plan.popular,
+        contactSales: plan.contactSales || false,
+        features: roleFeatureOverrides[plan.id] || plan.featureList,
+        limits: plan.limits
     }));
 }
 
