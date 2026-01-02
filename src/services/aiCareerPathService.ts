@@ -655,6 +655,35 @@ export interface RoadmapPhase {
 }
 
 /**
+ * Recommended course structure
+ */
+export interface RecommendedCourse {
+  title: string;
+  description: string;
+  duration: string;
+  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Professional';
+  skills: string[];
+}
+
+/**
+ * Free resource structure
+ */
+export interface FreeResource {
+  title: string;
+  description: string;
+  type: 'YouTube' | 'Documentation' | 'Certification' | 'Community' | 'Tool';
+  url: string;
+}
+
+/**
+ * Action item structure
+ */
+export interface ActionItem {
+  title: string;
+  description: string;
+}
+
+/**
  * Combined role overview data structure
  */
 export interface RoleOverviewData {
@@ -662,6 +691,9 @@ export interface RoleOverviewData {
   industryDemand: IndustryDemandData;
   careerProgression: CareerStage[];
   learningRoadmap: RoadmapPhase[];
+  recommendedCourses: RecommendedCourse[];
+  freeResources: FreeResource[];
+  actionItems: ActionItem[];
 }
 
 /**
@@ -706,6 +738,81 @@ export function getFallbackLearningRoadmap(roleName: string): RoadmapPhase[] {
 }
 
 /**
+ * Get fallback recommended courses
+ */
+export function getFallbackRecommendedCourses(roleName: string): RecommendedCourse[] {
+  return [
+    {
+      title: `${roleName} Fundamentals`,
+      description: `Master the core concepts and skills needed for ${roleName} roles`,
+      duration: '4 weeks',
+      level: 'Beginner',
+      skills: ['Core Concepts', 'Best Practices', 'Tools']
+    },
+    {
+      title: `Advanced ${roleName} Skills`,
+      description: 'Take your skills to the next level with advanced techniques',
+      duration: '6 weeks',
+      level: 'Intermediate',
+      skills: ['Advanced Techniques', 'Problem Solving', 'Optimization']
+    },
+    {
+      title: 'Project-Based Learning',
+      description: 'Build real-world projects to strengthen your portfolio',
+      duration: '8 weeks',
+      level: 'Advanced',
+      skills: ['Project Management', 'Implementation', 'Deployment']
+    },
+    {
+      title: 'Industry Certification Prep',
+      description: 'Prepare for industry-recognized certifications',
+      duration: '4 weeks',
+      level: 'Professional',
+      skills: ['Certification', 'Industry Standards', 'Best Practices']
+    }
+  ];
+}
+
+/**
+ * Get fallback free resources
+ */
+export function getFallbackFreeResources(roleName: string): FreeResource[] {
+  const searchQuery = encodeURIComponent(roleName + ' tutorial');
+  return [
+    {
+      title: 'YouTube Tutorials',
+      description: `Free video tutorials from industry experts on ${roleName} topics`,
+      type: 'YouTube',
+      url: `https://www.youtube.com/results?search_query=${searchQuery}`
+    },
+    {
+      title: 'Official Documentation',
+      description: 'Comprehensive guides and references for tools and frameworks',
+      type: 'Documentation',
+      url: `https://www.google.com/search?q=${encodeURIComponent(roleName + ' documentation')}`
+    },
+    {
+      title: 'Industry Certifications',
+      description: 'Free certification programs to validate your skills',
+      type: 'Certification',
+      url: `https://www.google.com/search?q=${encodeURIComponent(roleName + ' free certification')}`
+    }
+  ];
+}
+
+/**
+ * Get fallback action items
+ */
+export function getFallbackActionItems(roleName: string): ActionItem[] {
+  return [
+    { title: 'Start Learning', description: `Enroll in a ${roleName} foundational course` },
+    { title: 'Build Daily Habits', description: 'Dedicate 1-2 hours daily to practice' },
+    { title: 'Join Communities', description: `Connect with ${roleName} professionals online` },
+    { title: 'Track Progress', description: 'Set weekly goals and review your growth' }
+  ];
+}
+
+/**
  * Get fallback role overview when AI is unavailable
  */
 export function getFallbackRoleOverview(roleName: string): RoleOverviewData {
@@ -713,7 +820,10 @@ export function getFallbackRoleOverview(roleName: string): RoleOverviewData {
     responsibilities: getFallbackResponsibilities(roleName),
     industryDemand: getFallbackIndustryDemand(roleName),
     careerProgression: getFallbackCareerProgression(roleName),
-    learningRoadmap: getFallbackLearningRoadmap(roleName)
+    learningRoadmap: getFallbackLearningRoadmap(roleName),
+    recommendedCourses: getFallbackRecommendedCourses(roleName),
+    freeResources: getFallbackFreeResources(roleName),
+    actionItems: getFallbackActionItems(roleName)
   };
 }
 
@@ -782,6 +892,61 @@ function parseRoleOverviewResponse(content: string, roleName: string): RoleOverv
         learningRoadmap = getFallbackLearningRoadmap(roleName);
       }
       
+      // Parse recommended courses
+      const validCourseLevels = ['Beginner', 'Intermediate', 'Advanced', 'Professional'];
+      let recommendedCourses: RecommendedCourse[] = [];
+      if (Array.isArray(parsed.recommendedCourses) && parsed.recommendedCourses.length >= 4) {
+        recommendedCourses = parsed.recommendedCourses.slice(0, 4).map((course: any) => {
+          let level = course.level || 'Beginner';
+          if (!validCourseLevels.includes(level)) {
+            level = 'Beginner';
+          }
+          return {
+            title: course.title || 'Course',
+            description: course.description || 'Learn essential skills',
+            duration: course.duration || '4 weeks',
+            level: level as RecommendedCourse['level'],
+            skills: Array.isArray(course.skills) ? course.skills.slice(0, 3) : []
+          };
+        });
+      }
+      if (recommendedCourses.length < 4) {
+        recommendedCourses = getFallbackRecommendedCourses(roleName);
+      }
+      
+      // Parse free resources
+      const validResourceTypes = ['YouTube', 'Documentation', 'Certification', 'Community', 'Tool'];
+      let freeResources: FreeResource[] = [];
+      if (Array.isArray(parsed.freeResources) && parsed.freeResources.length >= 3) {
+        freeResources = parsed.freeResources.slice(0, 3).map((resource: any) => {
+          let type = resource.type || 'Documentation';
+          if (!validResourceTypes.includes(type)) {
+            type = 'Documentation';
+          }
+          return {
+            title: resource.title || 'Resource',
+            description: resource.description || 'Helpful learning resource',
+            type: type as FreeResource['type'],
+            url: resource.url || ''
+          };
+        });
+      }
+      if (freeResources.length < 3) {
+        freeResources = getFallbackFreeResources(roleName);
+      }
+      
+      // Parse action items
+      let actionItems: ActionItem[] = [];
+      if (Array.isArray(parsed.actionItems) && parsed.actionItems.length >= 4) {
+        actionItems = parsed.actionItems.slice(0, 4).map((item: any) => ({
+          title: item.title || 'Action',
+          description: item.description || 'Take action to progress'
+        }));
+      }
+      if (actionItems.length < 4) {
+        actionItems = getFallbackActionItems(roleName);
+      }
+      
       return {
         responsibilities,
         industryDemand: {
@@ -790,7 +955,10 @@ function parseRoleOverviewResponse(content: string, roleName: string): RoleOverv
           demandPercentage
         },
         careerProgression,
-        learningRoadmap
+        learningRoadmap,
+        recommendedCourses,
+        freeResources,
+        actionItems
       };
     }
   } catch (e) {
@@ -837,9 +1005,15 @@ export async function generateRoleOverview(
 
 4. LEARNING ROADMAP: 3 phases for 6-month learning plan
    - Each phase: month (e.g., "Month 1-2"), title, description (1 sentence), tasks (4 specific actionable items)
-   - Phase 1: Foundation/basics
-   - Phase 2: Skill building/projects
-   - Phase 3: Portfolio/job applications
+
+5. RECOMMENDED COURSES: 4 courses specific to this role
+   - Each: title (specific course name), description (1 sentence), duration (e.g., "4 weeks"), level ("Beginner"/"Intermediate"/"Advanced"/"Professional"), skills (3 skills learned)
+
+6. FREE RESOURCES: 3 free learning resources with real URLs
+   - Each: title (specific resource name), description (1 sentence), type ("YouTube"/"Documentation"/"Certification"/"Community"/"Tool"), url (real working URL)
+
+7. ACTION ITEMS: 4 immediate action items specific to becoming a ${roleName}
+   - Each: title (2-3 words), description (specific actionable step, 5-10 words)
 
 Return ONLY this JSON:
 {
@@ -857,6 +1031,23 @@ Return ONLY this JSON:
     {"month": "Month 1-2", "title": "...", "description": "...", "tasks": ["...", "...", "...", "..."]},
     {"month": "Month 3-4", "title": "...", "description": "...", "tasks": ["...", "...", "...", "..."]},
     {"month": "Month 5-6", "title": "...", "description": "...", "tasks": ["...", "...", "...", "..."]}
+  ],
+  "recommendedCourses": [
+    {"title": "...", "description": "...", "duration": "4 weeks", "level": "Beginner", "skills": ["...", "...", "..."]},
+    {"title": "...", "description": "...", "duration": "6 weeks", "level": "Intermediate", "skills": ["...", "...", "..."]},
+    {"title": "...", "description": "...", "duration": "8 weeks", "level": "Advanced", "skills": ["...", "...", "..."]},
+    {"title": "...", "description": "...", "duration": "4 weeks", "level": "Professional", "skills": ["...", "...", "..."]}
+  ],
+  "freeResources": [
+    {"title": "...", "description": "...", "type": "YouTube", "url": "https://..."},
+    {"title": "...", "description": "...", "type": "Documentation", "url": "https://..."},
+    {"title": "...", "description": "...", "type": "Certification", "url": "https://..."}
+  ],
+  "actionItems": [
+    {"title": "...", "description": "..."},
+    {"title": "...", "description": "..."},
+    {"title": "...", "description": "..."},
+    {"title": "...", "description": "..."}
   ]
 }`;
 
@@ -865,14 +1056,14 @@ Return ONLY this JSON:
       messages: [
         {
           role: 'system',
-          content: 'You are a career advisor. Return valid JSON only. Make learning roadmap specific to the role with actionable tasks.',
+          content: 'You are a career advisor. Return valid JSON only. Make all recommendations specific to the role.',
         },
         {
           role: 'user',
           content: prompt,
         },
       ],
-      max_tokens: 1000,
+      max_tokens: 1500,
       temperature: 0.7,
     });
 

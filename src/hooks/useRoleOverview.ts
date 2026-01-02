@@ -5,7 +5,10 @@ import {
   RoleOverviewData,
   IndustryDemandData,
   CareerStage,
-  RoadmapPhase
+  RoadmapPhase,
+  RecommendedCourse,
+  FreeResource,
+  ActionItem
 } from '../services/aiCareerPathService';
 
 /**
@@ -77,17 +80,20 @@ interface UseRoleOverviewReturn {
   demandData: IndustryDemandData | null;
   careerProgression: CareerStage[];
   learningRoadmap: RoadmapPhase[];
+  recommendedCourses: RecommendedCourse[];
+  freeResources: FreeResource[];
+  actionItems: ActionItem[];
   loading: boolean;
   error: Error | null;
 }
 
 /**
- * Custom hook for fetching role overview data (responsibilities + industry demand + career progression + learning roadmap)
+ * Custom hook for fetching role overview data (responsibilities + industry demand + career progression + learning roadmap + courses)
  * in a single API call for better performance
  * 
  * @param roleName - The job role name (e.g., "Software Engineer")
  * @param clusterTitle - The career cluster title (e.g., "Technology")
- * @returns Object containing responsibilities, demand data, career progression, learning roadmap, loading state, and error
+ * @returns Object containing responsibilities, demand data, career progression, learning roadmap, courses, resources, loading state, and error
  */
 export function useRoleOverview(
   roleName: string | null,
@@ -97,6 +103,9 @@ export function useRoleOverview(
   const [demandData, setDemandData] = useState<IndustryDemandData | null>(null);
   const [careerProgression, setCareerProgression] = useState<CareerStage[]>([]);
   const [learningRoadmap, setLearningRoadmap] = useState<RoadmapPhase[]>([]);
+  const [recommendedCourses, setRecommendedCourses] = useState<RecommendedCourse[]>([]);
+  const [freeResources, setFreeResources] = useState<FreeResource[]>([]);
+  const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   
@@ -113,6 +122,9 @@ export function useRoleOverview(
       setDemandData(cached.industryDemand);
       setCareerProgression(cached.careerProgression);
       setLearningRoadmap(cached.learningRoadmap);
+      setRecommendedCourses(cached.recommendedCourses);
+      setFreeResources(cached.freeResources);
+      setActionItems(cached.actionItems);
       setLoading(false);
       setError(null);
       return;
@@ -129,6 +141,9 @@ export function useRoleOverview(
         setDemandData(result.industryDemand);
         setCareerProgression(result.careerProgression);
         setLearningRoadmap(result.learningRoadmap);
+        setRecommendedCourses(result.recommendedCourses);
+        setFreeResources(result.freeResources);
+        setActionItems(result.actionItems);
         setCache(role, cluster, result);
         setLoading(false);
       }
@@ -143,6 +158,9 @@ export function useRoleOverview(
         setDemandData(fallback.industryDemand);
         setCareerProgression(fallback.careerProgression);
         setLearningRoadmap(fallback.learningRoadmap);
+        setRecommendedCourses(fallback.recommendedCourses);
+        setFreeResources(fallback.freeResources);
+        setActionItems(fallback.actionItems);
         setLoading(false);
       }
     }
@@ -154,6 +172,9 @@ export function useRoleOverview(
       setDemandData(null);
       setCareerProgression([]);
       setLearningRoadmap([]);
+      setRecommendedCourses([]);
+      setFreeResources([]);
+      setActionItems([]);
       setLoading(false);
       setError(null);
       currentRequestRef.current = null;
@@ -168,6 +189,9 @@ export function useRoleOverview(
     demandData,
     careerProgression,
     learningRoadmap,
+    recommendedCourses,
+    freeResources,
+    actionItems,
     loading,
     error,
   };
