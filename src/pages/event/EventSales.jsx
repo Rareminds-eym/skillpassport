@@ -3,36 +3,36 @@
  * Role-specific detail forms for different user types
  */
 
-import { useState, useMemo, memo, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  Check,
-  User,
-  Mail,
-  Phone,
-  MapPin,
-  Building,
-  CreditCard,
-  ChevronRight,
-  Shield,
-  Zap,
-  Award,
-  Users,
-  GraduationCap,
-  Briefcase,
-  Globe,
-  Hash,
-  BookOpen,
-} from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
-import { getEntityContent } from '../../utils/getEntityContent';
-import { isTestPricing } from '../../config/payment';
-import Header from '../../layouts/Header';
 import FlipClockCountdown from '@leenguyen/react-flip-clock-countdown';
 import '@leenguyen/react-flip-clock-countdown/dist/index.css';
-import StudentPlanCard from './components/StudentPlanCard';
+import {
+    Award,
+    BookOpen,
+    Briefcase,
+    Building,
+    Check,
+    ChevronRight,
+    CreditCard,
+    Globe,
+    GraduationCap,
+    Hash,
+    Mail,
+    MapPin,
+    Phone,
+    Shield,
+    User,
+    Users,
+    Zap,
+} from 'lucide-react';
+import { memo, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { isTestPricing } from '../../config/payment';
+import Header from '../../layouts/Header';
+import { supabase } from '../../lib/supabaseClient';
 import paymentsApiService from '../../services/paymentsApiService';
 import userApiService from '../../services/userApiService';
+import { getEntityContent } from '../../utils/getEntityContent';
+import StudentPlanCard from './components/StudentPlanCard';
 
 // Role types that use institution pricing tiers (not individual plans)
 const ADMIN_ROLES = ['school-admin', 'college-admin', 'university-admin', 'educator', 'recruiter'];
@@ -800,11 +800,11 @@ function EventSales() {
 
             // Navigate with temp password if available
             const tempPassword = userResponse.data?.temporaryPassword;
-            navigate(`/register/plans/success?id=${regId}&plan=${encodeURIComponent(pricingName)}${tempPassword ? `&tp=${encodeURIComponent(tempPassword)}` : ''}`);
+            navigate(`/signup/plans/success?id=${regId}&plan=${encodeURIComponent(pricingName)}${tempPassword ? `&tp=${encodeURIComponent(tempPassword)}` : ''}`);
           } catch (userErr) {
             console.error('User creation failed:', userErr);
             // Still navigate to success even if user creation fails
-            navigate(`/register/plans/success?id=${regId}&plan=${encodeURIComponent(pricingName)}`);
+            navigate(`/signup/plans/success?id=${regId}&plan=${encodeURIComponent(pricingName)}`);
           }
         },
         modal: {
@@ -816,7 +816,7 @@ function EventSales() {
             supabase.from('event_registrations').update({
               payment_status: 'cancelled'
             }).eq('id', regId);
-            navigate(`/register/plans/failure?error=cancelled&plan=${encodeURIComponent(pricingName)}`);
+            navigate(`/signup/plans/failure?error=cancelled&plan=${encodeURIComponent(pricingName)}`);
           },
           // Mobile-specific: Handle escape key and back button
           escape: true,

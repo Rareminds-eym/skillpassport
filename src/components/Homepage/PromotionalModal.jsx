@@ -1,8 +1,8 @@
-import { useEffect, useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import Lottie from 'lottie-react';
+import { X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import discountAnimation from '../../assets/HomePage/DiscountIcon.json';
 
 /**
@@ -60,7 +60,7 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
 
   const handleExplore = () => {
     onClose();
-    navigate('/register/plans');
+    navigate('/signup/plans');
   };
 
   if (!event) return null;

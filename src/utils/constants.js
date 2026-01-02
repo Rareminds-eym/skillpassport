@@ -36,7 +36,7 @@ export const ROUTES = {
   LOGIN_STUDENT: '/login/student',
   LOGIN_RECRUITER: '/login/recruiter',
   LOGIN_ADMIN: '/login/admin',
-  REGISTER: '/register',
+  REGISTER: '/signup',
 
   ADMIN_DASHBOARD: '/admin/dashboard',
   ADMIN_USERS: '/admin/users',

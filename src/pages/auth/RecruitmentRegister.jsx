@@ -33,11 +33,11 @@ export default function RecruitmentRegister() {
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
     if (tabId === "school") {
-      navigate("/register/school");
+      navigate("/signup/school");
     } else if (tabId === "college") {
-      navigate("/register/college");
+      navigate("/signup/college");
     } else if (tabId === "university") {
-      navigate("/register/university");
+      navigate("/signup/university");
     }
   };
 

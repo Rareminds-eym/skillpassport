@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../../context/AuthContext';
 import { loginStudent } from '../../../../../services/studentAuthService';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 
 const SignInSchool = () => {
   const [formData, setFormData] = useState({
@@ -226,7 +226,7 @@ const SignInSchool = () => {
           <div className="text-center text-sm text-gray-600">
             Don't have an account?{' '}
             <Link 
-              to="/register/school" 
+              to="/signup/school" 
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
               Register here
