@@ -43,7 +43,7 @@ const Hero = () => {
     <section className="relative w-full">
       {/* Desktop Banner */}
       <img
-        src="/banner-desktop3.jpg"
+        src="/banner-desktop4.jpg"
         alt="Rareminds Skill Passport Hero"
         className="hidden md:block w-full h-auto"
       />
@@ -55,24 +55,24 @@ const Hero = () => {
       />
 
       {/* Text & Buttons Overlay */}
-      <div className="absolute inset-0 flex items-start pt-4 md:items-center md:pt-0 md:justify-end">
-        <div className="w-full md:w-auto px-6 sm:px-8 lg:px-12 md:pr-16 lg:pr-24">
-          <div className="max-w-3xl md:max-w-xl">
+      <div className="absolute inset-0 flex items-start pt-4 md:items-center md:pt-0">
+        <div className="w-full md:w-auto px-6 sm:px-8 md:pl-16 lg:pl-24 md:ml-0">
+          <div className="max-w-3xl md:max-w-xl text-left">
             {/* Welcome Text */}
             {/* <h2 className="text-black text-lg sm:text-xl md:text-3xl mb-2">Welcome To</h2> */}
             
             {/* Main Heading */}
-            <h1 className="text-black font-black mb-2 sm:mb-4 leading-tight text-[20px] sm:text-2xl md:text-4xl lg:text-5xl whitespace-nowrap">
-              Track Your Skills & Progress.
+            <h1 className="text-black  font-black mb-2 sm:mb-4  text-[20px] sm:text-2xl md:text-4xl lg:text-5xl">
+              <span className="whitespace-nowrap mb-2">Hire Freshers, Freelancers</span><br />& Interns with Confidence
             </h1>
 
             {/* Subheading */}
             <p className="text-black font-medium mb-8 sm:mb-10 max-w-lg text-[14px] sm:text-lg md:text-xl leading-relaxed">
-              Earn, Badge, Certify Your Growth.
+              Empower Candidates Verfied by Skill Passport
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-row items-center gap-3 sm:gap-5 flex-wrap sm:flex-nowrap">
+            <div className="flex flex-row items-center gap-3 sm:gap-5 flex-wrap sm:flex-nowrap justify-start">
               {/* Book a Demo */}
               <div className="flex items-center gap-2 group">
                 <button

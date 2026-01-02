@@ -125,8 +125,52 @@ async function authenticateUser(request: Request, env: Env): Promise<{ user: any
   return { user, supabase };
 }
 
+// Production domain for live payments
+const PRODUCTION_DOMAIN = 'skillpassport.rareminds.in';
+
+/**
+ * Check if request is from production site
+ */
+function isProductionRequest(request: Request): boolean {
+  const origin = request.headers.get('origin') || request.headers.get('referer') || '';
+  return origin.includes(PRODUCTION_DOMAIN) && !origin.includes('dev-');
+}
+
+/**
+ * Get Razorpay credentials based on request origin
+ * - Production (skillpassport.rareminds.in): Uses LIVE keys
+ * - Everything else (localhost, netlify, dev): Uses TEST keys
+ */
+function getRazorpayCredentialsForRequest(request: Request, env: Env): { keyId: string; keySecret: string; isProduction: boolean } {
+  const isProduction = isProductionRequest(request);
+  
+  let keyId: string;
+  let keySecret: string;
+  
+  if (isProduction) {
+    // Production: Use LIVE credentials
+    keyId = getRazorpayKeyId(env);
+    keySecret = env.RAZORPAY_KEY_SECRET;
+    console.log('[RAZORPAY] Using LIVE credentials for production');
+  } else {
+    // Development/Test: Use TEST credentials (with fallback to production)
+    keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
+    keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
+    console.log('[RAZORPAY] Using TEST credentials for development');
+  }
+  
+  if (!keySecret) {
+    throw new Error('RAZORPAY_KEY_SECRET is not configured');
+  }
+  
+  return { keyId, keySecret, isProduction };
+}
+
+/**
+ * @deprecated Use getRazorpayCredentialsForRequest instead for proper environment detection
+ */
 function getRazorpayCredentials(env: Env) {
-  // Use test credentials if available, otherwise use production
+  // Legacy function - defaults to test credentials if available
   const keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
   const keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
   if (!keySecret) {
@@ -639,7 +683,10 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
   if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
 
   const { user, supabase } = auth;
-  const { keyId, keySecret } = getRazorpayCredentials(env);
+  
+  // Get credentials based on request origin (production vs development)
+  const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
+  console.log(`[CREATE-ORDER] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 
   const body = await request.json() as {
     amount?: number;
@@ -791,7 +838,10 @@ function calculateSubscriptionEndDate(billingCycle: string): string {
 async function handleVerifyPayment(request: Request, env: Env): Promise<Response> {
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-  const { keyId, keySecret } = getRazorpayCredentials(env);
+  
+  // Get credentials based on request origin (production vs development)
+  const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
+  console.log(`[VERIFY-PAYMENT] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 
   const body = await request.json() as {
     razorpay_order_id?: string;
