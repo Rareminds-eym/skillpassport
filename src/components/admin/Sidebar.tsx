@@ -23,6 +23,7 @@ import {
   FolderOpenIcon,
   FolderIcon,
   SparklesIcon,
+  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../../context/AuthContext";
 import { TrophyIcon } from "lucide-react";
@@ -206,9 +207,9 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               icon: TrophyIcon,
             },
             {
-              name: "Skill Badges",
+              name: "Competition Certificates",
               path: "/school-admin/skills/badges",
-              icon: ChartPieIcon,
+              icon: ShieldCheckIcon,
             },
             {
               name: "Reports",

@@ -9,3 +9,4 @@ export { default as ClubsCompetitionsTab } from './ClubsCompetitionsTab';
 export { default as ExamResultsTab } from './ExamResultsTab';
 export { default as NotesTab } from './NotesTab';
 export { default as EventsTab } from './EventsTab';
+export { default as DocumentsTab } from './DocumentsTab';
