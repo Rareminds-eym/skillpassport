@@ -1,4 +1,4 @@
-import { getSubscriptionPlans, PLAN_IDS, getSimplifiedPlanFeatures } from '../config/subscriptionPlans';
+import { getSubscriptionPlans, PLAN_IDS } from '../config/subscriptionPlans';
 
 // Cache for database plans
 let cachedDbPlans = null;
@@ -236,7 +236,8 @@ function getPlansForRole(role, entity) {
     }
     
     // Fallback to hardcoded config plans
-    const basePlans = getSubscriptionPlans();
+    const basePlansObj = getSubscriptionPlans();
+    const basePlans = Object.values(basePlansObj);
     
     // Role-specific feature overrides for display purposes
     const roleFeatureOverrides = getRoleSpecificFeatures(role, entity);

@@ -21,7 +21,63 @@ import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQu
 import useAuth from '../../hooks/useAuth';
 import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
 import { getEntityContent, setDatabasePlans, parseStudentType } from '../../utils/getEntityContent';
-import { calculateDaysRemaining, getStatusColor, isActiveOrPaused } from '../../utils/subscriptionHelpers';
+import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
+
+// Feature comparison data
+const FEATURE_COMPARISON = {
+  'Core Features': {
+    'Student Management': [true, true, true, true],
+    'Progress Tracking': [true, true, true, true],
+    'Basic Reports': [true, true, true, true],
+    'Advanced Analytics': [false, true, true, true],
+  },
+  'Support': {
+    'Email Support': [true, true, true, true],
+    'Priority Support': [false, true, true, true],
+    'Dedicated Manager': [false, false, true, true],
+    '24/7 Support': [false, false, false, true],
+  },
+  'Integrations': {
+    'API Access': [false, true, true, true],
+    'Custom Integrations': [false, false, true, true],
+    'SSO': [false, false, true, true],
+  },
+};
+
+// Feature Comparison Table Component
+const FeatureComparisonTable = memo(({ plans }) => {
+  const [showComparison, setShowComparison] = useState(true);
+  const [expandedCategories, setExpandedCategories] = useState({
+    'Core Features': true,
+    'Support': false,
+    'Integrations': false,
+  });
+
+  const toggleCategory = useCallback((category) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  }, []);
+
+  const renderValue = useCallback((value) => {
+    if (value === true) return <Check className="h-5 w-5 text-green-600" />;
+    if (value === false) return <X className="h-5 w-5 text-gray-300" />;
+    return <span className="text-sm text-gray-700">{value}</span>;
+  }, []);
+
+  if (!showComparison) {
+    return (
+      <div className="mt-16 text-center">
+        <button
+          onClick={() => setShowComparison(true)}
+          className="text-blue-600 hover:text-blue-700 flex items-center gap-1 text-sm mx-auto"
+        >
+          <ChevronDown className="h-4 w-4" /> Show Feature Comparison
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-16">
@@ -36,7 +92,7 @@ import { calculateDaysRemaining, getStatusColor, isActiveOrPaused } from '../../
       </div>
       
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="grid grid-cols-5 bg-gray-50 border-b border-gray-200">
+        <div className={`grid bg-gray-50 border-b border-gray-200`} style={{ gridTemplateColumns: `1fr repeat(${plans.length}, 1fr)` }}>
           <div className="p-4 font-semibold text-gray-700">Feature</div>
           {plans.map((plan) => (
             <div key={plan.id} className="p-4 text-center">
@@ -58,9 +114,9 @@ import { calculateDaysRemaining, getStatusColor, isActiveOrPaused } from '../../
             {expandedCategories[category] && (
               <div>
                 {Object.entries(features).map(([feature, values]) => (
-                  <div key={feature} className="grid grid-cols-5 border-t border-gray-100 hover:bg-gray-50">
+                  <div key={feature} className={`grid border-t border-gray-100 hover:bg-gray-50`} style={{ gridTemplateColumns: `1fr repeat(${plans.length}, 1fr)` }}>
                     <div className="p-4 text-sm text-gray-600">{feature}</div>
-                    {values.map((value, index) => (
+                    {values.slice(0, plans.length).map((value, index) => (
                       <div key={index} className="p-4 text-center flex items-center justify-center">
                         {renderValue(value)}
                       </div>
@@ -296,10 +352,6 @@ function SubscriptionPlans() {
   }, [entity, pageRole]);
   
   const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionQuery();
-  const isFullyLoaded = useMemo(() => !authLoading && !subscriptionLoading, [authLoading, subscriptionLoading]);
-  const hasActiveOrPausedSubscription = useMemo(() => subscriptionData && isActiveOrPaused(subscriptionData.status), [subscriptionData]);
-  const currentPlanData = useMemo(() => subscriptionData ? plans.find(p => p.id === subscriptionData.plan) : null, [subscriptionData, plans]);
-  const shouldRedirect = useMemo(() => isAuthenticated && hasActiveOrPausedSubscription, [isAuthenticated, hasActiveOrPausedSubscription]);
   const daysRemaining = useMemo(() => calculateDaysRemaining(subscriptionData?.endDate), [subscriptionData?.endDate]);
 
   // Combined loading state - wait for auth, subscription, and plans data
@@ -316,7 +368,7 @@ function SubscriptionPlans() {
 
   const currentPlanData = useMemo(
     () => subscriptionData ? plans.find(p => p.id === subscriptionData.plan) : null,
-    [subscriptionData]
+    [subscriptionData, plans]
   );
 
   // Compute whether redirect should occur
