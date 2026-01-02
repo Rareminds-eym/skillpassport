@@ -29,7 +29,6 @@ import {
   ApprovalModal,
   PromotionModal,
   GraduationModal,
-  DocumentsModal,
 } from './modals';
 
 // Tabs
@@ -45,6 +44,7 @@ import {
   ExamResultsTab,
   NotesTab,
   EventsTab,
+  DocumentsTab,
 } from './tabs';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 
@@ -81,7 +81,6 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [showGraduationModal, setShowGraduationModal] = useState(false);
-  const [showDocumentsModal, setShowDocumentsModal] = useState(false);
 
   // Custom hooks
   const {
@@ -139,6 +138,9 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 
     // Add Events tab for all students
     baseTabs.push({ key: 'events', label: 'Events' });
+
+    // Add Documents tab for all students
+    baseTabs.push({ key: 'documents', label: 'Documents' });
 
     // For school educators: show school-specific tabs
     if (userRole === 'school_educator' || (userRole.includes('admin') && student.school_id)) {
@@ -209,6 +211,13 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       case 'events':
         return (
           <EventsTab
+            student={student}
+            loading={false}
+          />
+        );
+      case 'documents':
+        return (
+          <DocumentsTab
             student={student}
             loading={false}
           />
@@ -445,14 +454,6 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                       View Portfolio
                     </button>
 
-                    <button
-                      onClick={() => setShowDocumentsModal(true)}
-                      className="inline-flex items-center px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
-                    >
-                      <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                      Documents
-                    </button>
-
                     {/* Student Management Actions - Only for Admins */}
                     {actions.showApproval && (
                       <button
@@ -583,13 +584,6 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           loading={actionLoading}
         />
       )}
-
-      {/* Documents Modal */}
-      <DocumentsModal
-        isOpen={showDocumentsModal}
-        onClose={() => setShowDocumentsModal(false)}
-        student={student}
-      />
     </div>
   );
 };
