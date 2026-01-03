@@ -1,3 +1,4 @@
+import { FeatureGate } from '../../components/subscription/FeatureGate';
 import EducatorCopilot from '../../features/educator-copilot/components/EducatorCopilot';
 
 /**
@@ -10,5 +11,13 @@ import EducatorCopilot from '../../features/educator-copilot/components/Educator
  * - Analyze class performance and trends
  * - Get skill development suggestions
  * - Access career readiness assessments
+ * 
+ * Wrapped with FeatureGate for educator_ai add-on access control
  */
-export default EducatorCopilot;
+export default function EducatorAI() {
+  return (
+    <FeatureGate featureKey="educator_ai" showUpgradePrompt={true}>
+      <EducatorCopilot />
+    </FeatureGate>
+  );
+}

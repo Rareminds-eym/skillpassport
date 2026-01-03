@@ -52,6 +52,9 @@ const MySubscription = lazy(() =>
 const SubscriptionManage = lazy(() =>
   import("../pages/subscription/SubscriptionManage")
 );
+const AddOns = lazy(() =>
+  import("../pages/subscription/AddOns")
+);
 
 // Event Sales (no auth required)
 const EventSales = lazy(() =>
@@ -435,6 +438,7 @@ const AppRoutes = () => {
           <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
           <Route path="/subscription/manage" element={<SubscriptionManage />} />
+          <Route path="/subscription/add-ons" element={<AddOns />} />
           {/* Legacy route - redirect to new manage route */}
           <Route
             path="/my-subscription"
