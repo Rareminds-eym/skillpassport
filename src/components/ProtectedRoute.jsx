@@ -22,6 +22,11 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { isAuthenticated, role, loading } = useAuth();
   const location = useLocation();
 
+  // Check if faculty onboarding is in progress - if so, prevent redirects
+  if (typeof window !== 'undefined' && window.facultyOnboardingInProgress) {
+    return children;
+  }
+
   if (loading) {
     return <Loader />;
   }
