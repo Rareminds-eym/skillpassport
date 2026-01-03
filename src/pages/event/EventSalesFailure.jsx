@@ -3,8 +3,8 @@
  * Shows error message when payment fails
  */
 
-import { useSearchParams, Link } from 'react-router-dom';
-import { XCircle, RefreshCw, ArrowLeft, HelpCircle, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, HelpCircle, RefreshCw, XCircle } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import Header from '../../layouts/Header';
 
 export default function EventSalesFailure() {
@@ -99,7 +99,7 @@ export default function EventSalesFailure() {
             {/* Actions */}
             <div className="space-y-3">
               <Link
-                to="/register/plans"
+                to="/signup/plans"
                 className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-500/20"
               >
                 <RefreshCw className="w-4 h-4" />

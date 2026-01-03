@@ -1,5 +1,38 @@
 import { getSubscriptionPlans, PLAN_IDS } from '../config/subscriptionPlans';
 
+// Cache for database plans
+let cachedDbPlans = null;
+let cacheTimestamp = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Set database plans from hook (called by components that fetch from Supabase)
+ * @param {Array} plans - Plans fetched from database
+ */
+export function setDatabasePlans(plans) {
+  cachedDbPlans = plans;
+  cacheTimestamp = Date.now();
+}
+
+/**
+ * Get cached database plans if available and not expired
+ * @returns {Array|null} Cached plans or null
+ */
+export function getCachedDatabasePlans() {
+  if (cachedDbPlans && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURATION)) {
+    return cachedDbPlans;
+  }
+  return null;
+}
+
+/**
+ * Clear the plans cache
+ */
+export function clearPlansCache() {
+  cachedDbPlans = null;
+  cacheTimestamp = null;
+}
+
 /**
  * Parse student type to extract entity and role
  * @param {string} studentType - e.g., "college-student", "admin", "university-educator", "recruitment-admin"
@@ -187,19 +220,40 @@ export function getModalContent(studentType) {
 
 /**
  * Get plans with role-specific features
- * Uses the new 4-tier commercially strong subscription model
+ * Uses database plans if available, falls back to config
  */
 function getPlansForRole(role, entity) {
-    // Get base plans from the new subscription config
-    const basePlans = getSubscriptionPlans();
+    // Check for cached database plans first
+    const dbPlans = getCachedDatabasePlans();
+    
+    if (dbPlans && dbPlans.length > 0) {
+        // Use database plans with role-specific feature overrides
+        const roleFeatureOverrides = getRoleSpecificFeatures(role, entity);
+        return dbPlans.map(plan => ({
+            ...plan,
+            features: roleFeatureOverrides[plan.id] || plan.features
+        }));
+    }
+    
+    // Fallback to hardcoded config plans
+    const basePlansObj = getSubscriptionPlans();
+    const basePlans = Object.values(basePlansObj);
     
     // Role-specific feature overrides for display purposes
     const roleFeatureOverrides = getRoleSpecificFeatures(role, entity);
     
-    // Map base plans with role-specific features
+    // Map base plans with role-specific features and format for display
     return basePlans.map(plan => ({
-        ...plan,
-        features: roleFeatureOverrides[plan.id] || plan.features
+        id: plan.id,
+        name: plan.name,
+        tagline: plan.subtitle,
+        positioning: plan.description,
+        price: plan.price ? String(plan.price) : null,
+        duration: plan.period,
+        recommended: plan.popular,
+        contactSales: plan.contactSales || false,
+        features: roleFeatureOverrides[plan.id] || plan.featureList,
+        limits: plan.limits
     }));
 }
 

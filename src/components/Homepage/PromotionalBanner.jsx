@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowRight } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowRight, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 /**
@@ -24,7 +24,7 @@ const PromotionalBanner = ({ event, isOpen, onClose, getTimeRemaining }) => {
   }, [isOpen, getTimeRemaining]);
 
   const handleClick = () => {
-    navigate('/register/plans');
+    navigate('/signup/plans');
   };
 
   if (!event) return null;

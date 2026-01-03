@@ -3,7 +3,7 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import Loader from "../components/Loader";
 import ProtectedRoute from "../components/ProtectedRoute";
 import ScrollToTop from "../components/ScrollToTop";
-import { SubscriptionProtectedRoute } from "../components/subscription";
+import SubscriptionProtectedRoute from "../components/Subscription/SubscriptionProtectedRoute";
 
 import AdminLayout from "../layouts/AdminLayout";
 import EducatorLayout from "../layouts/EducatorLayout";
@@ -386,9 +386,9 @@ const AppRoutes = () => {
       <ScrollToTop />
       <Routes>
         {/* Event Sales - Standalone without layout (no header/footer) */}
-        <Route path="/register/plans" element={<EventSales />} />
-        <Route path="/register/plans/success" element={<EventSalesSuccess />} />
-        <Route path="/register/plans/failure" element={<EventSalesFailure />} />
+        <Route path="/signup/plans" element={<EventSales />} />
+        <Route path="/signup/plans/success" element={<EventSalesSuccess />} />
+        <Route path="/signup/plans/failure" element={<EventSalesFailure />} />
 
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
@@ -414,9 +414,8 @@ const AppRoutes = () => {
           <Route path="/login/educator" element={<Navigate to="/login" replace />} />
 
           {/* Registration routes */}
-          <Route path="/register/recruitment" element={<Register />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/register/:type" element={<Register />} />
+          <Route path="/signup/recruitment" element={<Register />} />
+          <Route path="/signup/:type" element={<Register />} />
           <Route
             path="/signup/recruitment-recruiter"
             element={<SignupRecruiter />}

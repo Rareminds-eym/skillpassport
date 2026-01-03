@@ -1,11 +1,10 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Check, X } from 'lucide-react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getEntityContent } from '../../utils/getEntityContent';
-import { isTestPricing } from '../../config/payment';
-import RecruitmentAdminSignupModal from './RecruitmentAdminSignupModal';
 import RecruiterLoginModal from './RecruiterLoginModal';
+import RecruitmentAdminSignupModal from './RecruitmentAdminSignupModal';
 
 // Memoized PlanCard component for the modal
 const PlanCard = React.memo(({ plan, onSelect }) => {
@@ -167,15 +166,6 @@ export default function RecruitmentAdminPlansModal({ isOpen, onClose }) {
                   <p className="text-sm text-gray-600 mt-1">
                     {subtitle}
                   </p>
-                  
-                  {/* Test Mode Indicator */}
-                  {isTestPricing() && (
-                    <div className="mt-3 bg-yellow-50 border border-yellow-300 rounded-lg p-2 text-center">
-                      <p className="text-yellow-800 text-xs font-medium">
-                        🧪 Test Mode: All plans are ₹1 for testing
-                      </p>
-                    </div>
-                  )}
                 </div>
 
                 {/* Plans Grid */}

@@ -15,6 +15,11 @@
  * - POST /pause-subscription   - Pause subscription (1-3 months)
  * - POST /resume-subscription  - Resume paused subscription
  * 
+ * SUBSCRIPTION PLANS ENDPOINTS:
+ * - GET  /subscription-plans   - Get all active plans
+ * - GET  /subscription-plan    - Get single plan by code
+ * - GET  /subscription-features - Get features comparison
+ * 
  * ADMIN/CRON ENDPOINTS:
  * - POST /expire-subscriptions - Auto-expire old subscriptions (cron)
  * - GET  /health               - Health check with config status
@@ -23,6 +28,10 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
+// Import modular handlers
+import { handleGetSubscriptionPlans, handleGetSubscriptionPlan, handleGetSubscriptionFeatures } from './handlers/plans';
+
+// Re-export Env type for use in other modules
 export interface Env {
   // Supabase - support both naming conventions
   SUPABASE_URL: string;
@@ -125,8 +134,52 @@ async function authenticateUser(request: Request, env: Env): Promise<{ user: any
   return { user, supabase };
 }
 
+// Production domain for live payments
+const PRODUCTION_DOMAIN = 'skillpassport.rareminds.in';
+
+/**
+ * Check if request is from production site
+ */
+function isProductionRequest(request: Request): boolean {
+  const origin = request.headers.get('origin') || request.headers.get('referer') || '';
+  return origin.includes(PRODUCTION_DOMAIN) && !origin.includes('dev-');
+}
+
+/**
+ * Get Razorpay credentials based on request origin
+ * - Production (skillpassport.rareminds.in): Uses LIVE keys
+ * - Everything else (localhost, netlify, dev): Uses TEST keys
+ */
+function getRazorpayCredentialsForRequest(request: Request, env: Env): { keyId: string; keySecret: string; isProduction: boolean } {
+  const isProduction = isProductionRequest(request);
+  
+  let keyId: string;
+  let keySecret: string;
+  
+  if (isProduction) {
+    // Production: Use LIVE credentials
+    keyId = getRazorpayKeyId(env);
+    keySecret = env.RAZORPAY_KEY_SECRET;
+    console.log('[RAZORPAY] Using LIVE credentials for production');
+  } else {
+    // Development/Test: Use TEST credentials (with fallback to production)
+    keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
+    keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
+    console.log('[RAZORPAY] Using TEST credentials for development');
+  }
+  
+  if (!keySecret) {
+    throw new Error('RAZORPAY_KEY_SECRET is not configured');
+  }
+  
+  return { keyId, keySecret, isProduction };
+}
+
+/**
+ * @deprecated Use getRazorpayCredentialsForRequest instead for proper environment detection
+ */
 function getRazorpayCredentials(env: Env) {
-  // Use test credentials if available, otherwise use production
+  // Legacy function - defaults to test credentials if available
   const keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
   const keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
   if (!keySecret) {
@@ -639,7 +692,10 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
   if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
 
   const { user, supabase } = auth;
-  const { keyId, keySecret } = getRazorpayCredentials(env);
+  
+  // Get credentials based on request origin (production vs development)
+  const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
+  console.log(`[CREATE-ORDER] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 
   const body = await request.json() as {
     amount?: number;
@@ -739,8 +795,13 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
   });
 
   if (!razorpayResponse.ok) {
-    console.error('Razorpay API Error:', await razorpayResponse.text());
-    return jsonResponse({ error: 'Unable to create payment order' }, 500);
+    const errorText = await razorpayResponse.text();
+    console.error('Razorpay API Error:', razorpayResponse.status, errorText);
+    return jsonResponse({ 
+      error: 'Unable to create payment order',
+      razorpay_status: razorpayResponse.status,
+      razorpay_error: errorText
+    }, 500);
   }
 
   const order = await razorpayResponse.json() as any;
@@ -791,7 +852,10 @@ function calculateSubscriptionEndDate(billingCycle: string): string {
 async function handleVerifyPayment(request: Request, env: Env): Promise<Response> {
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-  const { keyId, keySecret } = getRazorpayCredentials(env);
+  
+  // Get credentials based on request origin (production vs development)
+  const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
+  console.log(`[VERIFY-PAYMENT] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 
   const body = await request.json() as {
     razorpay_order_id?: string;
@@ -799,6 +863,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     razorpay_signature?: string;
     // Optional: plan details for subscription creation
     plan?: {
+      id?: string;      // plan_id from subscription_plans table
       name?: string;
       price?: number;
       duration?: string;
@@ -1026,6 +1091,51 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     }
   }
 
+  // LOOKUP plan_id from subscription_plans table
+  // First try to use plan.id if provided (this is plan_code from frontend), otherwise lookup by plan name
+  let planId: string | null = null;
+  const planCode = plan?.id; // Frontend sends plan_code as 'id' (e.g., 'basic', 'professional')
+  
+  if (planCode) {
+    // Map frontend plan codes to database plan_codes
+    // Frontend uses 'professional', database uses 'pro'
+    const dbPlanCode = planCode === 'professional' ? 'pro' : planCode;
+    
+    // Lookup plan_id from subscription_plans by plan_code
+    const { data: planRecord } = await supabaseAdmin
+      .from('subscription_plans')
+      .select('id')
+      .eq('plan_code', dbPlanCode)
+      .eq('role_type', 'student')
+      .eq('business_type', 'b2c')
+      .maybeSingle();
+    
+    if (planRecord) {
+      planId = planRecord.id;
+      console.log(`[VERIFY-PAYMENT] Resolved plan_id ${planId} from plan_code "${dbPlanCode}"`);
+    } else {
+      console.warn(`[VERIFY-PAYMENT] Could not resolve plan_id for plan_code "${dbPlanCode}"`);
+    }
+  }
+  
+  // Fallback: lookup by plan name if plan_code lookup failed
+  if (!planId && planType) {
+    const { data: planRecord } = await supabaseAdmin
+      .from('subscription_plans')
+      .select('id')
+      .ilike('name', planType)
+      .eq('role_type', 'student')
+      .eq('business_type', 'b2c')
+      .maybeSingle();
+    
+    if (planRecord) {
+      planId = planRecord.id;
+      console.log(`[VERIFY-PAYMENT] Resolved plan_id ${planId} from plan_type "${planType}" (fallback)`);
+    } else {
+      console.warn(`[VERIFY-PAYMENT] Could not resolve plan_id for plan_type "${planType}"`);
+    }
+  }
+
   // CREATE SUBSCRIPTION RECORD
   const now = new Date().toISOString();
   const subscriptionData = {
@@ -1033,6 +1143,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     full_name: fullName,
     email: userEmail,
     phone: userPhone,
+    plan_id: planId,  // NEW: Foreign key to subscription_plans
     plan_type: planType,
     plan_amount: planAmount,
     billing_cycle: billingCycle,
@@ -1968,6 +2079,10 @@ async function handleExpireSubscriptions(env: Env): Promise<Response> {
   });
 }
 
+// ==================== SUBSCRIPTION PLANS ENDPOINTS ====================
+// NOTE: These handlers are now imported from ./handlers/plans.ts
+// See: handleGetSubscriptionPlans, handleGetSubscriptionPlan, handleGetSubscriptionFeatures
+
 // ==================== MAIN HANDLER ====================
 
 export default {
@@ -2009,6 +2124,14 @@ export default {
         case '/expire-subscriptions':
           return await handleExpireSubscriptions(env);
         
+        // Subscription Plans endpoints (public)
+        case '/subscription-plans':
+          return await handleGetSubscriptionPlans(request, env);
+        case '/subscription-plan':
+          return await handleGetSubscriptionPlan(request, env);
+        case '/subscription-features':
+          return await handleGetSubscriptionFeatures(request, env);
+        
         // Health check
         case '/health':
           const configStatus = {
@@ -2035,6 +2158,9 @@ export default {
               'POST /pause-subscription',
               'POST /resume-subscription',
               'POST /expire-subscriptions',
+              'GET  /subscription-plans',
+              'GET  /subscription-plan',
+              'GET  /subscription-features',
               'GET  /health',
               'GET  /debug-storage',
             ],
@@ -2146,6 +2272,37 @@ export default {
               error_stack: (storageError as Error).stack,
               env_storage_url: env.STORAGE_API_URL || 'not set (using default)',
               default_storage_url: STORAGE_API_URL,
+            }, 500);
+          }
+        
+        // Debug endpoint to test Razorpay connectivity
+        case '/debug-razorpay':
+          try {
+            const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
+            const razorpayAuth = btoa(`${keyId}:${keySecret}`);
+            
+            // Test Razorpay API by fetching account details
+            const testResponse = await fetch('https://api.razorpay.com/v1/payments?count=1', {
+              headers: {
+                'Authorization': `Basic ${razorpayAuth}`,
+              },
+            });
+            
+            const testStatus = testResponse.status;
+            const testBody = await testResponse.text();
+            
+            return jsonResponse({
+              success: testResponse.ok,
+              environment: isProduction ? 'PRODUCTION' : 'DEVELOPMENT',
+              razorpay_key_prefix: keyId.substring(0, 12) + '...',
+              test_key_configured: !!env.TEST_RAZORPAY_KEY_ID,
+              api_status: testStatus,
+              api_response: testBody.substring(0, 500),
+            });
+          } catch (err) {
+            return jsonResponse({
+              success: false,
+              error: err instanceof Error ? err.message : String(err),
             }, 500);
           }
         

@@ -1,25 +1,25 @@
-import { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  AlertCircle,
-  User,
-  Mail,
-  Phone,
-  CreditCard,
-  Shield,
-  Check,
-  ArrowLeft,
-  Sparkles,
-  Lock,
-  Zap,
-  CheckCircle,
+    AlertCircle,
+    ArrowLeft,
+    Check,
+    CheckCircle,
+    CreditCard,
+    Lock,
+    Mail,
+    Phone,
+    Shield,
+    Sparkles,
+    User,
+    Zap,
 } from 'lucide-react';
-import { initiateRazorpayPayment } from '../../services/Subscriptions/razorpayService';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import SubscriptionRouteGuard from '../../components/Subscription/SubscriptionRouteGuard';
 import { useSubscription } from '../../hooks/Subscription/useSubscription';
-import { isActiveOrPaused } from '../../utils/subscriptionHelpers';
 import useAuth from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabaseClient';
+import { initiateRazorpayPayment } from '../../services/Subscriptions/razorpayService';
+import { isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
 // Clean Input Component
 const FormInput = memo(
@@ -210,7 +210,7 @@ function PaymentCompletion() {
         if (plan) {
           localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, studentType }));
         }
-        navigate('/register', {
+        navigate('/signup', {
           replace: true,
           state: { plan, studentType, returnTo: '/subscription/payment' },
         });
@@ -232,7 +232,7 @@ function PaymentCompletion() {
           if (plan) {
             localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, studentType }));
           }
-          navigate('/register', {
+          navigate('/signup', {
             replace: true,
             state: { plan, studentType, returnTo: '/subscription/payment' },
           });
@@ -358,7 +358,7 @@ function PaymentCompletion() {
           plan,
           userDetails: { ...userDetails, studentType },
           onSuccess: (verificationResult) => {
-            const routes = { school: '/signin/school', university: '/signin/university', default: '/register' };
+            const routes = { school: '/signin/school', university: '/signin/university', default: '/signup' };
             navigate(routes[studentType] || routes.default, {
               state: { paymentDetails: verificationResult },
               replace: true,

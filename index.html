@@ -25,7 +25,7 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- Zoho SalesIQ Widget - Only on Home Page -->
+    <!-- Zoho SalesIQ Widget - Chat window starts minimized, opens only on click -->
     <script>
       (function() {
         // Function to check if on home page
@@ -38,7 +38,6 @@
         function updateWidgetVisibility() {
           if (window.$zoho && window.$zoho.salesiq && window.$zoho.salesiq.floatwindow) {
             if (isHomePage()) {
-              $zoho.salesiq.floatwindow.visible('show');
               document.body.classList.remove('hide-zoho-widget');
             } else {
               $zoho.salesiq.floatwindow.visible('hide');
@@ -54,6 +53,10 @@
           values:{}, 
           ready:function(){
             console.log('Zoho CRM widget loaded');
+            // Keep chat window minimized on load - only open when user clicks
+            if (window.$zoho && window.$zoho.salesiq && window.$zoho.salesiq.chatwindow) {
+              $zoho.salesiq.chatwindow.visible('hide');
+            }
             // Initial visibility check
             setTimeout(updateWidgetVisibility, 500);
           }

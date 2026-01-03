@@ -348,7 +348,7 @@ const TermsAndConditions = () => {
                     {[
                       "Digital Personal Data Protection Act, 2023 (India)",
                       "Information Technology Act, 2000 and applicable IT Rules",
-                      "GDPR (EU/UK), where applicable",
+                      "GDPR (EU/UK), Optional", 
                       "Other relevant global data protection frameworks",
                     ].map((item, idx) => (
                       <li key={idx} className="flex gap-3">
@@ -362,10 +362,10 @@ const TermsAndConditions = () => {
                     <ul className="space-y-2 text-sm text-blue-800 ml-2">
                       {[
                         "Personal data is collected only for lawful, specific, and legitimate purposes",
-                        "Data is processed based on consent, contractual necessity, or legal obligation",
-                        "Users have rights to access, correction, withdrawal of consent, grievance redressal, and erasure, where applicable",
-                        "Data may be stored or processed outside India for secure service delivery, analytics, and verification, subject to appropriate safeguards",
-                        "Reasonable security practices are implemented to protect personal data",
+  "Data is processed based on valid user consent, contractual necessity, or legal obligation",
+  "Users have rights to access, correction, withdrawal of consent, grievance redressal, and erasure, as provided under applicable law",
+  "Personal data may be stored or processed outside India for secure service delivery, communication, analytics, or verification, subject to appropriate safeguards",
+  "Reasonable security practices and technical safeguards are implemented to protect personal data",
                       ].map((item, idx) => (
                         <li key={idx} className="flex gap-2">
                           <span className="flex-shrink-0">✓</span>

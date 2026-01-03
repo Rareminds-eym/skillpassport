@@ -6,13 +6,26 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# Razorpay Configuration (Required)
-RAZORPAY_KEY_ID=rzp_test_xxxxx
-RAZORPAY_KEY_SECRET=your-razorpay-secret
+# ============================================================================
+# RAZORPAY CONFIGURATION
+# ============================================================================
+# For local development, use TEST credentials
+# The worker auto-detects production vs test based on request origin:
+# - Production (skillpassport.rareminds.in) → Uses RAZORPAY_KEY_ID/SECRET
+# - Development (localhost, etc.) → Uses TEST_RAZORPAY_KEY_ID/SECRET
+# ============================================================================
+
+# Primary credentials (used for production when deployed)
+RAZORPAY_KEY_ID=rzp_live_xxxxx
+RAZORPAY_KEY_SECRET=your-live-secret
+
+# Test credentials (used for development/non-production origins)
+TEST_RAZORPAY_KEY_ID=rzp_test_xxxxx
+TEST_RAZORPAY_KEY_SECRET=your-test-secret
+
+# For local development, you can set primary credentials to test values:
+# RAZORPAY_KEY_ID=rzp_test_xxxxx
+# RAZORPAY_KEY_SECRET=your-test-secret
 
 # Optional: Razorpay Webhook Secret
 RAZORPAY_WEBHOOK_SECRET=your-webhook-secret
-
-# Optional: Test mode credentials (for non-production environments)
-TEST_RAZORPAY_KEY_ID=rzp_test_xxxxx
-TEST_RAZORPAY_KEY_SECRET=your-test-secret

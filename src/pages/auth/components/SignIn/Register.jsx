@@ -40,7 +40,7 @@ export default function UnifiedSignup() {
   // Update URL when tab changes
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
-    navigate(`/register/${tabId}`);
+    navigate(`/signup/${tabId}`);
     setStudentType(null);
     setRecruitmentType(null);
   };

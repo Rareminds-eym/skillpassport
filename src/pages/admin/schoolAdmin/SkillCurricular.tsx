@@ -117,9 +117,9 @@ function ClubCard({ club, isJoined, onJoin, onLeave, onOpenDetails, onEdit, onDe
     const full = memberCount >= club.capacity;
 
     return (
-        <div className="group bg-white rounded-xl border border-gray-200 border-l-4 border-l-blue-500 hover:border-blue-300 hover:shadow-lg transition-all duration-300 overflow-hidden">
+        <div className="group bg-white rounded-xl hover:shadow-lg transition-all duration-300 overflow-hidden shadow-sm">
             {/* Header with gradient */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-gray-100">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                         <div className="bg-white rounded-lg p-2 shadow-sm">
@@ -542,6 +542,9 @@ export default function ClubsActivitiesPage() {
     const [competitionRegistrations, setCompetitionRegistrations] = useState([]);
     const [loadingRegistrations, setLoadingRegistrations] = useState(false);
     const [editingRegistration, setEditingRegistration] = useState(null);
+    const [registrationTab, setRegistrationTab] = useState("individual"); // "individual" or "bulk"
+    const [bulkUploadFile, setBulkUploadFile] = useState(null);
+    const [bulkUploadProgress, setBulkUploadProgress] = useState(null);
 
     const joinedClubIds = useMemo(() => {
         return new Set(clubs.filter((c) => c.members.includes(currentStudent.id)).map((c) => c.club_id));
@@ -1079,17 +1082,22 @@ const handleStudentLeave = async (studentId, club) => {
 
             // Update competition status if changed
             if (registrationForm.status && registrationForm.status !== registerCompModal?.status) {
-                await competitionsService.updateCompetition(registerCompModal.comp_id, {
-                    status: registrationForm.status
-                });
-                
-                // Update local state
-                const updatedCompetitions = competitions.map(c => 
-                    c.comp_id === registerCompModal.comp_id 
-                        ? { ...c, status: registrationForm.status }
-                        : c
-                );
-                setCompetitions(updatedCompetitions);
+                try {
+                    await competitionsService.updateCompetition(registerCompModal.comp_id, {
+                        status: registrationForm.status
+                    });
+                    
+                    // Update local state
+                    const updatedCompetitions = competitions.map(c => 
+                        c.comp_id === registerCompModal.comp_id 
+                            ? { ...c, status: registrationForm.status }
+                            : c
+                    );
+                    setCompetitions(updatedCompetitions);
+                } catch (statusError) {
+                    console.warn('Failed to update competition status:', statusError);
+                    // Don't fail the whole registration if status update fails
+                }
             }
 
             // Reload registrations
@@ -1132,6 +1140,172 @@ const handleStudentLeave = async (studentId, club) => {
     const handleCancelEdit = () => {
         setEditingRegistration(null);
         setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+    };
+
+    // Bulk upload functionality
+    const handleBulkUpload = async () => {
+        if (!bulkUploadFile) {
+            setNotice({ type: "error", text: "Please select a file to upload" });
+            return;
+        }
+
+        if (!registerCompModal) {
+            setNotice({ type: "error", text: "No competition selected" });
+            return;
+        }
+
+        try {
+            setBulkUploadProgress("Reading file...");
+            
+            const data = await bulkUploadFile.arrayBuffer();
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+            if (jsonData.length === 0) {
+                setNotice({ type: "error", text: "The uploaded file is empty" });
+                setBulkUploadProgress(null);
+                return;
+            }
+
+            setBulkUploadProgress("Processing registrations...");
+            
+            let successCount = 0;
+            let errorCount = 0;
+            const errors = [];
+
+            for (let i = 0; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                
+                try {
+                    // Validate required fields
+                    if (!row.student_email) {
+                        errors.push(`Row ${i + 2}: Student email is required`);
+                        errorCount++;
+                        continue;
+                    }
+
+                    // Find student in our system
+                    const student = allStudents.find(s => 
+                        s.email.toLowerCase() === row.student_email.toLowerCase()
+                    );
+
+                    if (!student) {
+                        errors.push(`Row ${i + 2}: Student ${row.student_email} not found in system`);
+                        errorCount++;
+                        continue;
+                    }
+
+                    // Check if already registered
+                    const existingRegistration = competitionRegistrations.find(reg => 
+                        reg.student_email.toLowerCase() === row.student_email.toLowerCase()
+                    );
+
+                    if (existingRegistration) {
+                        errors.push(`Row ${i + 2}: Student ${row.student_email} is already registered`);
+                        errorCount++;
+                        continue;
+                    }
+
+                    // Process team members if provided
+                    let teamMembers = [];
+                    if (row.team_members && typeof row.team_members === 'string') {
+                        teamMembers = row.team_members.split(',').map(name => name.trim()).filter(name => name);
+                    }
+
+                    // Register the student
+                    await competitionsService.registerForCompetition(
+                        registerCompModal.comp_id,
+                        row.student_email,
+                        {
+                            studentName: student.name,
+                            studentId: student.email,
+                            grade: student.grade,
+                            teamMembers: teamMembers.join(', '),
+                            notes: row.notes || ''
+                        }
+                    );
+
+                    successCount++;
+                    setBulkUploadProgress(`Processed ${i + 1}/${jsonData.length} registrations...`);
+                    
+                } catch (error) {
+                    console.error(`Error processing row ${i + 2}:`, error);
+                    errors.push(`Row ${i + 2}: ${error.message || 'Registration failed'}`);
+                    errorCount++;
+                }
+            }
+
+            // Show results
+            if (successCount > 0) {
+                setNotice({ 
+                    type: "success", 
+                    text: `Bulk upload completed! ${successCount} students registered successfully${errorCount > 0 ? `, ${errorCount} errors` : ''}` 
+                });
+                
+                // Reload registrations
+                await loadCompetitionRegistrations(registerCompModal.comp_id);
+            } else {
+                setNotice({ 
+                    type: "error", 
+                    text: `Bulk upload failed. ${errorCount} errors occurred.` 
+                });
+            }
+
+            // Show detailed errors if any
+            if (errors.length > 0 && errors.length <= 5) {
+                console.log("Upload errors:", errors);
+                setTimeout(() => {
+                    alert("Upload errors:\n" + errors.join('\n'));
+                }, 1000);
+            }
+
+            // Reset form
+            setBulkUploadFile(null);
+            setBulkUploadProgress(null);
+            
+        } catch (error) {
+            console.error('Bulk upload error:', error);
+            setNotice({ type: "error", text: "Failed to process bulk upload. Please check file format." });
+            setBulkUploadProgress(null);
+        }
+    };
+
+    const downloadBulkTemplate = () => {
+        const templateData = [
+            {
+                student_email: "student1@example.com",
+                team_members: "John Doe, Jane Smith",
+                notes: "Special requirements or notes"
+            },
+            {
+                student_email: "student2@example.com", 
+                team_members: "",
+                notes: "Individual participation"
+            }
+        ];
+
+        const worksheet = XLSX.utils.json_to_sheet(templateData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Competition Registration");
+        
+        // Add column headers with descriptions
+        const headerDescriptions = [
+            "Student Email (Required) - Must match student email in system",
+            "Team Members (Optional) - Comma-separated names for team events", 
+            "Notes (Optional) - Any special requirements or notes"
+        ];
+        
+        // Auto-size columns
+        worksheet['!cols'] = [
+            { wch: 30 }, // student_email
+            { wch: 40 }, // team_members  
+            { wch: 50 }  // notes
+        ];
+        
+        XLSX.writeFile(workbook, `${registerCompModal?.name || 'competition'}_registration_template.xlsx`);
+        setNotice({ type: "success", text: "Template downloaded successfully!" });
     };
     const handleAddCompetition = async () => {
         if (!newCompForm.name.trim()) {
@@ -1549,7 +1723,7 @@ const handleStudentLeave = async (studentId, club) => {
                             </div>
 
                             {filteredClubs.length === 0 ? (
-                                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                                <div className="bg-white rounded-xl p-12 text-center shadow-sm">
                                     <Users size={48} className="text-gray-300 mx-auto mb-4" />
                                     <h3 className="text-lg font-medium text-gray-900 mb-2">No clubs found</h3>
                                     <p className="text-gray-500 mb-4">Try adjusting your search or filters</p>
@@ -1628,7 +1802,7 @@ const handleStudentLeave = async (studentId, club) => {
                             </div>
 
                             {filteredCompetitions.length === 0 ? (
-                                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                                <div className="bg-white rounded-xl p-12 text-center shadow-sm">
                                     <Trophy size={48} className="text-gray-300 mx-auto mb-4" />
                                     {competitionSearchQuery ? (
                                         <>
@@ -1660,9 +1834,9 @@ const handleStudentLeave = async (studentId, club) => {
                                 <div className="space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                                         {paginatedCompetitions.map((comp) => (
-                                            <div key={comp.comp_id} className="bg-white rounded-xl border border-gray-200 border-l-4 border-l-blue-500 hover:border-blue-300 hover:shadow-lg transition-all duration-300 overflow-hidden">
+                                            <div key={comp.comp_id} className="bg-white rounded-xl hover:shadow-lg transition-all duration-300 overflow-hidden shadow-sm">
                                                 {/* Competition Header */}
-                                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-gray-100">
+                                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
                                                     <div className="flex items-start justify-between">
                                                         <div className="flex items-center gap-3">
                                                             <div className="bg-white rounded-lg p-2 shadow-sm">
@@ -2070,6 +2244,9 @@ const handleStudentLeave = async (studentId, club) => {
                         setRegisterCompModal(null);
                         setEditingRegistration(null);
                         setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+                        setRegistrationTab("individual");
+                        setBulkUploadFile(null);
+                        setBulkUploadProgress(null);
                     }}
                     title={`${editingRegistration ? 'Edit' : 'Register for'} ${registerCompModal?.name ?? ""}`}
                 >
@@ -2094,145 +2271,306 @@ const handleStudentLeave = async (studentId, club) => {
                             </div>
                         </div>
 
-                        {/* Existing Registrations */}
-                        {!editingRegistration && competitionRegistrations.length > 0 && (
-                            <div className="border rounded-lg p-3 bg-gray-50">
-                                <h4 className="text-sm font-semibold mb-2">Registered Students ({competitionRegistrations.length})</h4>
-                                <div className="space-y-2 max-h-48 overflow-y-auto">
-                                    {competitionRegistrations.map((reg) => {
-                                        const student = allStudents.find(s => s.email === reg.student_email);
-                                        return (
-                                            <div key={reg.registration_id} className="flex items-center justify-between p-2 bg-white rounded border">
-                                                <div className="flex-1">
-                                                    <div className="font-medium text-sm">{student?.name || reg.student_email}</div>
-                                                    <div className="text-xs text-slate-500">{student?.grade || 'N/A'} • {reg.student_email}</div>
-                                                    {reg.team_members?.members && (
-                                                        <div className="text-xs text-blue-600 mt-1">Team: {reg.team_members.members.join(', ')}</div>
-                                                    )}
+                        {/* Tab Navigation */}
+                        <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1">
+                            <button
+                                onClick={() => setRegistrationTab("individual")}
+                                className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                                    registrationTab === "individual"
+                                        ? "bg-white text-blue-600 shadow-sm"
+                                        : "text-gray-600 hover:text-gray-900"
+                                }`}
+                            >
+                                <div className="flex items-center justify-center gap-2">
+                                    <User size={16} />
+                                    Individual Registration
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => setRegistrationTab("bulk")}
+                                className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                                    registrationTab === "bulk"
+                                        ? "bg-white text-blue-600 shadow-sm"
+                                        : "text-gray-600 hover:text-gray-900"
+                                }`}
+                            >
+                                <div className="flex items-center justify-center gap-2">
+                                    <Users size={16} />
+                                    Bulk Upload
+                                </div>
+                            </button>
+                        </div>
+
+                        {/* Individual Registration Tab */}
+                        {registrationTab === "individual" && (
+                            <div className="space-y-4">
+                                {/* Existing Registrations */}
+                                {!editingRegistration && competitionRegistrations.length > 0 && (
+                                    <div className="border rounded-lg p-3 bg-gray-50">
+                                        <h4 className="text-sm font-semibold mb-2">Registered Students ({competitionRegistrations.length})</h4>
+                                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                                            {competitionRegistrations.map((reg) => {
+                                                const student = allStudents.find(s => s.email === reg.student_email);
+                                                return (
+                                                    <div key={reg.registration_id} className="flex items-center justify-between p-2 bg-white rounded border">
+                                                        <div className="flex-1">
+                                                            <div className="font-medium text-sm">{student?.name || reg.student_email}</div>
+                                                            <div className="text-xs text-slate-500">{student?.grade || 'N/A'} • {reg.student_email}</div>
+                                                            {reg.team_members?.members && (
+                                                                <div className="text-xs text-blue-600 mt-1">Team: {reg.team_members.members.join(', ')}</div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex gap-1">
+                                                            <button
+                                                                onClick={() => handleEditRegistration(reg)}
+                                                                className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteRegistration(reg.registration_id)}
+                                                                className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Registration Form */}
+                                <div className="border-t pt-4">
+                                    <h4 className="text-sm font-semibold mb-3">{editingRegistration ? 'Edit Registration' : 'Add New Registration'}</h4>
+                                    
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Student Email *</label>
+                                            <select
+                                                value={registrationForm.studentEmail}
+                                                onChange={(e) => setRegistrationForm({ ...registrationForm, studentEmail: e.target.value })}
+                                                disabled={!!editingRegistration}
+                                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                                            >
+                                                <option value="">Select a student</option>
+                                                {allStudents.map((student) => (
+                                                    <option key={student.email} value={student.email}>
+                                                        {student.name} - {student.grade} ({student.email})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {registrationForm.studentEmail && (() => {
+                                            const selectedStudent = allStudents.find(s => s.email === registrationForm.studentEmail);
+                                            return selectedStudent ? (
+                                                <div className="bg-green-50 p-3 rounded-lg text-sm">
+                                                    <div className="font-medium text-green-900">Selected Student:</div>
+                                                    <div className="text-green-700 mt-1">
+                                                        <div>Name: {selectedStudent.name}</div>
+                                                        <div>Grade/Class: {selectedStudent.grade}</div>
+                                                        <div>Email: {selectedStudent.email}</div>
+                                                    </div>
                                                 </div>
-                                                <div className="flex gap-1">
-                                                    <button
-                                                        onClick={() => handleEditRegistration(reg)}
-                                                        className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteRegistration(reg.registration_id)}
-                                                        className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                            ) : null;
+                                        })()}
+
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Team Members (if applicable)</label>
+                                            <input
+                                                type="text"
+                                                value={registrationForm.teamMembers}
+                                                onChange={(e) => setRegistrationForm({ ...registrationForm, teamMembers: e.target.value })}
+                                                placeholder="Comma-separated names (e.g., John Doe, Jane Smith)"
+                                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <p className="text-xs text-slate-500 mt-1">Leave empty for individual participation</p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Competition Status</label>
+                                            <select
+                                                value={registrationForm.status || registerCompModal?.status || 'upcoming'}
+                                                onChange={(e) => setRegistrationForm({ ...registrationForm, status: e.target.value })}
+                                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="upcoming">Upcoming</option>
+                                                <option value="ongoing">Ongoing</option>
+                                                <option value="completed">Completed</option>
+                                                <option value="cancelled">Cancelled</option>
+                                            </select>
+                                            <p className="text-xs text-slate-500 mt-1">Current status of the competition</p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Additional Notes</label>
+                                            <textarea
+                                                value={registrationForm.notes}
+                                                onChange={(e) => setRegistrationForm({ ...registrationForm, notes: e.target.value })}
+                                                placeholder="Any special requirements or notes"
+                                                rows={2}
+                                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 pt-4 border-t">
+                                    <button
+                                        onClick={handleRegisterCompetition}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                    >
+                                        {editingRegistration ? 'Update Registration' : 'Submit Registration'}
+                                    </button>
+                                    {editingRegistration && (
+                                        <button
+                                            onClick={handleCancelEdit}
+                                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                                        >
+                                            Cancel Edit
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => {
+                                            setRegisterCompModal(null);
+                                            setEditingRegistration(null);
+                                            setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+                                        }}
+                                        className="px-4 py-2 border rounded-md hover:bg-gray-50"
+                                    >
+                                        Close
+                                    </button>
                                 </div>
                             </div>
                         )}
 
-                        {/* Registration Form */}
-                        <div className="border-t pt-4">
-                            <h4 className="text-sm font-semibold mb-3">{editingRegistration ? 'Edit Registration' : 'Add New Registration'}</h4>
-                            
-                            <div className="space-y-3">
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Student Email *</label>
-                                    <select
-                                        value={registrationForm.studentEmail}
-                                        onChange={(e) => setRegistrationForm({ ...registrationForm, studentEmail: e.target.value })}
-                                        disabled={!!editingRegistration}
-                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-                                    >
-                                        <option value="">Select a student</option>
-                                        {allStudents.map((student) => (
-                                            <option key={student.email} value={student.email}>
-                                                {student.name} - {student.grade} ({student.email})
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                {registrationForm.studentEmail && (() => {
-                                    const selectedStudent = allStudents.find(s => s.email === registrationForm.studentEmail);
-                                    return selectedStudent ? (
-                                        <div className="bg-green-50 p-3 rounded-lg text-sm">
-                                            <div className="font-medium text-green-900">Selected Student:</div>
-                                            <div className="text-green-700 mt-1">
-                                                <div>Name: {selectedStudent.name}</div>
-                                                <div>Grade/Class: {selectedStudent.grade}</div>
-                                                <div>Email: {selectedStudent.email}</div>
+                        {/* Bulk Upload Tab */}
+                        {registrationTab === "bulk" && (
+                            <div className="space-y-4">
+                                {/* Existing Registrations Summary */}
+                                {competitionRegistrations.length > 0 && (
+                                    <div className="bg-blue-50 p-3 rounded-lg">
+                                        <div className="flex items-center justify-between">
+                                            <div className="text-sm font-medium text-blue-900">
+                                                Current Registrations: {competitionRegistrations.length} students
                                             </div>
+                                            <button
+                                                onClick={() => setRegistrationTab("individual")}
+                                                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                            >
+                                                View Details
+                                            </button>
                                         </div>
-                                    ) : null;
-                                })()}
+                                    </div>
+                                )}
 
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Team Members (if applicable)</label>
-                                    <input
-                                        type="text"
-                                        value={registrationForm.teamMembers}
-                                        onChange={(e) => setRegistrationForm({ ...registrationForm, teamMembers: e.target.value })}
-                                        placeholder="Comma-separated names (e.g., John Doe, Jane Smith)"
-                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                    <p className="text-xs text-slate-500 mt-1">Leave empty for individual participation</p>
+                                {/* Instructions */}
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                    <div className="flex items-start gap-3">
+                                        <Info size={20} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-amber-900 mb-2">Bulk Upload Instructions</h4>
+                                            <ul className="text-xs text-amber-800 space-y-1">
+                                                <li>• Download the template file and fill in student details</li>
+                                                <li>• Student emails must match exactly with students in your system</li>
+                                                <li>• Team members should be comma-separated (optional)</li>
+                                                <li>• Save as Excel (.xlsx) or CSV format</li>
+                                                <li>• Maximum 100 students per upload</li>
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Competition Status</label>
-                                    <select
-                                        value={registrationForm.status || registerCompModal?.status || 'upcoming'}
-                                        onChange={(e) => setRegistrationForm({ ...registrationForm, status: e.target.value })}
-                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                {/* Template Download */}
+                                <div className="border rounded-lg p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-gray-900">Step 1: Download Template</h4>
+                                            <p className="text-xs text-gray-600 mt-1">Get the Excel template with proper format</p>
+                                        </div>
+                                        <button
+                                            onClick={downloadBulkTemplate}
+                                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                                        >
+                                            <Download size={16} />
+                                            Download Template
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* File Upload */}
+                                <div className="border rounded-lg p-4">
+                                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Step 2: Upload Completed File</h4>
+                                    
+                                    <div className="space-y-3">
+                                        <div>
+                                            <input
+                                                type="file"
+                                                accept=".xlsx,.xls,.csv"
+                                                onChange={(e) => setBulkUploadFile(e.target.files[0])}
+                                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Supported formats: Excel (.xlsx, .xls) or CSV</p>
+                                        </div>
+
+                                        {bulkUploadFile && (
+                                            <div className="bg-green-50 p-3 rounded-lg">
+                                                <div className="flex items-center gap-2">
+                                                    <CheckCircle size={16} className="text-green-600" />
+                                                    <span className="text-sm text-green-900">
+                                                        File selected: {bulkUploadFile.name}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {bulkUploadProgress && (
+                                            <div className="bg-blue-50 p-3 rounded-lg">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                                    <span className="text-sm text-blue-900">{bulkUploadProgress}</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Upload Actions */}
+                                <div className="flex items-center gap-3 pt-4 border-t">
+                                    <button
+                                        onClick={handleBulkUpload}
+                                        disabled={!bulkUploadFile || !!bulkUploadProgress}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                                     >
-                                        <option value="upcoming">Upcoming</option>
-                                        <option value="ongoing">Ongoing</option>
-                                        <option value="completed">Completed</option>
-                                        <option value="cancelled">Cancelled</option>
-                                    </select>
-                                    <p className="text-xs text-slate-500 mt-1">Current status of the competition</p>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Additional Notes</label>
-                                    <textarea
-                                        value={registrationForm.notes}
-                                        onChange={(e) => setRegistrationForm({ ...registrationForm, notes: e.target.value })}
-                                        placeholder="Any special requirements or notes"
-                                        rows={2}
-                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
+                                        {bulkUploadProgress ? 'Processing...' : 'Upload & Register Students'}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setBulkUploadFile(null);
+                                            setBulkUploadProgress(null);
+                                        }}
+                                        disabled={!!bulkUploadProgress}
+                                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                    >
+                                        Clear File
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setRegisterCompModal(null);
+                                            setRegistrationTab("individual");
+                                            setBulkUploadFile(null);
+                                            setBulkUploadProgress(null);
+                                        }}
+                                        disabled={!!bulkUploadProgress}
+                                        className="px-4 py-2 border rounded-md hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                    >
+                                        Close
+                                    </button>
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 pt-4 border-t">
-                            <button
-                                onClick={handleRegisterCompetition}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                            >
-                                {editingRegistration ? 'Update Registration' : 'Submit Registration'}
-                            </button>
-                            {editingRegistration && (
-                                <button
-                                    onClick={handleCancelEdit}
-                                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-                                >
-                                    Cancel Edit
-                                </button>
-                            )}
-                            <button
-                                onClick={() => {
-                                    setRegisterCompModal(null);
-                                    setEditingRegistration(null);
-                                    setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
-                                }}
-                                className="px-4 py-2 border rounded-md hover:bg-gray-50"
-                            >
-                                Close
-                            </button>
-                        </div>
+                        )}
                     </div>
                 </Modal>
 

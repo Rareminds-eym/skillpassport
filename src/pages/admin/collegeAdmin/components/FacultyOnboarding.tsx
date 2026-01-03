@@ -1,7 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Upload, FileText, CheckCircle, AlertCircle, X, Loader2 } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
-import { uploadFile, uploadMultipleFiles, validateFile, UploadResult } from "../../../../services/fileUploadService";
+import { uploadFile, uploadMultipleFiles, validateFile } from "../../../../services/fileUploadService";
+// @ts-ignore - AuthContext is a .jsx file
+import { useAuth } from "../../../../context/AuthContext";
+
+// Global flag to prevent redirects during faculty onboarding
+declare global {
+  interface Window {
+    facultyOnboardingInProgress?: boolean;
+  }
+}
 
 interface SubjectExpertise {
   name: string;
@@ -14,6 +23,7 @@ interface FacultyOnboardingProps {
 }
 
 const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -27,6 +37,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
     experience_years: 0,
     date_of_joining: "",
     role: "lecturer" as "college_admin" | "dean" | "hod" | "professor" | "assistant_professor" | "lecturer",
+    employee_id: "",
   });
 
   const [documents, setDocuments] = useState({
@@ -52,6 +63,15 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  // Cleanup effect to ensure global flag is cleared when component unmounts
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.facultyOnboardingInProgress) {
+        window.facultyOnboardingInProgress = false;
+      }
+    };
+  }, []);
 
   const departments = [
     "Computer Science & Engineering",
@@ -116,6 +136,13 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
           }
         }));
 
+        // Clear validation error for experience letters
+        setValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.experience_letters;
+          return newErrors;
+        });
+
         setMessage({ type: "success", text: `Successfully uploaded ${successfulUploads.length} experience letters` });
       } catch (error) {
         setUploadStatus(prev => ({
@@ -154,6 +181,13 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
             error: null
           }
         }));
+
+        // Clear validation error for this field
+        setValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
 
         setMessage({ type: "success", text: `Successfully uploaded ${field.replace('_', ' ')}` });
       } catch (error) {
@@ -198,9 +232,17 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
     setMessage(null);
     setValidationErrors({});
 
+    // Set global flag to prevent ProtectedRoute redirects during onboarding
+    if (typeof window !== 'undefined') {
+      window.facultyOnboardingInProgress = true;
+    }
+
     if (!collegeId) {
       setMessage({ type: "error", text: "College ID not found. Please ensure you're logged in as a college admin." });
       setLoading(false);
+      if (typeof window !== 'undefined') {
+        window.facultyOnboardingInProgress = false;
+      }
       return;
     }
 
@@ -209,13 +251,63 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
     if (!formData.first_name.trim()) errors.first_name = "First name is required";
     if (!formData.last_name.trim()) errors.last_name = "Last name is required";
     if (!formData.email.trim()) errors.email = "Email is required";
+    if (!formData.employee_id.trim()) errors.employee_id = "Employee ID is required";
     if (!formData.department.trim()) errors.department = "Department is required";
     if (subjects.length === 0) errors.subjects = "At least one subject expertise is required";
+    
+    // Document validation - mandatory in production, optional in development
+    // const isProduction = process.env.NODE_ENV === 'production';
+    
+    // if (isProduction) {
+      if (!uploadStatus.degree_certificate.uploaded) {
+        errors.degree_certificate = "Degree certificate is required";
+      }
+      if (!uploadStatus.id_proof.uploaded) {
+        errors.id_proof = "ID proof is required";
+      }
+      if (uploadStatus.experience_letters.urls.length === 0) {
+        errors.experience_letters = "At least one experience letter is required";
+      }
+    // }
 
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       setMessage({ type: "error", text: "Please fix the validation errors before submitting." });
       setLoading(false);
+      if (typeof window !== 'undefined') {
+        window.facultyOnboardingInProgress = false;
+      }
+      return;
+    }
+
+    // Check for duplicate employee ID
+    try {
+      const { data: existingFaculty, error: duplicateCheckError } = await supabase
+        .from("college_lecturers")
+        .select("employeeId")
+        .eq("collegeId", collegeId)
+        .eq("employeeId", formData.employee_id.trim())
+        .maybeSingle();
+
+      if (duplicateCheckError) {
+        throw new Error(`Error checking for duplicate employee ID: ${duplicateCheckError.message}`);
+      }
+
+      if (existingFaculty) {
+        setValidationErrors({ employee_id: "This Employee ID already exists in your college" });
+        setMessage({ type: "error", text: "Employee ID already exists. Please choose a different ID." });
+        setLoading(false);
+        if (typeof window !== 'undefined') {
+          window.facultyOnboardingInProgress = false;
+        }
+        return;
+      }
+    } catch (error: any) {
+      setMessage({ type: "error", text: error.message || "Failed to validate employee ID" });
+      setLoading(false);
+      if (typeof window !== 'undefined') {
+        window.facultyOnboardingInProgress = false;
+      }
       return;
     }
 
@@ -225,34 +317,39 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
       const idProofUrl = uploadStatus.id_proof.url;
       const experienceUrls = uploadStatus.experience_letters.urls;
 
-      // Get current user email
-      const userEmail = localStorage.getItem('userEmail');
-      
-      if (!userEmail) {
-        throw new Error("User not authenticated. Please log in again.");
-      }
-
       // Generate a temporary password
       const tempPassword = Math.random().toString(36).slice(-8) + "Temp@123";
       
-      console.log("Creating auth user for:", formData.email);
-      
       // Step 1: Create Supabase Auth user
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: formData.email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: {
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          role: 'college_educator',
-          college_id: collegeId,
-        }
-      });
+      let userId: string;
+      
+      // Store current session to restore later
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      // Try admin API first, but expect it to fail in most cases
+      try {
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          email: formData.email,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: {
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            role: 'college_educator',
+            college_id: collegeId,
+          }
+        });
 
-      if (authError) {
-        console.warn("Admin API not available, trying regular signup:", authError);
+        if (authError) throw authError;
         
+        if (!authData.user) {
+          throw new Error("Failed to create auth user");
+        }
+        
+        userId = authData.user.id;
+        
+      } catch (adminError) {
+        // Regular signup approach (this will auto-sign-in the new user temporarily)
         const { data: signupData, error: signupError } = await supabase.auth.signUp({
           email: formData.email,
           password: tempPassword,
@@ -274,18 +371,22 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
           throw new Error("Failed to create auth user");
         }
 
-        var userId = signupData.user.id;
-      } else {
-        if (!authData.user) {
-          throw new Error("Failed to create auth user");
+        userId = signupData.user.id;
+        
+        // Immediately restore the original admin session
+        if (currentSession) {
+          await supabase.auth.setSession({
+            access_token: currentSession.access_token,
+            refresh_token: currentSession.refresh_token
+          });
+          
+          // Small delay to ensure session is properly restored
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
-        var userId = authData.user.id;
       }
 
-      console.log("Created auth user:", userId);
-
       // Step 2: Create user record in users table
-      const { data: userRecord, error: userError } = await supabase
+      const { error: userError } = await supabase
         .from("users")
         .insert({
           id: userId,
@@ -296,40 +397,41 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
         .single();
 
       if (userError) {
-        console.error("Failed to create user record:", userError);
         throw new Error(`Failed to create user record: ${userError.message}`);
       }
-
-      console.log("Created user record:", userRecord);
 
       // Step 3: Create faculty record in college_lecturers table
       const { data: faculty, error: facultyError } = await supabase
         .from("college_lecturers")
         .insert({
-          userId: userId,
-          collegeId: collegeId,
-          employeeId: `FAC${Date.now().toString().slice(-6)}`, // Generate employee ID
+          user_id: userId,
+          "collegeId": collegeId,
+          "employeeId": formData.employee_id, // Use manually entered employee ID
           department: formData.department,
           specialization: formData.specialization || null,
           qualification: formData.qualification || null,
-          experienceYears: formData.experience_years || 0,
-          dateOfJoining: formData.date_of_joining || new Date().toISOString().split('T')[0],
-          accountStatus: "active",
+          "experienceYears": formData.experience_years || 0,
+          "dateOfJoining": formData.date_of_joining || new Date().toISOString().split('T')[0],
+          "accountStatus": "active",
+          // New separate columns
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          email: formData.email,
+          phone: formData.phone || null,
+          date_of_birth: formData.date_of_birth || null,
+          address: formData.address || null,
+          designation: formData.role,
+          subject_expertise: subjects,
+          degree_certificate_url: degreeUrl,
+          id_proof_url: idProofUrl,
+          experience_letters_url: experienceUrls.length > 0 ? experienceUrls : [],
+          temporary_password: tempPassword,
+          password_created_at: new Date().toISOString(),
+          created_by: user?.id,
+          verification_status: "pending",
+          // Keep minimal metadata for backward compatibility
           metadata: {
-            first_name: formData.first_name,
-            last_name: formData.last_name,
-            email: formData.email,
-            phone_number: formData.phone || null,
-            date_of_birth: formData.date_of_birth || null,
-            address: formData.address || null,
-            role: formData.role,
-            subject_expertise: subjects,
-            degree_certificate_url: degreeUrl,
-            id_proof_url: idProofUrl,
-            experience_letters_url: experienceUrls.length > 0 ? experienceUrls : null,
-            temporary_password: tempPassword,
-            password_created_at: new Date().toISOString(),
-            created_by: userEmail,
+            source: "admin_onboarding"
           }
         })
         .select()
@@ -338,7 +440,6 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
       if (facultyError) {
         // Rollback: delete user record
         await supabase.from("users").delete().eq("id", userId);
-        console.error("Failed to create faculty record:", facultyError);
         throw new Error(`Failed to create faculty record: ${facultyError.message}`);
       }
 
@@ -346,6 +447,14 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
         type: "success",
         text: `Faculty member onboarded successfully! Employee ID: ${faculty.employeeId}. Login credentials sent to ${formData.email}. Temporary password: ${tempPassword}`,
       });
+
+      // Ensure we're still logged in as admin after the process
+      if (currentSession) {
+        await supabase.auth.setSession({
+          access_token: currentSession.access_token,
+          refresh_token: currentSession.refresh_token
+        });
+      }
 
       // Reset form
       setFormData({ 
@@ -360,7 +469,8 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
         specialization: "",
         experience_years: 0,
         date_of_joining: "",
-        role: "lecturer" 
+        role: "lecturer",
+        employee_id: ""
       });
       setDocuments({ degree_certificate: null, id_proof: null, experience_letters: [] });
       setUploadStatus({
@@ -373,6 +483,11 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
       setMessage({ type: "error", text: error.message || "Failed to onboard faculty member" });
     } finally {
       setLoading(false);
+      
+      // Always clear the global flag when process completes (success or error)
+      if (typeof window !== 'undefined') {
+        window.facultyOnboardingInProgress = false;
+      }
     }
   };
 
@@ -459,6 +574,24 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Employee ID *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.employee_id}
+                onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                placeholder="e.g., FAC001, EMP123"
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                  validationErrors.employee_id ? 'border-red-300' : 'border-gray-300'
+                }`}
+              />
+              {validationErrors.employee_id && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.employee_id}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
@@ -554,7 +687,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
             {/* Degree Certificate */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Degree Certificate
+                Degree Certificate *
               </label>
               <div className="flex items-center gap-3">
                 <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition ${
@@ -562,8 +695,12 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                     ? 'border-green-300 bg-green-50' 
                     : uploadStatus.degree_certificate.uploading
                     ? 'border-blue-300 bg-blue-50'
+                    : validationErrors.degree_certificate
+                    ? 'border-red-300 bg-red-50'
                     : 'border-gray-300 hover:border-indigo-500'
-                }`}>
+                }`}
+                title={documents.degree_certificate?.name || ""}
+                >
                   {uploadStatus.degree_certificate.uploading ? (
                     <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
                   ) : uploadStatus.degree_certificate.uploaded ? (
@@ -581,8 +718,12 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                     {uploadStatus.degree_certificate.uploading 
                       ? "Uploading..." 
                       : uploadStatus.degree_certificate.uploaded
-                      ? `✓ ${documents.degree_certificate?.name || "Uploaded"}`
-                      : documents.degree_certificate?.name || "Upload degree certificate"
+                      ? `${documents.degree_certificate?.name ? 
+                          (documents.degree_certificate.name.length > 25 
+                            ? `${documents.degree_certificate.name.substring(0, 20)}...${documents.degree_certificate.name.substring(documents.degree_certificate.name.lastIndexOf('.'))}`
+                            : documents.degree_certificate.name
+                          ) : "Uploaded"}`
+                      : "Upload degree certificate"
                     }
                   </span>
                   <input
@@ -597,19 +738,26 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
               {uploadStatus.degree_certificate.error && (
                 <p className="mt-1 text-sm text-red-600">{uploadStatus.degree_certificate.error}</p>
               )}
+              {validationErrors.degree_certificate && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.degree_certificate}</p>
+              )}
             </div>
 
             {/* ID Proof */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ID Proof</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">ID Proof *</label>
               <div className="flex items-center gap-3">
                 <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition ${
                   uploadStatus.id_proof.uploaded 
                     ? 'border-green-300 bg-green-50' 
                     : uploadStatus.id_proof.uploading
                     ? 'border-blue-300 bg-blue-50'
+                    : validationErrors.id_proof
+                    ? 'border-red-300 bg-red-50'
                     : 'border-gray-300 hover:border-indigo-500'
-                }`}>
+                }`}
+                title={documents.id_proof?.name || ""}
+                >
                   {uploadStatus.id_proof.uploading ? (
                     <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
                   ) : uploadStatus.id_proof.uploaded ? (
@@ -627,8 +775,12 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                     {uploadStatus.id_proof.uploading 
                       ? "Uploading..." 
                       : uploadStatus.id_proof.uploaded
-                      ? `✓ ${documents.id_proof?.name || "Uploaded"}`
-                      : documents.id_proof?.name || "Upload ID proof"
+                      ? `${documents.id_proof?.name ? 
+                          (documents.id_proof.name.length > 25 
+                            ? `${documents.id_proof.name.substring(0, 20)}...${documents.id_proof.name.substring(documents.id_proof.name.lastIndexOf('.'))}`
+                            : documents.id_proof.name
+                          ) : "Uploaded"}`
+                      : "Upload ID proof"
                     }
                   </span>
                   <input
@@ -643,17 +795,22 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
               {uploadStatus.id_proof.error && (
                 <p className="mt-1 text-sm text-red-600">{uploadStatus.id_proof.error}</p>
               )}
+              {validationErrors.id_proof && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.id_proof}</p>
+              )}
             </div>
 
             {/* Experience Letters */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Experience Letters
+                Experience Letters *
               </label>
               <div className="space-y-2">
                 <label className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition ${
                   uploadStatus.experience_letters.uploading
                     ? 'border-blue-300 bg-blue-50'
+                    : validationErrors.experience_letters
+                    ? 'border-red-300 bg-red-50'
                     : 'border-gray-300 hover:border-indigo-500'
                 }`}>
                   {uploadStatus.experience_letters.uploading ? (
@@ -678,32 +835,49 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                 {uploadStatus.experience_letters.error && (
                   <p className="text-sm text-red-600">{uploadStatus.experience_letters.error}</p>
                 )}
-                {documents.experience_letters.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
-                  >
-                    <div className="flex items-center gap-2">
-                      {uploadStatus.experience_letters.urls[index] ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <FileText className="h-4 w-4 text-gray-400" />
-                      )}
-                      <span className="text-sm text-gray-700">{file.name}</span>
-                      {uploadStatus.experience_letters.urls[index] && (
-                        <span className="text-xs text-green-600">✓ Uploaded</span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeExperienceLetter(index)}
-                      className="text-red-500 hover:text-red-700"
-                      disabled={uploadStatus.experience_letters.uploading}
+                {validationErrors.experience_letters && (
+                  <p className="text-sm text-red-600">{validationErrors.experience_letters}</p>
+                )}
+                {documents.experience_letters.map((file, index) => {
+                  // Truncate long filenames for better display
+                  const displayName = file.name.length > 40 
+                    ? `${file.name.substring(0, 20)}...${file.name.substring(file.name.lastIndexOf('.'))}`
+                    : file.name;
+                  
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
                     >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {uploadStatus.experience_letters.urls[index] ? (
+                          <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        ) : (
+                          <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <span 
+                            className="text-sm text-gray-700 block truncate" 
+                            title={file.name}
+                          >
+                            {displayName}
+                          </span>
+                          {uploadStatus.experience_letters.urls[index] && (
+                            <span className="text-xs text-green-600">Uploaded</span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeExperienceLetter(index)}
+                        className="text-red-500 hover:text-red-700 flex-shrink-0 ml-2"
+                        disabled={uploadStatus.experience_letters.uploading}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

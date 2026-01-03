@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, ClipboardList, CheckCircle, Sparkles, ChevronRight, Star } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CheckCircle, ChevronRight, ClipboardList, Sparkles, Star, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 /**
@@ -56,7 +56,7 @@ const AssessmentPromotionalModal = ({ isOpen, onClose, getTimeRemaining }) => {
 
   const handleTakeAssessment = () => {
     onClose();
-    navigate('/register');
+    navigate('/signup');
   };
 
   // Animation variants

@@ -3,11 +3,11 @@
  * Shows confirmation after successful payment with login credentials
  */
 
+import { ArrowLeft, ArrowRight, Check, CheckCircle, Copy, Eye, EyeOff, Key, Mail, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { CheckCircle, Mail, ArrowRight, ArrowLeft, Sparkles, Key, Copy, Check, Eye, EyeOff } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '../../layouts/Header';
+import { supabase } from '../../lib/supabaseClient';
 
 export default function EventSalesSuccess() {
   const navigate = useNavigate();
@@ -184,7 +184,7 @@ export default function EventSalesSuccess() {
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                to="/register/plans"
+                to="/signup/plans"
                 className="w-full h-12 bg-gray-100 text-gray-700 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-gray-200 transition-all"
               >
                 <Sparkles className="w-4 h-4" />

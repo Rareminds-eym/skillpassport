@@ -6,30 +6,39 @@ import FacultyDocumentViewerModal from "../../../../components/admin/modals/Facu
 
 interface Faculty {
   id: string;
-  userId: string;
+  userId?: string;
   collegeId: string;
-  employeeId: string;
-  department: string;
-  specialization: string;
-  qualification: string;
-  experienceYears: number;
-  dateOfJoining: string;
+  employeeId?: string;
+  department?: string;
+  specialization?: string;
+  qualification?: string;
+  experienceYears?: number;
+  dateOfJoining?: string;
   accountStatus: string;
   createdAt: string;
   updatedAt: string;
+  // New separate columns from migration
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  date_of_birth?: string;
+  gender?: string;
+  designation?: string;
+  subject_expertise?: any[];
+  temporary_password?: string;
+  password_created_at?: string;
+  created_by?: string;
+  verification_status?: string;
+  verified_by?: string;
+  verified_at?: string;
+  degree_certificate_url?: string;
+  id_proof_url?: string;
+  experience_letters_url?: any[];
+  // Keep metadata for backward compatibility
   metadata?: {
-    first_name?: string;
-    last_name?: string;
-    email?: string;
-    phone_number?: string;
-    temporary_password?: string;
-    password_created_at?: string;
-    created_by?: string;
-    subject_expertise?: any[];
-    role?: string;
-    degree_certificate_url?: string;
-    id_proof_url?: string;
-    experience_letters_url?: string[];
+    [key: string]: any;
   };
 }
 
@@ -92,10 +101,10 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
     if (searchTerm) {
       filtered = filtered.filter(
         (f) =>
-          f.metadata?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          f.metadata?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          f.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          f.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           f.employeeId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          f.metadata?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          f.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           f.department?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -110,7 +119,7 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; icon: any; label: string }> = {
       active: { color: "bg-green-100 text-green-800", icon: CheckCircle, label: "Active" },
-      inactive: { color: "bg-gray-100 text-gray-800", icon: XCircle, label: "Inactive" },
+      deactivated: { color: "bg-gray-100 text-gray-800", icon: XCircle, label: "Deactivated" },
       pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock, label: "Pending" },
       suspended: { color: "bg-red-100 text-red-800", icon: XCircle, label: "Suspended" },
     };
@@ -123,6 +132,24 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
         className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${config.color}`}
       >
         <Icon className="h-3 w-3" />
+        {config.label}
+      </span>
+    );
+  };
+
+  const getVerificationBadge = (status: string) => {
+    const statusConfig: Record<string, { color: string; label: string }> = {
+      verified: { color: "bg-green-100 text-green-800", label: "Verified" },
+      pending: { color: "bg-yellow-100 text-yellow-800", label: "Pending" },
+      rejected: { color: "bg-red-100 text-red-800", label: "Rejected" },
+    };
+
+    const config = statusConfig[status] || statusConfig.pending;
+
+    return (
+      <span
+        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${config.color}`}
+      >
         {config.label}
       </span>
     );
@@ -183,7 +210,7 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="deactivated">Deactivated</option>
                 <option value="pending">Pending</option>
                 <option value="suspended">Suspended</option>
               </select>
@@ -203,9 +230,9 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
               </p>
             </div>
             <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <p className="text-sm text-gray-600 mb-1">Inactive</p>
+              <p className="text-sm text-gray-600 mb-1">Deactivated</p>
               <p className="text-2xl font-bold text-gray-900">
-                {faculty.filter(f => f.accountStatus === 'inactive').length}
+                {faculty.filter(f => f.accountStatus === 'deactivated').length}
               </p>
             </div>
             <div className="bg-white border border-gray-200 rounded-lg p-4">
@@ -263,6 +290,9 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Verification
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                     Actions
                   </th>
@@ -275,46 +305,49 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
                       {member.employeeId || <span className="text-gray-400 italic">Not assigned</span>}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {member.metadata?.first_name || ''} {member.metadata?.last_name || ''}
+                      {member.first_name || ''} {member.last_name || ''}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {member.metadata?.email || 'N/A'}
+                      {member.email || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        member.metadata?.role === 'college_admin' ? 'bg-indigo-100 text-indigo-800' :
-                        member.metadata?.role === 'dean' ? 'bg-purple-100 text-purple-800' :
-                        member.metadata?.role === 'hod' ? 'bg-blue-100 text-blue-800' :
-                        member.metadata?.role === 'professor' ? 'bg-green-100 text-green-800' :
+                        member.designation === 'college_admin' ? 'bg-indigo-100 text-indigo-800' :
+                        member.designation === 'dean' ? 'bg-purple-100 text-purple-800' :
+                        member.designation === 'hod' ? 'bg-blue-100 text-blue-800' :
+                        member.designation === 'professor' ? 'bg-green-100 text-green-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {member.metadata?.role === 'college_admin' ? 'College Admin' :
-                         member.metadata?.role === 'dean' ? 'Dean' :
-                         member.metadata?.role === 'hod' ? 'HOD' :
-                         member.metadata?.role === 'professor' ? 'Professor' :
-                         member.metadata?.role === 'assistant_professor' ? 'Asst. Professor' :
-                         'Lecturer'}
+                        {member.designation === 'college_admin' ? 'College Admin' :
+                         member.designation === 'dean' ? 'Dean' :
+                         member.designation === 'hod' ? 'HOD' :
+                         member.designation === 'professor' ? 'Professor' :
+                         member.designation === 'assistant_professor' ? 'Asst. Professor' :
+                         member.designation || 'Lecturer'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       <div className="flex flex-wrap gap-1">
-                        {member.metadata?.subject_expertise?.slice(0, 2).map((subject: any, idx: number) => (
+                        {member.subject_expertise?.slice(0, 2).map((subject: any, idx: number) => (
                           <span
                             key={idx}
                             className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs"
                           >
-                            {subject.name}
+                            {typeof subject === 'string' ? subject : subject.name}
                           </span>
                         ))}
-                        {member.metadata?.subject_expertise && member.metadata.subject_expertise.length > 2 && (
+                        {member.subject_expertise && member.subject_expertise.length > 2 && (
                           <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                            +{member.metadata.subject_expertise.length - 2}
+                            +{member.subject_expertise.length - 2}
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(member.accountStatus)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {getVerificationBadge(member.verification_status || 'pending')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">
@@ -352,7 +385,7 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">
-                    {selectedFaculty.metadata?.first_name || ''} {selectedFaculty.metadata?.last_name || ''}
+                    {selectedFaculty.first_name || ''} {selectedFaculty.last_name || ''}
                   </h3>
                   <p className="text-sm text-gray-600">
                     {selectedFaculty.employeeId || <span className="text-gray-400 italic">ID not assigned</span>}
@@ -374,11 +407,11 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
                 <div className="space-y-2 text-sm">
                   <p>
                     <span className="text-gray-600">Email:</span>{" "}
-                    <span className="text-gray-900">{selectedFaculty.metadata?.email || 'N/A'}</span>
+                    <span className="text-gray-900">{selectedFaculty.email || 'N/A'}</span>
                   </p>
                   <p>
                     <span className="text-gray-600">Phone:</span>{" "}
-                    <span className="text-gray-900">{selectedFaculty.metadata?.phone_number || "N/A"}</span>
+                    <span className="text-gray-900">{selectedFaculty.phone || "N/A"}</span>
                   </p>
                   <p>
                     <span className="text-gray-600">Department:</span>{" "}
@@ -400,11 +433,21 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
                     <span className="text-gray-600">Date of Joining:</span>{" "}
                     <span className="text-gray-900">{selectedFaculty.dateOfJoining ? new Date(selectedFaculty.dateOfJoining).toLocaleDateString() : "N/A"}</span>
                   </p>
+                  <p>
+                    <span className="text-gray-600">Verification Status:</span>{" "}
+                    {getVerificationBadge(selectedFaculty.verification_status || 'pending')}
+                  </p>
+                  {selectedFaculty.verified_at && (
+                    <p>
+                      <span className="text-gray-600">Verified At:</span>{" "}
+                      <span className="text-gray-900">{new Date(selectedFaculty.verified_at).toLocaleString()}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* Login Credentials */}
-              {selectedFaculty.metadata && (selectedFaculty.metadata as any).temporary_password && (
+              {selectedFaculty.temporary_password && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <h4 className="font-semibold text-yellow-900 mb-3 flex items-center gap-2">
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -416,11 +459,11 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
                     <p>
                       <span className="text-yellow-700 font-medium">Temporary Password:</span>{" "}
                       <code className="bg-yellow-100 px-2 py-1 rounded text-yellow-900 font-mono">
-                        {(selectedFaculty.metadata as any).temporary_password}
+                        {selectedFaculty.temporary_password}
                       </code>
                     </p>
                     <p className="text-yellow-600 text-xs">
-                      Created: {new Date((selectedFaculty.metadata as any).password_created_at).toLocaleString()}
+                      Created: {selectedFaculty.password_created_at ? new Date(selectedFaculty.password_created_at).toLocaleString() : 'N/A'}
                     </p>
                     <p className="text-yellow-600 text-xs mt-2">
                       ⚠️ Please share this password securely with the faculty member. They should change it after first login.
@@ -430,20 +473,24 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
               )}
 
               {/* Subject Expertise */}
-              {selectedFaculty.metadata?.subject_expertise && selectedFaculty.metadata.subject_expertise.length > 0 && (
+              {selectedFaculty.subject_expertise && selectedFaculty.subject_expertise.length > 0 && (
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-3">Subject Expertise</h4>
                   <div className="space-y-2">
-                    {selectedFaculty.metadata.subject_expertise?.map((subject: any, idx: number) => (
+                    {selectedFaculty.subject_expertise?.map((subject: any, idx: number) => (
                       <div
                         key={idx}
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                       >
-                        <span className="font-medium text-gray-900">{subject.name}</span>
-                        <div className="flex items-center gap-3 text-sm">
-                          <span className="text-gray-600 capitalize">{subject.proficiency}</span>
-                          <span className="text-gray-500">{subject.years_experience} years</span>
-                        </div>
+                        <span className="font-medium text-gray-900">
+                          {typeof subject === 'string' ? subject : subject.name}
+                        </span>
+                        {typeof subject === 'object' && (
+                          <div className="flex items-center gap-3 text-sm">
+                            <span className="text-gray-600 capitalize">{subject.proficiency}</span>
+                            <span className="text-gray-500">{subject.years_experience} years</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -454,7 +501,7 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
               <div>
                 <h4 className="font-semibold text-gray-900 mb-3">Update Status</h4>
                 <div className="flex gap-2">
-                  {["active", "inactive", "pending", "suspended"].map((status) => (
+                  {["active", "deactivated", "pending", "suspended"].map((status) => (
                     <button
                       key={status}
                       onClick={() => updateFacultyStatus(selectedFaculty.id, status)}
@@ -479,13 +526,13 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
         isOpen={showDocumentModal}
         onClose={handleCloseDocumentModal}
         facultyData={selectedFacultyForDocs ? {
-          name: `${selectedFacultyForDocs.metadata?.first_name || ''} ${selectedFacultyForDocs.metadata?.last_name || ''}`.trim(),
-          email: selectedFacultyForDocs.metadata?.email || '',
+          name: `${selectedFacultyForDocs.first_name || ''} ${selectedFacultyForDocs.last_name || ''}`.trim(),
+          email: selectedFacultyForDocs.email || '',
           employeeId: selectedFacultyForDocs.employeeId || selectedFacultyForDocs.id,
           metadata: {
-            degree_certificate_url: selectedFacultyForDocs.metadata?.degree_certificate_url,
-            id_proof_url: selectedFacultyForDocs.metadata?.id_proof_url,
-            experience_letters_url: selectedFacultyForDocs.metadata?.experience_letters_url
+            degree_certificate_url: selectedFacultyForDocs.degree_certificate_url,
+            id_proof_url: selectedFacultyForDocs.id_proof_url,
+            experience_letters_url: selectedFacultyForDocs.experience_letters_url
           }
         } : null}
       />

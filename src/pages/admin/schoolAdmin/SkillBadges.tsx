@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { Trophy, X, Medal, Award, Loader2, AlertCircle, FileText, Download, Eye } from 'lucide-react';
+import { Trophy, X, Medal, Award, Loader2, AlertCircle, FileText, Download, Eye, Search, Filter, Grid3X3, List, Calendar, Users, Activity } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
 import jsPDF from 'jspdf';
+import KPICard from '../../../components/admin/KPICard';
 
 const CompetitionResults = () => {
   const [activeTab, setActiveTab] = useState('results'); // 'results' or 'certificates'
@@ -12,10 +13,23 @@ const CompetitionResults = () => {
   const [notice, setNotice] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [awardFilter, setAwardFilter] = useState('all');
+  const [certificateCategoryFilter, setCertificateCategoryFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(6); // 6 items per page for 3x2 grid
+  
   // Competition Results Modal
   const [resultsModal, setResultsModal] = useState({ open: false, competition: null });
   const [competitionResults, setCompetitionResults] = useState([]);
   const [savingResults, setSavingResults] = useState(false);
+  const [competitionCertificates, setCompetitionCertificates] = useState([]);
   
   // Certificate Preview Modal
   const [certificatePreview, setCertificatePreview] = useState({ open: false, certificate: null });
@@ -241,6 +255,34 @@ const CompetitionResults = () => {
 
       if (resultsError) throw resultsError;
 
+      // Load certificates for this competition
+      const { data: competitionCerts, error: certsError } = await supabase
+        .from('club_certificates')
+        .select(`
+          certificate_id,
+          student_email,
+          title,
+          description,
+          certificate_type,
+          issued_date,
+          credential_id,
+          metadata,
+          students (
+            name,
+            grade,
+            section
+          )
+        `)
+        .eq('related_comp_id', competition.comp_id)
+        .eq('school_id', currentUser.school_id);
+
+      if (certsError) {
+        console.error('Error loading competition certificates:', certsError);
+        setCompetitionCertificates([]);
+      } else {
+        setCompetitionCertificates(competitionCerts || []);
+      }
+
       // Merge registrations with existing results
       const resultsData = registrations.map(reg => {
         const existingResult = existingResults?.find(
@@ -302,8 +344,11 @@ const CompetitionResults = () => {
                'Certificate of Participation'
       }));
 
-      // Prepare data for upsert
-      const resultsToSave = withRanks.map(result => {
+      // Separate new records from updates
+      const newRecords = [];
+      const updateRecords = [];
+
+      withRanks.forEach(result => {
         const payload = {
           comp_id: resultsModal.competition.comp_id,
           registration_id: result.registration_id,
@@ -316,39 +361,46 @@ const CompetitionResults = () => {
         };
         
         // Set recorder fields based on user type
-        // The constraint requires EXACTLY ONE of these pairs to be set:
-        // (recorded_by_educator_id IS NOT NULL AND recorded_by_admin_id IS NULL AND recorded_by_type = 'educator') OR
-        // (recorded_by_educator_id IS NULL AND recorded_by_admin_id IS NOT NULL AND recorded_by_type = 'admin')
-        
         if (currentUser.educator_id) {
-          // User is an educator
           payload.recorded_by_type = 'educator';
           payload.recorded_by_educator_id = currentUser.educator_id;
           payload.recorded_by_admin_id = null;
         } else {
-          // User is a school admin
           payload.recorded_by_type = 'admin';
           payload.recorded_by_educator_id = null;
           payload.recorded_by_admin_id = currentUser.id;
         }
         
-        // Only include result_id if it exists (for updates)
         if (result.result_id) {
+          // This is an update
           payload.result_id = result.result_id;
+          updateRecords.push(payload);
+        } else {
+          // This is a new record
+          newRecords.push(payload);
         }
-        
-        return payload;
       });
 
-      // Upsert results (insert or update)
-      const { error: upsertError } = await supabase
-        .from('competition_results')
-        .upsert(resultsToSave, {
-          onConflict: 'result_id',
-          ignoreDuplicates: false
-        });
+      // Insert new records
+      if (newRecords.length > 0) {
+        const { error: insertError } = await supabase
+          .from('competition_results')
+          .insert(newRecords);
+        
+        if (insertError) throw insertError;
+      }
 
-      if (upsertError) throw upsertError;
+      // Update existing records
+      if (updateRecords.length > 0) {
+        const { error: updateError } = await supabase
+          .from('competition_results')
+          .upsert(updateRecords, {
+            onConflict: 'result_id',
+            ignoreDuplicates: false
+          });
+        
+        if (updateError) throw updateError;
+      }
 
       // Update competition status to completed if not already
       if (resultsModal.competition.status !== 'completed') {
@@ -363,13 +415,35 @@ const CompetitionResults = () => {
       // Auto-generate certificates for all participants
       await generateCertificatesForCompetition(resultsModal.competition.comp_id, withRanks);
 
+      // Reload certificates for the modal
+      const { data: updatedCerts } = await supabase
+        .from('club_certificates')
+        .select(`
+          certificate_id,
+          student_email,
+          title,
+          description,
+          certificate_type,
+          issued_date,
+          credential_id,
+          metadata,
+          students (
+            name,
+            grade,
+            section
+          )
+        `)
+        .eq('related_comp_id', resultsModal.competition.comp_id)
+        .eq('school_id', currentUser.school_id);
+      
+      setCompetitionCertificates(updatedCerts || []);
+
       setNotice({
         type: "success",
         text: `Results saved successfully for ${resultsModal.competition?.name}! Certificates generated.`
       });
       
-      setResultsModal({ open: false, competition: null });
-      setCompetitionResults([]);
+      // Don't close the modal, keep it open to show certificates
       loadCompetitions(); // Refresh the list
     } catch (error) {
       console.error('Error saving results:', error);
@@ -440,11 +514,111 @@ const CompetitionResults = () => {
   const getAwardPreview = (score) => {
     if (!score) return 'Enter score first';
     const numScore = parseFloat(score);
-    if (numScore >= 90) return '🥇 Gold Medal';
-    if (numScore >= 80) return '🥈 Silver Medal';
-    if (numScore >= 70) return '🥉 Bronze Medal';
-    return '📜 Participation';
+    if (numScore >= 90) return 'Gold Medal';
+    if (numScore >= 80) return 'Silver Medal';
+    if (numScore >= 70) return 'Bronze Medal';
+    return 'Participation';
   };
+
+  // Filter competitions based on search and filters
+  const filteredCompetitions = competitions.filter(comp => {
+    const matchesSearch = comp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         comp.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || comp.status === statusFilter;
+    const matchesCategory = categoryFilter === 'all' || comp.category === categoryFilter;
+    
+    return matchesSearch && matchesStatus && matchesCategory;
+  });
+
+  // Filter certificates based on search and filters
+  const filteredCertificates = certificates.filter(cert => {
+    const matchesSearch = cert.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         cert.student_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         cert.students?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesCertCategory = certificateCategoryFilter === 'all' || 
+                               cert.competitions?.category === certificateCategoryFilter;
+    
+    // Fix award filtering to match the actual award text format
+    let matchesAward = true;
+    if (awardFilter !== 'all') {
+      // Check both metadata.award and title for award information
+      const awardText = (cert.metadata?.award || '').toLowerCase();
+      const titleText = (cert.title || '').toLowerCase();
+      
+      switch (awardFilter) {
+        case 'gold':
+          matchesAward = awardText.includes('gold medal') || titleText.includes('gold medal');
+          break;
+        case 'silver':
+          matchesAward = awardText.includes('silver medal') || titleText.includes('silver medal');
+          break;
+        case 'bronze':
+          matchesAward = awardText.includes('bronze medal') || titleText.includes('bronze medal');
+          break;
+        case 'merit':
+          matchesAward = awardText.includes('certificate of merit') || titleText.includes('certificate of merit');
+          break;
+        case 'participation':
+          matchesAward = awardText.includes('certificate of participation') || titleText.includes('certificate of participation');
+          break;
+        default:
+          matchesAward = true;
+      }
+    }
+
+    // Debug logging (remove in production)
+    if (awardFilter !== 'all' || certificateCategoryFilter !== 'all') {
+      console.log('Certificate filtering:', {
+        title: cert.title,
+        award: cert.metadata?.award,
+        category: cert.competitions?.category,
+        awardFilter,
+        certificateCategoryFilter,
+        matchesAward,
+        matchesCertCategory,
+        matchesSearch
+      });
+    }
+    
+    return matchesSearch && matchesCertCategory && matchesAward;
+  });
+
+  // Pagination logic
+  const getCurrentPageData = (data) => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return data.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = (data) => {
+    return Math.ceil(data.length / itemsPerPage);
+  };
+
+  // Get paginated data
+  const paginatedCompetitions = getCurrentPageData(filteredCompetitions);
+  const paginatedCertificates = getCurrentPageData(filteredCertificates);
+
+  // Get total pages for current tab
+  const totalPages = activeTab === 'results' 
+    ? getTotalPages(filteredCompetitions) 
+    : getTotalPages(filteredCertificates);
+
+  // Reset pagination when switching tabs or changing filters
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+    setSearchQuery('');
+    setStatusFilter('all');
+    setCategoryFilter('all');
+    setAwardFilter('all');
+    setCertificateCategoryFilter('all');
+  };
+
+  // Reset pagination when search/filter changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, categoryFilter, awardFilter, certificateCategoryFilter]);
 
   const downloadCertificate = async (certificate) => {
     try {
@@ -458,11 +632,11 @@ const CompetitionResults = () => {
       const pageHeight = doc.internal.pageSize.getHeight();
 
       // Background gradient effect (using rectangles)
-      doc.setFillColor(255, 250, 240); // Light cream
+      doc.setFillColor(240, 248, 255); // Light blue background
       doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
       // Border
-      doc.setDrawColor(218, 165, 32); // Golden
+      doc.setDrawColor(59, 130, 246); // Blue border
       doc.setLineWidth(3);
       doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
       
@@ -470,7 +644,7 @@ const CompetitionResults = () => {
       doc.rect(15, 15, pageWidth - 30, pageHeight - 30);
 
       // Decorative corners
-      doc.setFillColor(218, 165, 32);
+      doc.setFillColor(59, 130, 246); // Blue corners
       doc.circle(20, 20, 3, 'F');
       doc.circle(pageWidth - 20, 20, 3, 'F');
       doc.circle(20, pageHeight - 20, 3, 'F');
@@ -479,7 +653,7 @@ const CompetitionResults = () => {
       // Header - Certificate of Achievement
       doc.setFontSize(32);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(218, 165, 32);
+      doc.setTextColor(59, 130, 246); // Blue header
       doc.text('CERTIFICATE OF ACHIEVEMENT', pageWidth / 2, 40, { align: 'center' });
 
       // Subtitle line
@@ -496,7 +670,7 @@ const CompetitionResults = () => {
       doc.text(studentName, pageWidth / 2, 70, { align: 'center' });
 
       // Underline for name
-      doc.setDrawColor(218, 165, 32);
+      doc.setDrawColor(59, 130, 246); // Blue underline
       doc.setLineWidth(0.5);
       const nameWidth = doc.getTextWidth(studentName);
       doc.line(pageWidth / 2 - nameWidth / 2 - 10, 72, pageWidth / 2 + nameWidth / 2 + 10, 72);
@@ -510,7 +684,7 @@ const CompetitionResults = () => {
       // Award/Title
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(218, 165, 32);
+      doc.setTextColor(59, 130, 246); // Blue title
       const title = certificate.title || 'Excellence in Competition';
       doc.text(title, pageWidth / 2, 100, { align: 'center', maxWidth: pageWidth - 60 });
 
@@ -525,7 +699,7 @@ const CompetitionResults = () => {
       // Performance details box
       if (certificate.metadata?.rank || certificate.metadata?.score) {
         const boxY = 125;
-        doc.setFillColor(255, 248, 220);
+        doc.setFillColor(239, 246, 255); // Light blue box
         doc.roundedRect(pageWidth / 2 - 50, boxY, 100, 20, 3, 3, 'F');
         
         doc.setFontSize(11);
@@ -607,22 +781,208 @@ const CompetitionResults = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-3">
-            <Trophy size={40} />
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Competition Results</h1>
-              <p className="text-indigo-100">Enter and manage competition results and awards</p>
+              <h1 className="text-3xl font-bold text-gray-900">Competition Results</h1>
+              <p className="text-gray-600 mt-2">
+                Enter and manage competition results and awards
+              </p>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <KPICard
+            title="Completed"
+            value={competitions.filter(c => c.status === 'completed').length}
+            icon={<Award className="w-6 h-6" />}
+            color="blue"
+            loading={loading}
+          />
+          
+          <KPICard
+            title="Ongoing"
+            value={competitions.filter(c => c.status === 'ongoing').length}
+            icon={<Trophy className="w-6 h-6" />}
+            color="green"
+            loading={loading}
+          />
+          
+          <KPICard
+            title="Upcoming"
+            value={competitions.filter(c => c.status === 'upcoming').length}
+            icon={<Medal className="w-6 h-6" />}
+            color="yellow"
+            loading={loading}
+          />
+          
+          <KPICard
+            title="Certificates"
+            value={certificates.length}
+            icon={<FileText className="w-6 h-6" />}
+            color="purple"
+            loading={loading}
+          />
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <div className="relative flex items-center p-2 gap-2 min-w-fit">
+              {/* Sliding Background Indicator */}
+              <div 
+                className={`absolute top-2 bottom-2 rounded-md transition-all duration-500 ease-in-out shadow-lg bg-blue-600`}
+                style={{ 
+                  width: 'calc(70% - 6px)',
+                  left: activeTab === "results" ? '10px' : 'calc(90% + 2px)',
+                }}
+              />
+              
+              <button
+                onClick={() => handleTabChange("results")}
+                className={`relative z-10 px-8 py-3 rounded-md font-medium transition-all duration-300 min-w-fit ${
+                  activeTab === "results"
+                    ? "text-white"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Trophy size={18} className={`transition-all duration-300 ${
+                    activeTab === "results" ? "scale-110" : ""
+                  }`} />
+                  <span>Competition Results</span>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => handleTabChange("certificates")}
+                className={`relative z-10 px-8 py-3 rounded-md font-medium transition-all duration-300 min-w-fit ${
+                  activeTab === "certificates"
+                    ? "text-white"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {/* <div className="flex items-center gap-3">
+                  <FileText size={18} className={`transition-all duration-300 ${
+                    activeTab === "certificates" ? "scale-110" : ""
+                  }`} />
+                  <span>Certificates ({certificates.length})</span>
+                </div> */}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Search and Filter Bar */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search Bar */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder={activeTab === 'results' ? "Search competitions..." : "Search certificates..."}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex items-center gap-3">
+              {activeTab === 'results' && (
+                <>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="ongoing">Ongoing</option>
+                    <option value="completed">Completed</option>
+                  </select>
+
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Categories</option>
+                    <option value="arts">Arts</option>
+                    <option value="sports">Sports</option>
+                    <option value="robotics">Robotics</option>
+                    <option value="science">Science</option>
+                    <option value="literature">Literature</option>
+                  </select>
+                </>
+              )}
+
+              {activeTab === 'certificates' && (
+                <>
+                  <select
+                    value={certificateCategoryFilter}
+                    onChange={(e) => setCertificateCategoryFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Categories</option>
+                    <option value="arts">Arts</option>
+                    <option value="sports">Sports</option>
+                    <option value="robotics">Robotics</option>
+                    <option value="science">Science</option>
+                    <option value="literature">Literature</option>
+                  </select>
+
+                  <select
+                    value={awardFilter}
+                    onChange={(e) => setAwardFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Awards</option>
+                    <option value="gold">Gold Medal</option>
+                    <option value="silver">Silver Medal</option>
+                    <option value="bronze">Bronze Medal</option>
+                    <option value="merit">Certificate of Merit</option>
+                    <option value="participation">Certificate of Participation</option>
+                  </select>
+                </>
+              )}
+
+              {/* Grid Toggle Button */}
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`p-2 rounded-md transition-colors ${
+                    viewMode === "grid"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  title="Grid View"
+                >
+                  <Grid3X3 size={16} />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={`p-2 rounded-md transition-colors ${
+                    viewMode === "list"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  title="List View"
+                >
+                  <List size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Notice */}
         {notice && (
           <div className={`mb-6 p-4 rounded-lg ${
@@ -637,311 +997,275 @@ const CompetitionResults = () => {
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="mb-6 border-b border-gray-200">
-          <nav className="flex space-x-8">
-            <button
-              onClick={() => setActiveTab('results')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'results'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Trophy size={20} />
-                Competition Results
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('certificates')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'certificates'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <FileText size={20} />
-                Certificates ({certificates.length})
-              </div>
-            </button>
-          </nav>
-        </div>
-
-        {/* Quick Stats */}
-        {activeTab === 'results' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm">Completed</p>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {competitions.filter(c => c.status === 'completed').length}
-                  </p>
-                </div>
-                <Award className="text-green-500" size={32} />
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm">Ongoing</p>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {competitions.filter(c => c.status === 'ongoing').length}
-                  </p>
-                </div>
-                <Trophy className="text-blue-500" size={32} />
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-gray-400">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm">Upcoming</p>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {competitions.filter(c => c.status === 'upcoming').length}
-                  </p>
-                </div>
-                <Medal className="text-gray-400" size={32} />
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Competitions List */}
         {activeTab === 'results' && (
-        <div className="space-y-4">
-          {competitions.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-md p-12 text-center">
-              <Trophy className="mx-auto text-gray-300 mb-4" size={64} />
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No Competitions Yet</h3>
-              <p className="text-gray-500">Competition results will appear here once events are created.</p>
-            </div>
-          ) : (
-            competitions.map(comp => (
-              <div
-                key={comp.comp_id}
-                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Trophy className="text-yellow-500" size={24} />
-                      <h3 className="text-xl font-bold text-gray-900">{comp.name}</h3>
-                      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                        comp.status === 'completed' ? 'bg-green-100 text-green-700' :
-                        comp.status === 'ongoing' ? 'bg-blue-100 text-blue-700' :
-                        comp.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {comp.status.toUpperCase()}
-                      </span>
-                    </div>
-                    
-                    {comp.description && (
-                      <p className="text-sm text-gray-600 mb-3">{comp.description}</p>
-                    )}
-                    
-                    <div className="grid grid-cols-4 gap-4 mt-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Level</p>
-                        <p className="font-semibold text-gray-900 capitalize">{comp.level}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Category</p>
-                        <p className="font-semibold text-gray-900 capitalize">{comp.category || 'General'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Date</p>
-                        <p className="font-semibold text-gray-900">
-                          {new Date(comp.competition_date).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Participants</p>
-                        <p className="font-semibold text-gray-900">{comp.registrations_count || 0}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => openResultsModal(comp)}
-                    disabled={comp.status === 'upcoming' || comp.status === 'cancelled'}
-                    className={`ml-4 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                      comp.status === 'upcoming' || comp.status === 'cancelled'
-                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                    }`}
-                  >
-                    {comp.status === 'completed' ? 'View/Edit Results' : 'Enter Results'}
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-        )}
-
-        {/* Certificates View
-        {activeTab === 'certificates' && (
           <div className="space-y-4">
-            {certificates.length === 0 ? (
+            {filteredCompetitions.length === 0 ? (
               <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                <FileText className="mx-auto text-gray-300 mb-4" size={64} />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">No Certificates Yet</h3>
-                <p className="text-gray-500">Certificates will appear here after competition results are saved.</p>
+                <Trophy className="mx-auto text-gray-300 mb-4" size={64} />
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">No Competitions Found</h3>
+                <p className="text-gray-500">
+                  {searchQuery ? `No competitions match your search "${searchQuery}"` : 'Competition results will appear here once events are created.'}
+                </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {certificates.map(cert => (
+              <>
+                <div className={`grid gap-6 ${
+                  viewMode === "grid" 
+                    ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3" 
+                    : "grid-cols-1"
+                }`}>
+                  {paginatedCompetitions.map(comp => (
                   <div
-                    key={cert.certificate_id}
-                    className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow border-l-4 border-yellow-500"
+                    key={comp.comp_id}
+                    className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden min-h-[280px]"
                   >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <Award className="text-yellow-500" size={24} />
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          cert.certificate_type === 'competition' ? 'bg-purple-100 text-purple-700' :
-                          cert.certificate_type === 'excellence' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-blue-100 text-blue-700'
+                    {/* Competition Header */}
+                    <div className="bg-blue-50 p-6 border-b border-gray-100">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-white rounded-lg p-2 shadow-sm">
+                            <Trophy size={20} className="text-blue-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{comp.name}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-gray-500 capitalize">{comp.level}</span>
+                              <span className="text-xs text-gray-400">•</span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(comp.competition_date).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                          comp.status === 'completed' ? 'bg-green-100 text-green-700' :
+                          comp.status === 'ongoing' ? 'bg-blue-100 text-blue-700' :
+                          comp.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                          'bg-gray-100 text-gray-700'
                         }`}>
-                          {cert.certificate_type.replace('_', ' ').toUpperCase()}
+                          {comp.status.toUpperCase()}
                         </span>
                       </div>
                     </div>
 
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">{cert.title}</h3>
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">{cert.description}</p>
-
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Student:</span>
-                        <span className="font-medium text-gray-900">{cert.student_email}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Issued:</span>
-                        <span className="font-medium text-gray-900">
-                          {new Date(cert.issued_date).toLocaleDateString()}
-                        </span>
-                      </div>
-                      {cert.metadata?.rank && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Rank:</span>
-                          <span className="font-bold text-indigo-600">#{cert.metadata.rank}</span>
-                        </div>
+                    {/* Competition Content */}
+                    <div className="p-6 flex flex-col justify-between flex-1">
+                      {comp.description && (
+                        <p className="text-sm text-gray-600 mb-4">{comp.description}</p>
                       )}
-                      {cert.metadata?.score && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Score:</span>
-                          <span className="font-bold text-green-600">{cert.metadata.score}</span>
+                      
+                      <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                          <p className="text-xs text-gray-600">Category</p>
+                          <p className="font-semibold text-gray-900 capitalize">{comp.category || 'General'}</p>
                         </div>
-                      )}
-                    </div>
+                        <div>
+                          <p className="text-xs text-gray-600">Participants</p>
+                          <p className="font-semibold text-gray-900">{comp.registrations_count || 0}</p>
+                        </div>
+                      </div>
 
-                    <div className="flex gap-2">
                       <button
-                        onClick={() => setCertificatePreview({ open: true, certificate: cert })}
-                        className="flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm flex items-center justify-center gap-2"
+                        onClick={() => openResultsModal(comp)}
+                        disabled={comp.status === 'upcoming' || comp.status === 'cancelled'}
+                        className={`w-full px-4 py-3 rounded-lg font-medium text-sm transition-colors ${
+                          comp.status === 'upcoming' || comp.status === 'cancelled'
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
                       >
-                        <Eye size={16} />
-                        View
-                      </button>
-                      <button
-                        onClick={() => downloadCertificate(cert)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-sm flex items-center justify-center gap-2"
-                      >
-                        <Download size={16} />
+                        {comp.status === 'completed' ? 'View Results' : 'Enter Results'}
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-        )} */}
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-8 bg-white rounded-xl border border-gray-200 p-4">
+                  <div className="text-sm text-gray-600">
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredCompetitions.length)} of {filteredCompetitions.length} competitions
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    >
+                      ← Previous
+                    </button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-10 h-10 rounded-lg font-medium text-sm transition-colors ${
+                            page === currentPage
+                              ? "bg-blue-600 text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <button
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
         {/* Certificates List */}
         {activeTab === 'certificates' && (
           <div className="space-y-4">
-            {certificates.length === 0 ? (
+            {filteredCertificates.length === 0 ? (
               <div className="bg-white rounded-lg shadow-md p-12 text-center">
                 <FileText className="mx-auto text-gray-300 mb-4" size={64} />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">No Certificates Yet</h3>
-                <p className="text-gray-500">Certificates will appear here after competition results are saved.</p>
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">No Certificates Found</h3>
+                <p className="text-gray-500">
+                  {searchQuery ? `No certificates match your search "${searchQuery}"` : 'Certificates will appear here after competition results are saved.'}
+                </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {certificates.map(cert => (
-                  <div
-                    key={cert.certificate_id}
-                    className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow border-l-4 border-yellow-500"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <Award className="text-yellow-500" size={24} />
-                        <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded">
-                          {cert.certificate_type.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">{cert.title}</h3>
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">{cert.description}</p>
-
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Student:</span>
-                        <span className="font-semibold text-gray-900 text-xs">{cert.student_email}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Issued:</span>
-                        <span className="font-semibold text-gray-900">
-                          {new Date(cert.issued_date).toLocaleDateString()}
-                        </span>
-                      </div>
-                      {cert.credential_id && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">ID:</span>
-                          <span className="font-mono text-xs text-gray-700">{cert.credential_id}</span>
-                        </div>
-                      )}
-                      {cert.metadata?.rank && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Rank:</span>
-                          <span className="font-bold text-indigo-600">#{cert.metadata.rank}</span>
-                        </div>
-                      )}
-                      {cert.metadata?.score && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Score:</span>
-                          <span className="font-bold text-green-600">{cert.metadata.score}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() => setCertificatePreview({ open: true, certificate: cert })}
-                      className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm flex items-center justify-center gap-2"
+              <>
+                <div className={`grid gap-6 ${
+                  viewMode === "grid" 
+                    ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3" 
+                    : "grid-cols-1"
+                }`}>
+                  {paginatedCertificates.map(cert => (
+                    <div
+                      key={cert.certificate_id}
+                      className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden min-h-[280px]"
                     >
-                      <Eye size={16} />
-                      View Details
-                    </button>
+                      {/* Certificate Header */}
+                      <div className="bg-blue-50 p-6 border-b border-gray-100">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-white rounded-lg p-2 shadow-sm">
+                            <Award size={20} className="text-blue-600" />
+                          </div>
+                          <div>
+                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+                              {cert.certificate_type.toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Certificate Content */}
+                    <div className="p-6 flex flex-col justify-between flex-1">
+                      <div>
+                        
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">{cert.title}</h3>
+                        <p className="text-sm text-gray-600 mb-4 line-clamp-2">{cert.description}</p>
+
+                        <div className="space-y-2 mb-6">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Student:</span>
+                            <span className="font-semibold text-gray-900 text-xs">{cert.student_email}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Issued:</span>
+                            <span className="font-semibold text-gray-900">
+                              {new Date(cert.issued_date).toLocaleDateString()}
+                            </span>
+                          </div>
+                          {cert.metadata?.rank && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Rank:</span>
+                              <span className="font-bold text-blue-600">#{cert.metadata.rank}</span>
+                            </div>
+                          )}
+                          {cert.metadata?.score && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Score:</span>
+                              <span className="font-bold text-green-600">{cert.metadata.score}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setCertificatePreview({ open: true, certificate: cert })}
+                        className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm flex items-center justify-center gap-2"
+                      >
+                        <Eye size={16} />
+                        View Details
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-        )}
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-8 bg-white rounded-xl border border-gray-200 p-4">
+                  <div className="text-sm text-gray-600">
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredCertificates.length)} of {filteredCertificates.length} certificates
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    >
+                      ← Previous
+                    </button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-10 h-10 rounded-lg font-medium text-sm transition-colors ${
+                            page === currentPage
+                              ? "bg-blue-600 text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <button
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
         {/* Results Entry Modal */}
         {resultsModal.open && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
               {/* Modal Header */}
-              <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+              <div className="px-6 py-4 border-b border-gray-200 bg-blue-600 text-white">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-xl font-bold">{resultsModal.competition?.name}</h3>
@@ -953,6 +1277,7 @@ const CompetitionResults = () => {
                     onClick={() => {
                       setResultsModal({ open: false, competition: null });
                       setCompetitionResults([]);
+                      setCompetitionCertificates([]);
                     }}
                     className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
                   >
@@ -974,7 +1299,7 @@ const CompetitionResults = () => {
                           {index + 1}
                         </div>
                         
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-6 gap-4">
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">
                               Student Details
@@ -1013,7 +1338,7 @@ const CompetitionResults = () => {
                             </div>
                           </div>
 
-                          <div className="col-span-2">
+                          <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">
                               Performance Notes
                             </label>
@@ -1021,9 +1346,46 @@ const CompetitionResults = () => {
                               type="text"
                               value={result.notes || ''}
                               onChange={(e) => handleResultChange(result.student_email, 'notes', e.target.value)}
-                              placeholder="Optional notes about performance"
+                              placeholder="Optional notes"
                               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Certificate
+                            </label>
+                            {(() => {
+                              const studentCert = competitionCertificates.find(cert => cert.student_email === result.student_email);
+                              if (studentCert) {
+                                return (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => setCertificatePreview({ open: true, certificate: studentCert })}
+                                      className="flex-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 flex items-center justify-center gap-1"
+                                      title="View Certificate"
+                                    >
+                                      <Eye size={12} />
+                                      View
+                                    </button>
+                                    <button
+                                      onClick={() => downloadCertificate(studentCert)}
+                                      className="flex-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 flex items-center justify-center gap-1"
+                                      title="Download Certificate"
+                                    >
+                                      <Download size={12} />
+                                      PDF
+                                    </button>
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <div className="text-xs text-gray-500 py-2 text-center">
+                                    {result.score ? 'Save results to generate' : 'Enter score first'}
+                                  </div>
+                                );
+                              }
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -1050,6 +1412,7 @@ const CompetitionResults = () => {
                       onClick={() => {
                         setResultsModal({ open: false, competition: null });
                         setCompetitionResults([]);
+                        setCompetitionCertificates([]);
                       }}
                       disabled={savingResults}
                       className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 font-medium text-sm disabled:opacity-50"
@@ -1059,7 +1422,7 @@ const CompetitionResults = () => {
                     <button
                       onClick={handleSaveResults}
                       disabled={savingResults}
-                      className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm disabled:opacity-50 flex items-center gap-2"
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-600 font-medium text-sm disabled:opacity-50 flex items-center gap-2"
                     >
                       {savingResults && <Loader2 className="animate-spin" size={16} />}
                       {savingResults ? 'Saving...' : 'Save Results & Generate Certificates'}
@@ -1076,7 +1439,7 @@ const CompetitionResults = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
               {/* Modal Header */}
-              <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
+              <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Award size={28} />
@@ -1093,9 +1456,9 @@ const CompetitionResults = () => {
 
               {/* Modal Body */}
               <div className="p-6">
-                <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-4 border-yellow-400 rounded-lg p-8 mb-6">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-4 border-blue-400 rounded-lg p-8 mb-6">
                   <div className="text-center mb-6">
-                    <Award className="mx-auto text-yellow-500 mb-4" size={64} />
+                    <Award className="mx-auto text-blue-500 mb-4" size={64} />
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">
                       {certificatePreview.certificate?.title}
                     </h2>
@@ -1126,7 +1489,7 @@ const CompetitionResults = () => {
                     {certificatePreview.certificate?.metadata?.rank && (
                       <div>
                         <p className="text-sm text-gray-600 mb-1">Rank</p>
-                        <p className="font-bold text-indigo-600 text-lg">
+                        <p className="font-bold text-blue-600 text-lg">
                           #{certificatePreview.certificate.metadata.rank}
                         </p>
                       </div>
@@ -1142,7 +1505,7 @@ const CompetitionResults = () => {
                     {certificatePreview.certificate?.metadata?.award && (
                       <div className="col-span-2">
                         <p className="text-sm text-gray-600 mb-1">Award</p>
-                        <p className="font-bold text-yellow-600 text-lg">
+                        <p className="font-bold text-blue-600 text-lg">
                           {certificatePreview.certificate.metadata.award}
                         </p>
                       </div>
@@ -1159,7 +1522,7 @@ const CompetitionResults = () => {
                   </button>
                   <button
                     onClick={() => downloadCertificate(certificatePreview.certificate)}
-                    className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm flex items-center justify-center gap-2"
                   >
                     <Download size={16} />
                     Download PDF
