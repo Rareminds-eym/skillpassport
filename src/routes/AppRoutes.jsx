@@ -64,6 +64,11 @@ const EventSalesFailure = lazy(() =>
   import("../pages/event/EventSalesFailure")
 );
 
+// Simple Event Registration (social media campaigns)
+const SimpleEventRegistration = lazy(() =>
+  import("../pages/register/SimpleEventRegistration")
+);
+
 const LoginStudent = lazy(() => import("../pages/auth/LoginStudent"));
 const LoginRecruiter = lazy(() => import("../pages/auth/LoginRecruiter"));
 const LoginAdmin = lazy(() => import("../pages/auth/LoginAdmin"));
@@ -385,10 +390,18 @@ const AppRoutes = () => {
     <Suspense fallback={<Loader />}>
       <ScrollToTop />
       <Routes>
+        {/* Simple Event Registration - Social media campaigns (standalone, no layout) */}
+        <Route path="/register" element={<SimpleEventRegistration />} />
+        
         {/* Event Sales - Standalone without layout (no header/footer) */}
         <Route path="/signup/plans" element={<EventSales />} />
         <Route path="/signup/plans/success" element={<EventSalesSuccess />} />
         <Route path="/signup/plans/failure" element={<EventSalesFailure />} />
+        
+        {/* Register plans - alias for Event Sales (standalone, no layout) */}
+        <Route path="/register/plans" element={<EventSales />} />
+        <Route path="/register/plans/success" element={<EventSalesSuccess />} />
+        <Route path="/register/plans/failure" element={<EventSalesFailure />} />
 
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
