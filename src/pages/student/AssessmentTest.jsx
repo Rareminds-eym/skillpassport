@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -19,7 +19,8 @@ import {
     ArrowLeft,
     FlaskConical,
     BarChart3,
-    BookOpen
+    BookOpen,
+    Brain
 } from 'lucide-react';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
@@ -56,6 +57,9 @@ import { loadCareerAssessmentQuestions, STREAM_KNOWLEDGE_PROMPTS } from '../../s
 import { useAssessment } from '../../hooks/useAssessment';
 import { useAuth } from '../../context/AuthContext';
 import * as assessmentService from '../../services/assessmentService';
+
+// Import adaptive aptitude hook for integrated adaptive testing
+import { useAdaptiveAptitude } from '../../hooks/useAdaptiveAptitude';
 
 import { supabase } from '../../lib/supabaseClient';
 
@@ -124,6 +128,10 @@ const AssessmentTest = () => {
     const [elapsedTime, setElapsedTime] = useState(0); // Elapsed time for non-timed sections
     const [aptitudeQuestionTimer, setAptitudeQuestionTimer] = useState(60); // Per-question timer for first 30 aptitude questions
     const [aptitudePhase, setAptitudePhase] = useState('individual'); // 'individual' for first 30, 'shared' for last 20
+    
+    // Adaptive Aptitude Test state (for high school 5th section)
+    const [adaptiveAptitudeAnswer, setAdaptiveAptitudeAnswer] = useState(null);
+    const [adaptiveQuestionStartTime, setAdaptiveQuestionStartTime] = useState(null);
     
     // TEST MODE - Auto-fill answers for development/testing
     const [testMode, setTestMode] = useState(false);
@@ -206,6 +214,40 @@ const AssessmentTest = () => {
         
         fetchStudentGrade();
     }, [user?.id, user?.email, shouldFilterByGrade]);
+
+    // Adaptive Aptitude Hook for high school 5th section
+    const adaptiveAptitude = useAdaptiveAptitude({
+        studentId: studentId || '',
+        gradeLevel: gradeLevel === 'highschool' ? 'high_school' : 'middle_school',
+        onTestComplete: (testResults) => {
+            console.log('✅ Adaptive aptitude test completed:', testResults);
+            // Store results in answers for final submission
+            setAnswers(prev => ({
+                ...prev,
+                adaptive_aptitude_results: testResults
+            }));
+            // Move to section complete
+            setShowSectionComplete(true);
+        },
+        onError: (err) => {
+            console.error('❌ Adaptive aptitude test error:', err);
+            setError(`Adaptive test error: ${err}`);
+        },
+    });
+
+    // Debug: Track when adaptive question changes
+    useEffect(() => {
+        if (adaptiveAptitude.currentQuestion) {
+            console.log('🔄 [AssessmentTest] Adaptive question changed:', {
+                questionId: adaptiveAptitude.currentQuestion.id,
+                questionText: adaptiveAptitude.currentQuestion.text?.substring(0, 50),
+                questionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
+                currentQuestionIndex: adaptiveAptitude.progress?.currentQuestionIndex,
+                phase: adaptiveAptitude.phase,
+                difficulty: adaptiveAptitude.session?.currentDifficulty,
+            });
+        }
+    }, [adaptiveAptitude.currentQuestion?.id]);
 
     // Auto-fill all answers for test mode
     const autoFillAllAnswers = () => {
@@ -685,6 +727,16 @@ const AssessmentTest = () => {
                     questions: getQuestionsForSection('hs_aptitude_sampling'),  // Load from database
                     responseScale: aptitudeRatingScale,
                     instruction: "After each task, rate: Ease 1–4, Enjoyment 1–4"
+                },
+                {
+                    id: 'adaptive_aptitude',
+                    title: 'Adaptive Aptitude Test',
+                    icon: <img src="/RMLogo.webp" alt="RM Logo" className="w-6 h-6 object-contain" />,
+                    description: "An intelligent test that adapts to your ability level for accurate aptitude measurement.",
+                    color: "indigo",
+                    questions: [], // Questions are generated dynamically by the adaptive engine
+                    isAdaptive: true, // Flag to indicate this is the adaptive aptitude section
+                    instruction: "Answer each question carefully. The test will adapt to your performance level."
                 }
             ];
         }
@@ -833,10 +885,20 @@ const AssessmentTest = () => {
     // Select appropriate streams based on grade level - use categoryStreams for all levels
     const streams = categoryStreams;
 
-    // Calculate progress
+    // Calculate progress (including adaptive section)
     const currentSection = sections?.[currentSectionIndex];
-    const totalQuestions = sections?.reduce((sum, section) => sum + (section?.questions?.length || 0), 0) || 0;
-    const answeredCount = Object.keys(answers).length;
+    const totalQuestions = sections?.reduce((sum, section) => {
+        // For adaptive sections, use estimated total questions (~21)
+        if (section?.isAdaptive) {
+            return sum + (adaptiveAptitude.progress?.estimatedTotalQuestions || 21);
+        }
+        return sum + (section?.questions?.length || 0);
+    }, 0) || 0;
+    
+    // Count answered questions including adaptive section progress
+    const regularAnsweredCount = Object.keys(answers).filter(key => !key.startsWith('adaptive_aptitude')).length;
+    const adaptiveAnsweredCount = adaptiveAptitude.progress?.questionsAnswered || 0;
+    const answeredCount = regularAnsweredCount + adaptiveAnsweredCount;
     const progress = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
 
     // Timer for timed sections
@@ -1088,7 +1150,27 @@ const AssessmentTest = () => {
         }
     };
 
-    const handleStartSection = () => {
+    const handleStartSection = async () => {
+        // Check if this is the adaptive aptitude section
+        if (currentSection?.isAdaptive) {
+            // Initialize the adaptive aptitude test inline
+            console.log('🚀 Starting adaptive aptitude section inline');
+            try {
+                // Check for existing session first
+                const hasExisting = await adaptiveAptitude.checkAndResumeSession();
+                if (!hasExisting) {
+                    await adaptiveAptitude.startTest();
+                }
+                // Set the question start time for response timing
+                setAdaptiveQuestionStartTime(Date.now());
+            } catch (err) {
+                console.error('Failed to start adaptive test:', err);
+                setError(`Failed to start adaptive test: ${err.message}`);
+            }
+            setShowSectionIntro(false);
+            setShowSectionComplete(false);
+            return;
+        }
         setShowSectionIntro(false);
         setShowSectionComplete(false);
     };
@@ -1126,6 +1208,59 @@ const AssessmentTest = () => {
     };
 
     const handleNext = async () => {
+        // Handle adaptive aptitude section differently
+        if (currentSection?.isAdaptive) {
+            if (adaptiveAptitudeAnswer && adaptiveAptitude.currentQuestion) {
+                console.log('🎯 [AssessmentTest] Submitting adaptive answer:', {
+                    answer: adaptiveAptitudeAnswer,
+                    questionId: adaptiveAptitude.currentQuestion?.id,
+                    questionText: adaptiveAptitude.currentQuestion?.text?.substring(0, 50),
+                    sessionId: adaptiveAptitude.session?.id,
+                    currentQuestionIndex: adaptiveAptitude.session?.currentQuestionIndex,
+                    questionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
+                });
+                
+                try {
+                    // Submit the answer to the adaptive engine (only pass the answer, hook handles timing)
+                    const result = await adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer);
+                    
+                    console.log('✅ [AssessmentTest] Answer submitted, result:', {
+                        isCorrect: result?.isCorrect,
+                        testComplete: result?.testComplete,
+                        phaseComplete: result?.phaseComplete,
+                        newDifficulty: result?.newDifficulty,
+                    });
+                    
+                    // Log the updated state after submission
+                    console.log('📊 [AssessmentTest] State after submission:', {
+                        newQuestionId: adaptiveAptitude.currentQuestion?.id,
+                        newQuestionText: adaptiveAptitude.currentQuestion?.text?.substring(0, 50),
+                        newQuestionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
+                        newCurrentQuestionIndex: adaptiveAptitude.session?.currentQuestionIndex,
+                        isTestComplete: adaptiveAptitude.isTestComplete,
+                    });
+                    
+                    // Reset for next question
+                    setAdaptiveAptitudeAnswer(null);
+                    
+                    // Check if test is complete (check the result, not the state which may not have updated yet)
+                    if (result?.testComplete) {
+                        console.log('🏁 [AssessmentTest] Adaptive test complete!');
+                        setShowSectionComplete(true);
+                    }
+                } catch (err) {
+                    console.error('❌ [AssessmentTest] Error submitting adaptive answer:', err);
+                    setError(`Failed to submit answer: ${err.message}`);
+                }
+            } else {
+                console.warn('⚠️ [AssessmentTest] Cannot submit - no answer or question:', {
+                    hasAnswer: !!adaptiveAptitudeAnswer,
+                    hasQuestion: !!adaptiveAptitude.currentQuestion,
+                });
+            }
+            return;
+        }
+        
         if (currentQuestionIndex < currentSection.questions.length - 1) {
             const nextQuestionIndex = currentQuestionIndex + 1;
 
@@ -1419,9 +1554,17 @@ const AssessmentTest = () => {
                 streamKnowledgeQuestions: { [studentStream]: getQuestionsForSection(getSectionId('knowledge')) }
             };
 
+            // Include adaptive aptitude results in the answers if available (for high school)
+            const answersWithAdaptive = { ...answers };
+            if (gradeLevel === 'highschool' && answers.adaptive_aptitude_results) {
+                console.log('📊 Including adaptive aptitude results in analysis:', answers.adaptive_aptitude_results);
+                // The adaptive_aptitude_results contains detailed aptitude breakdown
+                // This will be used by the AI to enhance career recommendations
+            }
+
             // Analyze with Gemini AI - this is required, no fallback
             const geminiResults = await analyzeAssessmentWithGemini(
-                answers,
+                answersWithAdaptive,
                 studentStream,
                 questionBanks,
                 finalTimings, // Pass section timings to Gemini
@@ -1429,6 +1572,51 @@ const AssessmentTest = () => {
             );
 
             if (geminiResults) {
+                // Enhance results with adaptive aptitude data for high school students
+                if (gradeLevel === 'highschool' && answers.adaptive_aptitude_results) {
+                    const adaptiveResults = answers.adaptive_aptitude_results;
+                    console.log('🎯 Enhancing results with adaptive aptitude data');
+                    
+                    // Add adaptive aptitude insights to the results
+                    geminiResults.adaptiveAptitude = {
+                        aptitudeLevel: adaptiveResults.aptitudeLevel,
+                        confidenceTag: adaptiveResults.confidenceTag,
+                        tier: adaptiveResults.tier,
+                        overallAccuracy: adaptiveResults.overallAccuracy,
+                        accuracyBySubtag: adaptiveResults.accuracyBySubtag,
+                        pathClassification: adaptiveResults.pathClassification,
+                        totalQuestions: adaptiveResults.totalQuestions,
+                        totalCorrect: adaptiveResults.totalCorrect
+                    };
+                    
+                    // Enhance aptitude scores with adaptive test results
+                    if (geminiResults.aptitude) {
+                        geminiResults.aptitude.adaptiveLevel = adaptiveResults.aptitudeLevel;
+                        geminiResults.aptitude.adaptiveConfidence = adaptiveResults.confidenceTag;
+                        
+                        // Map adaptive subtag accuracy to aptitude categories
+                        if (adaptiveResults.accuracyBySubtag) {
+                            const subtagMapping = {
+                                numerical_reasoning: 'numerical',
+                                logical_reasoning: 'abstract',
+                                verbal_reasoning: 'verbal',
+                                spatial_reasoning: 'spatial',
+                                data_interpretation: 'numerical',
+                                pattern_recognition: 'abstract'
+                            };
+                            
+                            Object.entries(adaptiveResults.accuracyBySubtag).forEach(([subtag, data]) => {
+                                const category = subtagMapping[subtag];
+                                if (category && geminiResults.aptitude.scores?.[category]) {
+                                    geminiResults.aptitude.scores[category].adaptiveAccuracy = data.accuracy;
+                                }
+                            });
+                        }
+                    }
+                    
+                    console.log('✅ Adaptive aptitude data integrated into results');
+                }
+                
                 // Add course recommendations for after12 students
                 if (gradeLevel === 'after12') {
                     geminiResults.courseRecommendations = generateCourseRecommendations(geminiResults);
@@ -1519,11 +1707,20 @@ const AssessmentTest = () => {
         }
     };
 
-    const currentQuestion = currentSection?.questions[currentQuestionIndex];
-    const questionId = `${currentSection?.id}_${currentQuestion?.id}`;
+    // For adaptive sections, use the question from the adaptive hook
+    const currentQuestion = currentSection?.isAdaptive 
+        ? adaptiveAptitude.currentQuestion 
+        : currentSection?.questions[currentQuestionIndex];
+    const questionId = currentSection?.isAdaptive 
+        ? `adaptive_aptitude_${adaptiveAptitude.currentQuestion?.id}` 
+        : `${currentSection?.id}_${currentQuestion?.id}`;
 
     // Check if current question is answered (SJT needs both BEST and WORST, multiselect needs required count, text needs content)
     const isCurrentAnswered = (() => {
+        // For adaptive sections, check if an answer is selected
+        if (currentSection?.isAdaptive) {
+            return adaptiveAptitudeAnswer !== null;
+        }
         const answer = answers[questionId];
         if (!answer) return false;
         // For SJT questions, both best and worst must be selected
@@ -2041,8 +2238,15 @@ const AssessmentTest = () => {
                             if (idx < currentSectionIndex) {
                                 lineProgress = 100;
                             } else if (idx === currentSectionIndex) {
-                                const totalQuestions = sections[idx].questions.length;
-                                lineProgress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
+                                // Handle adaptive section progress differently
+                                if (sections[idx].isAdaptive) {
+                                    const adaptiveTotal = adaptiveAptitude.progress?.estimatedTotalQuestions || 21;
+                                    const adaptiveAnswered = adaptiveAptitude.progress?.questionsAnswered || 0;
+                                    lineProgress = adaptiveTotal > 0 ? (adaptiveAnswered / adaptiveTotal) * 100 : 0;
+                                } else {
+                                    const totalQuestions = sections[idx].questions.length;
+                                    lineProgress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
+                                }
                             }
 
                             return (
@@ -2184,8 +2388,17 @@ const AssessmentTest = () => {
                                         onClick={handleNextSection}
                                         className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-10 py-6 text-lg shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 rounded-xl font-bold tracking-wide"
                                     >
-                                        Continue
-                                        <ChevronRight className="w-5 h-5 ml-2" />
+                                        {currentSectionIndex === sections.length - 1 ? (
+                                            <>
+                                                Submit Assessment
+                                                <CheckCircle2 className="w-5 h-5 ml-2" />
+                                            </>
+                                        ) : (
+                                            <>
+                                                Continue
+                                                <ChevronRight className="w-5 h-5 ml-2" />
+                                            </>
+                                        )}
                                     </Button>
                                 </motion.div>
                             </motion.div>
@@ -2301,6 +2514,24 @@ const AssessmentTest = () => {
                                         </div>
                                     </motion.div>
                                 )}
+
+                                {/* Adaptive Aptitude Test info */}
+                                {currentSection?.isAdaptive && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.5, duration: 0.3 }}
+                                        className="mb-4 p-4 bg-indigo-50 rounded-xl border border-indigo-200 max-w-lg w-full"
+                                    >
+                                        <p className="text-xs font-bold text-indigo-800 mb-2">About this test:</p>
+                                        <div className="space-y-2 text-xs">
+                                            <div className="bg-white/70 rounded-lg p-2">
+                                                <p className="text-indigo-600">This intelligent test adapts to your ability level in real-time, providing an accurate measurement of your aptitude across different reasoning areas.</p>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -2313,9 +2544,15 @@ const AssessmentTest = () => {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Users className="w-4 h-4" />
-                                        <span>{currentSection.questions.length} questions</span>
+                                        <span>{currentSection?.isAdaptive ? '18-22' : currentSection.questions.length} questions</span>
                                     </div>
-                                    {currentSection.isTimed && (
+                                    {currentSection?.isAdaptive && (
+                                        <div className="flex items-center gap-2 text-indigo-600 font-medium">
+                                            <Brain className="w-4 h-4" />
+                                            <span>Adaptive</span>
+                                        </div>
+                                    )}
+                                    {currentSection.isTimed && !currentSection?.isAdaptive && (
                                         <div className="flex items-center gap-2 text-orange-600 font-medium">
                                             <Clock className="w-4 h-4" />
                                             <span>{currentSection.id === 'aptitude' ? '10 minutes' : '30 minutes'}</span>
@@ -2331,7 +2568,7 @@ const AssessmentTest = () => {
                                 >
                                     {/* Show loading state for AI sections with no questions */}
                                     {(currentSection.id === 'aptitude' || currentSection.id === 'knowledge') && 
-                                     currentSection.questions.length === 0 ? (
+                                     currentSection.questions.length === 0 && !currentSection?.isAdaptive ? (
                                         <div className="flex flex-col items-center gap-4">
                                             {aiQuestionsLoading ? (
                                                 <>
@@ -2351,9 +2588,16 @@ const AssessmentTest = () => {
                                                 </>
                                             )}
                                         </div>
+                                    ) : currentSection?.isAdaptive && adaptiveAptitude.loading ? (
+                                        <div className="flex flex-col items-center gap-4">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                            <p className="text-gray-600">Preparing adaptive test...</p>
+                                            <p className="text-sm text-gray-400">Questions will adapt to your level</p>
+                                        </div>
                                     ) : (
                                         <Button
                                             onClick={handleStartSection}
+                                            disabled={currentSection?.isAdaptive && adaptiveAptitude.loading}
                                             className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-10 py-6 text-lg shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 rounded-xl font-bold tracking-wide"
                                         >
                                             Start Section
@@ -2497,14 +2741,28 @@ const AssessmentTest = () => {
 
                                         <div className="flex items-center gap-3 text-sm text-gray-600">
                                             <Users className="w-4 h-4" />
-                                            <span>Question {currentQuestionIndex + 1} / {
-                                                (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 :
-                                                (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 :
-                                                currentSection.questions.length
+                                            <span>Question {
+                                                currentSection?.isAdaptive 
+                                                    ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1}`
+                                                    : `${currentQuestionIndex + 1}`
+                                            } / {
+                                                currentSection?.isAdaptive 
+                                                    ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 21}`
+                                                    : (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 
+                                                    : (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 
+                                                    : currentSection.questions.length
                                             }</span>
                                         </div>
 
-                                        {currentSection.isTimed ? (
+                                        {/* Adaptive section progress */}
+                                        {currentSection?.isAdaptive && adaptiveAptitude.progress && (
+                                            <div className="flex items-center gap-3 text-sm text-indigo-600 font-medium">
+                                                <Brain className="w-4 h-4" />
+                                                <span>{adaptiveAptitude.progress.completionPercentage}% Complete</span>
+                                            </div>
+                                        )}
+
+                                        {currentSection?.isTimed && !currentSection?.isAdaptive ? (
                                             currentSection.isAptitude ? (
                                                 aptitudePhase === 'individual' ? (
                                                     <div className="flex flex-col gap-2">
@@ -2600,7 +2858,7 @@ const AssessmentTest = () => {
                                             </motion.div>
                                         ) : (
                                             <motion.div
-                                                key={`${currentSectionIndex}-${currentQuestionIndex}`}
+                                                key={currentSection?.isAdaptive ? `adaptive-${adaptiveAptitude.currentQuestion?.id}` : `${currentSectionIndex}-${currentQuestionIndex}`}
                                                 initial={{ opacity: 0, x: 30 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 exit={{ opacity: 0, x: -30 }}
@@ -2609,20 +2867,82 @@ const AssessmentTest = () => {
                                             >
                                                 <div className="mb-6">
                                                     <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 block">
-                                                        Question {currentQuestionIndex + 1} / {
-                                                            (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 :
-                                                            (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 :
-                                                            currentSection.questions.length
+                                                        Question {
+                                                            currentSection?.isAdaptive 
+                                                                ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1}`
+                                                                : `${currentQuestionIndex + 1}`
+                                                        } / {
+                                                            currentSection?.isAdaptive 
+                                                                ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 21}`
+                                                                : (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 
+                                                                : (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 
+                                                                : currentSection.questions.length
                                                         }
                                                     </span>
                                                     <h3 className="text-2xl md:text-3xl font-medium text-gray-800 leading-snug">
-                                                        {currentQuestion.text}
+                                                        {currentQuestion?.text}
                                                     </h3>
                                                 </div>
 
                                                 <div className="space-y-3 mt-4">
-                                                    {/* SJT Questions - Select BEST and WORST */}
-                                                    {currentQuestion.partType === 'sjt' ? (
+                                                    {/* Adaptive Aptitude Questions - Special handling */}
+                                                    {currentSection?.isAdaptive ? (
+                                                        <div className="space-y-4">
+                                                            {/* Adaptive test info badges */}
+                                                            <div className="flex flex-wrap gap-2 mb-4">
+                                                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 rounded-full text-xs font-medium text-purple-700">
+                                                                    <Target className="w-3 h-3" />
+                                                                    Level {adaptiveAptitude.session?.currentDifficulty || 3}
+                                                                </span>
+                                                                {currentQuestion?.subtag && (
+                                                                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600">
+                                                                        {currentQuestion.subtag.replace(/_/g, ' ')}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Answer options for adaptive questions */}
+                                                            {currentQuestion?.options && ['A', 'B', 'C', 'D'].map((optionKey) => {
+                                                                const isSelected = adaptiveAptitudeAnswer === optionKey;
+                                                                return (
+                                                                    <button
+                                                                        key={optionKey}
+                                                                        type="button"
+                                                                        onClick={() => setAdaptiveAptitudeAnswer(optionKey)}
+                                                                        className={`w-full border-2 rounded-xl p-4 transition-all text-left ${
+                                                                            isSelected
+                                                                                ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
+                                                                                : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex items-start gap-3">
+                                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold transition-all ${
+                                                                                isSelected
+                                                                                    ? 'bg-indigo-500 text-white'
+                                                                                    : 'bg-gray-100 text-gray-600'
+                                                                            }`}>
+                                                                                {optionKey}
+                                                                            </div>
+                                                                            <p className={`flex-1 font-medium text-lg ${
+                                                                                isSelected ? 'text-indigo-700' : 'text-gray-700'
+                                                                            }`}>
+                                                                                {currentQuestion.options[optionKey]}
+                                                                            </p>
+                                                                        </div>
+                                                                    </button>
+                                                                );
+                                                            })}
+
+                                                            {/* Loading state for adaptive questions */}
+                                                            {adaptiveAptitude.loading && !currentQuestion && (
+                                                                <div className="flex flex-col items-center justify-center py-8">
+                                                                    <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-4" />
+                                                                    <p className="text-gray-600">Loading next question...</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : /* SJT Questions - Select BEST and WORST */
+                                                    currentQuestion.partType === 'sjt' ? (
                                                         <div className="space-y-4">
                                                             <div className="p-3 bg-rose-50 rounded-lg border border-rose-200 mb-4">
                                                                 <p className="text-sm font-medium text-rose-700">
@@ -2913,6 +3233,12 @@ const AssessmentTest = () => {
                                                     <>
                                                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                                                         Saving...
+                                                    </>
+                                                ) : currentSection?.isAdaptive ? (
+                                                    // Adaptive section: always show "Next Question" - submission happens via section complete screen
+                                                    <>
+                                                        Next Question
+                                                        <ChevronRight className="w-5 h-5 ml-2" />
                                                     </>
                                                 ) : currentSectionIndex === sections.length - 1 && currentQuestionIndex === currentSection.questions.length - 1 ? (
                                                     <>
