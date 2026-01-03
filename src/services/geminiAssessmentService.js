@@ -570,7 +570,9 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     knowledgeAnswers,
     totalKnowledgeQuestions: streamQuestions.length,
     totalAptitudeQuestions,
-    sectionTimings: timingData
+    sectionTimings: timingData,
+    // Include adaptive aptitude results if available (for high school students)
+    adaptiveAptitudeResults: answers.adaptive_aptitude_results || null
   };
 };
 
@@ -890,6 +892,26 @@ High school aptitude is based on self-assessment ratings (1-4 scale) for ease an
 - Use these ratings to identify top cognitive strengths for the aptitudeStrengths field
 - For the "scores" field in the response, convert ratings to a percentage format
 
+${assessmentData.adaptiveAptitudeResults ? `
+## ADAPTIVE APTITUDE TEST RESULTS (AI-Powered Assessment):
+This student completed an adaptive aptitude test that dynamically adjusted difficulty based on their performance.
+${JSON.stringify(assessmentData.adaptiveAptitudeResults, null, 2)}
+
+**ADAPTIVE APTITUDE INTERPRETATION:**
+- aptitudeLevel (1-5): Final assessed aptitude level (1=Basic, 2=Developing, 3=Proficient, 4=Advanced, 5=Expert)
+- confidenceTag: How confident we are in this assessment (high/medium/low)
+- tier: Performance tier classification
+- overallAccuracy: Percentage of questions answered correctly
+- accuracyBySubtag: Breakdown by reasoning type (numerical, logical, verbal, spatial, data interpretation, pattern recognition)
+- pathClassification: How their difficulty path evolved (ascending=improving, stable=consistent, descending=struggling)
+
+**USE THIS DATA TO:**
+1. Enhance aptitude scores with objective test performance
+2. Identify specific cognitive strengths from accuracyBySubtag
+3. Provide more accurate career recommendations based on demonstrated (not self-reported) abilities
+4. Note if there's a gap between self-assessment and actual performance
+` : ''}
+
 ## Career Pathways Responses:
 ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 
@@ -909,9 +931,11 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
       "Numerical": {"averageRating": 0, "total": 0, "percentage": 0},
       "Abstract": {"averageRating": 0, "total": 0, "percentage": 0}
     },
-    "topStrengths": ["2-3 cognitive strengths based on highest ratings (e.g., 'Strong analytical reasoning shown by high numerical task ratings')"],
+    "topStrengths": ["2-3 cognitive strengths based on highest ratings AND adaptive test performance"],
     "overallScore": 0,
-    "cognitiveProfile": "How they think, learn, and solve problems based on their self-assessed task preferences"
+    "cognitiveProfile": "How they think, learn, and solve problems based on self-assessment AND adaptive test results",
+    "adaptiveLevel": 0,
+    "adaptiveConfidence": "high/medium/low"
   },
   "bigFive": {
     "O": 3.5, "C": 3.2, "E": 3.8, "A": 4.0, "N": 2.5,

@@ -1,3 +1,6 @@
+// Re-export adaptive aptitude types
+export * from './adaptiveAptitude';
+
 export interface User {
   id: string;
   nmId: string;
