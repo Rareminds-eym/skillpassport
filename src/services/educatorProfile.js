@@ -275,8 +275,8 @@ export async function loginEducator(email, password) {
     }
 
     // Step 3: Check account status
-    if (educator.account_status === 'inactive' || educator.account_status === 'suspended') {
-      logAuthEvent('warn', 'Educator account inactive/suspended', { correlationId, educatorId: educator.id });
+    if (educator.account_status === 'deactivated' || educator.account_status === 'suspended') {
+      logAuthEvent('warn', 'Educator account deactivated/suspended', { correlationId, educatorId: educator.id });
       await safeSignOut();
       return {
         success: false,

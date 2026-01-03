@@ -29,7 +29,7 @@ export interface SchoolEducatorRow {
   subjects_handled: string[] | null;    // Array of subjects taught
   
   // Account management
-  account_status: string | null;        // 'active' | 'inactive' | 'suspended'
+  account_status: string | null;        // 'active' | 'deactivated' | 'suspended'
   
   // Fields NOT used in AI context (privacy & relevance)
   employee_id?: string | null;          // Internal HR identifier

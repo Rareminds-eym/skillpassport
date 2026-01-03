@@ -1938,7 +1938,10 @@ const StudentDashboard = () => {
                 }}
                 className="bg-gradient-to-br from-slate-900 to-slate-900  bg-clip-text text-center text-xl font-bold tracking-tight text-transparent md:text-xl"
               >
-                Welcome to your profile dashboard, {studentData?.profile?.firstName || studentData?.rawData?.firstName || (userEmail ? userEmail.split('@')[0] : "Student")}!
+                Welcome to your profile dashboard, {(() => {
+                  const firstName = studentData?.profile?.firstName || studentData?.rawData?.firstName || (userEmail ? userEmail.split('@')[0] : "Student");
+                  return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+                })()}!
               </motion.h1>
             </LampContainer>
             {/* 3x3 Grid Section */}

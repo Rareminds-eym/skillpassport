@@ -64,7 +64,7 @@ const CollegeVerifications = () => {
     try {
       console.log('🎓 Fetching pending trainings using CollegeAdminNotificationService...');
       
-      // Get college_id from user or college_educators table
+      // Get college_id from user or college_lecturers table
       let collegeId = user?.college_id;
       
       if (!collegeId) {
@@ -110,7 +110,7 @@ const CollegeVerifications = () => {
     try {
       console.log('🎓 Fetching pending experiences using CollegeAdminNotificationService...');
       
-      // Get college_id from user or college_educators table
+      // Get college_id from user or college_lecturers table
       let collegeId = user?.college_id;
       
       if (!collegeId) {
@@ -156,7 +156,7 @@ const CollegeVerifications = () => {
     try {
       console.log('🏗️ Fetching pending projects using CollegeAdminNotificationService...');
       
-      // Get college_id from user or college_educators table
+      // Get college_id from user or college_lecturers table
       let collegeId = user?.college_id;
       
       if (!collegeId) {

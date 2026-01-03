@@ -4,7 +4,10 @@ import { supabase } from "../../../../lib/supabaseClient";
 
 interface Faculty {
   id: string;
-  employeeId: string;
+  employeeId?: string;
+  first_name?: string;
+  last_name?: string;
+  // Keep metadata for backward compatibility
   metadata?: {
     first_name?: string;
     last_name?: string;
@@ -80,10 +83,10 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
 
     const { data } = await supabase
       .from("college_lecturers")
-      .select("id, employeeId, metadata")
+      .select("id, employeeId, first_name, last_name")
       .eq("collegeId", collegeId)
       .eq("accountStatus", "active")
-      .order("metadata->first_name");
+      .order("first_name");
     
     if (data) setFaculty(data);
   };
@@ -152,7 +155,7 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
 
   const getFacultyName = (facultyId: string) => {
     const f = faculty.find(f => f.id === facultyId);
-    return f ? `${f.metadata?.first_name || ''} ${f.metadata?.last_name || ''}` : '';
+    return f ? `${f.first_name || f.metadata?.first_name || ''} ${f.last_name || f.metadata?.last_name || ''}`.trim() : '';
   };
 
   const getClassName = (classId: string) => {
@@ -322,7 +325,7 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
               const load = getFacultyLoad(f.id);
               return (
                 <option key={f.id} value={f.id}>
-                  {f.metadata?.first_name} {f.metadata?.last_name} ({load}/30 periods)
+                  {f.first_name || f.metadata?.first_name || ''} {f.last_name || f.metadata?.last_name || ''} ({load}/30 periods)
                 </option>
               );
             })}
