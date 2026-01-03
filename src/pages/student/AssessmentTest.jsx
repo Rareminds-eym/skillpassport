@@ -693,97 +693,96 @@ const AssessmentTest = () => {
         // Currently both use the same sections, but can be customized differently if needed
         if (gradeLevel === 'after12' || gradeLevel === 'college') {
             return [
-        {
-            id: 'riasec',
-            title: 'Career Interests',
-            icon: <Heart className="w-6 h-6 text-rose-500" />,
-            description: "Discover what types of work environments and activities appeal to you most.",
-            color: "rose",
-            questions: getQuestionsForSection('riasec'),
-            responseScale: [
-                { value: 1, label: "Strongly Dislike" },
-                { value: 2, label: "Dislike" },
-                { value: 3, label: "Neutral" },
-                { value: 4, label: "Like" },
-                { value: 5, label: "Strongly Like" }
-            ],
-            instruction: "Rate how much you would LIKE or DISLIKE each activity."
-        },
-
-        {
-            id: 'bigfive',
-            title: 'Big Five Personality',
-            icon: <BrainCircuit className="w-6 h-6 text-purple-500" />,
-            description: "Understand your work style, approach to tasks, and how you interact with others.",
-            color: "purple",
-            questions: getQuestionsForSection('bigfive'),
-            responseScale: [
-                { value: 1, label: "Very Inaccurate" },
-                { value: 2, label: "Moderately Inaccurate" },
-                { value: 3, label: "Neither" },
-                { value: 4, label: "Moderately Accurate" },
-                { value: 5, label: "Very Accurate" }
-            ],
-            instruction: "How accurately does each statement describe you?"
-        },
-        {
-            id: 'values',
-            title: 'Work Values & Motivators',
-            icon: <Target className="w-6 h-6 text-indigo-500" />,
-            description: "Identify what drives your career satisfaction and choices.",
-            color: "indigo",
-            questions: getQuestionsForSection('values'),
-            responseScale: [
-                { value: 1, label: "Not Important" },
-                { value: 2, label: "Slightly Important" },
-                { value: 3, label: "Moderately Important" },
-                { value: 4, label: "Very Important" },
-                { value: 5, label: "Extremely Important" }
-            ],
-            instruction: "How important is each factor in your ideal career?"
-        },
-        {
-            id: 'employability',
-            title: 'Employability Skills',
-            icon: <TrendingUp className="w-6 h-6 text-green-500" />,
-            description: "Assess your job-readiness and 21st-century skills.",
-            color: "green",
-            questions: getQuestionsForSection('employability'),
-            responseScale: [
-                { value: 1, label: "Not Like Me" },
-                { value: 2, label: "Slightly" },
-                { value: 3, label: "Somewhat" },
-                { value: 4, label: "Mostly" },
-                { value: 5, label: "Very Much Like Me" }
-            ],
-            instruction: "How well does each statement describe you?"
-        },
-        {
-            id: 'aptitude',
-            title: 'Multi-Aptitude',
-            icon: <Zap className="w-6 h-6 text-amber-500" />,
-            description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
-            color: "amber",
-            questions: getQuestionsForSection('aptitude'),
-            isTimed: true,
-            timeLimit: 15 * 60, // Fallback shared timer
-            isAptitude: true,
-            individualTimeLimit: 60, // 1 minute per question
-            get individualQuestionCount() { return this.questions.length; }, // All questions have individual timers
-            instruction: "Choose the correct answer. You have 1 minute per question."
-        },
-        {
-            id: 'knowledge',
-            title: 'Stream Knowledge',
-            icon: <Code className="w-6 h-6 text-blue-500" />,
-            description: "Test your understanding of core concepts in your field.",
-            color: "blue",
-            questions: getQuestionsForSection('knowledge'),
-            isTimed: true,
-            timeLimit: 30 * 60, // 30 minutes in seconds
-            instruction: "Choose the best answer for each question."
-        }
-        ];
+                {
+                    id: 'riasec',
+                    title: 'Career Interests',
+                    icon: <Heart className="w-6 h-6 text-rose-500" />,
+                    description: "Discover what types of work environments and activities appeal to you most.",
+                    color: "rose",
+                    questions: getQuestionsForSection('riasec'),
+                    responseScale: [
+                        { value: 1, label: "Strongly Dislike" },
+                        { value: 2, label: "Dislike" },
+                        { value: 3, label: "Neutral" },
+                        { value: 4, label: "Like" },
+                        { value: 5, label: "Strongly Like" }
+                    ],
+                    instruction: "Rate how much you would LIKE or DISLIKE each activity."
+                },
+                {
+                    id: 'bigfive',
+                    title: 'Big Five Personality',
+                    icon: <BrainCircuit className="w-6 h-6 text-purple-500" />,
+                    description: "Understand your work style, approach to tasks, and how you interact with others.",
+                    color: "purple",
+                    questions: getQuestionsForSection('bigfive'),
+                    responseScale: [
+                        { value: 1, label: "Very Inaccurate" },
+                        { value: 2, label: "Moderately Inaccurate" },
+                        { value: 3, label: "Neither" },
+                        { value: 4, label: "Moderately Accurate" },
+                        { value: 5, label: "Very Accurate" }
+                    ],
+                    instruction: "How accurately does each statement describe you?"
+                },
+                {
+                    id: 'values',
+                    title: 'Work Values & Motivators',
+                    icon: <Target className="w-6 h-6 text-indigo-500" />,
+                    description: "Identify what drives your career satisfaction and choices.",
+                    color: "indigo",
+                    questions: getQuestionsForSection('values'),
+                    responseScale: [
+                        { value: 1, label: "Not Important" },
+                        { value: 2, label: "Slightly Important" },
+                        { value: 3, label: "Moderately Important" },
+                        { value: 4, label: "Very Important" },
+                        { value: 5, label: "Extremely Important" }
+                    ],
+                    instruction: "How important is each factor in your ideal career?"
+                },
+                {
+                    id: 'employability',
+                    title: 'Employability Skills',
+                    icon: <TrendingUp className="w-6 h-6 text-green-500" />,
+                    description: "Assess your job-readiness and 21st-century skills.",
+                    color: "green",
+                    questions: getQuestionsForSection('employability'),
+                    responseScale: [
+                        { value: 1, label: "Not Like Me" },
+                        { value: 2, label: "Slightly" },
+                        { value: 3, label: "Somewhat" },
+                        { value: 4, label: "Mostly" },
+                        { value: 5, label: "Very Much Like Me" }
+                    ],
+                    instruction: "How well does each statement describe you?"
+                },
+                {
+                    id: 'aptitude',
+                    title: 'Multi-Aptitude',
+                    icon: <Zap className="w-6 h-6 text-amber-500" />,
+                    description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
+                    color: "amber",
+                    questions: getQuestionsForSection('aptitude'),
+                    isTimed: true,
+                    timeLimit: 15 * 60, // Fallback shared timer
+                    isAptitude: true,
+                    individualTimeLimit: 60, // 1 minute per question
+                    get individualQuestionCount() { return this.questions.length; }, // All questions have individual timers
+                    instruction: "Choose the correct answer. You have 1 minute per question."
+                },
+                {
+                    id: 'knowledge',
+                    title: 'Stream Knowledge',
+                    icon: <Code className="w-6 h-6 text-blue-500" />,
+                    description: "Test your understanding of core concepts in your field.",
+                    color: "blue",
+                    questions: getQuestionsForSection('knowledge'),
+                    isTimed: true,
+                    timeLimit: 30 * 60, // 30 minutes in seconds
+                    instruction: "Choose the best answer for each question."
+                }
+            ];
         }
     }, [dbQuestions, studentStream, gradeLevel, aiQuestions, aiQuestionsLoading]);
 
@@ -823,7 +822,7 @@ const AssessmentTest = () => {
     };
 
     // Get streams based on selected category (for backward compatibility)
-    const streams = selectedCategory ? streamsByCategory[selectedCategory] : [
+    const categoryStreams = selectedCategory ? streamsByCategory[selectedCategory] : [
         { id: 'cs', label: 'B.Sc Computer Science / B.Tech CS/IT' },
         { id: 'bca', label: 'BCA General' },
         { id: 'bba', label: 'BBA General' },
@@ -831,11 +830,14 @@ const AssessmentTest = () => {
         { id: 'animation', label: 'B.Sc Animation' }
     ];
 
+    // Select appropriate streams based on grade level - use categoryStreams for all levels
+    const streams = categoryStreams;
+
     // Calculate progress
-    const currentSection = sections[currentSectionIndex];
-    const totalQuestions = sections.reduce((sum, section) => sum + section.questions.length, 0);
+    const currentSection = sections?.[currentSectionIndex];
+    const totalQuestions = sections?.reduce((sum, section) => sum + (section?.questions?.length || 0), 0) || 0;
     const answeredCount = Object.keys(answers).length;
-    const progress = (answeredCount / totalQuestions) * 100;
+    const progress = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
 
     // Timer for timed sections
     // Persistence Effect
