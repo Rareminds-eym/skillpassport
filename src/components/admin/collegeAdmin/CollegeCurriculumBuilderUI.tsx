@@ -17,6 +17,7 @@ import {
   ArchiveBoxIcon,
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../common/SearchBar";
+import Pagination from "../Pagination";
 import toast from "react-hot-toast";
 
 /* ==============================
@@ -591,14 +592,22 @@ const AddLearningOutcomeModal = ({
                   value={currentAssessmentType}
                   onChange={(e) => setCurrentAssessmentType(e.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                  disabled={assessmentTypes.length === 0}
                 >
-                  <option value="">Select Type</option>
+                  <option value="">
+                    {assessmentTypes.length === 0 ? "Loading assessment types..." : "Select Type"}
+                  </option>
                   {assessmentTypes.map((type) => (
                     <option key={type.id} value={type.name}>
                       {type.name}
                     </option>
                   ))}
                 </select>
+                {assessmentTypes.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    Loading available assessment types...
+                  </p>
+                )}
               </div>
 
               <div>
@@ -619,10 +628,11 @@ const AddLearningOutcomeModal = ({
             <button
               type="button"
               onClick={handleAddAssessmentMapping}
-              className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium inline-flex items-center justify-center gap-2"
+              disabled={assessmentTypes.length === 0}
+              className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium inline-flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               <PlusCircleIcon className="h-4 w-4" />
-              Add Assessment Mapping
+              {assessmentTypes.length === 0 ? "Loading..." : "Add Assessment Mapping"}
             </button>
           </div>
 
@@ -669,6 +679,7 @@ const AddLearningOutcomeModal = ({
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-sm text-amber-800">
                 ⚠️ Please add at least one assessment type mapping
+                {assessmentTypes.length === 0 && " (Loading assessment types...)"}
               </p>
             </div>
           )}
@@ -795,9 +806,9 @@ interface CollegeCurriculumBuilderProps {
   selectedAcademicYear?: string;
   setSelectedAcademicYear?: (value: string) => void;
   // Configuration data
-  courses?: string[];
-  departments?: string[];
-  programs?: string[];
+  courses?: Array<{ id: string; value: string; label: string; code: string; name: string; credits?: number; type?: string }>;
+  departments?: Array<{ id: string; name: string }>;
+  programs?: Array<{ id: string; name: string }>;
   semesters?: string[];
   academicYears?: string[];
   // Data
@@ -822,7 +833,7 @@ interface CollegeCurriculumBuilderProps {
 }
 const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props) => {
   // Mock user role (no database connection)
-  const [isCollegeAdmin] = React.useState(false); // For demo, assume regular faculty
+  const [isCollegeAdmin] = React.useState(true); // College admin has direct approval authority
 
   // College-specific assessment types (as per requirements)
   const defaultCollegeAssessmentTypes: AssessmentType[] = [
@@ -857,6 +868,12 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   const [localSearchQuery, localSetSearchQuery] = useState("");
   const [localSaveStatus, localSetSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [localRejectionReason] = useState<string | undefined>();
+
+  // Pagination state
+  const [unitsCurrentPage, setUnitsCurrentPage] = useState(1);
+  const [outcomesCurrentPage, setOutcomesCurrentPage] = useState(1);
+  const unitsPerPage = 6; // Show 6 units per page
+  const outcomesPerPage = 8; // Show 8 units with outcomes per page (increased for compact design)
   // Use props or local state
   const selectedCourse = props.selectedCourse ?? localSelectedCourse;
   const setSelectedCourse = props.setSelectedCourse ?? localSetSelectedCourse;
@@ -902,6 +919,15 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
       setHasUnsavedChanges(true);
     }
   }, [units, learningOutcomes]);
+
+  // Reset pagination when search changes
+  useEffect(() => {
+    setUnitsCurrentPage(1);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setOutcomesCurrentPage(1);
+  }, [outcomesSearchQuery]);
   // Auto-save effect
   useEffect(() => {
     if (hasUnsavedChanges && (status === "draft" || status === "rejected")) {
@@ -932,6 +958,15 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     );
   }, [units, searchQuery]);
 
+  // Paginated units
+  const paginatedUnits = useMemo(() => {
+    const startIndex = (unitsCurrentPage - 1) * unitsPerPage;
+    const endIndex = startIndex + unitsPerPage;
+    return filteredUnits.slice(startIndex, endIndex);
+  }, [filteredUnits, unitsCurrentPage, unitsPerPage]);
+
+  const unitsTotalPages = Math.ceil(filteredUnits.length / unitsPerPage);
+
   // Filtered learning outcomes based on search
   const filteredLearningOutcomes = useMemo(() => {
     const q = outcomesSearchQuery.toLowerCase();
@@ -956,6 +991,15 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     
     return units.filter(unit => outcomeUnitIds.has(unit.id));
   }, [units, filteredLearningOutcomes, outcomesSearchQuery]);
+
+  // Paginated units with outcomes
+  const paginatedUnitsWithOutcomes = useMemo(() => {
+    const startIndex = (outcomesCurrentPage - 1) * outcomesPerPage;
+    const endIndex = startIndex + outcomesPerPage;
+    return unitsWithFilteredOutcomes.slice(startIndex, endIndex);
+  }, [unitsWithFilteredOutcomes, outcomesCurrentPage, outcomesPerPage]);
+
+  const outcomesTotalPages = Math.ceil(unitsWithFilteredOutcomes.length / outcomesPerPage);
   // Validation
   const validateCurriculum = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -1079,13 +1123,11 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         return;
       }
 
-      const confirmMessage = isCollegeAdmin
-        ? "Are you sure you want to approve and publish this curriculum?"
-        : "Are you sure you want to submit this curriculum for Academic Head approval?";
-
-      if (window.confirm(confirmMessage)) {
-        setStatus(isCollegeAdmin ? "approved" : "pending_approval");
+      // College admin can directly approve and publish
+      if (window.confirm("Are you sure you want to publish this curriculum? It will be immediately available to students and faculty.")) {
+        setStatus("approved");
         setHasUnsavedChanges(false);
+        toast.success("Curriculum published successfully! It is now active and available.");
       }
     }
   };
@@ -1163,7 +1205,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             {status === "approved" && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
                 <CheckCircleIcon className="h-4 w-4" />
-                Approved
+                Published
               </span>
             )}
             {status === "pending_approval" && (
@@ -1265,8 +1307,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               >
                 <option value="">Select Department</option>
                 {departments.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
                   </option>
                 ))}
               </select>
@@ -1279,15 +1321,15 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               <select
                 value={selectedProgram}
                 onChange={(e) => setSelectedProgram(e.target.value)}
-                disabled={(status === "approved" && !isCollegeAdmin) || status === "pending_approval"}
+                disabled={!selectedDepartment || (status === "approved" && !isCollegeAdmin) || status === "pending_approval"}
                 className={`w-full rounded-lg border ${
                   errors.program ? "border-red-300" : "border-gray-300"
                 } px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
               >
-                <option value="">Select Program</option>
+                <option value="">{!selectedDepartment ? "Select Department First" : "Select Program"}</option>
                 {programs.map((program) => (
-                  <option key={program} value={program}>
-                    {program}
+                  <option key={program.id} value={program.id}>
+                    {program.name}
                   </option>
                 ))}
               </select>
@@ -1299,12 +1341,12 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               <select
                 value={selectedSemester}
                 onChange={(e) => setSelectedSemester(e.target.value)}
-                disabled={(status === "approved" && !isCollegeAdmin) || status === "pending_approval"}
+                disabled={!selectedProgram || (status === "approved" && !isCollegeAdmin) || status === "pending_approval"}
                 className={`w-full rounded-lg border ${
                   errors.semester ? "border-red-300" : "border-gray-300"
                 } px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
               >
-                <option value="">Select Semester</option>
+                <option value="">{!selectedProgram ? "Select Program First" : "Select Semester"}</option>
                 {semesters.map((sem) => (
                   <option key={sem} value={sem}>
                     Semester {sem}
@@ -1320,15 +1362,15 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               <select
                 value={selectedCourse}
                 onChange={(e) => setSelectedCourse(e.target.value)}
-                disabled={(status === "approved" && !isCollegeAdmin) || status === "pending_approval"}
+                disabled={!selectedProgram || !selectedSemester || (status === "approved" && !isCollegeAdmin) || status === "pending_approval"}
                 className={`w-full rounded-lg border ${
                   errors.course ? "border-red-300" : "border-gray-300"
                 } px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
               >
-                <option value="">Select Course</option>
+                <option value="">{!selectedProgram || !selectedSemester ? "Select Program & Semester First" : courses.length === 0 ? "No courses available" : "Select Course"}</option>
                 {courses.map((course) => (
-                  <option key={course} value={course}>
-                    {course}
+                  <option key={course.id} value={course.value}>
+                    {course.label}
                   </option>
                 ))}
               </select>
@@ -1400,7 +1442,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                   status === "pending_approval" ? "text-amber-900" :
                   status === "rejected" ? "text-red-900" : "text-indigo-900"
                 }`}>
-                  {status === "approved" ? "Approved" :
+                  {status === "approved" ? "Published" :
                    status === "pending_approval" ? "Pending Approval" :
                    status === "rejected" ? "Rejected" : "Draft"}
                 </h3>
@@ -1410,12 +1452,12 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                   status === "rejected" ? "text-red-700" : "text-indigo-700"
                 }`}>
                   {status === "approved"
-                    ? "This curriculum is approved and active"
+                    ? "This curriculum is published and active"
                     : status === "pending_approval"
                     ? "Waiting for Academic Head approval"
                     : status === "rejected"
-                    ? "Needs revision before resubmission"
-                    : "Save your progress or submit for approval when ready"}
+                    ? "Needs revision before republishing"
+                    : "Save your progress or publish when ready"}
                 </p>
               </div>
             </div>
@@ -1429,7 +1471,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             {approvedBy && status === "approved" && (
               <div className="mt-3 pt-3 border-t border-green-200">
                 <p className="text-xs font-medium text-green-800">
-                  ✓ Approved by Academic Head
+                  ✓ Published by College Admin
                 </p>
               </div>
             )}
@@ -1521,224 +1563,253 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredUnits.map((unit, index) => (
-                    <UnitCard
-                      key={unit.id}
-                      unit={unit}
-                      index={index}
-                      outcomesCount={
-                        learningOutcomes.filter(
-                          (lo) => lo.unitId === unit.id
-                        ).length
-                      }
-                      onEdit={() => handleEditUnit(unit)}
-                      onDelete={() => handleDeleteUnit(unit.id)}
-                      onAddOutcome={() =>
-                        handleAddOutcomeToUnit(unit.id)
-                      }
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {paginatedUnits.map((unit, index) => {
+                      // Calculate the actual index considering pagination
+                      const actualIndex = (unitsCurrentPage - 1) * unitsPerPage + index;
+                      return (
+                        <UnitCard
+                          key={unit.id}
+                          unit={unit}
+                          index={actualIndex}
+                          outcomesCount={
+                            learningOutcomes.filter(
+                              (lo) => lo.unitId === unit.id
+                            ).length
+                          }
+                          onEdit={() => handleEditUnit(unit)}
+                          onDelete={() => handleDeleteUnit(unit.id)}
+                          onAddOutcome={() =>
+                            handleAddOutcomeToUnit(unit.id)
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Units Pagination */}
+                  {unitsTotalPages > 1 && (
+                    <div className="mt-6">
+                      <Pagination
+                        currentPage={unitsCurrentPage}
+                        totalPages={unitsTotalPages}
+                        totalItems={filteredUnits.length}
+                        itemsPerPage={unitsPerPage}
+                        onPageChange={setUnitsCurrentPage}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </section>
-          {/* Learning Outcomes Section */}
+          {/* Learning Outcomes Section - Redesigned */}
           <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-200 bg-gray-50">
+            <div className="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-blue-50">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">
+                  <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <AcademicCapIcon className="h-5 w-5 text-indigo-600" />
                     Learning Outcomes by Unit
                   </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-gray-600 mt-0.5">
                     {totalOutcomes} total outcome{totalOutcomes !== 1 ? "s" : ""} across {units.length} unit{units.length !== 1 ? "s" : ""}
                   </p>
                 </div>
+                {learningOutcomes.length > 0 && (
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <SearchBar
+                        value={outcomesSearchQuery}
+                        onChange={setOutcomesSearchQuery}
+                        placeholder="Search outcomes..."
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {learningOutcomes.length > 0 && (
-                <div className="mt-4">
-                  <SearchBar
-                    value={outcomesSearchQuery}
-                    onChange={setOutcomesSearchQuery}
-                    placeholder="Search learning outcomes, Bloom's levels, or assessment types..."
-                  />
-                  {outcomesSearchQuery && (
-                    <p className="mt-2 text-xs text-gray-600">
-                      Found {filteredLearningOutcomes.length} outcome{filteredLearningOutcomes.length !== 1 ? "s" : ""} in {unitsWithFilteredOutcomes.length} unit{unitsWithFilteredOutcomes.length !== 1 ? "s" : ""}
-                    </p>
-                  )}
-                </div>
-              )}
             </div>
 
             <div className="p-5">
               {units.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="p-4 bg-gray-100 rounded-full mb-4">
-                    <BookOpenIcon className="h-12 w-12 text-gray-400" />
+                    <BookOpenIcon className="h-8 w-8 text-gray-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
                     No units added yet
                   </h3>
                   <p className="text-sm text-gray-500 max-w-sm">
-                    Add units first, then you can define learning outcomes for each unit
+                    Add units first, then define learning outcomes
+                  </p>
+                </div>
+              ) : unitsWithFilteredOutcomes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="p-4 bg-gray-100 rounded-full mb-4">
+                    <AcademicCapIcon className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
+                    No matching outcomes found
+                  </h3>
+                  <p className="text-sm text-gray-500 max-w-sm">
+                    Try adjusting your search criteria
                   </p>
                 </div>
               ) : (
-                <div className="space-y-5">
-                  {unitsWithFilteredOutcomes.map((unit, idx) => {
-                    const outcomes = filteredLearningOutcomes.filter(
-                      (lo) => lo.unitId === unit.id
-                    );
+                <>
+                  {/* Compact Grid Layout */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {paginatedUnitsWithOutcomes.map((unit, idx) => {
+                      const actualIdx = (outcomesCurrentPage - 1) * outcomesPerPage + idx;
+                      const outcomes = filteredLearningOutcomes.filter(
+                        (lo) => lo.unitId === unit.id
+                      );
 
-                    return (
-                      <div
-                        key={unit.id}
-                        className="border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-colors"
-                      >
-                        {/* Unit Header */}
-                        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 px-5 py-4 border-b border-gray-200">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 flex-1">
-                              <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-indigo-600 text-white text-sm font-bold flex-shrink-0">
-                                {idx + 1}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-gray-900 text-base">
-                                  {unit.name}
-                                </h3>
-                                {unit.description && (
-                                  <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">
-                                    {unit.description}
-                                  </p>
-                                )}
-                                {unit.credits && (
-                                  <p className="text-xs text-indigo-600 font-medium mt-0.5">
-                                    {unit.credits} Credit{unit.credits !== 1 ? 's' : ''}
-                                  </p>
-                                )}
+                      return (
+                        <div
+                          key={unit.id}
+                          className="border border-gray-200 rounded-lg overflow-hidden hover:border-indigo-300 hover:shadow-md transition-all duration-200"
+                        >
+                          {/* Compact Unit Header */}
+                          <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="flex items-center justify-center h-6 w-6 rounded-md bg-indigo-600 text-white text-xs font-bold flex-shrink-0">
+                                  {actualIdx + 1}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold text-gray-900 text-sm truncate">
+                                    {unit.name}
+                                  </h3>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    {unit.credits && (
+                                      <span className="text-xs text-indigo-600 font-medium">
+                                        {unit.credits} Credits
+                                      </span>
+                                    )}
+                                    <span className="text-xs text-gray-500">
+                                      {outcomes.length} Outcome{outcomes.length !== 1 ? "s" : ""}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-3 flex-shrink-0">
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-indigo-200 text-indigo-700 rounded-lg text-xs font-semibold">
-                                <AcademicCapIcon className="h-4 w-4" />
-                                {outcomes.length} Outcome{outcomes.length !== 1 ? "s" : ""}
-                              </span>
                               {((status !== "approved" || isCollegeAdmin) && status !== "pending_approval") && (
                                 <button
-                                  onClick={() =>
-                                    handleAddOutcomeToUnit(unit.id)
-                                  }
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors"
+                                  onClick={() => handleAddOutcomeToUnit(unit.id)}
+                                  className="p-1.5 text-green-600 hover:bg-green-50 rounded-md transition-colors flex-shrink-0"
+                                  title="Add Outcome"
                                 >
                                   <PlusCircleIcon className="h-4 w-4" />
-                                  Add Outcome
                                 </button>
                               )}
                             </div>
                           </div>
-                        </div>
 
-                        {/* Outcomes List */}
-                        <div className="p-5">
-                          {outcomes.length === 0 ? (
-                            <div className="text-center py-8">
-                              <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-gray-100 mb-3">
-                                <AcademicCapIcon className="h-6 w-6 text-gray-400" />
+                          {/* Compact Outcomes List */}
+                          <div className="p-4">
+                            {outcomes.length === 0 ? (
+                              <div className="text-center py-6">
+                                <AcademicCapIcon className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                                <p className="text-xs text-gray-500 mb-3">
+                                  No outcomes defined yet
+                                </p>
+                                {((status !== "approved" || isCollegeAdmin) && status !== "pending_approval") && (
+                                  <button
+                                    onClick={() => handleAddOutcomeToUnit(unit.id)}
+                                    className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                                  >
+                                    Add First Outcome
+                                  </button>
+                                )}
                               </div>
-                              <p className="text-sm text-gray-500 mb-3">
-                                No learning outcomes defined for this unit yet
-                              </p>
-                              {((status !== "approved" || isCollegeAdmin) && status !== "pending_approval") && (
-                                <button
-                                  onClick={() =>
-                                    handleAddOutcomeToUnit(unit.id)
-                                  }
-                                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
-                                >
-                                  <PlusCircleIcon className="h-4 w-4" />
-                                  Add First Outcome
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              {outcomes.map((outcome, outcomeIdx) => (
-                                <div
-                                  key={outcome.id}
-                                  className="group relative rounded-lg border border-gray-200 bg-white p-4 transition-all hover:border-indigo-300 hover:shadow-sm"
-                                >
-                                  <div className="flex items-start gap-3">
-                                    <span className="flex-shrink-0 flex items-center justify-center h-6 w-6 rounded-md bg-gray-100 text-gray-600 text-xs font-semibold">
-                                      {outcomeIdx + 1}
-                                    </span>
-                                    <div className="flex-1 min-w-0 space-y-2">
-                                      <p className="text-sm text-gray-800 leading-relaxed">
-                                        {outcome.outcome}
-                                      </p>
-                                      
-                                      {/* Display Bloom's Level */}
-                                      {outcome.bloomLevel && (
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-xs text-gray-500">Bloom's Level:</span>
-                                          <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">
-                                            {outcome.bloomLevel}
-                                          </span>
-                                        </div>
-                                      )}
-                                      
-                                      {/* Display Assessment Mappings */}
-                                      {outcome.assessmentMappings && outcome.assessmentMappings.length > 0 && (
-                                        <div className="flex flex-wrap items-center gap-2">
-                                          <span className="text-xs text-gray-500">Assessments:</span>
-                                          {outcome.assessmentMappings.map((mapping, mapIdx) => (
+                            ) : (
+                              <div className="space-y-3 max-h-64 overflow-y-auto">
+                                {outcomes.map((outcome, outcomeIdx) => (
+                                  <div
+                                    key={outcome.id}
+                                    className="group relative rounded-md border border-gray-100 bg-gray-50 p-3 hover:border-indigo-200 hover:bg-indigo-50 transition-all"
+                                  >
+                                    <div className="flex items-start gap-2">
+                                      <span className="flex-shrink-0 flex items-center justify-center h-5 w-5 rounded bg-white text-gray-600 text-xs font-semibold border">
+                                        {outcomeIdx + 1}
+                                      </span>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-gray-800 leading-relaxed line-clamp-2 mb-2">
+                                          {outcome.outcome}
+                                        </p>
+                                        
+                                        {/* Compact Tags */}
+                                        <div className="flex flex-wrap items-center gap-1">
+                                          {outcome.bloomLevel && (
+                                            <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                                              {outcome.bloomLevel}
+                                            </span>
+                                          )}
+                                          {outcome.assessmentMappings?.slice(0, 2).map((mapping, mapIdx) => (
                                             <span
                                               key={mapIdx}
-                                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium"
+                                              className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs font-medium"
                                             >
                                               {mapping.assessmentType}
                                               {mapping.weightage && (
-                                                <span className="text-indigo-900 font-semibold">
+                                                <span className="ml-1 text-indigo-900 font-semibold">
                                                   {mapping.weightage}%
                                                 </span>
                                               )}
                                             </span>
                                           ))}
+                                          {outcome.assessmentMappings && outcome.assessmentMappings.length > 2 && (
+                                            <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
+                                              +{outcome.assessmentMappings.length - 2} more
+                                            </span>
+                                          )}
                                         </div>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      </div>
+                                      
+                                      {/* Action Buttons */}
                                       {((status !== "approved" || isCollegeAdmin) && status !== "pending_approval") && (
-                                        <>
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                           <button
                                             onClick={() => handleEditOutcome(outcome)}
-                                            className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                            title="Edit Outcome"
+                                            className="p-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded transition-colors"
+                                            title="Edit"
                                           >
-                                            <PencilSquareIcon className="h-4 w-4" />
+                                            <PencilSquareIcon className="h-3 w-3" />
                                           </button>
                                           <button
                                             onClick={() => handleDeleteOutcome(outcome.id)}
-                                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                            title="Delete Outcome"
+                                            className="p-1 text-gray-500 hover:text-red-600 hover:bg-white rounded transition-colors"
+                                            title="Delete"
                                           >
-                                            <TrashIcon className="h-4 w-4" />
+                                            <TrashIcon className="h-3 w-3" />
                                           </button>
-                                        </>
+                                        </div>
                                       )}
                                     </div>
                                   </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Pagination */}
+                  {outcomesTotalPages > 1 && (
+                    <div className="mt-6 pt-4 border-t border-gray-100">
+                      <Pagination
+                        currentPage={outcomesCurrentPage}
+                        totalPages={outcomesTotalPages}
+                        totalItems={unitsWithFilteredOutcomes.length}
+                        itemsPerPage={outcomesPerPage}
+                        onPageChange={setOutcomesCurrentPage}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </section>
@@ -1759,11 +1830,9 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                   className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium shadow-md hover:shadow-lg"
                 >
                   <DocumentCheckIcon className="h-5 w-5" />
-                  {status === "approved" && isCollegeAdmin 
-                    ? "Update & Re-approve" 
-                    : isCollegeAdmin 
-                    ? "Approve & Publish" 
-                    : "Submit for Approval"}
+                  {status === "approved" 
+                    ? "Update & Re-publish" 
+                    : "Publish Curriculum"}
                 </button>
               </>
             )}

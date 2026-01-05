@@ -53,14 +53,26 @@ export interface Curriculum {
 
 // Get all assessment types
 export const getAssessmentTypes = async (): Promise<AssessmentType[]> => {
-  const { data, error } = await supabase
-    .from('assessment_types')
-    .select('*')
-    .eq('is_active', true)
-    .order('name');
+  try {
+    const schoolId = await getCurrentEducatorSchoolId();
+    
+    let query = supabase
+      .from('assessment_types')
+      .select('*')
+      .eq('is_active', true);
+    
+    if (schoolId) {
+      query = query.eq('institution_id', schoolId).eq('institution_type', 'school');
+    }
+    
+    const { data, error } = await query.order('name');
 
-  if (error) throw error;
-  return data || [];
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching assessment types:', error);
+    return [];
+  }
 };
 
 // Get all subjects (school-specific + global fallback)
