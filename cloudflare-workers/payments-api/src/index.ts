@@ -30,6 +30,12 @@
  * - POST /cancel-addon         - Cancel an add-on subscription
  * - GET  /check-addon-access   - Check if user has access to a feature
  * 
+ * ENTITLEMENT LIFECYCLE ENDPOINTS (CRON):
+ * - POST /process-entitlement-lifecycle - Main cron handler (runs all lifecycle tasks)
+ * - POST /expire-entitlements    - Mark expired entitlements as 'expired'
+ * - POST /send-renewal-reminders - Send reminder emails (7, 3, 1 days before expiry)
+ * - POST /process-auto-renewals  - Process auto-renewals for expiring entitlements
+ * 
  * ADMIN/CRON ENDPOINTS:
  * - POST /expire-subscriptions - Auto-expire old subscriptions (cron)
  * - GET  /health               - Health check with config status
@@ -49,6 +55,12 @@ import {
     handleVerifyAddonPayment,
     handleVerifyBundlePayment
 } from './handlers/addons';
+import {
+    handleExpireEntitlements,
+    handleProcessAutoRenewals,
+    handleProcessEntitlementLifecycle,
+    handleSendRenewalReminders
+} from './handlers/entitlementLifecycle';
 import { handleGetSubscriptionFeatures, handleGetSubscriptionPlan, handleGetSubscriptionPlans } from './handlers/plans';
 
 // Re-export Env type for use in other modules
@@ -2170,6 +2182,16 @@ export default {
         case '/check-addon-access':
           return await handleCheckAddonAccess(request, env);
         
+        // Entitlement lifecycle endpoints (for cron jobs)
+        case '/process-entitlement-lifecycle':
+          return await handleProcessEntitlementLifecycle(request, env);
+        case '/expire-entitlements':
+          return await handleExpireEntitlements(request, env);
+        case '/send-renewal-reminders':
+          return await handleSendRenewalReminders(request, env);
+        case '/process-auto-renewals':
+          return await handleProcessAutoRenewals(request, env);
+        
         // Health check
         case '/health':
           const configStatus = {
@@ -2208,6 +2230,12 @@ export default {
               'POST /verify-bundle-payment',
               'POST /cancel-addon',
               'GET  /check-addon-access',
+              // Entitlement Lifecycle endpoints (CRON)
+              'POST /process-entitlement-lifecycle',
+              'POST /expire-entitlements',
+              'POST /send-renewal-reminders',
+              'POST /process-auto-renewals',
+              // Utility endpoints
               'GET  /health',
               'GET  /debug-storage',
             ],
@@ -2359,6 +2387,25 @@ export default {
     } catch (error) {
       console.error('Worker error:', error);
       return jsonResponse({ error: (error as Error).message || 'Internal server error' }, 500);
+    }
+  },
+
+  // Scheduled handler for cron triggers
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    console.log('[CRON] Scheduled event triggered at:', new Date().toISOString());
+    
+    try {
+      // Create a mock request for the lifecycle handler
+      const request = new Request('https://payments-api/process-entitlement-lifecycle', {
+        method: 'POST',
+      });
+      
+      const response = await handleProcessEntitlementLifecycle(request, env);
+      const result = await response.json();
+      
+      console.log('[CRON] Entitlement lifecycle processing result:', JSON.stringify(result));
+    } catch (error) {
+      console.error('[CRON] Error in scheduled handler:', error);
     }
   },
 };
