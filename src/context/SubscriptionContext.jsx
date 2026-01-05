@@ -274,6 +274,9 @@ export const SubscriptionProvider = ({ children }) => {
   const totalAddOnCost = useMemo(() => entitlementsData?.totalCost ?? { monthly: 0, annual: 0 }, [entitlementsData]);
 
   const value = useMemo(() => ({
+    // User data (needed for feature gating)
+    user,
+    
     // Access state
     hasAccess,
     accessReason,
@@ -320,6 +323,7 @@ export const SubscriptionProvider = ({ children }) => {
     isExpired: accessReason === ACCESS_REASONS.EXPIRED,
     hasNoSubscription: accessReason === ACCESS_REASONS.NO_SUBSCRIPTION,
   }), [
+    user,
     hasAccess,
     accessReason,
     isLoading,

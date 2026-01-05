@@ -36,6 +36,10 @@ const clearExpiredCache = () => {
   }
 };
 
+// DEBUG: Clear all cache on module load to ensure fresh checks
+console.log('[FeatureGate] Clearing all access cache on module load');
+accessCache.clear();
+
 /**
  * Hook for checking feature access
  * 
@@ -59,16 +63,25 @@ export function useFeatureGate(featureKey) {
   const checkInProgress = useRef(false);
   const userId = user?.id;
 
+  // Debug: Log initial state
+  console.log(`[useFeatureGate] Hook initialized for ${featureKey}, userId: ${userId}, user object:`, user);
+
   // Check access from cache or fetch
   const checkAccess = useCallback(async () => {
+    console.log(`[useFeatureGate] checkAccess called for ${featureKey}, userId: ${userId}`);
+    
     if (!featureKey) {
+      console.log(`[useFeatureGate] No featureKey provided, denying access`);
       setIsLoading(false);
       setHasAccess(false);
       return;
     }
 
     // Prevent concurrent checks
-    if (checkInProgress.current) return;
+    if (checkInProgress.current) {
+      console.log(`[useFeatureGate] Check already in progress for ${featureKey}, skipping`);
+      return;
+    }
     checkInProgress.current = true;
 
     try {
@@ -79,7 +92,10 @@ export function useFeatureGate(featureKey) {
       const cacheKey = `${userId || 'anonymous'}-${featureKey}`;
       const cached = accessCache.get(cacheKey);
       
+      console.log(`[useFeatureGate] Cache check for ${featureKey}:`, { cacheKey, cached, cacheSize: accessCache.size });
+      
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        console.log(`[useFeatureGate] Using cached result for ${featureKey}:`, cached.hasAccess, 'requiredAddOn:', cached.requiredAddOn);
         setHasAccess(cached.hasAccess);
         setAccessSource(cached.accessSource);
         setRequiredAddOn(cached.requiredAddOn);
@@ -91,7 +107,13 @@ export function useFeatureGate(featureKey) {
       setIsLoading(true);
 
       // Quick sync check for entitlements (immediate UI response)
+      console.log(`[useFeatureGate] Checking hasAddOnAccessSync for ${featureKey}:`, { 
+        hasAddOnAccessSync: typeof hasAddOnAccessSync, 
+        activeEntitlements 
+      });
+      
       if (hasAddOnAccessSync && hasAddOnAccessSync(featureKey)) {
+        console.log(`[useFeatureGate] hasAddOnAccessSync returned true for ${featureKey}`);
         const entitlement = activeEntitlements?.find(e => e.feature_key === featureKey);
         const source = entitlement?.bundle_id ? 'bundle' : 'addon';
         
@@ -112,63 +134,98 @@ export function useFeatureGate(featureKey) {
         return;
       }
 
+      // Always fetch add-on details first for pricing display
+      console.log(`[useFeatureGate] Fetching add-on details for ${featureKey}`);
+      let fetchedAddOn = null;
+      try {
+        const addOnResult = await addOnCatalogService.getAddOnByFeatureKey(featureKey);
+        console.log(`[useFeatureGate] Add-on details for ${featureKey}:`, addOnResult);
+        if (addOnResult.success && addOnResult.data) {
+          fetchedAddOn = addOnResult.data;
+        }
+      } catch (addOnErr) {
+        console.warn(`[useFeatureGate] Failed to fetch add-on details for ${featureKey}:`, addOnErr);
+      }
+
       // If user is authenticated, do full check
       if (userId) {
+        console.log(`[useFeatureGate] Calling entitlementService.hasFeatureAccess for ${featureKey}, userId: ${userId}`);
         const result = await entitlementService.hasFeatureAccess(userId, featureKey);
+        console.log(`[useFeatureGate] entitlementService result for ${featureKey}:`, result);
         
         if (result.success) {
           const { hasAccess: access, accessSource: source } = result.data;
           
+          console.log(`[useFeatureGate] Setting access for ${featureKey}: hasAccess=${access}, source=${source}`);
           setHasAccess(access);
           setAccessSource(source);
           
-          // If no access, fetch the add-on details for upgrade prompt
+          // Set add-on details only if no access (for upgrade prompt)
           if (!access) {
-            const addOnResult = await addOnCatalogService.getAddOnByFeatureKey(featureKey);
-            if (addOnResult.success) {
-              setRequiredAddOn(addOnResult.data);
-            }
+            setRequiredAddOn(fetchedAddOn);
           } else {
             setRequiredAddOn(null);
+            fetchedAddOn = null; // Don't cache add-on if user has access
           }
           
-          // Cache the result
+          // Cache the result with the fetched add-on data
           accessCache.set(cacheKey, {
             hasAccess: access,
             accessSource: source,
-            requiredAddOn: !access ? requiredAddOn : null,
+            requiredAddOn: access ? null : fetchedAddOn,
             timestamp: Date.now()
           });
         } else {
+          console.log(`[useFeatureGate] entitlementService returned error for ${featureKey}:`, result.error);
           setError(result.error);
           setHasAccess(false);
           setAccessSource(null);
+          setRequiredAddOn(fetchedAddOn);
         }
       } else {
         // Not authenticated - no access
+        console.log(`[useFeatureGate] No userId, denying access for ${featureKey}`);
         setHasAccess(false);
         setAccessSource(null);
+        setRequiredAddOn(fetchedAddOn);
         
-        // Still fetch add-on details for display
-        const addOnResult = await addOnCatalogService.getAddOnByFeatureKey(featureKey);
-        if (addOnResult.success) {
-          setRequiredAddOn(addOnResult.data);
-        }
+        // Cache for anonymous user
+        accessCache.set(cacheKey, {
+          hasAccess: false,
+          accessSource: null,
+          requiredAddOn: fetchedAddOn,
+          timestamp: Date.now()
+        });
       }
     } catch (err) {
-      console.error('Error checking feature access:', err);
+      console.error(`[useFeatureGate] Error checking feature access for ${featureKey}:`, err);
       setError(err.message);
       setHasAccess(false);
     } finally {
       setIsLoading(false);
       checkInProgress.current = false;
     }
-  }, [featureKey, userId, hasAddOnAccessSync, activeEntitlements, requiredAddOn]);
+  }, [featureKey, userId, hasAddOnAccessSync, activeEntitlements]);
 
   // Run access check on mount and when dependencies change
   useEffect(() => {
+    console.log(`[useFeatureGate] useEffect triggered for ${featureKey}, userId: ${userId}`);
+    // Reset checkInProgress when userId changes to allow re-check
+    checkInProgress.current = false;
     checkAccess();
   }, [checkAccess]);
+
+  // Also re-check when userId changes from undefined to a value
+  useEffect(() => {
+    if (userId) {
+      console.log(`[useFeatureGate] userId became available for ${featureKey}: ${userId}`);
+      // Clear cache for this feature to force re-check with new userId
+      const cacheKey = `anonymous-${featureKey}`;
+      accessCache.delete(cacheKey);
+      checkInProgress.current = false;
+      checkAccess();
+    }
+  }, [userId, featureKey]);
 
   // Invalidate cache for this feature
   const invalidateCache = useCallback(() => {

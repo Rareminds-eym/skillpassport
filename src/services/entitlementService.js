@@ -61,6 +61,8 @@ class EntitlementService {
         return { success: false, error: 'User ID and feature key are required' };
       }
 
+      console.log(`[EntitlementService] Checking access for user ${userId}, feature ${featureKey}`);
+
       // First, check if user has an active subscription plan that includes this feature
       const { data: subscription, error: subError } = await supabase
         .from('subscriptions')
@@ -68,6 +70,8 @@ class EntitlementService {
         .eq('user_id', userId)
         .eq('status', 'active')
         .single();
+
+      console.log(`[EntitlementService] Subscription query result:`, { subscription, subError });
 
       if (!subError && subscription?.plan_id) {
         // Check if the plan includes this feature
@@ -78,7 +82,10 @@ class EntitlementService {
           .eq('feature_key', featureKey)
           .single();
 
+        console.log(`[EntitlementService] Plan feature check:`, { planFeature, featureError });
+
         if (!featureError && planFeature?.is_included) {
+          console.log(`[EntitlementService] Access granted via plan for ${featureKey}`);
           return {
             success: true,
             data: { hasAccess: true, accessSource: 'plan' }
@@ -94,16 +101,20 @@ class EntitlementService {
         .eq('feature_key', featureKey)
         .in('status', ['active', 'grace_period'])
         .gte('end_date', new Date().toISOString())
-        .single();
+        .maybeSingle();
+
+      console.log(`[EntitlementService] Entitlement check:`, { entitlement, entError });
 
       if (!entError && entitlement) {
         const accessSource = entitlement.bundle_id ? 'bundle' : 'addon';
+        console.log(`[EntitlementService] Access granted via ${accessSource} for ${featureKey}`);
         return {
           success: true,
           data: { hasAccess: true, accessSource }
         };
       }
 
+      console.log(`[EntitlementService] No access for ${featureKey}`);
       return {
         success: true,
         data: { hasAccess: false, accessSource: null }

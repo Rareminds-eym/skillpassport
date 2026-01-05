@@ -625,11 +625,12 @@ function SubscriptionPlans() {
             <FeatureComparisonTable plans={plans} />
           </>
         ) : (
-          /* Add-Ons Marketplace */
+          /* Add-Ons Marketplace - compact mode without duplicate header */
           <AddOnMarketplace 
             role={pageRole} 
             showBundles={true}
-            className="mt-4"
+            showHeader={false}
+            compact={true}
           />
         )}
 

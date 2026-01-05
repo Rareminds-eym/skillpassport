@@ -135,7 +135,7 @@ const MyClass = lazy(() => import("../pages/student/MyClass"));
 const Clubs = lazy(() => import ("../pages/student/Clubs"))
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
 const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
-const CareerAI = lazy(() => import("../features/career-assistant/components/CareerAssistant"));
+const CareerAI = lazy(() => import("../pages/student/CareerAI"));
 const DebugQRTest = lazy(() => import("../pages/DebugQRTest"));
 const StudentPublicViewer = lazy(() =>
   import("../components/Students/components/StudentPublicViewer")

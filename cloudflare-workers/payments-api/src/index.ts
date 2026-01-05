@@ -20,16 +20,26 @@
  * - GET  /subscription-plan    - Get single plan by code
  * - GET  /subscription-features - Get features comparison
  * 
+ * ADD-ON ENDPOINTS:
+ * - GET  /addon-catalog        - Get available add-ons and bundles
+ * - GET  /user-entitlements    - Get user's active entitlements
+ * - POST /create-addon-order   - Create Razorpay order for add-on purchase
+ * - POST /verify-addon-payment - Verify payment AND create entitlement atomically
+ * - POST /create-bundle-order  - Create Razorpay order for bundle purchase
+ * - POST /verify-bundle-payment - Verify payment AND create bundle entitlements
+ * - POST /cancel-addon         - Cancel an add-on subscription
+ * - GET  /check-addon-access   - Check if user has access to a feature
+ * 
  * ADMIN/CRON ENDPOINTS:
  * - POST /expire-subscriptions - Auto-expire old subscriptions (cron)
  * - GET  /health               - Health check with config status
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 // Import modular handlers
-import { handleGetSubscriptionPlans, handleGetSubscriptionPlan, handleGetSubscriptionFeatures } from './handlers/plans';
+import { handleGetSubscriptionFeatures, handleGetSubscriptionPlan, handleGetSubscriptionPlans } from './handlers/plans';
 
 // Re-export Env type for use in other modules
 export interface Env {
@@ -2132,6 +2142,24 @@ export default {
         case '/subscription-features':
           return await handleGetSubscriptionFeatures(request, env);
         
+        // Add-On endpoints
+        case '/addon-catalog':
+          return await handleGetAddonCatalog(request, env);
+        case '/user-entitlements':
+          return await handleGetUserEntitlements(request, env);
+        case '/create-addon-order':
+          return await handleCreateAddonOrder(request, env);
+        case '/verify-addon-payment':
+          return await handleVerifyAddonPayment(request, env);
+        case '/create-bundle-order':
+          return await handleCreateBundleOrder(request, env);
+        case '/verify-bundle-payment':
+          return await handleVerifyBundlePayment(request, env);
+        case '/cancel-addon':
+          return await handleCancelAddon(request, env);
+        case '/check-addon-access':
+          return await handleCheckAddonAccess(request, env);
+        
         // Health check
         case '/health':
           const configStatus = {
@@ -2161,6 +2189,15 @@ export default {
               'GET  /subscription-plans',
               'GET  /subscription-plan',
               'GET  /subscription-features',
+              // Add-On endpoints
+              'GET  /addon-catalog',
+              'GET  /user-entitlements',
+              'POST /create-addon-order',
+              'POST /verify-addon-payment',
+              'POST /create-bundle-order',
+              'POST /verify-bundle-payment',
+              'POST /cancel-addon',
+              'GET  /check-addon-access',
               'GET  /health',
               'GET  /debug-storage',
             ],

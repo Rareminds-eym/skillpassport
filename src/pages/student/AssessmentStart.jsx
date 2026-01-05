@@ -1,6 +1,7 @@
 import { ArrowLeft, CheckCircle, Clock, FileText, Target, Zap } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { FeatureGate } from '../../components/Subscription/FeatureGate';
 import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { checkAssessmentStatus } from '../../services/externalAssessmentService';

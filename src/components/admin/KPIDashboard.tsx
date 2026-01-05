@@ -9,6 +9,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { FeatureGate } from '../Subscription/FeatureGate';
 import KPICard from './KPICard';
 
 interface KPIData {

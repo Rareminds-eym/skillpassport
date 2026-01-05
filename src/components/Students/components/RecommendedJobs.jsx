@@ -1,23 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Sparkles,
-  ChevronLeft,
-  ChevronRight,
-  X,
-  TrendingUp,
-  MapPin,
-  Briefcase,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Brain,
-  Zap
-} from 'lucide-react';
-import { matchJobsWithAI } from '../../../services/aiJobMatchingService';
 import { WavyBackground } from '@/components/Students/components/ui/wavy-background';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+    AlertCircle,
+    Briefcase,
+    CheckCircle,
+    ChevronLeft,
+    ChevronRight,
+    MapPin,
+    Sparkles,
+    TrendingUp,
+    X,
+    Zap
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { matchJobsWithAI } from '../../../services/aiJobMatchingService';
+import { FeatureGate } from '../../Subscription/FeatureGate';
 
-const RecommendedJobs = ({
+/**
+ * RecommendedJobs - AI-powered job recommendations
+ * 
+ * Wrapped with FeatureGate for ai_job_matching add-on access control
+ */
+const RecommendedJobsContent = ({
   studentProfile,
   opportunities,
   onSelectJob,
@@ -495,5 +499,14 @@ const RecommendedJobs = ({
     </motion.div>
   );
 };
+
+/**
+ * Wrapped RecommendedJobs with FeatureGate for ai_job_matching add-on
+ */
+const RecommendedJobs = (props) => (
+  <FeatureGate featureKey="ai_job_matching" showUpgradePrompt={true} blurContent={true}>
+    <RecommendedJobsContent {...props} />
+  </FeatureGate>
+);
 
 export default RecommendedJobs;
