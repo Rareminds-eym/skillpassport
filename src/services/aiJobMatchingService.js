@@ -98,6 +98,14 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       // throw new Error('Authentication required');
     }
 
+    // Extract studentId from profile - the backend expects just the ID
+    const studentIdForApi = studentProfile?.id || studentProfile?.student_id;
+    
+    if (!studentIdForApi) {
+      console.warn('⚠️ No studentId found in profile, using fallback matching');
+      throw new Error('studentId is required');
+    }
+
     const response = await fetch(`${API_URL}/recommend-opportunities`, {
       method: 'POST',
       headers: {
@@ -105,9 +113,9 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        studentProfile,
-        opportunities: opportunitiesData,
-        topN
+        studentId: studentIdForApi,
+        limit: topN,
+        forceRefresh: false
       })
     });
 
@@ -118,18 +126,31 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
 
     const result = await response.json();
 
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to match jobs');
-    }
+    // Backend returns { recommendations: [...], count, ... }
+    const recommendations = result.recommendations || [];
+    
+    // Transform backend response to match expected format
+    const matches = recommendations.map(rec => ({
+      job_id: rec.id,
+      job_title: rec.job_title || rec.title,
+      company_name: rec.company_name || rec.company,
+      match_score: Math.round((rec.similarity || 0.5) * 100),
+      match_reason: rec.match_reason || `This opportunity matches your profile with ${Math.round((rec.similarity || 0.5) * 100)}% similarity.`,
+      key_matching_skills: rec.matching_skills || [],
+      skills_gap: rec.skills_gap || [],
+      recommendation: rec.recommendation || 'Review the job requirements and apply if interested.'
+    }));
 
-    const matches = result.matches || [];
-
-    // Enrich matches with full opportunity data (since API might return partial data)
+    // Enrich matches with full opportunity data
+    // Backend returns opportunity data, but we also have local opportunities for additional fields
     const enrichedMatches = matches.map(match => {
-      const fullOpportunity = opportunities.find(opp => opp.id === match.job_id);
+      // Try to find the full opportunity from local data, or use what backend returned
+      const localOpportunity = opportunities.find(opp => opp.id === match.job_id);
+      const backendOpportunity = recommendations.find(rec => rec.id === match.job_id);
+      
       return {
         ...match,
-        opportunity: fullOpportunity
+        opportunity: localOpportunity || backendOpportunity || { id: match.job_id, job_title: match.job_title, company_name: match.company_name }
       };
     }).filter(match => match.opportunity);
 
