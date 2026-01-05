@@ -3,6 +3,7 @@
  * Uses vector embeddings and cosine similarity to match student profiles with job opportunities
  */
 
+import { ensureStudentEmbedding } from './embeddingService';
 
 // Cache for AI responses (simple in-memory cache)
 const matchCache = new Map();
