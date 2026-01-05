@@ -8,6 +8,13 @@ const matchCache = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
+ * Check if Claude API is configured
+ */
+function isClaudeConfigured() {
+  return !!import.meta.env.VITE_CLAUDE_API_KEY;
+}
+
+/**
  * Match student profile with opportunities using AI
  * @param {Object} studentProfile - Student profile data with skills, education, training, experience
  * @param {Array} opportunities - Array of job opportunities from database
@@ -91,7 +98,7 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       // throw new Error('Authentication required');
     }
 
-    const response = await fetch(`${API_URL}/match-jobs`, {
+    const response = await fetch(`${API_URL}/recommend-opportunities`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
