@@ -122,6 +122,13 @@ export function AddOnCheckout({
     setCheckoutError(null);
 
     try {
+      // Load Razorpay script first
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setCheckoutError('Failed to load payment system. Please refresh and try again.');
+        return;
+      }
+      
       // For simplicity, process first item (can be extended for multi-item cart)
       const { type, item } = cartItems[0];
       let orderData;
@@ -142,14 +149,46 @@ export function AddOnCheckout({
             ? `${item.feature_name} (${billingPeriod})`
             : `${item.name} Bundle (${billingPeriod})`,
           order_id: orderData.orderId,
-          handler: function(response) {
-            onSuccess?.();
-            onClearCart?.();
+          handler: async function(response) {
+            // Payment successful - verify and create entitlement
+            console.log('[AddOnCheckout] Payment successful, verifying...', response);
+            
+            try {
+              const verifyResult = await addOnPaymentService.verifyAddonPayment(
+                response.razorpay_order_id,
+                response.razorpay_payment_id,
+                response.razorpay_signature
+              );
+              
+              if (verifyResult.success) {
+                console.log('[AddOnCheckout] Payment verified and entitlement created!');
+                onSuccess?.();
+                onClearCart?.();
+                window.location.reload();
+              } else {
+                setCheckoutError(`Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`);
+              }
+            } catch (verifyError) {
+              console.error('[AddOnCheckout] Verification error:', verifyError);
+              setCheckoutError(`Payment completed but verification failed. Please contact support with Order ID: ${response.razorpay_order_id}`);
+            }
           },
-          theme: { color: '#4F46E5' }
+          theme: { color: '#4F46E5' },
+          modal: {
+            ondismiss: () => {
+              console.log('[AddOnCheckout] Payment modal dismissed');
+            }
+          }
         };
 
         const rzp = new window.Razorpay(options);
+        
+        // Handle payment failure
+        rzp.on('payment.failed', (response) => {
+          console.error('[AddOnCheckout] Payment failed:', response.error);
+          setCheckoutError(`Payment failed: ${response.error.description || 'Unknown error'}. Please try again.`);
+        });
+        
         rzp.open();
       }
     } catch (error) {

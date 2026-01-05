@@ -39,6 +39,16 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 // Import modular handlers
+import {
+    handleCancelAddon,
+    handleCheckAddonAccess,
+    handleCreateAddonOrder,
+    handleCreateBundleOrder,
+    handleGetAddonCatalog,
+    handleGetUserEntitlements,
+    handleVerifyAddonPayment,
+    handleVerifyBundlePayment
+} from './handlers/addons';
 import { handleGetSubscriptionFeatures, handleGetSubscriptionPlan, handleGetSubscriptionPlans } from './handlers/plans';
 
 // Re-export Env type for use in other modules

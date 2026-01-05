@@ -49,6 +49,14 @@ export function UpgradePrompt({
 
     try {
       setError(null);
+      
+      // Load Razorpay script first
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setError('Failed to load payment system. Please refresh and try again.');
+        return;
+      }
+      
       const orderData = await purchaseAddOn(key, billingPeriod);
       
       if (orderData && window.Razorpay) {
@@ -59,14 +67,45 @@ export function UpgradePrompt({
           name: 'SkillPassport',
           description: addOn?.feature_name || 'Premium Feature',
           order_id: orderData.orderId,
-          handler: function(response) {
-            onClose?.();
-            window.location.reload();
+          handler: async function(response) {
+            // Payment successful - verify and create entitlement
+            console.log('[UpgradePrompt] Payment successful, verifying...', response);
+            
+            try {
+              const verifyResult = await addOnPaymentService.verifyAddonPayment(
+                response.razorpay_order_id,
+                response.razorpay_payment_id,
+                response.razorpay_signature
+              );
+              
+              if (verifyResult.success) {
+                console.log('[UpgradePrompt] Payment verified and entitlement created!');
+                onClose?.();
+                window.location.reload();
+              } else {
+                setError(`Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`);
+              }
+            } catch (verifyError) {
+              console.error('[UpgradePrompt] Verification error:', verifyError);
+              setError(`Payment completed but verification failed. Please contact support with Order ID: ${response.razorpay_order_id}`);
+            }
           },
-          theme: { color: '#4F46E5' }
+          theme: { color: '#4F46E5' },
+          modal: {
+            ondismiss: () => {
+              console.log('[UpgradePrompt] Payment modal dismissed');
+            }
+          }
         };
         
         const rzp = new window.Razorpay(options);
+        
+        // Handle payment failure
+        rzp.on('payment.failed', (response) => {
+          console.error('[UpgradePrompt] Payment failed:', response.error);
+          setError(`Payment failed: ${response.error.description || 'Unknown error'}. Please try again.`);
+        });
+        
         rzp.open();
       }
     } catch (err) {

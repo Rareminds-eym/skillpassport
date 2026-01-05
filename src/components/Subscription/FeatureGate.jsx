@@ -7,6 +7,8 @@ import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { useFeatureGate } from '../../hooks/useFeatureGate';
+import addOnPaymentService from '../../services/addOnPaymentService';
+import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
 
 export function FeatureGate({
   featureKey,
@@ -195,135 +197,250 @@ function LockedCard({ featureKey, addOn, upgradePrice, showUpgradePrompt, onUpgr
 }
 
 function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing }) {
-  const [billing, setBilling] = useState('monthly');
+  const [billing, setBilling] = useState('annual'); // Default to annual for better value
   const [error, setError] = useState(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const monthly = upgradePrice?.monthly ? parseFloat(upgradePrice.monthly) : 0;
   const annual = upgradePrice?.annual ? parseFloat(upgradePrice.annual) : 0;
   const price = billing === 'monthly' ? monthly : annual;
+  const monthlyEquivalent = billing === 'annual' ? Math.round(annual / 12) : monthly;
   const savings = monthly > 0 && annual > 0 ? Math.round(monthly * 12 - annual) : 0;
   const savingsPct = monthly > 0 && annual > 0 ? Math.round(((monthly * 12 - annual) / (monthly * 12)) * 100) : 0;
 
   const handlePurchase = async () => {
-    if (!addOn?.feature_key) return;
+    if (!addOn?.feature_key) {
+      console.error('[PurchaseModal] No feature_key found in addOn:', addOn);
+      setError('Unable to process purchase - missing feature information');
+      return;
+    }
     try {
       setError(null);
-      const order = await onPurchase(addOn.feature_key, billing);
-      if (order && window.Razorpay) {
-        new window.Razorpay({
-          key: order.razorpayKeyId,
-          amount: order.amount,
-          currency: order.currency,
-          name: 'SkillPassport',
-          description: `${addOn.feature_name} - ${billing === 'monthly' ? 'Monthly' : 'Annual'}`,
-          order_id: order.orderId,
-          handler: () => { onClose(); window.location.reload(); },
-          prefill: { email: order.userEmail, name: order.userName },
-          theme: { color: '#4f46e5' }
-        }).open();
+      console.log('[PurchaseModal] Starting purchase for:', addOn.feature_key, billing);
+      
+      // Load Razorpay script first
+      console.log('[PurchaseModal] Loading Razorpay script...');
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setError('Failed to load payment system. Please check your internet connection and try again.');
+        return;
       }
+      console.log('[PurchaseModal] Razorpay script loaded successfully');
+      
+      const order = await onPurchase(addOn.feature_key, billing);
+      console.log('[PurchaseModal] Order received:', order);
+      
+      if (!order) {
+        setError('Failed to create order - no response received');
+        return;
+      }
+      
+      if (!window.Razorpay) {
+        setError('Payment system not loaded. Please refresh the page.');
+        return;
+      }
+      
+      console.log('[PurchaseModal] Opening Razorpay with:', {
+        key: order.razorpayKeyId,
+        amount: order.amount,
+        order_id: order.orderId
+      });
+      
+      const razorpay = new window.Razorpay({
+        key: order.razorpayKeyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'SkillPassport',
+        description: `${addOn.feature_name || addOn.name} - ${billing === 'monthly' ? 'Monthly' : 'Annual'}`,
+        order_id: order.orderId,
+        handler: async (response) => {
+          // Payment successful - now verify and create entitlement
+          console.log('[PurchaseModal] Payment successful, verifying...', response);
+          setIsVerifying(true);
+          
+          try {
+            const verifyResult = await addOnPaymentService.verifyAddonPayment(
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature
+            );
+            
+            console.log('[PurchaseModal] Verification result:', verifyResult);
+            
+            if (verifyResult.success) {
+              console.log('[PurchaseModal] Payment verified and entitlement created!');
+              onClose();
+              // Reload to refresh entitlements
+              window.location.reload();
+            } else {
+              setError(`Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`);
+              setIsVerifying(false);
+            }
+          } catch (verifyError) {
+            console.error('[PurchaseModal] Verification error:', verifyError);
+            setError(`Payment completed but verification failed. Please contact support with Order ID: ${response.razorpay_order_id}`);
+            setIsVerifying(false);
+          }
+        },
+        prefill: { email: order.userEmail, name: order.userName },
+        theme: { color: '#4f46e5' },
+        modal: {
+          ondismiss: () => {
+            console.log('[PurchaseModal] Payment modal dismissed');
+          }
+        }
+      });
+      
+      // Handle payment failure
+      razorpay.on('payment.failed', (response) => {
+        console.error('[PurchaseModal] Payment failed:', response.error);
+        setError(`Payment failed: ${response.error.description || 'Unknown error'}. Please try again.`);
+      });
+      
+      razorpay.open();
     } catch (e) {
+      console.error('[PurchaseModal] Purchase error:', e);
       setError(e.message || 'Purchase failed');
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-indigo-600" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-3xl shadow-2xl max-w-[420px] w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+        {/* Header with gradient background */}
+        <div className="relative bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 px-6 pt-6 pb-8">
+          <button 
+            onClick={onClose} 
+            className="absolute top-4 right-4 p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <X className="w-4 h-4 text-white" />
+          </button>
+          
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-12 h-12 bg-white/15 backdrop-blur rounded-2xl flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="font-bold text-gray-900">{addOn?.feature_name || 'Premium'}</h2>
-              <p className="text-gray-500 text-xs">Choose your plan</p>
+              <h2 className="text-xl font-bold text-white">{addOn?.feature_name || 'Premium Feature'}</h2>
+              <p className="text-indigo-200 text-sm">Unlock full access</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-gray-400" />
-          </button>
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 -mt-4">
           {monthly === 0 && annual === 0 ? (
-            <div className="text-center py-8">
-              <div className="w-8 h-8 border-2 border-gray-200 border-t-indigo-500 rounded-full animate-spin mx-auto mb-3"></div>
-              <p className="text-gray-500 text-sm">Loading pricing...</p>
+            <div className="text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
+              <div className="w-10 h-10 border-2 border-gray-200 border-t-indigo-500 rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-500">Loading pricing...</p>
             </div>
           ) : (
             <>
-              {/* Billing options */}
-              <div className="grid grid-cols-2 gap-3 mb-6">
+              {/* Billing Toggle */}
+              <div className="bg-gray-100 p-1 rounded-xl flex mb-5">
                 <button
                   onClick={() => setBilling('monthly')}
-                  className={`relative p-4 rounded-xl border-2 text-left transition-all ${
-                    billing === 'monthly' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'
+                  className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                    billing === 'monthly' 
+                      ? 'bg-white text-gray-900 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  <p className="text-xs text-gray-500 mb-1">Monthly</p>
-                  <p className="text-xl font-bold text-gray-900">₹{monthly}</p>
-                  <p className="text-xs text-gray-400">/month</p>
-                  {billing === 'monthly' && (
-                    <div className="absolute top-3 right-3 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center">
-                      <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                    </div>
-                  )}
+                  Monthly
                 </button>
                 <button
                   onClick={() => setBilling('annual')}
-                  className={`relative p-4 rounded-xl border-2 text-left transition-all ${
-                    billing === 'annual' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'
+                  className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all relative ${
+                    billing === 'annual' 
+                      ? 'bg-white text-gray-900 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
+                  Annual
                   {savingsPct > 0 && (
-                    <span className="absolute -top-2 right-3 px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded-full">
-                      SAVE {savingsPct}%
+                    <span className="absolute -top-2 -right-1 px-1.5 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded-full">
+                      -{savingsPct}%
                     </span>
-                  )}
-                  <p className="text-xs text-gray-500 mb-1">Annual</p>
-                  <p className="text-xl font-bold text-gray-900">₹{annual}</p>
-                  <p className="text-xs text-gray-400">/year</p>
-                  {billing === 'annual' && (
-                    <div className="absolute top-3 right-3 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center">
-                      <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                    </div>
                   )}
                 </button>
               </div>
 
-              {/* Summary */}
-              <div className="p-4 bg-gray-50 rounded-xl mb-6">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Total</span>
-                  <span className="text-2xl font-bold text-gray-900">₹{price}</span>
+              {/* Pricing Card */}
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-2xl p-5 mb-5 border border-gray-100">
+                <div className="flex items-baseline justify-between mb-1">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-bold text-gray-900">₹{price}</span>
+                    <span className="text-gray-400 text-sm">/{billing === 'monthly' ? 'mo' : 'yr'}</span>
+                  </div>
+                  {billing === 'annual' && (
+                    <div className="text-right">
+                      <p className="text-xs text-gray-400">₹{monthlyEquivalent}/mo</p>
+                    </div>
+                  )}
                 </div>
+                
                 {billing === 'annual' && savings > 0 && (
-                  <p className="text-emerald-600 text-sm mt-1">You save ₹{savings} per year</p>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <div className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <Check className="w-2.5 h-2.5 text-emerald-600" strokeWidth={3} />
+                    </div>
+                    <span className="text-emerald-600 text-sm font-medium">Save ₹{savings} per year</span>
+                  </div>
                 )}
               </div>
 
+              {/* Features included */}
+              <div className="space-y-2.5 mb-6">
+                {['Full feature access', 'Priority support', 'Cancel anytime'].map((feature, i) => (
+                  <div key={i} className="flex items-center gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-3 h-3 text-indigo-600" strokeWidth={3} />
+                    </div>
+                    <span className="text-sm text-gray-600">{feature}</span>
+                  </div>
+                ))}
+              </div>
+
               {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm">{error}</div>
+                <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <X className="w-3 h-3 text-red-500" />
+                  </div>
+                  {error}
+                </div>
               )}
 
               <button
                 onClick={handlePurchase}
-                disabled={isPurchasing}
-                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+                disabled={isPurchasing || isVerifying}
+                className="w-full py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 disabled:from-indigo-400 disabled:to-indigo-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 flex items-center justify-center gap-2"
               >
-                {isPurchasing ? (
-                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Processing...</>
+                {isVerifying ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Verifying payment...
+                  </>
+                ) : isPurchasing ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Processing...
+                  </>
                 ) : (
-                  <>Subscribe Now <ArrowRight className="w-4 h-4" /></>
+                  <>
+                    Purchase
+                    <ArrowRight className="w-4 h-4" />
+                  </>
                 )}
               </button>
 
-              <p className="text-center text-xs text-gray-400 mt-4">
-                Cancel anytime • Secure payment
-              </p>
+              <div className="flex items-center justify-center gap-4 mt-4 text-xs text-gray-400">
+                <span className="flex items-center gap-1">
+                  <Shield className="w-3.5 h-3.5" />
+                  Secure checkout
+                </span>
+                <span>•</span>
+                <span>Powered by Razorpay</span>
+              </div>
             </>
           )}
         </div>

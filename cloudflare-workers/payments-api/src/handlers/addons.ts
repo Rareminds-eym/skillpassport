@@ -1,348 +1,211 @@
 /**
- * Add-On Payment Handlers
- * 
- * Server-side endpoints for add-on subscription management:
- * - POST /create-addon-order    - Create Razorpay order for add-on purchase
- * - POST /verify-addon-payment  - Verify payment AND create entitlement atomically
- * - POST /create-bundle-order   - Create Razorpay order for bundle purchase
- * - POST /verify-bundle-payment - Verify payment AND create bundle entitlements
- * - GET  /addon-catalog         - Get available add-ons
- * - GET  /user-entitlements     - Get user's active entitlements
- * - POST /cancel-addon          - Cancel an add-on subscription
- * 
- * @requirement REQ-3.3 - Server-side Add-On Payment Processing
+ * Add-On Handlers
+ * POST /create-addon-order - Create Razorpay order for add-on purchase
+ * POST /verify-addon-payment - Verify payment AND create entitlement
+ * GET /addon-catalog - Get available add-ons
+ * GET /user-entitlements - Get user's active entitlements
+ * POST /cancel-addon - Cancel an add-on subscription
+ * GET /check-addon-access - Check if user has access to a feature
+ * POST /create-bundle-order - Create Razorpay order for bundle purchase
+ * POST /verify-bundle-payment - Verify bundle payment
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import type { Env } from '../index';
-
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-};
-
-// Helper functions
-function jsonResponse(data: any, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}
-
-function getSupabaseUrl(env: Env): string {
-  const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
-  if (!url) throw new Error('SUPABASE_URL is not configured');
-  return url;
-}
-
-function getSupabaseAnonKey(env: Env): string {
-  const key = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
-  if (!key) throw new Error('SUPABASE_ANON_KEY is not configured');
-  return key;
-}
-
-// Production domain check
-const PRODUCTION_DOMAIN = 'skillpassport.rareminds.in';
-
-function isProductionRequest(request: Request): boolean {
-  const origin = request.headers.get('origin') || request.headers.get('referer') || '';
-  return origin.includes(PRODUCTION_DOMAIN) && !origin.includes('dev-');
-}
-
-function getRazorpayCredentials(request: Request, env: Env) {
-  const isProduction = isProductionRequest(request);
-  
-  const keyId = isProduction 
-    ? (env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID!)
-    : (env.TEST_RAZORPAY_KEY_ID || env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID!);
-  
-  const keySecret = isProduction
-    ? env.RAZORPAY_KEY_SECRET
-    : (env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET);
-  
-  if (!keyId || !keySecret) {
-    throw new Error('Razorpay credentials not configured');
-  }
-  
-  return { keyId, keySecret, isProduction };
-}
-
-async function authenticateUser(request: Request, env: Env): Promise<{ user: any; supabase: SupabaseClient } | null> {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader) return null;
-
-  const token = authHeader.replace('Bearer ', '');
-  const supabaseUrl = getSupabaseUrl(env);
-  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-  
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-  if (error || !user) return null;
-
-  const supabase = createClient(supabaseUrl, getSupabaseAnonKey(env), {
-    global: { headers: { Authorization: authHeader } },
-  });
-
-  return { user, supabase };
-}
-
-async function verifyRazorpaySignature(
-  orderId: string, 
-  paymentId: string, 
-  signature: string, 
-  secret: string
-): Promise<boolean> {
-  const text = `${orderId}|${paymentId}`;
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(text));
-  const generatedSignature = Array.from(new Uint8Array(signatureBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-  return generatedSignature === signature;
-}
-
-// ==================== ADD-ON CATALOG ====================
+import { authenticateUser, createSupabaseAdmin, getRazorpayCredentialsForRequest, verifySignature } from '../helpers';
+import { Env } from '../types';
+import { jsonResponse } from '../utils';
 
 /**
  * GET /addon-catalog - Get available add-ons and bundles
  */
 export async function handleGetAddonCatalog(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const category = url.searchParams.get('category');
+  const role = url.searchParams.get('role');
+
+  const supabaseAdmin = createSupabaseAdmin(env);
+
   try {
-    const supabaseUrl = getSupabaseUrl(env);
-    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-    
-    const url = new URL(request.url);
-    const role = url.searchParams.get('role');
-    const category = url.searchParams.get('category');
+    // Fetch add-ons from subscription_plan_features where is_addon = true
+    let addonsQuery = supabaseAdmin
+      .from('subscription_plan_features')
+      .select('id, feature_key, feature_name, category, addon_price_monthly, addon_price_annual, addon_description, target_roles, icon_url, sort_order_addon')
+      .eq('is_addon', true)
+      .order('sort_order_addon', { ascending: true });
 
-    // Fetch add-ons
-    let addOnQuery = supabaseAdmin
-      .from('addon_pricing')
-      .select('*')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true });
-
-    if (role) {
-      addOnQuery = addOnQuery.contains('applicable_roles', [role]);
-    }
     if (category) {
-      addOnQuery = addOnQuery.eq('category', category);
+      addonsQuery = addonsQuery.eq('category', category);
     }
 
-    const { data: addOns, error: addOnError } = await addOnQuery;
+    const { data: addons, error: addonsError } = await addonsQuery;
 
-    if (addOnError) {
-      console.error('Error fetching add-ons:', addOnError);
-      return jsonResponse({ error: 'Failed to fetch add-ons' }, 500);
+    if (addonsError) {
+      console.error('[ADDON-CATALOG] Error fetching addons:', addonsError);
+      return jsonResponse({ error: addonsError.message }, 500);
     }
 
-    // Fetch bundles with their features
-    const { data: bundles, error: bundleError } = await supabaseAdmin
-      .from('addon_bundles')
-      .select(`
-        *,
-        bundle_features:addon_bundle_features(
-          feature_key,
-          addon:addon_pricing(feature_name, feature_key, icon)
-        )
-      `)
+    // Filter by role if provided and deduplicate by feature_key
+    const uniqueAddons = new Map();
+    (addons || []).forEach(addon => {
+      // Skip if role filter is provided and addon doesn't match
+      if (role && addon.target_roles && addon.target_roles.length > 0) {
+        if (!addon.target_roles.includes(role)) return;
+      }
+      
+      // Deduplicate by feature_key
+      if (!uniqueAddons.has(addon.feature_key)) {
+        uniqueAddons.set(addon.feature_key, {
+          id: addon.id,
+          feature_key: addon.feature_key,
+          name: addon.feature_name,
+          description: addon.addon_description,
+          category: addon.category,
+          price_monthly: parseFloat(addon.addon_price_monthly) || 0,
+          price_annual: parseFloat(addon.addon_price_annual) || 0,
+          target_roles: addon.target_roles || [],
+          icon_url: addon.icon_url,
+        });
+      }
+    });
+
+    // Fetch bundles
+    let bundlesQuery = supabaseAdmin
+      .from('bundles')
+      .select('*, bundle_features(feature_key)')
       .eq('is_active', true)
-      .order('sort_order', { ascending: true });
+      .order('display_order', { ascending: true });
 
-    if (bundleError) {
-      console.error('Error fetching bundles:', bundleError);
+    const { data: bundles, error: bundlesError } = await bundlesQuery;
+
+    // Filter bundles by role if provided
+    let filteredBundles = bundles || [];
+    if (role && bundles) {
+      filteredBundles = bundles.filter(bundle => {
+        if (!bundle.target_roles || bundle.target_roles.length === 0) return true;
+        return bundle.target_roles.includes(role);
+      });
     }
-
-    // Get unique categories
-    const categories = [...new Set((addOns || []).map(a => a.category).filter(Boolean))];
 
     return jsonResponse({
       success: true,
-      data: {
-        addOns: addOns || [],
-        bundles: bundles || [],
-        categories
-      }
+      addons: Array.from(uniqueAddons.values()),
+      bundles: filteredBundles.map(b => ({
+        id: b.id,
+        name: b.name,
+        slug: b.slug,
+        description: b.description,
+        price_monthly: parseFloat(b.monthly_price) || 0,
+        price_annual: parseFloat(b.annual_price) || 0,
+        discount_percentage: b.discount_percentage || 0,
+        target_roles: b.target_roles || [],
+        feature_keys: b.bundle_features?.map((bf: any) => bf.feature_key) || [],
+      })),
     });
   } catch (error) {
-    console.error('Error in handleGetAddonCatalog:', error);
+    console.error('[ADDON-CATALOG] Error:', error);
     return jsonResponse({ error: (error as Error).message }, 500);
   }
 }
-
-// ==================== USER ENTITLEMENTS ====================
 
 /**
  * GET /user-entitlements - Get user's active entitlements
  */
 export async function handleGetUserEntitlements(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticateUser(request, env);
+  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const { user } = auth;
+  const supabaseAdmin = createSupabaseAdmin(env);
+
   try {
-    const auth = await authenticateUser(request, env);
-    if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-    const { user } = auth;
-    const supabaseUrl = getSupabaseUrl(env);
-    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-
     const { data: entitlements, error } = await supabaseAdmin
       .from('user_entitlements')
-      .select(`
-        *,
-        addon:addon_pricing(feature_name, feature_key, icon, category)
-      `)
+      .select('*')
       .eq('user_id', user.id)
       .in('status', ['active', 'grace_period'])
-      .order('created_at', { ascending: false });
+      .gte('end_date', new Date().toISOString());
 
     if (error) {
-      console.error('Error fetching entitlements:', error);
-      return jsonResponse({ error: 'Failed to fetch entitlements' }, 500);
+      console.error('[USER-ENTITLEMENTS] Error:', error);
+      return jsonResponse({ error: error.message }, 500);
     }
 
     return jsonResponse({
       success: true,
-      data: entitlements || []
+      entitlements: entitlements || [],
     });
   } catch (error) {
-    console.error('Error in handleGetUserEntitlements:', error);
+    console.error('[USER-ENTITLEMENTS] Error:', error);
     return jsonResponse({ error: (error as Error).message }, 500);
   }
 }
-
-// ==================== CREATE ADD-ON ORDER ====================
 
 /**
  * POST /create-addon-order - Create Razorpay order for add-on purchase
  */
 export async function handleCreateAddonOrder(request: Request, env: Env): Promise<Response> {
-  try {
-    const auth = await authenticateUser(request, env);
-    if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+  const auth = await authenticateUser(request, env);
+  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
 
-    const { user } = auth;
+  const { user } = auth;
+  const supabaseAdmin = createSupabaseAdmin(env);
+
+  try {
     const body = await request.json() as {
-      featureKey: string;
-      billingPeriod: 'monthly' | 'annual';
-      discountCode?: string;
-      userEmail?: string;
-      userName?: string;
+      feature_key?: string;
+      billing_period?: 'monthly' | 'annual';
     };
 
-    const { featureKey, billingPeriod, discountCode, userEmail, userName } = body;
+    const { feature_key, billing_period = 'monthly' } = body;
 
-    // Validate required fields
-    if (!featureKey) {
-      return jsonResponse({ error: 'Feature key is required' }, 400);
-    }
-    if (!billingPeriod || !['monthly', 'annual'].includes(billingPeriod)) {
-      return jsonResponse({ error: 'Billing period must be "monthly" or "annual"' }, 400);
+    if (!feature_key) {
+      return jsonResponse({ error: 'feature_key is required' }, 400);
     }
 
-    const supabaseUrl = getSupabaseUrl(env);
-    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
+    // Get addon details from subscription_plan_features
+    const { data: addon, error: addonError } = await supabaseAdmin
+      .from('subscription_plan_features')
+      .select('id, feature_key, feature_name, addon_price_monthly, addon_price_annual')
+      .eq('feature_key', feature_key)
+      .eq('is_addon', true)
+      .limit(1)
+      .maybeSingle();
 
-    // Get add-on details
-    const { data: addOn, error: addOnError } = await supabaseAdmin
-      .from('addon_pricing')
-      .select('*')
-      .eq('feature_key', featureKey)
-      .eq('is_active', true)
-      .single();
-
-    if (addOnError || !addOn) {
-      return jsonResponse({ error: 'Add-on not found or inactive' }, 404);
+    if (addonError || !addon) {
+      console.error('[CREATE-ADDON-ORDER] Add-on lookup error:', addonError);
+      return jsonResponse({ error: 'Add-on not found for feature_key: ' + feature_key }, 404);
     }
 
-    // Check if user already has this add-on
+    // Check if user already has an active entitlement
     const { data: existingEntitlement } = await supabaseAdmin
       .from('user_entitlements')
-      .select('id, status, end_date')
+      .select('id')
       .eq('user_id', user.id)
-      .eq('feature_key', featureKey)
-      .in('status', ['active', 'grace_period'])
-      .single();
+      .eq('feature_key', feature_key)
+      .eq('status', 'active')
+      .gte('end_date', new Date().toISOString())
+      .maybeSingle();
 
     if (existingEntitlement) {
-      return jsonResponse({ 
-        error: 'You already have access to this feature',
-        existingEntitlement: {
-          id: existingEntitlement.id,
-          status: existingEntitlement.status,
-          endDate: existingEntitlement.end_date
-        }
-      }, 400);
+      return jsonResponse({ error: 'You already have an active subscription for this add-on' }, 400);
     }
 
-    // Get price based on billing period
-    const isProduction = isProductionRequest(request);
-    let price = billingPeriod === 'monthly' 
-      ? addOn.addon_price_monthly 
-      : addOn.addon_price_annual;
-
-    // Use test pricing in non-production
-    if (!isProduction) {
-      price = 1; // ₹1 for testing
-    }
-
+    // Calculate price
+    const price = billing_period === 'annual' 
+      ? parseFloat(addon.addon_price_annual) 
+      : parseFloat(addon.addon_price_monthly);
+    
     if (!price || price <= 0) {
-      return jsonResponse({ error: 'Invalid price for selected billing cycle' }, 400);
+      return jsonResponse({ error: 'Invalid pricing for this add-on' }, 400);
     }
+    
+    const amountInPaise = Math.round(price * 100);
 
-    // Apply discount code if provided
-    let discountAmount = 0;
-    let discountDetails = null;
-
-    if (discountCode) {
-      const { data: discount, error: discountError } = await supabaseAdmin
-        .from('addon_discount_codes')
-        .select('*')
-        .eq('code', discountCode.toUpperCase())
-        .eq('is_active', true)
-        .single();
-
-      if (!discountError && discount) {
-        const now = new Date();
-        const validFrom = discount.valid_from ? new Date(discount.valid_from) : null;
-        const validUntil = discount.valid_until ? new Date(discount.valid_until) : null;
-
-        if ((!validFrom || validFrom <= now) && (!validUntil || validUntil >= now)) {
-          if (discount.max_uses === null || discount.current_uses < discount.max_uses) {
-            if (discount.discount_type === 'percentage') {
-              discountAmount = Math.floor((price * discount.discount_value) / 100);
-            } else {
-              discountAmount = discount.discount_value;
-            }
-            
-            if (discount.max_discount_amount) {
-              discountAmount = Math.min(discountAmount, discount.max_discount_amount);
-            }
-            
-            discountDetails = {
-              code: discount.code,
-              type: discount.discount_type,
-              value: discount.discount_value
-            };
-          }
-        }
-      }
-    }
-
-    const finalPrice = Math.max(price - discountAmount, 0);
-    const amountInPaise = Math.round(finalPrice * 100);
-
-    // Create Razorpay order
-    const { keyId, keySecret } = getRazorpayCredentials(request, env);
+    // Get Razorpay credentials
+    const { keyId, keySecret } = getRazorpayCredentialsForRequest(request, env);
     const razorpayAuth = btoa(`${keyId}:${keySecret}`);
 
-    const orderResponse = await fetch('https://api.razorpay.com/v1/orders', {
+    // Create Razorpay order
+    const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${razorpayAuth}`,
@@ -351,378 +214,355 @@ export async function handleCreateAddonOrder(request: Request, env: Env): Promis
       body: JSON.stringify({
         amount: amountInPaise,
         currency: 'INR',
-        receipt: `addon_${featureKey}_${Date.now()}`,
+        receipt: `addon_${feature_key}_${Date.now()}`,
         notes: {
-          type: 'addon',
-          feature_key: featureKey,
           user_id: user.id,
-          billing_period: billingPeriod,
-          discount_code: discountCode || null,
-          original_price: price,
-          discount_amount: discountAmount
-        }
+          feature_key,
+          billing_period,
+          addon_name: addon.feature_name,
+        },
       }),
     });
 
-    if (!orderResponse.ok) {
-      const errorText = await orderResponse.text();
-      console.error('Razorpay order creation failed:', errorText);
+    if (!razorpayResponse.ok) {
+      const errorData = await razorpayResponse.text();
+      console.error('[CREATE-ADDON-ORDER] Razorpay error:', errorData);
       return jsonResponse({ error: 'Failed to create payment order' }, 500);
     }
 
-    const orderData = await orderResponse.json() as { id: string };
+    const razorpayOrder = await razorpayResponse.json() as any;
 
-    // Store pending order in database for verification
-    await supabaseAdmin
+    // Store pending order
+    const { data: pendingOrder, error: orderError } = await supabaseAdmin
       .from('addon_pending_orders')
-      .upsert({
-        order_id: orderData.id,
+      .insert({
         user_id: user.id,
-        feature_key: featureKey,
-        billing_period: billingPeriod,
-        original_price: price,
-        discount_code: discountCode || null,
-        discount_amount: discountAmount,
-        final_price: finalPrice,
+        addon_feature_key: feature_key,
+        razorpay_order_id: razorpayOrder.id,
+        amount: price,
+        currency: 'INR',
+        billing_period,
         status: 'pending',
-        created_at: new Date().toISOString()
-      });
+      })
+      .select()
+      .single();
 
-    console.log(`[ADDON-ORDER] Created order ${orderData.id} for user ${user.id}, addon ${featureKey}`);
+    if (orderError) {
+      console.error('[CREATE-ADDON-ORDER] Error creating pending order:', orderError);
+      return jsonResponse({ error: 'Failed to create order: ' + orderError.message }, 500);
+    }
 
     return jsonResponse({
       success: true,
-      data: {
-        orderId: orderData.id,
-        amount: amountInPaise,
-        currency: 'INR',
-        featureKey,
-        addOnName: addOn.feature_name,
-        billingPeriod,
-        originalPrice: price,
-        discountAmount,
-        finalPrice,
-        discountApplied: discountAmount > 0,
-        discountDetails,
-        razorpayKeyId: keyId,
-        isProduction
-      }
+      razorpay_order_id: razorpayOrder.id,
+      order_id: pendingOrder.id,
+      amount: amountInPaise,
+      currency: 'INR',
+      addon_name: addon.feature_name,
+      key: keyId,
     });
   } catch (error) {
-    console.error('Error in handleCreateAddonOrder:', error);
+    console.error('[CREATE-ADDON-ORDER] Error:', error);
     return jsonResponse({ error: (error as Error).message }, 500);
   }
 }
 
-// ==================== VERIFY ADD-ON PAYMENT ====================
-
 /**
- * POST /verify-addon-payment - Verify payment AND create entitlement atomically
+ * POST /verify-addon-payment - Verify payment AND create entitlement
  */
 export async function handleVerifyAddonPayment(request: Request, env: Env): Promise<Response> {
-  try {
-    const auth = await authenticateUser(request, env);
-    if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+  const auth = await authenticateUser(request, env);
+  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
 
-    const { user } = auth;
+  const supabaseAdmin = createSupabaseAdmin(env);
+
+  try {
     const body = await request.json() as {
-      razorpay_order_id: string;
-      razorpay_payment_id: string;
-      razorpay_signature: string;
+      razorpay_order_id?: string;
+      razorpay_payment_id?: string;
+      razorpay_signature?: string;
     };
 
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return jsonResponse({ error: 'Missing payment verification parameters' }, 400);
+      return jsonResponse({ error: 'Missing required fields' }, 400);
     }
 
-    const supabaseUrl = getSupabaseUrl(env);
-    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
+    // Verify signature
+    const { keySecret } = getRazorpayCredentialsForRequest(request, env);
+    const isValid = await verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, keySecret);
+    
+    if (!isValid) {
+      return jsonResponse({ error: 'Invalid payment signature' }, 400);
+    }
 
-    // Get pending order details
+    // Get pending order
     const { data: pendingOrder, error: orderError } = await supabaseAdmin
       .from('addon_pending_orders')
       .select('*')
-      .eq('order_id', razorpay_order_id)
-      .eq('user_id', user.id)
-      .eq('status', 'pending')
+      .eq('razorpay_order_id', razorpay_order_id)
       .single();
 
     if (orderError || !pendingOrder) {
-      console.error('Pending order not found:', razorpay_order_id);
-      return jsonResponse({ error: 'Order not found or already processed' }, 404);
+      return jsonResponse({ error: 'Order not found' }, 404);
     }
 
-    // Verify Razorpay signature
-    const { keySecret } = getRazorpayCredentials(request, env);
-    const isValid = await verifyRazorpaySignature(
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      keySecret
-    );
-
-    if (!isValid) {
-      console.error('Invalid Razorpay signature for order:', razorpay_order_id);
-      
-      // Mark order as failed
-      await supabaseAdmin
-        .from('addon_pending_orders')
-        .update({ status: 'signature_failed', updated_at: new Date().toISOString() })
-        .eq('order_id', razorpay_order_id);
-
-      return jsonResponse({ error: 'Payment verification failed' }, 400);
+    if (pendingOrder.status !== 'pending') {
+      return jsonResponse({ error: 'Order already processed' }, 400);
     }
 
-    // Calculate entitlement dates
+    // Calculate end date
     const now = new Date();
     const endDate = new Date(now);
-    if (pendingOrder.billing_period === 'monthly') {
-      endDate.setMonth(endDate.getMonth() + 1);
-    } else {
+    if (pendingOrder.billing_period === 'annual') {
       endDate.setFullYear(endDate.getFullYear() + 1);
+    } else {
+      endDate.setMonth(endDate.getMonth() + 1);
     }
 
-    // Create entitlement (atomic operation)
+    // Create user entitlement
     const { data: entitlement, error: entitlementError } = await supabaseAdmin
       .from('user_entitlements')
       .insert({
-        user_id: user.id,
-        feature_key: pendingOrder.feature_key,
-        source_type: 'addon',
-        billing_period: pendingOrder.billing_period,
+        user_id: pendingOrder.user_id,
+        feature_key: pendingOrder.addon_feature_key,
+        status: 'active',
         start_date: now.toISOString(),
         end_date: endDate.toISOString(),
-        price_at_purchase: pendingOrder.final_price,
-        status: 'active',
+        billing_period: pendingOrder.billing_period,
+        price_at_purchase: pendingOrder.amount,
         auto_renew: true,
-        payment_id: razorpay_payment_id,
-        order_id: razorpay_order_id
       })
       .select()
       .single();
 
     if (entitlementError) {
-      console.error('Failed to create entitlement:', entitlementError);
-      
-      // Mark order as entitlement_failed for manual resolution
-      await supabaseAdmin
-        .from('addon_pending_orders')
-        .update({ 
-          status: 'entitlement_failed', 
-          payment_id: razorpay_payment_id,
-          error_message: entitlementError.message,
-          updated_at: new Date().toISOString() 
-        })
-        .eq('order_id', razorpay_order_id);
-
-      return jsonResponse({ 
-        error: 'Payment successful but activation failed. Please contact support.',
-        paymentSucceeded: true,
-        orderId: razorpay_order_id,
-        paymentId: razorpay_payment_id
-      }, 500);
+      console.error('[VERIFY-ADDON-PAYMENT] Error creating entitlement:', entitlementError);
+      return jsonResponse({ error: 'Failed to create entitlement: ' + entitlementError.message }, 500);
     }
 
-    // Mark order as completed
+    // Update pending order status
     await supabaseAdmin
       .from('addon_pending_orders')
-      .update({ 
-        status: 'completed', 
-        payment_id: razorpay_payment_id,
-        entitlement_id: entitlement.id,
-        updated_at: new Date().toISOString() 
+      .update({
+        status: 'completed',
+        razorpay_payment_id,
+        completed_at: now.toISOString(),
+        updated_at: now.toISOString(),
       })
-      .eq('order_id', razorpay_order_id);
-
-    // Update discount code usage if applicable
-    if (pendingOrder.discount_code) {
-      await supabaseAdmin.rpc('increment_addon_discount_usage', {
-        code_param: pendingOrder.discount_code.toUpperCase()
-      }).catch(() => {
-        // Fallback if RPC doesn't exist
-        supabaseAdmin
-          .from('addon_discount_codes')
-          .update({ current_uses: supabaseAdmin.sql`current_uses + 1` })
-          .eq('code', pendingOrder.discount_code.toUpperCase());
-      });
-    }
-
-    // Log analytics event
-    await supabaseAdmin
-      .from('addon_events')
-      .insert({
-        user_id: user.id,
-        event_type: 'addon_purchased',
-        feature_key: pendingOrder.feature_key,
-        metadata: {
-          billing_period: pendingOrder.billing_period,
-          amount: pendingOrder.final_price,
-          discount_code: pendingOrder.discount_code,
-          payment_id: razorpay_payment_id,
-          order_id: razorpay_order_id
-        }
-      });
-
-    // Get add-on details for response
-    const { data: addOn } = await supabaseAdmin
-      .from('addon_pricing')
-      .select('feature_name, icon')
-      .eq('feature_key', pendingOrder.feature_key)
-      .single();
-
-    console.log(`[ADDON-VERIFY] Payment verified and entitlement created for user ${user.id}, addon ${pendingOrder.feature_key}`);
+      .eq('id', pendingOrder.id);
 
     return jsonResponse({
       success: true,
-      data: {
-        entitlement: {
-          id: entitlement.id,
-          featureKey: entitlement.feature_key,
-          startDate: entitlement.start_date,
-          endDate: entitlement.end_date,
-          status: entitlement.status
-        },
-        addOnName: addOn?.feature_name || pendingOrder.feature_key,
-        billingPeriod: pendingOrder.billing_period,
-        amountPaid: pendingOrder.final_price
-      }
+      entitlement_id: entitlement.id,
+      feature_key: entitlement.feature_key,
+      end_date: entitlement.end_date,
+      message: 'Payment verified and add-on activated successfully',
     });
   } catch (error) {
-    console.error('Error in handleVerifyAddonPayment:', error);
+    console.error('[VERIFY-ADDON-PAYMENT] Error:', error);
     return jsonResponse({ error: (error as Error).message }, 500);
   }
 }
 
+/**
+ * POST /cancel-addon - Cancel an add-on subscription
+ */
+export async function handleCancelAddon(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticateUser(request, env);
+  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
 
-// ==================== CREATE BUNDLE ORDER ====================
+  const { user } = auth;
+  const supabaseAdmin = createSupabaseAdmin(env);
+
+  try {
+    const body = await request.json() as { entitlement_id?: string };
+    const { entitlement_id } = body;
+
+    if (!entitlement_id) {
+      return jsonResponse({ error: 'entitlement_id is required' }, 400);
+    }
+
+    // Verify entitlement belongs to user
+    const { data: entitlement, error: fetchError } = await supabaseAdmin
+      .from('user_entitlements')
+      .select('*')
+      .eq('id', entitlement_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (fetchError || !entitlement) {
+      return jsonResponse({ error: 'Entitlement not found' }, 404);
+    }
+
+    if (entitlement.status === 'cancelled') {
+      return jsonResponse({
+        success: true,
+        message: 'Entitlement is already cancelled',
+        entitlement,
+        already_cancelled: true,
+      });
+    }
+
+    const now = new Date().toISOString();
+
+    const { data: updated, error: updateError } = await supabaseAdmin
+      .from('user_entitlements')
+      .update({
+        status: 'cancelled',
+        auto_renew: false,
+        cancelled_at: now,
+        updated_at: now,
+      })
+      .eq('id', entitlement_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      return jsonResponse({ error: 'Failed to cancel entitlement' }, 500);
+    }
+
+    return jsonResponse({
+      success: true,
+      message: 'Add-on cancelled successfully. Access continues until ' + entitlement.end_date,
+      entitlement: updated,
+    });
+  } catch (error) {
+    console.error('[CANCEL-ADDON] Error:', error);
+    return jsonResponse({ error: (error as Error).message }, 500);
+  }
+}
+
+/**
+ * GET /check-addon-access - Check if user has access to a feature
+ */
+export async function handleCheckAddonAccess(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticateUser(request, env);
+  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const { user } = auth;
+  const url = new URL(request.url);
+  const featureKey = url.searchParams.get('feature_key');
+
+  if (!featureKey) {
+    return jsonResponse({ error: 'feature_key is required' }, 400);
+  }
+
+  const supabaseAdmin = createSupabaseAdmin(env);
+
+  try {
+    // Check for active entitlement
+    const { data: entitlement, error } = await supabaseAdmin
+      .from('user_entitlements')
+      .select('id, feature_key, status, end_date, bundle_id')
+      .eq('user_id', user.id)
+      .eq('feature_key', featureKey)
+      .in('status', ['active', 'grace_period'])
+      .gte('end_date', new Date().toISOString())
+      .maybeSingle();
+
+    if (error) {
+      console.error('[CHECK-ADDON-ACCESS] Error:', error);
+      return jsonResponse({ error: error.message }, 500);
+    }
+
+    if (entitlement) {
+      return jsonResponse({
+        success: true,
+        hasAccess: true,
+        accessSource: entitlement.bundle_id ? 'bundle' : 'addon',
+        entitlement,
+      });
+    }
+
+    // Check if user's subscription plan includes this feature
+    const { data: subscription } = await supabaseAdmin
+      .from('subscriptions')
+      .select('plan_id, status')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (subscription?.plan_id) {
+      const { data: planFeature } = await supabaseAdmin
+        .from('subscription_plan_features')
+        .select('is_included')
+        .eq('plan_id', subscription.plan_id)
+        .eq('feature_key', featureKey)
+        .maybeSingle();
+
+      if (planFeature?.is_included) {
+        return jsonResponse({
+          success: true,
+          hasAccess: true,
+          accessSource: 'plan',
+        });
+      }
+    }
+
+    return jsonResponse({
+      success: true,
+      hasAccess: false,
+      accessSource: null,
+    });
+  } catch (error) {
+    console.error('[CHECK-ADDON-ACCESS] Error:', error);
+    return jsonResponse({ error: (error as Error).message }, 500);
+  }
+}
 
 /**
  * POST /create-bundle-order - Create Razorpay order for bundle purchase
  */
 export async function handleCreateBundleOrder(request: Request, env: Env): Promise<Response> {
-  try {
-    const auth = await authenticateUser(request, env);
-    if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+  const auth = await authenticateUser(request, env);
+  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
 
-    const { user } = auth;
+  const { user } = auth;
+  const supabaseAdmin = createSupabaseAdmin(env);
+
+  try {
     const body = await request.json() as {
-      bundleId: string;
-      billingPeriod: 'monthly' | 'annual';
-      discountCode?: string;
-      userEmail?: string;
-      userName?: string;
+      bundle_id?: string;
+      billing_period?: 'monthly' | 'annual';
     };
 
-    const { bundleId, billingPeriod, discountCode, userEmail, userName } = body;
+    const { bundle_id, billing_period = 'monthly' } = body;
 
-    // Validate required fields
-    if (!bundleId) {
-      return jsonResponse({ error: 'Bundle ID is required' }, 400);
-    }
-    if (!billingPeriod || !['monthly', 'annual'].includes(billingPeriod)) {
-      return jsonResponse({ error: 'Billing period must be "monthly" or "annual"' }, 400);
+    if (!bundle_id) {
+      return jsonResponse({ error: 'bundle_id is required' }, 400);
     }
 
-    const supabaseUrl = getSupabaseUrl(env);
-    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-
-    // Get bundle details with features
+    // Get bundle details
     const { data: bundle, error: bundleError } = await supabaseAdmin
-      .from('addon_bundles')
-      .select(`
-        *,
-        bundle_features:addon_bundle_features(feature_key)
-      `)
-      .eq('id', bundleId)
+      .from('bundles')
+      .select('*, bundle_features(feature_key)')
+      .eq('id', bundle_id)
       .eq('is_active', true)
       .single();
 
     if (bundleError || !bundle) {
-      return jsonResponse({ error: 'Bundle not found or inactive' }, 404);
+      return jsonResponse({ error: 'Bundle not found' }, 404);
     }
 
-    const featureKeys = bundle.bundle_features?.map((bf: any) => bf.feature_key) || [];
-
-    // Check if user already has all features in the bundle
-    const { data: existingEntitlements } = await supabaseAdmin
-      .from('user_entitlements')
-      .select('feature_key')
-      .eq('user_id', user.id)
-      .in('feature_key', featureKeys)
-      .in('status', ['active', 'grace_period']);
-
-    const ownedFeatures = existingEntitlements?.map(e => e.feature_key) || [];
-    if (ownedFeatures.length === featureKeys.length) {
-      return jsonResponse({ 
-        error: 'You already have access to all features in this bundle',
-        ownedFeatures
-      }, 400);
-    }
-
-    // Get price based on billing period
-    const isProduction = isProductionRequest(request);
-    let price = billingPeriod === 'monthly' 
-      ? bundle.monthly_price 
-      : bundle.annual_price;
-
-    // Use test pricing in non-production
-    if (!isProduction) {
-      price = 1; // ₹1 for testing
-    }
-
+    // Calculate price
+    const price = billing_period === 'annual' 
+      ? parseFloat(bundle.annual_price) 
+      : parseFloat(bundle.monthly_price);
+    
     if (!price || price <= 0) {
-      return jsonResponse({ error: 'Invalid price for selected billing cycle' }, 400);
+      return jsonResponse({ error: 'Invalid pricing for this bundle' }, 400);
     }
+    
+    const amountInPaise = Math.round(price * 100);
 
-    // Apply discount code if provided
-    let discountAmount = 0;
-    let discountDetails = null;
-
-    if (discountCode) {
-      const { data: discount } = await supabaseAdmin
-        .from('addon_discount_codes')
-        .select('*')
-        .eq('code', discountCode.toUpperCase())
-        .eq('is_active', true)
-        .single();
-
-      if (discount) {
-        const now = new Date();
-        const validFrom = discount.valid_from ? new Date(discount.valid_from) : null;
-        const validUntil = discount.valid_until ? new Date(discount.valid_until) : null;
-
-        if ((!validFrom || validFrom <= now) && (!validUntil || validUntil >= now)) {
-          if (discount.max_uses === null || discount.current_uses < discount.max_uses) {
-            if (discount.discount_type === 'percentage') {
-              discountAmount = Math.floor((price * discount.discount_value) / 100);
-            } else {
-              discountAmount = discount.discount_value;
-            }
-            
-            if (discount.max_discount_amount) {
-              discountAmount = Math.min(discountAmount, discount.max_discount_amount);
-            }
-            
-            discountDetails = {
-              code: discount.code,
-              type: discount.discount_type,
-              value: discount.discount_value
-            };
-          }
-        }
-      }
-    }
-
-    const finalPrice = Math.max(price - discountAmount, 0);
-    const amountInPaise = Math.round(finalPrice * 100);
-
-    // Create Razorpay order
-    const { keyId, keySecret } = getRazorpayCredentials(request, env);
+    // Get Razorpay credentials
+    const { keyId, keySecret } = getRazorpayCredentialsForRequest(request, env);
     const razorpayAuth = btoa(`${keyId}:${keySecret}`);
 
-    const orderResponse = await fetch('https://api.razorpay.com/v1/orders', {
+    // Create Razorpay order
+    const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${razorpayAuth}`,
@@ -731,444 +571,135 @@ export async function handleCreateBundleOrder(request: Request, env: Env): Promi
       body: JSON.stringify({
         amount: amountInPaise,
         currency: 'INR',
-        receipt: `bundle_${bundleId}_${Date.now()}`,
+        receipt: `bundle_${bundle.slug}_${Date.now()}`,
         notes: {
-          type: 'bundle',
-          bundle_id: bundleId,
           user_id: user.id,
-          feature_keys: featureKeys.join(','),
-          billing_period: billingPeriod,
-          discount_code: discountCode || null,
-          original_price: price,
-          discount_amount: discountAmount
-        }
+          bundle_id,
+          bundle_name: bundle.name,
+          billing_period,
+        },
       }),
     });
 
-    if (!orderResponse.ok) {
-      const errorText = await orderResponse.text();
-      console.error('Razorpay order creation failed:', errorText);
+    if (!razorpayResponse.ok) {
+      const errorData = await razorpayResponse.text();
+      console.error('[CREATE-BUNDLE-ORDER] Razorpay error:', errorData);
       return jsonResponse({ error: 'Failed to create payment order' }, 500);
     }
 
-    const orderData = await orderResponse.json() as { id: string };
-
-    // Store pending order in database
-    await supabaseAdmin
-      .from('addon_pending_orders')
-      .upsert({
-        order_id: orderData.id,
-        user_id: user.id,
-        feature_key: `bundle_${bundleId}`,
-        bundle_id: bundleId,
-        feature_keys: featureKeys,
-        billing_period: billingPeriod,
-        original_price: price,
-        discount_code: discountCode || null,
-        discount_amount: discountAmount,
-        final_price: finalPrice,
-        status: 'pending',
-        created_at: new Date().toISOString()
-      });
-
-    console.log(`[BUNDLE-ORDER] Created order ${orderData.id} for user ${user.id}, bundle ${bundleId}`);
+    const razorpayOrder = await razorpayResponse.json() as any;
 
     return jsonResponse({
       success: true,
-      data: {
-        orderId: orderData.id,
-        amount: amountInPaise,
-        currency: 'INR',
-        bundleId,
-        bundleName: bundle.name,
-        featureKeys,
-        billingPeriod,
-        originalPrice: price,
-        discountAmount,
-        finalPrice,
-        discountApplied: discountAmount > 0,
-        discountDetails,
-        razorpayKeyId: keyId,
-        isProduction
-      }
+      razorpay_order_id: razorpayOrder.id,
+      amount: amountInPaise,
+      currency: 'INR',
+      bundle_name: bundle.name,
+      feature_keys: bundle.bundle_features?.map((bf: any) => bf.feature_key) || [],
+      key: keyId,
     });
   } catch (error) {
-    console.error('Error in handleCreateBundleOrder:', error);
+    console.error('[CREATE-BUNDLE-ORDER] Error:', error);
     return jsonResponse({ error: (error as Error).message }, 500);
   }
 }
 
-// ==================== VERIFY BUNDLE PAYMENT ====================
-
 /**
- * POST /verify-bundle-payment - Verify payment AND create bundle entitlements atomically
+ * POST /verify-bundle-payment - Verify bundle payment and create entitlements
  */
 export async function handleVerifyBundlePayment(request: Request, env: Env): Promise<Response> {
-  try {
-    const auth = await authenticateUser(request, env);
-    if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+  const auth = await authenticateUser(request, env);
+  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
 
-    const { user } = auth;
+  const { user } = auth;
+  const supabaseAdmin = createSupabaseAdmin(env);
+
+  try {
     const body = await request.json() as {
-      razorpay_order_id: string;
-      razorpay_payment_id: string;
-      razorpay_signature: string;
+      razorpay_order_id?: string;
+      razorpay_payment_id?: string;
+      razorpay_signature?: string;
+      bundle_id?: string;
+      billing_period?: 'monthly' | 'annual';
     };
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, bundle_id, billing_period = 'monthly' } = body;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return jsonResponse({ error: 'Missing payment verification parameters' }, 400);
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !bundle_id) {
+      return jsonResponse({ error: 'Missing required fields' }, 400);
     }
 
-    const supabaseUrl = getSupabaseUrl(env);
-    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
+    // Verify signature
+    const { keySecret } = getRazorpayCredentialsForRequest(request, env);
+    const isValid = await verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, keySecret);
+    
+    if (!isValid) {
+      return jsonResponse({ error: 'Invalid payment signature' }, 400);
+    }
 
-    // Get pending order details
-    const { data: pendingOrder, error: orderError } = await supabaseAdmin
-      .from('addon_pending_orders')
-      .select('*')
-      .eq('order_id', razorpay_order_id)
-      .eq('user_id', user.id)
-      .eq('status', 'pending')
+    // Get bundle with features
+    const { data: bundle, error: bundleError } = await supabaseAdmin
+      .from('bundles')
+      .select('*, bundle_features(feature_key)')
+      .eq('id', bundle_id)
       .single();
 
-    if (orderError || !pendingOrder) {
-      console.error('Pending order not found:', razorpay_order_id);
-      return jsonResponse({ error: 'Order not found or already processed' }, 404);
+    if (bundleError || !bundle) {
+      return jsonResponse({ error: 'Bundle not found' }, 404);
     }
 
-    // Verify Razorpay signature
-    const { keySecret } = getRazorpayCredentials(request, env);
-    const isValid = await verifyRazorpaySignature(
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      keySecret
-    );
-
-    if (!isValid) {
-      console.error('Invalid Razorpay signature for order:', razorpay_order_id);
-      
-      await supabaseAdmin
-        .from('addon_pending_orders')
-        .update({ status: 'signature_failed', updated_at: new Date().toISOString() })
-        .eq('order_id', razorpay_order_id);
-
-      return jsonResponse({ error: 'Payment verification failed' }, 400);
-    }
-
-    // Calculate entitlement dates
-    const now = new Date();
-    const endDate = new Date(now);
-    if (pendingOrder.billing_period === 'monthly') {
-      endDate.setMonth(endDate.getMonth() + 1);
-    } else {
-      endDate.setFullYear(endDate.getFullYear() + 1);
-    }
-
-    // Get feature keys from pending order
-    const featureKeys = pendingOrder.feature_keys || [];
+    const featureKeys = bundle.bundle_features?.map((bf: any) => bf.feature_key) || [];
     
     if (featureKeys.length === 0) {
-      return jsonResponse({ error: 'No features found in bundle order' }, 400);
+      return jsonResponse({ error: 'Bundle has no features' }, 400);
     }
 
-    // Calculate price per feature for tracking
-    const pricePerFeature = pendingOrder.final_price / featureKeys.length;
+    // Calculate dates and price
+    const now = new Date();
+    const endDate = new Date(now);
+    if (billing_period === 'annual') {
+      endDate.setFullYear(endDate.getFullYear() + 1);
+    } else {
+      endDate.setMonth(endDate.getMonth() + 1);
+    }
 
-    // Create entitlements for all features in the bundle
-    const entitlementInserts = featureKeys.map((featureKey: string) => ({
+    const bundlePrice = billing_period === 'annual' 
+      ? parseFloat(bundle.annual_price) 
+      : parseFloat(bundle.monthly_price);
+    const pricePerFeature = bundlePrice / featureKeys.length;
+
+    // Create entitlements for all features
+    const entitlements = featureKeys.map((featureKey: string) => ({
       user_id: user.id,
       feature_key: featureKey,
-      source_type: 'bundle',
-      source_id: pendingOrder.bundle_id,
-      billing_period: pendingOrder.billing_period,
+      bundle_id,
+      status: 'active',
+      billing_period,
       start_date: now.toISOString(),
       end_date: endDate.toISOString(),
-      price_at_purchase: pricePerFeature,
-      status: 'active',
       auto_renew: true,
-      payment_id: razorpay_payment_id,
-      order_id: razorpay_order_id
+      price_at_purchase: pricePerFeature,
     }));
 
-    const { data: entitlements, error: entitlementError } = await supabaseAdmin
+    const { data: createdEntitlements, error: insertError } = await supabaseAdmin
       .from('user_entitlements')
-      .insert(entitlementInserts)
+      .insert(entitlements)
       .select();
 
-    if (entitlementError) {
-      console.error('Failed to create bundle entitlements:', entitlementError);
-      
-      await supabaseAdmin
-        .from('addon_pending_orders')
-        .update({ 
-          status: 'entitlement_failed', 
-          payment_id: razorpay_payment_id,
-          error_message: entitlementError.message,
-          updated_at: new Date().toISOString() 
-        })
-        .eq('order_id', razorpay_order_id);
-
-      return jsonResponse({ 
-        error: 'Payment successful but activation failed. Please contact support.',
-        paymentSucceeded: true,
-        orderId: razorpay_order_id,
-        paymentId: razorpay_payment_id
-      }, 500);
+    if (insertError) {
+      console.error('[VERIFY-BUNDLE-PAYMENT] Error creating entitlements:', insertError);
+      return jsonResponse({ error: 'Failed to create entitlements: ' + insertError.message }, 500);
     }
-
-    // Mark order as completed
-    await supabaseAdmin
-      .from('addon_pending_orders')
-      .update({ 
-        status: 'completed', 
-        payment_id: razorpay_payment_id,
-        updated_at: new Date().toISOString() 
-      })
-      .eq('order_id', razorpay_order_id);
-
-    // Update discount code usage
-    if (pendingOrder.discount_code) {
-      await supabaseAdmin.rpc('increment_addon_discount_usage', {
-        code_param: pendingOrder.discount_code.toUpperCase()
-      }).catch(() => {});
-    }
-
-    // Log analytics event
-    await supabaseAdmin
-      .from('addon_events')
-      .insert({
-        user_id: user.id,
-        event_type: 'bundle_purchased',
-        feature_key: `bundle_${pendingOrder.bundle_id}`,
-        metadata: {
-          bundle_id: pendingOrder.bundle_id,
-          feature_keys: featureKeys,
-          billing_period: pendingOrder.billing_period,
-          amount: pendingOrder.final_price,
-          discount_code: pendingOrder.discount_code,
-          payment_id: razorpay_payment_id,
-          order_id: razorpay_order_id
-        }
-      });
-
-    // Get bundle details for response
-    const { data: bundle } = await supabaseAdmin
-      .from('addon_bundles')
-      .select('name')
-      .eq('id', pendingOrder.bundle_id)
-      .single();
-
-    console.log(`[BUNDLE-VERIFY] Payment verified and ${featureKeys.length} entitlements created for user ${user.id}`);
 
     return jsonResponse({
       success: true,
-      data: {
-        entitlements: entitlements?.map(e => ({
-          id: e.id,
-          featureKey: e.feature_key,
-          startDate: e.start_date,
-          endDate: e.end_date,
-          status: e.status
-        })),
-        bundleName: bundle?.name || pendingOrder.bundle_id,
-        billingPeriod: pendingOrder.billing_period,
-        amountPaid: pendingOrder.final_price,
-        featuresActivated: featureKeys.length
-      }
+      entitlements: createdEntitlements,
+      bundle_name: bundle.name,
+      end_date: endDate.toISOString(),
+      message: 'Payment verified and bundle activated successfully',
     });
   } catch (error) {
-    console.error('Error in handleVerifyBundlePayment:', error);
-    return jsonResponse({ error: (error as Error).message }, 500);
-  }
-}
-
-// ==================== CANCEL ADD-ON ====================
-
-/**
- * POST /cancel-addon - Cancel an add-on subscription
- */
-export async function handleCancelAddon(request: Request, env: Env): Promise<Response> {
-  try {
-    const auth = await authenticateUser(request, env);
-    if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-    const { user } = auth;
-    const body = await request.json() as {
-      featureKey: string;
-      cancelImmediately?: boolean;
-    };
-
-    const { featureKey, cancelImmediately = false } = body;
-
-    if (!featureKey) {
-      return jsonResponse({ error: 'Feature key is required' }, 400);
-    }
-
-    const supabaseUrl = getSupabaseUrl(env);
-    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-
-    // Get the entitlement
-    const { data: entitlement, error: entError } = await supabaseAdmin
-      .from('user_entitlements')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('feature_key', featureKey)
-      .in('status', ['active', 'grace_period'])
-      .single();
-
-    if (entError || !entitlement) {
-      return jsonResponse({ error: 'Active entitlement not found' }, 404);
-    }
-
-    if (cancelImmediately) {
-      // Cancel immediately - set status to cancelled
-      const { error: updateError } = await supabaseAdmin
-        .from('user_entitlements')
-        .update({ 
-          status: 'cancelled',
-          auto_renew: false,
-          cancelled_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', entitlement.id);
-
-      if (updateError) {
-        console.error('Failed to cancel entitlement:', updateError);
-        return jsonResponse({ error: 'Failed to cancel subscription' }, 500);
-      }
-    } else {
-      // Cancel at end of period - just disable auto-renew
-      const { error: updateError } = await supabaseAdmin
-        .from('user_entitlements')
-        .update({ 
-          auto_renew: false,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', entitlement.id);
-
-      if (updateError) {
-        console.error('Failed to disable auto-renew:', updateError);
-        return jsonResponse({ error: 'Failed to cancel subscription' }, 500);
-      }
-    }
-
-    // Log analytics event
-    await supabaseAdmin
-      .from('addon_events')
-      .insert({
-        user_id: user.id,
-        event_type: 'addon_cancelled',
-        feature_key: featureKey,
-        metadata: {
-          cancel_immediately: cancelImmediately,
-          end_date: entitlement.end_date
-        }
-      });
-
-    console.log(`[ADDON-CANCEL] User ${user.id} cancelled addon ${featureKey}, immediate: ${cancelImmediately}`);
-
-    return jsonResponse({
-      success: true,
-      data: {
-        featureKey,
-        cancelledImmediately: cancelImmediately,
-        accessUntil: cancelImmediately ? new Date().toISOString() : entitlement.end_date,
-        message: cancelImmediately 
-          ? 'Subscription cancelled immediately' 
-          : `Subscription will end on ${new Date(entitlement.end_date).toLocaleDateString()}`
-      }
-    });
-  } catch (error) {
-    console.error('Error in handleCancelAddon:', error);
-    return jsonResponse({ error: (error as Error).message }, 500);
-  }
-}
-
-// ==================== CHECK FEATURE ACCESS ====================
-
-/**
- * GET /check-addon-access - Check if user has access to a specific feature
- */
-export async function handleCheckAddonAccess(request: Request, env: Env): Promise<Response> {
-  try {
-    const auth = await authenticateUser(request, env);
-    if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-    const { user } = auth;
-    const url = new URL(request.url);
-    const featureKey = url.searchParams.get('featureKey');
-
-    if (!featureKey) {
-      return jsonResponse({ error: 'Feature key is required' }, 400);
-    }
-
-    const supabaseUrl = getSupabaseUrl(env);
-    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-
-    // Check for active entitlement
-    const { data: entitlement } = await supabaseAdmin
-      .from('user_entitlements')
-      .select('id, status, end_date, source_type')
-      .eq('user_id', user.id)
-      .eq('feature_key', featureKey)
-      .in('status', ['active', 'grace_period'])
-      .single();
-
-    if (entitlement) {
-      return jsonResponse({
-        success: true,
-        data: {
-          hasAccess: true,
-          accessSource: entitlement.source_type,
-          expiresAt: entitlement.end_date,
-          status: entitlement.status
-        }
-      });
-    }
-
-    // Check if feature is included in user's subscription plan
-    const { data: subscription } = await supabaseAdmin
-      .from('subscriptions')
-      .select('plan_type, status')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .single();
-
-    if (subscription) {
-      // Check if plan includes this feature
-      const { data: planFeature } = await supabaseAdmin
-        .from('subscription_plan_features')
-        .select('is_included')
-        .eq('plan_code', subscription.plan_type)
-        .eq('feature_key', featureKey)
-        .eq('is_included', true)
-        .single();
-
-      if (planFeature) {
-        return jsonResponse({
-          success: true,
-          data: {
-            hasAccess: true,
-            accessSource: 'subscription',
-            planType: subscription.plan_type
-          }
-        });
-      }
-    }
-
-    // No access
-    return jsonResponse({
-      success: true,
-      data: {
-        hasAccess: false,
-        accessSource: null
-      }
-    });
-  } catch (error) {
-    console.error('Error in handleCheckAddonAccess:', error);
+    console.error('[VERIFY-BUNDLE-PAYMENT] Error:', error);
     return jsonResponse({ error: (error as Error).message }, 500);
   }
 }

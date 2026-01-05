@@ -53,6 +53,7 @@ export function AddOnMarketplace({
   } = useAddOnCatalog({ role });
 
   const { purchaseAddOn, purchaseBundle, isPurchasing } = useSubscriptionContext();
+  const [purchaseError, setPurchaseError] = useState(null);
 
   // Filter add-ons based on search and category
   const filteredAddOns = useMemo(() => {
@@ -68,29 +69,49 @@ export function AddOnMarketplace({
   // Handle add-on purchase
   const handlePurchaseAddOn = async (featureKey, period) => {
     try {
+      setPurchaseError(null);
+      
+      // Load Razorpay script first
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setPurchaseError('Failed to load payment system. Please refresh and try again.');
+        return;
+      }
+      
       const orderData = await purchaseAddOn(featureKey, period);
       if (orderData && window.Razorpay) {
-        initializeRazorpay(orderData);
+        initializeRazorpay(orderData, 'addon');
       }
     } catch (error) {
       console.error('Purchase failed:', error);
+      setPurchaseError(error.message || 'Purchase failed');
     }
   };
 
   // Handle bundle purchase
   const handlePurchaseBundle = async (bundleId, period) => {
     try {
+      setPurchaseError(null);
+      
+      // Load Razorpay script first
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setPurchaseError('Failed to load payment system. Please refresh and try again.');
+        return;
+      }
+      
       const orderData = await purchaseBundle(bundleId, period);
       if (orderData && window.Razorpay) {
-        initializeRazorpay(orderData);
+        initializeRazorpay(orderData, 'bundle');
       }
     } catch (error) {
       console.error('Bundle purchase failed:', error);
+      setPurchaseError(error.message || 'Bundle purchase failed');
     }
   };
 
-  // Initialize Razorpay checkout
-  const initializeRazorpay = (orderData) => {
+  // Initialize Razorpay checkout with proper verification
+  const initializeRazorpay = (orderData, type = 'addon') => {
     const options = {
       key: orderData.razorpayKeyId,
       amount: orderData.amount,
@@ -98,13 +119,46 @@ export function AddOnMarketplace({
       name: 'SkillPassport',
       description: orderData.addOnName || orderData.bundleName,
       order_id: orderData.orderId,
-      handler: function(response) {
-        window.location.reload();
+      handler: async function(response) {
+        // Payment successful - verify and create entitlement
+        console.log('[AddOnMarketplace] Payment successful, verifying...', response);
+        
+        try {
+          const verifyResult = await addOnPaymentService.verifyAddonPayment(
+            response.razorpay_order_id,
+            response.razorpay_payment_id,
+            response.razorpay_signature
+          );
+          
+          console.log('[AddOnMarketplace] Verification result:', verifyResult);
+          
+          if (verifyResult.success) {
+            console.log('[AddOnMarketplace] Payment verified and entitlement created!');
+            window.location.reload();
+          } else {
+            setPurchaseError(`Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`);
+          }
+        } catch (verifyError) {
+          console.error('[AddOnMarketplace] Verification error:', verifyError);
+          setPurchaseError(`Payment completed but verification failed. Please contact support with Order ID: ${response.razorpay_order_id}`);
+        }
       },
-      theme: { color: '#4F46E5' }
+      theme: { color: '#4F46E5' },
+      modal: {
+        ondismiss: () => {
+          console.log('[AddOnMarketplace] Payment modal dismissed');
+        }
+      }
     };
     
     const rzp = new window.Razorpay(options);
+    
+    // Handle payment failure
+    rzp.on('payment.failed', (response) => {
+      console.error('[AddOnMarketplace] Payment failed:', response.error);
+      setPurchaseError(`Payment failed: ${response.error.description || 'Unknown error'}. Please try again.`);
+    });
+    
     rzp.open();
   };
 
@@ -114,6 +168,22 @@ export function AddOnMarketplace({
 
   return (
     <div className={`space-y-6 ${className}`}>
+      {/* Error Display */}
+      {purchaseError && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+          <X className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-red-700 text-sm">{purchaseError}</p>
+            <button 
+              onClick={() => setPurchaseError(null)}
+              className="text-red-600 text-sm underline mt-1 hover:text-red-800"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Header - conditionally rendered */}
       {showHeader && (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

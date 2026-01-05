@@ -507,10 +507,120 @@ class EntitlementService {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Check if user has access to a feature (simplified boolean return)
+   * Used by FeatureGate component
+   * 
+   * @param {string} userId - The user's UUID
+   * @param {string} featureKey - The feature_key to check
+   * @returns {Promise<boolean>} - Whether user has access
+   */
+  async checkFeatureAccess(userId, featureKey) {
+    const result = await this.hasFeatureAccess(userId, featureKey);
+    return result.success && result.data?.hasAccess === true;
+  }
+
+  /**
+   * Get add-on details by feature key
+   * Used by FeatureGate component to display pricing
+   * 
+   * @param {string} featureKey - The feature_key to look up
+   * @returns {Promise<Object|null>} - Add-on details or null
+   */
+  async getAddonByFeatureKey(featureKey) {
+    try {
+      const { data, error } = await supabase
+        .from('subscription_plan_features')
+        .select('id, feature_key, feature_name, category, addon_price_monthly, addon_price_annual, addon_description, icon_url')
+        .eq('feature_key', featureKey)
+        .eq('is_addon', true)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching addon by feature key:', error);
+        return null;
+      }
+
+      if (!data) return null;
+
+      // Transform to expected format
+      return {
+        id: data.id,
+        feature_key: data.feature_key,
+        name: data.feature_name,
+        description: data.addon_description,
+        category: data.category,
+        price_monthly: parseFloat(data.addon_price_monthly) || 199,
+        price_annual: parseFloat(data.addon_price_annual) || 1990,
+        icon_url: data.icon_url,
+      };
+    } catch (error) {
+      console.error('Error in getAddonByFeatureKey:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get all available add-ons
+   * 
+   * @param {Object} filters - Optional filters
+   * @param {string} filters.category - Filter by category
+   * @param {string} filters.role - Filter by target role
+   * @returns {Promise<Array>} - List of add-ons
+   */
+  async getAvailableAddons(filters = {}) {
+    try {
+      let query = supabase
+        .from('subscription_plan_features')
+        .select('id, feature_key, feature_name, category, addon_price_monthly, addon_price_annual, addon_description, target_roles, icon_url, sort_order_addon')
+        .eq('is_addon', true)
+        .order('sort_order_addon', { ascending: true });
+
+      if (filters.category) {
+        query = query.eq('category', filters.category);
+      }
+
+      if (filters.role) {
+        query = query.contains('target_roles', [filters.role]);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching available addons:', error);
+        return [];
+      }
+
+      // Transform to expected format and deduplicate by feature_key
+      const uniqueAddons = new Map();
+      (data || []).forEach(addon => {
+        if (!uniqueAddons.has(addon.feature_key)) {
+          uniqueAddons.set(addon.feature_key, {
+            id: addon.id,
+            feature_key: addon.feature_key,
+            name: addon.feature_name,
+            description: addon.addon_description,
+            category: addon.category,
+            price_monthly: parseFloat(addon.addon_price_monthly) || 0,
+            price_annual: parseFloat(addon.addon_price_annual) || 0,
+            target_roles: addon.target_roles || [],
+            icon_url: addon.icon_url,
+          });
+        }
+      });
+
+      return Array.from(uniqueAddons.values());
+    } catch (error) {
+      console.error('Error in getAvailableAddons:', error);
+      return [];
+    }
+  }
 }
 
 // Export singleton instance
-const entitlementService = new EntitlementService();
+export const entitlementService = new EntitlementService();
 export default entitlementService;
 
 // Also export the class for testing purposes
