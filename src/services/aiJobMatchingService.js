@@ -3,6 +3,7 @@
  * Uses vector embeddings and cosine similarity to match student profiles with job opportunities
  */
 
+import { supabase } from '../lib/supabaseClient';
 import { ensureStudentEmbedding } from './embeddingService';
 
 /**
@@ -26,13 +27,7 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     throw new Error('VITE_CAREER_API_URL is not configured');
   }
 
-  // Get auth token
-  const { createClient } = await import('@supabase/supabase-js');
-  const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY
-  );
-
+  // Get auth token from existing supabase client
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
 

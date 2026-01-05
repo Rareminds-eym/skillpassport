@@ -29,8 +29,7 @@ export function useFeatureGate(featureKey) {
   const { 
     user, 
     hasAddOnAccessSync, 
-    activeEntitlements,
-    subscription 
+    activeEntitlements
   } = useSubscriptionContext();
   
   const [isLoading, setIsLoading] = useState(true);
