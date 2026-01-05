@@ -27,6 +27,13 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     const studentId = studentProfile?.id || studentProfile?.email || studentProfile?.profile?.email || 'unknown';
     const studentEmail = studentProfile?.email || studentProfile?.profile?.email || 'unknown@email.com';
 
+    console.log('🎯 AI Job Matching - Input:', { 
+      studentId, 
+      studentEmail, 
+      hasProfile: !!studentProfile,
+      opportunitiesCount: opportunities?.length || 0 
+    });
+
     // Create cache key specific to this student and opportunities
     const opportunitiesHash = opportunities.map(o => o.id).sort().join(',');
     const cacheKey = `${studentId}_${opportunitiesHash}_${topN}`;
@@ -125,11 +132,18 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     }
 
     const result = await response.json();
+    console.log('🎯 AI Matching API Response:', result);
 
-    // Backend returns { recommendations: [...], count, ... }
+    // Backend returns { recommendations: [...], count, fallback, reason, ... }
     const recommendations = result.recommendations || [];
     
+    if (recommendations.length === 0) {
+      console.warn('⚠️ No recommendations returned from API', { fallback: result.fallback, reason: result.reason });
+      throw new Error('No recommendations available');
+    }
+    
     // Transform backend response to match expected format
+    // The RPC function returns opportunity data directly with a 'similarity' field
     const matches = recommendations.map(rec => ({
       job_id: rec.id,
       job_title: rec.job_title || rec.title,
@@ -141,6 +155,8 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       recommendation: rec.recommendation || 'Review the job requirements and apply if interested.'
     }));
 
+    console.log('🎯 Transformed matches:', matches);
+
     // Enrich matches with full opportunity data
     // Backend returns opportunity data, but we also have local opportunities for additional fields
     const enrichedMatches = matches.map(match => {
@@ -148,11 +164,26 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       const localOpportunity = opportunities.find(opp => opp.id === match.job_id);
       const backendOpportunity = recommendations.find(rec => rec.id === match.job_id);
       
+      // Merge local and backend data, preferring local for display fields
+      const opportunity = localOpportunity || backendOpportunity || { 
+        id: match.job_id, 
+        job_title: match.job_title, 
+        company_name: match.company_name 
+      };
+      
       return {
         ...match,
-        opportunity: localOpportunity || backendOpportunity || { id: match.job_id, job_title: match.job_title, company_name: match.company_name }
+        opportunity
       };
     }).filter(match => match.opportunity);
+
+    console.log('🎯 Enriched matches:', enrichedMatches);
+
+    // If no enriched matches after processing, use fallback
+    if (enrichedMatches.length === 0) {
+      console.warn('⚠️ No enriched matches, using local fallback');
+      return createFallbackMatches(studentProfile, opportunities, topN);
+    }
 
     // Cache the results
     matchCache.set(cacheKey, {
@@ -166,31 +197,42 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     console.error('❌ AI Job Matching Error:', error);
 
     // Fallback to local basic matching if API fails
-
-    // Extract student data locally for fallback
-    const studentData = extractStudentData(studentProfile);
-
-    const fallbackMatches = opportunities.slice(0, topN).map((opp, idx) => ({
-      job_id: opp.id,
-      job_title: opp.job_title || opp.title,
-      company_name: opp.company_name || opp.company,
-      match_score: 50 - (idx * 5),
-      match_reason: `This is an available opportunity in ${opp.department || 'your field'}. (Fallback match)`,
-      key_matching_skills: studentData.technical_skills.slice(0, 3).map(s => s.name),
-      skills_gap: [],
-      recommendation: 'Review the job requirements.'
-    }));
-
-    const enrichedFallbackMatches = fallbackMatches.map(match => {
-      const fullOpportunity = opportunities.find(opp => opp.id === match.job_id);
-      return {
-        ...match,
-        opportunity: fullOpportunity
-      };
-    });
-
-    return enrichedFallbackMatches;
+    return createFallbackMatches(studentProfile, opportunities, topN);
   }
+}
+
+/**
+ * Create fallback matches when API fails or returns no results
+ */
+function createFallbackMatches(studentProfile, opportunities, topN) {
+  if (!opportunities || opportunities.length === 0) {
+    return [];
+  }
+
+  // Extract student data locally for fallback
+  const studentData = extractStudentData(studentProfile);
+
+  const fallbackMatches = opportunities.slice(0, topN).map((opp, idx) => ({
+    job_id: opp.id,
+    job_title: opp.job_title || opp.title,
+    company_name: opp.company_name || opp.company,
+    match_score: 70 - (idx * 10), // Start higher for better UX
+    match_reason: `This ${opp.employment_type || 'opportunity'} in ${opp.department || 'your field'} could be a good fit for your profile.`,
+    key_matching_skills: studentData.technical_skills.slice(0, 3).map(s => s.name || s),
+    skills_gap: [],
+    recommendation: 'Review the job requirements and apply if interested.'
+  }));
+
+  const enrichedFallbackMatches = fallbackMatches.map(match => {
+    const fullOpportunity = opportunities.find(opp => opp.id === match.job_id);
+    return {
+      ...match,
+      opportunity: fullOpportunity
+    };
+  }).filter(match => match.opportunity);
+
+  console.log('🎯 Fallback matches created:', enrichedFallbackMatches);
+  return enrichedFallbackMatches;
 }
 
 /**

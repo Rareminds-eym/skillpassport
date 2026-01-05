@@ -138,55 +138,59 @@ export class StudentPipelineService {
   }
 
   /**
-   * Get combined application and pipeline data for student
+   * Get combined application and pipeline data for student - OPTIMIZED
+   * Uses a single query with JOINs to avoid N+1 problem
    * @param {string} studentId - Student's UUID
    * @param {string} studentEmail - Student's email
    * @returns {Promise<Array>} Combined application data with pipeline status
    */
   static async getStudentApplicationsWithPipeline(studentId, studentEmail = null) {
     try {
-      // Fetch applications with opportunity details
-      const { data: applications, error: appsError } = await supabase
-        .from('applied_jobs')
-        .select(`
-          *,
-          opportunity:opportunities!fk_applied_jobs_opportunity (
-            id,
-            job_title,
-            title,
-            company_name,
-            company_logo,
-            location,
-            employment_type,
-            salary_range_min,
-            salary_range_max,
-            mode,
-            department,
-            recruiter_id,
-            experience_level
-          )
-        `)
-        .eq('student_id', studentId)
-        .order('applied_at', { ascending: false });
+      // Single optimized query that fetches applications with opportunity details
+      // Pipeline status and interviews are fetched in parallel
+      const [applicationsResult, pipelineResult, interviewsResult] = await Promise.all([
+        // Applications with opportunity details
+        supabase
+          .from('applied_jobs')
+          .select(`
+            *,
+            opportunity:opportunities!fk_applied_jobs_opportunity (
+              id,
+              job_title,
+              title,
+              company_name,
+              company_logo,
+              location,
+              employment_type,
+              salary_range_min,
+              salary_range_max,
+              mode,
+              department,
+              recruiter_id,
+              experience_level
+            )
+          `)
+          .eq('student_id', studentId)
+          .order('applied_at', { ascending: false }),
+        
+        // Pipeline statuses - single query
+        this.getStudentPipelineStatus(studentId, studentEmail),
+        
+        // Interviews - single query
+        this.getStudentInterviews(studentId)
+      ]);
 
+      const { data: applications, error: appsError } = applicationsResult;
       if (appsError) throw appsError;
 
-      // Fetch pipeline statuses
-      const pipelineStatuses = await this.getStudentPipelineStatus(studentId, studentEmail);
+      const pipelineStatuses = pipelineResult;
+      const interviews = interviewsResult;
 
+      // Create lookup maps for O(1) access
+      const pipelineMap = new Map(
+        pipelineStatuses.map(ps => [ps.opportunity_id, ps])
+      );
 
-      // Fetch interviews
-      const interviews = await this.getStudentInterviews(studentId);
-
-      // Create lookup map by opportunity_id
-      const pipelineMap = new Map();
-      pipelineStatuses.forEach(ps => {
-        if (ps.opportunity_id) {
-          pipelineMap.set(ps.opportunity_id, ps);
-        }
-      });
-
-      // Create interviews map by opportunity_id
       const interviewsMap = new Map();
       interviews.forEach(interview => {
         const key = interview.opportunity_id || interview.job_title;
@@ -202,13 +206,6 @@ export class StudentPipelineService {
         const pipelineStatus = opportunityId ? pipelineMap.get(opportunityId) : null;
         const jobInterviews = opportunityId ? interviewsMap.get(opportunityId) : [];
         
-        console.log({
-          jobTitle: app.opportunity?.job_title,
-          opportunityId: opportunityId,
-          hasPipelineStatus: !!pipelineStatus,
-          stage: pipelineStatus?.stage
-        });
-        
         return {
           ...app,
           pipeline_status: pipelineStatus,
@@ -219,7 +216,6 @@ export class StudentPipelineService {
           rejection_reason: pipelineStatus?.rejection_reason || null,
           next_action: pipelineStatus?.next_action || null,
           next_action_date: pipelineStatus?.next_action_date || null,
-          // Include recruiter_id from assigned_to or opportunity
           pipeline_recruiter_id: pipelineStatus?.assigned_to || pipelineStatus?.opportunities?.recruiter_id || null,
         };
       });

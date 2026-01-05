@@ -1,54 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  Search,
-  ChevronDown,
-  Grid3x3,
-  List,
-  MapPin,
-  Clock,
-  X,
-  Briefcase,
-  FileText,
-  Sparkles,
-  RefreshCw,
-  TrendingUp,
-  Target,
-  Building2,
-  Eye,
-  CheckCircle2,
-  XCircle,
-  Calendar,
-  Users,
-  AlertCircle,
-  Video,
-  Award,
-  Bell,
-  MessageSquare,
-  ArrowRight,
-  Filter
-} from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useAuth } from '../../context/AuthContext';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useOpportunities } from '../../hooks/useOpportunities';
-import { useAIRecommendations } from '../../hooks/useAIRecommendations';
-import AppliedJobsService from '../../services/appliedJobsService';
-import SavedJobsService from '../../services/savedJobsService';
-import SearchHistoryService from '../../services/searchHistoryService';
+import {
+    AlertCircle,
+    Award,
+    Bell,
+    Briefcase,
+    Building2,
+    Calendar,
+    CheckCircle2,
+    Clock,
+    Eye,
+    FileText,
+    Filter,
+    Grid3x3,
+    List,
+    MapPin,
+    MessageSquare,
+    RefreshCw,
+    Search,
+    Sparkles,
+    Target,
+    TrendingUp,
+    Users,
+    Video,
+    X,
+    XCircle
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import AdvancedFilters from '../../components/Students/components/AdvancedFilters';
 import OpportunityCard from '../../components/Students/components/OpportunityCard';
 import OpportunityListItem from '../../components/Students/components/OpportunityListItem';
 import OpportunityPreview from '../../components/Students/components/OpportunityPreview';
-import AdvancedFilters from '../../components/Students/components/AdvancedFilters';
 import RecommendedJobs from '../../components/Students/components/RecommendedJobs';
 import Pagination from '../../components/educator/Pagination';
+import { useAuth } from '../../context/AuthContext';
+import { useOpportunities } from '../../hooks/useOpportunities';
+import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import AppliedJobsService from '../../services/appliedJobsService';
+import SavedJobsService from '../../services/savedJobsService';
 
 // Import Applications component content
-import StudentPipelineService from '../../services/studentPipelineService';
-import MessageService from '../../services/messageService';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
-import { supabase } from '../../lib/supabaseClient';
+import MessageService from '../../services/messageService';
+import StudentPipelineService from '../../services/studentPipelineService';
 
 const Opportunities = () => {
   const navigate = useNavigate();
@@ -173,111 +168,70 @@ const Opportunities = () => {
     loadJobsData();
   }, [studentId]);
 
-  // Fetch applications with pipeline status
+  // Fetch applications with pipeline status - memoized to prevent duplicate fetches
+  const fetchApplicationsData = React.useCallback(async () => {
+    if (!studentId) return;
+
+    try {
+      const applicationsData = await StudentPipelineService.getStudentApplicationsWithPipeline(
+        studentId,
+        userEmail
+      );
+
+      const transformedApplications = applicationsData.map(app => ({
+        id: app.id,
+        studentId: app.student_id,
+        jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
+        company: app.opportunity?.company_name || 'N/A',
+        location: app.opportunity?.location || 'N/A',
+        salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
+          ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
+          : 'Not specified',
+        appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        status: app.application_status,
+        logo: app.opportunity?.company_logo,
+        type: app.opportunity?.employment_type || 'N/A',
+        level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
+        lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
+        opportunityId: app.opportunity_id,
+        recruiterId: app.opportunity?.recruiter_id || app.pipeline_recruiter_id || app.pipeline_status?.assigned_to || null,
+        pipelineStatus: app.pipeline_status,
+        hasPipelineStatus: app.has_pipeline_status,
+        pipelineStage: app.pipeline_stage,
+        pipelineStageChangedAt: app.pipeline_stage_changed_at,
+        rejectionReason: app.rejection_reason,
+        nextAction: app.next_action,
+        nextActionDate: app.next_action_date,
+        interviews: app.interviews || []
+      }));
+
+      setApplications(transformedApplications);
+      setFilteredApplications(transformedApplications);
+    } catch (err) {
+      console.error('Error fetching applications:', err);
+    }
+  }, [studentId, userEmail]);
+
+  // Fetch applications when tab changes to my-applications
   useEffect(() => {
-    const fetchApplications = async () => {
-      if (!studentId || activeTab !== 'my-applications') return;
+    if (activeTab === 'my-applications') {
+      fetchApplicationsData();
+    }
+  }, [activeTab, fetchApplicationsData]);
 
-      try {
-        const applicationsData = await StudentPipelineService.getStudentApplicationsWithPipeline(
-          studentId,
-          userEmail
-        );
-
-        const transformedApplications = applicationsData.map(app => ({
-          id: app.id,
-          studentId: app.student_id,
-          jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
-          company: app.opportunity?.company_name || 'N/A',
-          location: app.opportunity?.location || 'N/A',
-          salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
-            ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
-            : 'Not specified',
-          appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-          status: app.application_status,
-          logo: app.opportunity?.company_logo,
-          type: app.opportunity?.employment_type || 'N/A',
-          level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
-          lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
-          opportunityId: app.opportunity_id,
-          recruiterId: app.opportunity?.recruiter_id || app.pipeline_recruiter_id || app.pipeline_status?.assigned_to || null,
-          pipelineStatus: app.pipeline_status,
-          hasPipelineStatus: app.has_pipeline_status,
-          pipelineStage: app.pipeline_stage,
-          pipelineStageChangedAt: app.pipeline_stage_changed_at,
-          rejectionReason: app.rejection_reason,
-          nextAction: app.next_action,
-          nextActionDate: app.next_action_date,
-          interviews: app.interviews || []
-        }));
-
-        setApplications(transformedApplications);
-        setFilteredApplications(transformedApplications);
-      } catch (err) {
-        console.error('Error fetching applications:', err);
-      }
-    };
-
-    fetchApplications();
-  }, [studentId, userEmail, activeTab]);
-
-  // Subscribe to real-time pipeline updates
+  // Subscribe to real-time pipeline updates - reuse fetchApplicationsData
   useEffect(() => {
     if (!studentId || activeTab !== 'my-applications') return;
 
     const channel = StudentPipelineService.subscribeToPipelineUpdates(
       studentId,
-      (payload) => {
-        // Refresh applications when pipeline updates
-        const fetchApplications = async () => {
-          try {
-            const applicationsData = await StudentPipelineService.getStudentApplicationsWithPipeline(
-              studentId,
-              userEmail
-            );
-
-            const transformedApplications = applicationsData.map(app => ({
-              id: app.id,
-              studentId: app.student_id,
-              jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
-              company: app.opportunity?.company_name || 'N/A',
-              location: app.opportunity?.location || 'N/A',
-              salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
-                ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
-                : 'Not specified',
-              appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-              status: app.application_status,
-              logo: app.opportunity?.company_logo,
-              type: app.opportunity?.employment_type || 'N/A',
-              level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
-              lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
-              opportunityId: app.opportunity_id,
-              recruiterId: app.opportunity?.recruiter_id || app.pipeline_recruiter_id || app.pipeline_status?.assigned_to || null,
-              pipelineStatus: app.pipeline_status,
-              hasPipelineStatus: app.has_pipeline_status,
-              pipelineStage: app.pipeline_stage,
-              pipelineStageChangedAt: app.pipeline_stage_changed_at,
-              rejectionReason: app.rejection_reason,
-              nextAction: app.next_action,
-              nextActionDate: app.next_action_date,
-              interviews: app.interviews || []
-            }));
-
-            setApplications(transformedApplications);
-            setFilteredApplications(transformedApplications);
-          } catch (err) {
-            console.error('Error refreshing applications:', err);
-          }
-        };
-
-        fetchApplications();
-      }
+      () => fetchApplicationsData() // Reuse the memoized function
     );
 
     return () => {
       StudentPipelineService.unsubscribeFromPipelineUpdates(channel);
     };
-  }, [studentId, userEmail, activeTab]);
+  }, [studentId, activeTab, fetchApplicationsData]);
 
   const formatLastUpdate = (dateString) => {
     if (!dateString) return 'Recently';
@@ -309,6 +263,13 @@ const Opportunities = () => {
     setFilteredApplications(filtered);
   }, [searchQuery, statusFilter, applications]);
 
+  // Memoize student type to prevent unnecessary recalculations
+  const studentType = React.useMemo(() => {
+    const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
+    const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
+    return { isSchoolStudent, isUniversityStudent };
+  }, [studentData?.school_id, studentData?.school_class_id, studentData?.university_college_id, studentData?.universityId]);
+
   // Filter and sort opportunities for My Jobs tab with advanced filters
   const filteredAndSortedOpportunities = React.useMemo(() => {
     let filtered = opportunities.filter(opp => {
@@ -316,18 +277,15 @@ const Opportunities = () => {
       // No need for client-side search filtering anymore
 
       // Grade-based filtering (same logic as Dashboard)
-      const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
-      const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
+      const { isSchoolStudent, isUniversityStudent } = studentType;
 
       // Apply filtering based on student type
       if (isSchoolStudent) {
         // School students: Show ONLY internships
         const isInternship = opp.employment_type && opp.employment_type.toLowerCase() === 'internship';
         if (!isInternship) return false;
-      } else if (isUniversityStudent) {
-        // College/University students: Show ALL opportunities (no filtering)
-        // They see everything - internships, full-time, part-time, contracts, etc.
       }
+      // College/University students: Show ALL opportunities (no filtering needed)
 
       // Employment Type filter
       if (advancedFilters.employmentType.length > 0) {
@@ -394,10 +352,6 @@ const Opportunities = () => {
 
       return true;
     });
-
-    // Debug logging for opportunity filtering
-    const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
-    const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
     
     // Sort filtered results
     return filtered.sort((a, b) => {
@@ -409,7 +363,7 @@ const Opportunities = () => {
       }
       return 0;
     });
-  }, [opportunities, sortBy, advancedFilters, studentData]);
+  }, [opportunities, sortBy, advancedFilters, studentType]);
 
   const handleToggleSave = async (opportunity) => {
     if (!studentId) {
@@ -591,7 +545,7 @@ const Opportunities = () => {
               <>
                 {/* AI Recommended Jobs */}
                 <RecommendedJobs
-                  studentProfile={{ ...studentData, profile: studentData }}
+                  studentProfile={{ ...studentData, id: studentId, profile: studentData }}
                   opportunities={opportunities}
                   onSelectJob={setSelectedOpportunity}
                   appliedJobs={appliedJobs}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import OpportunitiesService from '../services/opportunitiesService';
 
 /**
@@ -23,6 +23,11 @@ export const useOpportunities = (options = {}) => {
   const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Track previous values to prevent unnecessary fetches
+  const prevSearchTermRef = useRef(searchTerm);
+  const prevFiltersRef = useRef(JSON.stringify(filters));
+  const hasFetchedRef = useRef(false);
 
   /**
    * Fetch opportunities based on the provided options
@@ -95,8 +100,8 @@ export const useOpportunities = (options = {}) => {
   /**
    * Search opportunities by title or company
    */
-  const searchOpportunities = async (searchTerm) => {
-    if (!searchTerm.trim()) {
+  const searchOpportunities = async (term) => {
+    if (!term.trim()) {
       fetchOpportunities();
       return;
     }
@@ -108,9 +113,9 @@ export const useOpportunities = (options = {}) => {
       const allOpportunities = await OpportunitiesService.getAllOpportunities();
       
       const filteredOpportunities = allOpportunities.filter(opp => 
-        opp.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        opp.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        opp.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        opp.title?.toLowerCase().includes(term.toLowerCase()) ||
+        opp.company_name?.toLowerCase().includes(term.toLowerCase()) ||
+        opp.description?.toLowerCase().includes(term.toLowerCase())
       );
 
       const formattedOpportunities = filteredOpportunities.map(opp => 
@@ -126,19 +131,26 @@ export const useOpportunities = (options = {}) => {
     }
   };
 
-  // Fetch opportunities on mount if enabled
+  // Initial fetch on mount
   useEffect(() => {
-    if (fetchOnMount) {
+    if (fetchOnMount && !hasFetchedRef.current) {
+      hasFetchedRef.current = true;
       fetchOpportunities();
     }
   }, [fetchOnMount]);
 
-  // Re-fetch when dependencies change (including searchTerm)
+  // Re-fetch only when searchTerm or filters actually change
   useEffect(() => {
-    if (fetchOnMount) {
+    const currentFilters = JSON.stringify(filters);
+    const searchChanged = searchTerm !== prevSearchTermRef.current;
+    const filtersChanged = currentFilters !== prevFiltersRef.current;
+    
+    if (hasFetchedRef.current && (searchChanged || filtersChanged)) {
+      prevSearchTermRef.current = searchTerm;
+      prevFiltersRef.current = currentFilters;
       fetchOpportunities();
     }
-  }, [JSON.stringify(filters), JSON.stringify(studentSkills), activeOnly, searchTerm]);
+  }, [searchTerm, JSON.stringify(filters)]);
 
   return {
     opportunities,
