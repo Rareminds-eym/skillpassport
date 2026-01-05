@@ -1,220 +1,477 @@
 /**
- * Embedding Service
- * Generates vector embeddings using Google Gemini text-embedding-004 model
- * for semantic similarity search in course recommendations.
+ * Industrial-Grade Embedding Service
  * 
- * Note: Uses Gemini for embeddings only. All chat/completion uses Claude.
- * 
- * Feature: rag-course-recommendations
- * Requirements: 1.2, 6.1, 6.2
+ * Handles embedding generation for students, opportunities, and courses
+ * with automatic queue processing and fallback mechanisms.
  */
 
-// Gemini Embedding API configuration
-const EMBEDDING_MODEL = 'text-embedding-004';
-const EMBEDDING_DIMENSION = 768;
-const EMBEDDING_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent`;
-const BATCH_EMBEDDING_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:batchEmbedContents`;
+import { supabase } from '../lib/supabaseClient';
 
-// Rate limiting configuration
-const MAX_RETRIES = 4;
-const INITIAL_BACKOFF_MS = 1000;
-const BACKOFF_MULTIPLIER = 2;
+const EMBEDDING_API_URL = import.meta.env.VITE_EMBEDDING_API_URL || 
+  import.meta.env.VITE_CAREER_API_URL || 
+  'https://career-api.dark-mode-d021.workers.dev';
+
+// Debounce map to prevent multiple regenerations
+const regenerationDebounce = new Map();
+const DEBOUNCE_MS = 5000; // 5 seconds
 
 /**
- * Sleep utility for rate limiting backoff
+ * Build searchable text from student data
  */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+function buildStudentEmbeddingText(student) {
+  const parts = [];
 
-/**
- * Get the Gemini API key from environment
- */
-const getApiKey = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your .env file for embeddings.');
-  }
-  return apiKey;
-};
+  // Basic info
+  if (student.name) parts.push(`Name: ${student.name}`);
+  if (student.branch_field) parts.push(`Field: ${student.branch_field}`);
+  if (student.course_name) parts.push(`Course: ${student.course_name}`);
+  if (student.university) parts.push(`University: ${student.university}`);
+  if (student.bio) parts.push(`Bio: ${student.bio}`);
+  if (student.skill_summary) parts.push(`Skills: ${student.skill_summary}`);
 
-/**
- * Check if embedding service is configured
- */
-export const isEmbeddingConfigured = () => {
-  return !!import.meta.env.VITE_GEMINI_API_KEY;
-};
-
-/**
- * Check if an error is a rate limit error
- */
-const isRateLimitError = (response, errorData) => {
-  return response.status === 429 || 
-         errorData?.error?.code === 429 ||
-         errorData?.error?.status === 'RESOURCE_EXHAUSTED';
-};
-
-/**
- * Generate embedding for a single text using Gemini text-embedding-004
- * 
- * @param {string} text - Text to generate embedding for
- * @returns {Promise<number[]>} - 768-dimensional embedding vector
- */
-export const generateEmbedding = async (text) => {
-  if (!text || typeof text !== 'string') {
-    throw new Error('Text must be a non-empty string');
-  }
-
-  const apiKey = getApiKey();
-  let lastError = null;
-  let backoffMs = INITIAL_BACKOFF_MS;
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const response = await fetch(`${EMBEDDING_API_URL}?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: { parts: [{ text }] }
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const embedding = data?.embedding?.values;
-        
-        if (!embedding || !Array.isArray(embedding)) {
-          throw new Error('Invalid embedding response format');
-        }
-        
-        return embedding;
-      }
-
-      const errorData = await response.json().catch(() => ({}));
-      
-      if (isRateLimitError(response, errorData) && attempt < MAX_RETRIES) {
-        console.warn(`Embedding rate limited, retrying in ${backoffMs}ms...`);
-        await sleep(backoffMs);
-        backoffMs *= BACKOFF_MULTIPLIER;
-        continue;
-      }
-
-      lastError = new Error(errorData?.error?.message || `Embedding API error: ${response.status}`);
-    } catch (error) {
-      lastError = error;
-      if (attempt < MAX_RETRIES) {
-        await sleep(backoffMs);
-        backoffMs *= BACKOFF_MULTIPLIER;
-      }
+  // Get skills from related tables
+  if (student.technical_skills?.length > 0) {
+    const skillNames = student.technical_skills
+      .map(s => typeof s === 'string' ? s : s.name || s.skill_name)
+      .filter(Boolean);
+    if (skillNames.length > 0) {
+      parts.push(`Technical Skills: ${skillNames.join(', ')}`);
     }
   }
 
-  throw lastError || new Error('Failed to generate embedding after all retries');
-};
-
-/**
- * Generate embeddings for multiple texts in batch
- * 
- * @param {string[]} texts - Array of texts to generate embeddings for
- * @returns {Promise<number[][]>} - Array of embedding vectors
- */
-export const generateBatchEmbeddings = async (texts) => {
-  if (!Array.isArray(texts) || texts.length === 0) {
-    throw new Error('Texts must be a non-empty array');
+  // Experience
+  if (student.experience?.length > 0) {
+    const expSummary = student.experience
+      .map(e => `${e.role || e.title} at ${e.organization || e.company}`)
+      .join('; ');
+    parts.push(`Experience: ${expSummary}`);
   }
 
-  const apiKey = getApiKey();
-  let lastError = null;
-  let backoffMs = INITIAL_BACKOFF_MS;
+  // Projects
+  if (student.projects?.length > 0) {
+    const projNames = student.projects
+      .map(p => p.title || p.name)
+      .filter(Boolean)
+      .join(', ');
+    if (projNames) parts.push(`Projects: ${projNames}`);
+  }
 
-  const requests = texts.map(text => ({
-    content: { parts: [{ text }] }
-  }));
+  // Certificates
+  if (student.certificates?.length > 0) {
+    const certNames = student.certificates
+      .map(c => c.name || c.title)
+      .filter(Boolean)
+      .join(', ');
+    if (certNames) parts.push(`Certifications: ${certNames}`);
+  }
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const response = await fetch(`${BATCH_EMBEDDING_API_URL}?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requests })
-      });
+  // Hobbies and interests
+  if (student.hobbies?.length > 0) {
+    parts.push(`Hobbies: ${student.hobbies.join(', ')}`);
+  }
+  if (student.interests?.length > 0) {
+    parts.push(`Interests: ${student.interests.join(', ')}`);
+  }
 
-      if (response.ok) {
-        const data = await response.json();
-        const embeddings = data?.embeddings;
+  return parts.join('\n');
+}
+
+/**
+ * Build searchable text from opportunity data
+ */
+function buildOpportunityEmbeddingText(opportunity) {
+  const parts = [];
+
+  if (opportunity.job_title || opportunity.title) {
+    parts.push(`Job Title: ${opportunity.job_title || opportunity.title}`);
+  }
+  if (opportunity.company_name) {
+    parts.push(`Company: ${opportunity.company_name}`);
+  }
+  if (opportunity.department) {
+    parts.push(`Department: ${opportunity.department}`);
+  }
+  if (opportunity.employment_type) {
+    parts.push(`Type: ${opportunity.employment_type}`);
+  }
+  if (opportunity.experience_level || opportunity.experience_required) {
+    parts.push(`Experience: ${opportunity.experience_level || opportunity.experience_required}`);
+  }
+  if (opportunity.location) {
+    parts.push(`Location: ${opportunity.location}`);
+  }
+
+  // Skills
+  const skills = opportunity.skills_required || [];
+  if (Array.isArray(skills) && skills.length > 0) {
+    const skillNames = skills
+      .map(s => typeof s === 'string' ? s : s.name || s.skill)
+      .filter(Boolean);
+    parts.push(`Required Skills: ${skillNames.join(', ')}`);
+  }
+
+  // Requirements
+  const requirements = opportunity.requirements || [];
+  if (Array.isArray(requirements) && requirements.length > 0) {
+    parts.push(`Requirements: ${requirements.join('; ')}`);
+  }
+
+  // Description
+  if (opportunity.description) {
+    parts.push(`Description: ${opportunity.description.slice(0, 1000)}`);
+  }
+
+  return parts.join('\n');
+}
+
+/**
+ * Generate embedding for a student
+ */
+export async function generateStudentEmbedding(studentId) {
+  try {
+    // Fetch student with related data
+    const { data: student, error: fetchError } = await supabase
+      .from('students')
+      .select(`
+        *,
+        experience (*),
+        projects (*),
+        certificates (*),
+        technical_skills (*)
+      `)
+      .eq('id', studentId)
+      .single();
+
+    if (fetchError || !student) {
+      throw new Error(`Student not found: ${fetchError?.message || 'Not found'}`);
+    }
+
+    const text = buildStudentEmbeddingText(student);
+    
+    if (text.length < 20) {
+      console.warn('⚠️ Insufficient student data for embedding');
+      return { success: false, error: 'Insufficient data' };
+    }
+
+    // Call embedding API
+    const response = await fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        table: 'students',
+        id: studentId,
+        type: 'student'
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log(`✅ Generated embedding for student ${studentId}`);
+    
+    return { success: true, ...result };
+
+  } catch (error) {
+    console.error('❌ Error generating student embedding:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Generate embedding for an opportunity
+ */
+export async function generateOpportunityEmbedding(opportunityId) {
+  try {
+    const { data: opportunity, error: fetchError } = await supabase
+      .from('opportunities')
+      .select('*')
+      .eq('id', opportunityId)
+      .single();
+
+    if (fetchError || !opportunity) {
+      throw new Error(`Opportunity not found: ${fetchError?.message || 'Not found'}`);
+    }
+
+    const text = buildOpportunityEmbeddingText(opportunity);
+    
+    if (text.length < 20) {
+      console.warn('⚠️ Insufficient opportunity data for embedding');
+      return { success: false, error: 'Insufficient data' };
+    }
+
+    const response = await fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        table: 'opportunities',
+        id: opportunityId,
+        type: 'opportunity'
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log(`✅ Generated embedding for opportunity ${opportunityId}`);
+    
+    return { success: true, ...result };
+
+  } catch (error) {
+    console.error('❌ Error generating opportunity embedding:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Ensure student has an embedding (generate if missing)
+ */
+export async function ensureStudentEmbedding(studentId) {
+  try {
+    // Check if embedding exists
+    const { data: student, error } = await supabase
+      .from('students')
+      .select('id, embedding')
+      .eq('id', studentId)
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to check student: ${error.message}`);
+    }
+
+    if (student.embedding) {
+      console.log(`✅ Student ${studentId} already has embedding`);
+      return { success: true, existed: true };
+    }
+
+    // Generate embedding
+    return await generateStudentEmbedding(studentId);
+
+  } catch (error) {
+    console.error('❌ Error ensuring student embedding:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get embedding statistics
+ */
+export async function getEmbeddingStats() {
+  try {
+    const { data, error } = await supabase.rpc('get_embedding_stats');
+    
+    if (error) {
+      throw new Error(`Failed to get stats: ${error.message}`);
+    }
+
+    return { success: true, stats: data };
+
+  } catch (error) {
+    console.error('❌ Error getting embedding stats:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Process embedding queue (for admin/background use)
+ */
+export async function processEmbeddingQueue(batchSize = 10) {
+  try {
+    // Get batch from queue
+    const { data: batch, error: queueError } = await supabase
+      .rpc('get_embedding_queue_batch', { batch_size: batchSize });
+
+    if (queueError) {
+      throw new Error(`Failed to get queue batch: ${queueError.message}`);
+    }
+
+    if (!batch || batch.length === 0) {
+      return { success: true, processed: 0, message: 'Queue is empty' };
+    }
+
+    const results = [];
+
+    for (const item of batch) {
+      try {
+        let result;
         
-        if (!embeddings || !Array.isArray(embeddings)) {
-          throw new Error('Invalid batch embedding response format');
+        if (item.table_name === 'students') {
+          result = await generateStudentEmbedding(item.record_id);
+        } else if (item.table_name === 'opportunities') {
+          result = await generateOpportunityEmbedding(item.record_id);
+        } else {
+          result = { success: false, error: 'Unknown table' };
         }
-        
-        return embeddings.map(e => {
-          if (!e?.values || !Array.isArray(e.values)) {
-            throw new Error('Invalid embedding in batch response');
-          }
-          return e.values;
+
+        // Mark as completed
+        await supabase.rpc('complete_embedding_queue_item', {
+          queue_id: item.id,
+          success: result.success,
+          error_msg: result.error || null
         });
-      }
 
-      const errorData = await response.json().catch(() => ({}));
-      
-      if (isRateLimitError(response, errorData) && attempt < MAX_RETRIES) {
-        console.warn(`Batch embedding rate limited, retrying in ${backoffMs}ms...`);
-        await sleep(backoffMs);
-        backoffMs *= BACKOFF_MULTIPLIER;
-        continue;
-      }
+        results.push({ id: item.record_id, ...result });
 
-      lastError = new Error(errorData?.error?.message || `Batch embedding API error: ${response.status}`);
-    } catch (error) {
-      lastError = error;
-      if (attempt < MAX_RETRIES) {
-        await sleep(backoffMs);
-        backoffMs *= BACKOFF_MULTIPLIER;
+      } catch (itemError) {
+        await supabase.rpc('complete_embedding_queue_item', {
+          queue_id: item.id,
+          success: false,
+          error_msg: itemError.message
+        });
+        results.push({ id: item.record_id, success: false, error: itemError.message });
       }
     }
-  }
 
-  throw lastError || new Error('Failed to generate batch embeddings after all retries');
-};
+    const successCount = results.filter(r => r.success).length;
+    
+    return {
+      success: true,
+      processed: batch.length,
+      succeeded: successCount,
+      failed: batch.length - successCount,
+      results
+    };
+
+  } catch (error) {
+    console.error('❌ Error processing embedding queue:', error);
+    return { success: false, error: error.message };
+  }
+}
 
 /**
- * Calculate cosine similarity between two embedding vectors
- * 
- * @param {number[]} embedding1 - First embedding vector
- * @param {number[]} embedding2 - Second embedding vector
- * @returns {number} - Cosine similarity score between -1 and 1
+ * Backfill all missing embeddings
  */
-export const cosineSimilarity = (embedding1, embedding2) => {
-  if (!Array.isArray(embedding1) || !Array.isArray(embedding2)) {
-    throw new Error('Both embeddings must be arrays');
+export async function backfillMissingEmbeddings(table = 'students', limit = 50) {
+  try {
+    // Get records without embeddings
+    const { data: records, error: fetchError } = await supabase
+      .from(table)
+      .select('id')
+      .is('embedding', null)
+      .limit(limit);
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch records: ${fetchError.message}`);
+    }
+
+    if (!records || records.length === 0) {
+      return { success: true, processed: 0, message: `No ${table} need embeddings` };
+    }
+
+    const results = [];
+
+    for (const record of records) {
+      let result;
+      
+      if (table === 'students') {
+        result = await generateStudentEmbedding(record.id);
+      } else if (table === 'opportunities') {
+        result = await generateOpportunityEmbedding(record.id);
+      } else {
+        result = { success: false, error: 'Unknown table' };
+      }
+
+      results.push({ id: record.id, ...result });
+      
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    
+    return {
+      success: true,
+      table,
+      processed: records.length,
+      succeeded: successCount,
+      failed: records.length - successCount,
+      results
+    };
+
+  } catch (error) {
+    console.error('❌ Error backfilling embeddings:', error);
+    return { success: false, error: error.message };
   }
-  
-  if (embedding1.length !== embedding2.length) {
-    throw new Error(`Embedding dimensions must match: ${embedding1.length} vs ${embedding2.length}`);
-  }
-
-  let dotProduct = 0;
-  let norm1 = 0;
-  let norm2 = 0;
-
-  for (let i = 0; i < embedding1.length; i++) {
-    dotProduct += embedding1[i] * embedding2[i];
-    norm1 += embedding1[i] * embedding1[i];
-    norm2 += embedding2[i] * embedding2[i];
-  }
-
-  norm1 = Math.sqrt(norm1);
-  norm2 = Math.sqrt(norm2);
-
-  if (norm1 === 0 || norm2 === 0) {
-    return 0;
-  }
-
-  return dotProduct / (norm1 * norm2);
-};
+}
 
 export default {
-  generateEmbedding,
-  generateBatchEmbeddings,
-  cosineSimilarity,
-  isEmbeddingConfigured,
-  EMBEDDING_DIMENSION
+  generateStudentEmbedding,
+  generateOpportunityEmbedding,
+  ensureStudentEmbedding,
+  getEmbeddingStats,
+  processEmbeddingQueue,
+  backfillMissingEmbeddings,
+  buildStudentEmbeddingText,
+  buildOpportunityEmbeddingText
 };
+
+
+/**
+ * Regenerate embedding for a student (debounced)
+ * Call this after profile updates to refresh the embedding
+ */
+export async function regenerateStudentEmbedding(studentId) {
+  if (!studentId) {
+    console.warn('⚠️ No studentId provided for embedding regeneration');
+    return { success: false, error: 'No studentId' };
+  }
+
+  // Debounce: prevent multiple regenerations within 5 seconds
+  const lastRegen = regenerationDebounce.get(studentId);
+  if (lastRegen && Date.now() - lastRegen < DEBOUNCE_MS) {
+    console.log('⏳ Embedding regeneration debounced for', studentId);
+    return { success: true, debounced: true };
+  }
+  regenerationDebounce.set(studentId, Date.now());
+
+  console.log('🔄 Regenerating embedding for student:', studentId);
+
+  try {
+    // First, clear the existing embedding to trigger regeneration
+    const { error: clearError } = await supabase
+      .from('students')
+      .update({ embedding: null })
+      .eq('id', studentId);
+
+    if (clearError) {
+      console.error('❌ Failed to clear embedding:', clearError);
+    }
+
+    // Generate new embedding
+    const result = await generateStudentEmbedding(studentId);
+    
+    if (result.success) {
+      console.log('✅ Embedding regenerated successfully for', studentId);
+    } else {
+      console.warn('⚠️ Embedding regeneration failed:', result.error);
+    }
+
+    return result;
+
+  } catch (error) {
+    console.error('❌ Error regenerating embedding:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Schedule embedding regeneration (non-blocking)
+ * Use this for fire-and-forget embedding updates
+ */
+export function scheduleEmbeddingRegeneration(studentId) {
+  if (!studentId) return;
+
+  // Run in background without blocking
+  setTimeout(() => {
+    regenerateStudentEmbedding(studentId).catch(err => {
+      console.error('Background embedding regeneration failed:', err);
+    });
+  }, 1000); // 1 second delay to let DB updates complete
+}

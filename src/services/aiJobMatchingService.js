@@ -1,7 +1,8 @@
 /**
  * AI Job Matching Service
- * Uses Claude AI to match student profiles with job opportunities
+ * Uses vector embeddings and cosine similarity to match student profiles with job opportunities
  */
+
 
 // Cache for AI responses (simple in-memory cache)
 const matchCache = new Map();
@@ -111,6 +112,14 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     if (!studentIdForApi) {
       console.warn('⚠️ No studentId found in profile, using fallback matching');
       throw new Error('studentId is required');
+    }
+
+    // Ensure student has an embedding before calling the API
+    console.log('🔄 Ensuring student embedding exists...');
+    const embeddingResult = await ensureStudentEmbedding(studentIdForApi);
+    if (!embeddingResult.success && !embeddingResult.existed) {
+      console.warn('⚠️ Could not ensure student embedding:', embeddingResult.error);
+      // Continue anyway - the backend will use fallback
     }
 
     const response = await fetch(`${API_URL}/recommend-opportunities`, {
