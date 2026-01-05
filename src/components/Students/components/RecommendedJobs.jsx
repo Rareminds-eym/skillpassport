@@ -36,6 +36,7 @@ const RecommendedJobsContent = ({
   const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
 
   // Check localStorage for dismiss preference
   useEffect(() => {
@@ -45,12 +46,19 @@ const RecommendedJobsContent = ({
     }
   }, []);
 
-  // Fetch AI recommendations
+  // Create stable reference for studentId to prevent unnecessary re-fetches
+  const studentId = studentProfile?.id || studentProfile?.student_id;
+  const opportunitiesCount = opportunities?.length || 0;
+
+  // Fetch AI recommendations - only once when data is available
   useEffect(() => {
     const fetchRecommendations = async () => {
-      if (!studentProfile || !opportunities || opportunities.length === 0 || isDismissed) {
-        setLoading(false);
-        setShowAnimation(false);
+      // Skip if already fetched, dismissed, or missing data
+      if (hasFetched || isDismissed || !studentId || opportunitiesCount === 0) {
+        if (!studentId || opportunitiesCount === 0) {
+          setLoading(false);
+          setShowAnimation(false);
+        }
         return;
       }
 
@@ -73,18 +81,20 @@ const RecommendedJobsContent = ({
         }
 
         setRecommendations(matches);
+        setHasFetched(true); // Mark as fetched to prevent re-runs
         setLoading(false);
         setShowAnimation(false);
       } catch (err) {
         console.error('Error fetching recommendations:', err);
         setError(err.message);
+        setHasFetched(true); // Mark as fetched even on error to prevent infinite retries
         setLoading(false);
         setShowAnimation(false);
       }
     };
 
     fetchRecommendations();
-  }, [studentProfile, opportunities, isDismissed]);
+  }, [studentId, opportunitiesCount, isDismissed, hasFetched, studentProfile, opportunities]);
 
   const handleDismiss = (e) => {
     e.preventDefault();
@@ -123,6 +133,7 @@ const RecommendedJobsContent = ({
           onClick={() => {
             localStorage.removeItem('recommendations_dismissed');
             setIsDismissed(false);
+            setHasFetched(false); // Reset to allow re-fetching
             setLoading(true);
             setShowAnimation(true);
           }}
