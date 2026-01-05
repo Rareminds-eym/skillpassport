@@ -215,6 +215,25 @@ export function useFeatureGate(featureKey) {
     checkAccess();
   }, [checkAccess]);
 
+  // Re-check when activeEntitlements array reference changes (e.g., after purchase)
+  const entitlementsRef = useRef(activeEntitlements);
+  useEffect(() => {
+    // Only trigger if activeEntitlements actually changed (not just on mount)
+    if (entitlementsRef.current !== activeEntitlements && activeEntitlements !== undefined) {
+      console.log(`[useFeatureGate] activeEntitlements changed for ${featureKey}, clearing cache and re-checking`);
+      // Clear cache for this feature to force re-check
+      const cacheKey = `${userId || 'anonymous'}-${featureKey}`;
+      accessCache.delete(cacheKey);
+      checkInProgress.current = false;
+      
+      // Update ref
+      entitlementsRef.current = activeEntitlements;
+      
+      // Re-check access
+      checkAccess();
+    }
+  }, [activeEntitlements, userId, featureKey, checkAccess]);
+
   // Also re-check when userId changes from undefined to a value
   useEffect(() => {
     if (userId) {

@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight, Check, Lock, Shield, Sparkles, X, Zap } from 'lu
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
-import { useFeatureGate } from '../../hooks/useFeatureGate';
+import { clearFeatureAccessCache, useFeatureGate } from '../../hooks/useFeatureGate';
 import addOnPaymentService from '../../services/addOnPaymentService';
 import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
 
@@ -200,6 +200,7 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
   const [billing, setBilling] = useState('annual'); // Default to annual for better value
   const [error, setError] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const { refreshAccess, fetchUserEntitlements } = useSubscriptionContext();
 
   const monthly = upgradePrice?.monthly ? parseFloat(upgradePrice.monthly) : 0;
   const annual = upgradePrice?.annual ? parseFloat(upgradePrice.annual) : 0;
@@ -269,9 +270,14 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
             
             if (verifyResult.success) {
               console.log('[PurchaseModal] Payment verified and entitlement created!');
+              // Clear feature access cache to force re-check
+              clearFeatureAccessCache();
+              // Refresh entitlements in context instead of page reload
+              await Promise.all([
+                refreshAccess(),
+                fetchUserEntitlements()
+              ]);
               onClose();
-              // Reload to refresh entitlements
-              window.location.reload();
             } else {
               setError(`Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`);
               setIsVerifying(false);

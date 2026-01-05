@@ -37,7 +37,7 @@ export function UpgradePrompt({
   className = ''
 }) {
   const navigate = useNavigate();
-  const { purchaseAddOn, isPurchasing } = useSubscriptionContext();
+  const { purchaseAddOn, isPurchasing, refreshAccess, fetchUserEntitlements } = useSubscriptionContext();
   const [billingPeriod, setBillingPeriod] = useState('monthly');
   const [error, setError] = useState(null);
 
@@ -80,8 +80,14 @@ export function UpgradePrompt({
               
               if (verifyResult.success) {
                 console.log('[UpgradePrompt] Payment verified and entitlement created!');
+                // Clear feature access cache to force re-check
+                clearFeatureAccessCache();
+                // Refresh entitlements in context instead of page reload
+                await Promise.all([
+                  refreshAccess(),
+                  fetchUserEntitlements()
+                ]);
                 onClose?.();
-                window.location.reload();
               } else {
                 setError(`Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`);
               }

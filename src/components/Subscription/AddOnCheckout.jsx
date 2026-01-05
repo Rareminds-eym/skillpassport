@@ -44,7 +44,7 @@ export function AddOnCheckout({
   onSuccess,
   className = ''
 }) {
-  const { purchaseAddOn, purchaseBundle, isPurchasing } = useSubscriptionContext();
+  const { purchaseAddOn, purchaseBundle, isPurchasing, refreshAccess, fetchUserEntitlements } = useSubscriptionContext();
   
   const [billingPeriod, setBillingPeriod] = useState('monthly');
   const [discountCode, setDiscountCode] = useState('');
@@ -162,9 +162,15 @@ export function AddOnCheckout({
               
               if (verifyResult.success) {
                 console.log('[AddOnCheckout] Payment verified and entitlement created!');
+                // Clear feature access cache to force re-check
+                clearFeatureAccessCache();
+                // Refresh entitlements in context instead of page reload
+                await Promise.all([
+                  refreshAccess(),
+                  fetchUserEntitlements()
+                ]);
                 onSuccess?.();
                 onClearCart?.();
-                window.location.reload();
               } else {
                 setCheckoutError(`Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`);
               }

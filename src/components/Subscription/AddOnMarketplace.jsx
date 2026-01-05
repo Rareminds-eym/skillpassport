@@ -52,7 +52,7 @@ export function AddOnMarketplace({
     searchAddOns 
   } = useAddOnCatalog({ role });
 
-  const { purchaseAddOn, purchaseBundle, isPurchasing } = useSubscriptionContext();
+  const { purchaseAddOn, purchaseBundle, isPurchasing, refreshAccess, fetchUserEntitlements } = useSubscriptionContext();
   const [purchaseError, setPurchaseError] = useState(null);
 
   // Filter add-ons based on search and category
@@ -134,7 +134,13 @@ export function AddOnMarketplace({
           
           if (verifyResult.success) {
             console.log('[AddOnMarketplace] Payment verified and entitlement created!');
-            window.location.reload();
+            // Clear feature access cache to force re-check
+            clearFeatureAccessCache();
+            // Refresh entitlements in context instead of page reload
+            await Promise.all([
+              refreshAccess(),
+              fetchUserEntitlements()
+            ]);
           } else {
             setPurchaseError(`Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`);
           }
