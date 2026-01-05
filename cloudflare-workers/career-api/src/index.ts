@@ -390,11 +390,14 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
   // Get student profile
   const { data: student, error: studentError } = await supabase
     .from('students')
-    .select('embedding, id, name, profile')
+    .select('embedding, id, name')
     .eq('id', studentId)
     .maybeSingle();
 
+  console.log('Student query result:', { student: student ? { id: student.id, name: student.name, hasEmbedding: !!student.embedding } : null, error: studentError });
+
   if (studentError || !student) {
+    console.error('Student not found:', { studentId, error: studentError });
     return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_profile');
   }
 
