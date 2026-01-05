@@ -263,7 +263,10 @@
 //   );
 // }
 import React, { useState, useEffect, useRef } from "react";
+import {MagnifyingGlassIcon,BookOpenIcon,UsersIcon} from "@heroicons/react/24/outline";
 import { libraryService, LibraryBook, LibraryBookIssue, LibraryStats, OverdueBook, LibrarySetting } from "../../../services/libraryService";
+import { supabase } from "../../../lib/supabaseClient";
+import toast from 'react-hot-toast';
 
 export default function LibraryModule() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -335,6 +338,7 @@ export default function LibraryModule() {
   const [studentSearchResults, setStudentSearchResults] = useState<any[]>([]);
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
   const studentSearchRef = useRef<HTMLDivElement>(null);
 
   // Return book form state
@@ -414,10 +418,13 @@ export default function LibraryModule() {
       ]);
 
       console.log('Initial data loading completed');
+      //toast.success('Library data loaded successfully!', { duration: 2000 });
 
     } catch (err) {
       console.error('Error loading library data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load library data');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load library data';
+      setError(errorMessage);
+      toast.error(`Failed to load library data: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -452,7 +459,9 @@ export default function LibraryModule() {
       
     } catch (err) {
       console.error('Error loading books:', err);
-      setError('Failed to load books');
+      const errorMessage = 'Failed to load books';
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -464,6 +473,7 @@ export default function LibraryModule() {
       setIssuedBooks(issues);
     } catch (err) {
       console.error('Error loading issued books:', err);
+      toast.error('Failed to load issued books');
     }
   };
 
@@ -475,6 +485,7 @@ export default function LibraryModule() {
       setLibraryStats(stats);
     } catch (err) {
       console.error('Error loading library stats:', err);
+      toast.error('Failed to load library statistics');
     }
   };
 
@@ -486,27 +497,171 @@ export default function LibraryModule() {
       setOverdueBooks(overdue);
     } catch (err) {
       console.error('Error loading overdue books:', err);
+      toast.error('Failed to load overdue books');
     }
   };
 
-  // Student search functionality
+  // Student search functionality - using the EXACT same logic as Admissions & Data
   const searchStudents = async (searchTerm: string) => {
     if (searchTerm.length < 2) {
       setStudentSearchResults([]);
       setShowStudentDropdown(false);
+      setSearchLoading(false);
       return;
     }
 
     try {
-      const students = await libraryService.searchStudents(searchTerm);
+      setSearchLoading(true);
+
+      //testing 1
+      //console.log('[Library] Searching students with term:', searchTerm);
+      
+      // Get current user's institution ID - EXACT same logic as Admissions & Data
+      let schoolId: string | null = null;
+      let collegeId: string | null = null;
+      let userRole: string | null = null;
+      let userId: string | null = null;
+      let universityId: string | null = null;
+      
+      // First, check if user is logged in via AuthContext (for school/college admins)
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          console.log('📦 Found user in localStorage:', userData.email, 'role:', userData.role);
+          userRole = userData.role;
+          
+          if (userData.role === 'school_admin' && userData.schoolId) {
+            schoolId = userData.schoolId;
+            console.log('✅ School admin detected, using schoolId from localStorage:', schoolId);
+          } else if (userData.role === 'college_admin' && userData.collegeId) {
+            collegeId = userData.collegeId;
+            console.log('✅ College admin detected, using collegeId from localStorage:', collegeId);
+          } else if (userData.role === 'university_admin' && (userData.universityId || userData.organizationId)) {
+            universityId = userData.universityId || userData.organizationId;
+            console.log('✅ University admin detected, using universityId from localStorage:', universityId);
+          }
+        } catch (e) {
+          console.error('Error parsing stored user:', e);
+        }
+      }
+      
+      // If not found in localStorage, try Supabase Auth
+      if (!schoolId && !collegeId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          console.log('🔍 Checking Supabase auth user:', user.email);
+          userId = user.id;
+          
+          // Get user role from users table
+          const { data: userRecord } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+          
+          userRole = userRecord?.role || null;
+          console.log('👤 User role from database:', userRole);
+          
+          // Check for college admin
+          if (userRole === 'college_admin') {
+            // Find college by matching deanEmail (case-insensitive)
+            const { data: college } = await supabase
+              .from('colleges')
+              .select('id, name, deanEmail')
+              .ilike('deanEmail', user.email || '')
+              .single();
+            
+            if (college?.id) {
+              collegeId = college.id;
+              console.log('✅ Found college_id for college admin:', collegeId, 'College:', college.name, 'DeanEmail:', college.deanEmail);
+            } else {
+              console.warn('⚠️ College admin but no matching college found for email:', user.email);
+            }
+          }
+          // Check for school admin/educator
+          else {
+            // Check school_educators table
+            const { data: educator } = await supabase
+              .from('school_educators')
+              .select('school_id')
+              .eq('user_id', user.id)
+              .single();
+            
+            if (educator?.school_id) {
+              schoolId = educator.school_id;
+              console.log('✅ Found school_id in school_educators:', schoolId);
+            } else {
+              // Check schools table by email
+              const { data: school } = await supabase
+                .from('schools')
+                .select('id')
+                .eq('email', user.email)
+                .single();
+              
+              schoolId = school?.id || null;
+              if (schoolId) {
+                console.log('✅ Found school_id in schools table:', schoolId);
+              }
+            }
+          }
+        }
+      }
+      
+      // Build the query - EXACT same as Admissions & Data
+      let query = supabase
+        .from('students')
+        .select('id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester')
+        .eq('is_deleted', false)
+        .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%`)
+        .order('name')
+        .limit(10);
+      
+      // Filter by school_id, college_id, or universityId based on user role
+      if (schoolId) {
+        console.log('✅ Filtering students by school_id:', schoolId);
+        query = query.eq('school_id', schoolId);
+      } else if (collegeId) {
+        console.log('✅ Filtering students by college_id:', collegeId);
+        query = query.eq('college_id', collegeId);
+      } else if (universityId) {
+        console.log('✅ Filtering students by universityId:', universityId);
+        query = query.eq('universityId', universityId);
+      } else {
+        console.warn('⚠️ No school_id, college_id, or universityId found - User role:', userRole);
+      }
+      
+      const { data: students, error } = await query;
+      
+      if (error) {
+        console.error('Supabase query error:', error);
+        throw error;
+      }
+      
+      console.log(`✅ [Library] Found ${students?.length || 0} students matching "${searchTerm}"`);
       setStudentSearchResults(students || []);
       setShowStudentDropdown(students && students.length > 0);
+      
     } catch (err) {
       console.error('Error searching students:', err);
       setStudentSearchResults([]);
       setShowStudentDropdown(false);
+    } finally {
+      setSearchLoading(false);
     }
   };
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (studentSearch.length >= 2) {
+        searchStudents(studentSearch);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [studentSearch]);
 
   const selectStudent = async (student: any) => {
     setSelectedStudent(student);
@@ -516,7 +671,7 @@ export default function LibraryModule() {
       studentId: student.id,
       studentName: student.name,
       rollNumber: student.roll_number || "",
-      enrollmentNumber: student.enrollment_number || "",
+      enrollmentNumber: student.enrollmentNumber || "",
       admissionNumber: student.admission_number || "",
       grade: student.grade || "",
       section: student.section || "",
@@ -525,16 +680,22 @@ export default function LibraryModule() {
     });
     setShowStudentDropdown(false);
 
+    toast.success(`Selected student: ${student.name}`, { duration: 2000 });
+
     // Check student's current issued books count
     try {
       const currentCount = await libraryService.getStudentIssuedBooksCount(student.id);
       if (currentCount >= LIBRARY_RULES.maxBooksPerStudent) {
-        alert(`Warning: ${student.name} has already issued ${currentCount} books (maximum: ${LIBRARY_RULES.maxBooksPerStudent}). Cannot issue more books.`);
+        toast.error(`${student.name} has already issued ${currentCount} books (maximum: ${LIBRARY_RULES.maxBooksPerStudent}). Cannot issue more books.`);
       } else if (currentCount > 0) {
-        alert(`Info: ${student.name} currently has ${currentCount} book(s) issued.`);
+        toast.success(`${student.name} currently has ${currentCount} book(s) issued.`, { 
+          icon: 'ℹ️',
+          duration: 3000 
+        });
       }
     } catch (err) {
       console.error('Error checking student issued books:', err);
+      toast.error('Failed to check student\'s current book count');
     }
   };
 
@@ -555,6 +716,10 @@ export default function LibraryModule() {
     });
     setStudentSearchResults([]);
     setShowStudentDropdown(false);
+    toast.success('Student selection cleared', { 
+      icon: 'ℹ️',
+      duration: 1500 
+    });
   };
 
   const loadBorrowHistory = async () => {
@@ -565,6 +730,7 @@ export default function LibraryModule() {
       setBorrowHistory(issues);
     } catch (err) {
       console.error('Error loading borrow history:', err);
+      toast.error('Failed to load borrow history');
     }
   };
 
@@ -598,17 +764,21 @@ export default function LibraryModule() {
 
   const addBook = async () => {
     if (!newBook.title || !newBook.author || !newBook.isbn || newBook.total_copies < 1) {
-      alert("Please fill all required fields correctly.");
+      toast.error("Please fill all required fields correctly.");
       return;
     }
 
     try {
       setLoading(true);
+      const loadingToast = toast.loading('Adding book to library...');
+      
       await libraryService.addBook({
         ...newBook,
         available_copies: newBook.total_copies,
         status: 'available' as const,
       });
+      
+      toast.dismiss(loadingToast);
       
       setNewBook({ 
         title: "", 
@@ -622,7 +792,7 @@ export default function LibraryModule() {
         location_shelf: ""
       });
       
-      alert("Book added successfully!");
+      toast.success("Book added successfully!", { duration: 3000 });
       
       // Clear any search filters and reset to first page to show all books
       setBookSearch("");
@@ -637,7 +807,7 @@ export default function LibraryModule() {
       setActiveTab("details");
     } catch (err) {
       console.error('Error adding book:', err);
-      alert(err instanceof Error ? err.message : 'Failed to add book');
+      toast.error(err instanceof Error ? err.message : 'Failed to add book');
     } finally {
       setLoading(false);
     }
@@ -645,12 +815,13 @@ export default function LibraryModule() {
 
   const issueBook = async () => {
     if (!issueForm.studentId || !issueForm.studentName || !issueForm.bookId) {
-      alert("Please select a student and book.");
+      toast.error("Please select a student and book.");
       return;
     }
 
     try {
       setLoading(true);
+      const loadingToast = toast.loading(`Issuing book to ${issueForm.studentName}...`);
 
       // Use the most appropriate identifier for the student
       const studentIdentifier = issueForm.rollNumber || issueForm.enrollmentNumber || issueForm.admissionNumber || issueForm.studentId;
@@ -665,6 +836,8 @@ export default function LibraryModule() {
         class: classInfo,
         academic_year: academicYear,
       });
+
+      toast.dismiss(loadingToast);
 
       // Reset form
       setIssueForm({ 
@@ -682,7 +855,7 @@ export default function LibraryModule() {
       });
       clearStudentSelection();
       
-      alert(`Book issued successfully to ${issueForm.studentName}!`);
+      toast.success(`Book issued successfully to ${issueForm.studentName}!`, { duration: 4000 });
       
       // Reload data
       await Promise.all([
@@ -693,7 +866,7 @@ export default function LibraryModule() {
       
     } catch (err) {
       console.error('Error issuing book:', err);
-      alert(err instanceof Error ? err.message : 'Failed to issue book');
+      toast.error(err instanceof Error ? err.message : 'Failed to issue book');
     } finally {
       setLoading(false);
     }
@@ -701,21 +874,26 @@ export default function LibraryModule() {
 
   const searchIssuedBook = async () => {
     if (!returnForm.bookId && !returnForm.studentId) {
-      alert("Please enter at least Book ID or Student ID to search.");
+      toast.error("Please enter at least Book ID or Student ID to search.");
       return;
     }
 
     try {
       setLoading(true);
+      const loadingToast = toast.loading('Searching for issued book...');
+      
       const issued = await libraryService.searchIssuedBook(
         returnForm.bookId || undefined,
         returnForm.studentId || undefined
       );
 
+      toast.dismiss(loadingToast);
+
       if (issued) {
         const today = new Date().toISOString().split('T')[0];
         const { dueDate, overdueDays, fine } = await calculateFine(issued.issue_date, today);
         
+
         setReturnForm({
           ...returnForm,
           bookId: issued.book_id,
@@ -730,12 +908,15 @@ export default function LibraryModule() {
         });
         
         if (overdueDays > 0) {
-          alert(`Book found! This book is ${overdueDays} days overdue. Current fine: ₹${fine}`);
+          toast.error(`Book found! This book is ${overdueDays} days overdue. Current fine: ₹${fine}`, {
+            icon: '⚠️',
+            duration: 5000
+          });
         } else {
-          alert("Book found! No overdue charges.");
+          toast.success("Book found! No overdue charges.");
         }
       } else {
-        alert("No matching issued book found. Please check the Book ID and Student ID.");
+        toast.error("No matching issued book found. Please check the Book ID and Student ID.");
         setReturnForm({
           bookId: returnForm.bookId,
           studentId: returnForm.studentId,
@@ -750,7 +931,7 @@ export default function LibraryModule() {
       }
     } catch (err) {
       console.error('Error searching issued book:', err);
-      alert(err instanceof Error ? err.message : 'Failed to search book');
+      toast.error(err instanceof Error ? err.message : 'Failed to search book');
     } finally {
       setLoading(false);
     }
@@ -758,17 +939,19 @@ export default function LibraryModule() {
 
   const returnBook = async () => {
     if (!returnForm.bookId || !returnForm.studentId || !returnForm.bookTitle) {
-      alert("Please search for the issued book first before returning.");
+      toast.error("Please search for the issued book first before returning.");
       return;
     }
 
     try {
       setLoading(true);
+      const loadingToast = toast.loading(`Processing return for ${returnForm.bookTitle}...`);
       
       // Find the issue record
       const issued = await libraryService.searchIssuedBook(returnForm.bookId, returnForm.studentId);
       if (!issued) {
-        alert("No matching issued book found. Please search again.");
+        toast.dismiss(loadingToast);
+        toast.error("No matching issued book found. Please search again.");
         return;
       }
 
@@ -778,11 +961,15 @@ export default function LibraryModule() {
 
       const { overdueDays, fine } = await calculateFine(issued.issue_date, returnForm.returnDate);
 
+      toast.dismiss(loadingToast);
+
       const fineMessage = fine > 0 
         ? `Overdue: ${overdueDays} days | Fine: ₹${fine} (@ ₹${LIBRARY_RULES.finePerDay}/day)` 
         : "No fine. Returned on time.";
       
-      alert(`Book returned successfully!\n\nStudent: ${returnForm.studentName}\nBook: ${returnForm.bookTitle}\n${fineMessage}`);
+      toast.success(`Book returned successfully!\n\nStudent: ${returnForm.studentName}\nBook: ${returnForm.bookTitle}\n${fineMessage}`, {
+        duration: 6000,
+      });
       
       setReturnForm({ 
         bookId: "", 
@@ -806,7 +993,7 @@ export default function LibraryModule() {
       
     } catch (err) {
       console.error('Error returning book:', err);
-      alert(err instanceof Error ? err.message : 'Failed to return book');
+      toast.error(err instanceof Error ? err.message : 'Failed to return book');
     } finally {
       setLoading(false);
     }
@@ -839,9 +1026,11 @@ export default function LibraryModule() {
               setActiveTab(tab);
               // Load data when switching tabs
               if (tab === "history" && borrowHistory.length === 0) {
-                loadBorrowHistory();
+                toast.loading('Loading borrow history...', { id: 'load-history' });
+                loadBorrowHistory().finally(() => toast.dismiss('load-history'));
               } else if (tab === "overdue" && overdueBooks.length === 0) {
-                loadOverdueBooks();
+                toast.loading('Loading overdue books...', { id: 'load-overdue' });
+                loadOverdueBooks().finally(() => toast.dismiss('load-overdue'));
               }
             }}
             className={`px-4 py-2 rounded-lg ${
@@ -944,7 +1133,7 @@ export default function LibraryModule() {
                           : 'bg-blue-600 text-white hover:bg-blue-700'
                       }`}
                     >
-                      ← Previous
+                      ←
                     </button>
                     
                     <div className="flex gap-1">
@@ -1125,7 +1314,9 @@ export default function LibraryModule() {
                       }, 300);
                     }}
                   />
-                  <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
+                 <MagnifyingGlassIcon
+  className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+/>
                 </div>
               </div>
               
@@ -1276,7 +1467,7 @@ export default function LibraryModule() {
                           : 'bg-blue-600 text-white hover:bg-blue-700'
                       }`}
                     >
-                      ← Previous
+                      ←
                     </button>
                     
                     <div className="flex gap-1">
@@ -1324,7 +1515,7 @@ export default function LibraryModule() {
                           : 'bg-blue-600 text-white hover:bg-blue-700'
                       }`}
                     >
-                      Next →
+                      →
                     </button>
                   </div>
                 )}
@@ -1340,57 +1531,81 @@ export default function LibraryModule() {
           <h2 className="text-xl font-bold mb-6">Issue Book</h2>
           
           {/* Library Rules Info */}
-          <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
-            <h3 className="font-bold text-blue-900 mb-2">📚 Library Rules (Automatic)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 relative">
+  <div className="flex items-center justify-between mb-2">
+    <h3 className="font-bold text-blue-900">
+      Library Rules
+    </h3>
+
+    <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+      <BookOpenIcon className="h-5 w-5 text-white" />
+    </div>
+  </div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
               <div>
                 <span className="font-medium">Max Books per Student:</span> {LIBRARY_RULES.maxBooksPerStudent}
               </div>
               <div>
-                <span className="font-medium">Loan Period:</span> {LIBRARY_RULES.defaultLoanPeriodDays} days (Auto-calculated)
+                <span className="font-medium">Loan Period:</span> {LIBRARY_RULES.defaultLoanPeriodDays} days
               </div>
               <div>
                 <span className="font-medium">Overdue Fine:</span> ₹{LIBRARY_RULES.finePerDay}/day
               </div>
             </div>
-          </div>
+</div>
+
           
           <div className="bg-white p-6 rounded-lg border">
             <div className="grid grid-cols-1 gap-6">
               {/* Student Search Section */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <h3 className="font-bold text-blue-900 mb-3">👤 Select Student</h3>
-                
+                <h3 className="flex items-center gap-3 font-bold text-blue-900 mb-3">
+  <div className="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center">
+    <UsersIcon className="w-6 h-6 text-blue-600" />
+  </div>
+  Select Student
+</h3>
                 <div className="relative" ref={studentSearchRef}>
                   <label className="block mb-2 font-medium">Search Student</label>
-                  <input 
-                    className="w-full p-3 border rounded-lg"
-                    placeholder="Type student name, roll number, enrollment number, or email..."
-                    value={studentSearch}
-                    onChange={(e) => {
-                      setStudentSearch(e.target.value);
-                      searchStudents(e.target.value);
-                    }}
-                    onFocus={() => {
-                      if (studentSearchResults.length > 0) {
-                        setShowStudentDropdown(true);
-                      }
-                    }}
-                  />
+                  <div className="relative">
+                    <input 
+                      className="w-full p-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Type student name, roll number, enrollment number, or email..."
+                      value={studentSearch}
+                      onChange={(e) => {
+                        setStudentSearch(e.target.value);
+                      }}
+                      onFocus={() => {
+                        if (studentSearchResults.length > 0 && studentSearch.length >= 2) {
+                          setShowStudentDropdown(true);
+                        }
+                      }}
+                    />
+                    {/* Search Icon or Loading Spinner */}
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      {searchLoading ? (
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                      ) : (
+                        <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
                   
                   {/* Student Search Dropdown */}
                   {showStudentDropdown && studentSearchResults.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
                       {studentSearchResults.map((student) => (
                         <div
                           key={student.id}
-                          className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                          className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
                           onClick={() => selectStudent(student)}
                         >
                           <div className="font-semibold text-gray-800">{student.name}</div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-gray-600 mt-1">
                             {student.roll_number && `Roll: ${student.roll_number}`}
-                            {student.enrollment_number && ` | Enrollment: ${student.enrollment_number}`}
+                            {student.enrollmentNumber && ` | Enrollment: ${student.enrollmentNumber}`}
                             {student.admission_number && ` | Admission: ${student.admission_number}`}
                           </div>
                           <div className="text-sm text-gray-600">
@@ -1400,35 +1615,61 @@ export default function LibraryModule() {
                             {student.semester && ` | Semester: ${student.semester}`}
                           </div>
                           {student.email && (
-                            <div className="text-xs text-gray-500">{student.email}</div>
+                            <div className="text-xs text-gray-500 mt-1">{student.email}</div>
                           )}
                         </div>
                       ))}
                     </div>
                   )}
                   
+                  {/* Loading State */}
+                  {searchLoading && studentSearch.length >= 2 && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3">
+                      <div className="flex items-center justify-center text-sm text-gray-500">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                        Searching students...
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* No Results Message */}
+                  {!searchLoading && studentSearch.length >= 2 && studentSearchResults.length === 0 && !showStudentDropdown && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3">
+                      <div className="text-sm text-gray-500 text-center">
+                        No students found matching "{studentSearch}"
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Selected Student Display */}
                   {selectedStudent && (
-                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="mt-3 p-4 bg-green-50 border border-green-200 rounded-lg">
                       <div className="flex justify-between items-start">
-                        <div>
-                          <div className="font-semibold text-green-800">✓ Selected: {selectedStudent.name}</div>
-                          <div className="text-sm text-green-700">
+                        <div className="flex-1">
+                          <div className="font-semibold text-green-800 text-lg">✓ Selected: {selectedStudent.name}</div>
+                          <div className="text-sm text-green-700 mt-1">
                             {selectedStudent.roll_number && `Roll: ${selectedStudent.roll_number}`}
-                            {selectedStudent.enrollment_number && ` | Enrollment: ${selectedStudent.enrollment_number}`}
+                            {selectedStudent.enrollmentNumber && ` | Enrollment: ${selectedStudent.enrollmentNumber}`}
+                            {selectedStudent.admission_number && ` | Admission: ${selectedStudent.admission_number}`}
                           </div>
                           <div className="text-sm text-green-700">
                             {selectedStudent.grade && `Grade: ${selectedStudent.grade}`}
                             {selectedStudent.section && ` Section: ${selectedStudent.section}`}
                             {selectedStudent.course_name && ` | Course: ${selectedStudent.course_name}`}
+                            {selectedStudent.semester && ` | Semester: ${selectedStudent.semester}`}
                           </div>
+                          {selectedStudent.email && (
+                            <div className="text-xs text-green-600 mt-1">{selectedStudent.email}</div>
+                          )}
                         </div>
                         <button
                           onClick={clearStudentSelection}
-                          className="text-red-600 hover:text-red-800 font-bold"
+                          className="ml-3 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-full p-1 transition-colors"
                           title="Clear selection"
                         >
-                          ✕
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
                         </button>
                       </div>
                     </div>
@@ -1634,13 +1875,19 @@ export default function LibraryModule() {
               onClick={searchIssuedBook}
               className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
             >
-              🔍 Search by ID
+               Search by ID
             </button>
           </div>
 
           {/* Currently Issued Books Grid */}
           <div className="bg-white p-6 rounded-lg border">
-            <h3 className="font-bold mb-4 text-lg">📚 Currently Issued Books</h3>
+           <h3 className="font-bold mb-4 text-lg flex items-center gap-3">
+  <div className="w-10 h-10 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
+    <BookOpenIcon className="h-5 w-5 text-blue-500" />
+  </div>
+  <span>Currently Issued Books</span>
+</h3>
+
             
             {(() => {
               const filteredIssued = issuedBooks.filter(ib => {
@@ -1768,7 +2015,7 @@ export default function LibraryModule() {
                             : 'bg-blue-600 text-white hover:bg-blue-700'
                         }`}
                       >
-                        ← Previous
+                        ←
                       </button>
                       
                       <div className="flex gap-1">
