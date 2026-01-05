@@ -65,6 +65,46 @@ function buildStudentEmbeddingText(student) {
     if (certNames) parts.push(`Certifications: ${certNames}`);
   }
 
+  // Course Enrollments (completed and in-progress courses)
+  if (student.courseEnrollments?.length > 0) {
+    const completedCourses = student.courseEnrollments
+      .filter(c => c.status === 'completed')
+      .map(c => c.course_title)
+      .filter(Boolean);
+    const inProgressCourses = student.courseEnrollments
+      .filter(c => c.status === 'in_progress' || c.status === 'active')
+      .map(c => c.course_title)
+      .filter(Boolean);
+    
+    if (completedCourses.length > 0) {
+      parts.push(`Completed Courses: ${completedCourses.join(', ')}`);
+    }
+    if (inProgressCourses.length > 0) {
+      parts.push(`Courses In Progress: ${inProgressCourses.join(', ')}`);
+    }
+
+    // Extract skills from completed courses
+    const acquiredSkills = student.courseEnrollments
+      .filter(c => c.status === 'completed' && c.skills_acquired?.length > 0)
+      .flatMap(c => c.skills_acquired)
+      .filter(Boolean);
+    if (acquiredSkills.length > 0) {
+      parts.push(`Skills from Courses: ${acquiredSkills.join(', ')}`);
+    }
+  }
+
+  // Trainings (external and internal courses)
+  if (student.trainings?.length > 0) {
+    const completedTrainings = student.trainings
+      .filter(t => t.status === 'completed')
+      .map(t => `${t.title}${t.organization ? ` (${t.organization})` : ''}`)
+      .filter(Boolean);
+    
+    if (completedTrainings.length > 0) {
+      parts.push(`Completed Trainings: ${completedTrainings.join(', ')}`);
+    }
+  }
+
   // Hobbies and interests
   if (student.hobbies?.length > 0) {
     parts.push(`Hobbies: ${student.hobbies.join(', ')}`);
@@ -145,6 +185,23 @@ export async function generateStudentEmbedding(studentId) {
     if (fetchError || !student) {
       throw new Error(`Student not found: ${fetchError?.message || 'Not found'}`);
     }
+
+    // Fetch course enrollments separately (completed and in-progress courses)
+    const { data: courseEnrollments } = await supabase
+      .from('course_enrollments')
+      .select('course_title, status, progress, skills_acquired')
+      .eq('student_id', studentId)
+      .in('status', ['completed', 'in_progress', 'active']);
+
+    // Fetch trainings separately
+    const { data: trainings } = await supabase
+      .from('trainings')
+      .select('title, organization, status, description')
+      .eq('student_id', studentId);
+
+    // Add course enrollments and trainings to student object
+    student.courseEnrollments = courseEnrollments || [];
+    student.trainings = trainings || [];
 
     const text = buildStudentEmbeddingText(student);
     
