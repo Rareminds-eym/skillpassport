@@ -30,6 +30,26 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
   },
   
   // ═══════════════════════════════════════════════════════════════════════════
+  // AFTER 10TH STREAMS (11th/12th Class - PCMB, PCMS, PCM, PCB, Commerce, Arts)
+  // ═══════════════════════════════════════════════════════════════════════════
+  'science_pcmb': {
+    name: 'Science (PCMB)',
+    topics: ['Physics fundamentals', 'Chemistry basics', 'Mathematics', 'Biology concepts', 'Scientific method', 'Laboratory techniques']
+  },
+  'science_pcms': {
+    name: 'Science (PCMS)',
+    topics: ['Physics fundamentals', 'Chemistry basics', 'Mathematics', 'Computer Science basics', 'Programming logic', 'Scientific method']
+  },
+  'science_pcm': {
+    name: 'Science (PCM)',
+    topics: ['Physics fundamentals', 'Chemistry basics', 'Mathematics', 'Engineering concepts', 'Problem solving', 'Scientific method']
+  },
+  'science_pcb': {
+    name: 'Science (PCB)',
+    topics: ['Physics fundamentals', 'Chemistry basics', 'Biology concepts', 'Medical sciences basics', 'Laboratory techniques', 'Scientific method']
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════════
   // B.TECH / ENGINEERING SPECIALIZATIONS (College/University)
   // ═══════════════════════════════════════════════════════════════════════════
   
@@ -886,8 +906,13 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
 /**
  * Generate Aptitude questions using AI
  * If studentId provided, saves questions for resume functionality
+ * @param {string} streamId - The stream ID (science, commerce, arts, etc.)
+ * @param {number} questionCount - Number of questions to generate (default 50)
+ * @param {string} studentId - Student ID for saving questions
+ * @param {string} attemptId - Assessment attempt ID
+ * @param {string} gradeLevel - Grade level: 'after10', 'after12', 'college'
  */
-export async function generateAptitudeQuestions(streamId, questionCount = 50, studentId = null, attemptId = null) {
+export async function generateAptitudeQuestions(streamId, questionCount = 50, studentId = null, attemptId = null, gradeLevel = null) {
   // Check for saved questions first if studentId provided
   if (studentId) {
     const saved = await getSavedQuestionsForStudent(studentId, streamId, 'aptitude');
@@ -897,7 +922,7 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
     }
   }
 
-  console.log('🎯 Generating aptitude questions for stream:', streamId);
+  console.log('🎯 Generating aptitude questions for stream:', streamId, 'gradeLevel:', gradeLevel);
 
   const apiUrl = import.meta.env.VITE_EXTERNAL_API_KEY || 'https://assessment-api.dark-mode-d021.workers.dev';
   const maxRetries = 3;
@@ -914,7 +939,8 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
           streamId,
           questionsPerCategory,
           studentId,
-          attemptId
+          attemptId,
+          gradeLevel // Pass gradeLevel to API
         })
       });
 
@@ -1012,8 +1038,8 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
     knowledge: null
   };
 
-  // Generate AI questions for after12 AND college grade levels
-  if ((gradeLevel === 'after12' || gradeLevel === 'college') && streamId) {
+  // Generate AI questions for after10, after12 AND college grade levels
+  if ((gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'college') && streamId) {
     console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, streamId, 'studentId:', studentId);
     
     // Normalize stream ID for college students
@@ -1021,7 +1047,8 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
     console.log(`📋 Normalized stream ID: ${normalizedStreamId}`);
     
     // Generate/load aptitude questions first (will use saved if available)
-    const aiAptitude = await generateAptitudeQuestions(normalizedStreamId, 50, studentId, attemptId);
+    // Pass gradeLevel so API knows to use school subjects for after10
+    const aiAptitude = await generateAptitudeQuestions(normalizedStreamId, 50, studentId, attemptId, gradeLevel);
     
     if (aiAptitude && aiAptitude.length > 0) {
       questions.aptitude = aiAptitude;
