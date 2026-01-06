@@ -4,49 +4,45 @@ import { supabase } from "../../../../lib/supabaseClient";
 import { FeeStructure, StudentFeeSummary } from "./types";
 import { useFeeStructures } from "./hooks/useFeeStructures";
 import { useFeeTracking } from "./hooks/useFeeTracking";
-import { useDepartmentBudgets } from "./hooks/useDepartmentBudgets";
-import { usePrograms } from "./hooks/usePrograms";
 import { FeeStructureTab } from "./components/FeeStructureTab";
 import { FeeStructureFormModal } from "./components/FeeStructureFormModal";
 import { FeeTrackingTab } from "./components/FeeTrackingTab";
-import { DepartmentBudgetsTab } from "./components/DepartmentBudgetsTab";
-import { ExpenditureReportsTab } from "./components/ExpenditureReportsTab";
 import { PaymentFormModal } from "./components/PaymentFormModal";
 import { StudentLedgerModal } from "./components/StudentLedgerModal";
 
 const tabs = [
-  { id: "fees", label: "Fee Structure Setup" },
+  { id: "structure", label: "Fee Structure Setup" },
   { id: "tracking", label: "Fee Tracking" },
-  { id: "budgets", label: "Department Budgets" },
-  { id: "expenditure", label: "Expenditure Reports" },
 ];
 
-const FinanceModule: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("fees");
-  const [collegeId, setCollegeId] = useState<string | null>(null);
+const SchoolFinanceModule: React.FC = () => {
+  console.log('🚀 SchoolFinanceModule component loaded');
+  const [activeTab, setActiveTab] = useState("tracking");
+  const [schoolId, setSchoolId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedStructure, setSelectedStructure] = useState<FeeStructure | null>(null);
+  
   // Fee Tracking state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isLedgerModalOpen, setIsLedgerModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentFeeSummary | null>(null);
 
-  // Fetch college ID for fee structures and programs (still needed for those hooks)
+  // Fetch school ID for school admin
   useEffect(() => {
-    const fetchCollegeId = async () => {
+    const fetchSchoolId = async () => {
       try {
-        console.log('🚀 [Finance] Fetching college ID...');
+        console.log('🚀 [School Finance] Fetching school ID...');
         
-        // First, check if user is logged in via AuthContext (for college admins)
+        // First, check if user is logged in via AuthContext (for school admins)
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           try {
             const userData = JSON.parse(storedUser);
             console.log('📦 Found user in localStorage:', userData.email, 'role:', userData.role);
             
-            if (userData.role === 'college_admin' && userData.collegeId) {
-              console.log('✅ College admin detected, using collegeId from localStorage:', userData.collegeId);
-              setCollegeId(userData.collegeId);
+            if (userData.role === 'school_admin' && userData.schoolId) {
+              console.log('✅ School admin detected, using schoolId from localStorage:', userData.schoolId);
+              setSchoolId(userData.schoolId);
               return;
             }
           } catch (e) {
@@ -59,63 +55,87 @@ const FinanceModule: React.FC = () => {
         if (user) {
           console.log('🔍 Checking Supabase auth user:', user.email);
           
-          // Check for college admin by matching deanEmail
-          const { data: college } = await supabase
-            .from('colleges')
-            .select('id, name, deanEmail')
-            .ilike('deanEmail', user.email || '')
+          // Check for school admin by matching adminEmail
+          const { data: school } = await supabase
+            .from('schools')
+            .select('id, name, adminEmail')
+            .ilike('adminEmail', user.email || '')
             .single();
           
-          if (college?.id) {
-            console.log('✅ Found college_id for college admin:', college.id, 'College:', college.name);
-            setCollegeId(college.id);
+          if (school?.id) {
+            console.log('✅ Found school_id for school admin:', school.id, 'School:', school.name);
+            setSchoolId(school.id);
             return;
           }
           
           // Fallback methods
-          const { data: createdCollege } = await supabase.from("colleges").select("id").eq("created_by", user.id).single();
-          if (createdCollege?.id) { 
-            console.log('✅ Found college via created_by:', createdCollege.id);
-            setCollegeId(createdCollege.id); 
+          const { data: createdSchool } = await supabase
+            .from("schools")
+            .select("id")
+            .eq("created_by", user.id)
+            .single();
+          
+          if (createdSchool?.id) { 
+            console.log('✅ Found school via created_by:', createdSchool.id);
+            setSchoolId(createdSchool.id); 
             return; 
           }
           
-          const { data: lecturer } = await supabase.from("college_lecturers").select("collegeId").or(`userId.eq.${user.id},user_id.eq.${user.id}`).single();
-          if (lecturer?.collegeId) { 
-            console.log('✅ Found college via lecturer:', lecturer.collegeId);
-            setCollegeId(lecturer.collegeId); 
-            return; 
-          }
-          
-          if (user.user_metadata?.college_id) {
-            console.log('✅ Found college in user metadata:', user.user_metadata.college_id);
-            setCollegeId(user.user_metadata.college_id);
+          if (user.user_metadata?.school_id) {
+            console.log('✅ Found school in user metadata:', user.user_metadata.school_id);
+            setSchoolId(user.user_metadata.school_id);
           }
         }
       } catch (error) { 
-        console.error("Error fetching college ID:", error); 
+        console.error("Error fetching school ID:", error); 
       }
     };
-    fetchCollegeId();
+    fetchSchoolId();
   }, []);
 
   // Hooks
-  const feeStructuresHook = useFeeStructures(collegeId);
-  const feeTrackingHook = useFeeTracking();
-  const departmentBudgetsHook = useDepartmentBudgets();
-  const { programs, departments } = usePrograms(collegeId);
+  const feeStructuresHook = useFeeStructures(schoolId);
+  const feeTrackingHook = useFeeTracking(schoolId);
 
   // Stats for display
   const financeStats = [
-    { label: "Total Fee Structures", value: feeStructuresHook.stats.total.toString(), icon: IndianRupee, color: "bg-green-500" },
-    { label: "Active Structures", value: feeStructuresHook.stats.active.toString(), icon: FileText, color: "bg-blue-500" },
-    { label: "Inactive Structures", value: feeStructuresHook.stats.inactive.toString(), icon: AlertCircle, color: "bg-yellow-500" },
-    { label: "Total Fee Value", value: `₹${(feeStructuresHook.stats.totalValue / 100000).toFixed(1)}L`, icon: TrendingUp, color: "bg-purple-500" },
+    { 
+      label: "Total Fee Structures", 
+      value: feeStructuresHook.stats.total.toString(), 
+      icon: IndianRupee, 
+      color: "bg-green-500" 
+    },
+    { 
+      label: "Active Structures", 
+      value: feeStructuresHook.stats.active.toString(), 
+      icon: FileText, 
+      color: "bg-blue-500" 
+    },
+    { 
+      label: "Total Students", 
+      value: feeTrackingHook.stats.totalStudents.toString(), 
+      icon: AlertCircle, 
+      color: "bg-yellow-500" 
+    },
+    { 
+      label: "Total Fee Value", 
+      value: `₹${(feeStructuresHook.stats.totalValue / 100000).toFixed(1)}L`, 
+      icon: TrendingUp, 
+      color: "bg-purple-500" 
+    },
   ];
 
   // Handlers - Fee Structure
-  const handleCreate = () => { setSelectedStructure(null); setIsModalOpen(true); };
-  const handleEdit = (structure: FeeStructure) => { setSelectedStructure(structure); setIsModalOpen(true); };
+  const handleCreate = () => { 
+    setSelectedStructure(null); 
+    setIsModalOpen(true); 
+  };
+  
+  const handleEdit = (structure: FeeStructure) => { 
+    setSelectedStructure(structure); 
+    setIsModalOpen(true); 
+  };
+  
   const handleSave = async (data: Partial<FeeStructure>) => {
     const success = await feeStructuresHook.saveFeeStructure(data, selectedStructure);
     if (success) setIsModalOpen(false);
@@ -127,10 +147,12 @@ const FinanceModule: React.FC = () => {
     setSelectedStudent(student);
     setIsLedgerModalOpen(true);
   };
+  
   const handleRecordPayment = (student: StudentFeeSummary) => {
     setSelectedStudent(student);
     setIsPaymentModalOpen(true);
   };
+  
   const handlePaymentSave = async (ledgerId: string, studentId: string, data: any) => {
     const success = await feeTrackingHook.recordPayment(ledgerId, studentId, data);
     if (success) {
@@ -146,8 +168,11 @@ const FinanceModule: React.FC = () => {
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Finance & Accounts</h1>
         <p className="text-gray-600 text-sm sm:text-base">
-          Manage fee structure, tracking, department budgets, and expenditure reports
+          Manage fee structure and track student fee payments
         </p>
+        <div className="mt-2 px-3 py-1 bg-green-100 text-green-800 text-xs rounded-full inline-block">
+          ✅ Updated Version - {new Date().toLocaleTimeString()}
+        </div>
       </div>
 
       {/* Stats */}
@@ -178,7 +203,9 @@ const FinanceModule: React.FC = () => {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition ${
-                activeTab === tab.id ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                activeTab === tab.id 
+                  ? "bg-blue-600 text-white" 
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
               {tab.label}
@@ -187,10 +214,9 @@ const FinanceModule: React.FC = () => {
         </div>
       </div>
 
-
       {/* Tab Content */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-        {activeTab === "fees" && (
+        {activeTab === "structure" && (
           <FeeStructureTab
             feeStructures={feeStructuresHook.feeStructures}
             loading={feeStructuresHook.loading}
@@ -212,18 +238,6 @@ const FinanceModule: React.FC = () => {
             onRecordPayment={handleRecordPayment}
           />
         )}
-
-        {activeTab === "budgets" && (
-          <DepartmentBudgetsTab
-            budgets={departmentBudgetsHook.budgets}
-            loading={departmentBudgetsHook.loading}
-            stats={departmentBudgetsHook.stats}
-          />
-        )}
-
-        {activeTab === "expenditure" && (
-          <ExpenditureReportsTab />
-        )}
       </div>
 
       {/* Fee Structure Form Modal */}
@@ -232,14 +246,16 @@ const FinanceModule: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSave}
         structure={selectedStructure}
-        programs={programs}
-        departments={departments}
+        schoolId={schoolId}
       />
 
       {/* Payment Form Modal */}
       <PaymentFormModal
         isOpen={isPaymentModalOpen}
-        onClose={() => { setIsPaymentModalOpen(false); setSelectedStudent(null); }}
+        onClose={() => { 
+          setIsPaymentModalOpen(false); 
+          setSelectedStudent(null); 
+        }}
         onSave={handlePaymentSave}
         student={selectedStudent}
       />
@@ -247,11 +263,14 @@ const FinanceModule: React.FC = () => {
       {/* Student Ledger Modal */}
       <StudentLedgerModal
         isOpen={isLedgerModalOpen}
-        onClose={() => { setIsLedgerModalOpen(false); setSelectedStudent(null); }}
+        onClose={() => { 
+          setIsLedgerModalOpen(false); 
+          setSelectedStudent(null); 
+        }}
         student={selectedStudent}
       />
     </div>
   );
 };
 
-export default FinanceModule;
+export default SchoolFinanceModule;

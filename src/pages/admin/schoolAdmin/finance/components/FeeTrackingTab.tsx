@@ -511,7 +511,7 @@ export const FeeTrackingTab: React.FC<Props> = ({
                           >
                             <Eye className="h-4 w-4" />
                           </button>
-                          {/* {student.balance > 0 && (
+                          {student.balance > 0 && (
                             <button
                               onClick={() => onRecordPayment(student)}
                               className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
@@ -519,7 +519,7 @@ export const FeeTrackingTab: React.FC<Props> = ({
                             >
                               <CreditCard className="h-4 w-4" />
                             </button>
-                          )} */}
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -580,4 +580,4 @@ export const FeeTrackingTab: React.FC<Props> = ({
       )}
     </div>
   );
-};
+}; 
