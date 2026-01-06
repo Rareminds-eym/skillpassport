@@ -1,4 +1,4 @@
-import { Compass, Zap, Heart, Star, Trophy, Rocket, Sparkles, FileText, Calculator, Puzzle, Ruler, Bolt, BarChart3, Award } from 'lucide-react';
+import { Compass, Zap, Heart, Star, Trophy, Sparkles, FileText, Calculator, Puzzle, Ruler, Bolt, BarChart3, Award } from 'lucide-react';
 
 // Helper function to get color based on percentage (red < 40, yellow 40-70, green > 70)
 const getScoreColor = (percentage) => {
@@ -243,7 +243,7 @@ const ProfileSection = ({ results, riasecNames }) => {
             <div className="bg-slate-800 rounded-xl p-6">
                 <div className="flex items-start gap-3">
                     <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                        <Rocket className="w-6 h-6 text-white" />
+                        <img src="/assets/HomePage/Ai Logo.png" alt="AI" className="w-10 h-10 object-contain" />
                     </div>
                     <div>
                         <div className="flex items-center gap-2 mb-1">

@@ -907,15 +907,15 @@ const AssessmentResult = () => {
                         <div className="bg-gradient-to-r from-slate-800 to-slate-700 p-6">
                             <div className="flex items-start gap-3">
                                 <div 
-                                    className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
+                                    className="w-14 h-14 rounded-lg bg-white/10 flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
                                     style={{
                                         boxShadow: '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)'
                                     }}
                                 >
                                     <img 
-                                        src="/assets/HomePage/RMLogo.webp" 
-                                        alt="RM Logo" 
-                                        className="w-10 h-10 object-contain"
+                                        src="/assets/HomePage/Ai Logo.png" 
+                                        alt="AI Logo" 
+                                        className="w-14 h-14 object-contain"
                                     />
                                 </div>
                                 <div className="flex-1">

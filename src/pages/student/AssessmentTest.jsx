@@ -580,12 +580,12 @@ const AssessmentTest = () => {
     const [aiQuestions, setAiQuestions] = useState({ aptitude: null, knowledge: null });
     const [aiQuestionsLoading, setAiQuestionsLoading] = useState(false);
 
-    // Load AI questions for after12 AND college students
+    // Load AI questions for after10, after12 AND college students
     useEffect(() => {
         const loadAIQuestions = async () => {
             // Only require gradeLevel and studentStream - studentId is optional for saving
-            // Support both 'after12' and 'college' grade levels
-            if ((gradeLevel === 'after12' || gradeLevel === 'college') && studentStream) {
+            // Support 'after10', 'after12' and 'college' grade levels
+            if ((gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'college') && studentStream) {
                 setAiQuestionsLoading(true);
                 try {
                     console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, studentStream, 'studentId:', studentId || 'not set yet');
@@ -610,7 +610,7 @@ const AssessmentTest = () => {
         loadAIQuestions();
     }, [gradeLevel, studentStream, studentId, currentAttempt?.id]);
 
-    // Get questions for a section - from database or AI (no fallback for after12/college)
+    // Get questions for a section - from database or AI (no fallback for after10/after12/college)
     const getQuestionsForSection = (sectionId) => {
         // Helper to normalize AI question format (AI uses 'question', UI expects 'text')
         const normalizeAIQuestion = (q) => ({
@@ -619,8 +619,8 @@ const AssessmentTest = () => {
             correct: q.correct_answer || q.correct // Map 'correct_answer' to 'correct'
         });
 
-        // For after12 AND college grade levels, use AI questions ONLY for aptitude and knowledge
-        if (gradeLevel === 'after12' || gradeLevel === 'college') {
+        // For after10, after12 AND college grade levels, use AI questions ONLY for aptitude and knowledge
+        if (gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'college') {
             if (sectionId === 'aptitude') {
                 if (aiQuestionsLoading) {
                     console.log('⏳ AI aptitude questions still loading...');
@@ -1719,7 +1719,12 @@ const AssessmentTest = () => {
 
     // Resume Prompt Screen - shown when user has an in-progress assessment
     if (showResumePrompt && pendingAttempt) {
-        const streamLabel = streams.find(s => s.id === pendingAttempt.stream_id)?.label || pendingAttempt.stream_id;
+        // Find stream label from streamCategories or streamsByCategory
+        const allStreams = [
+            ...streamCategories,
+            ...Object.values(streamsByCategory).flat()
+        ];
+        const streamLabel = allStreams.find(s => s.id === pendingAttempt.stream_id)?.label || pendingAttempt.stream_id;
         const answeredCount = Object.keys(pendingAttempt.restoredResponses || {}).length;
 
         return (
@@ -2725,8 +2730,8 @@ const AssessmentTest = () => {
                                         <div className="flex items-center gap-3 text-sm text-gray-600">
                                             <Users className="w-4 h-4" />
                                             <span>Question {currentQuestionIndex + 1} / {
-                                                (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 :
-                                                (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 :
+                                                ((gradeLevel === 'after10' || gradeLevel === 'after12') && currentSection.id === 'aptitude') ? 50 :
+                                                ((gradeLevel === 'after10' || gradeLevel === 'after12') && currentSection.id === 'knowledge') ? 20 :
                                                 currentSection.questions.length
                                             }</span>
                                         </div>
@@ -2837,8 +2842,8 @@ const AssessmentTest = () => {
                                                 <div className="mb-6">
                                                     <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 block">
                                                         Question {currentQuestionIndex + 1} / {
-                                                            (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 :
-                                                            (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 :
+                                                            ((gradeLevel === 'after10' || gradeLevel === 'after12') && currentSection.id === 'aptitude') ? 50 :
+                                                            ((gradeLevel === 'after10' || gradeLevel === 'after12') && currentSection.id === 'knowledge') ? 20 :
                                                             currentSection.questions.length
                                                         }
                                                     </span>

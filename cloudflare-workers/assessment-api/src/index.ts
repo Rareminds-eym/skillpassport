@@ -208,6 +208,84 @@ const APTITUDE_CATEGORIES = [
   { id: 'clerical', name: 'Clerical Speed & Accuracy', description: 'String comparison, attention to detail - mark Same or Different', count: 20 }
 ];
 
+// School Subject Categories for After 10th students (total: 50 questions)
+// These help determine which stream (Science/Commerce/Arts) is best suited
+const SCHOOL_SUBJECT_CATEGORIES = [
+  { id: 'mathematics', name: 'Mathematics', description: 'Algebra, geometry, arithmetic, problem-solving - tests analytical and numerical skills', count: 10 },
+  { id: 'science', name: 'Science (Physics, Chemistry, Biology)', description: 'Scientific concepts, experiments, formulas, natural phenomena', count: 10 },
+  { id: 'english', name: 'English Language', description: 'Grammar, vocabulary, comprehension, communication skills', count: 10 },
+  { id: 'social_studies', name: 'Social Studies (History, Geography, Civics)', description: 'Historical events, geography, civics, current affairs, society', count: 10 },
+  { id: 'computer', name: 'Computer & Logical Thinking', description: 'Basic computer concepts, logical reasoning, problem-solving, digital literacy', count: 10 }
+];
+
+// Prompt for After 10th students - School Subject Based Assessment
+const SCHOOL_SUBJECT_PROMPT = `You are an expert educational assessment creator for 10th grade students in India who are about to choose their stream (Science/Commerce/Arts) for 11th-12th.
+
+Generate questions to assess the student's aptitude across school subjects. This will help recommend the best stream for them.
+
+Generate questions for these subjects with EXACT counts:
+{{CATEGORIES}}
+
+IMPORTANT CONTEXT:
+- Student has selected interest in {{STREAM_NAME}} stream
+- Questions should test fundamental understanding, not memorization
+- Mix of conceptual and application-based questions
+- Difficulty: 40% easy, 40% medium, 20% hard
+
+Subject-wise Question Guidelines:
+1. MATHEMATICS (10 questions):
+   - Algebra: equations, expressions, factorization
+   - Geometry: shapes, theorems, mensuration
+   - Arithmetic: percentages, ratios, profit-loss
+   - Data interpretation: graphs, tables, statistics
+
+2. SCIENCE (10 questions):
+   - Physics: motion, force, energy, electricity
+   - Chemistry: elements, compounds, reactions, periodic table
+   - Biology: human body, plants, ecosystems, cells
+
+3. ENGLISH (10 questions):
+   - Grammar: tenses, articles, prepositions
+   - Vocabulary: synonyms, antonyms, word meanings
+   - Comprehension: passage understanding
+   - Sentence correction and completion
+
+4. SOCIAL STUDIES (10 questions):
+   - History: Indian history, world history, freedom struggle
+   - Geography: maps, climate, resources, continents
+   - Civics: constitution, government, rights, duties
+   - Economics basics: money, trade, development
+
+5. COMPUTER & LOGICAL THINKING (10 questions):
+   - Basic computer concepts: hardware, software, internet
+   - Logical reasoning: patterns, sequences, puzzles
+   - Problem-solving: algorithmic thinking
+   - Digital literacy: file management, basic applications
+
+Output Format - Respond with ONLY valid JSON:
+{
+  "questions": [
+    {
+      "id": 1,
+      "category": "mathematics",
+      "subject": "Mathematics",
+      "type": "mcq",
+      "difficulty": "easy",
+      "question": "Question text here",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct_answer": "Option B",
+      "skill_tag": "algebra",
+      "estimated_time": 60
+    }
+  ]
+}
+
+IMPORTANT: 
+- Use sequential numeric IDs (1, 2, 3, etc.)
+- Each question must have exactly 4 options
+- Include the "subject" field for each question
+- Questions should be appropriate for 10th grade level`;
+
 const APTITUDE_PROMPT = `You are an expert psychometric assessment creator. Generate aptitude test questions for {{STREAM_NAME}} stream career assessment.
 
 Generate questions for these categories with EXACT counts:
@@ -551,17 +629,26 @@ Required JSON structure:
 
 // ============================================
 // APTITUDE QUESTION GENERATION (Per-student with save/resume)
-// Generates 50 questions total: verbal(8) + numerical(8) + abstract(8) + spatial(6) + clerical(20)
+// Generates 50 questions total
+// For after10: School subjects (maths, science, english, social, computer)
+// For after12/college: Aptitude categories (verbal, numerical, abstract, spatial, clerical)
 // Split into 2 batches to avoid token limits
 // ============================================
 async function generateAptitudeQuestions(
   env: Env, 
   streamId: string, 
-  questionsPerCategory: number = 5, // ignored, using APTITUDE_CATEGORIES.count instead
+  questionsPerCategory: number = 5, // ignored, using category counts instead
   studentId?: string,
-  attemptId?: string
+  attemptId?: string,
+  gradeLevel?: string // 'after10', 'after12', 'college'
 ) {
   const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
+
+  // ONLY use school subjects for after10 grade level (explicitly passed)
+  // after12 and college use standard aptitude categories even if they select science/commerce/arts
+  const isAfter10 = gradeLevel === 'after10';
+  
+  console.log(`📚 Grade level detection: streamId=${streamId}, gradeLevel=${gradeLevel}, isAfter10=${isAfter10}`);
 
   // If studentId provided, check for existing questions for this student
   if (studentId) {
@@ -584,7 +671,7 @@ async function generateAptitudeQuestions(
     }
   }
 
-  console.log('📝 Generating fresh aptitude questions in 2 batches for stream:', streamId);
+  console.log('📝 Generating fresh aptitude questions in 2 batches for stream:', streamId, 'isAfter10:', isAfter10);
 
   const openRouterKey = env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY;
   const claudeKey = env.CLAUDE_API_KEY || env.VITE_CLAUDE_API_KEY;
@@ -595,18 +682,34 @@ async function generateAptitudeQuestions(
 
   const streamContext = STREAM_CONTEXTS[streamId] || STREAM_CONTEXTS['science'];
 
+  // Use different categories and prompts for after10 vs after12/college
+  const categories = isAfter10 ? SCHOOL_SUBJECT_CATEGORIES : APTITUDE_CATEGORIES;
+  const promptTemplate = isAfter10 ? SCHOOL_SUBJECT_PROMPT : APTITUDE_PROMPT;
+
   // Helper function to generate questions for specific categories
-  async function generateBatch(batchNum: number, categories: typeof APTITUDE_CATEGORIES): Promise<any[]> {
-    const categoriesText = categories.map(c => `- ${c.name} (${c.count} questions): ${c.description}`).join('\n');
-    const totalQuestions = categories.reduce((sum, c) => sum + c.count, 0);
+  async function generateBatch(batchNum: number, batchCategories: typeof categories): Promise<any[]> {
+    const categoriesText = batchCategories.map(c => `- ${c.name} (${c.count} questions): ${c.description}`).join('\n');
+    const totalQuestions = batchCategories.reduce((sum, c) => sum + c.count, 0);
     
-    const prompt = APTITUDE_PROMPT
-      .replace(/\{\{CATEGORIES\}\}/g, categoriesText)
-      .replace(/\{\{STREAM_NAME\}\}/g, streamContext.name)
-      .replace(/\{\{STREAM_CONTEXT\}\}/g, streamContext.context)
-      .replace(/\{\{CLERICAL_EXAMPLE\}\}/g, streamContext.clericalExample);
+    let prompt: string;
+    if (isAfter10) {
+      // School subject prompt for after10
+      prompt = promptTemplate
+        .replace(/\{\{CATEGORIES\}\}/g, categoriesText)
+        .replace(/\{\{STREAM_NAME\}\}/g, streamContext.name);
+    } else {
+      // Standard aptitude prompt for after12/college
+      prompt = promptTemplate
+        .replace(/\{\{CATEGORIES\}\}/g, categoriesText)
+        .replace(/\{\{STREAM_NAME\}\}/g, streamContext.name)
+        .replace(/\{\{STREAM_CONTEXT\}\}/g, streamContext.context)
+        .replace(/\{\{CLERICAL_EXAMPLE\}\}/g, streamContext.clericalExample);
+    }
 
     let jsonText: string;
+    const systemPrompt = isAfter10 
+      ? `You are an expert educational assessment creator for 10th grade students. Generate EXACTLY ${totalQuestions} questions total covering school subjects. Generate ONLY valid JSON.`
+      : `You are an expert psychometric assessment creator. Generate EXACTLY ${totalQuestions} questions total. Generate ONLY valid JSON.`;
     
     // Try Claude first, fallback to OpenRouter with retry
     if (claudeKey) {
@@ -623,7 +726,7 @@ async function generateAptitudeQuestions(
             model: 'claude-3-haiku-20240307',
             max_tokens: 6000,
             temperature: 0.7 + (batchNum * 0.05),
-            system: `You are an expert psychometric assessment creator. Generate EXACTLY ${totalQuestions} questions total. Generate ONLY valid JSON.`,
+            system: systemPrompt,
             messages: [{ role: 'user', content: prompt }]
           })
         });
@@ -639,7 +742,7 @@ async function generateAptitudeQuestions(
         if (openRouterKey) {
           console.log(`🔑 Batch ${batchNum}: Claude failed, trying OpenRouter with retry`);
           jsonText = await callOpenRouterWithRetry(openRouterKey, [
-            { role: 'system', content: `You are an expert psychometric assessment creator. Generate EXACTLY ${totalQuestions} questions total. Generate ONLY valid JSON.` },
+            { role: 'system', content: systemPrompt },
             { role: 'user', content: prompt }
           ]);
         } else {
@@ -649,7 +752,7 @@ async function generateAptitudeQuestions(
     } else if (openRouterKey) {
       console.log(`🔑 Batch ${batchNum}: Using OpenRouter with retry for ${totalQuestions} questions`);
       jsonText = await callOpenRouterWithRetry(openRouterKey, [
-        { role: 'system', content: `You are an expert psychometric assessment creator. Generate EXACTLY ${totalQuestions} questions total. Generate ONLY valid JSON.` },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ]);
     } else {
@@ -661,26 +764,55 @@ async function generateAptitudeQuestions(
     return result.questions || [];
   }
 
-  // Batch 1: verbal(8) + numerical(8) + abstract(8) = 24 questions
-  const batch1Categories = APTITUDE_CATEGORIES.filter(c => ['verbal', 'numerical', 'abstract'].includes(c.id));
-  console.log('📦 Generating batch 1 (verbal + numerical + abstract = 24 questions)...');
-  const batch1 = await generateBatch(1, batch1Categories);
-  console.log(`✅ Batch 1 complete: ${batch1.length} questions`);
+  let batch1: any[];
+  let batch2: any[];
 
-  // Wait 3 seconds between batches to avoid rate limits
-  console.log('⏳ Waiting 3s before batch 2...');
-  await delay(3000);
+  if (isAfter10) {
+    // For after10: Split school subjects into 2 batches
+    // Batch 1: Mathematics(10) + Science(10) + English(10) = 30 questions
+    const batch1Categories = categories.filter(c => ['mathematics', 'science', 'english'].includes(c.id));
+    console.log('📦 Generating batch 1 (Mathematics + Science + English = 30 questions)...');
+    batch1 = await generateBatch(1, batch1Categories);
+    console.log(`✅ Batch 1 complete: ${batch1.length} questions`);
 
-  // Batch 2: spatial(6) + clerical(20) = 26 questions
-  const batch2Categories = APTITUDE_CATEGORIES.filter(c => ['spatial', 'clerical'].includes(c.id));
-  console.log('📦 Generating batch 2 (spatial + clerical = 26 questions)...');
-  const batch2 = await generateBatch(2, batch2Categories);
-  console.log(`✅ Batch 2 complete: ${batch2.length} questions`);
+    // Wait 3 seconds between batches to avoid rate limits
+    console.log('⏳ Waiting 3s before batch 2...');
+    await delay(3000);
+
+    // Batch 2: Social Studies(10) + Computer(10) = 20 questions
+    const batch2Categories = categories.filter(c => ['social_studies', 'computer'].includes(c.id));
+    console.log('📦 Generating batch 2 (Social Studies + Computer = 20 questions)...');
+    batch2 = await generateBatch(2, batch2Categories);
+    console.log(`✅ Batch 2 complete: ${batch2.length} questions`);
+  } else {
+    // For after12/college: Standard aptitude categories
+    // Batch 1: verbal(8) + numerical(8) + abstract(8) = 24 questions
+    const batch1Categories = categories.filter(c => ['verbal', 'numerical', 'abstract'].includes(c.id));
+    console.log('📦 Generating batch 1 (verbal + numerical + abstract = 24 questions)...');
+    batch1 = await generateBatch(1, batch1Categories);
+    console.log(`✅ Batch 1 complete: ${batch1.length} questions`);
+
+    // Wait 3 seconds between batches to avoid rate limits
+    console.log('⏳ Waiting 3s before batch 2...');
+    await delay(3000);
+
+    // Batch 2: spatial(6) + clerical(20) = 26 questions
+    const batch2Categories = categories.filter(c => ['spatial', 'clerical'].includes(c.id));
+    console.log('📦 Generating batch 2 (spatial + clerical = 26 questions)...');
+    batch2 = await generateBatch(2, batch2Categories);
+    console.log(`✅ Batch 2 complete: ${batch2.length} questions`);
+  }
 
   // Combine batches and assign UUIDs + module info
   const allQuestions = [...batch1, ...batch2].map((q: any, idx: number) => {
     // Map category to moduleTitle for UI display
-    const categoryToModule: Record<string, string> = {
+    const categoryToModule: Record<string, string> = isAfter10 ? {
+      'mathematics': 'A) Mathematics',
+      'science': 'B) Science',
+      'english': 'C) English Language',
+      'social_studies': 'D) Social Studies',
+      'computer': 'E) Computer & Logical Thinking'
+    } : {
       'verbal': 'A) Verbal Reasoning',
       'numerical': 'B) Numerical Ability',
       'abstract': 'C) Abstract / Logical Reasoning',
@@ -693,6 +825,7 @@ async function generateAptitudeQuestions(
       id: generateUUID(),
       originalIndex: idx + 1,
       subtype: q.category,
+      subject: q.subject || q.category, // Include subject for after10
       moduleTitle: categoryToModule[q.category] || q.category
     };
   });
@@ -1067,13 +1200,14 @@ export default {
     if ((path === '/career-assessment/generate-aptitude' || path === '/api/career-assessment/generate-aptitude') && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { streamId, questionsPerCategory = 10, studentId, attemptId } = body;
+        const { streamId, questionsPerCategory = 10, studentId, attemptId, gradeLevel } = body;
 
         if (!streamId) {
           return jsonResponse({ error: 'Stream ID is required' }, 400);
         }
 
-        const result = await generateAptitudeQuestions(env, streamId, questionsPerCategory, studentId, attemptId);
+        console.log('📚 Aptitude request:', { streamId, gradeLevel, studentId });
+        const result = await generateAptitudeQuestions(env, streamId, questionsPerCategory, studentId, attemptId, gradeLevel);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Aptitude generation error:', error);
