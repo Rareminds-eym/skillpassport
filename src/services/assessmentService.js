@@ -133,6 +133,11 @@ export const updateAttemptProgress = async (attemptId, progress) => {
   if (progress.elapsedTime !== undefined && progress.elapsedTime !== null) {
     updateData.elapsed_time = progress.elapsedTime;
   }
+
+  // Include adaptive_aptitude_session_id if provided (for adaptive section)
+  if (progress.adaptiveAptitudeSessionId) {
+    updateData.adaptive_aptitude_session_id = progress.adaptiveAptitudeSessionId;
+  }
   
   const { data, error } = await supabase
     .from('personal_assessment_attempts')
@@ -143,6 +148,36 @@ export const updateAttemptProgress = async (attemptId, progress) => {
 
   if (error) throw error;
   return data;
+};
+
+/**
+ * Update the adaptive aptitude session ID for an attempt
+ * @param {string} attemptId - Attempt UUID
+ * @param {string} adaptiveSessionId - Adaptive aptitude session UUID
+ */
+export const updateAttemptAdaptiveSession = async (attemptId, adaptiveSessionId) => {
+  try {
+    const { data, error } = await supabase
+      .from('personal_assessment_attempts')
+      .update({
+        adaptive_aptitude_session_id: adaptiveSessionId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', attemptId)
+      .select()
+      .single();
+
+    if (error) {
+      // Log but don't throw - this is a non-critical operation
+      console.warn('Could not update adaptive session ID:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    // Catch any unexpected errors - column might not exist yet
+    console.warn('Error updating adaptive session ID:', err.message);
+    return null;
+  }
 };
 
 /**

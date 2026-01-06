@@ -892,6 +892,7 @@ export async function submitAnswer(options: SubmitAnswerOptions): Promise<Answer
     current_difficulty: newDifficulty,
     difficulty_path: newDifficultyPath,
     provisional_band: provisionalBand,
+    updated_at: new Date().toISOString(), // Track when session was last updated
   };
 
   if (testComplete) {
