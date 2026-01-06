@@ -73,12 +73,14 @@ const getGradeLevelFromGrade = (grade) => {
         if (match) {
             const num = parseInt(match[1], 10);
             if (num >= 6 && num <= 8) return 'middle';
-            if (num >= 9 && num <= 12) return 'highschool';
+            if (num >= 9 && num <= 10) return 'highschool';
+            if (num >= 11 && num <= 12) return 'higher_secondary';
         }
         return null;
     }
     if (gradeNum >= 6 && gradeNum <= 8) return 'middle';
-    if (gradeNum >= 9 && gradeNum <= 12) return 'highschool';
+    if (gradeNum >= 9 && gradeNum <= 10) return 'highschool';
+    if (gradeNum >= 11 && gradeNum <= 12) return 'higher_secondary';
     return null;
 };
 
@@ -111,7 +113,7 @@ const AssessmentTest = () => {
     const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [answers, setAnswers] = useState({});
-    const [gradeLevel, setGradeLevel] = useState(null); // 'middle' (6-8), 'highschool' (9-12), 'after12' (After 12th), or 'college'
+    const [gradeLevel, setGradeLevel] = useState(null); // 'middle' (6-8), 'highschool' (9-10), 'higher_secondary' (11-12), 'after12' (After 12th), or 'college'
     const [showGradeSelection, setShowGradeSelection] = useState(false); // Show grade level selection first
     const [studentStream, setStudentStream] = useState(null);
     const [showStreamSelection, setShowStreamSelection] = useState(false); // Start false, set true after check
@@ -220,6 +222,7 @@ const AssessmentTest = () => {
     // Map UI grade level to adaptive aptitude grade level
     const getAdaptiveGradeLevel = () => {
         if (gradeLevel === 'highschool') return 'high_school';
+        if (gradeLevel === 'higher_secondary') return 'high_school';
         if (gradeLevel === 'middle') return 'middle_school';
         // For after12 and college, use high_school level questions
         return 'high_school';
@@ -707,8 +710,62 @@ const AssessmentTest = () => {
             ];
         }
 
-        // For high school (grades 9-12), show detailed assessment with 4 sections
+        // For high school (grades 9-10), show detailed assessment with 4 sections
         if (gradeLevel === 'highschool') {
+            return [
+                {
+                    id: 'hs_interest_explorer',
+                    title: 'Interest Explorer',
+                    icon: <Heart className="w-6 h-6 text-rose-500" />,
+                    description: "Discover what activities and subjects truly excite you.",
+                    color: "rose",
+                    questions: getQuestionsForSection('hs_interest_explorer'),  // Load from database
+                    instruction: "Answer honestly based on your real preferences, not what others expect."
+                },
+                {
+                    id: 'hs_strengths_character',
+                    title: 'Strengths & Character',
+                    icon: <Award className="w-6 h-6 text-amber-500" />,
+                    description: "Identify your personal strengths and character traits.",
+                    color: "amber",
+                    questions: getQuestionsForSection('hs_strengths_character'),  // Load from database
+                    responseScale: highSchoolRatingScale,
+                    instruction: "Rate each: 1 = not me, 2 = a bit, 3 = mostly, 4 = strongly me"
+                },
+                {
+                    id: 'hs_learning_preferences',
+                    title: 'Learning & Work Preferences',
+                    icon: <Users className="w-6 h-6 text-blue-500" />,
+                    description: "Understand how you work, learn, and contribute best.",
+                    color: "blue",
+                    questions: getQuestionsForSection('hs_learning_preferences'),  // Load from database
+                    instruction: "Select the options that best describe you."
+                },
+                {
+                    id: 'hs_aptitude_sampling',
+                    title: 'Aptitude Sampling',
+                    icon: <Zap className="w-6 h-6 text-purple-500" />,
+                    description: "Rate your experience with different types of tasks.",
+                    color: "purple",
+                    questions: getQuestionsForSection('hs_aptitude_sampling'),  // Load from database
+                    responseScale: aptitudeRatingScale,
+                    instruction: "After each task, rate: Ease 1–4, Enjoyment 1–4"
+                },
+                {
+                    id: 'adaptive_aptitude',
+                    title: 'Adaptive Aptitude Test',
+                    icon: <img src="/RMLogo.webp" alt="RM Logo" className="w-6 h-6 object-contain" />,
+                    description: "An intelligent test that adapts to your ability level for accurate aptitude measurement.",
+                    color: "indigo",
+                    questions: [], // Questions are generated dynamically by the adaptive engine
+                    isAdaptive: true, // Flag to indicate this is the adaptive aptitude section
+                    instruction: "Answer each question carefully. The test will adapt to your performance level."
+                }
+            ];
+        }
+
+        // For higher secondary (grades 11-12), show comprehensive assessment with stream focus
+        if (gradeLevel === 'higher_secondary') {
             return [
                 {
                     id: 'hs_interest_explorer',
@@ -1117,7 +1174,7 @@ const AssessmentTest = () => {
         setGradeLevel(level);
         setShowGradeSelection(false);
 
-        // For middle school and high school, skip stream selection and go directly to assessment
+        // For middle school, high school, and higher secondary, skip stream selection and go directly to assessment
         if (level === 'middle') {
             setAssessmentStarted(true);
             const streamId = 'middle_school'; // Use a generic stream for middle school
@@ -1154,6 +1211,9 @@ const AssessmentTest = () => {
             }
 
             setShowSectionIntro(true);
+        } else if (level === 'higher_secondary') {
+            // For higher secondary (11-12), show category selection (Science/Commerce/Arts)
+            setShowCategorySelection(true);
         } else {
             // For after 12th, show category selection (Science/Commerce/Arts)
             setShowCategorySelection(true);
@@ -1608,7 +1668,7 @@ const AssessmentTest = () => {
                 if (gradeLevel === 'middle') {
                     const map = { 'riasec': 'middle_interest_explorer', 'bigfive': 'middle_strengths_character', 'knowledge': 'middle_learning_preferences' };
                     return map[baseSection] || baseSection;
-                } else if (gradeLevel === 'highschool') {
+                } else if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
                     const map = { 'riasec': 'hs_interest_explorer', 'aptitude': 'hs_aptitude_sampling', 'bigfive': 'hs_strengths_character', 'knowledge': 'hs_learning_preferences' };
                     return map[baseSection] || baseSection;
                 }
@@ -2059,7 +2119,7 @@ const AssessmentTest = () => {
                             </button>
                             )}
 
-                            {/* Grades 9-12 (High School) - Show if: show all OR not filtering OR grade is 9-12 */}
+                            {/* Grades 9-10 (High School) - Show if: show all OR not filtering OR grade is 9-10 */}
                             {(shouldShowAllOptions || !shouldFilterByGrade || detectedGradeLevel === 'highschool') && (
                             <button
                                 onClick={() => handleGradeSelect('highschool')}
@@ -2068,12 +2128,35 @@ const AssessmentTest = () => {
                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                 <div className="relative z-10">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">Grades 9–12</h3>
+                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">Grades 9–10</h3>
                                         <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
                                             <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
                                         </div>
                                     </div>
                                     <p className="text-sm text-gray-600 group-hover:text-gray-700">High School Students</p>
+                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                                        <Clock className="w-4 h-4" />
+                                        <span>Assessment: 53 questions (55-65 minutes)</span>
+                                    </div>
+                                </div>
+                            </button>
+                            )}
+
+                            {/* Grades 11-12 (Higher Secondary) - Show if: show all OR not filtering OR grade is 11-12 */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || detectedGradeLevel === 'higher_secondary') && (
+                            <button
+                                onClick={() => handleGradeSelect('higher_secondary')}
+                                className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">Grades 11–12</h3>
+                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
+                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">Higher Secondary Students</p>
                                     <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                                         <Clock className="w-4 h-4" />
                                         <span>Assessment: 53 questions (55-65 minutes)</span>

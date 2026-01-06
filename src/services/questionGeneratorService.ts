@@ -139,7 +139,7 @@ function getFallbackQuestion(
     ],
   };
 
-  // High school fallback questions (grades 9-12, ages 14-18)
+  // High school fallback questions (grades 9-10, ages 14-16)
   const highSchoolFallbacks: Record<Subtag, { text: string; options: Question['options']; correctAnswer: Question['correctAnswer'] }[]> = {
     numerical_reasoning: [
       { text: 'If a shirt costs $25 and is on sale for 20% off, what is the sale price?', options: { A: '$20', B: '$22', C: '$18', D: '$15' }, correctAnswer: 'A' },
@@ -168,7 +168,7 @@ function getFallbackQuestion(
     ],
   };
 
-  // Select appropriate fallbacks based on grade level
+  // Select appropriate fallbacks based on grade level (higher_secondary uses high school fallbacks)
   const fallbacks = gradeLevel === 'middle_school' ? middleSchoolFallbacks : highSchoolFallbacks;
   const subtagFallbacks = fallbacks[subtag] || fallbacks.numerical_reasoning;
   const fallback = subtagFallbacks[Math.floor(Math.random() * subtagFallbacks.length)];

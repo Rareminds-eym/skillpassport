@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 
 /**
  * Fetch all assessment sections
- * @param {string} gradeLevel - Grade level filter: 'middle', 'highschool', or 'after12'
+ * @param {string} gradeLevel - Grade level filter: 'middle', 'highschool', 'higher_secondary', or 'after12'
  */
 export const fetchSections = async (gradeLevel = null) => {
   let query = supabase
@@ -67,7 +67,7 @@ export const fetchQuestionsBySection = async (sectionId, streamId = null) => {
 /**
  * Fetch all questions for an assessment (organized by section)
  * @param {string} streamId - Student's selected stream
- * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
+ * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
  */
 export const fetchAllQuestions = async (streamId, gradeLevel = null) => {
   const sections = await fetchSections(gradeLevel);
@@ -92,7 +92,7 @@ export const fetchAllQuestions = async (streamId, gradeLevel = null) => {
  * Create a new assessment attempt
  * @param {string} studentId - Student's user_id
  * @param {string} streamId - Selected stream
- * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
+ * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
  */
 export const createAttempt = async (studentId, streamId, gradeLevel) => {
   const { data, error } = await supabase
@@ -224,7 +224,7 @@ export const getAttemptResponses = async (attemptId) => {
  * @param {string} attemptId - Attempt UUID
  * @param {string} studentId - Student's user_id
  * @param {string} streamId - Selected stream
- * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
+ * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
  * @param {object} geminiResults - Full Gemini AI analysis results
  * @param {object} sectionTimings - Time spent on each section
  */
@@ -390,7 +390,7 @@ export const getLatestResult = async (studentId) => {
  * In development mode, the restriction is bypassed for testing.
  * 
  * @param {string} studentId - Student's user_id
- * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
+ * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
  * @returns {object} { canTake: boolean, lastAttemptDate: Date|null, nextAvailableDate: Date|null }
  */
 export const canTakeAssessment = async (studentId, gradeLevel = null) => {
