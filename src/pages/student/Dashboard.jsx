@@ -1340,12 +1340,12 @@ const StudentDashboard = () => {
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-dashed border-blue-300 mb-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <div 
-                  className="w-14 h-14 rounded-lg bg-slate-700 flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
+                  className="w-16 h-16 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
                   style={{
                     boxShadow: '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)'
                   }}
                 >
-                  <img src="/assets/HomePage/Ai Logo.png" alt="AI" className="w-12 h-12 object-contain" />
+                  <img src="/assets/HomePage/Ai Logo.png" alt="AI" className="w-16 h-16 object-contain" />
                 </div>
                 <div className="flex-1">
                   <h4 className="text-base font-bold text-gray-900 mb-2">
