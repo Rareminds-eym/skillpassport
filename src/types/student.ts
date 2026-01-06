@@ -25,6 +25,10 @@ export interface Student {
   approval_status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   updated_at: string;
+  
+  // Academic fields
+  semester?: number;
+  current_semester?: string;
 
   // Additional fields for school students
   student_type?: string;
@@ -56,6 +60,15 @@ export interface Student {
   hobbies?: string[];
   languages?: Language[];
   interests?: string[];
+  
+  // Additional database fields
+  school_id?: string;
+  college_id?: string;
+  enrollmentDate?: string;
+  expectedGraduationDate?: string;
+  admission_academic_year?: string; // Academic year when student was admitted (e.g., "2024-25")
+  currentCgpa?: number | string;
+  metadata?: Record<string, any>;
 }
 
 export interface StudentProfile {
