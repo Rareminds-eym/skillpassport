@@ -43,65 +43,76 @@ const FloatingAIButton: React.FC = () => {
   };
 
   return (
-    <div className="fixed -bottom-4 -right-4 z-50 select-none">
-      <AnimatePresence>
-        {isTooltipVisible && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 10 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="absolute bottom-full left-0 -mb-2 px-4 py-3 bg-blue-600 text-white text-sm font-semibold rounded-2xl shadow-2xl whitespace-nowrap -ml-11 md:-ml-7"
-            style={{ 
-              transform: 'translateX(-80%)',
-              boxShadow: '0 10px 30px rgba(37, 99, 235, 0.3)'
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              Ask Career AI
-            </div>
-            <div className="absolute -bottom-2 right-4 w-4 h-4 bg-blue-600 rotate-45"></div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="fixed bottom-2 right-2 z-50 select-none">
+      <div className="relative flex items-center justify-center">
+        <AnimatePresence>
+          {isTooltipVisible && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 10 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="absolute bottom-full mb-5 px-4 py-3 bg-blue-600 text-white text-sm font-semibold rounded-2xl shadow-2xl whitespace-nowrap "
+              style={{ 
+                right: '1.5rem',
+                boxShadow: '0 10px 30px rgba(37, 99, 235, 0.3)'
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                Ask Career AI
+              </div>
+               <div className="absolute -bottom-2 right-4 w-4 h-4 bg-blue-600 rotate-45"></div>
 
-      <motion.button
-        initial={{ scale: 0 }}
-        animate={{ 
-          scale: 1,
-          y: isPulsing ? [0, -8, 0] : 0
-        }}
-        whileHover={{ 
-          scale: 1.05
-        }}
-        whileTap={{ scale: 0.95 }}
-        transition={{
-          type: "spring",
-          stiffness: 260,
-          damping: 20,
-          y: {
-            duration: 2,
-            repeat: isPulsing ? Infinity : 0,
-            ease: "easeInOut"
-          }
-        }}
-        onClick={handleClick}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onKeyDown={handleKeyDown}
-        className="focus:outline-none p-0 m-0 border-0 bg-transparent"
-        aria-label="Open Career AI Assistant"
-        tabIndex={0}
-      >
-        {/* Plain GIF - Clean and minimal */}
-        <img 
-          src="/ai.gif" 
-          alt="AI Assistant Animation"
-          className="w-32 h-32 md:w-40 md:h-40 object-contain drop-shadow-lg"
-          loading="lazy"
-        />
-      </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <motion.button
+          initial={{ scale: 0 }}
+          animate={{ 
+            scale: 1,
+            y: isPulsing ? [0, -8, 0] : 0
+          }}
+          whileHover={{ 
+            scale: 1.05
+          }}
+          whileTap={{ scale: 0.95 }}
+          transition={{
+            type: "spring",
+            stiffness: 260,
+            damping: 20,
+            y: {
+              duration: 2,
+              repeat: isPulsing ? Infinity : 0,
+              ease: "easeInOut"
+            }
+          }}
+          onClick={handleClick}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onKeyDown={handleKeyDown}
+          className="focus:outline-none p-0 m-0 border-0 bg-transparent"
+          aria-label="Open Career AI Assistant"
+          tabIndex={0}
+        >
+          <img 
+            src="/ai.gif" 
+            alt="AI Assistant Animation"
+            className="
+              w-20 h-20 md:w-24 md:h-24 
+              object-cover
+              drop-shadow-lg
+              rounded-full
+              mix-blend-screen
+              opacity-95
+              [mask-image:radial-gradient(circle,white_60%,transparent_80%)]
+              [-webkit-mask-image:radial-gradient(circle,white_60%,transparent_80%)]
+            "
+            loading="lazy"
+          />
+        </motion.button>
+      </div>
     </div>
   );
 };
