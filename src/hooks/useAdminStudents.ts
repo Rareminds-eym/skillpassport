@@ -145,6 +145,9 @@ export interface UICandidate {
   course_name?: string
   branch_field?: string
   enrollment_status?: string
+  // Promotion-related fields
+  semester?: number
+  college_id?: string
 }
 
 function safeParseProfile(input: unknown): StudentProfile | null {
@@ -328,6 +331,9 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     course_name: row.course_name,
     branch_field: row.branch_field,
     enrollment_status: (row as any).approval_status || 'approved',
+    // Add semester field for promotion functionality
+    semester: (row as any).semester,
+    college_id: (row as any).college_id,
   }
 }
 

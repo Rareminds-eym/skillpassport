@@ -28,6 +28,7 @@ export interface Student {
   registration_number?: string;
   currentCgpa?: string;
   current_semester?: string;
+  semester?: number; // Add semester field for promotion functionality
   enrollmentDate?: string;
   expectedGraduationDate?: string;
   

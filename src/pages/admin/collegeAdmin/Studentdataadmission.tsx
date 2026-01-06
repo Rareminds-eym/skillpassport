@@ -355,6 +355,17 @@ const StudentDataAdmission = () => {
   };
 
   const handleViewProfile = (student: any) => {
+    // Debug: Log the student data to see what fields are available
+    console.log('🔍 Student data passed to profile drawer:', {
+      id: student.id,
+      name: student.name,
+      semester: student.semester,
+      grade: student.grade,
+      college_id: student.college_id,
+      approval_status: student.approval_status,
+      allFields: Object.keys(student)
+    });
+    
     setSelectedStudent(student);
     setShowDrawer(true);
   };
