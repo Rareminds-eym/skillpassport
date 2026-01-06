@@ -42,7 +42,7 @@ import { workValuesQuestions as fallbackWorkValuesQuestions } from './assessment
 import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentService';
 
 // Import AI question generation service for Aptitude & Knowledge
-import { loadCareerAssessmentQuestions } from '../../services/careerAssessmentAIService';
+import { loadCareerAssessmentQuestions, STREAM_KNOWLEDGE_PROMPTS, normalizeStreamId } from '../../services/careerAssessmentAIService';
 
 // Import database services
 import { useAuth } from '../../context/AuthContext';
@@ -54,6 +54,14 @@ import { supabase } from '../../lib/supabaseClient';
 // Helper function to determine grade level from student's grade
 const getGradeLevelFromGrade = (grade) => {
     if (!grade) return null;
+    
+    // Handle program-based grades (UG, PG, Diploma, etc.)
+    const upperGrade = grade.toUpperCase();
+    if (upperGrade === 'UG' || upperGrade === 'UNDERGRADUATE') return 'after12';
+    if (upperGrade === 'PG' || upperGrade === 'POSTGRADUATE') return 'after12'; // Post-graduation also uses after12 assessment
+    if (upperGrade === 'DIPLOMA') return 'after10'; // Diploma can be after 10th
+    if (upperGrade === 'CERTIFICATE') return 'after12';
+    
     const gradeNum = parseInt(grade, 10);
     if (isNaN(gradeNum)) {
         // Handle non-numeric grades like "12th", "10th"
@@ -82,7 +90,8 @@ const AssessmentTest = () => {
         saveResponse: saveDbResponse,
         updateProgress,
         completeAssessment,
-        checkInProgressAttempt
+        checkInProgressAttempt,
+        studentRecordId
     } = useAssessment();
 
     // State for questions loaded from database
@@ -131,7 +140,19 @@ const AssessmentTest = () => {
     const [studentSchoolClassId, setStudentSchoolClassId] = useState(null);
     const [studentId, setStudentId] = useState(null); // Student record ID for AI question saving
     const [isCollegeStudent, setIsCollegeStudent] = useState(false);
+    const [studentProgram, setStudentProgram] = useState(null); // Program name for college students (BBA, BCA, BSC, etc.)
+    const [gradeStartDate, setGradeStartDate] = useState(null); // When student started current grade
+    const [monthsInGrade, setMonthsInGrade] = useState(null); // Months since starting current grade
     const [loadingStudentGrade, setLoadingStudentGrade] = useState(true);
+    
+    // Helper function to calculate months between two dates
+    const calculateMonthsInGrade = (startDate) => {
+        if (!startDate) return null;
+        const start = new Date(startDate);
+        const now = new Date();
+        const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+        return Math.max(0, months);
+    };
     
     // Fetch student's grade from database (either from student.grade or from school_classes.grade)
     useEffect(() => {
@@ -146,10 +167,10 @@ const AssessmentTest = () => {
             }
             
             try {
-                // First try to get student by user_id with school_class grade joined
+                // First try to get student by user_id with school_class grade and program name joined
                 let { data: student, error } = await supabase
                     .from('students')
-                    .select('id, grade, school_class_id, school_id, university_college_id, school_classes:school_class_id(grade)')
+                    .select('id, grade, grade_start_date, school_class_id, school_id, university_college_id, program_id, course_name, school_classes:school_class_id(grade, academic_year), program:program_id(name, code)')
                     .eq('user_id', user.id)
                     .maybeSingle();
                 
@@ -159,7 +180,7 @@ const AssessmentTest = () => {
                 if (!student && user.email) {
                     const result = await supabase
                         .from('students')
-                        .select('id, grade, school_class_id, school_id, university_college_id, school_classes:school_class_id(grade)')
+                        .select('id, grade, grade_start_date, school_class_id, school_id, university_college_id, program_id, course_name, school_classes:school_class_id(grade, academic_year), program:program_id(name, code)')
                         .eq('email', user.email)
                         .maybeSingle();
                     student = result.data;
@@ -179,6 +200,34 @@ const AssessmentTest = () => {
                     const isCollege = student.university_college_id && !student.school_id;
                     console.log('Is college student:', isCollege);
                     setIsCollegeStudent(isCollege);
+                    
+                    // Set program name if available (BBA, BCA, BSC, etc.)
+                    // Priority: program.name > program.code > course_name
+                    const programName = student.program?.name || student.program?.code || student.course_name;
+                    if (programName) {
+                        console.log('Student program:', programName);
+                        setStudentProgram(programName);
+                    }
+                    
+                    // Set grade_start_date and calculate months in grade
+                    if (student.grade_start_date) {
+                        setGradeStartDate(student.grade_start_date);
+                        const months = calculateMonthsInGrade(student.grade_start_date);
+                        setMonthsInGrade(months);
+                        console.log('Grade start date:', student.grade_start_date, 'Months in grade:', months);
+                    } else if (student.school_classes?.academic_year) {
+                        // Fallback: estimate from academic year (e.g., "2024-2025" -> started June 2024)
+                        const academicYear = student.school_classes.academic_year;
+                        const yearMatch = academicYear.match(/^(\d{4})/);
+                        if (yearMatch) {
+                            const startYear = parseInt(yearMatch[1]);
+                            // Assume academic year starts in June
+                            const estimatedStartDate = `${startYear}-06-01`;
+                            const months = calculateMonthsInGrade(estimatedStartDate);
+                            setMonthsInGrade(months);
+                            console.log('Estimated from academic year:', academicYear, 'Months in grade:', months);
+                        }
+                    }
                     
                     // Use student.grade first, if not available use grade from school_classes
                     const effectiveGrade = student.grade || student.school_classes?.grade;
@@ -347,15 +396,16 @@ const AssessmentTest = () => {
         if (initialCheckDone || assessmentStarted) return;
 
         const checkExistingAttempt = async () => {
-            // Wait for auth hook to be ready
-            if (dbLoading) return;
+            // Wait for auth hook to be ready and student ID to be loaded
+            if (dbLoading || loadingStudentGrade) return;
 
             setCheckingExistingAttempt(true);
 
             try {
-                if (user?.id) {
+                // Use studentId (from students table) instead of user.id (auth user)
+                if (studentId) {
                     // First check if user can take assessment (6-month restriction)
-                    const eligibility = await assessmentService.canTakeAssessment(user.id);
+                    const eligibility = await assessmentService.canTakeAssessment(studentId);
                     
                     if (!eligibility.canTake) {
                         // User cannot take assessment yet
@@ -404,9 +454,12 @@ const AssessmentTest = () => {
                         // No existing attempt, show grade selection
                         setShowGradeSelection(true);
                     }
-                } else {
+                } else if (!user?.id) {
                     // Not logged in, show grade selection
                     setShowGradeSelection(true);
+                } else {
+                    // User logged in but no student record found yet, wait
+                    console.log('Waiting for student record to load...');
                 }
             } catch (err) {
                 console.error('Error checking for existing attempt:', err);
@@ -417,7 +470,7 @@ const AssessmentTest = () => {
             }
         };
         checkExistingAttempt();
-    }, [user?.id, dbLoading, checkInProgressAttempt, initialCheckDone, assessmentStarted]);
+    }, [studentId, user?.id, dbLoading, loadingStudentGrade, checkInProgressAttempt, initialCheckDone, assessmentStarted]);
 
     // Handle resume assessment
     const handleResumeAssessment = async () => {
@@ -521,14 +574,15 @@ const AssessmentTest = () => {
     const [aiQuestions, setAiQuestions] = useState({ aptitude: null, knowledge: null });
     const [aiQuestionsLoading, setAiQuestionsLoading] = useState(false);
 
-    // Load AI questions for after12 students
+    // Load AI questions for after12 AND college students
     useEffect(() => {
         const loadAIQuestions = async () => {
             // Only require gradeLevel and studentStream - studentId is optional for saving
-            if (gradeLevel === 'after12' && studentStream) {
+            // Support both 'after12' and 'college' grade levels
+            if ((gradeLevel === 'after12' || gradeLevel === 'college') && studentStream) {
                 setAiQuestionsLoading(true);
                 try {
-                    console.log('🤖 Loading AI questions for stream:', studentStream, 'studentId:', studentId || 'not set yet');
+                    console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, studentStream, 'studentId:', studentId || 'not set yet');
                     // Pass studentId and attemptId for save/resume functionality (optional)
                     const questions = await loadCareerAssessmentQuestions(
                         studentStream, 
@@ -550,7 +604,7 @@ const AssessmentTest = () => {
         loadAIQuestions();
     }, [gradeLevel, studentStream, studentId, currentAttempt?.id]);
 
-    // Get questions for a section - from database or AI (no fallback for after12)
+    // Get questions for a section - from database or AI (no fallback for after12/college)
     const getQuestionsForSection = (sectionId) => {
         // Helper to normalize AI question format (AI uses 'question', UI expects 'text')
         const normalizeAIQuestion = (q) => ({
@@ -559,8 +613,8 @@ const AssessmentTest = () => {
             correct: q.correct_answer || q.correct // Map 'correct_answer' to 'correct'
         });
 
-        // For after12 grade level, use AI questions ONLY for aptitude and knowledge
-        if (gradeLevel === 'after12') {
+        // For after12 AND college grade levels, use AI questions ONLY for aptitude and knowledge
+        if (gradeLevel === 'after12' || gradeLevel === 'college') {
             if (sectionId === 'aptitude') {
                 if (aiQuestionsLoading) {
                     console.log('⏳ AI aptitude questions still loading...');
@@ -683,9 +737,9 @@ const AssessmentTest = () => {
             ];
         }
 
-        // For after 12th and college, show full comprehensive assessment
-        // Currently both use the same sections, but can be customized differently if needed
-        if (gradeLevel === 'after12' || gradeLevel === 'college') {
+        // For after 10th, after 12th and college, show full comprehensive assessment
+        // Currently all use the same sections, but can be customized differently if needed
+        if (gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'college') {
             return [
                 {
                     id: 'riasec',
@@ -827,12 +881,9 @@ const AssessmentTest = () => {
         { id: 'animation', label: 'B.Sc Animation' }
     ];
 
-    // Select appropriate streams based on grade level - use categoryStreams for all levels
-    const streams = categoryStreams;
-
     // Calculate progress
     const currentSection = sections?.[currentSectionIndex];
-    const totalQuestions = sections?.reduce((sum, section) => sum + (section?.questions?.length || 0), 0) || 0;
+    const totalQuestions = sections?.reduce((sum, section) => sum + section.questions.length, 0) || 0;
     const answeredCount = Object.keys(answers).length;
     const progress = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
 
@@ -996,13 +1047,16 @@ const AssessmentTest = () => {
             // Load questions and create attempt for middle school
             await loadQuestionsFromDatabase(streamId, 'middle');
 
-            if (user?.id) {
+            if (studentRecordId) {
                 try {
+                    console.log('Creating assessment attempt with studentRecordId:', studentRecordId);
                     await startAssessment(streamId, 'middle');
                     setUseDatabase(true);
                 } catch (err) {
                     console.log('Could not create database attempt:', err.message);
                 }
+            } else {
+                console.log('No studentRecordId available, skipping database attempt creation');
             }
 
             setShowSectionIntro(true);
@@ -1014,9 +1068,38 @@ const AssessmentTest = () => {
             // Load questions and create attempt for high school
             await loadQuestionsFromDatabase(streamId, 'highschool');
 
-            if (user?.id) {
+            if (studentRecordId) {
                 try {
+                    console.log('Creating assessment attempt with studentRecordId:', studentRecordId);
                     await startAssessment(streamId, 'highschool');
+                    setUseDatabase(true);
+                } catch (err) {
+                    console.log('Could not create database attempt:', err.message);
+                }
+            } else {
+                console.log('No studentRecordId available, skipping database attempt creation');
+            }
+
+            setShowSectionIntro(true);
+        } else if (level === 'after10') {
+            // For after 10th, show category selection (Science/Commerce/Arts) similar to after12
+            setShowCategorySelection(true);
+        } else if (level === 'college') {
+            // For college students (UG/PG), go directly to assessment using their program
+            setAssessmentStarted(true);
+            
+            // Use student's program as the stream, normalize it to match STREAM_KNOWLEDGE_PROMPTS
+            // Pass the original program name to normalizeStreamId (it handles the conversion)
+            const streamId = normalizeStreamId(studentProgram || 'college');
+            console.log(`🎓 College student stream: ${studentProgram} -> normalized: ${streamId}`);
+            setStudentStream(streamId);
+
+            // Load questions and create attempt for college
+            await loadQuestionsFromDatabase(streamId, 'college');
+
+            if (studentRecordId) {
+                try {
+                    await startAssessment(streamId, 'college');
                     setUseDatabase(true);
                 } catch (err) {
                     console.log('Could not create database attempt:', err.message);
@@ -1048,8 +1131,8 @@ const AssessmentTest = () => {
 
         setShowSectionIntro(true);
 
-        // Try to create a database attempt if user is logged in
-        if (user?.id) {
+        // Try to create a database attempt if student record exists
+        if (studentRecordId) {
             try {
                 await startAssessment(streamId, gradeLevel || 'after12');
                 setUseDatabase(true);
@@ -1072,8 +1155,8 @@ const AssessmentTest = () => {
 
         setShowSectionIntro(true);
 
-        // Try to create a database attempt if user is logged in
-        if (user?.id) {
+        // Try to create a database attempt if student record exists
+        if (studentRecordId) {
             try {
                 await startAssessment(streamId, gradeLevel || 'after12');
                 setUseDatabase(true);
@@ -1793,8 +1876,12 @@ const AssessmentTest = () => {
                             </button>
                             )}
 
-                            {/* Grades 9-12 (High School) - Show if: show all OR not filtering OR grade is 9-12 */}
-                            {(shouldShowAllOptions || !shouldFilterByGrade || detectedGradeLevel === 'highschool') && (
+                            {/* Grades 9-12 (High School) - Show if: show all OR not filtering OR grade is 9/11 OR (grade is 10 AND less than 6 months) OR (grade is 12 AND less than 6 months) */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || 
+                              (detectedGradeLevel === 'highschool' && !(studentGrade === '10' || studentGrade === '10th' || studentGrade === '12' || studentGrade === '12th')) ||
+                              (detectedGradeLevel === 'highschool' && (studentGrade === '10' || studentGrade === '10th') && monthsInGrade !== null && monthsInGrade < 6) ||
+                              (detectedGradeLevel === 'highschool' && (studentGrade === '12' || studentGrade === '12th') && monthsInGrade !== null && monthsInGrade < 6)
+                            ) && (
                             <button
                                 onClick={() => handleGradeSelect('highschool')}
                                 className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
@@ -1812,12 +1899,57 @@ const AssessmentTest = () => {
                                         <Clock className="w-4 h-4" />
                                         <span>Assessment: 32 questions (30-40 minutes)</span>
                                     </div>
+                                    {/* Show months info for grade 12 students */}
+                                    {(studentGrade === '12' || studentGrade === '12th') && monthsInGrade !== null && monthsInGrade < 6 && (
+                                        <div className="mt-2 text-xs text-indigo-600 font-medium">
+                                            {monthsInGrade} month{monthsInGrade !== 1 ? 's' : ''} in 12th grade
+                                        </div>
+                                    )}
+                                    {/* Show months info for grade 10 students */}
+                                    {(studentGrade === '10' || studentGrade === '10th') && monthsInGrade !== null && monthsInGrade < 6 && (
+                                        <div className="mt-2 text-xs text-indigo-600 font-medium">
+                                            {monthsInGrade} month{monthsInGrade !== 1 ? 's' : ''} in 10th grade
+                                        </div>
+                                    )}
                                 </div>
                             </button>
                             )}
 
-                            {/* After 12th (College Level) - Show if: show all OR not filtering OR is college student */}
-                            {(shouldShowAllOptions || !shouldFilterByGrade || isCollegeStudent) && (
+                            {/* After 10th - Show if: show all OR not filtering OR (grade is 10 AND 6+ months in grade) */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || 
+                              (detectedGradeLevel === 'highschool' && (studentGrade === '10' || studentGrade === '10th') && (monthsInGrade === null || monthsInGrade >= 6))
+                            ) && (
+                            <button
+                                onClick={() => handleGradeSelect('after10')}
+                                className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">After 10th</h3>
+                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
+                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">Students who have completed 10th grade</p>
+                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                                        <Clock className="w-4 h-4" />
+                                        <span>Assessment: (30-40 minutes)</span>
+                                    </div>
+                                    {/* Show months info for grade 10 students */}
+                                    {(studentGrade === '10' || studentGrade === '10th') && monthsInGrade !== null && monthsInGrade >= 6 && (
+                                        <div className="mt-2 text-xs text-green-600 font-medium">
+                                            {monthsInGrade} month{monthsInGrade !== 1 ? 's' : ''} in 10th grade - Ready for stream selection!
+                                        </div>
+                                    )}
+                                </div>
+                            </button>
+                            )}
+
+                            {/* After 12th - Show if: show all OR not filtering OR (grade is 12 AND 6+ months in grade) */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || 
+                              (detectedGradeLevel === 'highschool' && (studentGrade === '12' || studentGrade === '12th') && (monthsInGrade === null || monthsInGrade >= 6))
+                            ) && (
                             <button
                                 onClick={() => handleGradeSelect('after12')}
                                 className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
@@ -1835,12 +1967,20 @@ const AssessmentTest = () => {
                                         <Clock className="w-4 h-4" />
                                         <span>Assessment: (35-45 minutes)</span>
                                     </div>
+                                    {/* Show months info for grade 12 students */}
+                                    {(studentGrade === '12' || studentGrade === '12th') && monthsInGrade !== null && monthsInGrade >= 6 && (
+                                        <div className="mt-2 text-xs text-green-600 font-medium">
+                                            {monthsInGrade} month{monthsInGrade !== 1 ? 's' : ''} in 12th grade - Ready for career planning!
+                                        </div>
+                                    )}
                                 </div>
                             </button>
                             )}
 
-                            {/* College */}
-                            {(shouldShowAllOptions || !shouldFilterByGrade || isCollegeStudent) && (
+                            {/* College (UG/PG) - Show if: show all OR not filtering OR is college student (UG/PG grade) */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || isCollegeStudent || 
+                              detectedGradeLevel === 'after12'
+                            ) && (
                             <button
                                 onClick={() => handleGradeSelect('college')}
                                 className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
@@ -1848,15 +1988,19 @@ const AssessmentTest = () => {
                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                 <div className="relative z-10">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">College</h3>
+                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">
+                                            {studentProgram ? studentProgram : 'College'}
+                                        </h3>
                                         <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
                                             <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
                                         </div>
                                     </div>
-                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">College/University Students</p>
+                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">
+                                        {studentProgram ? 'College/University Student' : 'Undergraduate & Postgraduate Students'}
+                                    </p>
                                     <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                                         <Clock className="w-4 h-4" />
-                                        <span>Comprehensive assessment (45-60 minutes)</span>
+                                        <span>Assessment: (45-60 minutes)</span>
                                     </div>
                                 </div>
                             </button>
@@ -1888,7 +2032,9 @@ const AssessmentTest = () => {
                             <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                                 <Award className="w-8 h-8 text-white" />
                             </div>
-                            <h1 className="text-3xl font-bold text-gray-800 mb-2">Career Assessment - After 12th</h1>
+                            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                                Career Assessment - {gradeLevel === 'after10' ? 'After 10th' : 'After 12th'}
+                            </h1>
                             <p className="text-gray-600">Select your stream category to continue</p>
                         </div>
 
@@ -1947,14 +2093,79 @@ const AssessmentTest = () => {
         );
     }
 
-    // Stream selection is no longer shown - students go directly from category to assessment
-    // The specific course/program is recommended after assessment completion based on scores
+    // Stream selection is no longer used - college students go directly to assessment
+    // Keeping this commented for reference if needed in future
+    /*
     if (showStreamSelection) {
-        // Redirect to category selection if somehow reached
-        setShowStreamSelection(false);
-        setShowCategorySelection(true);
-        return null;
+        // Default streams for college students
+        const collegeStreams = [
+            { id: 'cs', label: 'B.Sc Computer Science / B.Tech CS/IT' },
+            { id: 'bca', label: 'BCA General' },
+            { id: 'bba', label: 'BBA General' },
+            { id: 'dm', label: 'BBA Digital Marketing' },
+            { id: 'animation', label: 'B.Sc Animation' }
+        ];
+
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+                <Card className="w-full max-w-2xl border-none shadow-2xl">
+                    <CardContent className="p-8">
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                                <Award className="w-8 h-8 text-white" />
+                            </div>
+                            <h1 className="text-3xl font-bold text-gray-800 mb-2">Career Assessment</h1>
+                            <p className="text-gray-600">Let's personalize your assessment based on your stream</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <Label className="text-sm font-semibold text-gray-700">Select Your Stream/Course</Label>
+                            
+                            {collegeStreams.map((stream) => (
+                                <button
+                                    key={stream.id}
+                                    onClick={() => handleStreamSelect(stream.id)}
+                                    className="w-full p-4 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-xl shadow-sm hover:shadow-lg hover:border-indigo-300 transition-all duration-300 text-left group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-gray-800 font-medium group-hover:text-indigo-700">{stream.label}</span>
+                                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-600" />
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                            <div className="flex gap-3">
+                                <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                                <div className="text-sm text-blue-700">
+                                    <p className="font-semibold mb-1">What to expect:</p>
+                                    <ul className="space-y-1">
+                                        <li>• 6 assessment sections covering interests, personality, values, skills, and knowledge</li>
+                                        <li>• Approximately 45-60 minutes to complete</li>
+                                        <li>• Your responses are private and used only for career guidance</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowStreamSelection(false);
+                                setShowGradeSelection(true);
+                            }}
+                            className="w-full mt-4 py-4"
+                        >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to Grade Selection
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
     }
+    */
 
     // Guard: Don't render main assessment UI if sections is empty
     if (!sections || sections.length === 0 || !currentSection) {

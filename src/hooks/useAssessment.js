@@ -39,12 +39,67 @@ export const useAssessment = () => {
     loadInitialData();
   }, []);
 
+  // Get student record ID from students table (not auth user ID)
+  const [studentRecordId, setStudentRecordId] = useState(null);
+  
+  // Fetch student record ID on mount
+  useEffect(() => {
+    const fetchStudentId = async () => {
+      if (!user?.id) {
+        console.log('useAssessment: No user.id, skipping student fetch');
+        return;
+      }
+      
+      console.log('useAssessment: Fetching student record for user.id:', user.id);
+      
+      try {
+        const { supabase } = await import('../lib/supabaseClient');
+        
+        // First try to find student by user_id (auth user ID)
+        let { data, error } = await supabase
+          .from('students')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        console.log('useAssessment: Student fetch by user_id result:', { data, error });
+        
+        // If not found by user_id, check if user.id IS the student table ID directly
+        if (!data && !error) {
+          console.log('useAssessment: No student found by user_id, checking if user.id is student table ID...');
+          const { data: directData, error: directError } = await supabase
+            .from('students')
+            .select('id')
+            .eq('id', user.id)
+            .maybeSingle();
+          
+          console.log('useAssessment: Student fetch by id result:', { directData, directError });
+          
+          if (directData?.id) {
+            data = directData;
+          }
+        }
+        
+        if (data?.id) {
+          console.log('useAssessment: Setting studentRecordId to:', data.id);
+          setStudentRecordId(data.id);
+        } else {
+          console.log('useAssessment: No student record found for user.id:', user.id);
+        }
+      } catch (err) {
+        console.error('Error fetching student record ID:', err);
+      }
+    };
+    
+    fetchStudentId();
+  }, [user?.id]);
+
   // Check for in-progress attempt
   const checkInProgressAttempt = useCallback(async () => {
-    if (!user?.id) return null;
+    if (!studentRecordId) return null;
     
     try {
-      const attempt = await assessmentService.getInProgressAttempt(user.id);
+      const attempt = await assessmentService.getInProgressAttempt(studentRecordId);
       if (attempt) {
         setCurrentAttempt(attempt);
         // Restore responses from the attempt
@@ -79,18 +134,22 @@ export const useAssessment = () => {
       console.error('Error checking in-progress attempt:', err);
       return null;
     }
-  }, [user?.id]);
+  }, [studentRecordId]);
 
   // Start a new assessment
   const startAssessment = useCallback(async (streamId, gradeLevel) => {
-    if (!user?.id) throw new Error('User not authenticated');
+    console.log('useAssessment.startAssessment called with:', { streamId, gradeLevel, studentRecordId });
+    
+    if (!studentRecordId) throw new Error('Student record not found');
 
     try {
       setLoading(true);
       setError(null);
 
-      // Create new attempt
-      const attempt = await assessmentService.createAttempt(user.id, streamId, gradeLevel);
+      // Create new attempt using student record ID (not auth user ID)
+      console.log('Creating attempt with studentRecordId:', studentRecordId);
+      const attempt = await assessmentService.createAttempt(studentRecordId, streamId, gradeLevel);
+      console.log('Attempt created:', attempt);
       setCurrentAttempt(attempt);
 
       // Load all questions for this stream and grade level
@@ -106,7 +165,7 @@ export const useAssessment = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [studentRecordId]);
 
   // Resume an existing attempt
   const resumeAssessment = useCallback(async (attemptId) => {
@@ -188,15 +247,15 @@ export const useAssessment = () => {
 
   // Complete the assessment
   const completeAssessment = useCallback(async (geminiResults, sectionTimings) => {
-    if (!currentAttempt?.id || !user?.id) {
-      throw new Error('No active attempt or user');
+    if (!currentAttempt?.id || !studentRecordId) {
+      throw new Error('No active attempt or student record');
     }
 
     try {
       setLoading(true);
       const results = await assessmentService.completeAttempt(
         currentAttempt.id,
-        user.id,
+        studentRecordId,
         currentAttempt.stream_id,
         currentAttempt.grade_level,
         geminiResults,
@@ -217,7 +276,7 @@ export const useAssessment = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentAttempt, user?.id]);
+  }, [currentAttempt, studentRecordId]);
 
   // Abandon current attempt
   const abandonAssessment = useCallback(async () => {
@@ -235,27 +294,27 @@ export const useAssessment = () => {
 
   // Get assessment history
   const getHistory = useCallback(async () => {
-    if (!user?.id) return [];
+    if (!studentRecordId) return [];
 
     try {
-      return await assessmentService.getStudentAttempts(user.id);
+      return await assessmentService.getStudentAttempts(studentRecordId);
     } catch (err) {
       console.error('Error fetching history:', err);
       return [];
     }
-  }, [user?.id]);
+  }, [studentRecordId]);
 
   // Get latest result
   const getLatestResult = useCallback(async () => {
-    if (!user?.id) return null;
+    if (!studentRecordId) return null;
 
     try {
-      return await assessmentService.getLatestResult(user.id);
+      return await assessmentService.getLatestResult(studentRecordId);
     } catch (err) {
       console.error('Error fetching latest result:', err);
       return null;
     }
-  }, [user?.id]);
+  }, [studentRecordId]);
 
   return {
     // State
@@ -266,6 +325,7 @@ export const useAssessment = () => {
     currentAttempt,
     questions,
     responses,
+    studentRecordId,
     
     // Actions
     checkInProgressAttempt,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, useInView, useScroll, useTransform } from 'framer-motion';
 import {
     Target,
@@ -45,6 +45,9 @@ import { TextGenerateEffect } from '../../../components/ui/text-generate-effect'
 // Import constants and hooks
 import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from './constants';
 import { useAssessmentResults } from './hooks/useAssessmentResults';
+
+// Import course matching engine
+import { calculateCourseMatchScores } from './utils/courseMatchingEngine';
 
 /**
  * Gemini-Style Career Path Connector
@@ -648,10 +651,23 @@ const AssessmentResult = () => {
         retrying,
         gradeLevel,
         studentInfo,
+        studentAcademicData,
         handleRetry,
         validateResults,
         navigate
     } = useAssessmentResults();
+
+    // Calculate enhanced course recommendations with accurate match scores
+    const enhancedCourseRecommendations = useMemo(() => {
+        if (!results?.courseRecommendations) return [];
+        
+        // Use the powerful matching engine to calculate accurate scores
+        return calculateCourseMatchScores(
+            results.courseRecommendations,
+            results.riasec?.scores || {},
+            studentAcademicData
+        );
+    }, [results?.courseRecommendations, results?.riasec?.scores, studentAcademicData]);
 
     // Custom print function that opens print view in new window
     const handlePrint = () => {
@@ -981,7 +997,7 @@ const AssessmentResult = () => {
                     </div>*/}
 
                     {/* Course Recommendations Section - Only for after12 students */}
-                    {gradeLevel === 'after12' && results.courseRecommendations && results.courseRecommendations.length > 0 && (
+                    {gradeLevel === 'after12' && enhancedCourseRecommendations && enhancedCourseRecommendations.length > 0 && (
                         <div className="mb-8">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
@@ -989,12 +1005,12 @@ const AssessmentResult = () => {
                                 </div>
                                 <div>
                                     <h2 className="text-2xl font-bold text-gray-800">Recommended Programs for You</h2>
-                                    <p className="text-gray-500">Based on your assessment scores and interests</p>
+                                    <p className="text-gray-500">Based on your interests, academics, projects & experiences</p>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {results.courseRecommendations.slice(0, 5).map((course, index) => (
+                                {enhancedCourseRecommendations.slice(0, 5).map((course, index) => (
                                     <div 
                                         key={course.courseId}
                                         className={`relative bg-white rounded-xl border-2 p-5 transition-all hover:shadow-lg ${
@@ -1056,26 +1072,64 @@ const AssessmentResult = () => {
 
                                         {/* Match Level */}
                                         <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
-                                            course.matchLevel === 'Excellent' ? 'bg-emerald-50 text-emerald-700' :
-                                            course.matchLevel === 'Good' ? 'bg-blue-50 text-blue-700' :
+                                            course.matchLevel === 'Exceptional' || course.matchLevel === 'Excellent' ? 'bg-emerald-50 text-emerald-700' :
+                                            course.matchLevel === 'Very Good' || course.matchLevel === 'Good' ? 'bg-blue-50 text-blue-700' :
+                                            course.matchLevel === 'Moderate' ? 'bg-amber-50 text-amber-700' :
                                             'bg-gray-50 text-gray-600'
                                         }`}>
-                                            {course.matchLevel === 'Excellent' && <TrendingUp className="w-3 h-3" />}
+                                            {(course.matchLevel === 'Exceptional' || course.matchLevel === 'Excellent') && <TrendingUp className="w-3 h-3" />}
+                                            {course.matchEmoji && <span>{course.matchEmoji}</span>}
                                             {course.matchLevel} Match
                                         </div>
+
+                                        {/* Score Breakdown (for top 3 courses) */}
+                                        {index < 3 && course.scoreBreakdown && (
+                                            <div className="mt-2 grid grid-cols-4 gap-1 text-[10px]">
+                                                <div className="text-center p-1 bg-blue-50 rounded" title="Interest Alignment">
+                                                    <div className="font-bold text-blue-600">{course.scoreBreakdown.interest || 0}</div>
+                                                    <div className="text-blue-500">Interest</div>
+                                                </div>
+                                                <div className="text-center p-1 bg-green-50 rounded" title="Academic Performance">
+                                                    <div className="font-bold text-green-600">{course.scoreBreakdown.academic || 0}</div>
+                                                    <div className="text-green-500">Academic</div>
+                                                </div>
+                                                <div className="text-center p-1 bg-purple-50 rounded" title="Projects">
+                                                    <div className="font-bold text-purple-600">{course.scoreBreakdown.projects || 0}</div>
+                                                    <div className="text-purple-500">Projects</div>
+                                                </div>
+                                                <div className="text-center p-1 bg-orange-50 rounded" title="Experience">
+                                                    <div className="font-bold text-orange-600">{course.scoreBreakdown.experience || 0}</div>
+                                                    <div className="text-orange-500">Exp</div>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         {/* Reasons */}
                                         {course.reasons && course.reasons.length > 0 && (
                                             <div className="mt-3 pt-3 border-t border-gray-100">
                                                 <p className="text-xs font-medium text-gray-500 mb-2">Why this fits you:</p>
                                                 <ul className="space-y-1">
-                                                    {course.reasons.slice(0, 2).map((reason, idx) => (
+                                                    {course.reasons.slice(0, 3).map((reason, idx) => (
                                                         <li key={idx} className="flex items-start gap-2 text-xs text-gray-600">
                                                             <CheckCircle2 className="w-3 h-3 text-emerald-500 mt-0.5 flex-shrink-0" />
                                                             {reason}
                                                         </li>
                                                     ))}
                                                 </ul>
+                                            </div>
+                                        )}
+
+                                        {/* Career Paths */}
+                                        {course.careerPaths && course.careerPaths.length > 0 && (
+                                            <div className="mt-3 pt-3 border-t border-gray-100">
+                                                <p className="text-xs font-medium text-gray-500 mb-2">Career Paths:</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {course.careerPaths.slice(0, 3).map((path, idx) => (
+                                                        <span key={idx} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs">
+                                                            {path}
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
                                     </div>

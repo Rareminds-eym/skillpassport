@@ -334,6 +334,9 @@ const UnifiedSignup = () => {
     }
   };
 
+  // Check if OTP verification should be skipped (for localhost/development)
+  const skipOtpVerification = import.meta.env.VITE_SKIP_OTP_VERIFICATION === 'true';
+
   // Validate Step 1 fields
   const validateStep1 = (): boolean => {
     if (!state.firstName.trim()) { setState(prev => ({ ...prev, error: 'Please enter your first name' })); return false; }
@@ -341,7 +344,8 @@ const UnifiedSignup = () => {
     if (!state.dateOfBirth) { setState(prev => ({ ...prev, error: 'Please enter your date of birth' })); return false; }
     if (!state.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email)) { setState(prev => ({ ...prev, error: 'Please enter a valid email' })); return false; }
     if (!state.phone || state.phone.length < 7 || state.phone.length > 15) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number' })); return false; }
-    if (!state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number with OTP' })); return false; }
+    // Skip OTP verification in development mode
+    if (!skipOtpVerification && !state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number with OTP' })); return false; }
     if (!state.password || state.password.length < 8) { setState(prev => ({ ...prev, error: 'Password must be at least 8 characters' })); return false; }
     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(state.password)) { setState(prev => ({ ...prev, error: 'Password must contain uppercase, lowercase, and number' })); return false; }
     if (state.password !== state.confirmPassword) { setState(prev => ({ ...prev, error: 'Passwords do not match' })); return false; }
@@ -617,7 +621,10 @@ const UnifiedSignup = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Mobile Number <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Mobile Number <span className="text-red-500">*</span>
+                    {skipOtpVerification && <span className="ml-2 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">(OTP skipped in dev)</span>}
+                  </label>
                   <div className={`flex items-center border rounded-xl bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all ${state.otpVerified ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
                     {/* Custom Country Code Dropdown */}
                     <div className="relative" ref={countryCodeRef}>
@@ -662,7 +669,8 @@ const UnifiedSignup = () => {
                       {state.otpVerified && <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />}
                     </div>
                   </div>
-                  {!state.otpVerified && (
+                  {/* Show OTP button only if not skipping verification and not already verified */}
+                  {!skipOtpVerification && !state.otpVerified && (
                     <button type="button" onClick={handleSendOtp} disabled={state.sendingOtp || state.phone.length < 7} className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50">
                       {state.sendingOtp ? 'Sending code...' : state.otpSent ? 'Resend Verification Code' : 'Send Verification Code'}
                     </button>
@@ -670,7 +678,8 @@ const UnifiedSignup = () => {
                   {state.otpVerified && <p className="mt-2 text-xs font-medium text-green-600 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Verified</p>}
                 </div>
 
-                {state.otpSent && !state.otpVerified && (
+                {/* Show OTP input only if not skipping verification */}
+                {!skipOtpVerification && state.otpSent && !state.otpVerified && (
                   <div className="animate-in fade-in slide-in-from-top-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Verification Code</label>
                     <div className="flex gap-3">
