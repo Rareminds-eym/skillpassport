@@ -395,14 +395,14 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
     adaptive_core: {
       phase: 'adaptive_core',
       minQuestions: 8,
-      maxQuestions: 10,
+      maxQuestions: 11,  // Updated: 11 questions for adaptive core
       maxConsecutiveSameSubtag: 2,
       maxConsecutiveSameDirectionJumps: 2,
     },
     stability_confirmation: {
       phase: 'stability_confirmation',
       minQuestions: 4,
-      maxQuestions: 6,
+      maxQuestions: 4,  // Updated: 4 questions for stability
       maxConsecutiveSameSubtag: 2,
     },
   },
