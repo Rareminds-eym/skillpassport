@@ -89,22 +89,98 @@ const Opportunities = () => {
   const [showPipelineStatus, setShowPipelineStatus] = useState({});
   const [messagingApplicationId, setMessagingApplicationId] = useState(null);
 
-  // Fetch opportunities with loader timing
+  // Memoize student type to prevent unnecessary recalculations
+  const studentType = React.useMemo(() => {
+    const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
+    const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
+    return { isSchoolStudent, isUniversityStudent };
+  }, [studentData?.school_id, studentData?.school_class_id, studentData?.university_college_id, studentData?.universityId]);
+
+  // Build server-side filters (excluding skills which needs client-side filtering)
+  const serverFilters = React.useMemo(() => {
+    const filters = {};
+    
+    // Employment type filter - for school students, force internship only
+    if (studentType.isSchoolStudent) {
+      filters.employmentType = ['internship'];
+    } else if (advancedFilters.employmentType.length > 0) {
+      filters.employmentType = advancedFilters.employmentType;
+    }
+    
+    if (advancedFilters.experienceLevel.length > 0) {
+      filters.experienceLevel = advancedFilters.experienceLevel;
+    }
+    if (advancedFilters.mode.length > 0) {
+      filters.mode = advancedFilters.mode;
+    }
+    if (advancedFilters.department.length > 0) {
+      filters.department = advancedFilters.department;
+    }
+    if (advancedFilters.salaryMin) {
+      filters.salaryMin = advancedFilters.salaryMin;
+    }
+    if (advancedFilters.salaryMax) {
+      filters.salaryMax = advancedFilters.salaryMax;
+    }
+    if (advancedFilters.postedWithin) {
+      filters.postedWithin = advancedFilters.postedWithin;
+    }
+    
+    return filters;
+  }, [advancedFilters, studentType.isSchoolStudent]);
+
+  // Fetch opportunities with server-side pagination
   const [isLoading, setIsLoading] = useState(true);
-  const { opportunities, loading: dataLoading, error } = useOpportunities({
+  const { 
+    opportunities, 
+    loading: dataLoading, 
+    error,
+    totalCount,
+    totalPages 
+  } = useOpportunities({
     fetchOnMount: true,
     activeOnly: true,
-    searchTerm: debouncedSearch
+    searchTerm: debouncedSearch,
+    page: currentPage,
+    pageSize: opportunitiesPerPage,
+    sortBy: sortBy,
+    filters: serverFilters,
+    serverSidePagination: true
   });
+
+  // Client-side filter for skills (JSONB array filtering not supported well in Supabase)
+  const filteredOpportunities = React.useMemo(() => {
+    if (advancedFilters.skills.length === 0) {
+      return opportunities;
+    }
+    
+    return opportunities.filter(opp => {
+      const oppSkills = opp.required_skills || opp.skills_required || [];
+      return advancedFilters.skills.some(skill =>
+        oppSkills.some(oppSkill => 
+          oppSkill.toLowerCase().includes(skill.toLowerCase())
+        )
+      );
+    });
+  }, [opportunities, advancedFilters.skills]);
 
   // Debounce search term
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
+      // Reset to page 1 when search changes
+      if (searchTerm !== debouncedSearch) {
+        setCurrentPage(1);
+      }
     }, 500);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  // Reset to page 1 when filters or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [advancedFilters, sortBy]);
 
   // Pre-select opportunity from navigation state (from Dashboard)
   useEffect(() => {
@@ -263,107 +339,12 @@ const Opportunities = () => {
     setFilteredApplications(filtered);
   }, [searchQuery, statusFilter, applications]);
 
-  // Memoize student type to prevent unnecessary recalculations
-  const studentType = React.useMemo(() => {
-    const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
-    const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
-    return { isSchoolStudent, isUniversityStudent };
-  }, [studentData?.school_id, studentData?.school_class_id, studentData?.university_college_id, studentData?.universityId]);
+  // Memoize student type to prevent unnecessary recalculations - MOVED UP
+  // const studentType is now defined earlier in the component
 
   // Filter and sort opportunities for My Jobs tab with advanced filters
-  const filteredAndSortedOpportunities = React.useMemo(() => {
-    let filtered = opportunities.filter(opp => {
-      // Search is now handled at DB level via useOpportunities hook
-      // No need for client-side search filtering anymore
-
-      // Grade-based filtering (same logic as Dashboard)
-      const { isSchoolStudent, isUniversityStudent } = studentType;
-
-      // Apply filtering based on student type
-      if (isSchoolStudent) {
-        // School students: Show ONLY internships
-        const isInternship = opp.employment_type && opp.employment_type.toLowerCase() === 'internship';
-        if (!isInternship) return false;
-      }
-      // College/University students: Show ALL opportunities (no filtering needed)
-
-      // Employment Type filter
-      if (advancedFilters.employmentType.length > 0) {
-        if (!advancedFilters.employmentType.includes(opp.employment_type)) {
-          return false;
-        }
-      }
-
-      // Experience Level filter
-      if (advancedFilters.experienceLevel.length > 0) {
-        if (!advancedFilters.experienceLevel.includes(opp.experience_level)) {
-          return false;
-        }
-      }
-
-      // Mode filter (Remote/Onsite/Hybrid)
-      if (advancedFilters.mode.length > 0) {
-        if (!advancedFilters.mode.includes(opp.mode)) {
-          return false;
-        }
-      }
-
-      // Salary filter
-      if (advancedFilters.salaryMin && opp.salary_range_min) {
-        if (opp.salary_range_min < parseInt(advancedFilters.salaryMin)) {
-          return false;
-        }
-      }
-      if (advancedFilters.salaryMax && opp.salary_range_max) {
-        if (opp.salary_range_max > parseInt(advancedFilters.salaryMax)) {
-          return false;
-        }
-      }
-
-      // Skills filter
-      if (advancedFilters.skills.length > 0) {
-        const oppSkills = opp.required_skills || [];
-        const hasMatchingSkill = advancedFilters.skills.some(skill =>
-          oppSkills.some(oppSkill => 
-            oppSkill.toLowerCase().includes(skill.toLowerCase())
-          )
-        );
-        if (!hasMatchingSkill) return false;
-      }
-
-      // Department filter
-      if (advancedFilters.department.length > 0) {
-        if (!advancedFilters.department.includes(opp.department)) {
-          return false;
-        }
-      }
-
-      // Posted Within filter
-      if (advancedFilters.postedWithin) {
-        const postedDate = new Date(opp.posted_date || opp.created_at);
-        const now = new Date();
-        const daysDiff = Math.floor((now - postedDate) / (1000 * 60 * 60 * 24));
-        
-        const withinDays = parseInt(advancedFilters.postedWithin);
-        if (daysDiff > withinDays) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-    
-    // Sort filtered results
-    return filtered.sort((a, b) => {
-      if (sortBy === 'newest') {
-        return new Date(b.posted_date || b.created_at) - new Date(a.posted_date || a.created_at);
-      }
-      if (sortBy === 'oldest') {
-        return new Date(a.posted_date || a.created_at) - new Date(b.posted_date || b.created_at);
-      }
-      return 0;
-    });
-  }, [opportunities, sortBy, advancedFilters, studentType]);
+  // NOTE: Most filtering is now done server-side. Only skills filtering remains client-side.
+  const filteredAndSortedOpportunities = filteredOpportunities;
 
   const handleToggleSave = async (opportunity) => {
     if (!studentId) {
@@ -578,6 +559,9 @@ const Opportunities = () => {
                   setCurrentPage={setCurrentPage}
                   opportunitiesPerPage={opportunitiesPerPage}
                   studentData={studentData}
+                  totalCount={totalCount}
+                  totalPages={totalPages}
+                  isServerPaginated={true}
                 />
               </>
             )}
@@ -639,18 +623,18 @@ const MyJobsContent = ({
   cached,
   fallback,
   trackView,
-  studentData
+  studentData,
+  totalCount = 0,
+  totalPages: serverTotalPages = 1,
+  isServerPaginated = false
 }) => {
-  const totalPages = Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage));
-  const paginatedOpportunities = React.useMemo(() => {
+  // Use server-side pagination values when available
+  const totalPages = isServerPaginated ? serverTotalPages : Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage));
+  const displayedOpportunities = isServerPaginated ? opportunities : (() => {
     const startIndex = (currentPage - 1) * opportunitiesPerPage;
     return opportunities.slice(startIndex, startIndex + opportunitiesPerPage);
-  }, [opportunities, currentPage, opportunitiesPerPage]);
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearch, advancedFilters, sortBy, setCurrentPage]);
+  })();
+  const displayCount = isServerPaginated ? totalCount : opportunities.length;
 
   return (
     <>
@@ -841,11 +825,11 @@ const MyJobsContent = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <p className="text-sm font-semibold text-slate-900">
-              Showing {opportunities.length} Jobs Results
+              Showing {displayCount} Jobs Results
             </p>
-            {opportunities.length > 0 && (
+            {displayCount > 0 && (
               <span className="text-xs text-slate-500">
-                (Page {currentPage} of {Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage))})
+                (Page {currentPage} of {totalPages})
               </span>
             )}
           </div>
@@ -892,7 +876,7 @@ const MyJobsContent = ({
                 <>
                   {viewMode === 'grid' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {paginatedOpportunities.map((opp) => (
+                      {displayedOpportunities.map((opp) => (
                         <OpportunityCard
                           key={opp.id}
                           opportunity={opp}
@@ -906,7 +890,7 @@ const MyJobsContent = ({
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {paginatedOpportunities.map((opp) => (
+                      {displayedOpportunities.map((opp) => (
                         <OpportunityListItem
                           key={opp.id}
                           opportunity={opp}
@@ -943,13 +927,13 @@ const MyJobsContent = ({
           </div>
 
           {/* Pagination */}
-          {opportunities.length > 0 && totalPages > 1 && (
+          {displayCount > 0 && totalPages > 1 && (
             <div className="mt-8">
               <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm">
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  totalItems={opportunities.length}
+                  totalItems={displayCount}
                   itemsPerPage={opportunitiesPerPage}
                   onPageChange={setCurrentPage}
                 />
