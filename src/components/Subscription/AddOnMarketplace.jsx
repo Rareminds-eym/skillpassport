@@ -17,6 +17,9 @@ import { Filter, Grid, List, Package, Search, Sparkles, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { useAddOnCatalog } from '../../hooks/useAddOnCatalog';
+import { clearFeatureAccessCache } from '../../hooks/useFeatureGate';
+import addOnPaymentService from '../../services/addOnPaymentService';
+import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
 import { AddOnCard } from './AddOnCard';
 import { BundleCard } from './BundleCard';
 

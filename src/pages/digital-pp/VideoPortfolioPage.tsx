@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, CheckCircle, Download, Maximize, Minimize, Trash2, Upload, Video, X } from 'lucide-react';
+import { CheckCircle, Download, Trash2, Upload, Video, X } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FeatureGate } from '../../components/Subscription/FeatureGate';
@@ -119,54 +119,8 @@ const VideoPortfolioPageContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
-      {/* Fixed Header - Similar to Portfolio Mode */}
-      <div className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                type="button"
-                onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
-                className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 mr-2" />
-                Back
-              </button>
-              <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Video Portfolio</h1>
-            </div>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={toggleFullscreen}
-                className="flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-200"
-                title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-              >
-                {isFullscreen ? (
-                  <>
-                    <Minimize className="w-4 h-4 mr-2" />
-                    Exit Fullscreen
-                  </>
-                ) : (
-                  <>
-                    <Maximize className="w-4 h-4 mr-2" />
-                    Fullscreen
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg transition-all hover:scale-105"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Video
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content with top padding for fixed header */}
-      <div className="pt-24 pb-12 px-6">
+      {/* Main Content */}
+      <div className="py-8 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Video Player Section */}
