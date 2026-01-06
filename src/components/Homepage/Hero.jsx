@@ -81,17 +81,17 @@ const Hero = () => {
                 >
                   BOOK A DEMO
                 </button>
-                <button
+                {/* <button
                   onClick={openCalendly}
                   aria-label="Open demo"
                   className="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-[#e63b2e] text-white shadow-[0_6px_20px_rgba(230,59,46,0.4)] flex items-center justify-center hover:brightness-110 transition-all group-hover:-translate-x-1"
                 >
                   <ArrowUpRight className="w-4 h-4 sm:w-6 sm:h-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-10deg]" style={{ strokeWidth: 2.5 }} />
-                </button>
+                </button> */}
               </div>
 
               {/* Explore Dashboard */}
-              <div className="flex items-center gap-2 group">
+              {/* <div className="flex items-center gap-2 group">
                 <button
                   onClick={() => navigate('/login/student')}
                   className="h-9 sm:h-14 px-4 sm:px-8 rounded-full bg-white text-black text-xs sm:text-base font-bold uppercase tracking-wide border-2 border-black hover:bg-gray-50 transition-all whitespace-nowrap"
@@ -105,7 +105,7 @@ const Hero = () => {
                 >
                   <ArrowUpRight className="w-4 h-4 sm:w-6 sm:h-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-10deg]" style={{ strokeWidth: 2.5 }} />
                 </button>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
