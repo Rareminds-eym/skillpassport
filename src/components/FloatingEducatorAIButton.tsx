@@ -1,12 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const FloatingEducatorAIButton: React.FC = () => {
   const [isTooltipVisible, setIsTooltipVisible] = useState(false);
+  const [isPulsing, setIsPulsing] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const timeoutRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    // Stop pulsing after initial attention grab
+    const timer = setTimeout(() => setIsPulsing(false), 8000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Don't show on the AI Copilot page itself
   if (location.pathname === '/educator/ai-copilot') {
@@ -17,59 +24,95 @@ const FloatingEducatorAIButton: React.FC = () => {
     navigate('/educator/ai-copilot');
   };
 
+  const handleMouseEnter = () => {
+    setIsTooltipVisible(true);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  };
+
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      setIsTooltipVisible(false);
+    }, 150);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
   return (
-    <div className="fixed bottom-6 right-6 z-50">
-      <AnimatePresence>
-        {isTooltipVisible && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            className="absolute bottom-full right-0 mb-3 px-4 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 text-white text-sm font-medium rounded-xl shadow-lg whitespace-nowrap"
-          >
-            Ask Teaching AI ✨
-            <div className="absolute -bottom-1 right-6 w-3 h-3 bg-emerald-600 transform rotate-45"></div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="fixed bottom-2 right-2 z-50 select-none">
+      <div className="relative flex items-center justify-center">
+        <AnimatePresence>
+          {isTooltipVisible && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 10 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="absolute bottom-full mb-5 px-4 py-3 bg-blue-600 text-white text-sm font-semibold rounded-2xl shadow-2xl whitespace-nowrap "
+              style={{ 
+                right: '1.5rem',
+                boxShadow: '0 10px 30px rgba(37, 99, 235, 0.3)'
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                Ask Teaching AI
+              </div>
+               <div className="absolute -bottom-2 right-4 w-4 h-4 bg-blue-600 rotate-45"></div>
 
-      <motion.button
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={handleClick}
-        onMouseEnter={() => setIsTooltipVisible(true)}
-        onMouseLeave={() => setIsTooltipVisible(false)}
-        className="relative w-16 h-16 rounded-full bg-gradient-to-r from-teal-600 via-emerald-600 to-green-500 text-white shadow-2xl hover:shadow-teal-500/50 transition-all duration-300 flex items-center justify-center group overflow-hidden"
-      >
-        {/* Animated background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-r from-green-500 via-emerald-600 to-teal-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-        
-        {/* Pulse animation */}
-        <motion.div
-          className="absolute inset-0 rounded-full bg-teal-400"
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.5, 0, 0.5],
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <motion.button
+          initial={{ scale: 0 }}
+          animate={{ 
+            scale: 1,
+            y: isPulsing ? [0, -8, 0] : 0
           }}
+          whileHover={{ 
+            scale: 1.05
+          }}
+          whileTap={{ scale: 0.95 }}
           transition={{
-            duration: 2,
-            repeat: Infinity,
-            ease: "easeInOut",
+            type: "spring",
+            stiffness: 260,
+            damping: 20,
+            y: {
+              duration: 2,
+              repeat: isPulsing ? Infinity : 0,
+              ease: "easeInOut"
+            }
           }}
-        />
-
-        {/* Icon */}
-        <div className="relative z-10 flex items-center justify-center">
-          <Sparkles className="w-8 h-8 animate-pulse" />
-        </div>
-
-        {/* New feature badge (optional) */}
-        <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full border-2 border-white flex items-center justify-center">
-          <span className="text-white text-xs font-bold">✨</span>
-        </div>
-      </motion.button>
+          onClick={handleClick}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onKeyDown={handleKeyDown}
+          className="focus:outline-none p-0 m-0 border-0 bg-transparent"
+          aria-label="Open Teaching AI Assistant"
+          tabIndex={0}
+        >
+          <img 
+            src="/ai.gif" 
+            alt="Teaching AI Assistant Animation"
+            className="
+              w-20 h-20 md:w-24 md:h-24 
+              object-cover
+              drop-shadow-lg
+              rounded-full
+              mix-blend-screen
+              opacity-95
+              [mask-image:radial-gradient(circle,white_60%,transparent_80%)]
+              [-webkit-mask-image:radial-gradient(circle,white_60%,transparent_80%)]
+            "
+            loading="lazy"
+          />
+        </motion.button>
+      </div>
     </div>
   );
 };
