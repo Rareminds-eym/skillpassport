@@ -49,12 +49,19 @@ export function parseStudentType(studentType) {
     if (studentType === 'university') return { entity: 'university', role: 'student' };
     if (studentType === 'educator') return { entity: 'school', role: 'educator' };
     if (studentType === 'admin') return { entity: 'school', role: 'admin' };
+    if (studentType === 'recruiter') return { entity: 'recruitment', role: 'recruiter' };
 
-    // Handle entity-specific types
+    // Handle entity-specific types (e.g., school-admin, college-student)
     if (studentType.includes('-')) {
         const parts = studentType.split('-');
         if (parts.length === 2) {
-            return { entity: parts[0], role: parts[1] };
+            const [entity, role] = parts;
+            // For admin roles, combine entity_role format to match database target_roles
+            // e.g., school-admin -> school_admin, college-admin -> college_admin
+            if (role === 'admin') {
+                return { entity, role: `${entity}_admin` };
+            }
+            return { entity, role };
         }
     }
 

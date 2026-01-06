@@ -23,6 +23,27 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  // Calculate academic year for display
+  const calculateAcademicYear = (admissionYear: string, semester: number): string => {
+    try {
+      const yearsProgressed = Math.floor((semester - 1) / 2);
+      const [startYear] = admissionYear.split('-');
+      const newStartYear = parseInt(startYear) + yearsProgressed;
+      return `${newStartYear}-${(newStartYear + 1).toString().slice(-2)}`;
+    } catch {
+      const currentYear = new Date().getFullYear();
+      return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
+    }
+  };
+
+  const currentAcademicYear = student.admission_academic_year 
+    ? calculateAcademicYear(student.admission_academic_year, currentSemester)
+    : 'N/A';
+  
+  const nextAcademicYear = student.admission_academic_year 
+    ? calculateAcademicYear(student.admission_academic_year, nextSemester)
+    : 'N/A';
+
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -35,52 +56,103 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
             </button>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-center p-4 bg-blue-50 rounded-lg">
-              <ArrowUpIcon className="h-8 w-8 text-blue-600 mr-3" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">
-                  Promote <strong>{student.name}</strong>
-                </p>
-                <p className="text-sm text-gray-600">
-                  From Semester {currentSemester} → Semester {nextSemester}
-                </p>
+          <div className="space-y-6">
+            {/* Student Info Card */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+              <div className="flex items-center space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                    <ArrowUpIcon className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-lg font-semibold text-gray-900">
+                    {student.name}
+                  </h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Student ID: {student.student_id || 'N/A'}
+                  </p>
+                  {student.admission_academic_year && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      Admission Year: {student.admission_academic_year}
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              {/* Promotion Flow */}
+              <div className="mt-6 flex items-center justify-center">
+                <div className="flex items-center space-x-4">
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center shadow-sm">
+                      <span className="text-lg font-bold text-gray-700">{currentSemester}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Current</p>
+                    <p className="text-xs text-blue-600 font-medium">{currentAcademicYear}</p>
+                  </div>
+                  
+                  <div className="flex-1 flex items-center justify-center mb-6">
+                    <div className="h-0.5 w-40 bg-gradient-to-r from-blue-400 to-green-400"></div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-green-500 border-2 border-green-400 rounded-full flex items-center justify-center shadow-sm">
+                      <span className="text-lg font-bold text-white">{nextSemester}</span>
+                    </div>
+                    <p className="text-xs text-green-600 mt-2 font-medium">Next</p>
+                    <p className="text-xs text-green-600 font-medium">{nextAcademicYear}</p>
+                  </div>
+                </div>
               </div>
             </div>
             
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-              <div className="flex">
+            {/* Important Notice */}
+            <div className="bg-amber-50 border-l-4 border-amber-400 rounded-r-lg p-4">
+              <div className="flex items-start">
                 <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  <svg className="h-5 w-5 text-amber-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-yellow-800">
-                    Confirm Promotion
+                  <h3 className="text-sm font-semibold text-amber-800">
+                    Ready for Promotion
                   </h3>
-                  <div className="mt-2 text-sm text-yellow-700">
-                    <p>This action will promote the student to the next semester. Make sure all current semester requirements are completed.</p>
-                  </div>
+                  <p className="text-sm text-amber-700 mt-1">
+                    Please ensure all current semester requirements and assessments are completed before proceeding with the promotion.
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 flex items-center justify-end space-x-3">
+          <div className="mt-8 flex items-center justify-end space-x-3">
             <button
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+              className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={onPromote}
               disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 border border-transparent rounded-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all duration-200 shadow-sm"
             >
-              {loading ? 'Promoting...' : 'Promote Student'}
+              {loading ? (
+                <div className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Promoting...
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  <ArrowUpIcon className="h-4 w-4 mr-2" />
+                  Promote Student
+                </div>
+              )}
             </button>
           </div>
         </div>

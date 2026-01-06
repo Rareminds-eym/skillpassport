@@ -1,220 +1,340 @@
 /**
- * Embedding Service
- * Generates vector embeddings using Google Gemini text-embedding-004 model
- * for semantic similarity search in course recommendations.
+ * Embedding Service (Thin Client)
  * 
- * Note: Uses Gemini for embeddings only. All chat/completion uses Claude.
+ * This service acts as a thin client to the Cloudflare embedding-api worker.
+ * All embedding generation, text building, and database operations happen server-side.
  * 
- * Feature: rag-course-recommendations
- * Requirements: 1.2, 6.1, 6.2
+ * The frontend only needs to:
+ * 1. Request embedding generation for a record (by ID)
+ * 2. Use utility functions like cosineSimilarity for local calculations
  */
 
-// Gemini Embedding API configuration
-const EMBEDDING_MODEL = 'text-embedding-004';
-const EMBEDDING_DIMENSION = 768;
-const EMBEDDING_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent`;
-const BATCH_EMBEDDING_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:batchEmbedContents`;
+import { supabase } from '../lib/supabaseClient';
 
-// Rate limiting configuration
-const MAX_RETRIES = 4;
-const INITIAL_BACKOFF_MS = 1000;
-const BACKOFF_MULTIPLIER = 2;
+const EMBEDDING_API_URL = import.meta.env.VITE_EMBEDDING_API_URL || 
+  import.meta.env.VITE_CAREER_API_URL;
+
+const regenerationDebounce = new Map();
+const DEBOUNCE_MS = 5000;
+
+// ==================== UTILITY FUNCTIONS ====================
 
 /**
- * Sleep utility for rate limiting backoff
+ * Calculate cosine similarity between two vectors
+ * Used for local similarity calculations when embeddings are already available
+ * 
+ * @param {number[]} vecA - First embedding vector
+ * @param {number[]} vecB - Second embedding vector
+ * @returns {number} - Cosine similarity (-1 to 1)
  */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-/**
- * Get the Gemini API key from environment
- */
-const getApiKey = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your .env file for embeddings.');
+export function cosineSimilarity(vecA, vecB) {
+  if (!vecA || !vecB || vecA.length !== vecB.length) {
+    return 0;
   }
-  return apiKey;
-};
+
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < vecA.length; i++) {
+    dotProduct += vecA[i] * vecB[i];
+    normA += vecA[i] * vecA[i];
+    normB += vecB[i] * vecB[i];
+  }
+
+  normA = Math.sqrt(normA);
+  normB = Math.sqrt(normB);
+
+  if (normA === 0 || normB === 0) {
+    return 0;
+  }
+
+  return dotProduct / (normA * normB);
+}
 
 /**
- * Check if embedding service is configured
+ * Get the expected embedding dimension
+ * OpenRouter text-embedding-3-small produces 1536 dimensions
+ * 
+ * @returns {number} - Embedding dimension
  */
-export const isEmbeddingConfigured = () => {
-  return !!import.meta.env.VITE_GEMINI_API_KEY;
-};
+export function getEmbeddingDimension() {
+  return 1536;
+}
+
+// ==================== API CLIENT FUNCTIONS ====================
 
 /**
- * Check if an error is a rate limit error
- */
-const isRateLimitError = (response, errorData) => {
-  return response.status === 429 || 
-         errorData?.error?.code === 429 ||
-         errorData?.error?.status === 'RESOURCE_EXHAUSTED';
-};
-
-/**
- * Generate embedding for a single text using Gemini text-embedding-004
+ * Generate embedding for arbitrary text via the backend API
+ * Returns the embedding vector for local use (e.g., similarity calculations)
  * 
  * @param {string} text - Text to generate embedding for
- * @returns {Promise<number[]>} - 768-dimensional embedding vector
+ * @returns {Promise<number[]>} - Embedding vector
  */
-export const generateEmbedding = async (text) => {
-  if (!text || typeof text !== 'string') {
-    throw new Error('Text must be a non-empty string');
+export async function generateEmbedding(text) {
+  if (!text || text.trim().length < 10) {
+    throw new Error('Text too short for embedding generation');
   }
 
-  const apiKey = getApiKey();
-  let lastError = null;
-  let backoffMs = INITIAL_BACKOFF_MS;
+  const response = await fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, returnEmbedding: true })
+  });
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const response = await fetch(`${EMBEDDING_API_URL}?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: { parts: [{ text }] }
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const embedding = data?.embedding?.values;
-        
-        if (!embedding || !Array.isArray(embedding)) {
-          throw new Error('Invalid embedding response format');
-        }
-        
-        return embedding;
-      }
-
-      const errorData = await response.json().catch(() => ({}));
-      
-      if (isRateLimitError(response, errorData) && attempt < MAX_RETRIES) {
-        console.warn(`Embedding rate limited, retrying in ${backoffMs}ms...`);
-        await sleep(backoffMs);
-        backoffMs *= BACKOFF_MULTIPLIER;
-        continue;
-      }
-
-      lastError = new Error(errorData?.error?.message || `Embedding API error: ${response.status}`);
-    } catch (error) {
-      lastError = error;
-      if (attempt < MAX_RETRIES) {
-        await sleep(backoffMs);
-        backoffMs *= BACKOFF_MULTIPLIER;
-      }
-    }
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `API error: ${response.status}`);
   }
 
-  throw lastError || new Error('Failed to generate embedding after all retries');
-};
+  const result = await response.json();
+  if (!result.embedding || !Array.isArray(result.embedding)) {
+    throw new Error('Invalid embedding response');
+  }
+
+  return result.embedding;
+}
 
 /**
- * Generate embeddings for multiple texts in batch
+ * Generate embeddings for multiple texts in a batch
  * 
  * @param {string[]} texts - Array of texts to generate embeddings for
  * @returns {Promise<number[][]>} - Array of embedding vectors
  */
-export const generateBatchEmbeddings = async (texts) => {
+export async function generateBatchEmbeddings(texts) {
   if (!Array.isArray(texts) || texts.length === 0) {
-    throw new Error('Texts must be a non-empty array');
+    throw new Error('Texts array is required');
   }
 
-  const apiKey = getApiKey();
-  let lastError = null;
-  let backoffMs = INITIAL_BACKOFF_MS;
-
-  const requests = texts.map(text => ({
-    content: { parts: [{ text }] }
-  }));
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+  const results = [];
+  for (const text of texts) {
     try {
-      const response = await fetch(`${BATCH_EMBEDDING_API_URL}?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requests })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const embeddings = data?.embeddings;
-        
-        if (!embeddings || !Array.isArray(embeddings)) {
-          throw new Error('Invalid batch embedding response format');
-        }
-        
-        return embeddings.map(e => {
-          if (!e?.values || !Array.isArray(e.values)) {
-            throw new Error('Invalid embedding in batch response');
-          }
-          return e.values;
-        });
-      }
-
-      const errorData = await response.json().catch(() => ({}));
-      
-      if (isRateLimitError(response, errorData) && attempt < MAX_RETRIES) {
-        console.warn(`Batch embedding rate limited, retrying in ${backoffMs}ms...`);
-        await sleep(backoffMs);
-        backoffMs *= BACKOFF_MULTIPLIER;
-        continue;
-      }
-
-      lastError = new Error(errorData?.error?.message || `Batch embedding API error: ${response.status}`);
+      const embedding = await generateEmbedding(text);
+      results.push(embedding);
     } catch (error) {
-      lastError = error;
-      if (attempt < MAX_RETRIES) {
-        await sleep(backoffMs);
-        backoffMs *= BACKOFF_MULTIPLIER;
-      }
+      console.error('Batch embedding failed for text:', error.message);
+      results.push(null);
     }
   }
 
-  throw lastError || new Error('Failed to generate batch embeddings after all retries');
-};
+  return results;
+}
 
 /**
- * Calculate cosine similarity between two embedding vectors
+ * Generate embedding for a student record
+ * The backend fetches student data and builds the embedding text
  * 
- * @param {number[]} embedding1 - First embedding vector
- * @param {number[]} embedding2 - Second embedding vector
- * @returns {number} - Cosine similarity score between -1 and 1
+ * @param {string} studentId - Student ID
+ * @returns {Promise<{success: boolean, error?: string}>}
  */
-export const cosineSimilarity = (embedding1, embedding2) => {
-  if (!Array.isArray(embedding1) || !Array.isArray(embedding2)) {
-    throw new Error('Both embeddings must be arrays');
-  }
-  
-  if (embedding1.length !== embedding2.length) {
-    throw new Error(`Embedding dimensions must match: ${embedding1.length} vs ${embedding2.length}`);
+export async function generateStudentEmbedding(studentId) {
+  if (!studentId) {
+    return { success: false, error: 'Student ID is required' };
   }
 
-  let dotProduct = 0;
-  let norm1 = 0;
-  let norm2 = 0;
+  try {
+    const response = await fetch(`${EMBEDDING_API_URL}/regenerate?table=students&id=${studentId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
 
-  for (let i = 0; i < embedding1.length; i++) {
-    dotProduct += embedding1[i] * embedding2[i];
-    norm1 += embedding1[i] * embedding1[i];
-    norm2 += embedding2[i] * embedding2[i];
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+
+    return { success: true, ...(await response.json()) };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Generate embedding for an opportunity record
+ * The backend fetches opportunity data and builds the embedding text
+ * 
+ * @param {string} opportunityId - Opportunity ID
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function generateOpportunityEmbedding(opportunityId) {
+  if (!opportunityId) {
+    return { success: false, error: 'Opportunity ID is required' };
   }
 
-  norm1 = Math.sqrt(norm1);
-  norm2 = Math.sqrt(norm2);
+  try {
+    const response = await fetch(`${EMBEDDING_API_URL}/regenerate?table=opportunities&id=${opportunityId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
 
-  if (norm1 === 0 || norm2 === 0) {
-    return 0;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+
+    return { success: true, ...(await response.json()) };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Ensure a student has an embedding, generating one if missing
+ * 
+ * @param {string} studentId - Student ID
+ * @returns {Promise<{success: boolean, existed?: boolean, error?: string}>}
+ */
+export async function ensureStudentEmbedding(studentId) {
+  if (!studentId) {
+    return { success: false, error: 'Student ID is required' };
   }
 
-  return dotProduct / (norm1 * norm2);
-};
+  try {
+    // Check if student already has an embedding
+    const { data: student, error } = await supabase
+      .from('students')
+      .select('id, embedding')
+      .eq('id', studentId)
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to check student: ${error.message}`);
+    }
+
+    if (student.embedding) {
+      return { success: true, existed: true };
+    }
+
+    // Generate embedding via backend
+    return await generateStudentEmbedding(studentId);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get embedding statistics from the backend
+ * 
+ * @returns {Promise<{success: boolean, stats?: object, error?: string}>}
+ */
+export async function getEmbeddingStats() {
+  try {
+    const response = await fetch(`${EMBEDDING_API_URL}/stats`);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return { success: true, stats: result.stats };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Process the embedding queue via the backend
+ * 
+ * @param {number} batchSize - Number of items to process (default: 10)
+ * @returns {Promise<{success: boolean, processed?: number, error?: string}>}
+ */
+export async function processEmbeddingQueue(batchSize = 10) {
+  try {
+    const response = await fetch(`${EMBEDDING_API_URL}/process-queue?batch=${batchSize}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+
+    return { success: true, ...(await response.json()) };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Backfill missing embeddings for a table via the backend
+ * 
+ * @param {string} table - Table name ('students' or 'opportunities')
+ * @param {number} limit - Maximum records to process (default: 50)
+ * @returns {Promise<{success: boolean, processed?: number, error?: string}>}
+ */
+export async function backfillMissingEmbeddings(table = 'students', limit = 50) {
+  try {
+    const response = await fetch(`${EMBEDDING_API_URL}/backfill?table=${table}&limit=${limit}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+
+    return { success: true, ...(await response.json()) };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Regenerate embedding for a student (with debouncing)
+ * 
+ * @param {string} studentId - Student ID
+ * @returns {Promise<{success: boolean, debounced?: boolean, error?: string}>}
+ */
+export async function regenerateStudentEmbedding(studentId) {
+  if (!studentId) {
+    return { success: false, error: 'Student ID is required' };
+  }
+
+  // Debounce rapid regeneration requests
+  const lastRegen = regenerationDebounce.get(studentId);
+  if (lastRegen && Date.now() - lastRegen < DEBOUNCE_MS) {
+    return { success: true, debounced: true };
+  }
+  regenerationDebounce.set(studentId, Date.now());
+
+  return await generateStudentEmbedding(studentId);
+}
+
+/**
+ * Schedule embedding regeneration for a student (async, fire-and-forget)
+ * 
+ * @param {string} studentId - Student ID
+ */
+export function scheduleEmbeddingRegeneration(studentId) {
+  if (!studentId) return;
+  setTimeout(() => {
+    regenerateStudentEmbedding(studentId).catch(() => {});
+  }, 1000);
+}
+
+// ==================== EXPORTS ====================
 
 export default {
+  // Utility functions
+  cosineSimilarity,
+  getEmbeddingDimension,
+  
+  // Embedding generation
   generateEmbedding,
   generateBatchEmbeddings,
-  cosineSimilarity,
-  isEmbeddingConfigured,
-  EMBEDDING_DIMENSION
+  generateStudentEmbedding,
+  generateOpportunityEmbedding,
+  
+  // Convenience functions
+  ensureStudentEmbedding,
+  regenerateStudentEmbedding,
+  scheduleEmbeddingRegeneration,
+  
+  // Admin/batch operations
+  getEmbeddingStats,
+  processEmbeddingQueue,
+  backfillMissingEmbeddings
 };

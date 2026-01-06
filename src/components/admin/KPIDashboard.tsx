@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react';
-import { 
-  UsersIcon, 
-  ClipboardDocumentCheckIcon,
-  AcademicCapIcon,
-  BanknotesIcon,
-  ChartBarIcon,
-  BookOpenIcon,
-  ClockIcon
+import {
+    AcademicCapIcon,
+    BanknotesIcon,
+    BookOpenIcon,
+    ChartBarIcon,
+    ClipboardDocumentCheckIcon,
+    ClockIcon,
+    UsersIcon
 } from '@heroicons/react/24/outline';
-import KPICard from './KPICard';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { FeatureGate } from '../Subscription/FeatureGate';
+import KPICard from './KPICard';
 
 interface KPIData {
   totalStudents: number;
@@ -430,4 +431,13 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
   );
 };
 
-export default KPIDashboard;
+/**
+ * Wrapped KPIDashboard with FeatureGate for kpi_dashboard add-on
+ */
+const GatedKPIDashboard: React.FC<KPIDashboardProps> = (props) => (
+  <FeatureGate featureKey="kpi_dashboard" showUpgradePrompt={true}>
+    <KPIDashboard {...props} />
+  </FeatureGate>
+);
+
+export default GatedKPIDashboard;

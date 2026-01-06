@@ -218,10 +218,10 @@ const TeacherOnboardingPage: React.FC = () => {
     setMessage(null);
 
     // Basic validation
-    if (!formData.first_name || !formData.last_name || !formData.email) {
+    if (!formData.first_name || !formData.last_name || !formData.email || !formData.phone_number || !formData.designation || !formData.department || !formData.qualification) {
       setMessage({
         type: "error",
-        text: "Please fill in all required fields (First Name, Last Name, Email)."
+        text: "Please fill in all required fields."
       });
       setLoading(false);
       return;
@@ -231,6 +231,34 @@ const TeacherOnboardingPage: React.FC = () => {
       setMessage({
         type: "error",
         text: "Please add at least one subject expertise."
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Document validation
+    if (!documents.degree_certificate) {
+      setMessage({
+        type: "error",
+        text: "Please upload degree certificate."
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (!documents.id_proof) {
+      setMessage({
+        type: "error",
+        text: "Please upload ID proof."
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (documents.experience_letters.length === 0) {
+      setMessage({
+        type: "error",
+        text: "Please upload at least one experience letter."
       });
       setLoading(false);
       return;
@@ -602,7 +630,9 @@ const TeacherOnboardingPage: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                First Name <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 required
@@ -612,7 +642,9 @@ const TeacherOnboardingPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Last Name <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 required
@@ -622,7 +654,9 @@ const TeacherOnboardingPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email <span className="text-red-500">*</span>
+              </label>
               <input
                 type="email"
                 required
@@ -632,18 +666,24 @@ const TeacherOnboardingPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Phone Number <span className="text-red-500">*</span>
+              </label>
               <input
                 type="tel"
+                required
                 value={formData.phone_number}
                 onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Designation</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Designation <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
+                required
                 value={formData.designation}
                 onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -651,9 +691,12 @@ const TeacherOnboardingPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Department <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
+                required
                 value={formData.department}
                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -661,9 +704,12 @@ const TeacherOnboardingPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Qualification</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Qualification <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
+                required
                 value={formData.qualification}
                 onChange={(e) => setFormData({ ...formData, qualification: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -671,10 +717,13 @@ const TeacherOnboardingPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Total Experience (Years)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Total Experience (Years) <span className="text-red-500">*</span>
+              </label>
               <input
                 type="number"
                 min="0"
+                required
                 value={formData.experience_years}
                 onChange={(e) => setFormData({ ...formData, experience_years: parseInt(e.target.value) || 0 })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -682,7 +731,7 @@ const TeacherOnboardingPage: React.FC = () => {
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Teacher Role *
+                Teacher Role <span className="text-red-500">*</span>
               </label>
               <select
                 required
@@ -714,7 +763,7 @@ const TeacherOnboardingPage: React.FC = () => {
             {/* Degree Certificate */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Degree Certificate
+                Degree Certificate <span className="text-red-500">*</span>
               </label>
               <div className="flex items-center gap-3">
                 <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 cursor-pointer transition">
@@ -725,6 +774,7 @@ const TeacherOnboardingPage: React.FC = () => {
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
+                    required
                     onChange={(e) => handleFileChange("degree_certificate", e.target.files)}
                     className="hidden"
                   />
@@ -734,7 +784,9 @@ const TeacherOnboardingPage: React.FC = () => {
 
             {/* ID Proof */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ID Proof</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ID Proof <span className="text-red-500">*</span>
+              </label>
               <div className="flex items-center gap-3">
                 <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 cursor-pointer transition">
                   <Upload className="h-5 w-5 text-gray-400" />
@@ -744,6 +796,7 @@ const TeacherOnboardingPage: React.FC = () => {
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
+                    required
                     onChange={(e) => handleFileChange("id_proof", e.target.files)}
                     className="hidden"
                   />
@@ -754,7 +807,7 @@ const TeacherOnboardingPage: React.FC = () => {
             {/* Experience Letters */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Experience Letters
+                Experience Letters <span className="text-red-500">*</span>
               </label>
               <div className="space-y-2">
                 <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 cursor-pointer transition">
@@ -764,6 +817,7 @@ const TeacherOnboardingPage: React.FC = () => {
                     type="file"
                     multiple
                     accept=".pdf,.jpg,.jpeg,.png"
+                    required={documents.experience_letters.length === 0}
                     onChange={(e) => handleFileChange("experience_letters", e.target.files)}
                     className="hidden"
                   />
@@ -794,7 +848,7 @@ const TeacherOnboardingPage: React.FC = () => {
         {/* Subject Expertise */}
         <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Subject Expertise *</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Subject Expertise <span className="text-red-500">*</span></h3>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">

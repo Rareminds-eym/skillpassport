@@ -351,7 +351,7 @@ async function streamCareerResponse(params: StreamParams): Promise<Response> {
 // ==================== RECOMMEND OPPORTUNITIES HANDLER ====================
 
 const RECOMMEND_CONFIG = {
-  MATCH_THRESHOLD: 0.20,
+  MATCH_THRESHOLD: 0.01,  // Lowered from 0.20 to handle embedding inconsistencies
   MAX_RECOMMENDATIONS: 50,
   DEFAULT_LIMIT: 20
 };
@@ -371,7 +371,8 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
   }
 
   const { studentId, forceRefresh = false, limit = RECOMMEND_CONFIG.DEFAULT_LIMIT } = body;
-
+  
+  // Early validation
   if (!studentId) {
     return jsonResponse({ error: 'studentId is required', recommendations: [] }, 400);
   }
@@ -387,14 +388,51 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
   const safeLimit = Math.min(Math.max(1, limit), RECOMMEND_CONFIG.MAX_RECOMMENDATIONS);
   const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
+  // ==================== CACHE CHECK ====================
+  // Check cache first (unless force refresh requested)
+  if (!forceRefresh) {
+    try {
+      const { data: cacheResult, error: cacheError } = await supabase
+        .rpc('get_cached_job_matches', { p_student_id: studentId });
+      
+      if (!cacheError && cacheResult && cacheResult.length > 0 && cacheResult[0].is_cached) {
+        const cached = cacheResult[0];
+        const executionTime = Date.now() - startTime;
+        console.log(`[CACHE HIT] Student ${studentId} - ${cached.match_count} matches from cache`);
+        
+        // Return cached results (apply limit)
+        const cachedMatches = (cached.matches || []).slice(0, safeLimit);
+        return jsonResponse({
+          recommendations: cachedMatches,
+          cached: true,
+          computed_at: cached.computed_at,
+          count: cachedMatches.length,
+          totalMatches: cached.match_count,
+          executionTime,
+          message: 'Recommendations retrieved from cache'
+        });
+      }
+      console.log(`[CACHE MISS] Student ${studentId} - computing fresh matches`);
+    } catch (cacheCheckError) {
+      console.error('[CACHE CHECK ERROR]', cacheCheckError);
+      // Continue to compute fresh matches
+    }
+  } else {
+    console.log(`[FORCE REFRESH] Student ${studentId} - bypassing cache`);
+  }
+  // ==================== END CACHE CHECK ====================
+
   // Get student profile
   const { data: student, error: studentError } = await supabase
     .from('students')
-    .select('embedding, id, name, profile')
+    .select('embedding, id, name')
     .eq('id', studentId)
     .maybeSingle();
 
+  console.log('Student query result:', { student: student ? { id: student.id, name: student.name, hasEmbedding: !!student.embedding } : null, error: studentError });
+
   if (studentError || !student) {
+    console.error('Student not found:', { studentId, error: studentError });
     return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_profile');
   }
 
@@ -429,12 +467,34 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
     return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_matches');
   }
 
-  const topRecommendations = recommendations.slice(0, safeLimit);
+  let finalRecommendations = recommendations;
+  
+  // If we have fewer matches than requested, DON'T pad with popular opportunities
+  // This ensures only quality AI matches are shown
+  // The frontend will display whatever matches we have (even if less than requested)
+
+  const topRecommendations = finalRecommendations.slice(0, safeLimit);
   const executionTime = Date.now() - startTime;
+
+  // ==================== SAVE TO CACHE ====================
+  // Save computed matches to cache for future requests
+  try {
+    await supabase.rpc('save_job_matches_cache', {
+      p_student_id: studentId,
+      p_matches: recommendations, // Save all matches, not just top N
+      p_algorithm_version: 'v1.0'
+    });
+    console.log(`[CACHE SAVE] Student ${studentId} - saved ${recommendations.length} matches to cache`);
+  } catch (cacheSaveError) {
+    console.error('[CACHE SAVE ERROR]', cacheSaveError);
+    // Continue - caching failure shouldn't break the response
+  }
+  // ==================== END SAVE TO CACHE ====================
 
   return jsonResponse({
     recommendations: topRecommendations,
     cached: false,
+    computed_at: new Date().toISOString(),
     count: topRecommendations.length,
     totalMatches: recommendations.length,
     executionTime
@@ -529,32 +589,45 @@ async function handleGenerateEmbedding(request: Request, env: Env): Promise<Resp
   console.log(`Generating embedding for ${type} #${id}`);
 
   try {
-    // Use the embedding service (FREE Transformers.js on Render.com)
-    const embeddingServiceUrl = env.EMBEDDING_SERVICE_URL || 'https://embedings.onrender.com';
+    // Use OpenRouter for embeddings (text-embedding-3-small)
+    const openRouterKey = getOpenRouterKey(env);
+    if (!openRouterKey) {
+      return jsonResponse({
+        success: false,
+        error: 'OpenRouter API key not configured'
+      }, 500);
+    }
 
-    const embeddingResponse = await fetch(`${embeddingServiceUrl}/embed`, {
+    const embeddingResponse = await fetch('https://openrouter.ai/api/v1/embeddings', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${openRouterKey}`,
         'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://skillpassport.rareminds.in',
+        'X-Title': 'SkillPassport Embedding Service',
       },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({
+        model: 'openai/text-embedding-3-small',
+        input: text.slice(0, 8000),
+      }),
     });
 
     if (!embeddingResponse.ok) {
       const errorText = await embeddingResponse.text();
-      console.error('Embedding service error:', embeddingResponse.status, errorText);
+      console.error('OpenRouter embedding error:', embeddingResponse.status, errorText);
       return jsonResponse({
         success: false,
-        error: `Embedding service error: ${embeddingResponse.status} - ${errorText}`
+        error: `OpenRouter API error: ${embeddingResponse.status} - ${errorText}`
       }, 500);
     }
 
-    const { embedding } = await embeddingResponse.json() as { embedding: number[] };
+    const data = await embeddingResponse.json() as { data: Array<{ embedding: number[] }> };
+    const embedding = data.data[0].embedding;
 
     if (!embedding || !Array.isArray(embedding)) {
       return jsonResponse({
         success: false,
-        error: 'Invalid embedding response from service'
+        error: 'Invalid embedding response from OpenRouter'
       }, 500);
     }
 
@@ -605,6 +678,39 @@ const buildAnalysisPrompt = (assessmentData: any) => {
     return a & a;
   }, 0);
 
+  const gradeLevel = assessmentData.gradeLevel || 'after12';
+  const isAfter10 = gradeLevel === 'after10';
+
+  // After 10th specific stream recommendation section
+  const after10StreamSection = isAfter10 ? `
+## AFTER 10TH STREAM RECOMMENDATION (MANDATORY FOR THIS STUDENT):
+This student is completing 10th grade and needs guidance on which 11th/12th stream to choose.
+Based on their assessment results, you MUST recommend the best stream from these options:
+
+**Science Streams:**
+- PCMB (Physics, Chemistry, Maths, Biology) - For students interested in Medical/Engineering/Research
+- PCMS (Physics, Chemistry, Maths, Computer Science) - For students interested in Engineering/IT/Technology
+- PCM (Physics, Chemistry, Maths) - For students interested in Engineering/Pure Sciences
+- PCB (Physics, Chemistry, Biology) - For students interested in Medical/Life Sciences
+
+**Commerce Stream:**
+- Commerce with Maths - For students interested in CA/Finance/Business Analytics
+- Commerce without Maths - For students interested in Business/Management/Accounting
+
+**Arts/Humanities Stream:**
+- Arts with Psychology - For students interested in Psychology/Counseling/HR
+- Arts with Economics - For students interested in Economics/Civil Services/Journalism
+- Arts General - For students interested in Literature/History/Languages/Law
+
+STREAM RECOMMENDATION RULES:
+1. If RIASEC shows high I (Investigative) + high numerical aptitude → Recommend Science (PCMB/PCMS/PCM)
+2. If RIASEC shows high I + high verbal + interest in biology → Recommend Science (PCB/PCMB)
+3. If RIASEC shows high E (Enterprising) + C (Conventional) + numerical aptitude → Recommend Commerce
+4. If RIASEC shows high A (Artistic) + S (Social) + verbal aptitude → Recommend Arts
+5. If high spatial/mechanical aptitude → Recommend PCM or PCMS
+6. If high clerical + conventional → Recommend Commerce
+` : '';
+
   return `You are a career counselor and psychometric assessment expert. Analyze the following student assessment data and provide comprehensive results.
 
 ## CONSISTENCY REQUIREMENT - CRITICAL:
@@ -615,7 +721,9 @@ This analysis must be DETERMINISTIC and CONSISTENT. Given the same input data, y
 - If this same data is analyzed again, the results MUST be identical
 - Session ID for consistency verification: ${answersHash}
 
+## Student Grade Level: ${gradeLevel.toUpperCase()}
 ## Student Stream: ${assessmentData.stream.toUpperCase()}
+${after10StreamSection}
 
 ## RIASEC Career Interest Responses (1-5 scale: 1=Strongly Dislike, 2=Dislike, 3=Neutral, 4=Like, 5=Strongly Like):
 ${JSON.stringify(assessmentData.riasecAnswers, null, 2)}
@@ -886,6 +994,20 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
       }
     ],
     "recommendedTrack": "<One specific track name>"
+  },
+  "streamRecommendation": {
+    "isAfter10": ${assessmentData.gradeLevel === 'after10'},
+    "recommendedStream": "<PCMB/PCMS/PCM/PCB/Commerce/Arts - ONLY for after10 students>",
+    "streamFit": "<High/Medium - confidence level>",
+    "reasoning": {
+      "interests": "<Why this stream matches their RIASEC interests>",
+      "aptitude": "<Why this stream matches their aptitude strengths>",
+      "personality": "<Why this stream suits their personality>"
+    },
+    "alternativeStream": "<Second best stream option>",
+    "alternativeReason": "<Why this could also work>",
+    "subjectsToFocus": ["<Subject 1>", "<Subject 2>", "<Subject 3>"],
+    "careerPathsAfter12": ["<Career 1 after completing 12th in this stream>", "<Career 2>", "<Career 3>"]
   },
   "roadmap": {
     "projects": [

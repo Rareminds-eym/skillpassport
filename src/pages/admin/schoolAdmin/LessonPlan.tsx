@@ -31,6 +31,7 @@ import { useCurriculum } from "../../../hooks/useLessonPlans";
 import type { LessonPlan as LessonPlanType } from "../../../services/lessonPlansService";
 import { getSubjects, getClasses, getAcademicYears, getCurrentAcademicYear } from "../../../services/curriculumService";
 import { supabase } from "../../../lib/supabaseClient";
+import { uploadFile, validateFile, deleteFile } from "../../../services/fileUploadService";
 
 /* ==============================
    TYPES & INTERFACES
@@ -442,10 +443,63 @@ const ViewLessonPlanModal = ({
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {file.name}
                           </p>
-                          <p className="text-xs text-gray-500">
-                            {formatFileSize(file.size)}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-gray-500">
+                              {formatFileSize(file.size)}
+                            </p>
+                          </div>
                         </div>
+                        {file.url && (
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => {
+                                const storageApiUrl = 'https://storage-api.dark-mode-d021.workers.dev';
+                                let viewUrl;
+                                // Extract key from lesson-plans URL pattern
+                                if (file.url!.includes('lesson-plans/')) {
+                                  const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
+                                  if (keyMatch) {
+                                    const extractedKey = 'lesson-plans/' + keyMatch[1];
+                                    viewUrl = `${storageApiUrl}/document-access?key=${encodeURIComponent(extractedKey)}&mode=inline`;
+                                  }
+                                }
+                                // Fallback to full URL parameter
+                                if (!viewUrl) {
+                                  viewUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(file.url!)}&mode=inline`;
+                                }
+                                window.open(viewUrl, '_blank');
+                              }}
+                              className="text-xs text-blue-600 hover:underline"
+                              title="View file inline"
+                            >
+                              {/* View */}
+                            </button>
+                            
+                            <button
+                              onClick={() => {
+                                const storageApiUrl = 'https://storage-api.dark-mode-d021.workers.dev';
+                                let downloadUrl;
+                                // Extract key from lesson-plans URL pattern
+                                if (file.url!.includes('lesson-plans/')) {
+                                  const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
+                                  if (keyMatch) {
+                                    const extractedKey = 'lesson-plans/' + keyMatch[1];
+                                    downloadUrl = `${storageApiUrl}/document-access?key=${encodeURIComponent(extractedKey)}&mode=download`;
+                                  }
+                                }
+                                // Fallback to full URL parameter
+                                if (!downloadUrl) {
+                                  downloadUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(file.url!)}&mode=download`;
+                                }
+                                window.open(downloadUrl, '_blank');
+                              }}
+                              className="text-xs text-blue-600 hover:underline"
+                              title="Download file"
+                            >
+                              Download
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -711,6 +765,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   // Use curriculum hook for backend data
   const { chapters, learningOutcomes, loadChapters, loadLearningOutcomes } = 
@@ -812,23 +868,92 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     setEditingPlan(null);
   };
 
-  // Handle file upload
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle file upload with real storage
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      const newFiles: ResourceFile[] = Array.from(files).map((file) => ({
-        id: Date.now().toString() + Math.random(),
-        name: file.name,
-        size: file.size,
-        type: file.type,
-      }));
-      setResourceFiles([...resourceFiles, ...newFiles]);
+    if (!files || files.length === 0) return;
+
+    setUploadingFiles(true);
+    const newUploadedFiles: ResourceFile[] = [];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Validate file
+        const validation = validateFile(file, {
+          maxSize: 50, // 50MB max
+          allowedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'wmv', 'mkv', 'webm']
+        });
+
+        if (!validation.valid) {
+          alert(`${file.name}: ${validation.error}`);
+          continue;
+        }
+
+        // Set upload progress
+        const fileId = `${Date.now()}_${i}`;
+        setUploadProgress(prev => ({ ...prev, [fileId]: 0 }));
+
+        // Upload file to R2 storage
+        const uploadResult = await uploadFile(
+          file,
+          'lesson-plans', // folder for lesson plan files
+          (progress) => {
+            setUploadProgress(prev => ({ 
+              ...prev, 
+              [fileId]: Math.round(progress.percentage) 
+            }));
+          }
+        );
+
+        if (uploadResult.success && uploadResult.url) {
+          const newFile: ResourceFile = {
+            id: fileId,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            url: uploadResult.url, // Now we have the actual URL!
+          };
+          newUploadedFiles.push(newFile);
+        } else {
+          alert(`Failed to upload ${file.name}: ${uploadResult.error}`);
+        }
+
+        // Clear progress for this file
+        setUploadProgress(prev => {
+          const newProgress = { ...prev };
+          delete newProgress[fileId];
+          return newProgress;
+        });
+      }
+
+      // Add successfully uploaded files to the list
+      if (newUploadedFiles.length > 0) {
+        setResourceFiles(prev => [...prev, ...newUploadedFiles]);
+      }
+
+    } catch (error) {
+      console.error('File upload error:', error);
+      alert('Error uploading files. Please try again.');
+    } finally {
+      setUploadingFiles(false);
+      e.target.value = ""; // Reset input
     }
-    e.target.value = ""; // Reset input
   };
 
-  // Remove file
-  const handleRemoveFile = (fileId: string) => {
+  // Remove file and delete from storage
+  const handleRemoveFile = async (fileId: string) => {
+    const fileToRemove = resourceFiles.find(f => f.id === fileId);
+    if (fileToRemove?.url) {
+      try {
+        // Delete from R2 storage
+        await deleteFile(fileToRemove.url);
+      } catch (error) {
+        console.error('Error deleting file from storage:', error);
+        // Continue with removal from UI even if storage deletion fails
+      }
+    }
     setResourceFiles(resourceFiles.filter((f) => f.id !== fileId));
   };
 
@@ -1729,20 +1854,35 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                   </label>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-indigo-400 transition-colors">
                     <div className="flex items-center justify-center">
-                      <label className="flex flex-col items-center cursor-pointer">
-                        <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mb-2" />
-                        <span className="text-sm text-gray-600 mb-1">
-                          Click to upload or drag and drop
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          PDF, DOC, PPT, Images, Videos (Max 50MB)
-                        </span>
+                      <label className={`flex flex-col items-center cursor-pointer ${uploadingFiles ? 'pointer-events-none opacity-50' : ''}`}>
+                        {uploadingFiles ? (
+                          <>
+                            <ArrowPathIcon className="h-8 w-8 text-indigo-600 mb-2 animate-spin" />
+                            <span className="text-sm text-indigo-600 mb-1">
+                              Uploading files...
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              Please wait while files are being uploaded
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mb-2" />
+                            <span className="text-sm text-gray-600 mb-1">
+                              Click to upload or drag and drop
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              PDF, DOC, PPT, Images, Videos (Max 50MB)
+                            </span>
+                          </>
+                        )}
                         <input
                           type="file"
                           multiple
                           onChange={handleFileUpload}
+                          disabled={uploadingFiles}
                           className="hidden"
-                          accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.mp4,.mov,.avi,.wmv,.mkv,.webm"
+                          accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.mov,.avi,.wmv,.mkv,.webm"
                         />
                       </label>
                     </div>
@@ -1753,6 +1893,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                     <div className="mt-3 space-y-2">
                       {resourceFiles.map((file) => {
                         const { icon: FileIcon, color } = getFileIcon(file.name);
+                        const isUploading = uploadProgress[file.id] !== undefined;
                         return (
                           <div
                             key={file.id}
@@ -1763,13 +1904,145 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                               <p className="text-sm font-medium text-gray-900 truncate">
                                 {file.name}
                               </p>
-                              <p className="text-xs text-gray-500">
-                                {formatFileSize(file.size)}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs text-gray-500">
+                                  {formatFileSize(file.size)}
+                                </p>
+                                {file.url && (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => {
+                                        console.log('🔍 VIEW BUTTON CLICKED (MODAL) - DEBUGGING START');
+                                        console.log('📄 File Object (Modal):', file);
+                                        console.log('🔗 Original File URL (Modal):', file.url);
+                                        console.log('📝 File Name (Modal):', file.name);
+                                        console.log('📊 File Size (Modal):', file.size);
+                                        console.log('🏷️ File Type (Modal):', file.type);
+                                        
+                                        // Use the storage API endpoint directly for inline viewing
+                                        const storageApiUrl = 'https://storage-api.dark-mode-d021.workers.dev';
+                                        
+                                        // Try different URL construction methods
+                                        let viewUrl;
+                                        let method = 'unknown';
+                                        
+                                        // Method 1: If the URL contains a key pattern, extract it
+                                        if (file.url!.includes('lesson-plans/')) {
+                                          const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
+                                          if (keyMatch) {
+                                            const extractedKey = 'lesson-plans/' + keyMatch[1];
+                                            viewUrl = `${storageApiUrl}/document-access?key=${encodeURIComponent(extractedKey)}&mode=inline`;
+                                            method = 'key-extraction';
+                                            console.log('🔑 Using KEY method (Modal)');
+                                            console.log('🔑 Extracted Key (Modal):', extractedKey);
+                                            console.log('🔑 Encoded Key (Modal):', encodeURIComponent(extractedKey));
+                                          }
+                                        }
+                                        
+                                        // Method 2: Use the full URL parameter
+                                        if (!viewUrl) {
+                                          viewUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(file.url!)}&mode=inline`;
+                                          method = 'full-url';
+                                          console.log('🌐 Using FULL URL method (Modal)');
+                                          console.log('🌐 Encoded URL (Modal):', encodeURIComponent(file.url!));
+                                        }
+                                        
+                                        console.log('⚙️ Method Used (Modal):', method);
+                                        console.log('🎯 Final View URL (Modal):', viewUrl);
+                                        console.log('📋 URL Length (Modal):', viewUrl.length);
+                                        console.log('🔍 VIEW BUTTON CLICKED (MODAL) - OPENING WINDOW');
+                                        
+                                        // Test the URL construction
+                                        try {
+                                          const testUrl = new URL(viewUrl);
+                                          console.log('✅ URL is valid (Modal)');
+                                          console.log('🏠 Host (Modal):', testUrl.host);
+                                          console.log('🛤️ Pathname (Modal):', testUrl.pathname);
+                                          console.log('🔍 Search Params (Modal):', testUrl.searchParams.toString());
+                                          console.log('📄 Mode Parameter (Modal):', testUrl.searchParams.get('mode'));
+                                          console.log('🔗 URL Parameter (Modal):', testUrl.searchParams.get('url'));
+                                          console.log('🔑 Key Parameter (Modal):', testUrl.searchParams.get('key'));
+                                        } catch (error) {
+                                          console.error('❌ Invalid URL (Modal):', error);
+                                        }
+                                        
+                                        window.open(viewUrl, '_blank');
+                                        console.log('🚀 Window.open executed (Modal)');
+                                        console.log('🔍 VIEW BUTTON CLICKED (MODAL) - DEBUGGING END');
+                                      }}
+                                      className="text-xs text-blue-600 hover:underline"
+                                      title="View file inline"
+                                    >
+                                      {/* View */}
+                                    </button>
+                                    
+                                    <button
+                                      onClick={() => {
+                                        console.log('⬇️ DOWNLOAD BUTTON CLICKED (MODAL) - DEBUGGING START');
+                                        console.log('📄 File Object (Modal):', file);
+                                        console.log('🔗 Original File URL (Modal):', file.url);
+                                        console.log('📝 File Name (Modal):', file.name);
+                                        
+                                        // Use the storage API endpoint directly for download
+                                        const storageApiUrl = 'https://storage-api.dark-mode-d021.workers.dev';
+                                        
+                                        // Try different URL construction methods
+                                        let downloadUrl;
+                                        let method = 'unknown';
+                                        
+                                        // Method 1: If the URL contains a key pattern, extract it
+                                        if (file.url!.includes('lesson-plans/')) {
+                                          const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
+                                          if (keyMatch) {
+                                            const extractedKey = 'lesson-plans/' + keyMatch[1];
+                                            downloadUrl = `${storageApiUrl}/document-access?key=${encodeURIComponent(extractedKey)}&mode=download`;
+                                            method = 'key-extraction';
+                                            console.log('🔑 Using KEY method for download (Modal)');
+                                            console.log('🔑 Extracted Key (Modal):', extractedKey);
+                                          }
+                                        }
+                                        
+                                        // Method 2: Use the full URL parameter
+                                        if (!downloadUrl) {
+                                          downloadUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(file.url!)}&mode=download`;
+                                          method = 'full-url';
+                                          console.log('🌐 Using FULL URL method for download (Modal)');
+                                        }
+                                        
+                                        console.log('⚙️ Download Method Used (Modal):', method);
+                                        console.log('🎯 Final Download URL (Modal):', downloadUrl);
+                                        console.log('⬇️ DOWNLOAD BUTTON CLICKED (MODAL) - OPENING WINDOW');
+                                        
+                                        window.open(downloadUrl, '_blank');
+                                        console.log('🚀 Download Window.open executed (Modal)');
+                                        console.log('⬇️ DOWNLOAD BUTTON CLICKED (MODAL) - DEBUGGING END');
+                                      }}
+                                      className="text-xs text-blue-600 hover:underline"
+                                      title="Download file"
+                                    >
+                                      Download
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              {isUploading && (
+                                <div className="mt-1">
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                    <div 
+                                      className="bg-blue-600 h-1.5 rounded-full transition-all duration-300" 
+                                      style={{ width: `${uploadProgress[file.id] || 0}%` }}
+                                    ></div>
+                                  </div>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Uploading... {uploadProgress[file.id] || 0}%
+                                  </p>
+                                </div>
+                              )}
                             </div>
                             <button
                               onClick={() => handleRemoveFile(file.id)}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                              disabled={isUploading}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Remove file"
                             >
                               <TrashIcon className="h-4 w-4" />
@@ -2121,13 +2394,18 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                 </button>
                 <button
                   onClick={() => handleSubmit('draft')}
-                  disabled={submitting}
+                  disabled={submitting || uploadingFiles}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gray-600 text-white text-sm font-semibold hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-md"
                 >
                   {submitting ? (
                     <>
                       <ArrowPathIcon className="h-4 w-4 animate-spin" />
                       Saving...
+                    </>
+                  ) : uploadingFiles ? (
+                    <>
+                      <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                      Uploading Files...
                     </>
                   ) : (
                     <>
@@ -2138,13 +2416,18 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                 </button>
                 <button
                   onClick={() => handleSubmit('approved')}
-                  disabled={submitting}
+                  disabled={submitting || uploadingFiles}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors shadow-md"
                 >
                   {submitting ? (
                     <>
                       <ArrowPathIcon className="h-4 w-4 animate-spin" />
                       Publishing...
+                    </>
+                  ) : uploadingFiles ? (
+                    <>
+                      <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                      Uploading Files...
                     </>
                   ) : (
                     <>

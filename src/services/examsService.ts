@@ -283,7 +283,7 @@ class ExamsService {
       .eq('is_active', true);
     
     if (schoolId) {
-      query = query.eq('school_id', schoolId);
+      query = query.eq('institution_id', schoolId).eq('institution_type', 'school');
     }
     
     const { data, error } = await query.order('name');
