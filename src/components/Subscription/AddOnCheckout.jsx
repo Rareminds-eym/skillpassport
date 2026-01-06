@@ -26,6 +26,7 @@ import {
 import { useMemo, useState } from 'react';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import addOnPaymentService from '../../services/addOnPaymentService';
+import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
 
 /**
  * AddOnCheckout - Full checkout component

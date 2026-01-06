@@ -16,6 +16,7 @@ import { ArrowRight, ExternalLink, Lock, Sparkles, X, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
+import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
 
 /**
  * UpgradePrompt - Modal prompt for upgrading
