@@ -838,8 +838,6 @@ const AssessmentTest = () => {
                 }
             ];
         }
-            ];
-        }
         
         // Default: return empty array when no grade level is selected
         return [];
