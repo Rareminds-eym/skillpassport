@@ -248,6 +248,21 @@ const AssessmentTest = () => {
         },
     });
 
+    // Save adaptive session ID to assessment attempt when it becomes available
+    useEffect(() => {
+        const saveAdaptiveSessionLink = async () => {
+            if (adaptiveAptitude.session?.id && currentAttempt?.id) {
+                try {
+                    await assessmentService.updateAttemptAdaptiveSession(currentAttempt.id, adaptiveAptitude.session.id);
+                    console.log('✅ Linked adaptive session to assessment attempt:', adaptiveAptitude.session.id);
+                } catch (linkErr) {
+                    console.warn('Could not link adaptive session to attempt:', linkErr.message);
+                }
+            }
+        };
+        saveAdaptiveSessionLink();
+    }, [adaptiveAptitude.session?.id, currentAttempt?.id]);
+
     // Debug: Track when adaptive question changes
     useEffect(() => {
         if (adaptiveAptitude.currentQuestion) {
@@ -516,9 +531,36 @@ const AssessmentTest = () => {
             setCurrentSectionIndex(sectionIdx);
             setCurrentQuestionIndex(questionIdx);
 
+            // Track if we successfully resumed an adaptive session
+            let adaptiveSessionResumed = false;
+
+            // Check if there's an adaptive aptitude session to resume
+            if (pendingAttempt.adaptive_aptitude_session_id) {
+                console.log('🔄 Found linked adaptive aptitude session:', pendingAttempt.adaptive_aptitude_session_id);
+                try {
+                    await adaptiveAptitude.resumeTest(pendingAttempt.adaptive_aptitude_session_id);
+                    console.log('✅ Adaptive aptitude session resumed');
+                    adaptiveSessionResumed = true;
+                    // Reset the per-question timer for resumed adaptive test
+                    setAdaptiveQuestionTimer(ADAPTIVE_QUESTION_TIME_LIMIT);
+                    setAdaptiveQuestionStartTime(Date.now());
+                } catch (adaptiveErr) {
+                    console.warn('Could not resume adaptive session:', adaptiveErr.message);
+                    // Continue anyway - the adaptive section will start fresh if needed
+                }
+            }
+
             // Don't show section intro when resuming - go directly to the question
             // Users have already seen the intro when they first started
-            setShowSectionIntro(false);
+            // Exception: If we're in an adaptive section but couldn't resume, show intro so user can start fresh
+            if (adaptiveSessionResumed || !pendingAttempt.adaptive_aptitude_session_id) {
+                setShowSectionIntro(false);
+            } else {
+                // Show section intro for adaptive section that couldn't be resumed
+                // This allows the user to start the adaptive test fresh
+                console.log('📋 Showing section intro for adaptive section (session not resumed)');
+                setShowSectionIntro(true);
+            }
             setShowSectionComplete(false);
 
             if (pendingAttempt.section_timings) {
@@ -1286,6 +1328,8 @@ const AssessmentTest = () => {
                 if (!hasExisting) {
                     await adaptiveAptitude.startTest();
                 }
+                // Note: Session ID linking is handled by useEffect when session becomes available
+                
                 // Set the question start time for response timing
                 setAdaptiveQuestionStartTime(Date.now());
                 // Reset the per-question timer
