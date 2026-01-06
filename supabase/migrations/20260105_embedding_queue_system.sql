@@ -19,12 +19,12 @@ CREATE TABLE IF NOT EXISTS embedding_queue (
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   next_retry_at TIMESTAMPTZ,
-  UNIQUE(record_id, table_name, status) -- Prevent duplicate pending items
+  CONSTRAINT embedding_queue_record_status_unique UNIQUE(record_id, table_name, status)
 );
 
 -- 2. Create indexes for efficient queue processing
 CREATE INDEX IF NOT EXISTS idx_embedding_queue_status ON embedding_queue(status);
-CREATE INDEX IF NOT EXISTS idx_embedding_queue_pending ON embedding_queue(status, priority DESC, created_at ASC) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_embedding_queue_pending ON embedding_queue(status, priority, created_at ASC) WHERE status = 'pending';
 CREATE INDEX IF NOT EXISTS idx_embedding_queue_record ON embedding_queue(record_id, table_name);
 
 -- 3. Function to queue embedding generation (with deduplication)
@@ -32,11 +32,20 @@ CREATE OR REPLACE FUNCTION queue_embedding_generation(
   p_record_id UUID,
   p_table_name TEXT,
   p_operation TEXT DEFAULT 'update',
-  p_priority INTEGER DEFAULT 5
+  p_priority TEXT DEFAULT 'normal'
 ) RETURNS UUID AS $$
 DECLARE
   v_queue_id UUID;
+  v_priority_order INTEGER;
 BEGIN
+  -- Map priority to numeric for comparison
+  v_priority_order := CASE p_priority 
+    WHEN 'high' THEN 3 
+    WHEN 'normal' THEN 2 
+    WHEN 'low' THEN 1 
+    ELSE 2 
+  END;
+
   -- Check if there's already a pending item for this record
   SELECT id INTO v_queue_id
   FROM embedding_queue
@@ -47,17 +56,25 @@ BEGIN
   IF v_queue_id IS NOT NULL THEN
     -- Update priority if higher
     UPDATE embedding_queue
-    SET priority = GREATEST(priority, p_priority),
+    SET priority = CASE 
+          WHEN (CASE priority WHEN 'high' THEN 3 WHEN 'normal' THEN 2 ELSE 1 END) < v_priority_order 
+          THEN p_priority 
+          ELSE priority 
+        END,
         operation = p_operation
     WHERE id = v_queue_id;
     RETURN v_queue_id;
   END IF;
   
   -- Insert new queue item
-  INSERT INTO embedding_queue (record_id, table_name, operation, priority)
-  VALUES (p_record_id, p_table_name, p_operation, p_priority)
+  INSERT INTO embedding_queue (record_id, table_name, operation, priority, status)
+  VALUES (p_record_id, p_table_name, p_operation, p_priority, 'pending')
   ON CONFLICT (record_id, table_name, status) DO UPDATE
-  SET priority = GREATEST(embedding_queue.priority, EXCLUDED.priority),
+  SET priority = CASE 
+        WHEN (CASE embedding_queue.priority WHEN 'high' THEN 3 WHEN 'normal' THEN 2 ELSE 1 END) < v_priority_order 
+        THEN EXCLUDED.priority 
+        ELSE embedding_queue.priority 
+      END,
       operation = EXCLUDED.operation
   RETURNING id INTO v_queue_id;
   
@@ -69,13 +86,11 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION trigger_student_embedding_queue()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Queue embedding generation for new or updated students
-  -- Higher priority for new students (8) vs updates (5)
   PERFORM queue_embedding_generation(
     NEW.id,
     'students',
     CASE WHEN TG_OP = 'INSERT' THEN 'insert' ELSE 'update' END,
-    CASE WHEN TG_OP = 'INSERT' THEN 8 ELSE 5 END
+    CASE WHEN TG_OP = 'INSERT' THEN 'high' ELSE 'normal' END
   );
   RETURN NEW;
 END;
@@ -85,13 +100,11 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION trigger_opportunity_embedding_queue()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Queue embedding generation for new or updated opportunities
-  -- Higher priority for opportunities (they affect many students)
   PERFORM queue_embedding_generation(
     NEW.id,
     'opportunities',
     CASE WHEN TG_OP = 'INSERT' THEN 'insert' ELSE 'update' END,
-    CASE WHEN TG_OP = 'INSERT' THEN 9 ELSE 7 END
+    'high'
   );
   RETURN NEW;
 END;
@@ -105,7 +118,7 @@ BEGIN
     NEW.id,
     'courses',
     CASE WHEN TG_OP = 'INSERT' THEN 'insert' ELSE 'update' END,
-    CASE WHEN TG_OP = 'INSERT' THEN 7 ELSE 4 END
+    CASE WHEN TG_OP = 'INSERT' THEN 'high' ELSE 'normal' END
   );
   RETURN NEW;
 END;
@@ -141,15 +154,13 @@ BEGIN
   END IF;
 END $$;
 
--- 9. Trigger for related tables (skills, experience, certificates, etc.)
--- When these change, queue the parent student for re-embedding
 
+-- 9. Trigger for related tables (skills, experience, certificates, etc.)
 CREATE OR REPLACE FUNCTION trigger_related_student_embedding()
 RETURNS TRIGGER AS $$
 DECLARE
   v_student_id UUID;
 BEGIN
-  -- Get student_id from the record
   IF TG_OP = 'DELETE' THEN
     v_student_id := OLD.student_id;
   ELSE
@@ -157,7 +168,7 @@ BEGIN
   END IF;
   
   IF v_student_id IS NOT NULL THEN
-    PERFORM queue_embedding_generation(v_student_id, 'students', 'update', 6);
+    PERFORM queue_embedding_generation(v_student_id, 'students', 'update', 'normal');
   END IF;
   
   RETURN COALESCE(NEW, OLD);
@@ -209,10 +220,9 @@ END $$;
 CREATE OR REPLACE FUNCTION trigger_enrollment_completion_embedding()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Only trigger when course is completed (progress = 100 or status = 'completed')
   IF (NEW.progress >= 100 OR NEW.status = 'completed') AND 
      (OLD.progress < 100 AND OLD.status != 'completed') THEN
-    PERFORM queue_embedding_generation(NEW.student_id, 'students', 'update', 7);
+    PERFORM queue_embedding_generation(NEW.student_id, 'students', 'update', 'high');
   END IF;
   RETURN NEW;
 END;
@@ -236,7 +246,7 @@ RETURNS TABLE (
   record_id UUID,
   table_name TEXT,
   operation TEXT,
-  priority INTEGER,
+  priority TEXT,
   retry_count INTEGER
 ) AS $$
 BEGIN
@@ -251,7 +261,9 @@ BEGIN
   FROM embedding_queue eq
   WHERE eq.status = 'pending'
     AND (eq.next_retry_at IS NULL OR eq.next_retry_at <= NOW())
-  ORDER BY eq.priority DESC, eq.created_at ASC
+  ORDER BY 
+    CASE eq.priority WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END,
+    eq.created_at ASC
   LIMIT batch_size
   FOR UPDATE SKIP LOCKED;
 END;
