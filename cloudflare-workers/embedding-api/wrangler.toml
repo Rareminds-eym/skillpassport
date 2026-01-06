@@ -17,7 +17,7 @@ VITE_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 EMBEDDING_SERVICE_URL = "https://embedings.onrender.com"
 
 # OpenRouter API Key (new key)
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "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"
 
 # Supabase Service Role Key
 SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwb29sZWR1aW55eXp4Z3Jjd2tvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTk5NDY5OCwiZXhwIjoyMDc1NTcwNjk4fQ.WIrwkA_-2oCjwmD6WpCf9N38hYXEwrIIXXHB4x5km10"

@@ -17,16 +17,15 @@ import { ensureStudentEmbedding } from './embeddingService';
  * - Cache expires (24 hours)
  * - Force refresh is requested
  * 
- * NOTE: The opportunities parameter is deprecated - the API queries opportunities
- * directly from the database using vector similarity search for better performance.
+ * NOTE: The API queries opportunities directly from the database using 
+ * vector similarity search for better performance.
  * 
  * @param {Object} studentProfile - Student profile data
- * @param {Array} opportunities - DEPRECATED: Not used, API fetches directly
  * @param {number} topN - Number of top matches to return (default: 3)
  * @param {boolean} forceRefresh - Force recomputation even if cache is valid
  * @returns {Promise<Array>} Top N matched jobs with scores and reasons
  */
-export async function matchJobsWithAI(studentProfile, opportunities = [], topN = 3, forceRefresh = false) {
+export async function matchJobsWithAI(studentProfile, topN = 3, forceRefresh = false) {
   if (!studentProfile) {
     throw new Error('Student profile is required');
   }
@@ -101,8 +100,8 @@ export async function matchJobsWithAI(studentProfile, opportunities = [], topN =
  * Force refresh job matches - bypasses cache and recomputes
  * Use this when you know the student data has changed but triggers haven't fired yet
  */
-export async function refreshJobMatches(studentProfile, opportunities, topN = 3) {
-  return matchJobsWithAI(studentProfile, opportunities, topN, true);
+export async function refreshJobMatches(studentProfile, topN = 3) {
+  return matchJobsWithAI(studentProfile, topN, true);
 }
 
 export default { matchJobsWithAI, refreshJobMatches };

@@ -49,9 +49,7 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         });
 
         // Run AI matching - the API handles opportunity fetching via vector search
-        // We pass an empty array as opportunities since the API doesn't use it
-        // (it queries the database directly using the student's embedding)
-        const matches = await matchJobsWithAI(studentProfile, [], topN);
+        const matches = await matchJobsWithAI(studentProfile, topN);
 
         setMatchedJobs(matches);
         
@@ -97,8 +95,7 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
       setError(null);
 
       // Use refreshJobMatches which forces cache bypass
-      // API handles opportunity fetching via vector search
-      const matches = await refreshJobMatches(studentProfile, [], topN);
+      const matches = await refreshJobMatches(studentProfile, topN);
       setMatchedJobs(matches);
       
       // Update cache info
@@ -128,7 +125,7 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
       setError(null);
 
       // API handles opportunity fetching via vector search
-      const matches = await matchJobsWithAI(studentProfile, [], topN);
+      const matches = await matchJobsWithAI(studentProfile, topN);
       setMatchedJobs(matches);
       
       if (matches.length > 0) {

@@ -40,7 +40,6 @@ const RecommendedJobsContent = ({
   const [showAnimation, setShowAnimation] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDismissed, setIsDismissed] = useState(false);
-  const [animationComplete, setAnimationComplete] = useState(false);
 
   // Use the industrial-grade caching hook
   const {
@@ -63,13 +62,11 @@ const RecommendedJobsContent = ({
   useEffect(() => {
     if (loading) {
       setShowAnimation(true);
-      setAnimationComplete(false);
     } else {
       // Shorter animation for cache hits (data was instant)
       const minAnimationTime = cacheInfo.cached ? 1000 : 3000;
       const timer = setTimeout(() => {
         setShowAnimation(false);
-        setAnimationComplete(true);
       }, minAnimationTime);
       return () => clearTimeout(timer);
     }
@@ -84,7 +81,6 @@ const RecommendedJobsContent = ({
 
   const handleRefresh = async () => {
     setShowAnimation(true);
-    setAnimationComplete(false);
     await forceRefreshMatches();
   };
 
@@ -464,20 +460,30 @@ const RecommendedJobsContent = ({
                 >
                   View Details
                 </button>
-                {!appliedJobs.has(opportunity.id) && (
+                {!appliedJobs.has(opportunity.id) ? (
                   <button
                     onClick={() => onApply(opportunity)}
                     className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
                   >
                     Apply Now
                   </button>
-                )}
-                {appliedJobs.has(opportunity.id) && (
+                ) : (
                   <div className="px-6 py-3 bg-gray-100 text-gray-600 rounded-lg font-semibold flex items-center gap-2">
                     <CheckCircle className="w-5 h-5" />
                     Applied
                   </div>
                 )}
+                <button
+                  onClick={() => onToggleSave(opportunity)}
+                  className={`px-4 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
+                    savedJobs.has(opportunity.id)
+                      ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  title={savedJobs.has(opportunity.id) ? 'Remove from saved' : 'Save for later'}
+                >
+                  {savedJobs.has(opportunity.id) ? '★' : '☆'}
+                </button>
               </div>
             </motion.div>
           </AnimatePresence>
