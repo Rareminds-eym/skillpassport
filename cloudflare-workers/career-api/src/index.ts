@@ -605,6 +605,39 @@ const buildAnalysisPrompt = (assessmentData: any) => {
     return a & a;
   }, 0);
 
+  const gradeLevel = assessmentData.gradeLevel || 'after12';
+  const isAfter10 = gradeLevel === 'after10';
+
+  // After 10th specific stream recommendation section
+  const after10StreamSection = isAfter10 ? `
+## AFTER 10TH STREAM RECOMMENDATION (MANDATORY FOR THIS STUDENT):
+This student is completing 10th grade and needs guidance on which 11th/12th stream to choose.
+Based on their assessment results, you MUST recommend the best stream from these options:
+
+**Science Streams:**
+- PCMB (Physics, Chemistry, Maths, Biology) - For students interested in Medical/Engineering/Research
+- PCMS (Physics, Chemistry, Maths, Computer Science) - For students interested in Engineering/IT/Technology
+- PCM (Physics, Chemistry, Maths) - For students interested in Engineering/Pure Sciences
+- PCB (Physics, Chemistry, Biology) - For students interested in Medical/Life Sciences
+
+**Commerce Stream:**
+- Commerce with Maths - For students interested in CA/Finance/Business Analytics
+- Commerce without Maths - For students interested in Business/Management/Accounting
+
+**Arts/Humanities Stream:**
+- Arts with Psychology - For students interested in Psychology/Counseling/HR
+- Arts with Economics - For students interested in Economics/Civil Services/Journalism
+- Arts General - For students interested in Literature/History/Languages/Law
+
+STREAM RECOMMENDATION RULES:
+1. If RIASEC shows high I (Investigative) + high numerical aptitude → Recommend Science (PCMB/PCMS/PCM)
+2. If RIASEC shows high I + high verbal + interest in biology → Recommend Science (PCB/PCMB)
+3. If RIASEC shows high E (Enterprising) + C (Conventional) + numerical aptitude → Recommend Commerce
+4. If RIASEC shows high A (Artistic) + S (Social) + verbal aptitude → Recommend Arts
+5. If high spatial/mechanical aptitude → Recommend PCM or PCMS
+6. If high clerical + conventional → Recommend Commerce
+` : '';
+
   return `You are a career counselor and psychometric assessment expert. Analyze the following student assessment data and provide comprehensive results.
 
 ## CONSISTENCY REQUIREMENT - CRITICAL:
@@ -615,7 +648,9 @@ This analysis must be DETERMINISTIC and CONSISTENT. Given the same input data, y
 - If this same data is analyzed again, the results MUST be identical
 - Session ID for consistency verification: ${answersHash}
 
+## Student Grade Level: ${gradeLevel.toUpperCase()}
 ## Student Stream: ${assessmentData.stream.toUpperCase()}
+${after10StreamSection}
 
 ## RIASEC Career Interest Responses (1-5 scale: 1=Strongly Dislike, 2=Dislike, 3=Neutral, 4=Like, 5=Strongly Like):
 ${JSON.stringify(assessmentData.riasecAnswers, null, 2)}
@@ -886,6 +921,20 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
       }
     ],
     "recommendedTrack": "<One specific track name>"
+  },
+  "streamRecommendation": {
+    "isAfter10": ${assessmentData.gradeLevel === 'after10'},
+    "recommendedStream": "<PCMB/PCMS/PCM/PCB/Commerce/Arts - ONLY for after10 students>",
+    "streamFit": "<High/Medium - confidence level>",
+    "reasoning": {
+      "interests": "<Why this stream matches their RIASEC interests>",
+      "aptitude": "<Why this stream matches their aptitude strengths>",
+      "personality": "<Why this stream suits their personality>"
+    },
+    "alternativeStream": "<Second best stream option>",
+    "alternativeReason": "<Why this could also work>",
+    "subjectsToFocus": ["<Subject 1>", "<Subject 2>", "<Subject 3>"],
+    "careerPathsAfter12": ["<Career 1 after completing 12th in this stream>", "<Career 2>", "<Career 3>"]
   },
   "roadmap": {
     "projects": [

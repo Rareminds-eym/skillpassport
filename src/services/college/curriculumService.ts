@@ -696,32 +696,6 @@ export const curriculumService = {
   },
 
   /**
-   * Get courses for a specific program and semester
-   */
-  async getCourses(programId: string, semester: number): Promise<{ success: boolean; data?: any[]; error?: any }> {
-    try {
-      const { data, error } = await supabase
-        .from('college_course_mappings')
-        .select('id, course_code, course_name, credits, type')
-        .eq('program_id', programId)
-        .eq('semester', semester)
-        .order('course_code');
-
-      if (error) throw error;
-
-      return { success: true, data: data || [] };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: {
-          code: 'FETCH_ERROR',
-          message: error.message || 'Failed to fetch courses',
-        },
-      };
-    }
-  },
-
-  /**
    * Get assessment types for current user's college
    */
   async getAssessmentTypes(): Promise<{ success: boolean; data?: any[]; error?: any }> {

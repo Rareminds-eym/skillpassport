@@ -277,6 +277,47 @@ const STREAM_CONTEXTS: Record<string, { name: string; context: string; clericalE
 - Clerical (100% arts): Reference codes, catalog numbers, citation IDs, archive codes comparison`,
     clericalExample: 'ISBN-978-3-16-148410 — ISBN-978-3-16-148410'
   },
+  // After 10th streams (11th/12th class)
+  'science_pcmb': {
+    name: 'Science (PCMB)',
+    context: `ALL questions must use 11th/12th Science PCMB context:
+- Verbal (100% PCMB): Scientific terminology, biology concepts, physics principles, chemistry reactions
+- Numerical (100% PCMB): Physics calculations, chemistry stoichiometry, biology statistics, math problems
+- Abstract/Logical (100% PCMB): Scientific reasoning, hypothesis testing, biological patterns, chemical reactions
+- Spatial/Mechanical (100% PCMB): Molecular structures, anatomical diagrams, physics diagrams, cell structures
+- Clerical (100% PCMB): Chemical formulas, biological names, physics units, lab codes comparison`,
+    clericalExample: 'CHEM-H2SO4-2024 — CHEM-H2SO4-2024'
+  },
+  'science_pcms': {
+    name: 'Science (PCMS)',
+    context: `ALL questions must use 11th/12th Science PCMS context:
+- Verbal (100% PCMS): Scientific terminology, programming concepts, physics principles, chemistry reactions
+- Numerical (100% PCMS): Physics calculations, chemistry equations, programming logic, math problems
+- Abstract/Logical (100% PCMS): Algorithm patterns, scientific reasoning, programming logic, chemical reactions
+- Spatial/Mechanical (100% PCMS): Circuit diagrams, flowcharts, physics diagrams, molecular structures
+- Clerical (100% PCMS): Variable names, chemical formulas, physics units, code snippets comparison`,
+    clericalExample: 'CODE-VAR-2024 — CODE-VAR-2024'
+  },
+  'science_pcm': {
+    name: 'Science (PCM)',
+    context: `ALL questions must use 11th/12th Science PCM context:
+- Verbal (100% PCM): Physics terminology, chemistry concepts, mathematical descriptions, engineering basics
+- Numerical (100% PCM): Physics calculations, chemistry equations, calculus, algebra problems
+- Abstract/Logical (100% PCM): Mathematical proofs, physics reasoning, chemical patterns, engineering logic
+- Spatial/Mechanical (100% PCM): Physics diagrams, geometric figures, molecular structures, mechanical drawings
+- Clerical (100% PCM): Physics units, chemical formulas, mathematical notations comparison`,
+    clericalExample: 'PHY-9.8m/s²-2024 — PHY-9.8m/s²-2024'
+  },
+  'science_pcb': {
+    name: 'Science (PCB)',
+    context: `ALL questions must use 11th/12th Science PCB context:
+- Verbal (100% PCB): Biology terminology, chemistry concepts, physics principles, medical basics
+- Numerical (100% PCB): Biology statistics, chemistry calculations, physics problems, medical data
+- Abstract/Logical (100% PCB): Biological patterns, chemical reactions, medical reasoning, scientific method
+- Spatial/Mechanical (100% PCB): Anatomical diagrams, cell structures, molecular models, lab equipment
+- Clerical (100% PCB): Biological names, chemical formulas, specimen codes, medical terms comparison`,
+    clericalExample: 'BIO-DNA-2024 — BIO-DNA-2024'
+  },
   // B.Tech / Engineering streams
   'btech_cse': {
     name: 'B.Tech Computer Science',

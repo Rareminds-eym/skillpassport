@@ -561,6 +561,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
 
   return {
     stream,
+    gradeLevel,
     riasecAnswers,
     aptitudeAnswers,
     aptitudeScores,

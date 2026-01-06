@@ -30,6 +30,26 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
   },
   
   // ═══════════════════════════════════════════════════════════════════════════
+  // AFTER 10TH STREAMS (11th/12th Class - PCMB, PCMS, PCM, PCB, Commerce, Arts)
+  // ═══════════════════════════════════════════════════════════════════════════
+  'science_pcmb': {
+    name: 'Science (PCMB)',
+    topics: ['Physics fundamentals', 'Chemistry basics', 'Mathematics', 'Biology concepts', 'Scientific method', 'Laboratory techniques']
+  },
+  'science_pcms': {
+    name: 'Science (PCMS)',
+    topics: ['Physics fundamentals', 'Chemistry basics', 'Mathematics', 'Computer Science basics', 'Programming logic', 'Scientific method']
+  },
+  'science_pcm': {
+    name: 'Science (PCM)',
+    topics: ['Physics fundamentals', 'Chemistry basics', 'Mathematics', 'Engineering concepts', 'Problem solving', 'Scientific method']
+  },
+  'science_pcb': {
+    name: 'Science (PCB)',
+    topics: ['Physics fundamentals', 'Chemistry basics', 'Biology concepts', 'Medical sciences basics', 'Laboratory techniques', 'Scientific method']
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════════
   // B.TECH / ENGINEERING SPECIALIZATIONS (College/University)
   // ═══════════════════════════════════════════════════════════════════════════
   
