@@ -198,23 +198,11 @@ const Opportunities = () => {
     }
   }, [location.state, opportunities, navigate, location.pathname]);
 
-  // Ensure loader displays for at least 5 seconds
+  // Set loading to false when data is ready (removed artificial 5-second delay)
   useEffect(() => {
-    const startTime = Date.now();
-
-    const checkLoading = async () => {
-      if (!dataLoading) {
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, 5000 - elapsedTime);
-
-        if (remainingTime > 0) {
-          await new Promise(resolve => setTimeout(resolve, remainingTime));
-        }
-        setIsLoading(false);
-      }
-    };
-
-    checkLoading();
+    if (!dataLoading) {
+      setIsLoading(false);
+    }
   }, [dataLoading]);
 
   useMessageNotifications({
@@ -527,7 +515,6 @@ const Opportunities = () => {
                 {/* AI Recommended Jobs */}
                 <RecommendedJobs
                   studentProfile={{ ...studentData, id: studentId, profile: studentData }}
-                  opportunities={opportunities}
                   onSelectJob={setSelectedOpportunity}
                   appliedJobs={appliedJobs}
                   savedJobs={savedJobs}

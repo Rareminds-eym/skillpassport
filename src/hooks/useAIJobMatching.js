@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { matchJobsWithAI, refreshJobMatches } from '../services/aiJobMatchingService';
-import { OpportunitiesService } from '../services/opportunitiesService';
 
 /**
  * Custom hook for AI-powered job matching with industrial-grade caching
@@ -12,6 +11,9 @@ import { OpportunitiesService } from '../services/opportunitiesService';
  * - Opportunities catalog changes
  * - Cache expires (24 hours)
  * - Force refresh is requested
+ * 
+ * NOTE: This hook does NOT fetch opportunities - the AI matching API
+ * queries opportunities directly from the database using vector similarity search.
  * 
  * @param {Object} studentProfile - Student profile data
  * @param {boolean} enabled - Whether to run matching (default: true)
@@ -46,37 +48,10 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
           profileDept: studentProfile?.profile?.branch_field || studentProfile?.profile?.department
         });
 
-        // Fetch all active opportunities
-        const opportunities = await OpportunitiesService.getAllOpportunities();
-
-        // Filter only active opportunities
-        const activeOpportunities = opportunities.filter(opp => {
-          // Check if active flag is true
-          if (opp.is_active === false || opp.status === 'draft') {
-            return false;
-          }
-
-          // Check if deadline hasn't passed
-          if (opp.deadline) {
-            const deadline = new Date(opp.deadline);
-            const now = new Date();
-            if (deadline < now) {
-              return false;
-            }
-          }
-
-          return true;
-        });
-
-
-        if (activeOpportunities.length === 0) {
-          setMatchedJobs([]);
-          setLoading(false);
-          return;
-        }
-
-        // Run AI matching (will use cache if available)
-        const matches = await matchJobsWithAI(studentProfile, activeOpportunities, topN);
+        // Run AI matching - the API handles opportunity fetching via vector search
+        // We pass an empty array as opportunities since the API doesn't use it
+        // (it queries the database directly using the student's embedding)
+        const matches = await matchJobsWithAI(studentProfile, [], topN);
 
         setMatchedJobs(matches);
         
@@ -121,15 +96,9 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
       setLoading(true);
       setError(null);
 
-      const opportunities = await OpportunitiesService.getAllOpportunities();
-      const activeOpportunities = opportunities.filter(opp => 
-        opp.is_active !== false && 
-        opp.status !== 'draft' &&
-        (!opp.deadline || new Date(opp.deadline) >= new Date())
-      );
-
       // Use refreshJobMatches which forces cache bypass
-      const matches = await refreshJobMatches(studentProfile, activeOpportunities, topN);
+      // API handles opportunity fetching via vector search
+      const matches = await refreshJobMatches(studentProfile, [], topN);
       setMatchedJobs(matches);
       
       // Update cache info
@@ -158,14 +127,8 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
       setLoading(true);
       setError(null);
 
-      const opportunities = await OpportunitiesService.getAllOpportunities();
-      const activeOpportunities = opportunities.filter(opp => 
-        opp.is_active !== false && 
-        opp.status !== 'draft' &&
-        (!opp.deadline || new Date(opp.deadline) >= new Date())
-      );
-
-      const matches = await matchJobsWithAI(studentProfile, activeOpportunities, topN);
+      // API handles opportunity fetching via vector search
+      const matches = await matchJobsWithAI(studentProfile, [], topN);
       setMatchedJobs(matches);
       
       if (matches.length > 0) {

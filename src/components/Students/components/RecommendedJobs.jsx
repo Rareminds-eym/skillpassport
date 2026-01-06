@@ -31,7 +31,6 @@ import { FeatureGate } from '../../Subscription/FeatureGate';
  */
 const RecommendedJobsContent = ({
   studentProfile,
-  opportunities,
   onSelectJob,
   appliedJobs = new Set(),
   savedJobs = new Set(),

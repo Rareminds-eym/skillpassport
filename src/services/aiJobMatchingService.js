@@ -17,19 +17,18 @@ import { ensureStudentEmbedding } from './embeddingService';
  * - Cache expires (24 hours)
  * - Force refresh is requested
  * 
+ * NOTE: The opportunities parameter is deprecated - the API queries opportunities
+ * directly from the database using vector similarity search for better performance.
+ * 
  * @param {Object} studentProfile - Student profile data
- * @param {Array} opportunities - Array of job opportunities from database
+ * @param {Array} opportunities - DEPRECATED: Not used, API fetches directly
  * @param {number} topN - Number of top matches to return (default: 3)
  * @param {boolean} forceRefresh - Force recomputation even if cache is valid
  * @returns {Promise<Array>} Top N matched jobs with scores and reasons
  */
-export async function matchJobsWithAI(studentProfile, opportunities, topN = 3, forceRefresh = false) {
+export async function matchJobsWithAI(studentProfile, opportunities = [], topN = 3, forceRefresh = false) {
   if (!studentProfile) {
     throw new Error('Student profile is required');
-  }
-
-  if (!opportunities || opportunities.length === 0) {
-    throw new Error('No opportunities available');
   }
 
   const API_URL = import.meta.env.VITE_CAREER_API_URL;
@@ -78,28 +77,24 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3, f
   }
   
   if (recommendations.length === 0) {
-    throw new Error('No recommendations available');
+    // Return empty array instead of throwing - no matches is valid
+    return [];
   }
   
-  // Transform and enrich matches
-  return recommendations.map(rec => {
-    const localOpportunity = opportunities.find(opp => opp.id === rec.id);
-    const opportunity = localOpportunity || rec;
-    
-    return {
-      job_id: rec.id,
-      job_title: rec.job_title || rec.title,
-      company_name: rec.company_name || rec.company,
-      match_score: Math.round((rec.similarity || 0.5) * 100),
-      match_reason: `This opportunity matches your profile with ${Math.round((rec.similarity || 0.5) * 100)}% similarity.`,
-      key_matching_skills: [],
-      skills_gap: [],
-      recommendation: 'Review the job requirements and apply if interested.',
-      opportunity,
-      cached: result.cached || false,
-      computed_at: result.computed_at
-    };
-  }).filter(match => match.opportunity);
+  // Transform matches - opportunity data comes from API response
+  return recommendations.map(rec => ({
+    job_id: rec.id,
+    job_title: rec.job_title || rec.title,
+    company_name: rec.company_name || rec.company,
+    match_score: Math.round((rec.similarity || 0.5) * 100),
+    match_reason: `This opportunity matches your profile with ${Math.round((rec.similarity || 0.5) * 100)}% similarity.`,
+    key_matching_skills: [],
+    skills_gap: [],
+    recommendation: 'Review the job requirements and apply if interested.',
+    opportunity: rec, // Full opportunity data from API
+    cached: result.cached || false,
+    computed_at: result.computed_at
+  }));
 }
 
 /**

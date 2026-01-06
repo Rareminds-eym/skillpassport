@@ -47,7 +47,7 @@ export class OpportunitiesService {
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
 
-      console.log('📄 Server-side pagination request:', { page, pageSize, from, to, searchTerm, filters, sortBy });
+      console.log('📄 Server-side pagination request:', { page, pageSize, searchTerm: searchTerm ? '***' : '', filtersApplied: Object.keys(filters).length, sortBy });
 
       // Build the query
       let query = supabase
@@ -106,12 +106,7 @@ export class OpportunitiesService {
       const totalCount = count || 0;
       const totalPages = Math.ceil(totalCount / pageSize);
 
-      console.log('📄 Server-side pagination result:', { 
-        recordsReturned: data?.length, 
-        totalCount, 
-        totalPages,
-        page 
-      });
+      console.log(`📄 Opportunities: ${data?.length}/${totalCount} (page ${page}/${totalPages})`);
 
       return {
         data: data || [],
