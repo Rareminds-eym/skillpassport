@@ -23,6 +23,7 @@ import {
   StopConditionResult,
   ALL_DIFFICULTY_LEVELS,
   ALL_SUBTAGS,
+  DEFAULT_ADAPTIVE_TEST_CONFIG,
 } from '../types/adaptiveAptitude';
 import { AdaptiveEngine } from './adaptiveEngine';
 import { QuestionGeneratorService } from './questionGeneratorService';
@@ -74,6 +75,109 @@ export interface NextQuestionResult {
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
+
+/**
+ * Validation result for duplicate detection
+ */
+export interface ValidationResult {
+  isValid: boolean;
+  reason?: string;
+}
+
+/**
+ * Validates that the exclusion list is complete
+ * 
+ * Requirements: 1.4
+ * - Verifies all answered question IDs are in exclusion list
+ * - Verifies all phase question IDs are in exclusion list
+ * - Logs error if any IDs are missing
+ * 
+ * @param excludeIds - The built exclusion list
+ * @param answeredIds - IDs of answered questions
+ * @param phaseIds - IDs of current phase questions
+ * @returns ValidationResult with isValid and optional reason
+ */
+function validateExclusionListComplete(
+  excludeIds: string[],
+  answeredIds: string[],
+  phaseIds: string[]
+): ValidationResult {
+  const excludeSet = new Set(excludeIds);
+  const missingAnsweredIds: string[] = [];
+  const missingPhaseIds: string[] = [];
+  
+  // Check all answered question IDs are in exclusion list
+  for (const id of answeredIds) {
+    if (!excludeSet.has(id)) {
+      missingAnsweredIds.push(id);
+    }
+  }
+  
+  // Check all phase question IDs are in exclusion list
+  for (const id of phaseIds) {
+    if (!excludeSet.has(id)) {
+      missingPhaseIds.push(id);
+    }
+  }
+  
+  // Log errors if any IDs are missing
+  if (missingAnsweredIds.length > 0) {
+    console.error('❌ [AdaptiveAptitudeService] Exclusion list validation failed: Missing answered question IDs:', missingAnsweredIds);
+  }
+  
+  if (missingPhaseIds.length > 0) {
+    console.error('❌ [AdaptiveAptitudeService] Exclusion list validation failed: Missing phase question IDs:', missingPhaseIds);
+  }
+  
+  const isValid = missingAnsweredIds.length === 0 && missingPhaseIds.length === 0;
+  
+  if (isValid) {
+    console.log('✅ [AdaptiveAptitudeService] Exclusion list validation passed: All IDs accounted for');
+  }
+  
+  return {
+    isValid,
+    reason: isValid 
+      ? undefined 
+      : `Missing ${missingAnsweredIds.length} answered IDs and ${missingPhaseIds.length} phase IDs from exclusion list`
+  };
+}
+
+/**
+ * Validates that a question is not a duplicate
+ * 
+ * Requirements: 3.3
+ * - Checks if question ID is in exclusion list
+ * - Checks if question text is in exclusion list
+ * 
+ * @param question - The question to validate
+ * @param excludeIds - Array of question IDs to exclude
+ * @param excludeTexts - Array of question texts to exclude
+ * @returns ValidationResult with isValid and optional reason
+ */
+function validateQuestionNotDuplicate(
+  question: Question,
+  excludeIds: string[],
+  excludeTexts: string[]
+): ValidationResult {
+  // Check if question ID is in exclusion list
+  if (excludeIds.includes(question.id)) {
+    return { 
+      isValid: false, 
+      reason: `Question ID ${question.id} is in exclusion list` 
+    };
+  }
+  
+  // Check if question text is in exclusion list
+  if (excludeTexts.includes(question.text)) {
+    return { 
+      isValid: false, 
+      reason: `Question text already used` 
+    };
+  }
+  
+  return { isValid: true };
+}
 
 /**
  * Converts a database session record to a TestSession object
@@ -234,6 +338,7 @@ export async function getNextQuestion(sessionId: string): Promise<NextQuestionRe
     currentPhase: sessionData.current_phase,
     currentQuestionIndex: sessionData.current_question_index,
     questionsAnswered: sessionData.questions_answered,
+    currentDifficulty: sessionData.current_difficulty,
     phaseQuestionsCount: (sessionData.current_phase_questions as Question[])?.length,
   });
 
@@ -254,15 +359,202 @@ export async function getNextQuestion(sessionId: string): Promise<NextQuestionRe
 
   const currentPhaseQuestions = sessionData.current_phase_questions as Question[];
   const currentQuestionIndex = sessionData.current_question_index as number;
+  const currentPhase = sessionData.current_phase as TestPhase;
+  const currentDifficulty = sessionData.current_difficulty as DifficultyLevel;
+  const gradeLevel = sessionData.grade_level as GradeLevel;
 
   console.log('📊 [AdaptiveAptitudeService] getNextQuestion - checking phase questions:', {
     currentQuestionIndex,
     totalPhaseQuestions: currentPhaseQuestions?.length,
     hasMoreQuestions: currentQuestionIndex < (currentPhaseQuestions?.length || 0),
+    currentPhase,
+    currentDifficulty,
   });
 
-  // Check if we have more questions in the current phase
-  if (currentQuestionIndex < currentPhaseQuestions.length) {
+  // Calculate total questions answered across all phases
+  const totalQuestionsAnswered = sessionData.questions_answered as number;
+  const maxTotalQuestions = DEFAULT_ADAPTIVE_TEST_CONFIG.phases.diagnostic_screener.maxQuestions +
+    DEFAULT_ADAPTIVE_TEST_CONFIG.phases.adaptive_core.maxQuestions +
+    DEFAULT_ADAPTIVE_TEST_CONFIG.phases.stability_confirmation.maxQuestions; // 6 + 10 + 6 = 22
+
+  // Hard limit: if we've answered max questions, complete the test
+  if (totalQuestionsAnswered >= maxTotalQuestions) {
+    console.log('🏁 [AdaptiveAptitudeService] Max questions reached, completing test');
+    return {
+      question: null,
+      isTestComplete: true,
+      currentPhase,
+      progress: {
+        questionsAnswered: totalQuestionsAnswered,
+        currentQuestionIndex,
+        totalQuestionsInPhase: currentPhaseQuestions.length,
+      },
+    };
+  }
+
+  // For adaptive_core phase, generate questions dynamically based on current difficulty
+  // Limit to maxQuestions for this phase (10)
+  const adaptiveCoreQuestionsAnswered = totalQuestionsAnswered - DEFAULT_ADAPTIVE_TEST_CONFIG.phases.diagnostic_screener.maxQuestions;
+  if (currentPhase === 'adaptive_core' && adaptiveCoreQuestionsAnswered < DEFAULT_ADAPTIVE_TEST_CONFIG.phases.adaptive_core.maxQuestions) {
+    // Get all previously answered question IDs to exclude (including question text to prevent content duplicates)
+    const { data: responses } = await supabase
+      .from('adaptive_aptitude_responses')
+      .select('question_id, question_text')
+      .eq('session_id', sessionId);
+    
+    const excludeIds = (responses || []).map(r => r.question_id);
+    const answeredQuestionTexts = (responses || []).map(r => r.question_text).filter(Boolean);
+    
+    // Also exclude questions already in current phase that haven't been answered
+    const currentPhaseIds = currentPhaseQuestions.map(q => q.id);
+    const currentPhaseTexts = currentPhaseQuestions.map(q => q.text);
+    const allExcludeIds = [...new Set([...excludeIds, ...currentPhaseIds])];
+    const allExcludeTexts = [...new Set([...answeredQuestionTexts, ...currentPhaseTexts])];
+    
+    // Enhanced logging for exclusion list construction (Requirements: 2.1)
+    console.log('🔒 [AdaptiveAptitudeService] Building exclusion list for adaptive core:');
+    console.log('  📊 Answered questions count:', excludeIds.length);
+    console.log('  📊 Current phase questions count:', currentPhaseIds.length);
+    console.log('  📊 Total excluded IDs:', allExcludeIds.length);
+    console.log('  📊 Total excluded texts:', allExcludeTexts.length);
+    console.log('  🔍 Sample excluded IDs (first 5):', allExcludeIds.slice(0, 5));
+    console.log('  🔍 All answered question IDs:', excludeIds);
+    console.log('  🔍 All current phase question IDs:', currentPhaseIds);
+    
+    // Validate exclusion list is complete (Requirements: 1.4)
+    const exclusionValidation = validateExclusionListComplete(
+      allExcludeIds,
+      excludeIds,
+      currentPhaseIds
+    );
+    
+    if (!exclusionValidation.isValid) {
+      console.error('❌ [AdaptiveAptitudeService] Exclusion list validation failed:', exclusionValidation.reason);
+    }
+    
+    // Select a subtag that maintains balance (avoid consecutive same subtag)
+    const lastSubtag = currentPhaseQuestions.length > 0 
+      ? currentPhaseQuestions[currentPhaseQuestions.length - 1]?.subtag 
+      : null;
+    
+    // Get a different subtag if possible
+    const availableSubtags = ALL_SUBTAGS.filter(s => s !== lastSubtag);
+    const selectedSubtag = availableSubtags[Math.floor(Math.random() * availableSubtags.length)] || ALL_SUBTAGS[0];
+    
+    console.log('🎯 [AdaptiveAptitudeService] Generating adaptive question:', {
+      difficulty: currentDifficulty,
+      subtag: selectedSubtag,
+      excludeIdsCount: allExcludeIds.length,
+      excludeTextsCount: allExcludeTexts.length,
+    });
+    
+    // Generate a single question at the current difficulty
+    const questionResult = await QuestionGeneratorService.generateQuestions({
+      gradeLevel,
+      phase: 'adaptive_core',
+      difficulty: currentDifficulty,
+      subtag: selectedSubtag,
+      count: 1,
+      excludeQuestionIds: allExcludeIds,
+      excludeQuestionTexts: allExcludeTexts,  // NOW PASSING QUESTION TEXTS!
+    });
+    
+    if (questionResult.questions.length > 0) {
+      let newQuestion = questionResult.questions[0];
+      let retryCount = 0;
+      const maxRetries = 1;
+      
+      // Validate question is not a duplicate (Requirements: 3.3)
+      const validation = validateQuestionNotDuplicate(newQuestion, allExcludeIds, allExcludeTexts);
+      
+      if (!validation.isValid) {
+        console.warn(`⚠️ [AdaptiveAptitudeService] Generated question is duplicate: ${validation.reason}`);
+        console.warn(`⚠️ [AdaptiveAptitudeService] Question ID: ${newQuestion.id}`);
+        console.warn(`⚠️ [AdaptiveAptitudeService] Attempting retry with updated exclusions...`);
+        
+        // Requirements: 3.4, 4.2 - Add retry when generated question is duplicate
+        // Add duplicate ID to exclusion list
+        const retryExcludeIds = [...allExcludeIds, newQuestion.id];
+        // Add duplicate text to exclusion texts
+        const retryExcludeTexts = [...allExcludeTexts, newQuestion.text];
+        
+        retryCount++;
+        
+        // Call question generation again with updated exclusions
+        const retryResult = await QuestionGeneratorService.generateQuestions({
+          gradeLevel,
+          phase: 'adaptive_core',
+          difficulty: currentDifficulty,
+          subtag: selectedSubtag,
+          count: 1,
+          excludeQuestionIds: retryExcludeIds,
+          excludeQuestionTexts: retryExcludeTexts,
+        });
+        
+        if (retryResult.questions.length > 0) {
+          const retryValidation = validateQuestionNotDuplicate(
+            retryResult.questions[0],
+            allExcludeIds,
+            allExcludeTexts
+          );
+          
+          if (retryValidation.isValid) {
+            newQuestion = retryResult.questions[0];
+            console.log('✅ [AdaptiveAptitudeService] Retry successful, using new question');
+            console.log(`✅ [AdaptiveAptitudeService] New question ID: ${newQuestion.id}`);
+          } else {
+            // Requirements: 4.3 - Graceful degradation after retry exhaustion
+            console.error(`❌ [AdaptiveAptitudeService] Retry also returned duplicate: ${retryValidation.reason}`);
+            console.error(`❌ [AdaptiveAptitudeService] Retry question ID: ${retryResult.questions[0].id}`);
+            console.error(`❌ [AdaptiveAptitudeService] Retry exhausted (${retryCount}/${maxRetries}), allowing duplicate to avoid blocking test progress`);
+            
+            // Track retry failures for monitoring
+            console.error(`❌ [AdaptiveAptitudeService] RETRY_FAILURE: session=${sessionId}, originalQuestionId=${newQuestion.id}, retryQuestionId=${retryResult.questions[0].id}, difficulty=${currentDifficulty}, subtag=${selectedSubtag}`);
+            
+            // Use the retry question anyway to avoid blocking test progress
+            newQuestion = retryResult.questions[0];
+          }
+        } else {
+          // Requirements: 4.3 - Graceful degradation when retry returns no questions
+          console.error(`❌ [AdaptiveAptitudeService] Retry returned no questions`);
+          console.error(`❌ [AdaptiveAptitudeService] Retry exhausted (${retryCount}/${maxRetries}), using original duplicate to avoid blocking test progress`);
+          
+          // Track retry failures for monitoring
+          console.error(`❌ [AdaptiveAptitudeService] RETRY_FAILURE: session=${sessionId}, originalQuestionId=${newQuestion.id}, retryQuestionId=none, difficulty=${currentDifficulty}, subtag=${selectedSubtag}`);
+          
+          // Keep the original question to avoid blocking test progress
+        }
+      }
+      
+      // Update session with the new question added to the phase questions
+      const updatedPhaseQuestions = [...currentPhaseQuestions, newQuestion];
+      await supabase
+        .from('adaptive_aptitude_sessions')
+        .update({ current_phase_questions: updatedPhaseQuestions })
+        .eq('id', sessionId);
+      
+      console.log('✅ [AdaptiveAptitudeService] Generated adaptive question:', {
+        questionId: newQuestion.id,
+        difficulty: newQuestion.difficulty,
+        subtag: newQuestion.subtag,
+      });
+      
+      return {
+        question: newQuestion,
+        isTestComplete: false,
+        currentPhase,
+        progress: {
+          questionsAnswered: sessionData.questions_answered,
+          currentQuestionIndex,
+          totalQuestionsInPhase: updatedPhaseQuestions.length,
+        },
+      };
+    }
+  }
+
+  // For diagnostic_screener and stability_confirmation, use pre-generated questions
+  // NOTE: Do NOT use this for adaptive_core - those are generated dynamically above
+  if (currentPhase !== 'adaptive_core' && currentQuestionIndex < currentPhaseQuestions.length) {
     const nextQuestion = currentPhaseQuestions[currentQuestionIndex];
     console.log('✅ [AdaptiveAptitudeService] Returning question at index', currentQuestionIndex, ':', {
       questionId: nextQuestion?.id,
@@ -283,7 +575,6 @@ export async function getNextQuestion(sessionId: string): Promise<NextQuestionRe
   }
 
   // Need to transition to next phase or complete test
-  const currentPhase = sessionData.current_phase as TestPhase;
   
   // Determine next phase
   let nextPhase: TestPhase | null = null;
@@ -307,12 +598,48 @@ export async function getNextQuestion(sessionId: string): Promise<NextQuestionRe
   }
 
   // Generate questions for next phase
-  const gradeLevel = sessionData.grade_level as GradeLevel;
-  const currentDifficulty = sessionData.current_difficulty as DifficultyLevel;
   const provisionalBand = sessionData.provisional_band as DifficultyLevel | null;
   
-  // Get existing question IDs to exclude
-  const existingQuestionIds = currentPhaseQuestions.map(q => q.id);
+  // Get ALL answered question IDs and texts to exclude (from responses table)
+  const { data: allResponses } = await supabase
+    .from('adaptive_aptitude_responses')
+    .select('question_id, question_text')
+    .eq('session_id', sessionId);
+  
+  const answeredQuestionIds = (allResponses || []).map(r => r.question_id);
+  const answeredQuestionTexts = (allResponses || []).map(r => r.question_text).filter(Boolean);
+  
+  // Also include current phase questions that haven't been answered yet
+  const existingQuestionIds = [
+    ...answeredQuestionIds,
+    ...currentPhaseQuestions.map(q => q.id)
+  ];
+  
+  const existingQuestionTexts = [
+    ...answeredQuestionTexts,
+    ...currentPhaseQuestions.map(q => q.text)
+  ];
+  
+  // Enhanced logging for exclusion list construction (Requirements: 2.1)
+  console.log('🔒 [AdaptiveAptitudeService] Building exclusion list for phase transition:');
+  console.log('  📊 Answered questions count:', answeredQuestionIds.length);
+  console.log('  📊 Current phase questions count:', currentPhaseQuestions.length);
+  console.log('  📊 Total excluded IDs:', existingQuestionIds.length);
+  console.log('  📊 Total excluded texts:', existingQuestionTexts.length);
+  console.log('  🔍 Sample excluded IDs (first 5):', existingQuestionIds.slice(0, 5));
+  console.log('  🔍 All answered question IDs:', answeredQuestionIds);
+  console.log('  🔍 All current phase question IDs:', currentPhaseQuestions.map(q => q.id));
+  
+  // Validate exclusion list is complete (Requirements: 1.4)
+  const exclusionValidation = validateExclusionListComplete(
+    existingQuestionIds,
+    answeredQuestionIds,
+    currentPhaseQuestions.map(q => q.id)
+  );
+  
+  if (!exclusionValidation.isValid) {
+    console.error('❌ [AdaptiveAptitudeService] Exclusion list validation failed:', exclusionValidation.reason);
+  }
   
   let newQuestions: Question[];
   
@@ -340,7 +667,8 @@ export async function getNextQuestion(sessionId: string): Promise<NextQuestionRe
       gradeLevel,
       tierResult.startingDifficulty,
       10,
-      existingQuestionIds
+      existingQuestionIds,
+      existingQuestionTexts
     );
     newQuestions = questionResult.questions;
   } else {
@@ -350,7 +678,8 @@ export async function getNextQuestion(sessionId: string): Promise<NextQuestionRe
       gradeLevel,
       band,
       5,
-      existingQuestionIds
+      existingQuestionIds,
+      existingQuestionTexts
     );
     newQuestions = questionResult.questions;
   }
@@ -453,7 +782,7 @@ export async function submitAnswer(options: SubmitAnswerOptions): Promise<Answer
   // Update difficulty path
   const newDifficultyPath = [...difficultyPath, currentDifficulty];
 
-  // Create response record
+  // Create response record with full question content
   const sequenceNumber = sessionData.questions_answered + 1;
   
   const { error: responseError } = await supabase
@@ -468,6 +797,11 @@ export async function submitAnswer(options: SubmitAnswerOptions): Promise<Answer
       subtag: currentQuestion.subtag,
       phase: currentPhase,
       sequence_number: sequenceNumber,
+      // Store full question content for audit trail
+      question_text: currentQuestion.text,
+      question_options: currentQuestion.options,
+      correct_answer: currentQuestion.correctAnswer,
+      explanation: currentQuestion.explanation || null,
     })
     .select()
     .single();
@@ -538,7 +872,15 @@ export async function submitAnswer(options: SubmitAnswerOptions): Promise<Answer
   }
 
   // Determine if test is complete
-  if (currentPhase === 'stability_confirmation' && phaseComplete) {
+  // Hard limit: max 22 questions total (6 + 10 + 6)
+  const maxTotalQuestions = DEFAULT_ADAPTIVE_TEST_CONFIG.phases.diagnostic_screener.maxQuestions +
+    DEFAULT_ADAPTIVE_TEST_CONFIG.phases.adaptive_core.maxQuestions +
+    DEFAULT_ADAPTIVE_TEST_CONFIG.phases.stability_confirmation.maxQuestions;
+  
+  if (newQuestionsAnswered >= maxTotalQuestions) {
+    testComplete = true;
+    console.log('🏁 [AdaptiveAptitudeService] Max questions reached, marking test complete');
+  } else if (currentPhase === 'stability_confirmation' && phaseComplete) {
     testComplete = true;
   }
 
@@ -610,6 +952,66 @@ export async function submitAnswer(options: SubmitAnswerOptions): Promise<Answer
 // =============================================================================
 // COMPLETE TEST
 // =============================================================================
+
+/**
+ * Validates that a session has no duplicate questions
+ * 
+ * Requirements: 3.1
+ * - Queries all responses for a session
+ * - Groups by question_id and counts occurrences
+ * - Returns list of duplicates with sequence numbers
+ * 
+ * @param sessionId - The session ID to validate
+ * @returns Validation result with isValid flag and optional duplicates array
+ */
+async function validateSessionNoDuplicates(sessionId: string): Promise<{
+  isValid: boolean;
+  duplicates?: Array<{ questionId: string; sequences: number[] }>;
+}> {
+  // Query all responses for the session
+  const { data: responses, error } = await supabase
+    .from('adaptive_aptitude_responses')
+    .select('question_id, sequence_number')
+    .eq('session_id', sessionId)
+    .order('sequence_number', { ascending: true });
+  
+  if (error) {
+    console.error('❌ [AdaptiveAptitudeService] Failed to fetch responses for duplicate validation:', error);
+    // Return valid to avoid blocking test completion on query errors
+    return { isValid: true };
+  }
+  
+  if (!responses || responses.length === 0) {
+    // No responses means no duplicates
+    return { isValid: true };
+  }
+  
+  // Group by question_id and collect sequence numbers
+  const questionMap = new Map<string, number[]>();
+  
+  for (const response of responses) {
+    const questionId = response.question_id;
+    const sequenceNumber = response.sequence_number;
+    
+    if (!questionMap.has(questionId)) {
+      questionMap.set(questionId, []);
+    }
+    questionMap.get(questionId)!.push(sequenceNumber);
+  }
+  
+  // Find duplicates (questions that appear more than once)
+  const duplicates = Array.from(questionMap.entries())
+    .filter(([_, sequences]) => sequences.length > 1)
+    .map(([questionId, sequences]) => ({ questionId, sequences }));
+  
+  if (duplicates.length > 0) {
+    console.error(`❌ [AdaptiveAptitudeService] Session ${sessionId} has duplicate questions:`, duplicates);
+    return { isValid: false, duplicates };
+  }
+  
+  console.log(`✅ [AdaptiveAptitudeService] Session ${sessionId} validation passed: No duplicate questions found`);
+  return { isValid: true };
+}
 
 /**
  * Calculates accuracy breakdown by difficulty level
@@ -745,6 +1147,14 @@ function classifyPath(
  * @returns TestResults with all analytics
  */
 export async function completeTest(sessionId: string): Promise<TestResults> {
+  // Validate session has no duplicate questions (Requirements: 3.1, 3.2)
+  const validation = await validateSessionNoDuplicates(sessionId);
+  if (!validation.isValid) {
+    console.error(`❌ [AdaptiveAptitudeService] Test completed with duplicates:`, validation.duplicates);
+    // Log to monitoring/analytics system
+    // Note: We still proceed with test completion to avoid blocking the user
+  }
+  
   // Fetch session from database
   const { data: sessionData, error: sessionError } = await supabase
     .from('adaptive_aptitude_sessions')
@@ -815,7 +1225,7 @@ export async function completeTest(sessionId: string): Promise<TestResults> {
 
   const completedAt = new Date().toISOString();
 
-  // Create results record
+  // Create results record with duplicate validation metadata
   const { data: resultsData, error: resultsError } = await supabase
     .from('adaptive_aptitude_results')
     .insert({
@@ -834,6 +1244,13 @@ export async function completeTest(sessionId: string): Promise<TestResults> {
       average_response_time_ms: averageResponseTimeMs,
       grade_level: gradeLevel,
       completed_at: completedAt,
+      // Include duplicate validation metadata (Requirements: 3.1, 3.2)
+      metadata: {
+        duplicateValidation: {
+          isValid: validation.isValid,
+          duplicates: validation.duplicates || [],
+        },
+      },
     })
     .select()
     .single();

@@ -132,6 +132,8 @@ const AssessmentTest = () => {
     // Adaptive Aptitude Test state (for high school 5th section)
     const [adaptiveAptitudeAnswer, setAdaptiveAptitudeAnswer] = useState(null);
     const [adaptiveQuestionStartTime, setAdaptiveQuestionStartTime] = useState(null);
+    const [adaptiveQuestionTimer, setAdaptiveQuestionTimer] = useState(90); // 90 seconds per question
+    const ADAPTIVE_QUESTION_TIME_LIMIT = 90; // seconds per question
     
     // TEST MODE - Auto-fill answers for development/testing
     const [testMode, setTestMode] = useState(false);
@@ -215,10 +217,18 @@ const AssessmentTest = () => {
         fetchStudentGrade();
     }, [user?.id, user?.email, shouldFilterByGrade]);
 
-    // Adaptive Aptitude Hook for high school 5th section
+    // Map UI grade level to adaptive aptitude grade level
+    const getAdaptiveGradeLevel = () => {
+        if (gradeLevel === 'highschool') return 'high_school';
+        if (gradeLevel === 'middle') return 'middle_school';
+        // For after12 and college, use high_school level questions
+        return 'high_school';
+    };
+
+    // Adaptive Aptitude Hook for adaptive aptitude section
     const adaptiveAptitude = useAdaptiveAptitude({
         studentId: studentId || '',
-        gradeLevel: gradeLevel === 'highschool' ? 'high_school' : 'middle_school',
+        gradeLevel: getAdaptiveGradeLevel(),
         onTestComplete: (testResults) => {
             console.log('✅ Adaptive aptitude test completed:', testResults);
             // Store results in answers for final submission
@@ -652,7 +662,7 @@ const AssessmentTest = () => {
 
     // Define assessment sections with dynamic questions
     const sections = useMemo(() => {
-        // For middle school (grades 6-8), show simplified assessment with 3 sections
+        // For middle school (grades 6-8), show simplified assessment with 4 sections (including adaptive aptitude)
         // IMPORTANT: Section IDs must match database section names in personal_assessment_sections table
         if (gradeLevel === 'middle') {
             return [
@@ -683,6 +693,16 @@ const AssessmentTest = () => {
                     color: "blue",
                     questions: getQuestionsForSection('middle_learning_preferences'),  // Load from database
                     instruction: "Choose the options that best describe you."
+                },
+                {
+                    id: 'adaptive_aptitude',
+                    title: 'Adaptive Aptitude Test',
+                    icon: <img src="/RMLogo.webp" alt="RM Logo" className="w-6 h-6 object-contain" />,
+                    description: "A smart test that adjusts to your skill level. It gets easier or harder based on how you're doing!",
+                    color: "indigo",
+                    questions: [], // Questions are generated dynamically by the adaptive engine
+                    isAdaptive: true, // Flag to indicate this is the adaptive aptitude section
+                    instruction: "Take your time with each question. There's no rush - just do your best!"
                 }
             ];
         }
@@ -1016,6 +1036,51 @@ const AssessmentTest = () => {
         setElapsedTime(0);
     }, [currentSectionIndex]);
 
+    // Timer for adaptive aptitude section (90 seconds per question)
+    useEffect(() => {
+        // Only run timer for adaptive section when not showing intro/complete screens
+        if (currentSection?.isAdaptive && !showSectionIntro && !showSectionComplete && !isSubmitting && adaptiveAptitude.currentQuestion) {
+            const timer = setInterval(() => {
+                setAdaptiveQuestionTimer(prev => {
+                    if (prev <= 1) {
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+
+            return () => clearInterval(timer);
+        }
+    }, [currentSection?.isAdaptive, showSectionIntro, showSectionComplete, isSubmitting, adaptiveAptitude.currentQuestion?.id]);
+
+    // Handle adaptive timer expiry - auto-submit or skip
+    useEffect(() => {
+        if (currentSection?.isAdaptive && adaptiveQuestionTimer === 0 && adaptiveAptitude.currentQuestion && !adaptiveAptitude.submitting) {
+            console.log('⏰ [AssessmentTest] Adaptive timer expired, auto-submitting...');
+            
+            // If student selected an answer, submit it
+            // If no answer selected, submit a random answer (or skip)
+            const answerToSubmit = adaptiveAptitudeAnswer || 'A'; // Default to 'A' if no answer
+            
+            (async () => {
+                try {
+                    const result = await adaptiveAptitude.submitAnswer(answerToSubmit);
+                    
+                    // Reset for next question
+                    setAdaptiveAptitudeAnswer(null);
+                    setAdaptiveQuestionTimer(ADAPTIVE_QUESTION_TIME_LIMIT);
+                    setAdaptiveQuestionStartTime(Date.now());
+                    
+                    if (result?.testComplete) {
+                        setShowSectionComplete(true);
+                    }
+                } catch (err) {
+                    console.error('Error auto-submitting on timer expiry:', err);
+                }
+            })();
+        }
+    }, [adaptiveQuestionTimer, currentSection?.isAdaptive, adaptiveAptitude.currentQuestion, adaptiveAptitude.submitting, adaptiveAptitudeAnswer]);
+
     // Periodically save timer/elapsed time (every 30 seconds)
     useEffect(() => {
         if (useDatabase && currentAttempt?.id && !showSectionIntro && !showSectionComplete) {
@@ -1163,6 +1228,8 @@ const AssessmentTest = () => {
                 }
                 // Set the question start time for response timing
                 setAdaptiveQuestionStartTime(Date.now());
+                // Reset the per-question timer
+                setAdaptiveQuestionTimer(ADAPTIVE_QUESTION_TIME_LIMIT);
             } catch (err) {
                 console.error('Failed to start adaptive test:', err);
                 setError(`Failed to start adaptive test: ${err.message}`);
@@ -1242,6 +1309,9 @@ const AssessmentTest = () => {
                     
                     // Reset for next question
                     setAdaptiveAptitudeAnswer(null);
+                    // Reset timer for next question
+                    setAdaptiveQuestionTimer(ADAPTIVE_QUESTION_TIME_LIMIT);
+                    setAdaptiveQuestionStartTime(Date.now());
                     
                     // Check if test is complete (check the result, not the state which may not have updated yet)
                     if (result?.testComplete) {
@@ -1983,7 +2053,7 @@ const AssessmentTest = () => {
                                     <p className="text-sm text-gray-600 group-hover:text-gray-700">Middle School Students</p>
                                     <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                                         <Clock className="w-4 h-4" />
-                                        <span>Assessment: 20 questions (15-20 minutes)</span>
+                                        <span>Assessment: 41 questions (50-60 minutes)</span>
                                     </div>
                                 </div>
                             </button>
@@ -2006,7 +2076,7 @@ const AssessmentTest = () => {
                                     <p className="text-sm text-gray-600 group-hover:text-gray-700">High School Students</p>
                                     <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                                         <Clock className="w-4 h-4" />
-                                        <span>Assessment: 32 questions (30-40 minutes)</span>
+                                        <span>Assessment: 53 questions (55-65 minutes)</span>
                                     </div>
                                 </div>
                             </button>
@@ -2888,17 +2958,30 @@ const AssessmentTest = () => {
                                                     {/* Adaptive Aptitude Questions - Special handling */}
                                                     {currentSection?.isAdaptive ? (
                                                         <div className="space-y-4">
-                                                            {/* Adaptive test info badges */}
-                                                            <div className="flex flex-wrap gap-2 mb-4">
-                                                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 rounded-full text-xs font-medium text-purple-700">
-                                                                    <Target className="w-3 h-3" />
-                                                                    Level {adaptiveAptitude.session?.currentDifficulty || 3}
-                                                                </span>
-                                                                {currentQuestion?.subtag && (
-                                                                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600">
-                                                                        {currentQuestion.subtag.replace(/_/g, ' ')}
+                                                            {/* Adaptive test info badges with timer */}
+                                                            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 rounded-full text-xs font-medium text-purple-700">
+                                                                        <Target className="w-3 h-3" />
+                                                                        Level {adaptiveAptitude.session?.currentDifficulty || 3}
                                                                     </span>
-                                                                )}
+                                                                    {currentQuestion?.subtag && (
+                                                                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600">
+                                                                            {currentQuestion.subtag.replace(/_/g, ' ')}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {/* Per-question timer */}
+                                                                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold ${
+                                                                    adaptiveQuestionTimer <= 10 
+                                                                        ? 'bg-red-100 text-red-700 animate-pulse' 
+                                                                        : adaptiveQuestionTimer <= 30 
+                                                                            ? 'bg-amber-100 text-amber-700' 
+                                                                            : 'bg-indigo-100 text-indigo-700'
+                                                                }`}>
+                                                                    <Clock className="w-4 h-4" />
+                                                                    {Math.floor(adaptiveQuestionTimer / 60)}:{(adaptiveQuestionTimer % 60).toString().padStart(2, '0')}
+                                                                </div>
                                                             </div>
 
                                                             {/* Answer options for adaptive questions */}
@@ -3225,11 +3308,11 @@ const AssessmentTest = () => {
 
                                             <Button
                                                 onClick={handleNext}
-                                                disabled={!isCurrentAnswered || isSaving}
-                                                className={`bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-8 py-6 rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 font-bold tracking-wide ${(!isCurrentAnswered || isSaving) ? 'opacity-50 cursor-not-allowed grayscale shadow-none' : ''
+                                                disabled={!isCurrentAnswered || isSaving || adaptiveAptitude.submitting}
+                                                className={`bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-8 py-6 rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 font-bold tracking-wide ${(!isCurrentAnswered || isSaving || adaptiveAptitude.submitting) ? 'opacity-50 cursor-not-allowed grayscale shadow-none' : ''
                                                     }`}
                                             >
-                                                {isSaving ? (
+                                                {(isSaving || adaptiveAptitude.submitting) ? (
                                                     <>
                                                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                                                         Saving...
