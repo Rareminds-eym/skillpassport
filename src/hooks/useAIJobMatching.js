@@ -1,18 +1,28 @@
-import { useState, useEffect } from 'react';
-import { matchJobsWithAI } from '../services/aiJobMatchingService';
+import { useCallback, useEffect, useState } from 'react';
+import { matchJobsWithAI, refreshJobMatches } from '../services/aiJobMatchingService';
 import { OpportunitiesService } from '../services/opportunitiesService';
 
 /**
- * Custom hook for AI-powered job matching
+ * Custom hook for AI-powered job matching with industrial-grade caching
+ * 
+ * The AI matching results are cached in the database and only recomputed when:
+ * - Student profile data changes (skills, interests, etc.)
+ * - Course enrollments change
+ * - Training records change
+ * - Opportunities catalog changes
+ * - Cache expires (24 hours)
+ * - Force refresh is requested
+ * 
  * @param {Object} studentProfile - Student profile data
  * @param {boolean} enabled - Whether to run matching (default: true)
  * @param {number} topN - Number of matches to return (default: 3)
- * @returns {Object} Hook state with matched jobs, loading, and error
+ * @returns {Object} Hook state with matched jobs, loading, error, and cache info
  */
 export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
   const [matchedJobs, setMatchedJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [cacheInfo, setCacheInfo] = useState({ cached: false, computedAt: null });
 
   useEffect(() => {
     const fetchMatches = async () => {
@@ -27,7 +37,7 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         setLoading(true);
         setError(null);
 
-        console.log({
+        console.log('[useAIJobMatching] Fetching matches for:', {
           id: studentProfile?.id,
           email: studentProfile?.email,
           name: studentProfile?.name,
@@ -65,10 +75,18 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
           return;
         }
 
-        // Run AI matching
+        // Run AI matching (will use cache if available)
         const matches = await matchJobsWithAI(studentProfile, activeOpportunities, topN);
 
         setMatchedJobs(matches);
+        
+        // Update cache info from first match (all have same cache status)
+        if (matches.length > 0) {
+          setCacheInfo({
+            cached: matches[0].cached || false,
+            computedAt: matches[0].computed_at || null
+          });
+        }
 
       } catch (err) {
         console.error('❌ Error in AI job matching:', err);
@@ -93,9 +111,47 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
   ]); // Re-run when student profile or key fields change
 
   /**
-   * Manually refresh job matches
+   * Manually refresh job matches - forces cache bypass
+   * Use this when you want to ensure fresh AI computation
    */
-  const refreshMatches = async () => {
+  const forceRefreshMatches = useCallback(async () => {
+    if (!studentProfile) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const opportunities = await OpportunitiesService.getAllOpportunities();
+      const activeOpportunities = opportunities.filter(opp => 
+        opp.is_active !== false && 
+        opp.status !== 'draft' &&
+        (!opp.deadline || new Date(opp.deadline) >= new Date())
+      );
+
+      // Use refreshJobMatches which forces cache bypass
+      const matches = await refreshJobMatches(studentProfile, activeOpportunities, topN);
+      setMatchedJobs(matches);
+      
+      // Update cache info
+      setCacheInfo({
+        cached: false,
+        computedAt: new Date().toISOString()
+      });
+      
+      console.log('[useAIJobMatching] Force refreshed matches:', matches.length);
+    } catch (err) {
+      console.error('Error refreshing matches:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [studentProfile, topN]);
+
+  /**
+   * Regular refresh - uses cache if available
+   * @deprecated Use forceRefreshMatches for explicit refresh
+   */
+  const refreshMatches = useCallback(async () => {
     if (!studentProfile) return;
 
     try {
@@ -111,19 +167,28 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
 
       const matches = await matchJobsWithAI(studentProfile, activeOpportunities, topN);
       setMatchedJobs(matches);
+      
+      if (matches.length > 0) {
+        setCacheInfo({
+          cached: matches[0].cached || false,
+          computedAt: matches[0].computed_at || null
+        });
+      }
     } catch (err) {
       console.error('Error refreshing matches:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [studentProfile, topN]);
 
   return {
     matchedJobs,
     loading,
     error,
-    refreshMatches
+    cacheInfo,
+    refreshMatches,
+    forceRefreshMatches
   };
 };
 

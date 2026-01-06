@@ -1,6 +1,7 @@
 /**
  * AI Job Matching Service
  * Uses vector embeddings and cosine similarity to match student profiles with job opportunities
+ * Implements industrial-grade caching - AI only processes when student data changes
  */
 
 import { supabase } from '../lib/supabaseClient';
@@ -8,12 +9,21 @@ import { ensureStudentEmbedding } from './embeddingService';
 
 /**
  * Match student profile with opportunities using AI
+ * Results are cached in the database and only recomputed when:
+ * - Student profile data changes (skills, interests, etc.)
+ * - Course enrollments change
+ * - Training records change
+ * - Opportunities catalog changes
+ * - Cache expires (24 hours)
+ * - Force refresh is requested
+ * 
  * @param {Object} studentProfile - Student profile data
  * @param {Array} opportunities - Array of job opportunities from database
  * @param {number} topN - Number of top matches to return (default: 3)
+ * @param {boolean} forceRefresh - Force recomputation even if cache is valid
  * @returns {Promise<Array>} Top N matched jobs with scores and reasons
  */
-export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
+export async function matchJobsWithAI(studentProfile, opportunities, topN = 3, forceRefresh = false) {
   if (!studentProfile) {
     throw new Error('Student profile is required');
   }
@@ -48,7 +58,7 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     body: JSON.stringify({
       studentId,
       limit: topN,
-      forceRefresh: false
+      forceRefresh
     })
   });
 
@@ -59,6 +69,13 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
 
   const result = await response.json();
   const recommendations = result.recommendations || [];
+  
+  // Log cache status for debugging
+  if (result.cached) {
+    console.log(`[AI Job Matching] Cache HIT - ${recommendations.length} matches from cache (computed at ${result.computed_at})`);
+  } else {
+    console.log(`[AI Job Matching] Cache MISS - ${recommendations.length} fresh matches computed`);
+  }
   
   if (recommendations.length === 0) {
     throw new Error('No recommendations available');
@@ -78,9 +95,19 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       key_matching_skills: [],
       skills_gap: [],
       recommendation: 'Review the job requirements and apply if interested.',
-      opportunity
+      opportunity,
+      cached: result.cached || false,
+      computed_at: result.computed_at
     };
   }).filter(match => match.opportunity);
 }
 
-export default { matchJobsWithAI };
+/**
+ * Force refresh job matches - bypasses cache and recomputes
+ * Use this when you know the student data has changed but triggers haven't fired yet
+ */
+export async function refreshJobMatches(studentProfile, opportunities, topN = 3) {
+  return matchJobsWithAI(studentProfile, opportunities, topN, true);
+}
+
+export default { matchJobsWithAI, refreshJobMatches };

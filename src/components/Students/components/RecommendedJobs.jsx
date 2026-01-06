@@ -6,18 +6,26 @@ import {
     CheckCircle,
     ChevronLeft,
     ChevronRight,
+    Clock,
     MapPin,
+    RefreshCw,
     Sparkles,
     TrendingUp,
     X,
     Zap
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { matchJobsWithAI } from '../../../services/aiJobMatchingService';
+import { useAIJobMatching } from '../../../hooks/useAIJobMatching';
 import { FeatureGate } from '../../Subscription/FeatureGate';
 
 /**
- * RecommendedJobs - AI-powered job recommendations
+ * RecommendedJobs - AI-powered job recommendations with industrial-grade caching
+ * 
+ * Uses the useAIJobMatching hook which implements:
+ * - Database-level caching (24-hour TTL)
+ * - Automatic cache invalidation when student data changes
+ * - Profile hash-based change detection
+ * - Force refresh capability
  * 
  * Wrapped with FeatureGate for ai_job_matching add-on access control
  */
@@ -30,13 +38,19 @@ const RecommendedJobsContent = ({
   onToggleSave,
   onApply
 }) => {
-  const [recommendations, setRecommendations] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showAnimation, setShowAnimation] = useState(true);
-  const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDismissed, setIsDismissed] = useState(false);
-  const [hasFetched, setHasFetched] = useState(false);
+  const [animationComplete, setAnimationComplete] = useState(false);
+
+  // Use the industrial-grade caching hook
+  const {
+    matchedJobs: recommendations,
+    loading,
+    error,
+    cacheInfo,
+    forceRefreshMatches
+  } = useAIJobMatching(studentProfile, !isDismissed, 3);
 
   // Check localStorage for dismiss preference
   useEffect(() => {
@@ -46,61 +60,33 @@ const RecommendedJobsContent = ({
     }
   }, []);
 
-  // Create stable reference for studentId to prevent unnecessary re-fetches
-  const studentId = studentProfile?.id || studentProfile?.student_id;
-  const opportunitiesCount = opportunities?.length || 0;
-
-  // Fetch AI recommendations - only once when data is available
+  // Handle animation timing - show for minimum 3 seconds on cache miss, 1 second on cache hit
   useEffect(() => {
-    const fetchRecommendations = async () => {
-      // Skip if already fetched, dismissed, or missing data
-      if (hasFetched || isDismissed || !studentId || opportunitiesCount === 0) {
-        if (!studentId || opportunitiesCount === 0) {
-          setLoading(false);
-          setShowAnimation(false);
-        }
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setShowAnimation(true);
-        setError(null);
-
-        const startTime = Date.now();
-
-        // Call AI matching service
-        const matches = await matchJobsWithAI(studentProfile, opportunities, 3);
-
-        // Ensure animation shows for at least 5 seconds
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, 5000 - elapsedTime);
-
-        if (remainingTime > 0) {
-          await new Promise(resolve => setTimeout(resolve, remainingTime));
-        }
-
-        setRecommendations(matches);
-        setHasFetched(true); // Mark as fetched to prevent re-runs
-        setLoading(false);
+    if (loading) {
+      setShowAnimation(true);
+      setAnimationComplete(false);
+    } else {
+      // Shorter animation for cache hits (data was instant)
+      const minAnimationTime = cacheInfo.cached ? 1000 : 3000;
+      const timer = setTimeout(() => {
         setShowAnimation(false);
-      } catch (err) {
-        console.error('Error fetching recommendations:', err);
-        setError(err.message);
-        setHasFetched(true); // Mark as fetched even on error to prevent infinite retries
-        setLoading(false);
-        setShowAnimation(false);
-      }
-    };
-
-    fetchRecommendations();
-  }, [studentId, opportunitiesCount, isDismissed, hasFetched, studentProfile, opportunities]);
+        setAnimationComplete(true);
+      }, minAnimationTime);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, cacheInfo.cached]);
 
   const handleDismiss = (e) => {
     e.preventDefault();
     e.stopPropagation();
     localStorage.setItem('recommendations_dismissed', 'true');
     setIsDismissed(true);
+  };
+
+  const handleRefresh = async () => {
+    setShowAnimation(true);
+    setAnimationComplete(false);
+    await forceRefreshMatches();
   };
 
   const handleNext = () => {
@@ -133,8 +119,6 @@ const RecommendedJobsContent = ({
           onClick={() => {
             localStorage.removeItem('recommendations_dismissed');
             setIsDismissed(false);
-            setHasFetched(false); // Reset to allow re-fetching
-            setLoading(true);
             setShowAnimation(true);
           }}
           className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-4 hover:from-indigo-100 hover:to-purple-100 transition-all group"
@@ -332,14 +316,42 @@ const RecommendedJobsContent = ({
         </button>
 
         {/* Header */}
-        <div className="flex items-center gap-3 mb-4 relative z-10">
-          <div className="p-2 bg-gradient-to-br from-slate-200 to-gray-200 rounded-lg">
-            <img src="/RMLogo.webp" alt="RareMinds Logo" className="w-5 h-5" />
+        <div className="flex items-center justify-between mb-4 relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-slate-200 to-gray-200 rounded-lg">
+              <img src="/RMLogo.webp" alt="RareMinds Logo" className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-gray-900">AI Recommended For You</h2>
+                {cacheInfo.cached && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                    <Clock className="w-3 h-3" />
+                    Cached
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-600">
+                Based on your profile, skills, and experience
+                {cacheInfo.computedAt && (
+                  <span className="text-gray-400 ml-1">
+                    • Updated {new Date(cacheInfo.computedAt).toLocaleDateString()}
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">AI Recommended For You</h2>
-            <p className="text-sm text-gray-600">Based on your profile, skills, and experience</p>
-          </div>
+          
+          {/* Refresh button */}
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50 mr-10"
+            title="Refresh recommendations"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
         </div>
 
         {/* Carousel Content */}
