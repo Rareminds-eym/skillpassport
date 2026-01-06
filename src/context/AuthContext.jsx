@@ -203,6 +203,14 @@ export const AuthProvider = ({ children }) => {
         console.log('Auth state changed:', event, session?.user?.id);
         
         if (event === 'SIGNED_IN' && session?.user) {
+          // Check if faculty onboarding is in progress and this is a new user being created
+          if (typeof window !== 'undefined' && window.facultyOnboardingInProgress) {
+            const newUserRole = session.user.user_metadata?.role || session.user.user_metadata?.user_role;
+            if (newUserRole === 'college_educator') {
+              return;
+            }
+          }
+          
           // User signed in - update state
           refreshAttempts.current = 0; // Reset refresh attempts on successful sign in
           const userData = restoreUserFromStorage(session.user);
@@ -236,7 +244,6 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('user', JSON.stringify(userData));
         } else if (event === 'USER_UPDATED' && session?.user) {
           // User data updated - refresh stored user data
-          console.log('User updated');
           const storedUser = localStorage.getItem('user');
           if (storedUser) {
             try {
@@ -249,7 +256,7 @@ export const AuthProvider = ({ children }) => {
               // Handle legacy "admin" role - preserve the stored user's role if it's more specific
               if (role === 'admin' && parsedUser.role && 
                   ['school_admin', 'college_admin', 'university_admin'].includes(parsedUser.role)) {
-                console.log('🔄 Preserving stored admin role:', parsedUser.role, 'instead of generic "admin"');
+                console.log('🔄 Using stored admin role:', parsedUser.role, 'instead of generic "admin"');
                 role = parsedUser.role;
               }
               

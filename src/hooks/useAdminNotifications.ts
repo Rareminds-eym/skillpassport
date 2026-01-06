@@ -86,17 +86,17 @@ async function resolveAdminContext(identifier: string): Promise<{
 
   // Check if user is a college admin
   const { data: collegeAdmin } = await supabase
-    .from("college_educators")
-    .select("university_college_id, role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
+    .from("users")
+    .select("id, organizationId")
+    .eq("id", userId)
+    .eq("role", "college_admin")
     .maybeSingle();
 
   if (collegeAdmin) {
     return {
       userId,
       schoolId: null,
-      collegeId: collegeAdmin.university_college_id,
+      collegeId: collegeAdmin.organizationId,
       adminType: "college_admin"
     };
   }

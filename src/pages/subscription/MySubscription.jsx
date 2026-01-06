@@ -19,7 +19,6 @@ import {
   BarChart3,
   HelpCircle,
   Mail,
-  Home,
   ArrowLeft,
   LayoutDashboard
 } from 'lucide-react';
@@ -29,43 +28,65 @@ import { getUserSubscriptions } from '../../services/Subscriptions/subscriptionS
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '../../services/paymentsApiService';
 import { supabase } from '../../lib/supabaseClient';
 import { getSubscriptionStatusChecks, calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil } from '../../utils/subscriptionHelpers';
+import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
 
-const plans = [
+// Fallback plans only used if API fails - these match database structure
+const FALLBACK_PLANS = [
   { 
     id: 'basic', 
     name: 'Basic Plan', 
-    price: '499',
+    price: '250',
+    priceLabel: 'Per Person',
     features: [
-      'Access to basic skill assessments',
-      'Limited profile visibility',
-      'Basic analytics',
+      'Up to 1,000 learners',
+      'Basic skill assessments',
+      'Standard analytics',
       'Email support'
-    ]
+    ],
+    totalFeatures: 4,
+    hasMoreFeatures: false
   },
   { 
-    id: 'pro', 
+    id: 'professional', 
     name: 'Professional Plan', 
-    price: '999',
+    price: '250',
+    priceLabel: 'Per Person',
     features: [
+      'Up to 2,000 learners',
       'Advanced skill assessments',
-      'Enhanced profile visibility',
-      'Advanced analytics & insights',
-      'Priority email support',
-      'Custom branding options'
-    ]
+      'Enhanced analytics & insights',
+      'Priority support'
+    ],
+    totalFeatures: 5,
+    hasMoreFeatures: true
   },
   { 
     id: 'enterprise', 
     name: 'Enterprise Plan', 
-    price: '1999',
+    price: '200',
+    priceLabel: 'Per Person',
     features: [
+      'Up to 5,000 learners',
       'All Professional features',
       'Unlimited assessments',
-      'Full profile customization',
-      'Dedicated account manager',
-      'API access',
-      'White-label solutions'
-    ]
+      'Dedicated account manager'
+    ],
+    totalFeatures: 6,
+    hasMoreFeatures: true
+  },
+  { 
+    id: 'ecosystem', 
+    name: 'Enterprise Ecosystem', 
+    price: null,
+    priceLabel: 'Contact Sales',
+    features: [
+      'Unlimited learners',
+      'All Enterprise features',
+      'Multi-institution support',
+      'Custom integrations'
+    ],
+    totalFeatures: 6,
+    hasMoreFeatures: true
   }
 ];
 
@@ -73,6 +94,20 @@ function MySubscription() {
   const navigate = useNavigate();
   const { user, role, loading: authLoading } = useAuth();
   const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
+  
+  // Fetch plans from Cloudflare Worker API (limited to 4 features initially)
+  const { 
+    plans: dbPlans, 
+    loading: plansLoading, 
+    loadingMore: loadingMoreFeatures,
+    showingAllFeatures,
+    fetchAllFeatures,
+    showLimitedFeatures 
+  } = useSubscriptionPlansData({ 
+    businessType: 'b2b',
+    featuresLimit: 4 
+  });
+  
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showBillingHistory, setShowBillingHistory] = useState(false);
@@ -89,6 +124,24 @@ function MySubscription() {
   const [billingHistoryFetched, setBillingHistoryFetched] = useState(false);
   const [isTogglingAutoRenew, setIsTogglingAutoRenew] = useState(false);
 
+  // Use database plans if available, otherwise fallback
+  const plans = useMemo(() => {
+    if (dbPlans && dbPlans.length > 0) {
+      return dbPlans.map(plan => ({
+        id: plan.id,
+        name: plan.name,
+        price: plan.price,
+        priceLabel: plan.contactSales ? 'Contact Sales' : 'Per Person',
+        features: plan.features || [],
+        totalFeatures: plan.totalFeatures || plan.features?.length || 0,
+        hasMoreFeatures: plan.hasMoreFeatures || false,
+        detailedFeatures: plan.detailedFeatures || [],
+        limits: plan.limits
+      }));
+    }
+    return FALLBACK_PLANS;
+  }, [dbPlans]);
+
   // Calculate days remaining and progress - optimized
   const daysRemaining = useMemo(() => 
     calculateDaysRemaining(subscriptionData?.endDate),
@@ -100,13 +153,6 @@ function MySubscription() {
     [subscriptionData?.startDate, subscriptionData?.endDate]
   );
 
-  const totalDays = useMemo(() => {
-    if (!subscriptionData?.endDate || !subscriptionData?.startDate) return null;
-    const start = new Date(subscriptionData.startDate);
-    const end = new Date(subscriptionData.endDate);
-    return Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-  }, [subscriptionData?.startDate, subscriptionData?.endDate]);
-
   const formatDate = useCallback((dateString) => formatDateUtil(dateString), []);
 
   const handleUpgradePlan = () => {
@@ -114,7 +160,7 @@ function MySubscription() {
   };
 
   const handleRenewSubscription = () => {
-    const currentPlan = plans.find(p => p.id === subscriptionData?.plan);
+    // Use the memoized currentPlan instead of finding again
     navigate('/subscription/payment', { 
       state: { 
         plan: currentPlan, 
@@ -362,7 +408,84 @@ function MySubscription() {
   }, [user, billingHistoryFetched, loadingBillingHistory, fetchBillingHistory]);
 
   // Get current plan early for use in billing history
-  const currentPlan = plans.find(p => p.id === subscriptionData?.plan);
+  // Map subscription plan to database plan (handle 'pro' -> 'professional' mapping)
+  const currentPlan = useMemo(() => {
+    if (!subscriptionData?.plan) return null;
+    
+    // Map from useSubscriptionQuery format to database format
+    const planMapping = {
+      'basic': 'basic',
+      'pro': 'professional',
+      'professional': 'professional',
+      'enterprise': 'enterprise',
+      'ecosystem': 'ecosystem'
+    };
+    
+    const planId = planMapping[subscriptionData.plan.toLowerCase()] || subscriptionData.plan.toLowerCase();
+    
+    // Find plan in database plans
+    let plan = plans.find(p => p.id === planId);
+    
+    // If not found, try matching by name
+    if (!plan && subscriptionData.planName) {
+      plan = plans.find(p => 
+        p.name.toLowerCase().includes(subscriptionData.planName.toLowerCase()) ||
+        subscriptionData.planName.toLowerCase().includes(p.id)
+      );
+    }
+    
+    // If still not found, use subscription data to build plan info
+    if (!plan) {
+      const features = subscriptionData.features || [];
+      return {
+        id: subscriptionData.plan,
+        name: subscriptionData.planName || `${subscriptionData.plan.charAt(0).toUpperCase() + subscriptionData.plan.slice(1)} Plan`,
+        price: subscriptionData.planPrice ? String(subscriptionData.planPrice) : null,
+        priceLabel: 'Per Person',
+        features: features,
+        totalFeatures: features.length,
+        hasMoreFeatures: false
+      };
+    }
+    
+    return plan;
+  }, [plans, subscriptionData?.plan, subscriptionData?.planName, subscriptionData?.planPrice, subscriptionData?.features]);
+
+  // Calculate display features and whether there are more to show
+  // Uses showingAllFeatures from hook instead of local state
+  const { displayFeatures, totalFeaturesCount, hasMoreFeatures, hiddenCount } = useMemo(() => {
+    const features = currentPlan?.features || subscriptionData?.features || [];
+    // totalFeatures from API, or fallback to a reasonable estimate
+    // If we have exactly 4 features and no totalFeatures, assume there might be more
+    const total = currentPlan?.totalFeatures || (features.length === 4 ? 10 : features.length);
+    
+    // hasMoreFeatures is true if:
+    // 1. API explicitly says there are more (currentPlan.hasMoreFeatures) OR
+    // 2. Total features > currently displayed features OR
+    // 3. We have exactly 4 features (the limit) and haven't expanded yet
+    const hasMore = (currentPlan?.hasMoreFeatures === true) || 
+                    (total > features.length) || 
+                    (features.length === 4 && !showingAllFeatures);
+    
+    const hidden = Math.max(0, total - features.length);
+    
+    return {
+      displayFeatures: features,
+      totalFeaturesCount: total,
+      hiddenCount: hidden,
+      // Only show "Show more" if there are more features AND we haven't already loaded all
+      hasMoreFeatures: hasMore && !showingAllFeatures
+    };
+  }, [currentPlan?.features, currentPlan?.totalFeatures, currentPlan?.hasMoreFeatures, subscriptionData?.features, showingAllFeatures]);
+
+  // Simple handler to toggle features - no complex animation state needed
+  const handleToggleFeatures = async () => {
+    if (showingAllFeatures) {
+      await showLimitedFeatures();
+    } else {
+      await fetchAllFeatures();
+    }
+  };
 
   // Memoize status checks for better performance using optimized helper
   // Must be called before any conditional returns (Rules of Hooks)
@@ -371,7 +494,7 @@ function MySubscription() {
     [subscriptionData, daysRemaining]
   );
 
-  const { isExpiringSoon, isExpired, isActive, isPaused, isActiveOrPaused: hasActiveOrPaused } = statusChecks;
+  const { isExpiringSoon, isExpired, isActive, isPaused } = statusChecks;
 
   // Mock usage statistics
   const usageStats = {
@@ -408,7 +531,7 @@ function MySubscription() {
   );
 
   // Loading state
-  if (authLoading || subscriptionLoading) {
+  if (authLoading || subscriptionLoading || plansLoading) {
     return <SkeletonLoader />;
   }
 
@@ -598,8 +721,12 @@ function MySubscription() {
                       {currentPlan?.name || 'Basic Plan'}
                     </h2>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-neutral-900">₹{currentPlan?.price || '499'}</span>
-                      <span className="text-sm text-neutral-600">/month</span>
+                      <span className="text-2xl font-bold text-neutral-900">
+                        {currentPlan?.price ? `₹${currentPlan.price}` : 'Contact Sales'}
+                      </span>
+                      <span className="text-sm text-neutral-600">
+                        {currentPlan?.priceLabel || '/person'}
+                      </span>
                     </div>
                   </div>
                   {isActive && daysRemaining !== null && (
@@ -634,15 +761,72 @@ function MySubscription() {
 
               {/* Plan Features */}
               <div className="px-6 py-5">
-                <h3 className="text-sm font-medium text-neutral-900 mb-4">Plan Features</h3>
-                <ul className="space-y-3">
-                  {(currentPlan?.features || subscriptionData.features || []).map((feature, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <Check className="w-4 h-4 text-neutral-700 flex-shrink-0 mt-0.5" />
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium text-neutral-900">Plan Features</h3>
+                  {totalFeaturesCount > 0 && (
+                    <span 
+                      className={`text-xs transition-all duration-300 ${
+                        showingAllFeatures ? 'text-neutral-700 font-medium' : 'text-neutral-500'
+                      }`}
+                    >
+                      {showingAllFeatures 
+                        ? `Showing all ${totalFeaturesCount} features`
+                        : `${totalFeaturesCount} feature${totalFeaturesCount !== 1 ? 's' : ''} included`
+                      }
+                    </span>
+                  )}
+                </div>
+                
+                {/* Features List with smooth CSS transitions */}
+                <ul className="space-y-2.5">
+                  {displayFeatures.map((feature, index) => (
+                    <li 
+                      key={`feature-${feature.slice(0, 20)}-${index}`}
+                      className="flex items-start gap-3 opacity-100 transform translate-y-0 transition-all duration-300 ease-out"
+                      style={{ 
+                        transitionDelay: `${index * 30}ms`
+                      }}
+                    >
+                      <div className="w-5 h-5 rounded-full bg-neutral-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Check className="w-3 h-3 text-neutral-700" />
+                      </div>
                       <span className="text-sm text-neutral-700">{feature}</span>
                     </li>
                   ))}
                 </ul>
+                
+                {/* Show More/Less Toggle */}
+                {(hasMoreFeatures || showingAllFeatures) && (
+                  <button
+                    onClick={handleToggleFeatures}
+                    disabled={loadingMoreFeatures}
+                    className={`mt-4 w-full flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-medium rounded-lg transition-all duration-200 group ${
+                      loadingMoreFeatures
+                        ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                        : 'bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 active:scale-[0.98]'
+                    }`}
+                  >
+                    {loadingMoreFeatures ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-neutral-300 border-t-neutral-600 rounded-full animate-spin" />
+                        <span>Loading...</span>
+                      </>
+                    ) : showingAllFeatures ? (
+                      <>
+                        <ChevronUp className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5" />
+                        Show less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4 transition-transform duration-200 group-hover:translate-y-0.5" />
+                        {hiddenCount > 0 
+                          ? `Show ${hiddenCount} more feature${hiddenCount !== 1 ? 's' : ''}`
+                          : 'Show all features'
+                        }
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -896,9 +1080,11 @@ function MySubscription() {
                     <dt className="text-xs font-medium text-neutral-500 mb-1.5">Plan Price</dt>
                     <dd className="flex items-baseline gap-1">
                       <span className="text-xl font-semibold text-neutral-900">
-                        ₹{subscriptionData.planPrice || currentPlan?.price || '499'}
+                        {subscriptionData.planPrice ? `₹${subscriptionData.planPrice}` : (currentPlan?.price ? `₹${currentPlan.price}` : 'Contact Sales')}
                       </span>
-                      <span className="text-xs text-neutral-600">/month</span>
+                      <span className="text-xs text-neutral-600">
+                        {currentPlan?.priceLabel || '/person'}
+                      </span>
                     </dd>
                   </div>
                   <div className="pt-3 border-t border-neutral-200">

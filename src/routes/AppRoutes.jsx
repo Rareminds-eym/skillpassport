@@ -3,7 +3,7 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import Loader from "../components/Loader";
 import ProtectedRoute from "../components/ProtectedRoute";
 import ScrollToTop from "../components/ScrollToTop";
-import { SubscriptionProtectedRoute } from "../components/subscription";
+import SubscriptionProtectedRoute from "../components/Subscription/SubscriptionProtectedRoute";
 
 import AdminLayout from "../layouts/AdminLayout";
 import EducatorLayout from "../layouts/EducatorLayout";
@@ -62,6 +62,11 @@ const EventSalesSuccess = lazy(() =>
 );
 const EventSalesFailure = lazy(() =>
   import("../pages/event/EventSalesFailure")
+);
+
+// Simple Event Registration (social media campaigns)
+const SimpleEventRegistration = lazy(() =>
+  import("../pages/register/SimpleEventRegistration")
 );
 
 const LoginStudent = lazy(() => import("../pages/auth/LoginStudent"));
@@ -385,10 +390,18 @@ const AppRoutes = () => {
     <Suspense fallback={<Loader />}>
       <ScrollToTop />
       <Routes>
+        {/* Simple Event Registration - Social media campaigns (standalone, no layout) */}
+        <Route path="/register" element={<SimpleEventRegistration />} />
+        
         {/* Event Sales - Standalone without layout (no header/footer) */}
         <Route path="/signup/plans" element={<EventSales />} />
         <Route path="/signup/plans/success" element={<EventSalesSuccess />} />
         <Route path="/signup/plans/failure" element={<EventSalesFailure />} />
+        
+        {/* Register plans - alias for Event Sales (standalone, no layout) */}
+        <Route path="/register/plans" element={<EventSales />} />
+        <Route path="/register/plans/success" element={<EventSalesSuccess />} />
+        <Route path="/register/plans/failure" element={<EventSalesFailure />} />
 
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />

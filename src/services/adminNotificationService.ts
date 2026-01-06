@@ -161,19 +161,19 @@ export class AdminNotificationService {
     try {
       // Get college admin user ID
       const { data: collegeAdmin } = await supabase
-        .from('college_educators')
-        .select('user_id')
-        .eq('university_college_id', collegeId)
-        .eq('role', 'admin')
+        .from('users')
+        .select('id')
+        .eq('organizationId', collegeId)
+        .eq('role', 'college_admin')
         .maybeSingle();
 
-      if (!collegeAdmin?.user_id) {
+      if (!collegeAdmin?.id) {
         console.log('No college admin found for college:', collegeId);
         return;
       }
 
       await this.createNotification(
-        collegeAdmin.user_id,
+        collegeAdmin.id,
         type,
         title,
         message
@@ -250,9 +250,9 @@ export class AdminNotificationService {
 
       if (!adminType || adminType === 'college_admin') {
         const { data: collegeAdmins } = await supabase
-          .from('college_educators')
-          .select('user_id')
-          .eq('role', 'admin');
+          .from('users')
+          .select('id as user_id')
+          .eq('role', 'college_admin');
         if (collegeAdmins) adminUsers.push(...collegeAdmins);
       }
 

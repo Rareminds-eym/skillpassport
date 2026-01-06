@@ -10,7 +10,7 @@ import {
     Users,
 } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import educatorIllustration from "../../../public/login/yyu.png";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabaseClient";
@@ -64,27 +64,54 @@ export default function LoginEducator() {
         return;
       }
 
-      // Fetch educator profile from school_educators table
+      // Fetch educator profile from school_educators table first
       const { data: educatorData, error: educatorError } = await supabase
         .from("school_educators")
         .select("*")
         .eq("user_id", authData.user.id)
         .maybeSingle();
 
-      if (educatorError) {
+      // If not found in school_educators, check college_lecturers table
+      let collegeEducatorData = null;
+      if (!educatorData) {
+        const { data: collegeLecturerData, error: collegeLecturerError } = await supabase
+          .from("college_lecturers")
+          .select("*")
+          .eq("user_id", authData.user.id)
+          .maybeSingle();
+
+        if (collegeLecturerError) {
+          console.error("Error fetching college lecturer profile:", collegeLecturerError);
+        }
+
+        collegeEducatorData = collegeLecturerData;
+      }
+
+      if (educatorError && !collegeEducatorData) {
         console.error("Error fetching educator profile:", educatorError);
+      }
+
+      // Check if user is either a school educator or college lecturer
+      if (!educatorData && !collegeEducatorData) {
+        setError("No educator profile found. Please contact your administrator.");
+        setLoading(false);
+        return;
       }
 
       // Update AuthContext with user data
       const userData = {
         id: authData.user.id,
         email: authData.user.email,
-        role: "educator",
+        role: educatorData ? "educator" : "college_educator",
         full_name: educatorData?.first_name && educatorData?.last_name
           ? `${educatorData.first_name} ${educatorData.last_name}`
-          : educatorData?.first_name || authData.user.email?.split("@")[0] || "Educator",
-        educator_id: educatorData?.id,
+          : collegeEducatorData?.metadata?.first_name && collegeEducatorData?.metadata?.last_name
+          ? `${collegeEducatorData.metadata.first_name} ${collegeEducatorData.metadata.last_name}`
+          : educatorData?.first_name || collegeEducatorData?.metadata?.first_name || authData.user.email?.split("@")[0] || "Educator",
+        educator_id: educatorData?.id || collegeEducatorData?.id,
         school_id: educatorData?.school_id,
+        college_id: collegeEducatorData?.collegeId,
+        educator_type: educatorData ? "school" : "college",
       };
 
       login(userData);

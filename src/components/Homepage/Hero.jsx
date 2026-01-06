@@ -43,7 +43,7 @@ const Hero = () => {
     <section className="relative w-full">
       {/* Desktop Banner */}
       <img
-        src="/banner-desktop4.jpg"
+        src="/banner-desktop6.jpg"
         alt="Rareminds Skill Passport Hero"
         className="hidden md:block w-full h-auto"
       />
@@ -62,17 +62,18 @@ const Hero = () => {
             {/* <h2 className="text-black text-lg sm:text-xl md:text-3xl mb-2">Welcome To</h2> */}
             
             {/* Main Heading */}
-            <h1 className="text-black  font-black mb-2 sm:mb-4  text-[20px] sm:text-2xl md:text-4xl lg:text-5xl">
-              <span className="whitespace-nowrap mb-2">Hire Freshers, Freelancers</span><br />& Interns with Confidence
+            <h1 className="text-black  whitespace-nowrap font-black mb-2 sm:mb-4  text-[20px] sm:text-2xl md:text-4xl lg:text-6xl">
+              {/* <span className="whitespace-nowrap mb-2">Hire Freshers, Freelancers</span><br />& Interns with Confidence */}
+              Skill Passport Chronicles
             </h1>
 
             {/* Subheading */}
-            <p className="text-black font-medium mb-8 sm:mb-10 max-w-lg text-[14px] sm:text-lg md:text-xl leading-relaxed">
+            {/* <p className="text-black font-medium mb-8 sm:mb-10 max-w-lg text-[14px] sm:text-lg md:text-xl leading-relaxed">
               Empower Candidates Verfied by Skill Passport
-            </p>
+            </p> */}
 
             {/* CTA Buttons */}
-            <div className="flex flex-row items-center gap-3 sm:gap-5 flex-wrap sm:flex-nowrap justify-start">
+            <div className="flex  mt-[80px] flex-row items-center gap-3 sm:gap-5 flex-wrap sm:flex-nowrap justify-start">
               {/* Book a Demo */}
               <div className="flex items-center gap-2 group">
                 <button

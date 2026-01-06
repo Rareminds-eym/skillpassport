@@ -19,66 +19,61 @@ import UniversityStudentLoginModal from '../../components/Subscription/Universit
 import UniversityStudentSignupModal from '../../components/Subscription/UniversityStudentSignupModal';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
-import { getEntityContent } from '../../utils/getEntityContent';
+import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
+import { getEntityContent, setDatabasePlans, parseStudentType } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
 // Feature comparison data
 const FEATURE_COMPARISON = {
-  'Capacity': {
-    'Learners': ['Up to 1,000', 'Up to 2,000', 'Up to 5,000', 'Unlimited'],
-    'Admins / Managers': ['2 admins', 'Up to 5', 'Up to 10', 'Unlimited'],
-  },
-  'Branding & Experience': {
-    'Branding': ['Logo + primary color', 'Advanced branding', 'Advanced + sub-portals', 'Multi-brand'],
-    'Skill Catalog': ['Standard catalog', 'Standard + curated', 'Role-based, custom', 'Enterprise framework'],
-    'Learning Pathways': ['Pre-built pathways', 'Custom builder', 'Rules & prerequisites', 'Advanced automation'],
-  },
-  'Program Management': {
-    'Cohort Management': [false, true, 'Multi-department', 'Multi-LOB'],
-    'Content Uploads': ['Shared storage', 'Expanded storage', 'Up to 5 TB', 'Unlimited'],
-    'Assessments': ['Quizzes', 'Question banks', 'Rubrics + project eval', 'Advanced'],
-    'Certificates': ['Standard', 'Custom + expiry', 'Custom + verification', 'Verified credentials'],
-  },
-  'Analytics & Insights': {
-    'Learner Analytics': ['Basic dashboards', 'Cohort & skill-gap', 'Heatmaps + benchmarks', 'Advanced'],
-    'Data Export': [false, 'CSV exports', 'BI-ready exports', 'BI connectors'],
-  },
-  'Integrations': {
-    'SSO (SAML / OIDC)': [false, 'Add-on', true, true],
-    'API & Webhooks': [false, 'Limited', 'Full API', 'Full access'],
-    'LMS / HR Integrations': [false, 'Lightweight', 'Standard', 'Full'],
+  'Core Features': {
+    'Student Management': [true, true, true, true],
+    'Progress Tracking': [true, true, true, true],
+    'Basic Reports': [true, true, true, true],
+    'Advanced Analytics': [false, true, true, true],
   },
   'Support': {
-    'Support Level': ['Email', 'Priority', 'Dedicated SLA', '24/7 + SLA'],
-    'Customer Success Manager': [false, false, true, true],
+    'Email Support': [true, true, true, true],
+    'Priority Support': [false, true, true, true],
+    'Dedicated Manager': [false, false, true, true],
+    '24/7 Support': [false, false, false, true],
+  },
+  'Integrations': {
+    'API Access': [false, true, true, true],
+    'Custom Integrations': [false, false, true, true],
+    'SSO': [false, false, true, true],
   },
 };
 
-
 // Feature Comparison Table Component
 const FeatureComparisonTable = memo(({ plans }) => {
-  const [expandedCategories, setExpandedCategories] = useState({});
-  const [showComparison, setShowComparison] = useState(false);
+  const [showComparison, setShowComparison] = useState(true);
+  const [expandedCategories, setExpandedCategories] = useState({
+    'Core Features': true,
+    'Support': false,
+    'Integrations': false,
+  });
 
-  const toggleCategory = (category) => {
-    setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
-  };
+  const toggleCategory = useCallback((category) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  }, []);
 
-  const renderValue = (value) => {
-    if (value === true) return <Check className="h-5 w-5 text-blue-600 mx-auto" />;
-    if (value === false) return <X className="h-5 w-5 text-gray-300 mx-auto" />;
+  const renderValue = useCallback((value) => {
+    if (value === true) return <Check className="h-5 w-5 text-green-600" />;
+    if (value === false) return <X className="h-5 w-5 text-gray-300" />;
     return <span className="text-sm text-gray-700">{value}</span>;
-  };
+  }, []);
 
   if (!showComparison) {
     return (
       <div className="mt-16 text-center">
         <button
           onClick={() => setShowComparison(true)}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-lg text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 transition-all"
+          className="text-blue-600 hover:text-blue-700 flex items-center gap-1 text-sm mx-auto"
         >
-          <ChevronDown className="h-5 w-5" />
-          View Feature Comparison
+          <ChevronDown className="h-4 w-4" /> Show Feature Comparison
         </button>
       </div>
     );
@@ -97,7 +92,7 @@ const FeatureComparisonTable = memo(({ plans }) => {
       </div>
       
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="grid grid-cols-5 bg-gray-50 border-b border-gray-200">
+        <div className={`grid bg-gray-50 border-b border-gray-200`} style={{ gridTemplateColumns: `1fr repeat(${plans.length}, 1fr)` }}>
           <div className="p-4 font-semibold text-gray-700">Feature</div>
           {plans.map((plan) => (
             <div key={plan.id} className="p-4 text-center">
@@ -119,9 +114,9 @@ const FeatureComparisonTable = memo(({ plans }) => {
             {expandedCategories[category] && (
               <div>
                 {Object.entries(features).map(([feature, values]) => (
-                  <div key={feature} className="grid grid-cols-5 border-t border-gray-100 hover:bg-gray-50">
+                  <div key={feature} className={`grid border-t border-gray-100 hover:bg-gray-50`} style={{ gridTemplateColumns: `1fr repeat(${plans.length}, 1fr)` }}>
                     <div className="p-4 text-sm text-gray-600">{feature}</div>
-                    {values.map((value, index) => (
+                    {values.slice(0, plans.length).map((value, index) => (
                       <div key={index} className="p-4 text-center flex items-center justify-center">
                         {renderValue(value)}
                       </div>
@@ -302,8 +297,45 @@ function SubscriptionPlans() {
   const location = useLocation();
   const { type } = useParams();
   
+  // Use new authentication hook
   const { isAuthenticated, user, loading: authLoading } = useAuth();
-  const { title, subtitle, heroMessage, plans, entity, role: pageRole } = useMemo(() => getEntityContent(type || 'student'), [type]);
+  
+  // Parse entity and role from type
+  const { entity, role: pageRole } = useMemo(() => parseStudentType(type || 'student'), [type]);
+  
+  // Fetch plans from database
+  const { 
+    plans: dbPlans, 
+    loading: plansLoading, 
+    error: plansError 
+  } = useSubscriptionPlansData({
+    businessType: 'b2b',
+    entityType: entity,
+    roleType: pageRole
+  });
+  
+  // Cache database plans for getEntityContent fallback
+  useEffect(() => {
+    if (dbPlans && dbPlans.length > 0) {
+      setDatabasePlans(dbPlans);
+    }
+  }, [dbPlans]);
+  
+  // Get dynamic content based on entity type (uses cached db plans if available)
+  const { title, subtitle, heroMessage, plans: configPlans, ctaText } = useMemo(() => {
+    return getEntityContent(type || 'student');
+  }, [type, dbPlans]); // Re-compute when dbPlans change
+  
+  // Use database plans if available, otherwise fall back to config plans
+  const plans = useMemo(() => {
+    if (dbPlans && dbPlans.length > 0) {
+      // Apply role-specific features from getEntityContent
+      const { plans: plansWithFeatures } = getEntityContent(type || 'student');
+      return plansWithFeatures;
+    }
+    return configPlans;
+  }, [dbPlans, configPlans, type]);
+
   const studentType = type || 'student';
 
   const { SignupComponent, LoginComponent } = useMemo(() => {
@@ -320,12 +352,32 @@ function SubscriptionPlans() {
   }, [entity, pageRole]);
   
   const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionQuery();
-  const isFullyLoaded = useMemo(() => !authLoading && !subscriptionLoading, [authLoading, subscriptionLoading]);
-  const hasActiveOrPausedSubscription = useMemo(() => subscriptionData && isActiveOrPaused(subscriptionData.status), [subscriptionData]);
-  const currentPlanData = useMemo(() => subscriptionData ? plans.find(p => p.id === subscriptionData.plan) : null, [subscriptionData, plans]);
-  const shouldRedirect = useMemo(() => isAuthenticated && hasActiveOrPausedSubscription, [isAuthenticated, hasActiveOrPausedSubscription]);
   const daysRemaining = useMemo(() => calculateDaysRemaining(subscriptionData?.endDate), [subscriptionData?.endDate]);
 
+  // Combined loading state - wait for auth, subscription, and plans data
+  const isFullyLoaded = useMemo(
+    () => !authLoading && !subscriptionLoading && !plansLoading,
+    [authLoading, subscriptionLoading, plansLoading]
+  );
+
+  // Memoize subscription status checks for better performance
+  const hasActiveOrPausedSubscription = useMemo(
+    () => subscriptionData && isActiveOrPaused(subscriptionData.status),
+    [subscriptionData]
+  );
+
+  const currentPlanData = useMemo(
+    () => subscriptionData ? plans.find(p => p.id === subscriptionData.plan) : null,
+    [subscriptionData, plans]
+  );
+
+  // Compute whether redirect should occur
+  const shouldRedirect = useMemo(
+    () => isAuthenticated && hasActiveOrPausedSubscription,
+    [isAuthenticated, hasActiveOrPausedSubscription]
+  );
+
+  // Show welcome message from signup flow (only once)
   useEffect(() => {
     const message = location.state?.message;
     if (message) {
@@ -407,8 +459,16 @@ function SubscriptionPlans() {
             </button>
           </div>
         )}
-
-        {/* Active Subscription Banner */}
+        
+        {/* Error banner for plans fetch failures */}
+        {plansError && (
+          <div className="mb-6 bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
+            <p className="text-yellow-800 font-medium">
+              Using cached plan data. Some information may be outdated.
+            </p>
+          </div>
+        )}
+        {/* Enhanced subscription status banner - Show only for authenticated users with active or paused subscription */}
         {isAuthenticated && hasActiveOrPausedSubscription && (
           <div className="mb-10">
             <div className={`rounded-2xl p-6 ${subscriptionData.status === 'active' ? 'bg-blue-600' : 'bg-amber-500'}`}>

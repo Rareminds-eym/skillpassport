@@ -27,7 +27,7 @@ export interface RecruiterRow {
   experience_years: number | null;      // Years of recruitment experience
   
   // Account management
-  account_status: string | null;        // 'active' | 'inactive' | 'suspended'
+  account_status: string | null;        // 'active' | 'deactivated' | 'suspended'
   
   // Fields NOT used in AI context (privacy & relevance)
   employee_id?: string | null;          // Internal HR identifier

@@ -26,7 +26,11 @@ export const useAssessmentResults = () => {
         name: '—',
         regNo: '—',
         college: '—',
-        stream: '—'
+        school: '—',
+        stream: '—',
+        grade: '—',
+        branchField: '—',
+        courseName: '—'
     });
     const [studentAcademicData, setStudentAcademicData] = useState({
         subjectMarks: [],
@@ -64,11 +68,47 @@ export const useAssessmentResults = () => {
 
                     const fullName = toTitleCase(rawName);
 
+                    // Get grade from school_classes if available, otherwise from students table
+                    const studentGrade = studentData.school_classes?.grade || studentData.grade || '—';
+                    
+                    // Get institution name - school for school students, college for college students
+                    const institutionName = studentData.schools?.name || studentData.colleges?.name || '—';
+
+                    // Determine grade level based on student data
+                    let derivedGradeLevel = 'after12'; // default
+                    if (studentData.school_id || studentData.school_class_id) {
+                        // School student - determine if middle or high school based on grade
+                        const gradeNum = parseInt(studentGrade);
+                        if (!isNaN(gradeNum)) {
+                            if (gradeNum >= 6 && gradeNum <= 8) {
+                                derivedGradeLevel = 'middle';
+                            } else if (gradeNum >= 9 && gradeNum <= 12) {
+                                derivedGradeLevel = 'high';
+                            }
+                        } else {
+                            // If grade is not a number, default to high school for school students
+                            derivedGradeLevel = 'high';
+                        }
+                    } else if (studentData.college_id) {
+                        // College student
+                        derivedGradeLevel = 'college';
+                    }
+                    
+                    // Update gradeLevel state - this will be the source of truth for display
+                    // The assessment attempt's grade_level is for the assessment context,
+                    // but for display purposes we use the student's actual grade level
+                    setGradeLevel(derivedGradeLevel);
+                    console.log('Derived gradeLevel from student data:', derivedGradeLevel, 'grade:', studentGrade, 'school_id:', studentData.school_id, 'college_id:', studentData.college_id);
+
                     setStudentInfo({
                         name: fullName,
-                        regNo: studentData.registration_number || '—',
-                        college: studentData.colleges?.name || '—',
-                        stream: (localStorage.getItem('assessment_stream') || '—').toUpperCase()
+                        regNo: studentData.admission_number || studentData.registration_number || '—',
+                        college: institutionName,
+                        school: studentData.schools?.name || '—',
+                        stream: (localStorage.getItem('assessment_stream') || '—').toUpperCase(),
+                        grade: studentGrade,
+                        branchField: studentData.branch_field || '—',
+                        courseName: studentData.course_name || '—'
                     });
 
                     localStorage.setItem('studentName', fullName);
@@ -95,7 +135,11 @@ export const useAssessmentResults = () => {
                 name: toTitleCase(storedName),
                 regNo: localStorage.getItem('studentRegNo') || '—',
                 college: localStorage.getItem('collegeName') || '—',
-                stream: (localStorage.getItem('assessment_stream') || '—').toUpperCase()
+                school: '—',
+                stream: (localStorage.getItem('assessment_stream') || '—').toUpperCase(),
+                grade: '—',
+                branchField: '—',
+                courseName: '—'
             });
         }
     };

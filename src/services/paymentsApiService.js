@@ -59,7 +59,12 @@ export async function createOrder({ amount, currency = 'INR', planId, planName, 
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to create order');
+    console.error('[createOrder] API Error:', error);
+    // Include razorpay error details if available
+    const errorMessage = error.razorpay_error 
+      ? `${error.error}: ${error.razorpay_error}`
+      : (error.error || 'Failed to create order');
+    throw new Error(errorMessage);
   }
 
   return response.json();

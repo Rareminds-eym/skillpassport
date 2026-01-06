@@ -1,5 +1,6 @@
 import { AlertCircle, BookOpen, Calendar, CheckCircle, Clock, MapPin } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
 interface TimetableSlot {

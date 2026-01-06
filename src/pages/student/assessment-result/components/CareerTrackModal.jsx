@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, ExternalLink, Download, Bell, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, ExternalLink, Download, Bell, ChevronRight, Calendar } from 'lucide-react';
+import { useRoleOverview } from '../../../../hooks/useRoleOverview';
+import jsPDF from 'jspdf';
 
 /**
  * Career Track Modal Component
@@ -8,8 +11,10 @@ import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, ExternalL
  * Steps: Role Selection → Overview → Roadmap → Courses → Strengths → Get Started
  */
 const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }) => {
+    const navigate = useNavigate();
     const [selectedRole, setSelectedRole] = useState(null);
     const [currentPage, setCurrentPage] = useState(0); // 0 = role selection, 1-5 = wizard pages
+    const [showReminderModal, setShowReminderModal] = useState(false);
 
     const accentColor = selectedTrack.index === 0 ? '#2563eb' : 
                        selectedTrack.index === 1 ? '#3b82f6' : '#60a5fa';
@@ -21,6 +26,15 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
         { id: 4, title: 'Strengths', subtitle: 'Your Plan', icon: Zap },
         { id: 5, title: 'Get Started', subtitle: 'Take Action', icon: ChevronRight }
     ];
+
+    // Handle course click - navigate to course player
+    const handleCourseClick = (course) => {
+        const courseId = course.course_id || course.id;
+        if (courseId) {
+            onClose(); // Close the modal first
+            navigate(`/student/courses/${courseId}/learn`);
+        }
+    };
 
     const handleRoleSelect = (role) => {
         setSelectedRole(role);
@@ -48,10 +62,57 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
         }
     };
 
+    // Helper function to get role name
     const getRoleName = (role) => {
         if (typeof role === 'string') return role;
         return role?.name || '';
     };
+
+    // Get AI-generated role overview (responsibilities + industry demand + career progression + learning roadmap + action items) in a single API call
+    const { responsibilities, demandData, careerProgression, learningRoadmap, freeResources, actionItems, loading: overviewLoading } = useRoleOverview(
+        selectedRole ? getRoleName(selectedRole) : null,
+        selectedTrack.cluster?.title || ''
+    );
+
+    // Filter and sort platform courses based on relevance to selected role
+    const getRelevantPlatformCourses = () => {
+        if (!results?.platformCourses || results.platformCourses.length === 0) return [];
+        if (!selectedRole) return results.platformCourses.slice(0, 4);
+        
+        const roleName = getRoleName(selectedRole).toLowerCase();
+        const clusterTitle = (selectedTrack.cluster?.title || '').toLowerCase();
+        
+        // Score each course based on relevance to the role
+        const scoredCourses = results.platformCourses.map(course => {
+            let relevanceScore = course.relevance_score || 0;
+            const title = (course.title || course.name || '').toLowerCase();
+            const description = (course.description || '').toLowerCase();
+            const skills = (course.skills || []).map(s => s.toLowerCase());
+            
+            // Boost score if course title/description/skills match role or cluster
+            if (title.includes(roleName) || roleName.split(' ').some(word => title.includes(word))) {
+                relevanceScore += 50;
+            }
+            if (description.includes(roleName) || roleName.split(' ').some(word => description.includes(word))) {
+                relevanceScore += 30;
+            }
+            if (skills.some(skill => roleName.includes(skill) || skill.includes(roleName.split(' ')[0]))) {
+                relevanceScore += 40;
+            }
+            if (title.includes(clusterTitle) || description.includes(clusterTitle)) {
+                relevanceScore += 20;
+            }
+            
+            return { ...course, calculatedRelevance: relevanceScore };
+        });
+        
+        // Sort by relevance and return top 4
+        return scoredCourses
+            .sort((a, b) => b.calculatedRelevance - a.calculatedRelevance)
+            .slice(0, 4);
+    };
+
+    const relevantCourses = getRelevantPlatformCourses();
 
     const getSalary = (role) => {
         if (typeof role === 'object' && role?.salary) {
@@ -62,21 +123,308 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
 
     const RIASEC_NAMES = {
         R: 'Realistic',
-        I: 'Investigative', 
+        I: 'Investigative',
         A: 'Artistic',
         S: 'Social',
         E: 'Enterprising',
         C: 'Conventional'
     };
 
-    const getPlatformCourses = () => {
-        if (!results?.platformCourses) return [];
-        return results.platformCourses.slice(0, 4);
-    };
-
     const getRoadmapProjects = () => {
         if (!roadmap?.projects) return [];
         return roadmap.projects.slice(0, 3);
+    };
+
+    // Handle enrolling in first relevant course
+    const handleEnrollFirstCourse = () => {
+        if (relevantCourses.length > 0) {
+            const firstCourse = relevantCourses[0];
+            const courseId = firstCourse.course_id || firstCourse.id;
+            if (courseId) {
+                onClose();
+                navigate(`/student/courses/${courseId}/learn`);
+                return;
+            }
+        }
+        // Fallback to courses page if no relevant course found
+        onClose();
+        navigate('/student/courses');
+    };
+
+    // Generate PDF roadmap
+    const handleDownloadRoadmap = () => {
+        const doc = new jsPDF();
+        const roleName = getRoleName(selectedRole);
+        const clusterTitle = selectedTrack.cluster?.title || '';
+        
+        // Colors
+        const primaryColor = [37, 99, 235]; // Blue
+        const textColor = [55, 65, 81]; // Gray-700
+        const lightGray = [156, 163, 175]; // Gray-400
+        
+        let yPos = 20;
+        
+        // Header
+        doc.setFillColor(...primaryColor);
+        doc.rect(0, 0, 210, 40, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Career Roadmap', 20, 25);
+        
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${roleName} - ${clusterTitle}`, 20, 33);
+        
+        yPos = 55;
+        
+        // Role Overview Section
+        doc.setTextColor(...primaryColor);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Role Overview', 20, yPos);
+        yPos += 8;
+        
+        doc.setTextColor(...textColor);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        
+        if (responsibilities.length > 0) {
+            responsibilities.forEach((resp, idx) => {
+                const lines = doc.splitTextToSize(`${idx + 1}. ${resp}`, 170);
+                doc.text(lines, 25, yPos);
+                yPos += lines.length * 5 + 2;
+            });
+        }
+        
+        yPos += 5;
+        
+        // Industry Demand
+        if (demandData) {
+            doc.setTextColor(...primaryColor);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Industry Demand', 20, yPos);
+            yPos += 8;
+            
+            doc.setTextColor(...textColor);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Demand Level: ${demandData.demandLevel} (${demandData.demandPercentage}%)`, 25, yPos);
+            yPos += 6;
+            const demandLines = doc.splitTextToSize(demandData.description, 170);
+            doc.text(demandLines, 25, yPos);
+            yPos += demandLines.length * 5 + 8;
+        }
+        
+        // Career Progression
+        if (careerProgression.length > 0) {
+            doc.setTextColor(...primaryColor);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Career Progression', 20, yPos);
+            yPos += 8;
+            
+            doc.setTextColor(...textColor);
+            doc.setFontSize(10);
+            careerProgression.forEach((stage, idx) => {
+                doc.setFont('helvetica', 'bold');
+                doc.text(`${idx + 1}. ${stage.title}`, 25, yPos);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(...lightGray);
+                doc.text(` (${stage.yearsExperience})`, 25 + doc.getTextWidth(`${idx + 1}. ${stage.title}`), yPos);
+                doc.setTextColor(...textColor);
+                yPos += 6;
+            });
+            yPos += 5;
+        }
+        
+        // 6-Month Learning Roadmap
+        if (learningRoadmap.length > 0) {
+            // Check if we need a new page
+            if (yPos > 200) {
+                doc.addPage();
+                yPos = 20;
+            }
+            
+            doc.setTextColor(...primaryColor);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('6-Month Learning Roadmap', 20, yPos);
+            yPos += 10;
+            
+            learningRoadmap.forEach((phase, idx) => {
+                // Check if we need a new page
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                
+                doc.setTextColor(...primaryColor);
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`${phase.month}: ${phase.title}`, 25, yPos);
+                yPos += 6;
+                
+                doc.setTextColor(...textColor);
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                const descLines = doc.splitTextToSize(phase.description, 165);
+                doc.text(descLines, 30, yPos);
+                yPos += descLines.length * 4 + 3;
+                
+                if (phase.tasks && phase.tasks.length > 0) {
+                    phase.tasks.forEach(task => {
+                        doc.text(`• ${task}`, 35, yPos);
+                        yPos += 5;
+                    });
+                }
+                yPos += 5;
+            });
+        }
+        
+        // Action Items
+        if (actionItems.length > 0) {
+            if (yPos > 230) {
+                doc.addPage();
+                yPos = 20;
+            }
+            
+            doc.setTextColor(...primaryColor);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Immediate Action Items', 20, yPos);
+            yPos += 8;
+            
+            doc.setTextColor(...textColor);
+            doc.setFontSize(10);
+            actionItems.forEach((item, idx) => {
+                doc.setFont('helvetica', 'bold');
+                doc.text(`${idx + 1}. ${item.title}`, 25, yPos);
+                yPos += 5;
+                doc.setFont('helvetica', 'normal');
+                doc.text(item.description, 30, yPos);
+                yPos += 7;
+            });
+        }
+        
+        // Footer
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setTextColor(...lightGray);
+            doc.setFontSize(8);
+            doc.text(`Generated by Rareminds | Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
+        }
+        
+        // Save the PDF
+        const fileName = `${roleName.replace(/\s+/g, '_')}_Career_Roadmap.pdf`;
+        doc.save(fileName);
+    };
+
+    // Calculate next assessment date (6 months from now)
+    const getNextAssessmentDate = () => {
+        const today = new Date();
+        const nextDate = new Date(today.setMonth(today.getMonth() + 6));
+        return nextDate;
+    };
+
+    // Format date for display
+    const formatDate = (date) => {
+        return date.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+    };
+
+    // Generate ICS file content for calendar
+    const generateICSContent = () => {
+        const nextDate = getNextAssessmentDate();
+        const roleName = getRoleName(selectedRole);
+        
+        // Format date for ICS (YYYYMMDD)
+        const formatICSDate = (date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}${month}${day}`;
+        };
+        
+        const startDate = formatICSDate(nextDate);
+        const uid = `assessment-${Date.now()}@rareminds.com`;
+        
+        return `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Rareminds//Career Assessment//EN
+BEGIN:VEVENT
+UID:${uid}
+DTSTAMP:${formatICSDate(new Date())}T000000Z
+DTSTART;VALUE=DATE:${startDate}
+DTEND;VALUE=DATE:${startDate}
+SUMMARY:Retake Career Assessment - ${roleName}
+DESCRIPTION:Your 6-month career development period is complete! Time to retake the career assessment and track your progress as a ${roleName}.\\n\\nVisit Rareminds to take your assessment.
+LOCATION:Rareminds Platform
+STATUS:CONFIRMED
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Career Assessment Reminder
+TRIGGER:-P1D
+END:VALARM
+END:VEVENT
+END:VCALENDAR`;
+    };
+
+    // Download ICS file
+    const handleDownloadICS = () => {
+        const icsContent = generateICSContent();
+        const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'Career_Assessment_Reminder.ics';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        setShowReminderModal(false);
+    };
+
+    // Open Google Calendar
+    const handleGoogleCalendar = () => {
+        const nextDate = getNextAssessmentDate();
+        const roleName = getRoleName(selectedRole);
+        
+        const formatGoogleDate = (date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}${month}${day}`;
+        };
+        
+        const startDate = formatGoogleDate(nextDate);
+        const title = encodeURIComponent(`Retake Career Assessment - ${roleName}`);
+        const details = encodeURIComponent(`Your 6-month career development period is complete! Time to retake the career assessment and track your progress as a ${roleName}.\n\nVisit Rareminds to take your assessment.`);
+        
+        const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDate}/${startDate}&details=${details}`;
+        window.open(url, '_blank');
+        setShowReminderModal(false);
+    };
+
+    // Open Outlook Calendar
+    const handleOutlookCalendar = () => {
+        const nextDate = getNextAssessmentDate();
+        const roleName = getRoleName(selectedRole);
+        
+        const title = encodeURIComponent(`Retake Career Assessment - ${roleName}`);
+        const body = encodeURIComponent(`Your 6-month career development period is complete! Time to retake the career assessment and track your progress as a ${roleName}.`);
+        const startDate = nextDate.toISOString();
+        
+        const url = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${title}&body=${body}&startdt=${startDate}&allday=true`;
+        window.open(url, '_blank');
+        setShowReminderModal(false);
     };
 
     return (
@@ -96,20 +444,20 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className="relative w-[95vw] h-[90vh] max-w-7xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-2xl overflow-hidden flex"
+                className="relative w-[95vw] h-[90vh] max-w-7xl bg-white rounded-2xl shadow-2xl overflow-hidden flex"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                    className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
                 >
                     <X className="w-5 h-5 text-white" />
                 </button>
 
                 {/* Left Sidebar - Vertical Steps (only show when in wizard) */}
                 {currentPage > 0 && (
-                    <div className="w-64 shrink-0 bg-black/20 border-r border-white/10 p-6 flex flex-col">
+                    <div className="w-64 shrink-0 bg-gradient-to-b from-slate-800 to-slate-700 p-6 flex flex-col">
                         {/* Header in sidebar */}
                         <div className="mb-6 pb-6 border-b border-white/10">
                             <div className="flex items-center gap-3">
@@ -204,7 +552,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                 <div className="flex-1 flex flex-col overflow-hidden">
                     {/* Content Header - Only for role selection */}
                     {currentPage === 0 && (
-                        <div className="p-6 border-b border-white/10 shrink-0">
+                        <div className="p-6 bg-gradient-to-r from-slate-800 to-slate-700 shrink-0">
                             <div className="flex items-center gap-4">
                                 <div 
                                     className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-xl"
@@ -228,7 +576,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                     )}
 
                     {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto p-6 md:p-8">
+                    <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-gray-50">
                         {/* Page 0: Role Selection */}
                         {currentPage === 0 && (
                             <motion.div
@@ -237,10 +585,10 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                                 exit={{ opacity: 0, x: -20 }}
                             >
                                 <div className="text-center mb-8">
-                                    <h3 className="text-2xl font-bold text-white mb-2">
+                                    <h3 className="text-2xl font-bold text-gray-800 mb-2">
                                         Choose Your Career Role
                                     </h3>
-                                    <p className="text-gray-400">
+                                    <p className="text-gray-500">
                                         Select a role to view the detailed career roadmap and learning path
                                     </p>
                                 </div>
@@ -255,7 +603,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                                                 whileHover={{ scale: 1.02, y: -4 }}
                                                 whileTap={{ scale: 0.98 }}
                                                 onClick={() => handleRoleSelect(role)}
-                                                className="p-5 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all"
+                                                className="p-5 rounded-xl bg-white border border-gray-200 cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all"
                                             >
                                                 <div className="flex items-start gap-3">
                                                     <div 
@@ -265,13 +613,13 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                                                         {idx + 1}
                                                     </div>
                                                     <div className="flex-1">
-                                                        <h4 className="text-white font-semibold mb-1">{roleName}</h4>
+                                                        <h4 className="text-gray-800 font-semibold mb-1">{roleName}</h4>
                                                         {salary && (
-                                                            <p className="text-green-400 text-sm">{salary}</p>
+                                                            <p className="text-green-600 text-sm">{salary}</p>
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div className="mt-3 flex items-center justify-end text-white/60 text-sm">
+                                                <div className="mt-3 flex items-center justify-end text-gray-500 text-sm">
                                                     <span>Explore Role</span>
                                                     <span className="ml-1">→</span>
                                                 </div>
@@ -291,11 +639,11 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                             >
                                 {/* Role Title & Salary */}
                                 <div className="mb-6">
-                                    <h3 className="text-2xl font-bold text-white mb-1">
+                                    <h3 className="text-2xl font-bold text-gray-800 mb-1">
                                         {getRoleName(selectedRole)}
                                     </h3>
                                     {getSalary(selectedRole) && (
-                                        <p className="text-green-400 text-lg font-medium">
+                                        <p className="text-green-600 text-lg font-medium">
                                             {getSalary(selectedRole)} per annum
                                         </p>
                                     )}
@@ -303,121 +651,236 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
 
                                 <div className="grid md:grid-cols-2 gap-6">
                                     {/* What This Role Does */}
-                                    <div className="p-5 rounded-xl bg-white/5 border border-white/10">
-                                        <h4 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
+                                    <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
+                                        <h4 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                             <Briefcase className="w-5 h-5" style={{ color: accentColor }} />
                                             What You'll Do
                                         </h4>
-                                        <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                                        <p className="text-gray-600 text-sm leading-relaxed mb-3">
                                             {selectedTrack.cluster?.whatYoullDo || selectedTrack.cluster?.description || 
                                             `As a ${getRoleName(selectedRole)}, you'll work on exciting projects that match your interests and skills.`}
                                         </p>
-                                        <ul className="space-y-2 text-sm text-gray-400">
-                                            <li className="flex items-start gap-2">
-                                                <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
-                                                <span>Design and develop solutions</span>
-                                            </li>
-                                            <li className="flex items-start gap-2">
-                                                <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
-                                                <span>Collaborate with cross-functional teams</span>
-                                            </li>
-                                            <li className="flex items-start gap-2">
-                                                <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
-                                                <span>Continuously learn and grow</span>
-                                            </li>
+                                        <ul className="space-y-2 text-sm text-gray-500">
+                                            {overviewLoading ? (
+                                                // Loading skeleton
+                                                <>
+                                                    {[1, 2, 3].map((i) => (
+                                                        <li key={i} className="flex items-start gap-2 animate-pulse">
+                                                            <div className="w-4 h-4 bg-gray-200 rounded-full mt-0.5 shrink-0" />
+                                                            <div className="flex-1 h-4 bg-gray-200 rounded" />
+                                                        </li>
+                                                    ))}
+                                                </>
+                                            ) : responsibilities.length > 0 ? (
+                                                // Dynamic AI-generated responsibilities
+                                                responsibilities.map((responsibility, idx) => (
+                                                    <li key={idx} className="flex items-start gap-2">
+                                                        <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                                                        <span>{responsibility}</span>
+                                                    </li>
+                                                ))
+                                            ) : (
+                                                // Empty state fallback (should rarely happen due to fallback in hook)
+                                                <li className="text-gray-400 italic">No responsibilities available</li>
+                                            )}
                                         </ul>
                                     </div>
 
                                     {/* Why You're a Good Fit */}
-                                    <div className="p-5 rounded-xl bg-white/5 border border-white/10">
-                                        <h4 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
+                                    <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
+                                        <h4 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                             <Target className="w-5 h-5" style={{ color: accentColor }} />
                                             Why You're a Good Fit
                                         </h4>
-                                        <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                                            {selectedTrack.cluster?.whyItFits || 
-                                            `Based on your assessment, your interests and aptitudes align well with this career path.`}
-                                        </p>
-                                        
-                                        {results?.riasec?.topThree && (
-                                            <div className="mb-3">
-                                                <p className="text-xs text-white/60 uppercase tracking-wider mb-2">Your Interest Profile</p>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {results.riasec.topThree.slice(0, 3).map((code, idx) => (
-                                                        <span 
-                                                            key={idx}
-                                                            className="px-2 py-1 rounded-full text-xs font-medium"
-                                                            style={{ backgroundColor: `${accentColor}30`, color: accentColor }}
-                                                        >
-                                                            {RIASEC_NAMES[code] || code}
-                                                        </span>
-                                                    ))}
+                                        {overviewLoading ? (
+                                            // Loading skeleton for visual consistency
+                                            <div className="animate-pulse">
+                                                <div className="h-4 bg-gray-200 rounded w-full mb-2" />
+                                                <div className="h-4 bg-gray-200 rounded w-3/4 mb-4" />
+                                                <div className="mb-3">
+                                                    <div className="h-3 bg-gray-100 rounded w-24 mb-2" />
+                                                    <div className="flex gap-2">
+                                                        <div className="h-6 bg-gray-200 rounded-full w-20" />
+                                                        <div className="h-6 bg-gray-200 rounded-full w-24" />
+                                                        <div className="h-6 bg-gray-200 rounded-full w-16" />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div className="h-3 bg-gray-100 rounded w-28 mb-2" />
+                                                    <div className="flex gap-2">
+                                                        <div className="h-6 bg-gray-200 rounded-full w-24" />
+                                                        <div className="h-6 bg-gray-200 rounded-full w-20" />
+                                                        <div className="h-6 bg-gray-200 rounded-full w-28" />
+                                                    </div>
                                                 </div>
                                             </div>
-                                        )}
+                                        ) : (
+                                            <>
+                                                <p className="text-gray-600 text-sm leading-relaxed mb-3">
+                                                    {selectedTrack.cluster?.whyItFits || 
+                                                    `Based on your assessment, your interests and aptitudes align well with this career path.`}
+                                                </p>
+                                                
+                                                {results?.riasec?.topThree && (
+                                                    <div className="mb-3">
+                                                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Your Interest Profile</p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {results.riasec.topThree.slice(0, 3).map((code, idx) => (
+                                                                <span 
+                                                                    key={idx}
+                                                                    className="px-2 py-1 rounded-full text-xs font-medium"
+                                                                    style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
+                                                                >
+                                                                    {RIASEC_NAMES[code] || code}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
 
-                                        {results?.aptitude?.topStrengths && (
-                                            <div>
-                                                <p className="text-xs text-white/60 uppercase tracking-wider mb-2">Your Aptitude Strengths</p>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {results.aptitude.topStrengths.slice(0, 3).map((strength, idx) => (
-                                                        <span 
-                                                            key={idx}
-                                                            className="px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400"
-                                                        >
-                                                            {strength}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                                {results?.aptitude?.topStrengths && (
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Your Aptitude Strengths</p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {results.aptitude.topStrengths.slice(0, 3).map((strength, idx) => (
+                                                                <span 
+                                                                    key={idx}
+                                                                    className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700"
+                                                                >
+                                                                    {strength}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 </div>
 
                                 {/* Industry Demand & Career Progression */}
                                 <div className="grid md:grid-cols-2 gap-6 mt-6">
-                                    <div className="p-5 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/5 border border-green-500/20">
-                                        <h4 className="text-base font-semibold text-green-400 mb-2 flex items-center gap-2">
+                                    <div className="p-5 rounded-xl bg-green-50 border border-green-200">
+                                        <h4 className="text-base font-semibold text-green-700 mb-2 flex items-center gap-2">
                                             <TrendingUp className="w-5 h-5" />
                                             Industry Demand
                                         </h4>
-                                        <p className="text-gray-300 text-sm mb-3">
-                                            High demand in the job market with growing opportunities.
-                                        </p>
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                                                <div className="h-full bg-green-400 rounded-full" style={{ width: '85%' }} />
+                                        {overviewLoading ? (
+                                            // Loading skeleton
+                                            <div className="animate-pulse">
+                                                <div className="h-4 bg-green-200 rounded w-full mb-2" />
+                                                <div className="h-4 bg-green-200 rounded w-3/4 mb-3" />
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex-1 h-2 bg-green-200 rounded-full" />
+                                                    <div className="h-4 w-12 bg-green-200 rounded" />
+                                                </div>
                                             </div>
-                                            <span className="text-green-400 text-sm font-medium">High</span>
-                                        </div>
+                                        ) : demandData ? (
+                                            <>
+                                                <p className="text-gray-600 text-sm pt-8 mb-6">
+                                                    {demandData.description}
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex-1 h-2 bg-green-200 rounded-full overflow-hidden">
+                                                        <div 
+                                                            className="h-full bg-green-500 rounded-full transition-all duration-500" 
+                                                            style={{ width: `${demandData.demandPercentage}%` }} 
+                                                        />
+                                                    </div>
+                                                    <span className="text-green-600 text-sm font-medium">{demandData.demandLevel}</span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            // Fallback if no data
+                                            <>
+                                                <p className="text-gray-600 text-sm mb-3">
+                                                    High demand in the job market with growing opportunities.
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex-1 h-2 bg-green-200 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-green-500 rounded-full" style={{ width: '75%' }} />
+                                                    </div>
+                                                    <span className="text-green-600 text-sm font-medium">High</span>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
 
-                                    <div className="p-5 rounded-xl bg-white/5 border border-white/10">
-                                        <h4 className="text-base font-semibold text-white mb-2 flex items-center gap-2">
+                                    <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
+                                        <h4 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                             <BookOpen className="w-5 h-5" style={{ color: accentColor }} />
                                             Career Progression
                                         </h4>
-                                        <div className="flex items-center justify-between text-sm mt-4">
-                                            <div className="text-center">
-                                                <div className="w-3 h-3 rounded-full bg-white mx-auto mb-1" />
-                                                <span className="text-white text-xs">Junior</span>
+                                        {overviewLoading ? (
+                                            // Loading skeleton - vertical list
+                                            <div className="space-y-2 animate-pulse">
+                                                {[1, 2, 3, 4].map((i) => (
+                                                    <div key={i} className="flex items-center gap-3">
+                                                        <div className="w-6 h-6 rounded-full bg-gray-200 shrink-0" />
+                                                        <div className="flex-1">
+                                                            <div className="h-3 bg-gray-200 rounded w-3/4 mb-1" />
+                                                            <div className="h-2 bg-gray-100 rounded w-1/3" />
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
-                                            <div className="flex-1 h-0.5 bg-white/20 mx-2" />
-                                            <div className="text-center">
-                                                <div className="w-3 h-3 rounded-full bg-white/50 mx-auto mb-1" />
-                                                <span className="text-white/60 text-xs">Mid</span>
+                                        ) : careerProgression.length > 0 ? (
+                                            // Vertical timeline layout
+                                            <div className="space-y-1">
+                                                {careerProgression.map((stage, idx) => (
+                                                    <div key={idx} className="flex items-start gap-3">
+                                                        <div className="flex flex-col items-center">
+                                                            <div 
+                                                                className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium shrink-0"
+                                                                style={{ 
+                                                                    backgroundColor: idx === 0 ? '#3b82f6' : 
+                                                                                   idx === 1 ? '#60a5fa' : 
+                                                                                   idx === 2 ? '#93c5fd' : '#bfdbfe',
+                                                                    color: idx >= 2 ? '#1e40af' : 'white'
+                                                                }}
+                                                            >
+                                                                {idx + 1}
+                                                            </div>
+                                                            {idx < careerProgression.length - 1 && (
+                                                                <div className="w-0.5 h-4 bg-gray-200 mt-1" />
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 pb-1">
+                                                            <p className={`text-sm font-medium leading-tight ${idx === 0 ? 'text-gray-800' : 'text-gray-600'}`}>
+                                                                {stage.title}
+                                                            </p>
+                                                            <p className="text-xs text-gray-400">{stage.yearsExperience}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
-                                            <div className="flex-1 h-0.5 bg-white/20 mx-2" />
-                                            <div className="text-center">
-                                                <div className="w-3 h-3 rounded-full bg-white/30 mx-auto mb-1" />
-                                                <span className="text-white/40 text-xs">Senior</span>
+                                        ) : (
+                                            // Fallback - vertical list
+                                            <div className="space-y-1">
+                                                {['Junior', 'Mid-Level', 'Senior', 'Lead'].map((level, idx) => (
+                                                    <div key={idx} className="flex items-start gap-3">
+                                                        <div className="flex flex-col items-center">
+                                                            <div 
+                                                                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0"
+                                                                style={{ 
+                                                                    backgroundColor: idx === 0 ? '#3b82f6' : 
+                                                                                   idx === 1 ? '#60a5fa' : 
+                                                                                   idx === 2 ? '#93c5fd' : '#bfdbfe',
+                                                                    color: idx >= 2 ? '#1e40af' : 'white'
+                                                                }}
+                                                            >
+                                                                {idx + 1}
+                                                            </div>
+                                                            {idx < 3 && <div className="w-0.5 h-4 bg-gray-200 mt-1" />}
+                                                        </div>
+                                                        <div className="flex-1 pb-1">
+                                                            <p className={`text-sm font-medium ${idx === 0 ? 'text-gray-800' : 'text-gray-600'}`}>{level}</p>
+                                                            <p className="text-xs text-gray-400">{idx === 0 ? '0-2 yrs' : idx === 1 ? '2-5 yrs' : idx === 2 ? '5-8 yrs' : '8+ yrs'}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
-                                            <div className="flex-1 h-0.5 bg-white/20 mx-2" />
-                                            <div className="text-center">
-                                                <div className="w-3 h-3 rounded-full bg-white/20 mx-auto mb-1" />
-                                                <span className="text-white/30 text-xs">Lead</span>
-                                            </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
                             </motion.div>
@@ -431,76 +894,84 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                                 exit={{ opacity: 0, x: -20 }}
                             >
                                 <div className="mb-6">
-                                    <h3 className="text-2xl font-bold text-white mb-1">
+                                    <h3 className="text-2xl font-bold text-gray-800 mb-1">
                                         6-Month Learning Roadmap
                                     </h3>
-                                    <p className="text-gray-400">
+                                    <p className="text-gray-500">
                                         Your personalized path to becoming a {getRoleName(selectedRole)}
                                     </p>
                                 </div>
 
-                                <div className="space-y-4">
-                                    {[
-                                        { 
-                                            month: 'Month 1-2', 
-                                            title: 'Foundation Building', 
-                                            desc: 'Learn core concepts and fundamentals',
-                                            tasks: ['Complete foundational courses', 'Understand key concepts', 'Set up learning environment', 'Join communities'],
-                                            color: '#22c55e'
-                                        },
-                                        { 
-                                            month: 'Month 3-4', 
-                                            title: 'Skill Development', 
-                                            desc: 'Build practical skills through projects',
-                                            tasks: ['Work on guided projects', 'Practice real-world scenarios', 'Build portfolio piece', 'Get mentor feedback'],
-                                            color: '#3b82f6'
-                                        },
-                                        { 
-                                            month: 'Month 5-6', 
-                                            title: 'Portfolio & Applications', 
-                                            desc: 'Create portfolio and apply for positions',
-                                            tasks: ['Complete 2-3 portfolio projects', 'Optimize resume & LinkedIn', 'Apply for internships/jobs', 'Prepare for interviews'],
-                                            color: '#a855f7'
-                                        }
-                                    ].map((phase, idx) => (
-                                        <div key={idx} className="flex gap-4">
-                                            <div className="flex flex-col items-center">
-                                                <div 
-                                                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                                                    style={{ backgroundColor: phase.color }}
-                                                >
-                                                    {idx + 1}
+                                {overviewLoading ? (
+                                    // Loading skeleton for roadmap
+                                    <div className="space-y-4 animate-pulse">
+                                        {[1, 2, 3].map((i) => (
+                                            <div key={i} className="flex gap-4">
+                                                <div className="flex flex-col items-center">
+                                                    <div className="w-10 h-10 rounded-full bg-gray-200" />
+                                                    {i < 3 && <div className="w-0.5 flex-1 bg-gray-200 mt-2" />}
                                                 </div>
-                                                {idx < 2 && <div className="w-0.5 flex-1 bg-white/20 mt-2" />}
-                                            </div>
-                                            <div className="flex-1 pb-4">
-                                                <span className="text-xs uppercase tracking-wider" style={{ color: phase.color }}>{phase.month}</span>
-                                                <h4 className="text-base font-semibold text-white">{phase.title}</h4>
-                                                <p className="text-gray-400 text-sm">{phase.desc}</p>
-                                                <div className="mt-2 p-3 rounded-lg bg-white/5 border border-white/10">
-                                                    <ul className="grid grid-cols-2 gap-2">
-                                                        {phase.tasks.map((task, taskIdx) => (
-                                                            <li key={taskIdx} className="flex items-start gap-2 text-sm text-gray-300">
-                                                                <CheckCircle className="w-3 h-3 mt-0.5 shrink-0" style={{ color: phase.color }} />
-                                                                <span>{task}</span>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
+                                                <div className="flex-1 pb-4">
+                                                    <div className="h-3 bg-gray-200 rounded w-20 mb-2" />
+                                                    <div className="h-5 bg-gray-200 rounded w-40 mb-2" />
+                                                    <div className="h-4 bg-gray-100 rounded w-60 mb-3" />
+                                                    <div className="p-3 rounded-lg bg-white border border-gray-200">
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            {[1, 2, 3, 4].map((j) => (
+                                                                <div key={j} className="h-4 bg-gray-100 rounded" />
+                                                            ))}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {(learningRoadmap.length > 0 ? learningRoadmap : [
+                                            { month: 'Month 1-2', title: 'Foundation Building', description: 'Learn core concepts and fundamentals', tasks: ['Complete foundational courses', 'Understand key concepts', 'Set up learning environment', 'Join communities'], color: '#22c55e' },
+                                            { month: 'Month 3-4', title: 'Skill Development', description: 'Build practical skills through projects', tasks: ['Work on guided projects', 'Practice real-world scenarios', 'Build portfolio piece', 'Get mentor feedback'], color: '#3b82f6' },
+                                            { month: 'Month 5-6', title: 'Portfolio & Applications', description: 'Create portfolio and apply for positions', tasks: ['Complete 2-3 portfolio projects', 'Optimize resume & LinkedIn', 'Apply for internships/jobs', 'Prepare for interviews'], color: '#a855f7' }
+                                        ]).map((phase, idx) => (
+                                            <div key={idx} className="flex gap-4">
+                                                <div className="flex flex-col items-center">
+                                                    <div 
+                                                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                                        style={{ backgroundColor: phase.color }}
+                                                    >
+                                                        {idx + 1}
+                                                    </div>
+                                                    {idx < 2 && <div className="w-0.5 flex-1 bg-gray-200 mt-2" />}
+                                                </div>
+                                                <div className="flex-1 pb-4">
+                                                    <span className="text-xs uppercase tracking-wider font-medium" style={{ color: phase.color }}>{phase.month}</span>
+                                                    <h4 className="text-base font-semibold text-gray-800">{phase.title}</h4>
+                                                    <p className="text-gray-500 text-sm">{phase.description}</p>
+                                                    <div className="mt-2 p-3 rounded-lg bg-white border border-gray-200 shadow-sm">
+                                                        <ul className="grid grid-cols-2 gap-2">
+                                                            {phase.tasks.map((task, taskIdx) => (
+                                                                <li key={taskIdx} className="flex items-start gap-2 text-sm text-gray-600">
+                                                                    <CheckCircle className="w-3 h-3 mt-0.5 shrink-0" style={{ color: phase.color }} />
+                                                                    <span>{task}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
 
                                 {getRoadmapProjects().length > 0 && (
                                     <div className="mt-6">
-                                        <h4 className="text-base font-semibold text-white mb-3">Suggested Projects</h4>
+                                        <h4 className="text-base font-semibold text-gray-800 mb-3">Suggested Projects</h4>
                                         <div className="grid md:grid-cols-3 gap-3">
                                             {getRoadmapProjects().map((project, idx) => (
-                                                <div key={idx} className="p-3 rounded-lg bg-white/5 border border-white/10">
-                                                    <h5 className="text-white font-medium text-sm">{project.title}</h5>
+                                                <div key={idx} className="p-3 rounded-lg bg-white border border-gray-200 shadow-sm">
+                                                    <h5 className="text-gray-800 font-medium text-sm">{project.title}</h5>
                                                     {project.description && (
-                                                        <p className="text-gray-400 text-xs mt-1">{project.description}</p>
+                                                        <p className="text-gray-500 text-xs mt-1">{project.description}</p>
                                                     )}
                                                 </div>
                                             ))}
@@ -518,88 +989,144 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                                 exit={{ opacity: 0, x: -20 }}
                             >
                                 <div className="mb-6">
-                                    <h3 className="text-2xl font-bold text-white mb-1">
+                                    <h3 className="text-2xl font-bold text-gray-800 mb-1">
                                         Recommended Courses & Resources
                                     </h3>
-                                    <p className="text-gray-400">
-                                        Curated learning resources to help you succeed as a {getRoleName(selectedRole)}
+                                    <p className="text-gray-500">
+                                        Platform courses relevant to your {getRoleName(selectedRole)} career path
                                     </p>
                                 </div>
 
                                 <div className="mb-6">
-                                    <h4 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
+                                    <h4 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                         <BookOpen className="w-5 h-5" style={{ color: accentColor }} />
                                         Rareminds Courses
                                     </h4>
                                     
-                                    {getPlatformCourses().length > 0 ? (
+                                    {relevantCourses.length > 0 ? (
                                         <div className="grid md:grid-cols-2 gap-4">
-                                            {getPlatformCourses().map((course, idx) => (
-                                                <div key={idx} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                                            {relevantCourses.map((course, idx) => (
+                                                <div 
+                                                    key={idx} 
+                                                    onClick={() => handleCourseClick(course)}
+                                                    className="p-4 rounded-xl bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
+                                                >
                                                     <div className="flex items-start justify-between">
                                                         <div className="flex-1">
-                                                            <h5 className="text-white font-semibold text-sm">{course.title || course.name}</h5>
-                                                            {course.duration && <p className="text-gray-400 text-xs mt-1">{course.duration}</p>}
+                                                            <h5 className="text-gray-800 font-semibold text-sm">{course.title || course.name}</h5>
+                                                            {course.duration && <p className="text-gray-500 text-xs mt-1">{course.duration}</p>}
                                                         </div>
                                                         {course.level && (
-                                                            <span className="px-2 py-1 rounded text-xs font-medium shrink-0" style={{ backgroundColor: `${accentColor}30`, color: accentColor }}>
+                                                            <span className="px-2 py-1 rounded text-xs font-medium shrink-0" style={{ backgroundColor: `${accentColor}20`, color: accentColor }}>
                                                                 {course.level}
                                                             </span>
                                                         )}
                                                     </div>
-                                                    {course.description && <p className="text-gray-400 text-xs mt-2 line-clamp-2">{course.description}</p>}
+                                                    {course.description && <p className="text-gray-500 text-xs mt-2 line-clamp-2">{course.description}</p>}
                                                     {course.skills && course.skills.length > 0 && (
                                                         <div className="flex flex-wrap gap-1 mt-2">
                                                             {course.skills.slice(0, 3).map((skill, sIdx) => (
-                                                                <span key={sIdx} className="px-2 py-0.5 rounded text-xs bg-white/10 text-gray-300">{skill}</span>
+                                                                <span key={sIdx} className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">{skill}</span>
                                                             ))}
                                                         </div>
                                                     )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="grid md:grid-cols-2 gap-4">
-                                            {[
-                                                { title: 'Fundamentals Course', duration: '4 weeks', level: 'Beginner' },
-                                                { title: 'Advanced Skills', duration: '6 weeks', level: 'Intermediate' },
-                                                { title: 'Project-Based Learning', duration: '8 weeks', level: 'Advanced' },
-                                                { title: 'Industry Certification', duration: '4 weeks', level: 'Professional' }
-                                            ].map((course, idx) => (
-                                                <div key={idx} className="p-4 rounded-xl bg-white/5 border border-white/10">
-                                                    <div className="flex items-start justify-between">
-                                                        <div>
-                                                            <h5 className="text-white font-semibold text-sm">{course.title}</h5>
-                                                            <p className="text-gray-400 text-xs mt-1">{course.duration}</p>
-                                                        </div>
-                                                        <span className="px-2 py-1 rounded text-xs font-medium" style={{ backgroundColor: `${accentColor}30`, color: accentColor }}>
-                                                            {course.level}
-                                                        </span>
+                                                    <div className="mt-3 flex items-center justify-end text-xs text-blue-600 font-medium">
+                                                        <span>Start Learning</span>
+                                                        <ChevronRight className="w-3 h-3 ml-1" />
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
+                                    ) : (
+                                        // No platform courses available
+                                        <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 text-center">
+                                            <p className="text-gray-500 text-sm">
+                                                No platform courses available for this role yet. Check back soon!
+                                            </p>
+                                        </div>
                                     )}
                                 </div>
 
-                                <h4 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
+                                <h4 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                     <ExternalLink className="w-5 h-5" style={{ color: accentColor }} />
                                     Free Resources & Tools
                                 </h4>
-                                <div className="grid md:grid-cols-3 gap-4">
-                                    <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-                                        <h5 className="text-white font-medium text-sm mb-1">YouTube Channels</h5>
-                                        <p className="text-gray-400 text-xs">Free video tutorials from industry experts</p>
+                                {overviewLoading ? (
+                                    // Loading skeleton for resources
+                                    <div className="grid md:grid-cols-3 gap-4">
+                                        {[1, 2, 3].map((i) => (
+                                            <div key={i} className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm animate-pulse">
+                                                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                                                <div className="h-3 bg-gray-100 rounded w-full" />
+                                            </div>
+                                        ))}
                                     </div>
-                                    <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-                                        <h5 className="text-white font-medium text-sm mb-1">Documentation</h5>
-                                        <p className="text-gray-400 text-xs">Official docs and guides for tools</p>
+                                ) : freeResources.length > 0 ? (
+                                    <div className="grid md:grid-cols-3 gap-4">
+                                        {freeResources.map((resource, idx) => (
+                                            <a 
+                                                key={idx} 
+                                                href={resource.url || '#'} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer block"
+                                            >
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <h5 className="text-gray-800 font-medium text-sm">{resource.title}</h5>
+                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500">{resource.type}</span>
+                                                </div>
+                                                <p className="text-gray-500 text-xs">{resource.description}</p>
+                                                <div className="mt-2 flex items-center justify-end text-xs text-blue-600 font-medium">
+                                                    <span>Open Resource</span>
+                                                    <ExternalLink className="w-3 h-3 ml-1" />
+                                                </div>
+                                            </a>
+                                        ))}
                                     </div>
-                                    <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-                                        <h5 className="text-white font-medium text-sm mb-1">Certifications</h5>
-                                        <p className="text-gray-400 text-xs">Industry-recognized certifications</p>
+                                ) : (
+                                    // Fallback resources - also clickable
+                                    <div className="grid md:grid-cols-3 gap-4">
+                                        <a 
+                                            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(getRoleName(selectedRole) + ' tutorial')}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer block"
+                                        >
+                                            <h5 className="text-gray-800 font-medium text-sm mb-1">YouTube Tutorials</h5>
+                                            <p className="text-gray-500 text-xs">Free video tutorials from industry experts</p>
+                                            <div className="mt-2 flex items-center justify-end text-xs text-blue-600 font-medium">
+                                                <span>Open Resource</span>
+                                                <ExternalLink className="w-3 h-3 ml-1" />
+                                            </div>
+                                        </a>
+                                        <a 
+                                            href={`https://www.google.com/search?q=${encodeURIComponent(getRoleName(selectedRole) + ' documentation')}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer block"
+                                        >
+                                            <h5 className="text-gray-800 font-medium text-sm mb-1">Documentation</h5>
+                                            <p className="text-gray-500 text-xs">Official docs and guides for tools</p>
+                                            <div className="mt-2 flex items-center justify-end text-xs text-blue-600 font-medium">
+                                                <span>Open Resource</span>
+                                                <ExternalLink className="w-3 h-3 ml-1" />
+                                            </div>
+                                        </a>
+                                        <a 
+                                            href={`https://www.google.com/search?q=${encodeURIComponent(getRoleName(selectedRole) + ' free certification')}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer block"
+                                        >
+                                            <h5 className="text-gray-800 font-medium text-sm mb-1">Certifications</h5>
+                                            <p className="text-gray-500 text-xs">Industry-recognized certifications</p>
+                                            <div className="mt-2 flex items-center justify-end text-xs text-blue-600 font-medium">
+                                                <span>Open Resource</span>
+                                                <ExternalLink className="w-3 h-3 ml-1" />
+                                            </div>
+                                        </a>
                                     </div>
-                                </div>
+                                )}
                             </motion.div>
                         )}
 
@@ -611,39 +1138,39 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                                 exit={{ opacity: 0, x: -20 }}
                             >
                                 <div className="mb-6">
-                                    <h3 className="text-2xl font-bold text-white mb-1">
+                                    <h3 className="text-2xl font-bold text-gray-800 mb-1">
                                         Your Strengths & Growth Plan
                                     </h3>
-                                    <p className="text-gray-400">
+                                    <p className="text-gray-500">
                                         Personalized insights based on your assessment results
                                     </p>
                                 </div>
 
                                 <div className="grid md:grid-cols-2 gap-6 mb-6">
-                                    <div className="p-5 rounded-xl bg-green-500/10 border border-green-500/20">
-                                        <h4 className="text-base font-semibold text-green-400 mb-3 flex items-center gap-2">
+                                    <div className="p-5 rounded-xl bg-green-50 border border-green-200">
+                                        <h4 className="text-base font-semibold text-green-700 mb-3 flex items-center gap-2">
                                             <Zap className="w-5 h-5" />
                                             Strengths to Leverage
                                         </h4>
                                         <ul className="space-y-2">
                                             {(skillGap?.strengths || results?.aptitude?.topStrengths || ['Analytical thinking', 'Problem solving', 'Communication']).slice(0, 4).map((strength, idx) => (
-                                                <li key={idx} className="flex items-center gap-2 text-gray-300 text-sm">
-                                                    <div className="w-2 h-2 rounded-full bg-green-400" />
+                                                <li key={idx} className="flex items-center gap-2 text-gray-600 text-sm">
+                                                    <div className="w-2 h-2 rounded-full bg-green-500" />
                                                     {typeof strength === 'string' ? strength : strength?.skill || 'Strength'}
                                                 </li>
                                             ))}
                                         </ul>
                                     </div>
 
-                                    <div className="p-5 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                                        <h4 className="text-base font-semibold text-amber-400 mb-3 flex items-center gap-2">
+                                    <div className="p-5 rounded-xl bg-amber-50 border border-amber-200">
+                                        <h4 className="text-base font-semibold text-amber-700 mb-3 flex items-center gap-2">
                                             <Target className="w-5 h-5" />
                                             Skills to Develop
                                         </h4>
                                         <ul className="space-y-2">
                                             {(skillGap?.priorityA || [{ skill: 'Technical skills' }, { skill: 'Industry knowledge' }, { skill: 'Practical experience' }]).slice(0, 4).map((item, idx) => (
-                                                <li key={idx} className="flex items-center gap-2 text-gray-300 text-sm">
-                                                    <div className="w-2 h-2 rounded-full bg-amber-400" />
+                                                <li key={idx} className="flex items-center gap-2 text-gray-600 text-sm">
+                                                    <div className="w-2 h-2 rounded-full bg-amber-500" />
                                                     {typeof item === 'string' ? item : item?.skill || 'Skill'}
                                                 </li>
                                             ))}
@@ -651,44 +1178,88 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                                     </div>
                                 </div>
 
-                                <div className="p-5 rounded-xl bg-white/5 border border-white/10 mb-6">
-                                    <h4 className="text-base font-semibold text-white mb-4">Immediate Action Items</h4>
-                                    <div className="grid md:grid-cols-2 gap-4">
-                                        {[
-                                            { num: 1, title: 'Start Learning', desc: 'Enroll in foundational course' },
-                                            { num: 2, title: 'Build Daily Habits', desc: 'Dedicate 1-2 hours daily' },
-                                            { num: 3, title: 'Join Communities', desc: 'Connect with others in your field' },
-                                            { num: 4, title: 'Track Progress', desc: 'Set weekly goals and review' }
-                                        ].map((item) => (
-                                            <div key={item.num} className="flex items-start gap-3">
-                                                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0" style={{ backgroundColor: accentColor }}>{item.num}</div>
-                                                <div>
-                                                    <h5 className="text-white font-medium text-sm">{item.title}</h5>
-                                                    <p className="text-gray-400 text-xs">{item.desc}</p>
+                                <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm mb-6">
+                                    <h4 className="text-base font-semibold text-gray-800 mb-4">Immediate Action Items</h4>
+                                    {overviewLoading ? (
+                                        // Loading skeleton
+                                        <div className="grid md:grid-cols-2 gap-4 animate-pulse">
+                                            {[1, 2, 3, 4].map((i) => (
+                                                <div key={i} className="flex items-start gap-3">
+                                                    <div className="w-7 h-7 rounded-lg bg-gray-200 shrink-0" />
+                                                    <div className="flex-1">
+                                                        <div className="h-4 bg-gray-200 rounded w-24 mb-1" />
+                                                        <div className="h-3 bg-gray-100 rounded w-32" />
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            {(actionItems.length > 0 ? actionItems : [
+                                                { title: 'Start Learning', description: 'Enroll in foundational course' },
+                                                { title: 'Build Daily Habits', description: 'Dedicate 1-2 hours daily' },
+                                                { title: 'Join Communities', description: 'Connect with others in your field' },
+                                                { title: 'Track Progress', description: 'Set weekly goals and review' }
+                                            ]).map((item, idx) => (
+                                                <div key={idx} className="flex items-start gap-3">
+                                                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0" style={{ backgroundColor: accentColor }}>{idx + 1}</div>
+                                                    <div>
+                                                        <h5 className="text-gray-800 font-medium text-sm">{item.title}</h5>
+                                                        <p className="text-gray-500 text-xs">{item.description || item.desc}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
-                                <div className="p-5 rounded-xl bg-white/5 border border-white/10">
-                                    <h4 className="text-base font-semibold text-white mb-3">Development Timeline</h4>
-                                    <div className="flex items-center justify-between text-sm">
-                                        <div className="text-center">
-                                            <div className="w-4 h-4 rounded-full bg-green-400 mx-auto mb-1" />
-                                            <span className="text-white font-medium text-xs">Now</span>
+                                <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
+                                    <h4 className="text-base font-semibold text-gray-800 mb-3">Development Timeline</h4>
+                                    {overviewLoading ? (
+                                        // Loading skeleton
+                                        <div className="flex items-center justify-between text-sm animate-pulse">
+                                            <div className="text-center">
+                                                <div className="w-4 h-4 rounded-full bg-gray-200 mx-auto mb-1" />
+                                                <div className="h-3 w-16 bg-gray-200 rounded mx-auto" />
+                                            </div>
+                                            <div className="flex-1 h-1 bg-gray-200 mx-3 rounded-full" />
+                                            <div className="text-center">
+                                                <div className="w-4 h-4 rounded-full bg-gray-200 mx-auto mb-1" />
+                                                <div className="h-3 w-16 bg-gray-200 rounded mx-auto" />
+                                            </div>
+                                            <div className="flex-1 h-1 bg-gray-200 mx-3 rounded-full" />
+                                            <div className="text-center">
+                                                <div className="w-4 h-4 rounded-full bg-gray-200 mx-auto mb-1" />
+                                                <div className="h-3 w-16 bg-gray-200 rounded mx-auto" />
+                                            </div>
                                         </div>
-                                        <div className="flex-1 h-1 bg-gradient-to-r from-green-400 to-blue-400 mx-3 rounded-full" />
-                                        <div className="text-center">
-                                            <div className="w-4 h-4 rounded-full bg-blue-400 mx-auto mb-1" />
-                                            <span className="text-white/80 text-xs">3 Mo</span>
+                                    ) : (
+                                        <div className="flex items-center justify-between text-sm">
+                                            <div className="text-center max-w-[80px]">
+                                                <div className="w-4 h-4 rounded-full bg-green-500 mx-auto mb-1" />
+                                                <span className="text-gray-700 font-medium text-xs block truncate">
+                                                    {learningRoadmap[0]?.title || 'Foundation'}
+                                                </span>
+                                                <span className="text-gray-400 text-[10px]">{learningRoadmap[0]?.month || 'Month 1-2'}</span>
+                                            </div>
+                                            <div className="flex-1 h-1 bg-gradient-to-r from-green-400 to-blue-400 mx-2 rounded-full" />
+                                            <div className="text-center max-w-[80px]">
+                                                <div className="w-4 h-4 rounded-full bg-blue-400 mx-auto mb-1" />
+                                                <span className="text-gray-600 text-xs block truncate">
+                                                    {learningRoadmap[1]?.title || 'Development'}
+                                                </span>
+                                                <span className="text-gray-400 text-[10px]">{learningRoadmap[1]?.month || 'Month 3-4'}</span>
+                                            </div>
+                                            <div className="flex-1 h-1 bg-gradient-to-r from-blue-400 to-purple-400 mx-2 rounded-full" />
+                                            <div className="text-center max-w-[80px]">
+                                                <div className="w-4 h-4 rounded-full bg-purple-400 mx-auto mb-1" />
+                                                <span className="text-gray-500 text-xs block truncate">
+                                                    {learningRoadmap[2]?.title || 'Portfolio'}
+                                                </span>
+                                                <span className="text-gray-400 text-[10px]">{learningRoadmap[2]?.month || 'Month 5-6'}</span>
+                                            </div>
                                         </div>
-                                        <div className="flex-1 h-1 bg-gradient-to-r from-blue-400 to-purple-400 mx-3 rounded-full" />
-                                        <div className="text-center">
-                                            <div className="w-4 h-4 rounded-full bg-purple-400 mx-auto mb-1" />
-                                            <span className="text-white/60 text-xs">6 Mo</span>
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
                             </motion.div>
                         )}
@@ -701,16 +1272,16 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                                 exit={{ opacity: 0, x: -20 }}
                             >
                                 <div className="mb-6">
-                                    <h3 className="text-2xl font-bold text-white mb-1">
+                                    <h3 className="text-2xl font-bold text-gray-800 mb-1">
                                         Ready to Begin Your Journey?
                                     </h3>
-                                    <p className="text-gray-400">
+                                    <p className="text-gray-500">
                                         Take the first step towards becoming a {getRoleName(selectedRole)}
                                     </p>
                                 </div>
 
                                 <div className="max-w-xl">
-                                    <div className="p-6 rounded-xl bg-gradient-to-br from-white/10 to-white/5 border border-white/20 mb-6">
+                                    <div className="p-6 rounded-xl bg-gradient-to-br from-slate-800 to-slate-700 mb-6">
                                         <div className="flex items-center gap-4 mb-4">
                                             <div className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-xl" style={{ backgroundColor: accentColor }}>
                                                 {selectedTrack.index + 1}
@@ -726,7 +1297,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                                                 <p className="text-gray-400 text-xs">Months</p>
                                             </div>
                                             <div>
-                                                <p className="text-2xl font-bold text-white">{getPlatformCourses().length || 4}</p>
+                                                <p className="text-2xl font-bold text-white">{relevantCourses.length || 4}</p>
                                                 <p className="text-gray-400 text-xs">Courses</p>
                                             </div>
                                             <div>
@@ -742,17 +1313,21 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                                             whileTap={{ scale: 0.98 }}
                                             className="w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2"
                                             style={{ backgroundColor: accentColor }}
-                                            onClick={() => { window.location.href = '/student/courses'; }}
+                                            onClick={handleEnrollFirstCourse}
                                         >
                                             <BookOpen className="w-5 h-5" />
-                                            Enroll in First Course
+                                            {relevantCourses.length > 0 
+                                                ? `Start: ${relevantCourses[0]?.title || relevantCourses[0]?.name || 'First Course'}`
+                                                : 'Browse Courses'
+                                            }
                                         </motion.button>
 
                                         <div className="grid grid-cols-2 gap-3">
                                             <motion.button
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
-                                                className="py-2.5 rounded-xl bg-white/10 text-white font-medium flex items-center justify-center gap-2 hover:bg-white/20 transition-colors text-sm"
+                                                onClick={handleDownloadRoadmap}
+                                                className="py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors text-sm"
                                             >
                                                 <Download className="w-4 h-4" />
                                                 Download Roadmap
@@ -760,10 +1335,11 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                                             <motion.button
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
-                                                className="py-2.5 rounded-xl bg-white/10 text-white font-medium flex items-center justify-center gap-2 hover:bg-white/20 transition-colors text-sm"
+                                                onClick={() => setShowReminderModal(true)}
+                                                className="py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors text-sm"
                                             >
                                                 <Bell className="w-4 h-4" />
-                                                Set Reminders
+                                                Set Reminder
                                             </motion.button>
                                         </div>
                                     </div>
@@ -772,15 +1348,95 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                         )}
                     </div>
 
+                    {/* Reminder Modal */}
+                    <AnimatePresence>
+                        {showReminderModal && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 z-50 flex items-center justify-center bg-black/50"
+                                onClick={() => setShowReminderModal(false)}
+                            >
+                                <motion.div
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0.9, opacity: 0 }}
+                                    className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-bold text-gray-800">Set Assessment Reminder</h3>
+                                        <button 
+                                            onClick={() => setShowReminderModal(false)}
+                                            className="p-1 rounded-full hover:bg-gray-100"
+                                        >
+                                            <X className="w-5 h-5 text-gray-500" />
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="mb-6">
+                                        <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200">
+                                            <Calendar className="w-10 h-10 text-blue-600" />
+                                            <div>
+                                                <p className="text-sm text-gray-600">Next assessment available on:</p>
+                                                <p className="text-lg font-semibold text-blue-700">{formatDate(getNextAssessmentDate())}</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-2 text-center">
+                                            You can retake the assessment after 6 months to track your career progress
+                                        </p>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                        <button
+                                            onClick={handleGoogleCalendar}
+                                            className="w-full py-3 px-4 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-3"
+                                        >
+                                            <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                                                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                                                    <path fill="#EA4335" d="M12 11v2h3.5c-.2 1.1-1.2 3-3.5 3-2.1 0-3.8-1.7-3.8-3.8s1.7-3.8 3.8-3.8c1.2 0 2 .5 2.5 1l1.7-1.7C15 6.6 13.6 6 12 6c-3.3 0-6 2.7-6 6s2.7 6 6 6c3.5 0 5.8-2.4 5.8-5.9 0-.4 0-.7-.1-1H12z"/>
+                                                </svg>
+                                            </div>
+                                            <span className="text-gray-700 font-medium">Add to Google Calendar</span>
+                                        </button>
+                                        
+                                        <button
+                                            onClick={handleOutlookCalendar}
+                                            className="w-full py-3 px-4 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-3"
+                                        >
+                                            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                                                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                                                    <path fill="#0078D4" d="M21.5 3h-19C1.67 3 1 3.67 1 4.5v15c0 .83.67 1.5 1.5 1.5h19c.83 0 1.5-.67 1.5-1.5v-15c0-.83-.67-1.5-1.5-1.5zM8 17H4v-4h4v4zm0-6H4V7h4v4zm6 6h-4v-4h4v4zm0-6h-4V7h4v4zm6 6h-4v-4h4v4zm0-6h-4V7h4v4z"/>
+                                                </svg>
+                                            </div>
+                                            <span className="text-gray-700 font-medium">Add to Outlook Calendar</span>
+                                        </button>
+                                        
+                                        <button
+                                            onClick={handleDownloadICS}
+                                            className="w-full py-3 px-4 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-3"
+                                        >
+                                            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                                                <Download className="w-5 h-5 text-gray-600" />
+                                            </div>
+                                            <span className="text-gray-700 font-medium">Download .ics File</span>
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
                     {/* Footer Navigation - Only show when in wizard */}
                     {currentPage > 0 && (
-                        <div className="p-4 border-t border-white/10 shrink-0">
+                        <div className="p-4 border-t border-gray-200 shrink-0 bg-white">
                             <div className="flex items-center justify-between">
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={goToPrevPage}
-                                    className="px-5 py-2 rounded-lg bg-white/10 text-white font-medium hover:bg-white/20 transition-colors flex items-center gap-2 text-sm"
+                                    className="px-5 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm"
                                 >
                                     <span>←</span>
                                     <span>Previous</span>

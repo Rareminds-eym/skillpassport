@@ -41,8 +41,11 @@ const EmployabilityScoreCard = ({ employabilityData }) => {
   } = employabilityData || {};
 
   // Strip any emoji characters from the label (in case of cached/old data)
+  // Using a simpler approach to remove emojis that's more compatible
   const label = rawLabel
-    .replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2300}-\u{23FF}]|[\u{2B50}]|[\u{1FA00}-\u{1FAFF}]/gu, '')
+    .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '') // Remove surrogate pairs (most emojis)
+    .replace(/[\u2600-\u26FF\u2700-\u27BF\u2300-\u23FF\u2B50]/g, '') // Remove misc symbols
+    .replace(/[\uFE00-\uFE0F]/g, '') // Remove variation selectors
     .trim();
 
   // Get color based on score
