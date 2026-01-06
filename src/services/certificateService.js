@@ -189,6 +189,8 @@ export const generateCourseCertificate = async (studentId, studentName, courseId
       .eq('student_id', studentId)
       .eq('course_id', courseId);
 
+    // Embedding regeneration handled by database trigger on certificates table
+
     return { success: true, certificateUrl, credentialId };
   } catch (error) {
     console.error('Certificate generation error:', error);

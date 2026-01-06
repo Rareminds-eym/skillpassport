@@ -236,6 +236,8 @@ export const courseEnrollmentService = {
 
       console.log('📊 Progress updated:', { progress, completedLessons: completedLessons.length, totalLessons, status });
 
+      // Embedding regeneration handled by database trigger on course_enrollments
+
       return {
         success: true,
         data: updated

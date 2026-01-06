@@ -1,12 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { FeatureGate } from '../../../components/Subscription/FeatureGate';
 import { useCurriculum } from '../../../hooks/useCurriculum';
 import * as curriculumService from '../../../services/curriculumService';
 
 // Import all the modal and card components from the original file
 import CurriculumBuilder from './CurriculumBuilder';
 
-const CurriculumBuilderWrapper: React.FC = () => {
+/**
+ * CurriculumBuilderWrapper - Curriculum management for school admins
+ * 
+ * Wrapped with FeatureGate for curriculum_builder add-on access control
+ */
+const CurriculumBuilderWrapperContent: React.FC = () => {
   // Local state for selections
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
@@ -312,5 +318,14 @@ const CurriculumBuilderWrapper: React.FC = () => {
     </>
   );
 };
+
+/**
+ * Wrapped CurriculumBuilderWrapper with FeatureGate for curriculum_builder add-on
+ */
+const CurriculumBuilderWrapper: React.FC = () => (
+  <FeatureGate featureKey="curriculum_builder" showUpgradePrompt={true}>
+    <CurriculumBuilderWrapperContent />
+  </FeatureGate>
+);
 
 export default CurriculumBuilderWrapper;

@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowLeft, CheckCircle, Download, Maximize, Minimize, Trash2, Upload, Video, X } from 'lucide-react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Video, X, Play, Pause, Trash2, Download, CheckCircle, Maximize, Minimize } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { FeatureGate } from '../../components/Subscription/FeatureGate';
 
 interface VideoFile {
   id: string;
@@ -12,7 +13,12 @@ interface VideoFile {
   uploadDate: Date;
 }
 
-const VideoPortfolioPage: React.FC = () => {
+/**
+ * VideoPortfolioPage - Video portfolio management
+ * 
+ * Wrapped with FeatureGate for video_portfolio add-on access control
+ */
+const VideoPortfolioPageContent: React.FC = () => {
   const navigate = useNavigate();
   const [videos, setVideos] = useState<VideoFile[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<VideoFile | null>(null);
@@ -433,5 +439,14 @@ const VideoPortfolioPage: React.FC = () => {
     </div>
   );
 };
+
+/**
+ * Wrapped VideoPortfolioPage with FeatureGate for video_portfolio add-on
+ */
+const VideoPortfolioPage: React.FC = () => (
+  <FeatureGate featureKey="video_portfolio" showUpgradePrompt={true}>
+    <VideoPortfolioPageContent />
+  </FeatureGate>
+);
 
 export default VideoPortfolioPage;

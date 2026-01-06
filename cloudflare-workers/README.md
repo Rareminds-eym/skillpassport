@@ -6,14 +6,64 @@ This directory contains Cloudflare Workers that replace Supabase Edge Functions 
 
 | Worker | Endpoints | Description |
 |--------|-----------|-------------|
+| **assessment-api** | `/generate`, `/evaluate` | AI-powered assessment generation |
+| **career-api** | `/chat`, `/recommend-opportunities`, `/generate-embedding` | Career AI chat, job matching |
 | **course-api** | `/get-file-url`, `/ai-tutor-*`, `/ai-video-summarizer` | Course-related AI features |
-| **career-api** | `/chat`, `/recommend-opportunities`, `/generate-embedding` | Career AI chat, job matching, embedding generation |
-| **payments-api** | `/create-order`, `/create-event-order`, `/verify-payment`, `/webhook`, `/cancel-subscription`, `/deactivate-subscription`, `/expire-subscriptions` | Razorpay payment processing |
-| **user-api** | `/create-student`, `/create-teacher`, `/create-event-user`, `/send-interview-reminder`, `/reset-password` | User management |
-| **storage-api** | `/upload`, `/presigned`, `/confirm`, `/get-url`, `/delete`, `/files/:courseId/:lessonId`, `/extract-content` | R2 file storage with presigned URLs |
-| **streak-api** | `/:studentId`, `/:studentId/complete`, `/:studentId/notifications`, `/:studentId/process`, `/reset-daily` | Student streak management |
+| **email-api** | `/send`, `/send-bulk` | Email sending via Resend |
+| **embedding-api** | `/embed`, `/embed/batch`, `/backfill`, `/regenerate`, `/process-queue`, `/stats` | OpenRouter embedding generation with queue |
+| **fetch-certificate** | `/fetch`, `/verify` | Certificate fetching and verification |
+| **otp-api** | `/send`, `/verify` | OTP via Twilio |
+| **payments-api** | `/create-order`, `/verify-payment`, `/webhook`, `/addons/*`, `/entitlements/*` | Razorpay payments & subscriptions |
+| **storage-api** | `/upload`, `/presigned`, `/get-url`, `/delete`, `/extract-content` | R2 file storage |
+| **streak-api** | `/:studentId`, `/:studentId/complete`, `/reset-daily` | Student streak management |
+| **user-api** | `/create-student`, `/create-teacher`, `/reset-password` | User management |
 
 
+
+## GitHub Actions Deployment
+
+Workers are automatically deployed via GitHub Actions when changes are pushed to `main`, `production`, or `dev-skillpassport` branches.
+
+### Automatic Deployment
+- Push changes to `cloudflare-workers/**` → Deploys only changed workers
+- Workflow: `.github/workflows/deploy-workers.yml`
+
+### Manual Deployment
+1. Go to Actions → "Deploy Cloudflare Workers"
+2. Click "Run workflow"
+3. Select specific worker or leave empty for all
+
+### Required GitHub Secrets
+Add these secrets in your repository settings:
+
+```
+# Cloudflare
+CLOUDFLARE_API_TOKEN        # Wrangler API token with Workers permissions
+CLOUDFLARE_ACCOUNT_ID       # Your Cloudflare account ID
+
+# Supabase (all workers)
+VITE_SUPABASE_URL           # Supabase project URL
+SUPABASE_SERVICE_ROLE_KEY   # Service role key
+
+# AI Services
+OPENROUTER_API_KEY          # For embedding-api
+VITE_OPENROUTER_API_KEY     # For career-api, assessment-api
+
+# Payments
+RAZORPAY_KEY_ID             # Razorpay key ID
+RAZORPAY_KEY_SECRET         # Razorpay secret
+RAZORPAY_WEBHOOK_SECRET     # Webhook verification
+
+# Storage
+R2_ACCESS_KEY_ID            # R2 access key
+R2_SECRET_ACCESS_KEY        # R2 secret key
+R2_BUCKET_NAME              # R2 bucket name
+
+# Email/SMS
+RESEND_API_KEY              # For email-api
+TWILIO_ACCOUNT_SID          # For otp-api
+TWILIO_AUTH_TOKEN           # For otp-api
+```
 
 ## Quick Start
 

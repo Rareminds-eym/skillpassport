@@ -1,14 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
+import React, { useEffect, useState } from 'react';
+import { FeatureGate } from '../../../components/Subscription/FeatureGate';
 
 // Import the college-adapted curriculum builder UI
 import CollegeCurriculumBuilderUI from '../../../components/admin/collegeAdmin/CollegeCurriculumBuilderUI';
 import { curriculumService, type CollegeCurriculum, type CurriculumUnit, type CurriculumOutcome } from '../../../services/college/curriculumService';
 
-const CollegeCurriculumBuilder: React.FC = () => {
-  // Context selections
-  const [selectedCourse, setSelectedCourse] = useState('');
+/**
+ * CollegeCurriculumBuilder - Curriculum management for college admins
+ * 
+ * Wrapped with FeatureGate for curriculum_builder add-on access control
+ */
+const CollegeCurriculumBuilderContent: React.FC = () => {
+  // Local state for college-specific selections
+  const [selectedCourse, setSelectedCourse] = useState(''); // Course/Subject
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedProgram, setSelectedProgram] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
@@ -592,5 +597,14 @@ const CollegeCurriculumBuilder: React.FC = () => {
     />
   );
 };
+
+/**
+ * Wrapped CollegeCurriculumBuilder with FeatureGate for curriculum_builder add-on
+ */
+const CollegeCurriculumBuilder: React.FC = () => (
+  <FeatureGate featureKey="curriculum_builder" showUpgradePrompt={true}>
+    <CollegeCurriculumBuilderContent />
+  </FeatureGate>
+);
 
 export default CollegeCurriculumBuilder;

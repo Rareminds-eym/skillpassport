@@ -1,50 +1,42 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-    ChevronRight,
-    ChevronLeft,
-    CheckCircle2,
-    BrainCircuit,
-    Heart,
-    Target,
-    Clock,
     AlertCircle,
+    ArrowLeft,
     Award,
+    BarChart3,
+    BookOpen,
+    BrainCircuit,
+    CheckCircle2,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    Code,
+    FlaskConical,
+    Heart,
+    Loader2,
+    Target,
     TrendingUp,
     Users,
-    Code,
-    Zap,
-    Loader2,
-    ArrowLeft,
-    FlaskConical,
-    BarChart3,
-    BookOpen
+    Zap
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 import { Label } from '../../components/Students/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 
 // Import question banks (fallback for offline/legacy mode)
-import { riasecQuestions as fallbackRiasecQuestions } from './assessment-data/riasecQuestions';
-import { getAllAptitudeQuestions, getModuleQuestionIndex, aptitudeModules } from './assessment-data/aptitudeQuestions';
+import { aptitudeModules, getModuleQuestionIndex } from './assessment-data/aptitudeQuestions';
 import { bigFiveQuestions as fallbackBigFiveQuestions } from './assessment-data/bigFiveQuestions';
-import { workValuesQuestions as fallbackWorkValuesQuestions } from './assessment-data/workValuesQuestions';
 import { employabilityQuestions as fallbackEmployabilityQuestions, getCurrentEmployabilityModule } from './assessment-data/employabilityQuestions';
-import { streamKnowledgeQuestions as fallbackStreamKnowledgeQuestions } from './assessment-data/streamKnowledgeQuestions';
 import {
-    interestExplorerQuestions,
-    strengthsCharacterQuestions,
-    learningPreferencesQuestions,
-    strengthsRatingScale,
-    highSchoolInterestQuestions,
-    highSchoolStrengthsQuestions,
-    highSchoolLearningQuestions,
-    highSchoolAptitudeQuestions,
+    aptitudeRatingScale,
     highSchoolRatingScale,
-    aptitudeRatingScale
+    strengthsRatingScale
 } from './assessment-data/middleSchoolQuestions';
+import { riasecQuestions as fallbackRiasecQuestions } from './assessment-data/riasecQuestions';
+import { workValuesQuestions as fallbackWorkValuesQuestions } from './assessment-data/workValuesQuestions';
 
 // Import Gemini assessment service
 import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentService';
@@ -53,8 +45,8 @@ import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentServ
 import { loadCareerAssessmentQuestions, STREAM_KNOWLEDGE_PROMPTS, normalizeStreamId } from '../../services/careerAssessmentAIService';
 
 // Import database services
-import { useAssessment } from '../../hooks/useAssessment';
 import { useAuth } from '../../context/AuthContext';
+import { useAssessment } from '../../hooks/useAssessment';
 import * as assessmentService from '../../services/assessmentService';
 
 import { supabase } from '../../lib/supabaseClient';
@@ -369,9 +361,11 @@ const AssessmentTest = () => {
 
     // Skip to last section for quick testing
     const skipToLastSection = () => {
+        if (!sections || sections.length === 0) return;
         autoFillAllAnswers();
         setCurrentSectionIndex(sections.length - 1);
-        setCurrentQuestionIndex(sections[sections.length - 1].questions.length - 1);
+        const lastSection = sections[sections.length - 1];
+        setCurrentQuestionIndex(lastSection?.questions?.length ? lastSection.questions.length - 1 : 0);
         setShowSectionIntro(false);
         setShowSectionComplete(false);
     };
@@ -839,7 +833,7 @@ const AssessmentTest = () => {
             ];
         }
         
-        // Default: return empty array when no grade level is selected
+        // Default: return empty array when gradeLevel is not set
         return [];
     }, [dbQuestions, studentStream, gradeLevel, aiQuestions, aiQuestionsLoading]);
 
@@ -1180,6 +1174,8 @@ const AssessmentTest = () => {
     };
 
     const handleAnswer = (value) => {
+        if (!currentSection?.questions?.[currentQuestionIndex]) return;
+        
         const question = currentSection.questions[currentQuestionIndex];
         const questionId = `${currentSection.id}_${question.id}`;
 
@@ -1212,6 +1208,8 @@ const AssessmentTest = () => {
     };
 
     const handleNext = async () => {
+        if (!currentSection?.questions) return;
+        
         if (currentQuestionIndex < currentSection.questions.length - 1) {
             const nextQuestionIndex = currentQuestionIndex + 1;
 
@@ -2169,6 +2167,18 @@ const AssessmentTest = () => {
     }
     */
 
+    // Guard: Don't render main assessment UI if sections is empty
+    if (!sections || sections.length === 0 || !currentSection) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading assessment...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-gray-50/50 flex flex-col items-center py-8 px-4">
             {/* Modern Progress Header */}
@@ -2255,7 +2265,7 @@ const AssessmentTest = () => {
                             if (idx < currentSectionIndex) {
                                 lineProgress = 100;
                             } else if (idx === currentSectionIndex) {
-                                const totalQuestions = sections[idx].questions.length;
+                                const totalQuestions = sections[idx]?.questions?.length || 0;
                                 lineProgress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
                             }
 

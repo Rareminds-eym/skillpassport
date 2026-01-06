@@ -1,3 +1,4 @@
+import { FeatureGate } from '../../components/Subscription/FeatureGate';
 import RecruiterCopilot from '../../features/recruiter-copilot/components/RecruiterCopilot';
 
 /**
@@ -11,5 +12,13 @@ import RecruiterCopilot from '../../features/recruiter-copilot/components/Recrui
  * - Get skill trends and market intelligence
  * - Access interview guidance
  * - Review recruitment pipeline
+ * 
+ * Wrapped with FeatureGate for recruiter_ai add-on access control
  */
-export default RecruiterCopilot;
+export default function RecruiterAI() {
+  return (
+    <FeatureGate featureKey="recruiter_ai" showUpgradePrompt={true}>
+      <RecruiterCopilot />
+    </FeatureGate>
+  );
+}

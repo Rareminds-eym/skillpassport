@@ -6,6 +6,14 @@ compatibility_date = "2024-01-01"
 ENVIRONMENT = "production"
 STORAGE_API_URL = "https://storage-api.dark-mode-d021.workers.dev"
 
+# Cron trigger for entitlement lifecycle processing
+# Runs daily at 6:00 AM UTC to:
+# - Process auto-renewals for expiring entitlements
+# - Mark expired entitlements as 'expired'
+# - Send renewal reminder emails (7, 3, 1 days before expiry)
+[triggers]
+crons = ["0 6 * * *"]
+
 # Service binding to email-api worker
 [[services]]
 binding = "EMAIL_SERVICE"
