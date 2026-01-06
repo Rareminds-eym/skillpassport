@@ -102,20 +102,36 @@ This system provides AI-powered job matching using vector embeddings and cosine 
 2. Cohere `embed-english-v3.0` (good quality, free tier)
 3. Local Transformers.js (free, self-hosted)
 
-### 3. Frontend Service (Optional - for manual operations)
+### 3. Frontend Service (Thin Client)
 
 **File:** `src/services/embeddingService.js`
 
-**Functions:**
-- `generateStudentEmbedding(studentId)` - Manually generate for student
-- `generateOpportunityEmbedding(opportunityId)` - Manually generate for opportunity
+This service acts as a **thin client** to the Cloudflare embedding-api worker. All embedding generation, text building, and database operations happen server-side. The frontend only needs to:
+
+1. Request embedding generation for a record (by ID)
+2. Use utility functions like `cosineSimilarity` for local calculations
+
+**Utility Functions:**
+- `cosineSimilarity(vecA, vecB)` - Calculate similarity between two vectors
+- `getEmbeddingDimension()` - Get expected embedding dimension (1536)
+
+**API Client Functions:**
+- `generateEmbedding(text)` - Generate embedding for arbitrary text (returns vector)
+- `generateBatchEmbeddings(texts)` - Generate embeddings for multiple texts
+- `generateStudentEmbedding(studentId)` - Trigger backend to generate student embedding
+- `generateOpportunityEmbedding(opportunityId)` - Trigger backend to generate opportunity embedding
 - `ensureStudentEmbedding(studentId)` - Generate if missing
-- `getEmbeddingStats()` - Get statistics
+- `getEmbeddingStats()` - Get statistics from backend
 - `processEmbeddingQueue(batchSize)` - Process queue (admin use)
 - `backfillMissingEmbeddings(table, limit)` - Backfill missing
 
+**Convenience Functions:**
+- `regenerateStudentEmbedding(studentId)` - Regenerate with debouncing
+- `scheduleEmbeddingRegeneration(studentId)` - Fire-and-forget regeneration
+
 > **Note:** Frontend embedding calls are no longer needed for normal operations.
 > Database triggers automatically queue embedding regeneration when data changes.
+> The frontend service is now a thin client - all text building logic lives in the Cloudflare worker.
 
 ## How Matching Works
 

@@ -14,6 +14,10 @@ import { generateEmbedding } from './embeddingService';
 const BATCH_SIZE = 10; // Process 10 courses at a time to avoid rate limits
 const BATCH_DELAY_MS = 2000; // 2 second delay between batches
 
+// Embedding API URL for direct course embedding
+const EMBEDDING_API_URL = import.meta.env.VITE_EMBEDDING_API_URL || 
+  import.meta.env.VITE_CAREER_API_URL;
+
 /**
  * Sleep utility for batch processing delays
  * @param {number} ms - Milliseconds to sleep
@@ -108,7 +112,7 @@ const fetchCourseWithSkills = async (courseId) => {
 
 /**
  * Generate and store embedding for a single course
- * Fetches course data, generates embedding, and stores it in the database.
+ * Uses the backend API to generate and store the embedding.
  * 
  * @param {string} courseId - Course ID to embed
  * @returns {Promise<{ success: boolean, courseId: string, error?: string }>}
@@ -117,7 +121,19 @@ const fetchCourseWithSkills = async (courseId) => {
  */
 export const embedCourse = async (courseId) => {
   try {
-    // Fetch course with skills
+    // Try using the backend API first (preferred - handles everything server-side)
+    const response = await fetch(`${EMBEDDING_API_URL}/regenerate?table=courses&id=${courseId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`✅ Successfully embedded course via API: ${courseId}`);
+      return { success: true, courseId };
+    }
+
+    // Fallback: Generate locally if API doesn't support courses
     const course = await fetchCourseWithSkills(courseId);
     
     if (!course) {
@@ -131,11 +147,10 @@ export const embedCourse = async (courseId) => {
     // Build text for embedding
     const courseText = buildCourseText(course);
     
-    // Generate embedding
+    // Generate embedding via API
     const embedding = await generateEmbedding(courseText);
     
     // Store embedding in database
-    // Format embedding as a string for pgvector: '[0.1, 0.2, ...]'
     const embeddingString = `[${embedding.join(',')}]`;
     
     const { error: updateError } = await supabase
