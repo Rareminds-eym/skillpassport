@@ -1,7 +1,7 @@
+import { AnimatePresence, motion } from 'framer-motion';
+import { Award, Book, Briefcase, Camera, CheckCircle, ChevronLeft, ChevronRight, Code, Coffee, Dumbbell, Gamepad2, Globe, Mountain, Music, Palette, Plane, Shield, Star, Target, Users, XCircle } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronLeft, ChevronRight, Shield, CheckCircle, XCircle, Award, Book, Globe, Code, Briefcase, Heart, Target, Maximize, Minimize, ZoomIn, ZoomOut, Music, Camera, Palette, Gamepad2, Dumbbell, Plane, Coffee, Mountain, Users, Star } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { usePortfolio } from '../../context/PortfolioContext';
 
 const PassportPage: React.FC = () => {
@@ -589,88 +589,8 @@ const PassportPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
-      {/* Fixed Header - Similar to Portfolio Mode */}
-      <div className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 z-50 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                type="button"
-                onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
-                className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 mr-2" />
-                Back
-              </button>
-              <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Digital Passport</h1>
-            </div>
-            <div className="flex items-center space-x-3">
-              {/* Zoom Controls */}
-              <div className="flex items-center space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-                <button
-                  onClick={zoomOut}
-                  disabled={zoomLevel <= minZoom}
-                  className={`p-2 rounded transition-colors ${
-                    zoomLevel <= minZoom
-                      ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
-                  }`}
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={resetZoom}
-                  className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-                  title="Reset Zoom"
-                >
-                  {Math.round(zoomLevel * 100)}%
-                </button>
-                <button
-                  onClick={zoomIn}
-                  disabled={zoomLevel >= maxZoom}
-                  className={`p-2 rounded transition-colors ${
-                    zoomLevel >= maxZoom
-                      ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
-                  }`}
-                  title="Zoom In"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </button>
-              </div>
-              
-              <button
-                onClick={toggleFullscreen}
-                className="flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-200"
-                title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-              >
-                {isFullscreen ? (
-                  <>
-                    <Minimize className="w-4 h-4 mr-2" />
-                    <span className="hidden md:inline">Exit Fullscreen</span>
-                  </>
-                ) : (
-                  <>
-                    <Maximize className="w-4 h-4 mr-2" />
-                    <span className="hidden md:inline">Fullscreen</span>
-                  </>
-                )}
-              </button>
-              
-              <div className="hidden md:flex items-center px-3 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Page {currentPage + 1} / {pages.length}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Passport Book - with top padding for fixed header */}
-      <div className="flex items-center justify-center min-h-screen pt-20 pb-8 px-4 md:px-8">
+      {/* Passport Book */}
+      <div className="flex items-center justify-center min-h-screen py-8 px-4 md:px-8">
         <div 
           className="relative transition-transform duration-300 ease-in-out"
           style={{ transform: `scale(${zoomLevel})` }}

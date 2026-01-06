@@ -11,8 +11,7 @@ import PortfolioLayout from "../layouts/PortfolioLayout";
 import PublicLayout from "../layouts/PublicLayout";
 import RecruiterLayout from "../layouts/RecruiterLayout";
 import StudentLayout from "../layouts/StudentLayout";
-//digital passport
-import StudentDigitalPortfolioNav from '../components/digital-pp/ui/StudentDigitalPortfolioNav';
+//digital passport - StudentDigitalPortfolioNav removed (merged into Header dropdown)
 import { PortfolioProvider } from '../context/PortfolioContext';
 import { ThemeProvider } from '../context/ThemeContext';
 import { TestProvider } from '../context/assessment/TestContext';
@@ -716,7 +715,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
+                  <div>
                     <HomePage />
                   </div>
                 </PortfolioProvider>
@@ -728,8 +727,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
+                  <div>
                     <DigitalPortfolioPage />
                   </div>
                 </PortfolioProvider>
@@ -741,8 +739,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
+                  <div>
                     <DigitalPassportPage />
                   </div>
                 </PortfolioProvider>
@@ -754,8 +751,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
+                  <div>
                     <DigitalVideoPortfolioPage />
                   </div>
                 </PortfolioProvider>
@@ -767,8 +763,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
+                  <div>
                     <DigitalSettingsPage />
                   </div>
                 </PortfolioProvider>
@@ -780,8 +775,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
+                  <div>
                     <DigitalThemeSettings />
                   </div>
                 </PortfolioProvider>
@@ -793,8 +787,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
+                  <div>
                     <DigitalLayoutSettings />
                   </div>
                 </PortfolioProvider>
@@ -806,8 +799,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
+                  <div>
                     <DigitalExportSettings />
                   </div>
                 </PortfolioProvider>
@@ -820,7 +812,6 @@ const AppRoutes = () => {
               <ThemeProvider>
                 <PortfolioProvider>
                   <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
                     <DigitalSharingSettings />
                   </div>
                 </PortfolioProvider>
@@ -833,7 +824,6 @@ const AppRoutes = () => {
               <ThemeProvider>
                 <PortfolioProvider>
                   <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
                     <DigitalProfileSettings />
                   </div>
                 </PortfolioProvider>

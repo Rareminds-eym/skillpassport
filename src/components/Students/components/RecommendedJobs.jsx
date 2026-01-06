@@ -1,11 +1,9 @@
 import { WavyBackground } from '@/components/Students/components/ui/wavy-background';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
     AlertCircle,
     Briefcase,
     CheckCircle,
-    ChevronLeft,
-    ChevronRight,
     Clock,
     MapPin,
     RefreshCw,
@@ -38,7 +36,6 @@ const RecommendedJobsContent = ({
   onApply
 }) => {
   const [showAnimation, setShowAnimation] = useState(true);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [isDismissed, setIsDismissed] = useState(false);
 
   // Use the industrial-grade caching hook
@@ -82,14 +79,6 @@ const RecommendedJobsContent = ({
   const handleRefresh = async () => {
     setShowAnimation(true);
     await forceRefreshMatches();
-  };
-
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % recommendations.length);
-  };
-
-  const handlePrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + recommendations.length) % recommendations.length);
   };
 
   const getMatchColor = (score) => {
@@ -282,13 +271,6 @@ const RecommendedJobsContent = ({
     return null;
   }
 
-  const currentJob = recommendations[currentIndex];
-  const opportunity = currentJob?.opportunity;
-
-  if (!opportunity) {
-    return null;
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: -20 }}
@@ -311,7 +293,7 @@ const RecommendedJobsContent = ({
         </button>
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 relative z-10">
+        <div className="flex items-center justify-between mb-6 relative z-10">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-slate-200 to-gray-200 rounded-lg">
               <img src="/RMLogo.webp" alt="RareMinds Logo" className="w-5 h-5" />
@@ -349,179 +331,111 @@ const RecommendedJobsContent = ({
           </button>
         </div>
 
-        {/* Carousel Content */}
-        <div className="relative z-10">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentIndex}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="bg-white rounded-lg p-6 shadow-md"
-            >
-              {/* Job Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-2xl font-bold text-gray-900">
-                      {currentJob.job_title}
-                    </h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getMatchColor(currentJob.match_score)}`}>
-                      {currentJob.match_score}% {getMatchLabel(currentJob.match_score)}
-                    </span>
-                  </div>
-                  <p className="text-lg text-gray-700 font-medium">{currentJob.company_name}</p>
-                </div>
-              </div>
+        {/* Grid Content */}
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {recommendations.slice(0, 3).map((currentJob, index) => {
+              const opportunity = currentJob?.opportunity;
+              if (!opportunity) return null;
 
-              {/* Job Details */}
-              <div className="flex flex-wrap gap-4 mb-4 text-sm text-gray-600">
-                {opportunity.location && (
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4" />
-                    <span>{opportunity.location}</span>
-                  </div>
-                )}
-                {opportunity.employment_type && (
-                  <div className="flex items-center gap-1.5">
-                    <Briefcase className="w-4 h-4" />
-                    <span className="capitalize">{opportunity.employment_type}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Match Reason */}
-              <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 mb-4">
-                <div className="flex items-start gap-2">
-                  <TrendingUp className="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-semibold text-indigo-900 mb-1">Why this matches</h4>
-                    <p className="text-sm text-indigo-800">{currentJob.match_reason}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Matching Skills */}
-              {currentJob.key_matching_skills && currentJob.key_matching_skills.length > 0 && (
-                <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    <h4 className="font-semibold text-gray-900 text-sm">Your Matching Skills</h4>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {currentJob.key_matching_skills.map((skill, idx) => (
-                      <span
-                        key={idx}
-                        className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Skills Gap */}
-              {currentJob.skills_gap && currentJob.skills_gap.length > 0 && (
-                <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600" />
-                    <h4 className="font-semibold text-gray-900 text-sm">Skills to Learn</h4>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {currentJob.skills_gap.map((skill, idx) => (
-                      <span
-                        key={idx}
-                        className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Recommendation */}
-              {currentJob.recommendation && (
-                <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-gray-700 italic">
-                    <span className="font-semibold text-gray-900">Recommendation: </span>
-                    {currentJob.recommendation}
-                  </p>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => onSelectJob(opportunity)}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              return (
+                <motion.div
+                  key={currentJob.id || index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  className="bg-white rounded-lg p-5 shadow-md flex flex-col h-full border border-gray-100 hover:border-indigo-200 transition-all"
                 >
-                  View Details
-                </button>
-                {!appliedJobs.has(opportunity.id) ? (
-                  <button
-                    onClick={() => onApply(opportunity)}
-                    className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
-                  >
-                    Apply Now
-                  </button>
-                ) : (
-                  <div className="px-6 py-3 bg-gray-100 text-gray-600 rounded-lg font-semibold flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5" />
-                    Applied
+                  {/* Job Header */}
+                  <div className="mb-3">
+                    <div className="flex flex-col gap-2 mb-2">
+                      <div className="flex justify-between items-start">
+                        <h3 className="text-lg font-bold text-gray-900 line-clamp-1" title={currentJob.job_title}>
+                          {currentJob.job_title}
+                        </h3>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${getMatchColor(currentJob.match_score)}`}>
+                          {currentJob.match_score}%
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700 font-medium line-clamp-1">{currentJob.company_name}</p>
+                    </div>
                   </div>
-                )}
-                <button
-                  onClick={() => onToggleSave(opportunity)}
-                  className={`px-4 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
-                    savedJobs.has(opportunity.id)
-                      ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                  title={savedJobs.has(opportunity.id) ? 'Remove from saved' : 'Save for later'}
-                >
-                  {savedJobs.has(opportunity.id) ? '★' : '☆'}
-                </button>
-              </div>
-            </motion.div>
-          </AnimatePresence>
 
-          {/* Carousel Navigation */}
-          {recommendations.length > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <button
-                onClick={handlePrev}
-                className="p-2 bg-white hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors"
-                disabled={recommendations.length <= 1}
-              >
-                <ChevronLeft className="w-5 h-5 text-gray-700" />
-              </button>
+                  {/* Job Details */}
+                  <div className="flex flex-wrap gap-3 mb-3 text-xs text-gray-600">
+                    {opportunity.location && (
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5" />
+                        <span className="truncate max-w-[100px]">{opportunity.location}</span>
+                      </div>
+                    )}
+                    {opportunity.employment_type && (
+                      <div className="flex items-center gap-1">
+                        <Briefcase className="w-3.5 h-3.5" />
+                        <span className="capitalize">{opportunity.employment_type}</span>
+                      </div>
+                    )}
+                  </div>
 
-              <div className="flex gap-2">
-                {recommendations.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setCurrentIndex(idx)}
-                    className={`w-2 h-2 rounded-full transition-all ${
-                      idx === currentIndex
-                        ? 'bg-indigo-600 w-6'
-                        : 'bg-gray-300 hover:bg-gray-400'
-                    }`}
-                  />
-                ))}
-              </div>
+                  {/* Skills - Compact View */}
+                  {currentJob.key_matching_skills && currentJob.key_matching_skills.length > 0 && (
+                    <div className="mb-3 flex-grow">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        <h4 className="font-semibold text-gray-900 text-xs">Matching Skills</h4>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {currentJob.key_matching_skills.slice(0, 3).map((skill, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-medium border border-emerald-100"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                        {currentJob.key_matching_skills.length > 3 && (
+                          <span className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-full text-[10px] font-medium border border-gray-100">
+                            +{currentJob.key_matching_skills.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
-              <button
-                onClick={handleNext}
-                className="p-2 bg-white hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors"
-                disabled={recommendations.length <= 1}
-              >
-                <ChevronRight className="w-5 h-5 text-gray-700" />
-              </button>
-            </div>
-          )}
+                  {/* Match Reason - Truncated */}
+                  <div className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 mb-4 text-xs">
+                    <div className="flex items-start gap-1.5 ">
+                      <TrendingUp className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-indigo-900 line-clamp-2" title={currentJob.match_reason}>
+                        {currentJob.match_reason}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2 mt-auto">
+                    <button
+                      onClick={() => onSelectJob(opportunity)}
+                      className="flex-1 bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                    >
+                      Details
+                    </button>
+                    {!appliedJobs.has(opportunity.id) ? (
+                      <button
+                        onClick={() => onApply(opportunity)}
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                      >
+                        Apply
+                      </button>
+                    ) : (
+                      <div className="flex-1 bg-green-50 text-green-700 border border-green-200 px-3 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-1">
+                        <CheckCircle className="w-4 h-4" />
+                        Applied
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
         </div>
       </div>
     </motion.div>
