@@ -254,8 +254,8 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
         'knowledge': 'middle_learning_preferences'
       };
       return middleSchoolMap[baseSection] || baseSection;
-    } else if (gradeLevel === 'highschool') {
-      // High school section mappings (matches database section names)
+    } else if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
+      // High school and higher secondary section mappings (matches database section names)
       const highSchoolMap = {
         'riasec': 'hs_interest_explorer',
         'bigfive': 'hs_strengths_character',
@@ -841,10 +841,10 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 };
 
 /**
- * Build intermediate prompt for high school (grades 9-12)
+ * Build intermediate prompt for high school (grades 9-10) and higher secondary (grades 11-12)
  */
 const buildHighSchoolPrompt = (assessmentData, answersHash) => {
-  return `You are a career counselor for high school students (grades 9-12). Analyze this student's career exploration assessment and provide guidance appropriate for their age and academic level.
+  return `You are a career counselor for high school and higher secondary students (grades 9-12). Analyze this student's career exploration assessment and provide guidance appropriate for their age and academic level.
 
 ## CRITICAL: This must be DETERMINISTIC - same input = same output always
 Session ID: ${answersHash}
@@ -1207,8 +1207,8 @@ const buildAnalysisPrompt = (assessmentData, gradeLevel = 'after12') => {
     return buildMiddleSchoolPrompt(assessmentData, answersHash);
   }
 
-  // For high school (grades 9-12), use intermediate prompt
-  if (gradeLevel === 'highschool') {
+  // For high school (grades 9-10) and higher secondary (grades 11-12), use intermediate prompt
+  if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
     return buildHighSchoolPrompt(assessmentData, answersHash);
   }
 

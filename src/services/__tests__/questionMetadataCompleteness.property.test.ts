@@ -43,7 +43,8 @@ const subtagArbitrary: fc.Arbitrary<Subtag> = fc.constantFrom(...ALL_SUBTAGS);
  */
 const gradeLevelArbitrary: fc.Arbitrary<GradeLevel> = fc.constantFrom(
   'middle_school',
-  'high_school'
+  'high_school',
+  'higher_secondary'
 );
 
 /**
@@ -152,7 +153,7 @@ function validateQuestionMetadata(question: Question): {
   }
 
   // Check gradeLevel
-  const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school'];
+  const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary'];
   if (!validGradeLevels.includes(question.gradeLevel)) {
     errors.push('gradeLevel must be a valid GradeLevel');
   }
@@ -248,12 +249,12 @@ describe('Property 17: Question Metadata Completeness', () => {
     );
   });
 
-  it('should have a valid gradeLevel (middle_school or high_school)', async () => {
+  it('should have a valid gradeLevel (middle_school, high_school, or higher_secondary)', async () => {
     await fc.assert(
       fc.property(validQuestionArbitrary, (question) => {
         // Property: gradeLevel must be a valid GradeLevel
         expect(question.gradeLevel).toBeDefined();
-        expect(['middle_school', 'high_school']).toContain(question.gradeLevel);
+        expect(['middle_school', 'high_school', 'higher_secondary']).toContain(question.gradeLevel);
       }),
       { numRuns: 100 }
     );
