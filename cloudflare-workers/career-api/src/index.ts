@@ -351,7 +351,7 @@ async function streamCareerResponse(params: StreamParams): Promise<Response> {
 // ==================== RECOMMEND OPPORTUNITIES HANDLER ====================
 
 const RECOMMEND_CONFIG = {
-  MATCH_THRESHOLD: 0.20,
+  MATCH_THRESHOLD: 0.01,  // Lowered from 0.20 to handle embedding inconsistencies
   MAX_RECOMMENDATIONS: 50,
   DEFAULT_LIMIT: 20
 };
@@ -467,7 +467,13 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
     return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_matches');
   }
 
-  const topRecommendations = recommendations.slice(0, safeLimit);
+  let finalRecommendations = recommendations;
+  
+  // If we have fewer matches than requested, DON'T pad with popular opportunities
+  // This ensures only quality AI matches are shown
+  // The frontend will display whatever matches we have (even if less than requested)
+
+  const topRecommendations = finalRecommendations.slice(0, safeLimit);
   const executionTime = Date.now() - startTime;
 
   // ==================== SAVE TO CACHE ====================
@@ -583,32 +589,45 @@ async function handleGenerateEmbedding(request: Request, env: Env): Promise<Resp
   console.log(`Generating embedding for ${type} #${id}`);
 
   try {
-    // Use the embedding service (FREE Transformers.js on Render.com)
-    const embeddingServiceUrl = env.EMBEDDING_SERVICE_URL || 'https://embedings.onrender.com';
+    // Use OpenRouter for embeddings (text-embedding-3-small)
+    const openRouterKey = getOpenRouterKey(env);
+    if (!openRouterKey) {
+      return jsonResponse({
+        success: false,
+        error: 'OpenRouter API key not configured'
+      }, 500);
+    }
 
-    const embeddingResponse = await fetch(`${embeddingServiceUrl}/embed`, {
+    const embeddingResponse = await fetch('https://openrouter.ai/api/v1/embeddings', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${openRouterKey}`,
         'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://skillpassport.rareminds.in',
+        'X-Title': 'SkillPassport Embedding Service',
       },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({
+        model: 'openai/text-embedding-3-small',
+        input: text.slice(0, 8000),
+      }),
     });
 
     if (!embeddingResponse.ok) {
       const errorText = await embeddingResponse.text();
-      console.error('Embedding service error:', embeddingResponse.status, errorText);
+      console.error('OpenRouter embedding error:', embeddingResponse.status, errorText);
       return jsonResponse({
         success: false,
-        error: `Embedding service error: ${embeddingResponse.status} - ${errorText}`
+        error: `OpenRouter API error: ${embeddingResponse.status} - ${errorText}`
       }, 500);
     }
 
-    const { embedding } = await embeddingResponse.json() as { embedding: number[] };
+    const data = await embeddingResponse.json() as { data: Array<{ embedding: number[] }> };
+    const embedding = data.data[0].embedding;
 
     if (!embedding || !Array.isArray(embedding)) {
       return jsonResponse({
         success: false,
-        error: 'Invalid embedding response from service'
+        error: 'Invalid embedding response from OpenRouter'
       }, 500);
     }
 

@@ -3,9 +3,8 @@ name = "embedding-api"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
-# Environment variables
+# Environment variables (set via wrangler secret put)
 # OPENROUTER_API_KEY - OpenRouter API key (routes to OpenAI text-embedding-3-small)
-# EMBEDDING_SERVICE_URL - URL to local Transformers.js service (fallback)
 # VITE_SUPABASE_URL - Supabase project URL
 # SUPABASE_SERVICE_ROLE_KEY - Supabase service role key
 
@@ -13,14 +12,10 @@ compatibility_date = "2024-01-01"
 # Supabase Configuration
 VITE_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
-# Embedding Service (fallback)
-EMBEDDING_SERVICE_URL = "https://embedings.onrender.com"
-
-# OpenRouter API Key (new key)
-OPENROUTER_API_KEY = "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"
-
 # Supabase Service Role Key
 SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwb29sZWR1aW55eXp4Z3Jjd2tvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTk5NDY5OCwiZXhwIjoyMDc1NTcwNjk4fQ.WIrwkA_-2oCjwmD6WpCf9N38hYXEwrIIXXHB4x5km10"
+
+# OPENROUTER_API_KEY should be set via: wrangler secret put OPENROUTER_API_KEY
 
 # KV namespace for caching embeddings (optional - uncomment and set ID after creating)
 # To create: wrangler kv namespace create EMBEDDING_CACHE

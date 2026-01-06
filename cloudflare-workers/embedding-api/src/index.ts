@@ -3,7 +3,6 @@
  * 
  * Features:
  * - OpenRouter embedding support (routes to OpenAI text-embedding-3-small)
- * - Local fallback embedding service
  * - Request queuing and rate limiting
  * - Batch processing with chunking
  * - Automatic retry with exponential backoff
@@ -18,7 +17,6 @@ interface Env {
   VITE_SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   OPENROUTER_API_KEY: string;
-  EMBEDDING_SERVICE_URL?: string;
   EMBEDDING_CACHE?: {
     get(key: string): Promise<string | null>;
     put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
@@ -30,7 +28,6 @@ interface EmbeddingRequest {
   text: string;
   id: string;
   table: 'students' | 'opportunities' | 'courses';
-  model?: 'openrouter' | 'local';
   priority?: 'high' | 'normal' | 'low';
 }
 
@@ -53,17 +50,21 @@ function jsonResponse(data: any, status = 200): Response {
   });
 }
 
-// ==================== EMBEDDING GENERATORS ====================
+// ==================== EMBEDDING GENERATOR ====================
 
 /**
  * Generate embedding using OpenRouter (routes to OpenAI text-embedding-3-small)
- * Best quality, 1536 dimensions
+ * 1536 dimensions, high quality
  */
-async function generateOpenRouterEmbedding(text: string, apiKey: string): Promise<number[]> {
+async function generateEmbedding(text: string, env: Env): Promise<{ embedding: number[]; model: string }> {
+  if (!env.OPENROUTER_API_KEY) {
+    throw new Error('OPENROUTER_API_KEY is not configured');
+  }
+
   const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
       'Content-Type': 'application/json',
       'HTTP-Referer': 'https://skillpassport.rareminds.in',
       'X-Title': 'SkillPassport Embedding Service',
@@ -80,71 +81,7 @@ async function generateOpenRouterEmbedding(text: string, apiKey: string): Promis
   }
 
   const data = await response.json() as { data: Array<{ embedding: number[] }> };
-  return data.data[0].embedding;
-}
-
-/**
- * Generate embedding using local Transformers.js service
- * Free, 384 dimensions (padded to 1536)
- */
-async function generateLocalEmbedding(text: string, serviceUrl: string): Promise<number[]> {
-  const response = await fetch(`${serviceUrl}/embed`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: text.slice(0, 5000) }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Local embedding service error: ${response.status} - ${error}`);
-  }
-
-  const data = await response.json() as { embedding: number[] };
-  return data.embedding;
-}
-
-/**
- * Generate embedding with automatic fallback
- * Priority: OpenRouter > Local
- */
-async function generateEmbedding(
-  text: string,
-  env: Env,
-  preferredModel: 'openrouter' | 'local' = 'openrouter'
-): Promise<{ embedding: number[]; model: string }> {
-  const models: string[] = [preferredModel];
-  
-  // Add fallbacks
-  if (preferredModel !== 'openrouter' && env.OPENROUTER_API_KEY) models.push('openrouter');
-  if (preferredModel !== 'local' && env.EMBEDDING_SERVICE_URL) models.push('local');
-
-  let lastError: Error | null = null;
-
-  for (const model of models) {
-    try {
-      let embedding: number[];
-
-      switch (model) {
-        case 'openrouter':
-          if (!env.OPENROUTER_API_KEY) continue;
-          embedding = await generateOpenRouterEmbedding(text, env.OPENROUTER_API_KEY);
-          break;
-        case 'local':
-          if (!env.EMBEDDING_SERVICE_URL) continue;
-          embedding = await generateLocalEmbedding(text, env.EMBEDDING_SERVICE_URL);
-          break;
-        default:
-          continue;
-      }
-
-      return { embedding, model };
-    } catch (error) {
-      console.error(`${model} embedding failed:`, error);
-      lastError = error as Error;
-    }
-  }
-
-  throw lastError || new Error('No embedding model available');
+  return { embedding: data.data[0].embedding, model: 'openrouter' };
 }
 
 // ==================== TEXT BUILDERS ====================
@@ -248,9 +185,40 @@ function buildStudentText(student: any): string {
 
 /**
  * Build searchable text from opportunity/job posting
+ * Returns null if opportunity doesn't have minimum required data
  */
-function buildOpportunityText(opportunity: any): string {
+function buildOpportunityText(opportunity: any): string | null {
   const parts: string[] = [];
+
+  // Skills - REQUIRED for matching (prevents false positives from sparse data)
+  const skillsRaw = opportunity.skills_required;
+  let hasSkills = false;
+  let skillNames: string[] = [];
+
+  if (skillsRaw) {
+    if (Array.isArray(skillsRaw) && skillsRaw.length > 0) {
+      skillNames = skillsRaw.map((s: any) => typeof s === 'string' ? s : s.name || s.skill).filter(Boolean);
+      hasSkills = skillNames.length > 0;
+    } else if (typeof skillsRaw === 'string' && skillsRaw.trim().length > 0) {
+      // Handle skills as comma-separated string
+      skillNames = skillsRaw.split(',').map((s: string) => s.trim()).filter(Boolean);
+      hasSkills = skillNames.length > 0;
+    }
+  }
+  
+  if (!hasSkills) {
+    console.log(`[SKIP] Opportunity ${opportunity.id} has no skills_required - skipping embedding`);
+    return null; // Skip opportunities without skills
+  }
+
+  // Check minimum data threshold (need description OR requirements)
+  const hasDescription = opportunity.description && opportunity.description.length > 50;
+  const hasRequirements = Array.isArray(opportunity.requirements) && opportunity.requirements.length > 0;
+  
+  if (!hasDescription && !hasRequirements) {
+    console.log(`[SKIP] Opportunity ${opportunity.id} has insufficient data (no description or requirements) - skipping embedding`);
+    return null; // Skip opportunities without enough context
+  }
 
   // Job basics
   if (opportunity.job_title || opportunity.title) {
@@ -275,11 +243,7 @@ function buildOpportunityText(opportunity: any): string {
   }
 
   // Skills - Critical for matching
-  const skills = opportunity.skills_required || [];
-  if (Array.isArray(skills) && skills.length > 0) {
-    const skillNames = skills.map((s: any) => typeof s === 'string' ? s : s.name || s.skill).filter(Boolean);
-    parts.push(`Required Skills: ${skillNames.join(', ')}`);
-  }
+  parts.push(`Required Skills: ${skillNames.join(', ')}`);
 
   // Requirements
   const requirements = opportunity.requirements || [];
@@ -339,7 +303,7 @@ function buildCourseText(course: any): string {
  */
 async function handleSingleEmbedding(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as EmbeddingRequest;
-  const { text, id, table, model = 'openrouter' } = body;
+  const { text, id, table } = body;
 
   if (!text || !id || !table) {
     return jsonResponse({ error: 'Missing required fields: text, id, table' }, 400);
@@ -365,8 +329,7 @@ async function handleSingleEmbedding(request: Request, env: Env): Promise<Respon
     }
 
     // Generate embedding
-    const validModel = (model === 'openrouter' || model === 'local') ? model : 'openrouter';
-    const { embedding, model: usedModel } = await generateEmbedding(text, env, validModel);
+    const { embedding, model: usedModel } = await generateEmbedding(text, env);
 
     // Save to database
     const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
@@ -423,8 +386,7 @@ async function handleBatchEmbedding(request: Request, env: Env): Promise<Respons
 
   for (const item of items) {
     try {
-      const validModel = (item.model === 'openrouter' || item.model === 'local') ? item.model : 'openrouter';
-      const { embedding, model } = await generateEmbedding(item.text, env, validModel);
+      const { embedding, model } = await generateEmbedding(item.text, env);
 
       const { error: updateError } = await supabase
         .from(item.table)
@@ -509,11 +471,18 @@ async function handleBackfill(request: Request, env: Env): Promise<Response> {
   for (const record of records) {
     try {
       // Build text based on table type
-      let text: string;
+      let text: string | null;
       let enrichedRecord = { ...record };
       
       switch (table) {
         case 'students':
+          // Fetch skills for this student
+          const { data: skills } = await supabase
+            .from('skills')
+            .select('name, level, type')
+            .eq('student_id', record.id)
+            .eq('enabled', true);
+          
           // Fetch course enrollments for this student
           const { data: courseEnrollments } = await supabase
             .from('course_enrollments')
@@ -527,6 +496,7 @@ async function handleBackfill(request: Request, env: Env): Promise<Response> {
             .select('title, organization, status, description')
             .eq('student_id', record.id);
           
+          enrichedRecord.skills = skills || [];
           enrichedRecord.courseEnrollments = courseEnrollments || [];
           enrichedRecord.trainings = trainings || [];
           text = buildStudentText(enrichedRecord);
@@ -607,11 +577,18 @@ async function handleRegenerate(request: Request, env: Env): Promise<Response> {
 
   try {
     // Build text based on table type
-    let text: string;
+    let text: string | null;
     let enrichedRecord = { ...record };
     
     switch (table) {
       case 'students':
+        // Fetch skills for this student
+        const { data: skills } = await supabase
+          .from('skills')
+          .select('name, level, type')
+          .eq('student_id', id)
+          .eq('enabled', true);
+        
         // Fetch course enrollments for this student
         const { data: courseEnrollments } = await supabase
           .from('course_enrollments')
@@ -625,6 +602,7 @@ async function handleRegenerate(request: Request, env: Env): Promise<Response> {
           .select('title, organization, status, description')
           .eq('student_id', id);
         
+        enrichedRecord.skills = skills || [];
         enrichedRecord.courseEnrollments = courseEnrollments || [];
         enrichedRecord.trainings = trainings || [];
         text = buildStudentText(enrichedRecord);
@@ -637,6 +615,13 @@ async function handleRegenerate(request: Request, env: Env): Promise<Response> {
         break;
       default:
         text = JSON.stringify(record);
+    }
+
+    if (!text || text.length < 10) {
+      return jsonResponse({
+        success: false,
+        error: 'Insufficient data for embedding (opportunities require skills_required and description/requirements)',
+      }, 400);
     }
 
     const { embedding, model } = await generateEmbedding(text, env);
@@ -673,6 +658,110 @@ async function handleRegenerate(request: Request, env: Env): Promise<Response> {
 }
 
 /**
+ * Regenerate ALL embeddings for a table (force refresh with same model)
+ * Processes in batches to avoid Cloudflare subrequest limits
+ */
+async function handleRegenerateAll(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const table = url.searchParams.get('table') || 'students';
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || '10'), 15); // Max 15 per request to stay under subrequest limit
+  const offset = parseInt(url.searchParams.get('offset') || '0');
+
+  const validTables = ['students', 'opportunities', 'courses'];
+  if (!validTables.includes(table)) {
+    return jsonResponse({ error: `Invalid table. Must be one of: ${validTables.join(', ')}` }, 400);
+  }
+
+  const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+
+  // Get records with full data in one query to minimize subrequests
+  const { data: records, error: fetchError } = await supabase
+    .from(table)
+    .select('*')
+    .range(offset, offset + limit - 1);
+
+  if (fetchError) {
+    return jsonResponse({ error: `Failed to fetch records: ${fetchError.message}` }, 500);
+  }
+
+  if (!records || records.length === 0) {
+    return jsonResponse({
+      success: true,
+      message: `No more ${table} records to process`,
+      processed: 0,
+      offset,
+      nextOffset: null,
+    });
+  }
+
+  const results: Array<{ id: string; success: boolean; error?: string }> = [];
+
+  for (const record of records) {
+    try {
+      let text: string | null;
+      let enrichedRecord = { ...record };
+      
+      if (table === 'students') {
+        // Fetch related data for students (3 queries per student)
+        const [skillsRes, enrollmentsRes, trainingsRes] = await Promise.all([
+          supabase.from('skills').select('name, level, type').eq('student_id', record.id).eq('enabled', true),
+          supabase.from('course_enrollments').select('course_title, status, progress, skills_acquired').eq('student_id', record.id),
+          supabase.from('trainings').select('title, organization, status, description').eq('student_id', record.id)
+        ]);
+        
+        enrichedRecord.skills = skillsRes.data || [];
+        enrichedRecord.courseEnrollments = enrollmentsRes.data || [];
+        enrichedRecord.trainings = trainingsRes.data || [];
+        text = buildStudentText(enrichedRecord);
+      } else if (table === 'opportunities') {
+        text = buildOpportunityText(record);
+      } else if (table === 'courses') {
+        text = buildCourseText(record);
+      } else {
+        text = JSON.stringify(record);
+      }
+
+      if (!text || text.length < 10) {
+        results.push({ id: record.id, success: false, error: 'Insufficient data' });
+        continue;
+      }
+
+      // Generate embedding
+      const { embedding } = await generateEmbedding(text, env);
+
+      // Update record
+      const { error: updateError } = await supabase
+        .from(table)
+        .update({ embedding })
+        .eq('id', record.id);
+
+      if (updateError) {
+        results.push({ id: record.id, success: false, error: updateError.message });
+      } else {
+        results.push({ id: record.id, success: true });
+      }
+
+    } catch (error) {
+      results.push({ id: record.id, success: false, error: (error as Error).message });
+    }
+  }
+
+  const successCount = results.filter(r => r.success).length;
+  const hasMore = records.length === limit;
+  
+  return jsonResponse({
+    success: true,
+    table,
+    processed: records.length,
+    succeeded: successCount,
+    failed: records.length - successCount,
+    offset,
+    nextOffset: hasMore ? offset + limit : null,
+    results,
+  });
+}
+
+/**
  * Get embedding statistics
  */
 async function handleStats(env: Env): Promise<Response> {
@@ -702,10 +791,7 @@ async function handleStats(env: Env): Promise<Response> {
   return jsonResponse({
     success: true,
     stats,
-    availableModels: {
-      openrouter: !!env.OPENROUTER_API_KEY,
-      local: !!env.EMBEDDING_SERVICE_URL,
-    },
+    embeddingProvider: 'openrouter',
   });
 }
 
@@ -773,11 +859,18 @@ async function processEmbeddingQueue(env: Env, batchSize: number = 20): Promise<
       }
 
       // Build text based on table type
-      let text: string;
+      let text: string | null;
       let enrichedRecord = { ...record };
       
       switch (table_name) {
         case 'students':
+          // Fetch skills for this student
+          const { data: skills } = await supabase
+            .from('skills')
+            .select('name, level, type')
+            .eq('student_id', record_id)
+            .eq('enabled', true);
+          
           // Fetch course enrollments for this student
           const { data: courseEnrollments } = await supabase
             .from('course_enrollments')
@@ -791,6 +884,7 @@ async function processEmbeddingQueue(env: Env, batchSize: number = 20): Promise<
             .select('title, organization, status, description')
             .eq('student_id', record_id);
           
+          enrichedRecord.skills = skills || [];
           enrichedRecord.courseEnrollments = courseEnrollments || [];
           enrichedRecord.trainings = trainings || [];
           text = buildStudentText(enrichedRecord);
@@ -955,7 +1049,7 @@ export default {
       if (path === '/' || path === '/health') {
         return jsonResponse({
           service: 'embedding-api',
-          version: '2.2.0',
+          version: '2.3.0',
           status: 'healthy',
           embeddingProvider: 'openrouter',
           endpoints: [
@@ -963,6 +1057,7 @@ export default {
             'POST /embed/batch - Generate batch embeddings',
             'POST /backfill - Backfill missing embeddings',
             'POST /regenerate - Regenerate specific embedding',
+            'POST /regenerate-all - Regenerate ALL embeddings for a table',
             'POST /process-queue - Process embedding queue',
             'GET /queue-status - Get queue status',
             'GET /stats - Get embedding statistics',
@@ -988,6 +1083,11 @@ export default {
       // Regenerate specific embedding
       if (path === '/regenerate' && request.method === 'POST') {
         return await handleRegenerate(request, env);
+      }
+
+      // Regenerate ALL embeddings for a table (force refresh)
+      if (path === '/regenerate-all' && request.method === 'POST') {
+        return await handleRegenerateAll(request, env);
       }
 
       // Process queue manually
