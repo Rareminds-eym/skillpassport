@@ -1,52 +1,85 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     PlusCircleIcon,
     XMarkIcon,
     BookOpenIcon,
     CheckCircleIcon,
-    MagnifyingGlassIcon,
     ArrowPathIcon,
     InformationCircleIcon,
     AcademicCapIcon,
     CheckIcon,
     XCircleIcon,
     PencilIcon,
+    ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../../components/common/SearchBar";
+import KPICard from "../../../components/admin/KPICard";
+import Pagination from "../../../components/admin/Pagination";
+import ConfirmationModal from "../../../components/ui/ConfirmationModal";
+import { 
+    getDepartments, 
+    getPrograms, 
+    getFaculty, 
+    getCourseMappings,
+    mapCourse,
+    updateCourseMapping,
+    deleteCourseMapping,
+    isSemesterLocked,
+    lockSemester,
+    unlockSemester,
+    cloneSemesterStructure,
+    type Department,
+    type Program,
+    type Faculty,
+    type CourseMapping
+} from "../../../services/college/courseMappingService";
 
 interface Course {
-    id: number;
+    id: string;
     code: string;
     name: string;
     credits: number;
     semester: number;
     type: 'core' | 'dept_elective' | 'open_elective';
-    facultyId?: number;
-    capacity?: number; // For electives only
+    facultyId?: string;
+    capacity?: number;
 }
 
-interface Department {
-    id: number;
-    name: string;
-    code: string;
-    courses?: Course[];
-}
+// Utility functions
+const getTypeColor = (type: string) => {
+    switch (type) {
+        case 'core': return 'bg-blue-100 text-blue-800';
+        case 'dept_elective': return 'bg-green-100 text-green-800';
+        case 'open_elective': return 'bg-purple-100 text-purple-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+};
 
-interface Program {
-    id: number;
-    name: string;
-    code: string;
-    departmentId: number;
-}
+const getTypeLabel = (type: string) => {
+    switch (type) {
+        case 'core': return 'Core';
+        case 'dept_elective': return 'Dept Elective';
+        case 'open_elective': return 'Open Elective';
+        default: return type;
+    }
+};
 
-interface Faculty {
-    id: number;
-    name: string;
-    email: string;
-    maxWorkload: number; // Maximum credits they can handle
-    currentWorkload: number; // Current assigned credits
-}
+// Custom hooks
+const useDebounce = (value: string, delay: number) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [value, delay]);
+
+    return debouncedValue;
+};
 
 
 
@@ -126,7 +159,7 @@ const AddEditCourseModal = ({
     const [credits, setCredits] = useState<number | "">(editingCourse?.credits || "");
     const [semester, setSemester] = useState<number | "">(editingCourse?.semester || "");
     const [type, setType] = useState<'core' | 'dept_elective' | 'open_elective'>(editingCourse?.type || 'core');
-    const [facultyId, setFacultyId] = useState<number | "">(editingCourse?.facultyId || "");
+    const [facultyId, setFacultyId] = useState<string | "">(editingCourse?.facultyId || "");
     const [capacity, setCapacity] = useState<number | "">(editingCourse?.capacity || "");
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
@@ -178,25 +211,18 @@ const AddEditCourseModal = ({
             return;
         }
 
-        // Check faculty workload
-        const selectedFaculty = faculties.find(f => f.id === Number(facultyId));
-        if (selectedFaculty && (selectedFaculty.currentWorkload + Number(credits)) > selectedFaculty.maxWorkload) {
-            setError(`Faculty workload limit exceeded. Available capacity: ${selectedFaculty.maxWorkload - selectedFaculty.currentWorkload} credits.`);
-            return;
-        }
-
         setError(null);
         setSubmitting(true);
 
-        setTimeout(() => {
+        try {
             const courseData = {
-                id: isEditing ? editingCourse!.id : Date.now(),
+                id: isEditing ? editingCourse!.id : crypto.randomUUID(),
                 code: code.trim().toUpperCase(),
                 name: name.trim(),
                 credits: Number(credits),
                 semester: Number(semester),
                 type,
-                facultyId: Number(facultyId),
+                facultyId: facultyId || undefined,
                 capacity: (type === 'dept_elective' || type === 'open_elective') ? Number(capacity) : undefined,
             };
 
@@ -206,9 +232,12 @@ const AddEditCourseModal = ({
                 onCreated(courseData);
             }
             
-            setSubmitting(false);
             handleClose();
-        }, 400);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An error occurred');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -311,16 +340,24 @@ const AddEditCourseModal = ({
                     </label>
                     <select
                         value={facultyId as any}
-                        onChange={(e) => setFacultyId(e.target.value === "" ? "" : Number(e.target.value))}
+                        onChange={(e) => setFacultyId(e.target.value === "" ? "" : e.target.value)}
                         className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                        disabled={faculties.length === 0}
                     >
-                        <option value="">Select faculty</option>
+                        <option value="">
+                            {faculties.length === 0 ? "Loading faculty..." : "Select faculty"}
+                        </option>
                         {faculties.map((faculty) => (
                             <option key={faculty.id} value={faculty.id}>
-                                {faculty.name} ({faculty.maxWorkload - faculty.currentWorkload} credits available)
+                                {faculty.name} ({faculty.currentWorkload}/{faculty.maxWorkload} credits)
                             </option>
                         ))}
                     </select>
+                    {faculties.length === 0 && (
+                        <p className="mt-1 text-xs text-amber-600">
+                            No faculty assigned to this department. Please assign faculty to the department first.
+                        </p>
+                    )}
                 </div>
 
                 {(type === 'dept_elective' || type === 'open_elective') && (
@@ -376,165 +413,91 @@ const AddEditCourseModal = ({
 /* ==============================
    COURSE CARD COMPONENT
    ============================== */
-const CourseCard = ({
+const CourseCard = React.memo(({
     course,
-    isSelected,
-    onToggle,
     onEdit,
+    onDelete,
     faculties,
 }: {
     course: Course;
-    isSelected: boolean;
-    onToggle: () => void;
     onEdit: (course: Course) => void;
+    onDelete: (courseId: string) => void;
     faculties: Faculty[];
 }) => {
-    const faculty = faculties.find(f => f.id === course.facultyId);
-    
-    const getTypeColor = (type: string) => {
-        switch (type) {
-            case 'core': return 'bg-blue-100 text-blue-800';
-            case 'dept_elective': return 'bg-green-100 text-green-800';
-            case 'open_elective': return 'bg-purple-100 text-purple-800';
-            default: return 'bg-gray-100 text-gray-800';
-        }
-    };
-
-    const getTypeLabel = (type: string) => {
-        switch (type) {
-            case 'core': return 'Core';
-            case 'dept_elective': return 'Dept Elective';
-            case 'open_elective': return 'Open Elective';
-            default: return type;
-        }
-    };
-    return (
-        <div
-            className={`group relative rounded-lg border-2 p-4 transition-all duration-200 ${isSelected
-                ? "border-indigo-500 bg-indigo-50 shadow-md"
-                : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
-                }`}
-        >
-            {/* Edit Button - Top Right Corner, Always Visible */}
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(course);
-                }}
-                className="absolute top-2 right-2 p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors z-10"
-                title="Edit course"
-            >
-                <PencilIcon className="h-4 w-4" />
-            </button>
-
-            {/* Main Card Content - Clickable for Selection */}
-            <div onClick={onToggle} className="cursor-pointer">
-                <div className="flex items-start gap-3">
-                    {/* Checkbox */}
-                    <div className="flex-shrink-0 mt-0.5">
-                        <div
-                            className={`h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${isSelected
-                                ? "border-indigo-600 bg-indigo-600"
-                                : "border-gray-300 group-hover:border-gray-400"
-                                }`}
-                        >
-                            {isSelected && <CheckIcon className="h-3.5 w-3.5 text-white" />}
-                        </div>
-                    </div>
-
-                    {/* Course Info */}
-                    <div className="flex-1 min-w-0 pr-8">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold ${isSelected
-                                    ? "bg-indigo-600 text-white"
-                                    : "bg-gray-100 text-gray-700"
-                                    }`}
-                            >
-                                {course.code}
-                            </span>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${getTypeColor(course.type)}`}>
-                                {getTypeLabel(course.type)}
-                            </span>
-                        </div>
-                        <h4 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">
-                            {course.name}
-                        </h4>
-                        <div className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
-                                <span className="inline-flex items-center gap-1">
-                                    <AcademicCapIcon className="h-4 w-4" />
-                                    {course.credits} Credits
-                                </span>
-                                <span className="inline-flex items-center gap-1">
-                                    <BookOpenIcon className="h-4 w-4" />
-                                    Semester {course.semester}
-                                </span>
-                            </div>
-                            {faculty && (
-                                <div className="text-xs text-gray-500">
-                                    Faculty: {faculty.name}
-                                </div>
-                            )}
-                            {course.capacity && (
-                                <div className="text-xs text-gray-500">
-                                    Capacity: {course.capacity} students
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Selected Badge - Bottom Right Corner */}
-            {isSelected && (
-                <div className="absolute bottom-2 right-2">
-                    <CheckCircleIcon className="h-5 w-5 text-indigo-600" />
-                </div>
-            )}
-        </div>
+    const faculty = useMemo(() => 
+        faculties.find(f => f.id === course.facultyId), 
+        [faculties, course.facultyId]
     );
-};
 
-/* ==============================
-   STATS CARD
-   ============================== */
-const StatsCard = ({
-    label,
-    value,
-    icon: Icon,
-    color = "blue",
-}: {
-    label: string;
-    value: number;
-    icon: any;
-    color?: "blue" | "green" | "purple" | "amber";
-}) => {
-    const colorClasses = {
-        blue: "bg-blue-50 text-blue-600 border-blue-200",
-        green: "bg-green-50 text-green-600 border-green-200",
-        purple: "bg-purple-50 text-purple-600 border-purple-200",
-        amber: "bg-amber-50 text-amber-600 border-amber-200",
-    };
+    const handleEdit = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        onEdit(course);
+    }, [onEdit, course]);
+
+    const handleDelete = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        onDelete(course.id);
+    }, [onDelete, course.id]);
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-                <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                        {label}
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900">{value}</p>
-                </div>
-                <div
-                    className={`p-3 rounded-xl border ${colorClasses[color]} transition-colors`}
+        <div className="group relative rounded-lg border-2 border-gray-200 bg-white p-4 transition-all duration-200 hover:border-gray-300 hover:shadow-sm">
+            {/* Action Buttons - Top Right Corner */}
+            <div className="absolute top-2 right-2 flex gap-1">
+                <button
+                    onClick={handleEdit}
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                    title="Edit course"
                 >
-                    <Icon className="h-5 w-5" />
+                    <PencilIcon className="h-4 w-4" />
+                </button>
+                <button
+                    onClick={handleDelete}
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    title="Delete course"
+                >
+                    <XMarkIcon className="h-4 w-4" />
+                </button>
+            </div>
+
+            {/* Course Info */}
+            <div className="pr-20">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-gray-100 text-gray-700">
+                        {course.code}
+                    </span>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${getTypeColor(course.type)}`}>
+                        {getTypeLabel(course.type)}
+                    </span>
+                </div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">
+                    {course.name}
+                </h4>
+                <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+                        <span className="inline-flex items-center gap-1">
+                            <AcademicCapIcon className="h-4 w-4" />
+                            {course.credits} Credits
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                            <BookOpenIcon className="h-4 w-4" />
+                            Semester {course.semester}
+                        </span>
+                    </div>
+                    {faculty && (
+                        <div className="text-xs text-gray-500">
+                            Faculty: {faculty.name}
+                        </div>
+                    )}
+                    {course.capacity && (
+                        <div className="text-xs text-gray-500">
+                            Capacity: {course.capacity} students
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     );
-};
+});
 
 /* ==============================
    CLONE SEMESTER MODAL
@@ -635,7 +598,7 @@ const ElectiveBasketModal = ({
 }) => {
     const [editingCourse, setEditingCourse] = useState<Course | null>(null);
     const [tempCapacity, setTempCapacity] = useState<number | "">("");
-    const [tempFacultyId, setTempFacultyId] = useState<number | "">("");
+    const [tempFacultyId, setTempFacultyId] = useState<string | "">("");
     
     const electiveCourses = courses.filter(c => c.type === 'dept_elective' || c.type === 'open_elective');
     
@@ -650,7 +613,7 @@ const ElectiveBasketModal = ({
             const updatedCourse = {
                 ...editingCourse,
                 capacity: Number(tempCapacity),
-                facultyId: Number(tempFacultyId)
+                facultyId: tempFacultyId as string
             };
             onUpdateCourse(updatedCourse);
             setEditingCourse(null);
@@ -663,17 +626,6 @@ const ElectiveBasketModal = ({
         setEditingCourse(null);
         setTempCapacity("");
         setTempFacultyId("");
-    };
-    
-    const getAvailableCapacity = (facultyId: number, excludeCourseId?: number) => {
-        const faculty = faculties.find(f => f.id === facultyId);
-        if (!faculty) return 0;
-        
-        const currentWorkload = courses
-            .filter(c => c.facultyId === facultyId && c.id !== excludeCourseId)
-            .reduce((sum, c) => sum + c.credits, 0);
-            
-        return faculty.maxWorkload - currentWorkload;
     };
     
     return (
@@ -732,13 +684,16 @@ const ElectiveBasketModal = ({
                                                 </label>
                                                 <select
                                                     value={tempFacultyId}
-                                                    onChange={(e) => setTempFacultyId(e.target.value === "" ? "" : Number(e.target.value))}
+                                                    onChange={(e) => setTempFacultyId(e.target.value === "" ? "" : e.target.value)}
                                                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                                    disabled={faculties.length === 0}
                                                 >
-                                                    <option value="">Select faculty</option>
+                                                    <option value="">
+                                                        {faculties.length === 0 ? "Loading faculty..." : "Select faculty"}
+                                                    </option>
                                                     {faculties.map((f) => (
                                                         <option key={f.id} value={f.id}>
-                                                            {f.name} ({getAvailableCapacity(f.id, course.id)} credits available)
+                                                            {f.name} ({f.currentWorkload}/{f.maxWorkload} credits)
                                                         </option>
                                                     ))}
                                                 </select>
@@ -829,222 +784,359 @@ const ElectiveBasketModal = ({
    MAIN COMPONENT
    ============================== */
 const CourseMapping: React.FC = () => {
-    // Sample data
-    const [departments, setDepartments] = useState<Department[]>([
-        {
-            id: 1,
-            name: "Computer Science & Engineering",
-            code: "CSE",
-            courses: [
-                { id: 1, code: "CS101", name: "Intro to Programming", credits: 4, semester: 1, type: 'core', facultyId: 1 },
-                { id: 2, code: "CS102", name: "Data Structures", credits: 4, semester: 2, type: 'core', facultyId: 2 },
-            ],
-        },
-        {
-            id: 2,
-            name: "Electronics & Communication",
-            code: "ECE",
-            courses: [
-                { id: 3, code: "EC101", name: "Circuit Theory", credits: 4, semester: 1, type: 'core', facultyId: 3 },
-            ],
-        },
-        {
-            id: 3,
-            name: "Mechanical Engineering",
-            code: "MECH",
-            courses: [],
-        },
-    ]);
-
-    const [programs] = useState<Program[]>([
-        { id: 1, name: "Bachelor of Technology", code: "B.Tech", departmentId: 1 },
-        { id: 2, name: "Master of Technology", code: "M.Tech", departmentId: 1 },
-        { id: 3, name: "Bachelor of Technology", code: "B.Tech", departmentId: 2 },
-        { id: 4, name: "Bachelor of Technology", code: "B.Tech", departmentId: 3 },
-    ]);
-
-    const [faculties, setFaculties] = useState<Faculty[]>([
-        { id: 1, name: "Dr. John Smith", email: "john@college.edu", maxWorkload: 16, currentWorkload: 8 },
-        { id: 2, name: "Dr. Sarah Johnson", email: "sarah@college.edu", maxWorkload: 18, currentWorkload: 12 },
-        { id: 3, name: "Dr. Mike Wilson", email: "mike@college.edu", maxWorkload: 16, currentWorkload: 4 },
-        { id: 4, name: "Dr. Emily Brown", email: "emily@college.edu", maxWorkload: 20, currentWorkload: 16 },
-    ]);
-
-    const [allCourses, setAllCourses] = useState<Course[]>([
-        { id: 1, code: "CS101", name: "Intro to Programming", credits: 4, semester: 1, type: 'core', facultyId: 1 },
-        { id: 2, code: "CS102", name: "Data Structures", credits: 4, semester: 2, type: 'core', facultyId: 2 },
-        { id: 3, code: "EC101", name: "Circuit Theory", credits: 4, semester: 1, type: 'core', facultyId: 3 },
-        { id: 4, code: "CS201", name: "Algorithms", credits: 4, semester: 3, type: 'core', facultyId: 1 },
-        { id: 5, code: "CS202", name: "Database Systems", credits: 4, semester: 3, type: 'dept_elective', facultyId: 2, capacity: 60 },
-        { id: 6, code: "EC201", name: "Digital Electronics", credits: 4, semester: 2, type: 'core', facultyId: 3 },
-        { id: 7, code: "ME101", name: "Engineering Mechanics", credits: 4, semester: 1, type: 'core', facultyId: 4 },
-        { id: 8, code: "ME102", name: "Thermodynamics", credits: 4, semester: 2, type: 'open_elective', facultyId: 4, capacity: 40 },
-    ]);
-
-    const [selectedDeptId, setSelectedDeptId] = useState(1);
-    const [selectedProgramId, setSelectedProgramId] = useState(1);
-    const [selectedCourses, setSelectedCourses] = useState<number[]>([]);
+    // State for data
+    const [departments, setDepartments] = useState<Department[]>([]);
+    const [programs, setPrograms] = useState<Program[]>([]);
+    const [faculties, setFaculties] = useState<Faculty[]>([]);
+    const [allCourses, setAllCourses] = useState<Course[]>([]);
+    
+    // State for UI
+    const [selectedDeptId, setSelectedDeptId] = useState<string>("");
+    const [selectedProgramId, setSelectedProgramId] = useState<string>("");
     const [searchQuery, setSearchQuery] = useState("");
     const [semesterFilter, setSemesterFilter] = useState<number | "">("");
     const [typeFilter, setTypeFilter] = useState<'core' | 'dept_elective' | 'open_elective' | "">("");
+    const [facultyFilter, setFacultyFilter] = useState<string>("");
+    const [creditsFilter, setCreditsFilter] = useState<string>("");
+    const [sortBy, setSortBy] = useState<'name' | 'code' | 'semester' | 'credits'>('semester');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(6);
+    
+    // State for modals
     const [showAddModal, setShowAddModal] = useState(false);
     const [showCloneModal, setShowCloneModal] = useState(false);
     const [showElectiveBasketModal, setShowElectiveBasketModal] = useState(false);
     const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-    const [isLocked, setIsLocked] = useState(false); // Lock mapping after semester start
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    
+    // State for delete confirmation
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    
+    // State for loading and errors
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [isLocked, setIsLocked] = useState(false);
 
+    // Debounced search query
+    const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+    // Memoized computed values
     const selectedDept = useMemo(
         () => departments.find((d) => d.id === selectedDeptId) || null,
         [departments, selectedDeptId]
     );
 
-    // Sync selected courses when department changes
-    useEffect(() => {
-        if (selectedDept) {
-            const currentCourses = selectedDept.courses?.map((c) => c.id) || [];
-            setSelectedCourses(currentCourses);
-            setHasUnsavedChanges(false);
-        }
-    }, [selectedDeptId, selectedDept]);
-
-    // Track changes
-    useEffect(() => {
-        if (selectedDept) {
-            const originalCourses = selectedDept.courses?.map((c) => c.id) || [];
-            const hasChanges =
-                JSON.stringify([...selectedCourses].sort()) !==
-                JSON.stringify([...originalCourses].sort());
-            setHasUnsavedChanges(hasChanges);
-
-        }
-    }, [selectedCourses, selectedDept]);
-
     const availablePrograms = useMemo(() => {
-        return programs.filter(p => p.departmentId === selectedDeptId);
+        return programs.filter(p => p.department_id === selectedDeptId);
     }, [programs, selectedDeptId]);
 
     const filteredCourses = useMemo(() => {
-        const q = searchQuery.toLowerCase();
-        return allCourses.filter(
-            (course) =>
-                (q === "" ||
-                    course.name.toLowerCase().includes(q) ||
-                    course.code.toLowerCase().includes(q)) &&
-                (semesterFilter === "" || course.semester === semesterFilter) &&
-                (typeFilter === "" || course.type === typeFilter)
-        );
-    }, [allCourses, searchQuery, semesterFilter, typeFilter]);
+        let courses = [...allCourses];
 
-    const toggleCourse = (id: number) => {
-        setSelectedCourses((prev) =>
-            prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
-        );
-    };
-
-    const handleSaveMapping = () => {
-        if (!selectedDept) return;
-
-        const mapped = allCourses.filter((c) => selectedCourses.includes(c.id));
-        setDepartments((prev) =>
-            prev.map((d) => (d.id === selectedDept.id ? { ...d, courses: mapped } : d))
-        );
-        setHasUnsavedChanges(false);
-    };
-
-    const handleReset = () => {
-        if (selectedDept) {
-            setSelectedCourses(selectedDept.courses?.map((c) => c.id) || []);
-            setHasUnsavedChanges(false);
+        // Apply client-side filters for advanced filtering
+        if (facultyFilter) {
+            courses = courses.filter(c => c.facultyId === facultyFilter);
         }
-    };
 
-    const handleCreateCourse = (course: Course) => {
-        setAllCourses((prev) => [...prev, course]);
-        // Update faculty workload
-        setFaculties(prev => prev.map(f => 
-            f.id === course.facultyId 
-                ? { ...f, currentWorkload: f.currentWorkload + course.credits }
-                : f
-        ));
-    };
+        if (creditsFilter) {
+            courses = courses.filter(c => c.credits.toString() === creditsFilter);
+        }
 
-    const handleUpdateCourse = (updatedCourse: Course) => {
-        const originalCourse = allCourses.find(c => c.id === updatedCourse.id);
+        // Apply sorting
+        courses.sort((a, b) => {
+            let aValue: any, bValue: any;
+            
+            switch (sortBy) {
+                case 'name':
+                    aValue = a.name.toLowerCase();
+                    bValue = b.name.toLowerCase();
+                    break;
+                case 'code':
+                    aValue = a.code.toLowerCase();
+                    bValue = b.code.toLowerCase();
+                    break;
+                case 'semester':
+                    aValue = a.semester;
+                    bValue = b.semester;
+                    break;
+                case 'credits':
+                    aValue = a.credits;
+                    bValue = b.credits;
+                    break;
+                default:
+                    return 0;
+            }
+
+            if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        return courses;
+    }, [allCourses, facultyFilter, creditsFilter, sortBy, sortOrder]);
+
+    // Pagination calculations
+    const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedCourses = filteredCourses.slice(startIndex, startIndex + itemsPerPage);
+
+    // Load initial data
+    const loadInitialData = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            const [depts, progs] = await Promise.all([
+                getDepartments(),
+                getPrograms()
+            ]);
+            
+            setDepartments(depts);
+            setPrograms(progs);
+            setSelectedDeptId("");
+            setSelectedProgramId("");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load data');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    // Load faculty when department changes
+    const loadFaculty = useCallback(async () => {
+        if (!selectedDeptId) return;
         
-        setAllCourses((prev) => prev.map(c => 
-            c.id === updatedCourse.id ? updatedCourse : c
-        ));
+        try {
+            const faculty = await getFaculty(selectedDeptId);
+            setFaculties(faculty);
+        } catch (err) {
+            console.error('Failed to load faculty:', err);
+            setFaculties([]);
+        }
+    }, [selectedDeptId]);
+
+    // Load course mappings
+    const loadCourseMappings = useCallback(async () => {
+        if (!selectedProgramId) return;
         
-        // Update faculty workload
-        if (originalCourse && originalCourse.facultyId !== updatedCourse.facultyId) {
-            setFaculties(prev => prev.map(f => {
-                // Remove credits from old faculty
-                if (f.id === originalCourse.facultyId) {
-                    return { ...f, currentWorkload: f.currentWorkload - originalCourse.credits };
-                }
-                // Add credits to new faculty
-                if (f.id === updatedCourse.facultyId) {
-                    return { ...f, currentWorkload: f.currentWorkload + updatedCourse.credits };
-                }
-                return f;
+        try {
+            setLoading(true);
+            const mappings = await getCourseMappings(
+                selectedProgramId,
+                semesterFilter === "" ? undefined : semesterFilter,
+                debouncedSearchQuery || undefined,
+                typeFilter === "" ? undefined : typeFilter
+            );
+            
+            // Convert mappings to courses format for UI
+            const courses: Course[] = mappings.map(mapping => ({
+                id: mapping.id,
+                code: mapping.course_code,
+                name: mapping.course_name,
+                credits: Number(mapping.credits),
+                semester: mapping.semester,
+                type: mapping.type,
+                facultyId: mapping.faculty_id,
+                capacity: mapping.capacity
             }));
-        } else if (originalCourse && originalCourse.credits !== updatedCourse.credits) {
-            // Same faculty, different credits
-            const creditDiff = updatedCourse.credits - originalCourse.credits;
-            setFaculties(prev => prev.map(f => 
-                f.id === updatedCourse.facultyId 
-                    ? { ...f, currentWorkload: f.currentWorkload + creditDiff }
-                    : f
-            ));
+            
+            setAllCourses(courses);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load course mappings');
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedProgramId, debouncedSearchQuery, semesterFilter, typeFilter]);
+
+    // Check semester lock
+    const checkSemesterLock = useCallback(async () => {
+        if (!selectedProgramId || semesterFilter === "") return;
+        
+        try {
+            const locked = await isSemesterLocked(selectedProgramId, Number(semesterFilter));
+            setIsLocked(locked);
+        } catch (err) {
+            console.error('Failed to check semester lock:', err);
+        }
+    }, [selectedProgramId, semesterFilter]);
+
+    // Event handlers
+    const handleCreateCourse = useCallback(async (course: Course) => {
+        if (!selectedProgramId) {
+            setError('Please select a department and program first');
+            return;
         }
         
-        setEditingCourse(null);
-    };
+        try {
+            const mappingData = {
+                program_id: selectedProgramId,
+                semester: course.semester,
+                course_code: course.code,
+                course_name: course.name,
+                credits: course.credits,
+                type: course.type,
+                faculty_id: course.facultyId,
+                capacity: course.capacity
+            };
+            
+            await mapCourse(mappingData);
+            await loadCourseMappings();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to create course');
+        }
+    }, [selectedProgramId, loadCourseMappings]);
 
-    const handleEditCourse = (course: Course) => {
+    const handleUpdateCourse = useCallback(async (updatedCourse: Course) => {
+        try {
+            const mappingData = {
+                course_code: updatedCourse.code,
+                course_name: updatedCourse.name,
+                credits: updatedCourse.credits,
+                semester: updatedCourse.semester,
+                type: updatedCourse.type,
+                faculty_id: updatedCourse.facultyId,
+                capacity: updatedCourse.capacity
+            };
+            
+            await updateCourseMapping(updatedCourse.id, mappingData);
+            await loadCourseMappings();
+            
+            setEditingCourse(null);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to update course');
+        }
+    }, [loadCourseMappings]);
+
+    const handleEditCourse = useCallback((course: Course) => {
         setEditingCourse(course);
         setShowAddModal(true);
-    };
+    }, []);
 
-    const handleCloneSemester = (fromSemester: number, toSemester: number) => {
-        if (!selectedDept) return;
+    const handleDeleteCourse = useCallback(async (courseId: string) => {
+        if (isLocked) return;
         
-        const semesterCourses = selectedDept.courses?.filter(c => c.semester === fromSemester) || [];
-        const clonedCourses = semesterCourses.map(course => ({
-            ...course,
-            id: Date.now() + Math.random(),
-            semester: toSemester,
-            code: course.code.replace(/\d+/, toSemester.toString().padStart(2, '0'))
-        }));
+        const course = allCourses.find(c => c.id === courseId);
+        if (course) {
+            setCourseToDelete(course);
+            setShowDeleteModal(true);
+        }
+    }, [isLocked, allCourses]);
+
+    const confirmDeleteCourse = useCallback(async () => {
+        if (!courseToDelete) return;
         
-        setAllCourses(prev => [...prev, ...clonedCourses]);
-        setShowCloneModal(false);
-    };
+        try {
+            setIsDeleting(true);
+            await deleteCourseMapping(courseToDelete.id);
+            await loadCourseMappings();
+            
+            setShowDeleteModal(false);
+            setCourseToDelete(null);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to delete course');
+        } finally {
+            setIsDeleting(false);
+        }
+    }, [courseToDelete, loadCourseMappings]);
 
-    const handleToggleLock = () => {
-        setIsLocked(!isLocked);
-    };
+    const handleCloneSemester = useCallback(async (fromSemester: number, toSemester: number) => {
+        if (!selectedProgramId) return;
+        
+        try {
+            await cloneSemesterStructure(selectedProgramId, fromSemester, selectedProgramId, toSemester);
+            await loadCourseMappings();
+            setShowCloneModal(false);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to clone semester');
+        }
+    }, [selectedProgramId, loadCourseMappings]);
 
-    const handleSelectAll = () => {
-        const allIds = filteredCourses.map((c) => c.id);
-        setSelectedCourses((prev) => {
-            const newSet = new Set([...prev, ...allIds]);
-            return Array.from(newSet);
-        });
-    };
+    const handleToggleLock = useCallback(async () => {
+        if (!selectedProgramId || semesterFilter === "") return;
+        
+        try {
+            if (isLocked) {
+                await unlockSemester(selectedProgramId, Number(semesterFilter));
+            } else {
+                await lockSemester(selectedProgramId, Number(semesterFilter));
+            }
+            setIsLocked(!isLocked);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to toggle lock');
+        }
+    }, [selectedProgramId, semesterFilter, isLocked]);
 
-    const handleClearAll = () => {
-        const filteredIds = filteredCourses.map((c) => c.id);
-        setSelectedCourses((prev) => prev.filter((id) => !filteredIds.includes(id)));
-    };
+    // Effects
+    useEffect(() => {
+        loadInitialData();
+    }, [loadInitialData]);
 
-    // Stats
-    const totalAvailableCourses = allCourses.length;
-    const totalMappedCourses = selectedCourses.length;
-    // const unmappedCourses = filteredCourses.filter(
-    //     (c) => !selectedCourses.includes(c.id)
-    // ).length;
+    useEffect(() => {
+        if (selectedDeptId) {
+            loadFaculty();
+        }
+    }, [selectedDeptId, loadFaculty]);
+
+    useEffect(() => {
+        if (selectedProgramId) {
+            loadCourseMappings();
+            checkSemesterLock();
+        }
+    }, [selectedProgramId, loadCourseMappings, checkSemesterLock]);
+
+    // Update selected program when department changes
+    useEffect(() => {
+        if (selectedDeptId && availablePrograms.length > 0) {
+            const currentProgram = availablePrograms.find(p => p.id === selectedProgramId);
+            if (!currentProgram) {
+                setSelectedProgramId("");
+            }
+        } else if (!selectedDeptId) {
+            setSelectedProgramId("");
+        }
+    }, [selectedDeptId, availablePrograms, selectedProgramId]);
+
+    // Reset to first page when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [debouncedSearchQuery, semesterFilter, typeFilter, selectedProgramId, facultyFilter, creditsFilter, sortBy, sortOrder]);
+
+    // Show loading state
+    if (loading && departments.length === 0) {
+        return (
+            <div className="min-h-full flex items-center justify-center p-8">
+                <div className="text-center">
+                    <ArrowPathIcon className="h-8 w-8 animate-spin text-indigo-600 mx-auto mb-4" />
+                    <p className="text-gray-600">Loading course mapping data...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Show error state
+    if (error) {
+        return (
+            <div className="min-h-full flex items-center justify-center p-8">
+                <div className="text-center max-w-md">
+                    <XCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Data</h3>
+                    <p className="text-gray-600 mb-4">{error}</p>
+                    <button
+                        onClick={loadInitialData}
+                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                    >
+                        <ArrowPathIcon className="h-4 w-4" />
+                        Retry
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-full flex flex-col p-4 sm:p-6 lg:p-8">
@@ -1070,8 +1162,9 @@ const CourseMapping: React.FC = () => {
                     <div className="flex flex-wrap gap-3">
                         <button
                             onClick={() => setShowAddModal(true)}
-                            disabled={isLocked}
+                            disabled={isLocked || !selectedDeptId || !selectedProgramId}
                             className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 active:scale-95 transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            title={!selectedDeptId || !selectedProgramId ? "Please select department and program first" : ""}
                         >
                             <PlusCircleIcon className="h-5 w-5" />
                             Add Course
@@ -1079,8 +1172,9 @@ const CourseMapping: React.FC = () => {
                         
                         <button
                             onClick={() => setShowCloneModal(true)}
-                            disabled={isLocked}
+                            disabled={isLocked || !selectedDeptId || !selectedProgramId}
                             className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 active:scale-95 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            title={!selectedDeptId || !selectedProgramId ? "Please select department and program first" : ""}
                         >
                             <ArrowPathIcon className="h-5 w-5" />
                             Clone Semester
@@ -1088,7 +1182,9 @@ const CourseMapping: React.FC = () => {
                         
                         <button
                             onClick={() => setShowElectiveBasketModal(true)}
-                            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
+                            disabled={!selectedDeptId || !selectedProgramId}
+                            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 active:scale-95 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            title={!selectedDeptId || !selectedProgramId ? "Please select department and program first" : ""}
                         >
                             <BookOpenIcon className="h-5 w-5" />
                             Elective Basket
@@ -1096,11 +1192,13 @@ const CourseMapping: React.FC = () => {
                         
                         <button
                             onClick={handleToggleLock}
-                            className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition-all ${
+                            disabled={!selectedDeptId || !selectedProgramId}
+                            className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition-all disabled:bg-gray-100 disabled:cursor-not-allowed ${
                                 isLocked 
                                     ? 'bg-red-600 text-white hover:bg-red-700' 
                                     : 'border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
                             }`}
+                            title={!selectedDeptId || !selectedProgramId ? "Please select department and program first" : ""}
                         >
                             {isLocked ? (
                                 <>
@@ -1126,70 +1224,78 @@ const CourseMapping: React.FC = () => {
                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
                         <div>
                             <label className="block text-sm font-semibold text-gray-900 mb-3">
-                                Select Department
+                                Select Department <span className="text-red-500">*</span>
                             </label>
                             <select
                                 value={selectedDeptId}
                                 onChange={(e) => {
-                                    setSelectedDeptId(parseInt(e.target.value));
-                                    setSelectedProgramId(programs.find(p => p.departmentId === parseInt(e.target.value))?.id || 1);
+                                    setSelectedDeptId(e.target.value);
+                                    setSelectedProgramId(""); // Reset program when department changes
+                                    setFaculties([]); // Clear faculty when department changes
                                 }}
-                                disabled={isLocked}
+                                disabled={isLocked || loading}
                                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                             >
+                                <option value="">Select Department</option>
                                 {departments.map((d) => (
                                     <option key={d.id} value={d.id}>
                                         {d.name} ({d.code})
                                     </option>
                                 ))}
                             </select>
+                            {departments.length === 0 && !loading && (
+                                <p className="mt-1 text-xs text-red-600">
+                                    No departments found. Please contact administrator.
+                                </p>
+                            )}
                         </div>
                         
                         <div>
                             <label className="block text-sm font-semibold text-gray-900 mb-3">
-                                Select Program
+                                Select Program <span className="text-red-500">*</span>
                             </label>
                             <select
                                 value={selectedProgramId}
-                                onChange={(e) => setSelectedProgramId(parseInt(e.target.value))}
-                                disabled={isLocked}
+                                onChange={(e) => setSelectedProgramId(e.target.value)}
+                                disabled={isLocked || loading || !selectedDeptId}
                                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                             >
+                                <option value="">
+                                    {!selectedDeptId ? "Select department first" : "Select Program"}
+                                </option>
                                 {availablePrograms.map((p) => (
                                     <option key={p.id} value={p.id}>
                                         {p.name} ({p.code})
                                     </option>
                                 ))}
                             </select>
+                            {!selectedDeptId && (
+                                <p className="mt-1 text-xs text-amber-600">
+                                    Please select a department first to view available programs.
+                                </p>
+                            )}
+                            {selectedDeptId && availablePrograms.length === 0 && (
+                                <p className="mt-1 text-xs text-red-600">
+                                    No programs found for this department.
+                                </p>
+                            )}
                         </div>
                     </div>
 
                     {/* Stats */}
                     <div className="space-y-3">
-                        <StatsCard
-                            label="Available Courses"
-                            value={totalAvailableCourses}
-                            icon={BookOpenIcon}
+                        <KPICard
+                            title="Total Courses"
+                            value={allCourses.length}
+                            icon={<BookOpenIcon className="h-5 w-5" />}
                             color="blue"
-                        />
-                        <StatsCard
-                            label="Mapped Courses"
-                            value={totalMappedCourses}
-                            icon={CheckCircleIcon}
-                            color="green"
-                        />
-                        <StatsCard
-                            label="Showing"
-                            value={filteredCourses.length}
-                            icon={MagnifyingGlassIcon}
-                            color="amber"
                         />
                     </div>
 
 
 
                     {/* Status Card */}
-                    {selectedDept && (
+                    {selectedDeptId && selectedProgramId && (
                         <div className={`rounded-xl border p-5 ${
                             isLocked 
                                 ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200' 
@@ -1203,12 +1309,12 @@ const CourseMapping: React.FC = () => {
                                     <h3 className={`text-sm font-semibold mb-1 ${
                                         isLocked ? 'text-red-900' : 'text-indigo-900'
                                     }`}>
-                                        {selectedDept.name}
+                                        {selectedDept?.name}
                                     </h3>
                                     <p className={`text-xs ${
                                         isLocked ? 'text-red-700' : 'text-indigo-700'
                                     }`}>
-                                        Department Code: {selectedDept.code}
+                                        Department Code: {selectedDept?.code}
                                     </p>
                                     <p className={`text-xs mt-1 ${
                                         isLocked ? 'text-red-700' : 'text-indigo-700'
@@ -1221,19 +1327,56 @@ const CourseMapping: React.FC = () => {
                             <div className={`mt-3 pt-3 border-t ${
                                 isLocked ? 'border-red-200' : 'border-indigo-200'
                             }`}>
-                                {isLocked ? (
+                                {loading ? (
+                                    <p className="text-xs font-medium text-gray-600 flex items-center gap-2">
+                                        <ArrowPathIcon className="h-3 w-3 animate-spin" />
+                                        Loading...
+                                    </p>
+                                ) : isLocked ? (
                                     <p className="text-xs font-medium text-red-800 flex items-center gap-2">
                                         🔒 Mapping is locked - semester has started
                                     </p>
-                                ) : hasUnsavedChanges ? (
-                                    <p className="text-xs font-medium text-indigo-800">
-                                        ⚠️ You have unsaved changes
-                                    </p>
                                 ) : (
                                     <p className="text-xs font-medium text-indigo-800">
-                                        ✅ All changes saved
+                                        ✅ Ready to manage courses
                                     </p>
                                 )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Selection Required Card */}
+                    {(!selectedDeptId || !selectedProgramId) && (
+                        <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 p-5">
+                            <div className="flex items-start gap-3">
+                                <InformationCircleIcon className="h-5 w-5 flex-shrink-0 mt-0.5 text-amber-600" />
+                                <div className="flex-1">
+                                    <h3 className="text-sm font-semibold text-amber-900 mb-2">
+                                        Selection Required
+                                    </h3>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            {selectedDeptId ? (
+                                                <CheckCircleIcon className="h-4 w-4 text-green-600" />
+                                            ) : (
+                                                <div className="h-4 w-4 rounded-full border-2 border-amber-400" />
+                                            )}
+                                            <span className={`text-xs ${selectedDeptId ? 'text-green-700' : 'text-amber-700'}`}>
+                                                Department {selectedDeptId ? 'Selected' : 'Required'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {selectedProgramId ? (
+                                                <CheckCircleIcon className="h-4 w-4 text-green-600" />
+                                            ) : (
+                                                <div className="h-4 w-4 rounded-full border-2 border-amber-400" />
+                                            )}
+                                            <span className={`text-xs ${selectedProgramId ? 'text-green-700' : 'text-amber-700'}`}>
+                                                Program {selectedProgramId ? 'Selected' : 'Required'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1242,11 +1385,11 @@ const CourseMapping: React.FC = () => {
                 {/* MAIN CONTENT */}
                 <section className="flex-1 rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden flex flex-col">
                     {/* Search & Filters Bar */}
-                    <div className="px-5 py-4 border-b border-gray-200 bg-gray-50 space-y-4">
-                        {/* Search and Filters Row */}
-                        <div className="flex flex-col lg:flex-row gap-4">
+                    <div className="px-5 py-4 border-b border-gray-200 bg-white">
+                        {/* Main Search and Primary Filters */}
+                        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                             {/* Search Bar */}
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                                 <SearchBar
                                     value={searchQuery}
                                     onChange={setSearchQuery}
@@ -1254,90 +1397,212 @@ const CourseMapping: React.FC = () => {
                                 />
                             </div>
                             
-                            {/* Filters */}
-                            <div className="flex flex-col sm:flex-row gap-3 lg:w-auto">
-                                <div className="min-w-0 sm:w-40">
-                                    <select
-                                        value={semesterFilter as any}
-                                        onChange={(e) =>
-                                            setSemesterFilter(
-                                                e.target.value === "" ? "" : parseInt(e.target.value)
-                                            )
-                                        }
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
-                                    >
-                                        <option value="">All Semesters</option>
-                                        {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                                            <option key={s} value={s}>
-                                                Semester {s}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+                            {/* Primary Filters */}
+                            <div className="flex gap-3 items-center">
+                                {/* Semester Filter */}
+                                <select
+                                    value={semesterFilter as any}
+                                    onChange={(e) =>
+                                        setSemesterFilter(
+                                            e.target.value === "" ? "" : parseInt(e.target.value)
+                                        )
+                                    }
+                                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white min-w-[120px]"
+                                >
+                                    <option value="">All Semesters</option>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                                        <option key={s} value={s}>
+                                            Semester {s}
+                                        </option>
+                                    ))}
+                                </select>
                                 
-                                <div className="min-w-0 sm:w-44">
-                                    <select
-                                        value={typeFilter as any}
-                                        onChange={(e) => setTypeFilter(e.target.value as any)}
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
-                                    >
-                                        <option value="">All Types</option>
-                                        <option value="core">Core</option>
-                                        <option value="dept_elective">Department Elective</option>
-                                        <option value="open_elective">Open Elective</option>
-                                    </select>
-                                </div>
-                                
-                                {(semesterFilter !== "" || typeFilter !== "") && (
-                                    <div className="flex items-center">
-                                        <button
-                                            onClick={() => {
-                                                setSemesterFilter("");
-                                                setTypeFilter("");
-                                            }}
-                                            className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors h-[38px]"
-                                        >
-                                            <XMarkIcon className="h-4 w-4" />
-                                            Clear
-                                        </button>
-                                    </div>
-                                )}
+                                {/* Type Filter */}
+                                <select
+                                    value={typeFilter as any}
+                                    onChange={(e) => setTypeFilter(e.target.value as any)}
+                                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white min-w-[140px]"
+                                >
+                                    <option value="">All Types</option>
+                                    <option value="core">Core</option>
+                                    <option value="dept_elective">Dept Elective</option>
+                                    <option value="open_elective">Open Elective</option>
+                                </select>
+
+                                {/* More Filters Toggle */}
+                                <button
+                                    onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                                    className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                                        showAdvancedFilters || facultyFilter || creditsFilter || sortBy !== 'semester' || sortOrder !== 'asc'
+                                            ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <span>More</span>
+                                    <ChevronDownIcon 
+                                        className={`h-4 w-4 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} 
+                                    />
+                                </button>
                             </div>
                         </div>
 
-                        {/* Actions Row */}
-                        <div className="flex flex-wrap items-center justify-between gap-3">
+                        {/* Advanced Filters Panel */}
+                        {showAdvancedFilters && (
+                            <div className="mt-4 pt-4 border-t border-gray-100">
+                                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 flex-1">
+                                        {/* Faculty Filter */}
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                                                Faculty
+                                            </label>
+                                            <select
+                                                value={facultyFilter}
+                                                onChange={(e) => setFacultyFilter(e.target.value)}
+                                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
+                                            >
+                                                <option value="">All Faculty</option>
+                                                {faculties.map((faculty) => (
+                                                    <option key={faculty.id} value={faculty.id}>
+                                                        {faculty.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Credits Filter */}
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                                                Credits
+                                            </label>
+                                            <select
+                                                value={creditsFilter}
+                                                onChange={(e) => setCreditsFilter(e.target.value)}
+                                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
+                                            >
+                                                <option value="">All Credits</option>
+                                                {[1, 2, 3, 4, 5, 6].map((credit) => (
+                                                    <option key={credit} value={credit}>
+                                                        {credit} Credits
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Sort By */}
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                                                Sort By
+                                            </label>
+                                            <select
+                                                value={sortBy}
+                                                onChange={(e) => setSortBy(e.target.value as any)}
+                                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
+                                            >
+                                                <option value="semester">Semester</option>
+                                                <option value="name">Name</option>
+                                                <option value="code">Code</option>
+                                                <option value="credits">Credits</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Sort Order */}
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                                                Order
+                                            </label>
+                                            <select
+                                                value={sortOrder}
+                                                onChange={(e) => setSortOrder(e.target.value as any)}
+                                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
+                                            >
+                                                <option value="asc">A → Z</option>
+                                                <option value="desc">Z → A</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Clear Filters */}
+                                    {(searchQuery || semesterFilter !== "" || typeFilter !== "" || facultyFilter || creditsFilter || sortBy !== 'semester' || sortOrder !== 'asc') && (
+                                        <button
+                                            onClick={() => {
+                                                setSearchQuery("");
+                                                setSemesterFilter("");
+                                                setTypeFilter("");
+                                                setFacultyFilter("");
+                                                setCreditsFilter("");
+                                                setSortBy('semester');
+                                                setSortOrder('asc');
+                                            }}
+                                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors whitespace-nowrap"
+                                        >
+                                            <XMarkIcon className="h-4 w-4" />
+                                            Clear All
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Results Summary */}
+                        <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                 <span className="font-medium">
                                     {filteredCourses.length} course{filteredCourses.length !== 1 ? "s" : ""}
                                 </span>
-                                {(searchQuery || semesterFilter !== "" || typeFilter !== "") && <span className="text-gray-400">• filtered</span>}
+                                {(searchQuery || semesterFilter !== "" || typeFilter !== "" || facultyFilter || creditsFilter) && (
+                                    <span className="text-gray-400">• filtered</span>
+                                )}
+                                {totalPages > 1 && (
+                                    <span className="text-gray-400">
+                                        • Page {currentPage} of {totalPages}
+                                    </span>
+                                )}
                             </div>
 
-                            <div className="flex flex-wrap gap-2">
-                                <button
-                                    onClick={handleSelectAll}
-                                    disabled={isLocked}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                >
-                                    <CheckIcon className="h-3.5 w-3.5" />
-                                    Select All
-                                </button>
-                                <button
-                                    onClick={handleClearAll}
-                                    disabled={isLocked}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                >
-                                    <XMarkIcon className="h-3.5 w-3.5" />
-                                    Clear All
-                                </button>
+                            <div className="text-xs text-gray-500">
+                                Use Edit/Delete buttons on course cards to manage
                             </div>
                         </div>
                     </div>
 
                     {/* Courses Grid */}
                     <div className="flex-1 overflow-y-auto p-5">
-                        {filteredCourses.length === 0 ? (
+                        {!selectedDeptId || !selectedProgramId ? (
+                            <div className="flex flex-col items-center justify-center py-16 text-center">
+                                <div className="p-4 bg-amber-100 rounded-full mb-4">
+                                    <InformationCircleIcon className="h-12 w-12 text-amber-600" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                    Select Department & Program
+                                </h3>
+                                <p className="text-sm text-gray-500 max-w-sm mb-4">
+                                    Please select a department and program from the sidebar to view and manage course mappings.
+                                </p>
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 max-w-md">
+                                    <div className="flex items-start gap-3">
+                                        <InformationCircleIcon className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                        <div className="text-left">
+                                            <p className="text-sm font-medium text-amber-800 mb-1">Required Steps:</p>
+                                            <ol className="text-sm text-amber-700 space-y-1">
+                                                <li className="flex items-center gap-2">
+                                                    <span className="w-4 h-4 bg-amber-200 text-amber-800 rounded-full text-xs flex items-center justify-center font-medium">1</span>
+                                                    Select a Department
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <span className="w-4 h-4 bg-amber-200 text-amber-800 rounded-full text-xs flex items-center justify-center font-medium">2</span>
+                                                    Choose a Program
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <span className="w-4 h-4 bg-amber-200 text-amber-800 rounded-full text-xs flex items-center justify-center font-medium">3</span>
+                                                    Start mapping courses
+                                                </li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : filteredCourses.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 text-center">
                                 <div className="p-4 bg-gray-100 rounded-full mb-4">
                                     <BookOpenIcon className="h-12 w-12 text-gray-400" />
@@ -1346,11 +1611,11 @@ const CourseMapping: React.FC = () => {
                                     No courses found
                                 </h3>
                                 <p className="text-sm text-gray-500 max-w-sm">
-                                    {searchQuery || semesterFilter !== ""
+                                    {searchQuery || semesterFilter !== "" || typeFilter !== "" || facultyFilter || creditsFilter
                                         ? "Try adjusting your search or filter criteria"
                                         : "Get started by adding your first course"}
                                 </p>
-                                {!searchQuery && semesterFilter === "" && (
+                                {!searchQuery && semesterFilter === "" && !facultyFilter && !creditsFilter && selectedDeptId && selectedProgramId && (
                                     <button
                                         onClick={() => setShowAddModal(true)}
                                         className="mt-6 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
@@ -1361,47 +1626,46 @@ const CourseMapping: React.FC = () => {
                                 )}
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                {filteredCourses.map((course) => (
-                                    <CourseCard
-                                        key={course.id}
-                                        course={course}
-                                        isSelected={selectedCourses.includes(course.id)}
-                                        onToggle={() => !isLocked && toggleCourse(course.id)}
-                                        onEdit={handleEditCourse}
-                                        faculties={faculties}
-                                    />
-                                ))}
-                            </div>
+                            <>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    {paginatedCourses.map((course) => (
+                                        <CourseCard
+                                            key={course.id}
+                                            course={course}
+                                            onEdit={handleEditCourse}
+                                            onDelete={handleDeleteCourse}
+                                            faculties={faculties}
+                                        />
+                                    ))}
+                                </div>
+                                
+                                {/* Pagination */}
+                                {totalPages > 1 && (
+                                    <div className="mt-6">
+                                        <Pagination
+                                            currentPage={currentPage}
+                                            totalPages={totalPages}
+                                            totalItems={filteredCourses.length}
+                                            itemsPerPage={itemsPerPage}
+                                            onPageChange={setCurrentPage}
+                                        />
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
 
-                    {/* Actions Footer */}
+                    {/* Info Footer */}
                     <div className="border-t border-gray-200 px-5 py-4 bg-gray-50 flex flex-wrap items-center justify-between gap-3">
                         <p className="text-sm text-gray-600">
                             <span className="font-semibold text-gray-900">
-                                {selectedCourses.length}
+                                {allCourses.length}
                             </span>{" "}
-                            course{selectedCourses.length !== 1 ? "s" : ""} selected
+                            course{allCourses.length !== 1 ? "s" : ""} mapped to this program
+                            {!selectedDeptId || !selectedProgramId ? (
+                                <span className="text-amber-600 ml-2">• Select department & program to manage courses</span>
+                            ) : null}
                         </p>
-
-                        <div className="flex gap-3">
-                            <button
-                                onClick={handleReset}
-                                disabled={!hasUnsavedChanges || isLocked}
-                                className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                Reset
-                            </button>
-                            <button
-                                onClick={handleSaveMapping}
-                                disabled={!hasUnsavedChanges || isLocked}
-                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <CheckCircleIcon className="h-5 w-5" />
-                                Save Mapping
-                            </button>
-                        </div>
                     </div>
                 </section>
             </main>
@@ -1433,6 +1697,23 @@ const CourseMapping: React.FC = () => {
                 courses={allCourses}
                 faculties={faculties}
                 onUpdateCourse={handleUpdateCourse}
+            />
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showDeleteModal}
+                onClose={() => {
+                    setShowDeleteModal(false);
+                    setCourseToDelete(null);
+                    setIsDeleting(false);
+                }}
+                onConfirm={confirmDeleteCourse}
+                title="Delete Course"
+                message={`Are you sure you want to delete "${courseToDelete?.name}"? This action cannot be undone.`}
+                type="danger"
+                confirmText="Delete"
+                cancelText="Cancel"
+                isLoading={isDeleting}
             />
         </div>
     );

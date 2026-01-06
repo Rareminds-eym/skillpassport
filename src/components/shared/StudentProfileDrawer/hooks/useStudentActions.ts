@@ -6,6 +6,22 @@ import toast from 'react-hot-toast';
 export const useStudentActions = (student: Student | null) => {
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Helper function to calculate academic year from admission year and current semester
+  const calculateAcademicYear = (admissionYear: string, currentSemester: number): string => {
+    try {
+      // Every 2 semesters = 1 academic year progression
+      const yearsProgressed = Math.floor((currentSemester - 1) / 2);
+      const [startYear] = admissionYear.split('-');
+      const newStartYear = parseInt(startYear) + yearsProgressed;
+      return `${newStartYear}-${(newStartYear + 1).toString().slice(-2)}`;
+    } catch (error) {
+      console.error('Error calculating academic year:', error);
+      // Fallback to current year calculation
+      const currentYear = new Date().getFullYear();
+      return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
+    }
+  };
+
   // Helper function to get current semester number
   const getCurrentSemester = () => {
     if (!student) return 1;
@@ -187,9 +203,12 @@ export const useStudentActions = (student: Student | null) => {
         return;
       }
       
-      // Get current academic year (you might want to make this dynamic)
-      const currentYear = new Date().getFullYear();
-      const academicYear = `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
+      // Calculate academic year from admission year and current semester
+      const academicYear = student.admission_academic_year 
+        ? calculateAcademicYear(student.admission_academic_year, currentSem)
+        : `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}`; // Fallback
+      
+      console.log('📅 Using academic year for promotion:', academicYear, 'from admission year:', student.admission_academic_year);
       
       // Get current user ID and find the appropriate admin record
       const { data: { user } } = await supabase.auth.getUser();
@@ -225,7 +244,7 @@ export const useStudentActions = (student: Student | null) => {
         is_passed: true,
         is_promoted: true,
         promotion_date: new Date().toISOString().split('T')[0],
-        remarks: `Promoted via admin panel from semester ${currentSem} to ${nextSem}`,
+        remarks: `Promoted via admin panel from semester ${currentSem} to ${nextSem} for academic year ${academicYear}`,
         // You can add more fields like grades, percentages etc. if available
         overall_percentage: student.currentCgpa ? (parseFloat(student.currentCgpa.toString()) * 10) : null,
         overall_grade: student.currentCgpa ? (() => {

@@ -371,7 +371,8 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
   }
 
   const { studentId, forceRefresh = false, limit = RECOMMEND_CONFIG.DEFAULT_LIMIT } = body;
-
+  
+  // Early validation
   if (!studentId) {
     return jsonResponse({ error: 'studentId is required', recommendations: [] }, 400);
   }
@@ -387,14 +388,51 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
   const safeLimit = Math.min(Math.max(1, limit), RECOMMEND_CONFIG.MAX_RECOMMENDATIONS);
   const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
+  // ==================== CACHE CHECK ====================
+  // Check cache first (unless force refresh requested)
+  if (!forceRefresh) {
+    try {
+      const { data: cacheResult, error: cacheError } = await supabase
+        .rpc('get_cached_job_matches', { p_student_id: studentId });
+      
+      if (!cacheError && cacheResult && cacheResult.length > 0 && cacheResult[0].is_cached) {
+        const cached = cacheResult[0];
+        const executionTime = Date.now() - startTime;
+        console.log(`[CACHE HIT] Student ${studentId} - ${cached.match_count} matches from cache`);
+        
+        // Return cached results (apply limit)
+        const cachedMatches = (cached.matches || []).slice(0, safeLimit);
+        return jsonResponse({
+          recommendations: cachedMatches,
+          cached: true,
+          computed_at: cached.computed_at,
+          count: cachedMatches.length,
+          totalMatches: cached.match_count,
+          executionTime,
+          message: 'Recommendations retrieved from cache'
+        });
+      }
+      console.log(`[CACHE MISS] Student ${studentId} - computing fresh matches`);
+    } catch (cacheCheckError) {
+      console.error('[CACHE CHECK ERROR]', cacheCheckError);
+      // Continue to compute fresh matches
+    }
+  } else {
+    console.log(`[FORCE REFRESH] Student ${studentId} - bypassing cache`);
+  }
+  // ==================== END CACHE CHECK ====================
+
   // Get student profile
   const { data: student, error: studentError } = await supabase
     .from('students')
-    .select('embedding, id, name, profile')
+    .select('embedding, id, name')
     .eq('id', studentId)
     .maybeSingle();
 
+  console.log('Student query result:', { student: student ? { id: student.id, name: student.name, hasEmbedding: !!student.embedding } : null, error: studentError });
+
   if (studentError || !student) {
+    console.error('Student not found:', { studentId, error: studentError });
     return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_profile');
   }
 
@@ -432,9 +470,25 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
   const topRecommendations = recommendations.slice(0, safeLimit);
   const executionTime = Date.now() - startTime;
 
+  // ==================== SAVE TO CACHE ====================
+  // Save computed matches to cache for future requests
+  try {
+    await supabase.rpc('save_job_matches_cache', {
+      p_student_id: studentId,
+      p_matches: recommendations, // Save all matches, not just top N
+      p_algorithm_version: 'v1.0'
+    });
+    console.log(`[CACHE SAVE] Student ${studentId} - saved ${recommendations.length} matches to cache`);
+  } catch (cacheSaveError) {
+    console.error('[CACHE SAVE ERROR]', cacheSaveError);
+    // Continue - caching failure shouldn't break the response
+  }
+  // ==================== END SAVE TO CACHE ====================
+
   return jsonResponse({
     recommendations: topRecommendations,
     cached: false,
+    computed_at: new Date().toISOString(),
     count: topRecommendations.length,
     totalMatches: recommendations.length,
     executionTime

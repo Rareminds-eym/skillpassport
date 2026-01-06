@@ -32,6 +32,12 @@ export const useAssessmentResults = () => {
         branchField: '—',
         courseName: '—'
     });
+    const [studentAcademicData, setStudentAcademicData] = useState({
+        subjectMarks: [],
+        projects: [],
+        experiences: [],
+        education: []
+    });
 
     // Convert string to Title Case
     const toTitleCase = (str) => {
@@ -51,7 +57,7 @@ export const useAssessmentResults = () => {
             if (user) {
                 const { data: studentData } = await supabase
                     .from('students')
-                    .select('name, registration_number, admission_number, college_id, colleges(name), grade, branch_field, course_name, school_class_id, school_classes(grade, section), school_id, schools(name)')
+                    .select('id, name, registration_number, college_id, colleges(name)')
                     .eq('user_id', user.id)
                     .single();
 
@@ -107,7 +113,10 @@ export const useAssessmentResults = () => {
 
                     localStorage.setItem('studentName', fullName);
                     localStorage.setItem('studentRegNo', studentData.registration_number || '');
-                    localStorage.setItem('collegeName', institutionName);
+                    localStorage.setItem('collegeName', studentData.colleges?.name || '');
+                    
+                    // Fetch academic data (marks, projects, experiences)
+                    await fetchStudentAcademicData(studentData.id);
                 } else {
                     const rawName = user.user_metadata?.full_name || user.email?.split('@')[0] || '—';
                     const name = toTitleCase(rawName);
@@ -132,6 +141,65 @@ export const useAssessmentResults = () => {
                 branchField: '—',
                 courseName: '—'
             });
+        }
+    };
+
+    // Fetch student's academic data: marks, projects, experiences
+    const fetchStudentAcademicData = async (studentId) => {
+        try {
+            // Fetch subject marks with subject names
+            const { data: marksData } = await supabase
+                .from('mark_entries')
+                .select(`
+                    id,
+                    subject_id,
+                    marks_obtained,
+                    total_marks,
+                    percentage,
+                    grade,
+                    curriculum_subjects(name)
+                `)
+                .eq('student_id', studentId)
+                .order('created_at', { ascending: false });
+
+            // Fetch projects
+            const { data: projectsData } = await supabase
+                .from('projects')
+                .select('id, title, description, tech_stack, status, organization')
+                .eq('student_id', studentId)
+                .eq('enabled', true)
+                .order('created_at', { ascending: false });
+
+            // Fetch experiences
+            const { data: experiencesData } = await supabase
+                .from('experience')
+                .select('id, organization, role, duration, verified')
+                .eq('student_id', studentId)
+                .order('created_at', { ascending: false });
+
+            // Fetch education
+            const { data: educationData } = await supabase
+                .from('education')
+                .select('id, degree, department, university, cgpa, level, status')
+                .eq('student_id', studentId)
+                .eq('enabled', true)
+                .order('year_of_passing', { ascending: false });
+
+            setStudentAcademicData({
+                subjectMarks: marksData || [],
+                projects: projectsData || [],
+                experiences: experiencesData || [],
+                education: educationData || []
+            });
+
+            console.log('Fetched academic data:', {
+                marks: marksData?.length || 0,
+                projects: projectsData?.length || 0,
+                experiences: experiencesData?.length || 0,
+                education: educationData?.length || 0
+            });
+        } catch (err) {
+            console.error('Error fetching academic data:', err);
         }
     };
 
@@ -466,6 +534,7 @@ export const useAssessmentResults = () => {
         retrying,
         gradeLevel, // Export grade level
         studentInfo,
+        studentAcademicData, // Export academic data for course matching
         handleRetry,
         validateResults,
         navigate

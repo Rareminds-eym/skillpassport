@@ -1,37 +1,35 @@
-import { useState, useEffect, useRef } from "react";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/Students/components/ui/card";
-import { Button } from "../../components/Students/components/ui/button";
-import { Badge } from "../../components/Students/components/ui/badge";
-import {
-  Settings as SettingsIcon,
-  User,
-  Lock,
-  Bell,
-  Eye,
-  EyeOff,
-  Save,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  Briefcase,
-  Shield,
-  Trash2,
-  Globe,
-  AlertCircle,
-  ChevronRight,
-  MessageCircleIcon,
+    AlertCircle,
+    Bell,
+    Briefcase,
+    ChevronRight,
+    CreditCard,
+    Eye,
+    EyeOff,
+    Globe,
+    Lock,
+    Mail,
+    MapPin,
+    Phone,
+    Save,
+    Settings as SettingsIcon,
+    Shield,
+    User
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Badge } from "../../components/Students/components/ui/badge";
+import { Button } from "../../components/Students/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from "../../components/Students/components/ui/card";
 import { useAuth } from "../../context/AuthContext";
 import { useStudentSettings } from "../../hooks/useStudentSettings";
 
+import { SubscriptionSettingsSection } from "../../components/subscription/SubscriptionSettingsSection";
 import { useToast } from "../../hooks/use-toast";
-import RecentUpdatesCard from "../../components/Students/components/RecentUpdatesCard";
 import useStudentMessageNotifications from "../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
@@ -427,6 +425,7 @@ const Settings = () => {
     { id: "security", label: "Security", icon: Lock },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "privacy", label: "Privacy", icon: Shield },
+    { id: "subscription", label: "Subscription", icon: CreditCard },
   ];
 
   // Show loading state
@@ -1748,6 +1747,11 @@ const Settings = () => {
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {/* Subscription Settings */}
+            {activeTab === "subscription" && (
+              <SubscriptionSettingsSection />
             )}
           </div>
         </div>

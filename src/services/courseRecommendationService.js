@@ -8,7 +8,7 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
-import { generateEmbedding, cosineSimilarity } from './embeddingService';
+import { cosineSimilarity, generateEmbedding } from './embeddingService';
 
 // Configuration
 const MAX_RECOMMENDATIONS = 10; // Maximum courses to return (Requirement 3.2)

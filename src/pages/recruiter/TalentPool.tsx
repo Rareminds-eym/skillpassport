@@ -1,30 +1,26 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useOutletContext } from 'react-router-dom';
 import {
-  FunnelIcon,
-  ViewColumnsIcon,
-  TableCellsIcon,
-  Squares2X2Icon,
-  EyeIcon,
-  BookmarkIcon,
-  CalendarDaysIcon,
-  ChevronDownIcon,
-  AdjustmentsHorizontalIcon,
-  StarIcon,
-  XMarkIcon,
-  CheckIcon,
-  CalendarIcon,
-  VideoCameraIcon,
-  PhoneIcon
+    BookmarkIcon,
+    CalendarIcon,
+    CheckIcon,
+    ChevronDownIcon,
+    EyeIcon,
+    FunnelIcon,
+    Squares2X2Icon,
+    StarIcon,
+    TableCellsIcon,
+    XMarkIcon
 } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
-import { useStudents } from '../../hooks/useStudents';
-import { getShortlists, addCandidateToShortlist } from '../../services/shortlistService';
-import { createInterview } from '../../services/interviewService';
-import { useSearch } from '../../context/SearchContext';
-import SearchBar from '../../components/common/SearchBar';
-import { createSavedSearch } from '../../services/savedSearchesService';
+import { useEffect, useMemo, useState } from 'react';
 import ReactPaginate from 'react-paginate';
+import { useOutletContext } from 'react-router-dom';
+import SearchBar from '../../components/common/SearchBar';
+import { FeatureGate } from '../../components/Subscription/FeatureGate';
+import { useSearch } from '../../context/SearchContext';
+import { useStudents } from '../../hooks/useStudents';
+import { createInterview } from '../../services/interviewService';
+import { createSavedSearch } from '../../services/savedSearchesService';
+import { addCandidateToShortlist, getShortlists } from '../../services/shortlistService';
 
 const FilterSection = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -3220,8 +3216,12 @@ type RecruiterOutletContext = {
 // export default TalentPool;
 
 
-
-const TalentPool = () => {
+/**
+ * TalentPool - Access to verified talent pool
+ * 
+ * Wrapped with FeatureGate for talent_pool_access add-on access control
+ */
+const TalentPoolContent = () => {
   const { onViewProfile } = useOutletContext<RecruiterOutletContext>()
   const { searchQuery, setSearchQuery } = useSearch();
   const [viewMode, setViewMode] = useState('grid');
@@ -4225,5 +4225,14 @@ const TalentPool = () => {
     </div>
   );
 };
+
+/**
+ * Wrapped TalentPool with FeatureGate for talent_pool_access add-on
+ */
+const TalentPool = () => (
+  <FeatureGate featureKey="talent_pool_access" showUpgradePrompt={true}>
+    <TalentPoolContent />
+  </FeatureGate>
+);
 
 export default TalentPool;

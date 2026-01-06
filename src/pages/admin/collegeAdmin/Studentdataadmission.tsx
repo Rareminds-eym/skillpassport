@@ -692,12 +692,29 @@ const StudentDataAdmission = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-gray-800">
                             {(() => {
+                              // Calculate academic year from admission year and semester
+                              const calculateAcademicYear = (admissionYear: string, semester: number): string => {
+                                try {
+                                  const yearsProgressed = Math.floor((semester - 1) / 2);
+                                  const [startYear] = admissionYear.split('-');
+                                  const newStartYear = parseInt(startYear) + yearsProgressed;
+                                  return `${newStartYear}-${(newStartYear + 1).toString().slice(-2)}`;
+                                } catch {
+                                  const currentYear = new Date().getFullYear();
+                                  return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
+                                }
+                              };
+
                               // Dynamic semester calculation
                               let currentSem = 1;
                               let totalSems = 8;
                               
+                              // First, check if semester is directly available in the student record
+                              if ((student as any).semester && (student as any).semester > 0) {
+                                currentSem = (student as any).semester;
+                              }
                               // For college students, calculate based on enrollment date
-                              if ((student as any).college_id && (student as any).enrollmentDate) {
+                              else if ((student as any).college_id && (student as any).enrollmentDate) {
                                 const enrollmentDate = new Date((student as any).enrollmentDate);
                                 const currentDate = new Date();
                                 const monthsDiff = (currentDate.getFullYear() - enrollmentDate.getFullYear()) * 12 + 
@@ -726,7 +743,12 @@ const StudentDataAdmission = () => {
                                 else totalSems = 8;
                               }
                               
-                              return `${currentSem} / ${totalSems}`;
+                              // Calculate academic year for display
+                              const academicYear = (student as any).admission_academic_year 
+                                ? calculateAcademicYear((student as any).admission_academic_year, currentSem)
+                                : 'N/A';
+                              
+                              return `${currentSem} / ${totalSems} (${academicYear})`;
                             })()}
                           </span>
                         </td>

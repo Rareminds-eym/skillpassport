@@ -1,33 +1,31 @@
-import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  PlusIcon,
-  MagnifyingGlassIcon,
-  Squares2X2Icon,
-  ListBulletIcon,
-  FunnelIcon,
-  DocumentPlusIcon,
-  ChartBarIcon
-} from '@heroicons/react/24/outline';
-import { 
-  RectangleStackIcon, 
-  DocumentTextIcon, 
-  BriefcaseIcon,
-  ClockIcon
+    BriefcaseIcon,
+    ChartBarIcon,
+    ClockIcon,
+    DocumentTextIcon,
+    FunnelIcon,
+    ListBulletIcon,
+    MagnifyingGlassIcon,
+    PlusIcon,
+    RectangleStackIcon,
+    Squares2X2Icon
 } from '@heroicons/react/24/outline';
 import { RocketLaunchIcon } from '@heroicons/react/24/solid';
+import React, { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+// @ts-ignore - FeatureGate is a JSX component
+import { FeatureGate } from '../../components/Subscription/FeatureGate';
 
 // Import components
 import ProjectList from '../../components/Recruiter/Projects/ProjectList';
-import TabNavigation, { ProjectTab } from '../../components/Recruiter/Projects/navigation/TabNavigation';
-import { MobileTabNavigation } from '../../components/Recruiter/Projects/navigation/TabNavigation';
-import QuickActionsMenu from '../../components/Recruiter/Projects/navigation/QuickActionsMenu';
 import Breadcrumb from '../../components/Recruiter/Projects/navigation/Breadcrumb';
+import QuickActionsMenu from '../../components/Recruiter/Projects/navigation/QuickActionsMenu';
+import TabNavigation, { MobileTabNavigation, ProjectTab } from '../../components/Recruiter/Projects/navigation/TabNavigation';
 
 // Import mock data
-import { mockProjects, getProjectStats } from '../../data/mock/mockProjects';
-import { mockProposals, getProposalStats } from '../../data/mock/mockProposals';
-import { mockContracts, getActiveContracts } from '../../data/mock/mockContracts';
+import { getActiveContracts } from '../../data/mock/mockContracts';
+import { getProjectStats, mockProjects } from '../../data/mock/mockProjects';
+import { mockProposals } from '../../data/mock/mockProposals';
 
 interface StatsCardProps {
   title: string;
@@ -61,7 +59,12 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
   );
 };
 
-const ProjectHiringWithNav = () => {
+/**
+ * ProjectHiringWithNav - Project-based hiring management
+ * 
+ * Wrapped with FeatureGate for project_hiring add-on access control
+ */
+const ProjectHiringWithNavContent = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -405,6 +408,15 @@ const ProjectHiringWithNav = () => {
     </div>
   );
 };
+
+/**
+ * Wrapped ProjectHiringWithNav with FeatureGate for project_hiring add-on
+ */
+const ProjectHiringWithNav = () => (
+  <FeatureGate featureKey="project_hiring" showUpgradePrompt={true}>
+    <ProjectHiringWithNavContent />
+  </FeatureGate>
+);
 
 export default ProjectHiringWithNav;
 

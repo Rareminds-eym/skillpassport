@@ -1,37 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 // @ts-ignore
-import { useOpportunities } from '../../hooks/useOpportunities';
-import { useNotifications } from '../../hooks/useNotifications';
-import { usePipelineData } from '../../hooks/usePipelineData';
-import { moveCandidateToStage } from '../../services/pipelineService';
-import { createNotification } from '../../services/notificationService.ts';
+import { CandidateQuickView } from '../../components/Recruiter/components/CandidateQuickView';
 import PipelineAdvancedFilters from '../../components/Recruiter/components/PipelineAdvancedFilters';
 import PipelineSortMenu from '../../components/Recruiter/components/PipelineSortMenu';
-import { PipelineFilters, PipelineSortOptions } from '../../types/recruiter';
-import { useToast } from '../../components/Recruiter/components/Toast';
-import { CandidateQuickView } from '../../components/Recruiter/components/CandidateQuickView';
 import { PipelineStats, QuickStats } from '../../components/Recruiter/components/PipelineStats';
-import { addCandidateToPipeline } from '../../services/pipelineService';
+import { useToast } from '../../components/Recruiter/components/Toast';
+import { FeatureGate } from '../../components/Subscription/FeatureGate';
+import { useNotifications } from '../../hooks/useNotifications';
+import { useOpportunities } from '../../hooks/useOpportunities';
+import { usePipelineData } from '../../hooks/usePipelineData';
+import { createNotification } from '../../services/notificationService.ts';
+import { addCandidateToPipeline, moveCandidateToStage } from '../../services/pipelineService';
+import { PipelineFilters, PipelineSortOptions } from '../../types/recruiter';
 
 // Pipeline components
 import {
-  KanbanColumn,
-  AIRecommendedColumn,
-  AddFromTalentPoolModal,
-  NextActionModal,
-  PipelineHeader,
-  PipelineBulkActionsBar,
-  PipelineQuickFilters,
-  STAGES,
-  PipelineCandidate,
-  AIRecommendation
+    AIRecommendation,
+    AIRecommendedColumn,
+    AddFromTalentPoolModal,
+    KanbanColumn,
+    NextActionModal,
+    PipelineBulkActionsBar,
+    PipelineCandidate,
+    PipelineHeader,
+    PipelineQuickFilters,
+    STAGES
 } from '../../components/Recruiter/components/pipeline';
 
 interface PipelinesProps {
   onViewProfile: (candidate: PipelineCandidate) => void;
 }
 
-const Pipelines: React.FC<PipelinesProps> = ({ onViewProfile }) => {
+/**
+ * Pipelines - Recruitment pipeline management
+ * 
+ * Wrapped with FeatureGate for pipeline_management add-on access control
+ */
+const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   const { opportunities, loading: opportunitiesLoading } = useOpportunities();
   const { addToast } = useToast();
 
@@ -572,5 +577,14 @@ const Pipelines: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     </div>
   );
 };
+
+/**
+ * Wrapped Pipelines with FeatureGate for pipeline_management add-on
+ */
+const Pipelines: React.FC<PipelinesProps> = (props) => (
+  <FeatureGate featureKey="pipeline_management" showUpgradePrompt={true}>
+    <PipelinesContent {...props} />
+  </FeatureGate>
+);
 
 export default Pipelines;

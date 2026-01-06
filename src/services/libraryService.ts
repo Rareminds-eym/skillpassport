@@ -93,8 +93,7 @@ class LibraryService {
       .limit(1);
     
     if (colleges && colleges.length > 0) {
-      return colleges[0].id;
-    }
+      return colleges[0].id; }
     
     throw new Error('No college found for user');
   }
@@ -566,10 +565,10 @@ class LibraryService {
     
     const { data, error } = await supabase
       .from('students')
-      .select('id, name, roll_number, enrollment_number, admission_number, contact_number as phone, email, grade, section, course_name, semester')
+      .select('id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester')
       .eq('college_id', collegeId)
       .eq('is_deleted', false)
-      .or(`name.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%,enrollment_number.ilike.%${searchTerm}%,admission_number.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
+      .or(`name.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%,enrollmentNumber.ilike.%${searchTerm}%,admission_number.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
       .order('name')
       .limit(10);
 
@@ -583,7 +582,7 @@ class LibraryService {
     
     const { data, error } = await supabase
       .from('students')
-      .select('id, name, roll_number, enrollment_number, admission_number, contact_number as phone, email, grade, section, course_name, semester')
+      .select('id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester')
       .eq('id', studentId)
       .eq('college_id', collegeId)
       .eq('is_deleted', false)

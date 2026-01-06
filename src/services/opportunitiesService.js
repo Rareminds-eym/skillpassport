@@ -24,6 +24,104 @@ export class OpportunitiesService {
   }
 
   /**
+   * Fetch opportunities with server-side pagination
+   * @param {Object} options - Pagination and filter options
+   * @param {number} options.page - Current page (1-indexed)
+   * @param {number} options.pageSize - Number of items per page
+   * @param {string} options.searchTerm - Search term for filtering
+   * @param {Object} options.filters - Advanced filters
+   * @param {string} options.sortBy - Sort order ('newest' or 'oldest')
+   * @returns {Promise<{data: Array, totalCount: number, totalPages: number}>}
+   */
+  static async getPaginatedOpportunities(options = {}) {
+    const {
+      page = 1,
+      pageSize = 12,
+      searchTerm = '',
+      filters = {},
+      sortBy = 'newest'
+    } = options;
+
+    try {
+      // Calculate range for pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      console.log('📄 Server-side pagination request:', { page, pageSize, searchTerm: searchTerm ? '***' : '', filtersApplied: Object.keys(filters).length, sortBy });
+
+      // Build the query
+      let query = supabase
+        .from('opportunities')
+        .select('*', { count: 'exact' });
+
+      // Apply search filter
+      if (searchTerm && searchTerm.trim()) {
+        query = query.or(
+          `job_title.ilike.%${searchTerm}%,title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%`
+        );
+      }
+
+      // Apply advanced filters
+      if (filters.employmentType && filters.employmentType.length > 0) {
+        query = query.in('employment_type', filters.employmentType);
+      }
+
+      if (filters.experienceLevel && filters.experienceLevel.length > 0) {
+        query = query.in('experience_level', filters.experienceLevel);
+      }
+
+      if (filters.mode && filters.mode.length > 0) {
+        query = query.in('mode', filters.mode);
+      }
+
+      if (filters.department && filters.department.length > 0) {
+        query = query.in('department', filters.department);
+      }
+
+      if (filters.salaryMin) {
+        query = query.gte('salary_range_min', parseInt(filters.salaryMin));
+      }
+
+      if (filters.salaryMax) {
+        query = query.lte('salary_range_max', parseInt(filters.salaryMax));
+      }
+
+      if (filters.postedWithin) {
+        const daysAgo = new Date();
+        daysAgo.setDate(daysAgo.getDate() - parseInt(filters.postedWithin));
+        query = query.gte('created_at', daysAgo.toISOString());
+      }
+
+      // Apply sorting
+      const ascending = sortBy === 'oldest';
+      query = query.order('created_at', { ascending });
+
+      // Apply pagination range
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
+
+      if (error) throw error;
+
+      const totalCount = count || 0;
+      const totalPages = Math.ceil(totalCount / pageSize);
+
+      console.log(`📄 Opportunities: ${data?.length}/${totalCount} (page ${page}/${totalPages})`);
+
+      return {
+        data: data || [],
+        totalCount,
+        totalPages,
+        currentPage: page,
+        pageSize
+      };
+    } catch (error) {
+      console.error('Error in getPaginatedOpportunities:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Fetch opportunities with optional filters
    * @param {Object} filters - Filter criteria
    * @param {string} filters.employment_type - Type of employment (internship, full-time, etc.)

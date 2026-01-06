@@ -1,37 +1,54 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Sparkles,
-  ChevronLeft,
-  ChevronRight,
-  X,
-  TrendingUp,
-  MapPin,
-  Briefcase,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Brain,
-  Zap
-} from 'lucide-react';
-import { matchJobsWithAI } from '../../../services/aiJobMatchingService';
 import { WavyBackground } from '@/components/Students/components/ui/wavy-background';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+    AlertCircle,
+    Briefcase,
+    CheckCircle,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    MapPin,
+    RefreshCw,
+    Sparkles,
+    TrendingUp,
+    X,
+    Zap
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useAIJobMatching } from '../../../hooks/useAIJobMatching';
+import { FeatureGate } from '../../Subscription/FeatureGate';
 
-const RecommendedJobs = ({
+/**
+ * RecommendedJobs - AI-powered job recommendations with industrial-grade caching
+ * 
+ * Uses the useAIJobMatching hook which implements:
+ * - Database-level caching (24-hour TTL)
+ * - Automatic cache invalidation when student data changes
+ * - Profile hash-based change detection
+ * - Force refresh capability
+ * 
+ * Wrapped with FeatureGate for ai_job_matching add-on access control
+ */
+const RecommendedJobsContent = ({
   studentProfile,
-  opportunities,
   onSelectJob,
   appliedJobs = new Set(),
   savedJobs = new Set(),
   onToggleSave,
   onApply
 }) => {
-  const [recommendations, setRecommendations] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showAnimation, setShowAnimation] = useState(true);
-  const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDismissed, setIsDismissed] = useState(false);
+
+  // Use the industrial-grade caching hook
+  const {
+    matchedJobs: recommendations,
+    loading,
+    error,
+    cacheInfo,
+    forceRefreshMatches
+  } = useAIJobMatching(studentProfile, !isDismissed, 3);
 
   // Check localStorage for dismiss preference
   useEffect(() => {
@@ -41,52 +58,30 @@ const RecommendedJobs = ({
     }
   }, []);
 
-  // Fetch AI recommendations
+  // Handle animation timing - show for minimum 3 seconds on cache miss, 1 second on cache hit
   useEffect(() => {
-    const fetchRecommendations = async () => {
-      if (!studentProfile || !opportunities || opportunities.length === 0 || isDismissed) {
-        setLoading(false);
+    if (loading) {
+      setShowAnimation(true);
+    } else {
+      // Shorter animation for cache hits (data was instant)
+      const minAnimationTime = cacheInfo.cached ? 1000 : 3000;
+      const timer = setTimeout(() => {
         setShowAnimation(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setShowAnimation(true);
-        setError(null);
-
-        const startTime = Date.now();
-
-        // Call AI matching service
-        const matches = await matchJobsWithAI(studentProfile, opportunities, 3);
-
-        // Ensure animation shows for at least 5 seconds
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, 5000 - elapsedTime);
-
-        if (remainingTime > 0) {
-          await new Promise(resolve => setTimeout(resolve, remainingTime));
-        }
-
-        setRecommendations(matches);
-        setLoading(false);
-        setShowAnimation(false);
-      } catch (err) {
-        console.error('Error fetching recommendations:', err);
-        setError(err.message);
-        setLoading(false);
-        setShowAnimation(false);
-      }
-    };
-
-    fetchRecommendations();
-  }, [studentProfile, opportunities, isDismissed]);
+      }, minAnimationTime);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, cacheInfo.cached]);
 
   const handleDismiss = (e) => {
     e.preventDefault();
     e.stopPropagation();
     localStorage.setItem('recommendations_dismissed', 'true');
     setIsDismissed(true);
+  };
+
+  const handleRefresh = async () => {
+    setShowAnimation(true);
+    await forceRefreshMatches();
   };
 
   const handleNext = () => {
@@ -119,7 +114,6 @@ const RecommendedJobs = ({
           onClick={() => {
             localStorage.removeItem('recommendations_dismissed');
             setIsDismissed(false);
-            setLoading(true);
             setShowAnimation(true);
           }}
           className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-4 hover:from-indigo-100 hover:to-purple-100 transition-all group"
@@ -317,14 +311,42 @@ const RecommendedJobs = ({
         </button>
 
         {/* Header */}
-        <div className="flex items-center gap-3 mb-4 relative z-10">
-          <div className="p-2 bg-gradient-to-br from-slate-200 to-gray-200 rounded-lg">
-            <img src="/RMLogo.webp" alt="RareMinds Logo" className="w-5 h-5" />
+        <div className="flex items-center justify-between mb-4 relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-slate-200 to-gray-200 rounded-lg">
+              <img src="/RMLogo.webp" alt="RareMinds Logo" className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-gray-900">AI Recommended For You</h2>
+                {cacheInfo.cached && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                    <Clock className="w-3 h-3" />
+                    Cached
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-600">
+                Based on your profile, skills, and experience
+                {cacheInfo.computedAt && (
+                  <span className="text-gray-400 ml-1">
+                    • Updated {new Date(cacheInfo.computedAt).toLocaleDateString()}
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">AI Recommended For You</h2>
-            <p className="text-sm text-gray-600">Based on your profile, skills, and experience</p>
-          </div>
+          
+          {/* Refresh button */}
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50 mr-10"
+            title="Refresh recommendations"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
         </div>
 
         {/* Carousel Content */}
@@ -438,20 +460,30 @@ const RecommendedJobs = ({
                 >
                   View Details
                 </button>
-                {!appliedJobs.has(opportunity.id) && (
+                {!appliedJobs.has(opportunity.id) ? (
                   <button
                     onClick={() => onApply(opportunity)}
                     className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
                   >
                     Apply Now
                   </button>
-                )}
-                {appliedJobs.has(opportunity.id) && (
+                ) : (
                   <div className="px-6 py-3 bg-gray-100 text-gray-600 rounded-lg font-semibold flex items-center gap-2">
                     <CheckCircle className="w-5 h-5" />
                     Applied
                   </div>
                 )}
+                <button
+                  onClick={() => onToggleSave(opportunity)}
+                  className={`px-4 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
+                    savedJobs.has(opportunity.id)
+                      ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  title={savedJobs.has(opportunity.id) ? 'Remove from saved' : 'Save for later'}
+                >
+                  {savedJobs.has(opportunity.id) ? '★' : '☆'}
+                </button>
               </div>
             </motion.div>
           </AnimatePresence>
@@ -495,5 +527,14 @@ const RecommendedJobs = ({
     </motion.div>
   );
 };
+
+/**
+ * Wrapped RecommendedJobs with FeatureGate for ai_job_matching add-on
+ */
+const RecommendedJobs = (props) => (
+  <FeatureGate featureKey="ai_job_matching" showUpgradePrompt={true} blurContent={true}>
+    <RecommendedJobsContent {...props} />
+  </FeatureGate>
+);
 
 export default RecommendedJobs;

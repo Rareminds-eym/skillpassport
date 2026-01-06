@@ -1,7 +1,8 @@
-import { Calendar, Check, ChevronDown, ChevronUp, Clock, Shield, TrendingUp, X } from 'lucide-react';
+import { Calendar, Check, ChevronDown, ChevronUp, Clock, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import AddOnMarketplace from '../../components/subscription/AddOnMarketplace';
 import CollegeLoginModal from '../../components/Subscription/CollegeLoginModal';
 import CollegeSignupModal from '../../components/Subscription/CollegeSignupModal';
 import EducatorLoginModal from '../../components/Subscription/EducatorLoginModal';
@@ -17,10 +18,10 @@ import UniversityAdminLoginModal from '../../components/Subscription/UniversityA
 import UniversityAdminSignupModal from '../../components/Subscription/UniversityAdminSignupModal';
 import UniversityStudentLoginModal from '../../components/Subscription/UniversityStudentLoginModal';
 import UniversityStudentSignupModal from '../../components/Subscription/UniversityStudentSignupModal';
+import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
-import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
-import { getEntityContent, setDatabasePlans, parseStudentType } from '../../utils/getEntityContent';
+import { getEntityContent, parseStudentType, setDatabasePlans } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
 // Feature comparison data
@@ -296,6 +297,16 @@ function SubscriptionPlans() {
   const navigate = useNavigate();
   const location = useLocation();
   const { type } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Tab state - 'plans' or 'addons'
+  const activeTab = searchParams.get('tab') || 'plans';
+  const setActiveTab = useCallback((tab) => {
+    setSearchParams(prev => {
+      prev.set('tab', tab);
+      return prev;
+    });
+  }, [setSearchParams]);
   
   // Use new authentication hook
   const { isAuthenticated, user, loading: authLoading } = useAuth();
@@ -543,7 +554,7 @@ function SubscriptionPlans() {
         )}
 
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">
             {isAuthenticated && hasActiveOrPausedSubscription ? 'Manage Your Plan' : title}
           </h1>
@@ -552,34 +563,76 @@ function SubscriptionPlans() {
           </p>
         </div>
 
-        {/* Plans Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {plans.map((plan, index) => (
-            <PlanCard
-              key={plan.id}
-              plan={plan}
-              index={index}
-              allPlans={plans}
-              isCurrentPlan={isAuthenticated && hasActiveOrPausedSubscription && subscriptionData?.plan === plan.id}
-              onSelect={handlePlanSelection}
-              subscriptionData={isAuthenticated && hasActiveOrPausedSubscription ? subscriptionData : null}
-              daysRemaining={isAuthenticated && hasActiveOrPausedSubscription ? daysRemaining : null}
-            />
-          ))}
+        {/* Tab Navigation */}
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab('plans')}
+              className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                activeTab === 'plans'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              Subscription Plans
+            </button>
+            <button
+              onClick={() => setActiveTab('addons')}
+              className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                activeTab === 'addons'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              Add-Ons
+              <span className="ml-1 px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded">New</span>
+            </button>
+          </div>
         </div>
 
-        {/* Trust Indicators */}
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-gray-500 text-sm">
-          {['Secure Payments', '24/7 Support', 'Cancel Anytime'].map((item) => (
-            <div key={item} className="flex items-center gap-2">
-              <Check className="h-4 w-4 text-blue-600" />
-              <span>{item}</span>
+        {/* Tab Content */}
+        {activeTab === 'plans' ? (
+          <>
+            {/* Plans Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {plans.map((plan, index) => (
+                <PlanCard
+                  key={plan.id}
+                  plan={plan}
+                  index={index}
+                  allPlans={plans}
+                  isCurrentPlan={isAuthenticated && hasActiveOrPausedSubscription && subscriptionData?.plan === plan.id}
+                  onSelect={handlePlanSelection}
+                  subscriptionData={isAuthenticated && hasActiveOrPausedSubscription ? subscriptionData : null}
+                  daysRemaining={isAuthenticated && hasActiveOrPausedSubscription ? daysRemaining : null}
+                />
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Feature Comparison */}
-        <FeatureComparisonTable plans={plans} />
+            {/* Trust Indicators */}
+            <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-gray-500 text-sm">
+              {['Secure Payments', '24/7 Support', 'Cancel Anytime'].map((item) => (
+                <div key={item} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-blue-600" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Feature Comparison */}
+            <FeatureComparisonTable plans={plans} />
+          </>
+        ) : (
+          /* Add-Ons Marketplace - compact mode without duplicate header */
+          <AddOnMarketplace 
+            role={pageRole} 
+            showBundles={true}
+            showHeader={false}
+            compact={true}
+          />
+        )}
 
         {/* Contact Section */}
         <div className="mt-16 text-center bg-white rounded-xl border border-gray-200 p-8">

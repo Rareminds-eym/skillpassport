@@ -121,9 +121,13 @@ function repairAndParseJSON(text: string): any {
   throw new Error('Failed to parse JSON after all repair attempts');
 }
 
-// List of free models to try in order (verified working on OpenRouter)
+// List of models to try in order (mix of free and paid for reliability)
 const FREE_MODELS = [
-  'google/gemini-2.0-flash-exp:free'
+  'google/gemini-2.0-flash-exp:free',
+  'google/gemini-flash-1.5',
+  'anthropic/claude-3-haiku',
+  'meta-llama/llama-3.1-8b-instruct:free',
+  'mistralai/mistral-7b-instruct:free'
 ];
 
 // Helper function to call OpenRouter with retry and model fallback
@@ -209,16 +213,18 @@ const APTITUDE_PROMPT = `You are an expert psychometric assessment creator. Gene
 Generate questions for these categories with EXACT counts:
 {{CATEGORIES}}
 
-IMPORTANT CONTEXT - This is for {{STREAM_NAME}} stream students:
+CRITICAL REQUIREMENT - 100% STREAM-RELATED QUESTIONS:
+This is for {{STREAM_NAME}} students. ALL questions MUST use {{STREAM_NAME}}-specific context, terminology, scenarios, and examples.
+
 {{STREAM_CONTEXT}}
 
 Question Requirements:
 1. All questions must be MCQ with exactly 4 options (except Clerical which has 2 options: "Same" or "Different")
 2. Each question must have exactly ONE correct answer
 3. Mix difficulty levels: 40% easy, 40% medium, 20% hard
-4. Questions should be culturally neutral and fair
-5. Test cognitive abilities with examples relevant to {{STREAM_NAME}} field
-6. For Clerical Speed & Accuracy: Generate string comparison questions like "AB7K9 — AB7K9" where user marks "Same" or "Different"
+4. 100% of questions MUST be directly related to {{STREAM_NAME}} field - use domain-specific terminology, scenarios, and real-world examples from this field
+5. NO generic questions - every question must have {{STREAM_NAME}} context
+6. For Clerical Speed & Accuracy: Generate string comparison questions using {{STREAM_NAME}}-specific codes/IDs like "{{CLERICAL_EXAMPLE}}"
 
 Output Format - Respond with ONLY valid JSON:
 {
@@ -239,31 +245,191 @@ Output Format - Respond with ONLY valid JSON:
 
 IMPORTANT: Use sequential numeric IDs (1, 2, 3, etc.) for each question.`;
 
-// Stream-specific context for aptitude questions
-const STREAM_CONTEXTS: Record<string, { name: string; context: string }> = {
+// Stream-specific context for aptitude questions - 100% stream-related
+const STREAM_CONTEXTS: Record<string, { name: string; context: string; clericalExample: string }> = {
   'science': {
     name: 'Science',
-    context: `- Verbal: Use scientific terminology, research papers context, lab reports
-- Numerical: Include physics calculations, chemistry equations, biology statistics
-- Abstract/Logical: Use scientific method reasoning, hypothesis testing scenarios, patterns
-- Spatial/Mechanical: Include molecular structures, anatomical diagrams, physics diagrams, gears
-- Clerical: Use alphanumeric codes like lab sample IDs, chemical formulas comparison`
+    context: `ALL questions must use Science context:
+- Verbal (100% science): Scientific terminology, research papers, lab reports, scientific method descriptions
+- Numerical (100% science): Physics calculations, chemistry equations, biology statistics, scientific data analysis
+- Abstract/Logical (100% science): Scientific method reasoning, hypothesis testing, experimental design patterns
+- Spatial/Mechanical (100% science): Molecular structures, anatomical diagrams, physics diagrams, lab equipment
+- Clerical (100% science): Lab sample IDs, chemical formulas, specimen codes comparison`,
+    clericalExample: 'H2SO4-LAB-2024 — H2SO4-LAB-2024'
   },
   'commerce': {
     name: 'Commerce',
-    context: `- Verbal: Use business terminology, financial reports, market analysis context
-- Numerical: Include profit/loss calculations, interest rates, accounting problems
-- Abstract/Logical: Use business decision scenarios, market trend analysis, patterns
-- Spatial/Mechanical: Include charts, graphs, organizational structures
-- Clerical: Use invoice numbers, account codes, transaction IDs comparison`
+    context: `ALL questions must use Commerce/Business context:
+- Verbal (100% commerce): Business terminology, financial reports, market analysis, corporate communication
+- Numerical (100% commerce): Profit/loss calculations, interest rates, accounting problems, GST calculations
+- Abstract/Logical (100% commerce): Business decision scenarios, market trend analysis, supply chain patterns
+- Spatial/Mechanical (100% commerce): Financial charts, organizational structures, process flow diagrams
+- Clerical (100% commerce): Invoice numbers, account codes, transaction IDs, GST numbers comparison`,
+    clericalExample: 'INV-2024-0847-GST — INV-2024-0847-GST'
   },
   'arts': {
     name: 'Arts/Humanities',
-    context: `- Verbal: Use literary terminology, historical texts, philosophical concepts
-- Numerical: Include statistics from social sciences, historical data analysis
-- Abstract/Logical: Use ethical dilemmas, historical cause-effect scenarios, patterns
-- Spatial/Mechanical: Include art compositions, architectural layouts, map reading
-- Clerical: Use reference codes, catalog numbers, citation IDs comparison`
+    context: `ALL questions must use Arts/Humanities context:
+- Verbal (100% arts): Literary terminology, historical texts, philosophical concepts, cultural analysis
+- Numerical (100% arts): Social science statistics, historical data analysis, survey interpretation
+- Abstract/Logical (100% arts): Ethical dilemmas, historical cause-effect, philosophical reasoning patterns
+- Spatial/Mechanical (100% arts): Art compositions, architectural layouts, map reading, design elements
+- Clerical (100% arts): Reference codes, catalog numbers, citation IDs, archive codes comparison`,
+    clericalExample: 'ISBN-978-3-16-148410 — ISBN-978-3-16-148410'
+  },
+  // B.Tech / Engineering streams
+  'btech_cse': {
+    name: 'B.Tech Computer Science',
+    context: `ALL questions must use Computer Science/Programming context:
+- Verbal (100% CS): Programming terminology, algorithm descriptions, software documentation, code comments
+- Numerical (100% CS): Time complexity calculations, binary/hex conversions, data structure operations, memory calculations
+- Abstract/Logical (100% CS): Algorithm flowcharts, code logic patterns, debugging scenarios, recursion patterns
+- Spatial/Mechanical (100% CS): Data structure diagrams, network topologies, UML diagrams, system architecture
+- Clerical (100% CS): Variable names, function signatures, IP addresses, MAC addresses comparison`,
+    clericalExample: 'git-a1b2c3d4e5f6 — git-a1b2c3d4e5f6'
+  },
+  'btech_ece': {
+    name: 'B.Tech Electronics & Communication',
+    context: `ALL questions must use Electronics & Communication context:
+- Verbal (100% ECE): Electronics terminology, circuit descriptions, signal processing concepts, communication protocols
+- Numerical (100% ECE): Ohm's law calculations, frequency/wavelength, decibel calculations, filter design values
+- Abstract/Logical (100% ECE): Circuit logic patterns, signal flow analysis, modulation schemes, protocol sequences
+- Spatial/Mechanical (100% ECE): Circuit diagrams, PCB layouts, antenna patterns, waveform analysis
+- Clerical (100% ECE): Component codes, resistor color codes, IC part numbers, frequency bands comparison`,
+    clericalExample: 'IC-ATmega328P-PU — IC-ATmega328P-PU'
+  },
+  'btech_mech': {
+    name: 'B.Tech Mechanical Engineering',
+    context: `ALL questions must use Mechanical Engineering context:
+- Verbal (100% mech): Mechanical terminology, manufacturing processes, thermodynamics concepts, material properties
+- Numerical (100% mech): Stress/strain calculations, heat transfer, fluid dynamics, gear ratios, torque calculations
+- Abstract/Logical (100% mech): Machine operation sequences, manufacturing process flows, quality control patterns
+- Spatial/Mechanical (100% mech): Machine drawings, gear assemblies, CAD views, isometric projections
+- Clerical (100% mech): Part numbers, material grades, tolerance codes, drawing numbers comparison`,
+    clericalExample: 'DWG-ASSY-2024-089 — DWG-ASSY-2024-089'
+  },
+  'btech_civil': {
+    name: 'B.Tech Civil Engineering',
+    context: `ALL questions must use Civil Engineering context:
+- Verbal (100% civil): Construction terminology, structural concepts, surveying descriptions, building codes
+- Numerical (100% civil): Load calculations, concrete mix ratios, surveying measurements, cost estimation
+- Abstract/Logical (100% civil): Construction sequences, project scheduling (CPM/PERT), structural load paths
+- Spatial/Mechanical (100% civil): Building plans, structural drawings, site layouts, elevation views
+- Clerical (100% civil): Drawing numbers, material codes, project IDs, survey coordinates comparison`,
+    clericalExample: 'BBS-COL-C1-2024 — BBS-COL-C1-2024'
+  },
+  'btech_eee': {
+    name: 'B.Tech Electrical Engineering',
+    context: `ALL questions must use Electrical Engineering context:
+- Verbal (100% EEE): Electrical terminology, power systems concepts, motor descriptions, safety standards
+- Numerical (100% EEE): Power calculations, transformer ratios, motor speed, electrical load analysis
+- Abstract/Logical (100% EEE): Power distribution patterns, control system logic, protection schemes
+- Spatial/Mechanical (100% EEE): Single line diagrams, motor assemblies, switchgear layouts, wiring diagrams
+- Clerical (100% EEE): Equipment codes, cable specifications, breaker ratings, meter readings comparison`,
+    clericalExample: 'CB-MCCB-400A-3P — CB-MCCB-400A-3P'
+  },
+  'btech_it': {
+    name: 'B.Tech Information Technology',
+    context: `ALL questions must use Information Technology context:
+- Verbal (100% IT): IT terminology, network concepts, database descriptions, cybersecurity terms
+- Numerical (100% IT): Bandwidth calculations, storage conversions, network latency, database queries
+- Abstract/Logical (100% IT): Network flow patterns, database relationships, security protocols, system integration
+- Spatial/Mechanical (100% IT): Network diagrams, ER diagrams, system architecture, cloud infrastructure
+- Clerical (100% IT): Server names, database IDs, API endpoints, configuration codes comparison`,
+    clericalExample: 'SRV-PROD-DB-01 — SRV-PROD-DB-01'
+  },
+  'btech_aiml': {
+    name: 'B.Tech AI & Machine Learning',
+    context: `ALL questions must use AI/ML context:
+- Verbal (100% AI/ML): ML terminology, neural network concepts, algorithm descriptions, model documentation
+- Numerical (100% AI/ML): Accuracy metrics, loss calculations, hyperparameter values, matrix operations
+- Abstract/Logical (100% AI/ML): Decision tree patterns, neural network flows, training pipelines, model selection
+- Spatial/Mechanical (100% AI/ML): Neural network architectures, confusion matrices, feature maps, data pipelines
+- Clerical (100% AI/ML): Model versions, dataset IDs, hyperparameter configs, experiment IDs comparison`,
+    clericalExample: 'MODEL-BERT-v2.3.1 — MODEL-BERT-v2.3.1'
+  },
+  // B.Sc streams
+  'bsc_cs': {
+    name: 'B.Sc Computer Science',
+    context: `ALL questions must use Computer Science context:
+- Verbal (100% CS): Programming concepts, algorithm terminology, software development descriptions
+- Numerical (100% CS): Complexity analysis, number systems, data structure operations
+- Abstract/Logical (100% CS): Algorithm patterns, code logic, debugging scenarios
+- Spatial/Mechanical (100% CS): Flowcharts, data structure diagrams, system designs
+- Clerical (100% CS): Variable names, function calls, file paths comparison`,
+    clericalExample: 'func_getData_v2() — func_getData_v2()'
+  },
+  'bsc_physics': {
+    name: 'B.Sc Physics',
+    context: `ALL questions must use Physics context:
+- Verbal (100% physics): Physics terminology, experimental descriptions, theoretical concepts
+- Numerical (100% physics): Mechanics calculations, electromagnetic problems, quantum numbers
+- Abstract/Logical (100% physics): Physical law applications, experimental design, cause-effect in physics
+- Spatial/Mechanical (100% physics): Force diagrams, wave patterns, optical ray diagrams
+- Clerical (100% physics): Physical constants, unit conversions, measurement codes comparison`,
+    clericalExample: '9.81m/s²-g — 9.81m/s²-g'
+  },
+  'bsc_chemistry': {
+    name: 'B.Sc Chemistry',
+    context: `ALL questions must use Chemistry context:
+- Verbal (100% chemistry): Chemical terminology, reaction descriptions, lab procedures
+- Numerical (100% chemistry): Molarity calculations, stoichiometry, pH calculations
+- Abstract/Logical (100% chemistry): Reaction mechanisms, periodic trends, molecular patterns
+- Spatial/Mechanical (100% chemistry): Molecular structures, orbital diagrams, lab equipment
+- Clerical (100% chemistry): Chemical formulas, IUPAC names, CAS numbers comparison`,
+    clericalExample: 'C6H12O6-GLU — C6H12O6-GLU'
+  },
+  'bsc_maths': {
+    name: 'B.Sc Mathematics',
+    context: `ALL questions must use Mathematics context:
+- Verbal (100% maths): Mathematical terminology, theorem statements, proof descriptions
+- Numerical (100% maths): Calculus problems, algebra, statistics, number theory
+- Abstract/Logical (100% maths): Mathematical proofs, pattern recognition, logical sequences
+- Spatial/Mechanical (100% maths): Geometric figures, graphs, coordinate systems
+- Clerical (100% maths): Mathematical notations, equation formats, formula codes comparison`,
+    clericalExample: '∫f(x)dx=F(x) — ∫f(x)dx=F(x)'
+  },
+  // BBA/BCA/B.Com streams
+  'bba': {
+    name: 'BBA Business Administration',
+    context: `ALL questions must use Business/Management context:
+- Verbal (100% business): Management terminology, business communication, organizational concepts
+- Numerical (100% business): Business math, profit analysis, market statistics
+- Abstract/Logical (100% business): Business strategy patterns, organizational hierarchies, decision trees
+- Spatial/Mechanical (100% business): Org charts, process flows, business model diagrams
+- Clerical (100% business): Employee IDs, department codes, project numbers comparison`,
+    clericalExample: 'PO-MKT-2024-156 — PO-MKT-2024-156'
+  },
+  'bca': {
+    name: 'BCA Computer Applications',
+    context: `ALL questions must use Computer Applications context:
+- Verbal (100% BCA): Programming terminology, software concepts, IT documentation
+- Numerical (100% BCA): Programming calculations, database queries, network math
+- Abstract/Logical (100% BCA): Code logic patterns, database relationships, system flows
+- Spatial/Mechanical (100% BCA): Flowcharts, ER diagrams, UI wireframes
+- Clerical (100% BCA): Code snippets, database entries, file names comparison`,
+    clericalExample: 'SELECT_usr_2024 — SELECT_usr_2024'
+  },
+  'bcom': {
+    name: 'B.Com Commerce',
+    context: `ALL questions must use Commerce/Accounting context:
+- Verbal (100% commerce): Accounting terminology, financial concepts, business law terms
+- Numerical (100% commerce): Accounting calculations, tax computations, financial ratios
+- Abstract/Logical (100% commerce): Accounting cycles, audit trails, financial patterns
+- Spatial/Mechanical (100% commerce): Balance sheets, financial charts, ledger formats
+- Clerical (100% commerce): Account numbers, voucher codes, GST numbers comparison`,
+    clericalExample: 'GSTIN-29ABCDE1234 — GSTIN-29ABCDE1234'
+  },
+  // Default/Generic college
+  'college': {
+    name: 'College/University',
+    context: `ALL questions must use Academic/Higher Education context:
+- Verbal (100% academic): Academic terminology, research concepts, scholarly writing
+- Numerical (100% academic): Statistical analysis, research data, academic metrics
+- Abstract/Logical (100% academic): Research methodology, critical thinking, analytical patterns
+- Spatial/Mechanical (100% academic): Research diagrams, data visualizations, academic charts
+- Clerical (100% academic): Reference codes, student IDs, course codes comparison`,
+    clericalExample: 'STU-2024-UG-1234 — STU-2024-UG-1234'
   }
 };
 
@@ -396,7 +562,8 @@ async function generateAptitudeQuestions(
     const prompt = APTITUDE_PROMPT
       .replace(/\{\{CATEGORIES\}\}/g, categoriesText)
       .replace(/\{\{STREAM_NAME\}\}/g, streamContext.name)
-      .replace(/\{\{STREAM_CONTEXT\}\}/g, streamContext.context);
+      .replace(/\{\{STREAM_CONTEXT\}\}/g, streamContext.context)
+      .replace(/\{\{CLERICAL_EXAMPLE\}\}/g, streamContext.clericalExample);
 
     let jsonText: string;
     

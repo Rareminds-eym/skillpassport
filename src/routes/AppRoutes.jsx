@@ -52,6 +52,9 @@ const MySubscription = lazy(() =>
 const SubscriptionManage = lazy(() =>
   import("../pages/subscription/SubscriptionManage")
 );
+const AddOns = lazy(() =>
+  import("../pages/subscription/AddOns")
+);
 
 // Event Sales (no auth required)
 const EventSales = lazy(() =>
@@ -137,7 +140,7 @@ const MyClass = lazy(() => import("../pages/student/MyClass"));
 const Clubs = lazy(() => import ("../pages/student/Clubs"))
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
 const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
-const CareerAI = lazy(() => import("../features/career-assistant/components/CareerAssistant"));
+const CareerAI = lazy(() => import("../pages/student/CareerAI"));
 const DebugQRTest = lazy(() => import("../pages/DebugQRTest"));
 const StudentPublicViewer = lazy(() =>
   import("../components/Students/components/StudentPublicViewer")
@@ -448,6 +451,7 @@ const AppRoutes = () => {
           <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
           <Route path="/subscription/manage" element={<SubscriptionManage />} />
+          <Route path="/subscription/add-ons" element={<AddOns />} />
           {/* Legacy route - redirect to new manage route */}
           <Route
             path="/my-subscription"

@@ -1,34 +1,36 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Check, 
-  Shield, 
-  Clock, 
-  Calendar, 
-  CreditCard,
-  TrendingUp,
-  AlertCircle,
-  RefreshCw,
-  X as XIcon,
-  ChevronRight,
-  Circle,
-  Download,
-  ChevronDown,
-  ChevronUp,
-  Receipt,
-  BarChart3,
-  HelpCircle,
-  Mail,
-  ArrowLeft,
-  LayoutDashboard
+import {
+    AlertCircle,
+    ArrowLeft,
+    BarChart3,
+    Calendar,
+    Check,
+    ChevronDown,
+    ChevronRight,
+    ChevronUp,
+    Circle,
+    Clock,
+    CreditCard,
+    Download,
+    HelpCircle,
+    LayoutDashboard,
+    Mail,
+    Receipt,
+    RefreshCw,
+    Shield,
+    Sparkles,
+    TrendingUp,
+    X as XIcon
 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { SubscriptionDashboard } from '../../components/subscription/SubscriptionDashboard';
+import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
+import { supabase } from '../../lib/supabaseClient';
 import { getUserSubscriptions } from '../../services/Subscriptions/subscriptionService';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '../../services/paymentsApiService';
-import { supabase } from '../../lib/supabaseClient';
-import { getSubscriptionStatusChecks, calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil } from '../../utils/subscriptionHelpers';
-import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
+import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from '../../utils/subscriptionHelpers';
 
 // Fallback plans only used if API fails - these match database structure
 const FALLBACK_PLANS = [
@@ -92,8 +94,12 @@ const FALLBACK_PLANS = [
 
 function MySubscription() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, role, loading: authLoading } = useAuth();
   const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
+  
+  // Tab state - 'subscription' or 'addons'
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'subscription');
   
   // Fetch plans from Cloudflare Worker API (limited to 4 features initially)
   const { 
@@ -616,10 +622,41 @@ function MySubscription() {
               <Shield className="w-5 h-5 text-neutral-700" />
             </div>
           </div>
+
+          {/* Tab Navigation */}
+          <div className="mt-6 flex gap-1 bg-neutral-100 rounded-lg p-1 w-fit">
+            <button
+              onClick={() => setActiveTab('subscription')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                activeTab === 'subscription'
+                  ? 'bg-white text-neutral-900 shadow-sm'
+                  : 'text-neutral-600 hover:text-neutral-900'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              Subscription
+            </button>
+            <button
+              onClick={() => setActiveTab('addons')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                activeTab === 'addons'
+                  ? 'bg-white text-neutral-900 shadow-sm'
+                  : 'text-neutral-600 hover:text-neutral-900'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              Add-Ons
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Add-Ons Tab Content */}
+        {activeTab === 'addons' ? (
+          <SubscriptionDashboard />
+        ) : (
+          <>
         {/* Alert Banner */}
         {(isExpiringSoon || isExpired || isPaused) && (
           <div className={`mb-6 p-4 rounded-lg border flex items-start gap-3 ${
@@ -1133,6 +1170,8 @@ function MySubscription() {
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* Cancel Confirmation Modal */}

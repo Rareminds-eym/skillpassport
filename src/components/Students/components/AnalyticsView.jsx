@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import ReactApexChart from 'react-apexcharts';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabaseClient';
 import TopSkillsInDemand from './TopSkillsInDemand';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';

@@ -66,6 +66,7 @@ export interface Student {
   college_id?: string;
   enrollmentDate?: string;
   expectedGraduationDate?: string;
+  admission_academic_year?: string; // Academic year when student was admitted (e.g., "2024-25")
   currentCgpa?: number | string;
   metadata?: Record<string, any>;
 }

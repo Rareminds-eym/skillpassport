@@ -23,6 +23,27 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  // Calculate academic year for display
+  const calculateAcademicYear = (admissionYear: string, semester: number): string => {
+    try {
+      const yearsProgressed = Math.floor((semester - 1) / 2);
+      const [startYear] = admissionYear.split('-');
+      const newStartYear = parseInt(startYear) + yearsProgressed;
+      return `${newStartYear}-${(newStartYear + 1).toString().slice(-2)}`;
+    } catch {
+      const currentYear = new Date().getFullYear();
+      return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
+    }
+  };
+
+  const currentAcademicYear = student.admission_academic_year 
+    ? calculateAcademicYear(student.admission_academic_year, currentSemester)
+    : 'N/A';
+  
+  const nextAcademicYear = student.admission_academic_year 
+    ? calculateAcademicYear(student.admission_academic_year, nextSemester)
+    : 'N/A';
+
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -51,6 +72,11 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
                   <p className="text-sm text-gray-600 mt-1">
                     Student ID: {student.student_id || 'N/A'}
                   </p>
+                  {student.admission_academic_year && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      Admission Year: {student.admission_academic_year}
+                    </p>
+                  )}
                 </div>
               </div>
               
@@ -62,12 +88,11 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
                       <span className="text-lg font-bold text-gray-700">{currentSemester}</span>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">Current</p>
+                    <p className="text-xs text-blue-600 font-medium">{currentAcademicYear}</p>
                   </div>
                   
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="h-0.5 w-16 bg-gradient-to-r from-blue-400 to-green-400"></div>
-                    <ArrowUpIcon className="h-5 w-5 text-green-500 mx-2" />
-                    <div className="h-0.5 w-16 bg-gradient-to-r from-blue-400 to-green-400"></div>
+                  <div className="flex-1 flex items-center justify-center mb-6">
+                    <div className="h-0.5 w-40 bg-gradient-to-r from-blue-400 to-green-400"></div>
                   </div>
                   
                   <div className="text-center">
@@ -75,6 +100,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
                       <span className="text-lg font-bold text-white">{nextSemester}</span>
                     </div>
                     <p className="text-xs text-green-600 mt-2 font-medium">Next</p>
+                    <p className="text-xs text-green-600 font-medium">{nextAcademicYear}</p>
                   </div>
                 </div>
               </div>
