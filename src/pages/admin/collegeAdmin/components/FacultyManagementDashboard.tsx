@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, UserPlus, Calendar, FileText, TrendingUp, 
-  Download, Upload, Search, Filter, BarChart3 
+  Users, UserPlus, Calendar, 
+  Upload, BarChart3 
 } from 'lucide-react';
 import FacultyList from './FacultyList';
 import FacultyOnboarding from './FacultyOnboarding';
@@ -40,10 +40,10 @@ const FacultyManagementDashboard: React.FC = () => {
 
     try {
       // First, try to get college_id from college_lecturers table
-      const { data: educatorData, error: educatorError } = await supabase
+      const { data: educatorData } = await supabase
         .from('college_lecturers')
         .select('collegeId')
-        .eq('metadata->>email', user.email)
+        .eq('email', user.email)
         .maybeSingle();
 
       if (educatorData?.collegeId) {
@@ -52,8 +52,8 @@ const FacultyManagementDashboard: React.FC = () => {
         return;
       }
 
-      // If not found in college_educators, check if user is a college admin in colleges table
-      console.log('Not found in college_educators, checking colleges table...');
+      // If not found in college_lecturers, check if user is a college admin in colleges table
+      console.log('Not found in college_lecturers, checking colleges table...');
       const { data: collegeData, error: collegeError } = await supabase
         .from('colleges')
         .select('id')
@@ -71,7 +71,7 @@ const FacultyManagementDashboard: React.FC = () => {
       }
 
       // Also try admin_email field
-      const { data: collegeByAdmin, error: adminError } = await supabase
+      const { data: collegeByAdmin } = await supabase
         .from('colleges')
         .select('id')
         .eq('admin_email', user.email)
