@@ -28,8 +28,10 @@ export interface Student {
   registration_number?: string;
   currentCgpa?: string;
   current_semester?: string;
+  semester?: number; // Add semester field for promotion functionality
   enrollmentDate?: string;
   expectedGraduationDate?: string;
+  admission_academic_year?: string; // Academic year when student was admitted (e.g., "2024-25")
   
   // Common fields
   approval_status?: 'pending' | 'approved' | 'rejected' | 'verified' | 'waitlisted';
