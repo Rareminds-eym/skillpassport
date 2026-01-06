@@ -11,7 +11,7 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
     // Determine the label and value for the grade/course field based on grade level
     const getGradeCourseField = () => {
         const level = gradeLevel?.toLowerCase();
-        if (level === 'middle' || level === 'high' || level === 'middleschool' || level === 'highschool') {
+        if (level === 'middle' || level === 'high' || level === 'middleschool' || level === 'highschool' || level === 'higher_secondary') {
             return { label: 'Grade', value: studentInfo.grade || '—' };
         } else if (level === 'after12' || level === 'after12th' || level === '12th') {
             return { label: 'Grade', value: studentInfo.grade || '12th' };
@@ -25,7 +25,7 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
     // Determine the institution label based on grade level
     const getInstitutionLabel = () => {
         const level = gradeLevel?.toLowerCase();
-        if (level === 'middle' || level === 'high' || level === 'middleschool' || level === 'highschool') {
+        if (level === 'middle' || level === 'high' || level === 'middleschool' || level === 'highschool' || level === 'higher_secondary') {
             return 'School';
         } else if (level === 'after12' || level === 'after12th' || level === '12th' || level === 'college' || level === 'university') {
             return 'College';

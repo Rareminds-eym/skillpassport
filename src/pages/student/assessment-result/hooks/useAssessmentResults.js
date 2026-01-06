@@ -502,12 +502,12 @@ export const useAssessmentResults = () => {
         const missingFields = [];
         const { riasec, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, aptitude } = results;
 
-        // For middle school and high school, only check basic fields
-        if (gradeLevel === 'middle' || gradeLevel === 'highschool') {
+        // For middle school, high school, and higher secondary, only check basic fields
+        if (gradeLevel === 'middle' || gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
             // Basic interest exploration (mapped to RIASEC codes)
             if (!riasec || !riasec.topThree || riasec.topThree.length === 0) missingFields.push('Interest Explorer');
-            // For high school, check aptitude sampling
-            if (gradeLevel === 'highschool' && (!aptitude || !aptitude.scores)) missingFields.push('Aptitude Sampling');
+            // For high school and higher secondary, check aptitude sampling
+            if ((gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') && (!aptitude || !aptitude.scores)) missingFields.push('Aptitude Sampling');
             return missingFields;
         }
 
