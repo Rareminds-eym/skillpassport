@@ -14,9 +14,22 @@
 
 import { ArrowRight, ExternalLink, Lock, Sparkles, X, Zap } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
+
+/**
+ * Get the base path for subscription routes based on current location
+ */
+function getSubscriptionBasePath(pathname) {
+  if (pathname.startsWith('/student')) return '/student';
+  if (pathname.startsWith('/recruitment')) return '/recruitment';
+  if (pathname.startsWith('/educator')) return '/educator';
+  if (pathname.startsWith('/college-admin')) return '/college-admin';
+  if (pathname.startsWith('/school-admin')) return '/school-admin';
+  if (pathname.startsWith('/university-admin')) return '/university-admin';
+  return ''; // fallback to root
+}
 
 /**
  * UpgradePrompt - Modal prompt for upgrading
@@ -38,9 +51,12 @@ export function UpgradePrompt({
   className = ''
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { purchaseAddOn, isPurchasing, refreshAccess, fetchUserEntitlements } = useSubscriptionContext();
   const [billingPeriod, setBillingPeriod] = useState('monthly');
   const [error, setError] = useState(null);
+  
+  const basePath = getSubscriptionBasePath(location.pathname);
 
   if (!isOpen || (!addOn && !featureKey)) return null;
 
@@ -122,7 +138,7 @@ export function UpgradePrompt({
 
   const handleLearnMore = () => {
     onClose?.();
-    navigate('/subscription/add-ons');
+    navigate(`${basePath}/subscription/add-ons`);
   };
 
   // Render based on variant

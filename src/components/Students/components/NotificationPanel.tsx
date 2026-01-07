@@ -54,13 +54,31 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     error,
   } = useNotifications(userIdToUse);
 
-  
+
   const [selectedFilter, setSelectedFilter] = useState<FilterKey>("all");
 
   // Track new notifications for animation
   const [newNotificationIds, setNewNotificationIds] = useState<Set<string>>(new Set());
   const [showNewNotificationToast, setShowNewNotificationToast] = useState(false);
   const prevIdsRef = useRef<Set<string>>(new Set());
+
+
+  // Close when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen, onClose]);
 
   // Detect new notifications and animate them
   useEffect(() => {
@@ -93,7 +111,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
         // For now, just go to messages page
         navigate("/student/messages");
         break;
-        
+
       case "course_added":
       case "course_updated":
       case "assignment_submitted":
@@ -102,7 +120,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
       case "new_student_enrolled":
         navigate("/student/courses");
         break;
-        
+
       case "new_opportunity":
       case "opportunity_closed":
       case "offer_accepted":
@@ -114,7 +132,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
       case "new_application":
         navigate("/student/opportunities");
         break;
-        
+
       case "interview_scheduled":
       case "interview_rescheduled":
       case "interview_completed":
@@ -123,12 +141,12 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
       case "candidate_rejected":
         navigate("/student/applications");
         break;
-        
+
       default:
         // Default fallback
         break;
     }
-    
+
     // Close panel
     onClose();
   };
@@ -299,17 +317,17 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     <>
       {/* New notification toast */}
       {showNewNotificationToast && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
-          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 shadow-lg">
+        <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-top-2 duration-300">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 shadow-lg">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-green-800">New notification received</span>
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-blue-800">New notification received</span>
             </div>
           </div>
         </div>
       )}
 
-      <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl z-50 overflow-hidden">
+      <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
         {/* Header */}
         <div className="px-5 py-3 border-b border-gray-100">
           <div className="flex justify-between items-center">
@@ -342,11 +360,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 onClick={() => {
                   setSelectedFilter(key);
                 }}
-                className={`text-xs px-2.5 py-1 rounded-full transition whitespace-nowrap ${
-                  selectedFilter === key
-                    ? "bg-blue-100 text-blue-700 font-medium"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
+                className={`text-xs px-2.5 py-1 rounded-full transition whitespace-nowrap ${selectedFilter === key
+                  ? "bg-blue-100 text-blue-700 font-medium"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
               >
                 {key[0].toUpperCase() + key.slice(1)}
                 {count > 0 && <span className="ml-1 text-[10px]">({count})</span>}
@@ -378,12 +395,11 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
               <li
                 key={n.id}
                 onClick={() => handleNotificationClick(n)}
-                className={`px-5 py-4 hover:bg-gray-50 transition-all duration-300 group relative cursor-pointer ${
-                  !n.read ? "bg-blue-50/50" : ""
-                } ${newNotificationIds.has(n.id) ? "animate-pulse bg-green-50 border-l-4 border-green-400" : ""}`}
+                className={`px-5 py-4 hover:bg-gray-50 transition-all duration-300 group relative cursor-pointer ${!n.read ? "bg-blue-50/50" : ""
+                  } ${newNotificationIds.has(n.id) ? "animate-pulse bg-blue-50 border-l-4 border-blue-400" : ""}`}
               >
                 {newNotificationIds.has(n.id) && (
-                  <div className="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                  <div className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
                 )}
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100">
@@ -396,11 +412,11 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                       <span className="text-[11px] text-gray-400">{formatRelativeTime(n.created_at)}</span>
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
                         {!n.read && (
-                          <button 
+                          <button
                             onClick={(e) => {
                               e.stopPropagation(); // Prevent triggering the row click
                               markRead(n.id);
-                            }} 
+                            }}
                             className="text-gray-400 hover:text-blue-600"
                           >
                             <EyeIcon className="h-4 w-4" />
@@ -416,10 +432,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
           {hasMore && (
             <div className="p-3 border-t border-gray-100 text-center">
-              <button 
+              <button
                 onClick={() => {
                   loadMore();
-                }} 
+                }}
                 className="text-sm text-blue-600 hover:underline"
               >
                 Load more

@@ -207,8 +207,18 @@ export const initiateRazorpayPayment = async ({ plan, userDetails }) => {
     // Handle "subscription already exists" error specially
     if (error.code === 'SUBSCRIPTION_EXISTS' || error.isSubscriptionExists) {
       const origin = window.location.origin;
+      // Get the base path from current location for role-based routing
+      const pathname = window.location.pathname;
+      let basePath = '';
+      if (pathname.startsWith('/student')) basePath = '/student';
+      else if (pathname.startsWith('/recruitment')) basePath = '/recruitment';
+      else if (pathname.startsWith('/educator')) basePath = '/educator';
+      else if (pathname.startsWith('/college-admin')) basePath = '/college-admin';
+      else if (pathname.startsWith('/school-admin')) basePath = '/school-admin';
+      else if (pathname.startsWith('/university-admin')) basePath = '/university-admin';
+      
       // Redirect to manage subscription page instead of failure page
-      const manageUrl = new URL('/subscription/manage', origin);
+      const manageUrl = new URL(`${basePath}/subscription/manage`, origin);
       manageUrl.searchParams.set('message', 'You already have an active subscription');
       window.location.href = manageUrl.toString();
       return;

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BellIcon,
@@ -25,7 +25,32 @@ const Header: React.FC<HeaderProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const { user, logout } = useAuth();
+
   const navigate = useNavigate();
+  const profileRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  // Close profile menu and notifications when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Profile Dropdown
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+      // Notification Panel
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+
+    if (showProfileMenu || showNotifications) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showProfileMenu, showNotifications]);
 
   // Get real-time notifications for admin
   const { unreadCount, loading: notificationsLoading } = useAdminNotifications(user?.id);
@@ -55,10 +80,10 @@ const Header: React.FC<HeaderProps> = ({
     user?.role === "school_admin"
       ? "School Admin"
       : user?.role === "college_admin"
-      ? "College Admin"
-      : user?.role === "university_admin"
-      ? "University Admin"
-      : "Administrator";
+        ? "College Admin"
+        : user?.role === "university_admin"
+          ? "University Admin"
+          : "Administrator";
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -89,7 +114,7 @@ const Header: React.FC<HeaderProps> = ({
           {/* Right: Notifications + Profile */}
           <div className="flex items-center gap-3 sm:gap-4">
             {/* Notifications */}
-            <div className="relative">
+            <div ref={notificationRef} className="relative">
               <button
                 onClick={handleNotificationClick}
                 className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full focus:ring-2 focus:ring-indigo-500 transition"
@@ -109,9 +134,12 @@ const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Profile Menu */}
-            <div className="relative">
+            <div ref={profileRef} className="relative">
               <button
-                onClick={() => setShowProfileMenu((prev) => !prev)}
+                onClick={() => {
+                  setShowProfileMenu((prev) => !prev);
+                  setShowNotifications(false);
+                }}
                 className="flex items-center gap-2 rounded-full hover:bg-gray-100 p-1.5 sm:p-2"
               >
                 <UserCircleIcon className="h-7 w-7 text-gray-500" />
@@ -120,14 +148,13 @@ const Header: React.FC<HeaderProps> = ({
                   <p className="text-xs text-gray-500">{userRoleLabel}</p>
                 </div>
                 <ChevronDownIcon
-                  className={`hidden sm:block h-4 w-4 text-gray-500 transition-transform ${
-                    showProfileMenu ? "rotate-180" : ""
-                  }`}
+                  className={`hidden sm:block h-4 w-4 text-gray-500 transition-transform ${showProfileMenu ? "rotate-180" : ""
+                    }`}
                 />
               </button>
 
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
                   <div className="py-1">
                     <button
                       onClick={() => navigate(getSettingsPath())}
