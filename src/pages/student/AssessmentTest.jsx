@@ -7,6 +7,7 @@ import {
     Award,
     BarChart3,
     BookOpen,
+    Brain,
     BrainCircuit,
     CheckCircle2,
     ChevronLeft,
@@ -19,17 +20,8 @@ import {
     Target,
     TrendingUp,
     Users,
-    Code,
-    Zap,
-    Loader2,
-    ArrowLeft,
-    FlaskConical,
-    BarChart3,
-    BookOpen,
-    Brain
+    Zap
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
 import { Label } from '../../components/Students/components/ui/label';
