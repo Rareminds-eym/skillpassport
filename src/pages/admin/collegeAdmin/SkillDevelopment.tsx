@@ -255,6 +255,61 @@ interface TrainerFeedbackFormData {
   studentPerformance: string;
 }
 
+interface NotificationModal {
+  isOpen: boolean;
+  type: 'success' | 'error' | 'warning' | 'info';
+  title: string;
+  message: string;
+}
+
+// Notification Modal Component
+const NotificationModalComponent: React.FC<{
+  notification: NotificationModal;
+  onClose: () => void;
+}> = ({ notification, onClose }) => {
+  if (!notification.isOpen) return null;
+
+  const iconColors = {
+    success: 'text-green-500 bg-green-100',
+    error: 'text-red-500 bg-red-100',
+    warning: 'text-yellow-500 bg-yellow-100',
+    info: 'text-blue-500 bg-blue-100',
+  };
+
+  const icons = {
+    success: <CheckCircle className="h-6 w-6" />,
+    error: <XCircle className="h-6 w-6" />,
+    warning: <AlertTriangle className="h-6 w-6" />,
+    info: <AlertCircle className="h-6 w-6" />,
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
+        <div className="p-6">
+          <div className="flex items-center gap-4">
+            <div className={`p-3 rounded-full ${iconColors[notification.type]}`}>
+              {icons[notification.type]}
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900">{notification.title}</h3>
+              <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-gray-50 px-6 py-4 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SkillDevelopment: React.FC = () => {
   const [activeTab, setActiveTab] = useState("courses");
   const [showAddCourseModal, setShowAddCourseModal] = useState(false);
@@ -301,6 +356,22 @@ const SkillDevelopment: React.FC = () => {
   const [selectedFeedbackCourse, setSelectedFeedbackCourse] = useState("");
   const [selectedFeedbackStatus, setSelectedFeedbackStatus] = useState("");
   const [selectedCertificates, setSelectedCertificates] = useState<string[]>([]);
+
+  // Notification modal state
+  const [notification, setNotification] = useState<NotificationModal>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
+
+  const showNotification = (type: NotificationModal['type'], title: string, message: string) => {
+    setNotification({ isOpen: true, type, title, message });
+  };
+
+  const closeNotification = () => {
+    setNotification(prev => ({ ...prev, isOpen: false }));
+  };
   
   const [formData, setFormData] = useState<SkillCourseFormData>({
     courseName: "",
@@ -1079,15 +1150,15 @@ const SkillDevelopment: React.FC = () => {
     try {
       // Validation
       if (!formData.courseName.trim()) {
-        alert("Course name is required");
+        showNotification('error', 'Validation Error', 'Course name is required');
         return;
       }
       if (!formData.provider.trim()) {
-        alert("Provider is required");
+        showNotification('error', 'Validation Error', 'Provider is required');
         return;
       }
       if (!formData.duration.trim() || parseFloat(formData.duration) <= 0) {
-        alert("Valid duration is required");
+        showNotification('error', 'Validation Error', 'Valid duration is required');
         return;
       }
 
@@ -1098,11 +1169,11 @@ const SkillDevelopment: React.FC = () => {
       
       resetForm();
       setShowAddCourseModal(false);
-      alert("Skill course added successfully!");
+      showNotification('success', 'Success', 'Skill course added successfully!');
       
     } catch (error) {
       console.error("Error adding skill course:", error);
-      alert("Error adding skill course. Please try again.");
+      showNotification('error', 'Error', 'Error adding skill course. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1135,10 +1206,10 @@ const SkillDevelopment: React.FC = () => {
       console.log(`Toggling course ${courseId} from ${currentStatus} to ${!currentStatus}`);
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
-      alert(`Course ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+      showNotification('success', 'Success', `Course ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
     } catch (error) {
       console.error("Error toggling course status:", error);
-      alert("Error updating course status. Please try again.");
+      showNotification('error', 'Error', 'Error updating course status. Please try again.');
     }
   };
 
@@ -1291,15 +1362,15 @@ const SkillDevelopment: React.FC = () => {
     try {
       // Validation
       if (!allocationFormData.courseId) {
-        alert("Please select a course");
+        showNotification('error', 'Validation Error', 'Please select a course');
         return;
       }
       if (!allocationFormData.startDate || !allocationFormData.endDate) {
-        alert("Please select start and end dates");
+        showNotification('error', 'Validation Error', 'Please select start and end dates');
         return;
       }
       if (new Date(allocationFormData.startDate) >= new Date(allocationFormData.endDate)) {
-        alert("End date must be after start date");
+        showNotification('error', 'Validation Error', 'End date must be after start date');
         return;
       }
 
@@ -1313,7 +1384,7 @@ const SkillDevelopment: React.FC = () => {
       }
 
       if (studentsToAllocate.length === 0) {
-        alert("No students found for allocation");
+        showNotification('warning', 'No Students Found', 'No students found for allocation');
         return;
       }
 
@@ -1326,7 +1397,7 @@ const SkillDevelopment: React.FC = () => {
         const duplicateNames = duplicates.map(id => 
           studentsData.find(s => s.id === id)?.name
         ).join(", ");
-        alert(`The following students are already allocated to this course: ${duplicateNames}. Enable "Allow Retake" to proceed.`);
+        showNotification('warning', 'Duplicate Allocation', `The following students are already allocated to this course: ${duplicateNames}. Enable "Allow Retake" to proceed.`);
         return;
       }
 
@@ -1341,11 +1412,11 @@ const SkillDevelopment: React.FC = () => {
       
       resetAllocationForm();
       setShowAllocateModal(false);
-      alert(`Course allocated successfully to ${studentsToAllocate.length} students!`);
+      showNotification('success', 'Success', `Course allocated successfully to ${studentsToAllocate.length} students!`);
       
     } catch (error) {
       console.error("Error allocating course:", error);
-      alert("Error allocating course. Please try again.");
+      showNotification('error', 'Error', 'Error allocating course. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1487,7 +1558,7 @@ const SkillDevelopment: React.FC = () => {
       // Validation
       const completion = parseFloat(progressUpdateFormData.completionPercentage);
       if (isNaN(completion) || completion < 0 || completion > 100) {
-        alert("Completion percentage must be between 0 and 100");
+        showNotification('error', 'Validation Error', 'Completion percentage must be between 0 and 100');
         return;
       }
 
@@ -1495,7 +1566,7 @@ const SkillDevelopment: React.FC = () => {
         const score = parseFloat(progressUpdateFormData.assessmentScore);
         const maxScore = parseFloat(progressUpdateFormData.maxAssessmentScore) || 100;
         if (isNaN(score) || score < 0 || score > maxScore) {
-          alert(`Assessment score must be between 0 and ${maxScore}`);
+          showNotification('error', 'Validation Error', `Assessment score must be between 0 and ${maxScore}`);
           return;
         }
       }
@@ -1508,11 +1579,11 @@ const SkillDevelopment: React.FC = () => {
       resetProgressForm();
       setShowUpdateProgressModal(false);
       setSelectedProgress(null);
-      alert("Progress updated successfully!");
+      showNotification('success', 'Success', 'Progress updated successfully!');
       
     } catch (error) {
       console.error("Error updating progress:", error);
-      alert("Error updating progress. Please try again.");
+      showNotification('error', 'Error', 'Error updating progress. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1522,7 +1593,7 @@ const SkillDevelopment: React.FC = () => {
   const handleBulkUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bulkUploadFile) {
-      alert("Please select a file to upload");
+      showNotification('warning', 'No File Selected', 'Please select a file to upload');
       return;
     }
 
@@ -1536,11 +1607,11 @@ const SkillDevelopment: React.FC = () => {
       
       setBulkUploadFile(null);
       setShowBulkUploadModal(false);
-      alert("Progress data uploaded successfully!");
+      showNotification('success', 'Success', 'Progress data uploaded successfully!');
       
     } catch (error) {
       console.error("Error uploading file:", error);
-      alert("Error uploading file. Please try again.");
+      showNotification('error', 'Error', 'Error uploading file. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1756,7 +1827,7 @@ const SkillDevelopment: React.FC = () => {
       for (const field of requiredFields) {
         const value = feedbackFormData[field as keyof FeedbackFormData];
         if (!value || parseFloat(value) < 1 || parseFloat(value) > 5) {
-          alert(`Please provide a valid rating (1-5) for ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+          showNotification('error', 'Validation Error', `Please provide a valid rating (1-5) for ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
           return;
         }
       }
@@ -1768,11 +1839,11 @@ const SkillDevelopment: React.FC = () => {
       
       resetFeedbackForm();
       setShowStudentFeedbackModal(false);
-      alert("Feedback submitted successfully!");
+      showNotification('success', 'Success', 'Feedback submitted successfully!');
       
     } catch (error) {
       console.error("Error submitting feedback:", error);
-      alert("Error submitting feedback. Please try again.");
+      showNotification('error', 'Error', 'Error submitting feedback. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1789,7 +1860,7 @@ const SkillDevelopment: React.FC = () => {
       for (const field of requiredFields) {
         const value = trainerFeedbackFormData[field as keyof TrainerFeedbackFormData];
         if (!value || parseFloat(value) < 1 || parseFloat(value) > 5) {
-          alert(`Please provide a valid rating (1-5) for ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+          showNotification('error', 'Validation Error', `Please provide a valid rating (1-5) for ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
           return;
         }
       }
@@ -1801,11 +1872,11 @@ const SkillDevelopment: React.FC = () => {
       
       resetTrainerFeedbackForm();
       setShowTrainerFeedbackModal(false);
-      alert("Trainer feedback submitted successfully!");
+      showNotification('success', 'Success', 'Trainer feedback submitted successfully!');
       
     } catch (error) {
       console.error("Error submitting trainer feedback:", error);
-      alert("Error submitting trainer feedback. Please try again.");
+      showNotification('error', 'Error', 'Error submitting trainer feedback. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1814,7 +1885,7 @@ const SkillDevelopment: React.FC = () => {
   // Handle certificate generation
   const handleGenerateCertificates = async () => {
     if (selectedCertificates.length === 0) {
-      alert("Please select certificates to generate");
+      showNotification('warning', 'No Selection', 'Please select certificates to generate');
       return;
     }
 
@@ -1827,11 +1898,11 @@ const SkillDevelopment: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       setSelectedCertificates([]);
-      alert(`${selectedCertificates.length} certificates generated successfully!`);
+      showNotification('success', 'Success', `${selectedCertificates.length} certificates generated successfully!`);
       
     } catch (error) {
       console.error("Error generating certificates:", error);
-      alert("Error generating certificates. Please try again.");
+      showNotification('error', 'Error', 'Error generating certificates. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1844,12 +1915,12 @@ const SkillDevelopment: React.FC = () => {
     );
 
     if (issuedCertificates.length === 0) {
-      alert("No issued certificates selected for download");
+      showNotification('warning', 'No Selection', 'No issued certificates selected for download');
       return;
     }
 
     console.log("Downloading certificates:", issuedCertificates);
-    alert(`Downloading ${issuedCertificates.length} certificates as ZIP file...`);
+    showNotification('info', 'Downloading', `Downloading ${issuedCertificates.length} certificates as ZIP file...`);
   };
 
   // Filter feedback data
@@ -2242,7 +2313,7 @@ const SkillDevelopment: React.FC = () => {
                                 onClick={() => {
                                   if (confirm("Are you sure you want to cancel this allocation?")) {
                                     console.log("Cancelling allocation:", allocation.id);
-                                    alert("Allocation cancelled successfully!");
+                                    showNotification('success', 'Success', 'Allocation cancelled successfully!');
                                   }
                                 }}
                                 className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
@@ -2483,7 +2554,7 @@ const SkillDevelopment: React.FC = () => {
                                   onClick={() => {
                                     setSelectedProgress(progress);
                                     // Could open a detailed view modal here
-                                    alert(`Detailed view for ${progress.studentName} - ${progress.courseName}`);
+                                    showNotification('info', 'Progress Details', `Detailed view for ${progress.studentName} - ${progress.courseName}`);
                                   }}
                                   className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
                                   title="View Details"
@@ -2887,7 +2958,7 @@ const SkillDevelopment: React.FC = () => {
                                   onClick={() => {
                                     setSelectedFeedback(feedback);
                                     // Could open detailed feedback view modal
-                                    alert(`Viewing feedback from ${feedback.studentName}`);
+                                    showNotification('info', 'Feedback', `Viewing feedback from ${feedback.studentName}`);
                                   }}
                                   className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
                                   title="View Feedback"
@@ -2898,7 +2969,7 @@ const SkillDevelopment: React.FC = () => {
                                   <button
                                     onClick={() => {
                                       console.log("Marking feedback as reviewed:", feedback.id);
-                                      alert("Feedback marked as reviewed!");
+                                      showNotification('success', 'Success', 'Feedback marked as reviewed!');
                                     }}
                                     className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
                                     title="Mark as Reviewed"
@@ -2999,7 +3070,7 @@ const SkillDevelopment: React.FC = () => {
                                 <button
                                   onClick={() => {
                                     setSelectedFeedback(feedback);
-                                    alert(`Viewing trainer feedback from ${feedback.trainerName}`);
+                                    showNotification('info', 'Trainer Feedback', `Viewing trainer feedback from ${feedback.trainerName}`);
                                   }}
                                   className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
                                   title="View Feedback"
@@ -3010,7 +3081,7 @@ const SkillDevelopment: React.FC = () => {
                                   <button
                                     onClick={() => {
                                       console.log("Marking trainer feedback as reviewed:", feedback.id);
-                                      alert("Trainer feedback marked as reviewed!");
+                                      showNotification('success', 'Success', 'Trainer feedback marked as reviewed!');
                                     }}
                                     className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
                                     title="Mark as Reviewed"
@@ -3143,7 +3214,7 @@ const SkillDevelopment: React.FC = () => {
                                 <button
                                   onClick={() => {
                                     console.log("Viewing certificate:", certificate.certificateNumber);
-                                    alert(`Viewing certificate ${certificate.certificateNumber}`);
+                                    showNotification('info', 'Certificate', `Viewing certificate ${certificate.certificateNumber}`);
                                   }}
                                   className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
                                   title="View Certificate"
@@ -3154,7 +3225,7 @@ const SkillDevelopment: React.FC = () => {
                                   <button
                                     onClick={() => {
                                       console.log("Downloading certificate:", certificate.filePath);
-                                      alert(`Downloading certificate for ${certificate.studentName}`);
+                                      showNotification('info', 'Downloading', `Downloading certificate for ${certificate.studentName}`);
                                     }}
                                     className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
                                     title="Download Certificate"
@@ -3479,11 +3550,11 @@ const SkillDevelopment: React.FC = () => {
                 setShowEditCourseModal(false);
                 setSelectedCourse(null);
                 resetForm();
-                alert("Course updated successfully!");
+                showNotification('success', 'Success', 'Course updated successfully!');
                 
               } catch (error) {
                 console.error("Error updating course:", error);
-                alert("Error updating course. Please try again.");
+                showNotification('error', 'Error', 'Error updating course. Please try again.');
               } finally {
                 setIsSubmitting(false);
               }
@@ -5229,7 +5300,7 @@ const SkillDevelopment: React.FC = () => {
                           <button
                             onClick={() => {
                               console.log("Previewing template:", template.id);
-                              alert(`Previewing ${template.name} template`);
+                              showNotification('info', 'Preview', `Previewing ${template.name} template`);
                             }}
                             className="text-blue-600 hover:text-blue-800 text-sm"
                           >
@@ -5238,7 +5309,7 @@ const SkillDevelopment: React.FC = () => {
                           <button
                             onClick={() => {
                               console.log("Editing template:", template.id);
-                              alert(`Editing ${template.name} template`);
+                              showNotification('info', 'Edit', `Editing ${template.name} template`);
                             }}
                             className="text-indigo-600 hover:text-indigo-800 text-sm"
                           >
@@ -5433,7 +5504,7 @@ const SkillDevelopment: React.FC = () => {
                   <button
                     onClick={() => {
                       console.log("Previewing certificates");
-                      alert("Certificate preview will be generated");
+                      showNotification('info', 'Preview', 'Certificate preview will be generated');
                     }}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
                   >
@@ -5445,7 +5516,7 @@ const SkillDevelopment: React.FC = () => {
                       setIsSubmitting(true);
                       setTimeout(() => {
                         setIsSubmitting(false);
-                        alert("Certificates generated successfully!");
+                        showNotification('success', 'Success', 'Certificates generated successfully!');
                         setShowCertificateModal(false);
                       }, 2000);
                     }}
@@ -5494,7 +5565,7 @@ const SkillDevelopment: React.FC = () => {
                         <button
                           onClick={() => {
                             console.log("Viewing certificate:", certificate.id);
-                            alert(`Viewing certificate for ${certificate.studentName}`);
+                            showNotification('info', 'Certificate', `Viewing certificate for ${certificate.studentName}`);
                           }}
                           className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
                           title="View Certificate"
@@ -5505,7 +5576,7 @@ const SkillDevelopment: React.FC = () => {
                           <button
                             onClick={() => {
                               console.log("Downloading certificate:", certificate.id);
-                              alert(`Downloading certificate for ${certificate.studentName}`);
+                              showNotification('info', 'Downloading', `Downloading certificate for ${certificate.studentName}`);
                             }}
                             className="text-green-600 hover:text-green-800 p-1 rounded hover:bg-green-50"
                             title="Download Certificate"
@@ -5676,7 +5747,7 @@ const SkillDevelopment: React.FC = () => {
                         <button
                           onClick={() => {
                             console.log("Marking feedback as reviewed:", selectedFeedback.id);
-                            alert("Feedback marked as reviewed!");
+                            showNotification('success', 'Success', 'Feedback marked as reviewed!');
                             setSelectedFeedback(null);
                           }}
                           className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
@@ -5783,7 +5854,7 @@ const SkillDevelopment: React.FC = () => {
                         <button
                           onClick={() => {
                             console.log("Marking trainer feedback as reviewed:", selectedFeedback.id);
-                            alert("Trainer feedback marked as reviewed!");
+                            showNotification('success', 'Success', 'Trainer feedback marked as reviewed!');
                             setSelectedFeedback(null);
                           }}
                           className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
@@ -5885,6 +5956,9 @@ const SkillDevelopment: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Notification Modal */}
+      <NotificationModalComponent notification={notification} onClose={closeNotification} />
     </div>
   );
 };

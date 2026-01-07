@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import {
-  MagnifyingGlassIcon, ArrowPathIcon, PlusCircleIcon, PencilSquareIcon,
+  MagnifyingGlassIcon, PlusCircleIcon, PencilSquareIcon,
   TrashIcon, CheckCircleIcon, ExclamationTriangleIcon, CalendarIcon, MapPinIcon, UsersIcon,
 } from "@heroicons/react/24/outline";
 import { CollegeEvent } from "../types";
@@ -59,7 +59,6 @@ export const EventsTab: React.FC<Props> = ({
             <option value="cancelled">Cancelled</option>
             <option value="completed">Completed</option>
           </select>
-          <button onClick={onRefresh} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"><ArrowPathIcon className="h-5 w-5" /></button>
         </div>
         <button onClick={onCreate} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">
           <PlusCircleIcon className="h-5 w-5" />Add Event

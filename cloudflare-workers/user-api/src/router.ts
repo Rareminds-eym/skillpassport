@@ -35,6 +35,7 @@ import {
   handleCreateStudent,
   handleCreateTeacher,
   handleUpdateStudentDocuments,
+  handleCreateCollegeStaff,
   // Events
   handleCreateEventUser,
   handleSendInterviewReminder,
@@ -84,6 +85,7 @@ const routes: Record<string, Route> = {
   // ===== AUTHENTICATED =====
   '/create-student': { method: 'POST', handler: handleCreateStudent },
   '/create-teacher': { method: 'POST', handler: handleCreateTeacher },
+  '/create-college-staff': { method: 'POST', handler: handleCreateCollegeStaff },
   '/update-student-documents': { method: 'POST', handler: handleUpdateStudentDocuments },
   '/create-event-user': { method: 'POST', handler: handleCreateEventUser },
   '/send-interview-reminder': { method: 'POST', handler: handleSendInterviewReminder },
@@ -119,6 +121,7 @@ function handleHealthCheck(): Response {
       authenticated: [
         '/create-student',
         '/create-teacher',
+        '/create-college-staff',
         '/create-event-user',
         '/send-interview-reminder',
         '/reset-password',

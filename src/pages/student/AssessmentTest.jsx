@@ -7,6 +7,7 @@ import {
     Award,
     BarChart3,
     BookOpen,
+    Brain,
     BrainCircuit,
     CheckCircle2,
     ChevronLeft,
@@ -19,17 +20,8 @@ import {
     Target,
     TrendingUp,
     Users,
-    Code,
-    Zap,
-    Loader2,
-    ArrowLeft,
-    FlaskConical,
-    BarChart3,
-    BookOpen,
-    Brain
+    Zap
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
 import { Label } from '../../components/Students/components/ui/label';
@@ -1367,7 +1359,9 @@ const AssessmentTest = () => {
         setStudentStream(streamId);
 
         // Determine the effective grade level for database
+        // Use the current gradeLevel state which was set in handleGradeSelect
         const effectiveGradeLevel = gradeLevel || 'after12';
+        console.log('📚 handleCategorySelect - gradeLevel:', gradeLevel, 'effectiveGradeLevel:', effectiveGradeLevel, 'categoryId:', categoryId);
 
         // Load questions from database
         await loadQuestionsFromDatabase(streamId, effectiveGradeLevel);
@@ -1379,7 +1373,7 @@ const AssessmentTest = () => {
             try {
                 await startAssessment(streamId, effectiveGradeLevel);
                 setUseDatabase(true);
-                console.log('Assessment attempt created in database for category:', categoryId);
+                console.log('Assessment attempt created in database for category:', categoryId, 'gradeLevel:', effectiveGradeLevel);
             } catch (err) {
                 console.log('Could not create database attempt, using localStorage mode:', err.message);
             }
@@ -1797,6 +1791,7 @@ const AssessmentTest = () => {
             // Save answers and timings to localStorage (for backward compatibility)
             localStorage.setItem('assessment_answers', JSON.stringify(answers));
             localStorage.setItem('assessment_stream', studentStream);
+            localStorage.setItem('assessment_grade_level', gradeLevel || 'after12');
             localStorage.setItem('assessment_section_timings', JSON.stringify(finalTimings));
             // Clear any previous results
             localStorage.removeItem('assessment_gemini_results');
@@ -2291,8 +2286,11 @@ const AssessmentTest = () => {
                             </button>
                             )}
 
-                            {/* Grades 11-12 (Higher Secondary) - Show if: show all OR not filtering OR grade is 11-12 */}
-                            {(shouldShowAllOptions || !shouldFilterByGrade || detectedGradeLevel === 'higher_secondary') && (
+                            {/* Grades 11-12 (Higher Secondary) - Show if: show all OR not filtering OR (grade is 11-12 AND NOT grade 12 with 6+ months) */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || 
+                              (detectedGradeLevel === 'higher_secondary' && 
+                               !((studentGrade === '12' || studentGrade === '12th') && monthsInGrade !== null && monthsInGrade >= 6))
+                            ) && (
                             <button
                                 onClick={() => handleGradeSelect('higher_secondary')}
                                 className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
@@ -2359,7 +2357,7 @@ const AssessmentTest = () => {
 
                             {/* After 12th - Show if: show all OR not filtering OR (grade is 12 AND 6+ months in grade) */}
                             {(shouldShowAllOptions || !shouldFilterByGrade || 
-                              (detectedGradeLevel === 'highschool' && (studentGrade === '12' || studentGrade === '12th') && (monthsInGrade === null || monthsInGrade >= 6))
+                              (detectedGradeLevel === 'higher_secondary' && (studentGrade === '12' || studentGrade === '12th') && (monthsInGrade === null || monthsInGrade >= 6))
                             ) && (
                             <button
                                 onClick={() => handleGradeSelect('after12')}
