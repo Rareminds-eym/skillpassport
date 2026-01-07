@@ -28,7 +28,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { useStudentSettings } from "../../hooks/useStudentSettings";
 
-import { SubscriptionSettingsSection } from "../../components/subscription/SubscriptionSettingsSection";
+import { SubscriptionSettingsSection } from "../../components/Subscription/SubscriptionSettingsSection";
 import { useToast } from "../../hooks/use-toast";
 import useStudentMessageNotifications from "../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";

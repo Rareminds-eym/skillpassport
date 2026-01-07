@@ -17,7 +17,7 @@ import {
     UserIcon
 } from '@heroicons/react/24/outline';
 import React, { useState } from 'react';
-import { SubscriptionSettingsSection } from '../../components/subscription/SubscriptionSettingsSection';
+import { SubscriptionSettingsSection } from '../../components/Subscription/SubscriptionSettingsSection';
 
 interface SettingsState {
   fullName: string;

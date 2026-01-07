@@ -2,7 +2,7 @@ import { Calendar, Check, ChevronDown, ChevronUp, Clock, Shield, Sparkles, Trend
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import AddOnMarketplace from '../../components/subscription/AddOnMarketplace';
+import AddOnMarketplace from '../../components/Subscription/AddOnMarketplace';
 import CollegeLoginModal from '../../components/Subscription/CollegeLoginModal';
 import CollegeSignupModal from '../../components/Subscription/CollegeSignupModal';
 import EducatorLoginModal from '../../components/Subscription/EducatorLoginModal';
