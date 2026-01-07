@@ -21,6 +21,28 @@ import { supabase } from '../../lib/supabaseClient';
 import { initiateRazorpayPayment } from '../../services/Subscriptions/razorpayService';
 import { isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
+/**
+ * Get the subscription manage path based on user role
+ */
+function getManagePath(userRole) {
+  const manageRoutes = {
+    super_admin: '/admin/subscription/manage',
+    rm_admin: '/admin/subscription/manage',
+    admin: '/admin/subscription/manage',
+    school_admin: '/school-admin/subscription/manage',
+    college_admin: '/college-admin/subscription/manage',
+    university_admin: '/university-admin/subscription/manage',
+    educator: '/educator/subscription/manage',
+    school_educator: '/educator/subscription/manage',
+    college_educator: '/educator/subscription/manage',
+    recruiter: '/recruitment/subscription/manage',
+    student: '/student/subscription/manage',
+    school_student: '/student/subscription/manage',
+    college_student: '/student/subscription/manage',
+  };
+  return manageRoutes[userRole] || '/student/subscription/manage';
+}
+
 // Clean Input Component
 const FormInput = memo(
   ({
@@ -185,7 +207,8 @@ PaymentMethods.displayName = 'PaymentMethods';
 function PaymentCompletion() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, role } = useAuth();
+  const managePath = useMemo(() => getManagePath(role), [role]);
 
   const { plan, studentType } = useMemo(() => location.state || {}, [location.state]);
 
@@ -294,7 +317,7 @@ function PaymentCompletion() {
         ? new Date(subscriptionData.endDate) > new Date()
         : true;
       if (isActive && hasValidEndDate) {
-        navigate('/subscription/manage', { replace: true });
+        navigate(managePath, { replace: true });
       }
     }
   }, [subscriptionData, subscriptionLoading, navigate]);

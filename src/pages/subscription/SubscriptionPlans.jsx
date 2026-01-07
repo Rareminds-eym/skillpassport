@@ -24,6 +24,28 @@ import useAuth from '../../hooks/useAuth';
 import { getEntityContent, parseStudentType, setDatabasePlans } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
+/**
+ * Get the subscription manage path based on user role
+ */
+function getManagePath(userRole) {
+  const manageRoutes = {
+    super_admin: '/admin/subscription/manage',
+    rm_admin: '/admin/subscription/manage',
+    admin: '/admin/subscription/manage',
+    school_admin: '/school-admin/subscription/manage',
+    college_admin: '/college-admin/subscription/manage',
+    university_admin: '/university-admin/subscription/manage',
+    educator: '/educator/subscription/manage',
+    school_educator: '/educator/subscription/manage',
+    college_educator: '/educator/subscription/manage',
+    recruiter: '/recruitment/subscription/manage',
+    student: '/student/subscription/manage',
+    school_student: '/student/subscription/manage',
+    college_student: '/student/subscription/manage',
+  };
+  return manageRoutes[userRole] || '/student/subscription/manage';
+}
+
 // Feature comparison data
 const FEATURE_COMPARISON = {
   'Core Features': {
@@ -309,7 +331,10 @@ function SubscriptionPlans() {
   }, [setSearchParams]);
   
   // Use new authentication hook
-  const { isAuthenticated, user, loading: authLoading } = useAuth();
+  const { isAuthenticated, user, loading: authLoading, role: userRole } = useAuth();
+  
+  // Get the manage path based on user role
+  const managePath = useMemo(() => getManagePath(userRole), [userRole]);
   
   // Parse entity and role from type
   const { entity, role: pageRole } = useMemo(() => parseStudentType(type || 'student'), [type]);
@@ -405,13 +430,13 @@ function SubscriptionPlans() {
 
   useEffect(() => {
     if (isFullyLoaded && shouldRedirect) {
-      navigate(`/subscription/manage${location.search}`, { replace: true });
+      navigate(`${managePath}${location.search}`, { replace: true });
     }
-  }, [isFullyLoaded, shouldRedirect, navigate, location.search]);
+  }, [isFullyLoaded, shouldRedirect, navigate, location.search, managePath]);
 
   const handlePlanSelection = useCallback((plan) => {
     if (subscriptionData && subscriptionData.plan === plan.id) {
-      navigate('/subscription/manage');
+      navigate(managePath);
       return;
     }
     if (!isAuthenticated) {

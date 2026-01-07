@@ -5,15 +5,38 @@ import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQu
 import { isActiveOrPaused, isManageable } from '../../utils/subscriptionHelpers';
 
 /**
+ * Get the subscription manage path based on user role
+ */
+function getManagePath(userRole) {
+  const manageRoutes = {
+    super_admin: '/admin/subscription/manage',
+    rm_admin: '/admin/subscription/manage',
+    admin: '/admin/subscription/manage',
+    school_admin: '/school-admin/subscription/manage',
+    college_admin: '/college-admin/subscription/manage',
+    university_admin: '/university-admin/subscription/manage',
+    educator: '/educator/subscription/manage',
+    school_educator: '/educator/subscription/manage',
+    college_educator: '/educator/subscription/manage',
+    recruiter: '/recruitment/subscription/manage',
+    student: '/student/subscription/manage',
+    school_student: '/student/subscription/manage',
+    college_student: '/student/subscription/manage',
+  };
+  return manageRoutes[userRole] || '/student/subscription/manage';
+}
+
+/**
  * Centralized Subscription Route Guard
  * Handles all subscription-related routing logic in one place for smooth transitions
  */
 const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, role } = useAuth();
   const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
   const [redirecting, setRedirecting] = useState(false);
+  const managePath = useMemo(() => getManagePath(role), [role]);
 
   // Memoize active subscription check
   const hasActiveSubscription = useMemo(
@@ -51,7 +74,7 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
         // Payment page - redirect if user has active subscription
         if (hasActiveSubscription) {
           setRedirecting(true);
-          navigate('/subscription/manage', { replace: true });
+          navigate(managePath, { replace: true });
         }
         break;
 

@@ -151,7 +151,7 @@ export function SubscriptionDashboard({ className = '' }) {
               Status: <span className="text-white font-medium capitalize">{subscription.status}</span>
             </span>
             <button
-              onClick={() => navigate('/subscription/plans')}
+              onClick={() => navigate('/subscription/plans?mode=upgrade')}
               className="text-sm text-white hover:underline flex items-center gap-1"
             >
               Change Plan

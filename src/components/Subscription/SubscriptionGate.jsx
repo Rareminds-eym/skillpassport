@@ -13,11 +13,24 @@
  * </SubscriptionGate>
  */
 
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { PLAN_HIERARCHY } from '../../config/subscriptionPlans';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 
-const DefaultFallback = ({ requiredPlan }) => (
+/**
+ * Get the base path for subscription routes based on current location
+ */
+function getSubscriptionBasePath(pathname) {
+  if (pathname.startsWith('/student')) return '/student';
+  if (pathname.startsWith('/recruitment')) return '/recruitment';
+  if (pathname.startsWith('/educator')) return '/educator';
+  if (pathname.startsWith('/college-admin')) return '/college-admin';
+  if (pathname.startsWith('/school-admin')) return '/school-admin';
+  if (pathname.startsWith('/university-admin')) return '/university-admin';
+  return ''; // fallback to root
+}
+
+const DefaultFallback = ({ requiredPlan, basePath }) => (
   <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-lg p-6 text-center">
     <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
       <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -59,6 +72,8 @@ const SubscriptionGate = ({
   requiredPlan = null,
   requireActive = true,
 }) => {
+  const location = useLocation();
+  const basePath = getSubscriptionBasePath(location.pathname);
   const { 
     hasAccess, 
     subscription,
@@ -72,7 +87,7 @@ const SubscriptionGate = ({
 
   // Check basic access
   if (requireActive && !hasAccess) {
-    return fallback || <DefaultFallback requiredPlan={requiredPlan} />;
+    return fallback || <DefaultFallback requiredPlan={requiredPlan} basePath={basePath} />;
   }
 
   // Check plan level if specified
@@ -81,7 +96,7 @@ const SubscriptionGate = ({
     const requiredPlanLevel = getPlanLevel(requiredPlan);
 
     if (userPlanLevel < requiredPlanLevel) {
-      return fallback || <DefaultFallback requiredPlan={requiredPlan} />;
+      return fallback || <DefaultFallback requiredPlan={requiredPlan} basePath={basePath} />;
     }
   }
 

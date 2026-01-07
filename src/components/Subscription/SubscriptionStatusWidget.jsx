@@ -1,6 +1,19 @@
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Shield, Clock, AlertCircle, TrendingUp } from 'lucide-react';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
+
+/**
+ * Get the base path for subscription routes based on current location
+ */
+function getSubscriptionBasePath(pathname) {
+  if (pathname.startsWith('/student')) return '/student';
+  if (pathname.startsWith('/recruitment')) return '/recruitment';
+  if (pathname.startsWith('/educator')) return '/educator';
+  if (pathname.startsWith('/college-admin')) return '/college-admin';
+  if (pathname.startsWith('/school-admin')) return '/school-admin';
+  if (pathname.startsWith('/university-admin')) return '/university-admin';
+  return ''; // fallback to root
+}
 
 /**
  * Subscription Status Widget
@@ -8,7 +21,9 @@ import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQu
  */
 const SubscriptionStatusWidget = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { subscriptionData, loading } = useSubscriptionQuery();
+  const basePath = getSubscriptionBasePath(location.pathname);
 
   if (loading) {
     return (
@@ -70,7 +85,7 @@ const SubscriptionStatusWidget = () => {
               Renew now to restore access to premium features
             </p>
             <button
-              onClick={() => navigate('/subscription/manage')}
+              onClick={() => navigate(`${basePath}/subscription/manage`)}
               className="text-xs font-medium text-red-600 hover:text-red-700"
             >
               Renew Now →
@@ -97,7 +112,7 @@ const SubscriptionStatusWidget = () => {
               Only {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} left on your {subscriptionData.planName || 'Basic'} plan
             </p>
             <button
-              onClick={() => navigate('/subscription/manage')}
+              onClick={() => navigate(`${basePath}/subscription/manage`)}
               className="text-xs font-medium text-orange-600 hover:text-orange-700"
             >
               Manage Subscription →
@@ -123,7 +138,7 @@ const SubscriptionStatusWidget = () => {
             {daysRemaining} days remaining
           </p>
           <button
-            onClick={() => navigate('/subscription/manage')}
+            onClick={() => navigate(`${basePath}/subscription/manage`)}
             className="text-xs font-medium text-green-600 hover:text-green-700"
           >
             View Details →

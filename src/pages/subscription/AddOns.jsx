@@ -7,22 +7,64 @@
  */
 
 import { ArrowLeft, Package, Sparkles } from 'lucide-react';
-import { useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useCallback, useMemo } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AddOnCheckout } from '../../components/Subscription/AddOnCheckout';
 import { AddOnMarketplace } from '../../components/Subscription/AddOnMarketplace';
 import useAuth from '../../hooks/useAuth';
 
+/**
+ * Get the base path for subscription routes based on current location
+ */
+function getSubscriptionBasePath(pathname) {
+  if (pathname.startsWith('/student')) return '/student';
+  if (pathname.startsWith('/recruitment')) return '/recruitment';
+  if (pathname.startsWith('/educator')) return '/educator';
+  if (pathname.startsWith('/college-admin')) return '/college-admin';
+  if (pathname.startsWith('/school-admin')) return '/school-admin';
+  if (pathname.startsWith('/university-admin')) return '/university-admin';
+  return ''; // fallback to root
+}
+
+/**
+ * Get the settings path based on user role
+ */
+function getSettingsPath(userRole) {
+  const settingsRoutes = {
+    super_admin: '/admin/settings',
+    rm_admin: '/admin/settings',
+    admin: '/admin/settings',
+    school_admin: '/school-admin/settings',
+    college_admin: '/college-admin/settings',
+    university_admin: '/university-admin/settings',
+    educator: '/educator/settings',
+    school_educator: '/educator/settings',
+    college_educator: '/educator/settings',
+    recruiter: '/recruitment/settings',
+    student: '/student/settings',
+    school_student: '/student/settings',
+    college_student: '/student/settings',
+  };
+  return settingsRoutes[userRole] || '/student/settings';
+}
+
 function AddOns() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { user, role, loading: authLoading } = useAuth();
+  
+  // Get base path for subscription routes
+  const basePath = useMemo(() => getSubscriptionBasePath(location.pathname), [location.pathname]);
   
   // Check if we're in checkout mode
   const checkoutMode = searchParams.get('checkout') === 'true';
 
   // Get role for filtering add-ons
   const userRole = user?.user_metadata?.role || user?.raw_user_meta_data?.role || role || 'student';
+  
+  // Get settings path for back navigation
+  const settingsPath = useMemo(() => getSettingsPath(userRole), [userRole]);
 
   // Map user roles to add-on categories
   const getAddOnRole = useCallback(() => {
@@ -46,11 +88,11 @@ function AddOns() {
   // Handle back navigation
   const handleBack = useCallback(() => {
     if (checkoutMode) {
-      navigate('/subscription/add-ons');
+      navigate(`${basePath}/subscription/add-ons`);
     } else {
-      navigate(-1);
+      navigate(settingsPath);
     }
-  }, [navigate, checkoutMode]);
+  }, [navigate, checkoutMode, basePath, settingsPath]);
 
   if (authLoading) {
     return (
@@ -101,7 +143,7 @@ function AddOns() {
             
             {!checkoutMode && (
               <button
-                onClick={() => navigate('/subscription/manage')}
+                onClick={() => navigate(`${basePath}/subscription/manage`)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 My Subscription
@@ -115,8 +157,8 @@ function AddOns() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {checkoutMode ? (
           <AddOnCheckout 
-            onSuccess={() => navigate('/subscription/manage?success=true')}
-            onCancel={() => navigate('/subscription/add-ons')}
+            onSuccess={() => navigate(`${basePath}/subscription/manage?success=true`)}
+            onCancel={() => navigate(`${basePath}/subscription/add-ons`)}
           />
         ) : (
           <AddOnMarketplace 
