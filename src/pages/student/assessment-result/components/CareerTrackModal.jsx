@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, ExternalLink, Download, Bell, ChevronRight, Calendar } from 'lucide-react';
+import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, Download, Bell, ChevronRight, Calendar } from 'lucide-react';
 import { useRoleOverview } from '../../../../hooks/useRoleOverview';
 import jsPDF from 'jspdf';
 
@@ -69,7 +69,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
     };
 
     // Get AI-generated role overview (responsibilities + industry demand + career progression + learning roadmap + action items) in a single API call
-    const { responsibilities, demandData, careerProgression, learningRoadmap, freeResources, actionItems, loading: overviewLoading } = useRoleOverview(
+    const { responsibilities, demandData, careerProgression, learningRoadmap, actionItems, loading: overviewLoading } = useRoleOverview(
         selectedRole ? getRoleName(selectedRole) : null,
         selectedTrack.cluster?.title || ''
     );
@@ -738,18 +738,47 @@ END:VCALENDAR`;
                                                     </div>
                                                 )}
 
-                                                {results?.aptitude?.topStrengths && (
+                                                {/* Aptitude Strengths - check multiple possible locations */}
+                                                {(results?.aptitude?.topStrengths?.length > 0 || 
+                                                  results?.aptitude?.scores || 
+                                                  skillGap?.strengths?.length > 0) && (
                                                     <div>
                                                         <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Your Aptitude Strengths</p>
                                                         <div className="flex flex-wrap gap-2">
-                                                            {results.aptitude.topStrengths.slice(0, 3).map((strength, idx) => (
-                                                                <span 
-                                                                    key={idx}
-                                                                    className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700"
-                                                                >
-                                                                    {strength}
-                                                                </span>
-                                                            ))}
+                                                            {/* Try topStrengths first */}
+                                                            {results?.aptitude?.topStrengths?.length > 0 ? (
+                                                                results.aptitude.topStrengths.slice(0, 3).map((strength, idx) => (
+                                                                    <span 
+                                                                        key={idx}
+                                                                        className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700"
+                                                                    >
+                                                                        {strength}
+                                                                    </span>
+                                                                ))
+                                                            ) : results?.aptitude?.scores ? (
+                                                                /* Derive from scores if topStrengths not available */
+                                                                Object.entries(results.aptitude.scores)
+                                                                    .sort((a, b) => (b[1]?.percentage || 0) - (a[1]?.percentage || 0))
+                                                                    .slice(0, 3)
+                                                                    .map(([key, value], idx) => (
+                                                                        <span 
+                                                                            key={idx}
+                                                                            className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700"
+                                                                        >
+                                                                            {key.charAt(0).toUpperCase() + key.slice(1)}
+                                                                        </span>
+                                                                    ))
+                                                            ) : skillGap?.strengths?.length > 0 ? (
+                                                                /* Fallback to skillGap strengths */
+                                                                skillGap.strengths.slice(0, 3).map((strength, idx) => (
+                                                                    <span 
+                                                                        key={idx}
+                                                                        className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700"
+                                                                    >
+                                                                        {typeof strength === 'string' ? strength : strength?.skill || 'Strength'}
+                                                                    </span>
+                                                                ))
+                                                            ) : null}
                                                         </div>
                                                     </div>
                                                 )}
@@ -1046,87 +1075,6 @@ END:VCALENDAR`;
                                         </div>
                                     )}
                                 </div>
-
-                                <h4 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                                    <ExternalLink className="w-5 h-5" style={{ color: accentColor }} />
-                                    Free Resources & Tools
-                                </h4>
-                                {overviewLoading ? (
-                                    // Loading skeleton for resources
-                                    <div className="grid md:grid-cols-3 gap-4">
-                                        {[1, 2, 3].map((i) => (
-                                            <div key={i} className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm animate-pulse">
-                                                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-                                                <div className="h-3 bg-gray-100 rounded w-full" />
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : freeResources.length > 0 ? (
-                                    <div className="grid md:grid-cols-3 gap-4">
-                                        {freeResources.map((resource, idx) => (
-                                            <a 
-                                                key={idx} 
-                                                href={resource.url || '#'} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer block"
-                                            >
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <h5 className="text-gray-800 font-medium text-sm">{resource.title}</h5>
-                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500">{resource.type}</span>
-                                                </div>
-                                                <p className="text-gray-500 text-xs">{resource.description}</p>
-                                                <div className="mt-2 flex items-center justify-end text-xs text-blue-600 font-medium">
-                                                    <span>Open Resource</span>
-                                                    <ExternalLink className="w-3 h-3 ml-1" />
-                                                </div>
-                                            </a>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    // Fallback resources - also clickable
-                                    <div className="grid md:grid-cols-3 gap-4">
-                                        <a 
-                                            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(getRoleName(selectedRole) + ' tutorial')}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer block"
-                                        >
-                                            <h5 className="text-gray-800 font-medium text-sm mb-1">YouTube Tutorials</h5>
-                                            <p className="text-gray-500 text-xs">Free video tutorials from industry experts</p>
-                                            <div className="mt-2 flex items-center justify-end text-xs text-blue-600 font-medium">
-                                                <span>Open Resource</span>
-                                                <ExternalLink className="w-3 h-3 ml-1" />
-                                            </div>
-                                        </a>
-                                        <a 
-                                            href={`https://www.google.com/search?q=${encodeURIComponent(getRoleName(selectedRole) + ' documentation')}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer block"
-                                        >
-                                            <h5 className="text-gray-800 font-medium text-sm mb-1">Documentation</h5>
-                                            <p className="text-gray-500 text-xs">Official docs and guides for tools</p>
-                                            <div className="mt-2 flex items-center justify-end text-xs text-blue-600 font-medium">
-                                                <span>Open Resource</span>
-                                                <ExternalLink className="w-3 h-3 ml-1" />
-                                            </div>
-                                        </a>
-                                        <a 
-                                            href={`https://www.google.com/search?q=${encodeURIComponent(getRoleName(selectedRole) + ' free certification')}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer block"
-                                        >
-                                            <h5 className="text-gray-800 font-medium text-sm mb-1">Certifications</h5>
-                                            <p className="text-gray-500 text-xs">Industry-recognized certifications</p>
-                                            <div className="mt-2 flex items-center justify-end text-xs text-blue-600 font-medium">
-                                                <span>Open Resource</span>
-                                                <ExternalLink className="w-3 h-3 ml-1" />
-                                            </div>
-                                        </a>
-                                    </div>
-                                )}
                             </motion.div>
                         )}
 
@@ -1153,12 +1101,34 @@ END:VCALENDAR`;
                                             Strengths to Leverage
                                         </h4>
                                         <ul className="space-y-2">
-                                            {(skillGap?.strengths || results?.aptitude?.topStrengths || ['Analytical thinking', 'Problem solving', 'Communication']).slice(0, 4).map((strength, idx) => (
-                                                <li key={idx} className="flex items-center gap-2 text-gray-600 text-sm">
-                                                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                                                    {typeof strength === 'string' ? strength : strength?.skill || 'Strength'}
-                                                </li>
-                                            ))}
+                                            {(() => {
+                                                // Try multiple sources for strengths
+                                                let strengths = [];
+                                                
+                                                if (skillGap?.strengths?.length > 0) {
+                                                    strengths = skillGap.strengths;
+                                                } else if (results?.aptitude?.topStrengths?.length > 0) {
+                                                    strengths = results.aptitude.topStrengths;
+                                                } else if (results?.aptitude?.scores) {
+                                                    // Derive from aptitude scores
+                                                    strengths = Object.entries(results.aptitude.scores)
+                                                        .sort((a, b) => (b[1]?.percentage || 0) - (a[1]?.percentage || 0))
+                                                        .slice(0, 4)
+                                                        .map(([key]) => key.charAt(0).toUpperCase() + key.slice(1) + ' Reasoning');
+                                                } else if (results?.employability?.strengthAreas?.length > 0) {
+                                                    strengths = results.employability.strengthAreas;
+                                                } else {
+                                                    // Fallback
+                                                    strengths = ['Analytical thinking', 'Problem solving', 'Communication', 'Adaptability'];
+                                                }
+                                                
+                                                return strengths.slice(0, 4).map((strength, idx) => (
+                                                    <li key={idx} className="flex items-center gap-2 text-gray-600 text-sm">
+                                                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                                                        {typeof strength === 'string' ? strength : strength?.skill || strength?.name || 'Strength'}
+                                                    </li>
+                                                ));
+                                            })()}
                                         </ul>
                                     </div>
 
@@ -1168,12 +1138,35 @@ END:VCALENDAR`;
                                             Skills to Develop
                                         </h4>
                                         <ul className="space-y-2">
-                                            {(skillGap?.priorityA || [{ skill: 'Technical skills' }, { skill: 'Industry knowledge' }, { skill: 'Practical experience' }]).slice(0, 4).map((item, idx) => (
-                                                <li key={idx} className="flex items-center gap-2 text-gray-600 text-sm">
-                                                    <div className="w-2 h-2 rounded-full bg-amber-500" />
-                                                    {typeof item === 'string' ? item : item?.skill || 'Skill'}
-                                                </li>
-                                            ))}
+                                            {(() => {
+                                                // Try multiple sources for skills to develop
+                                                let skills = [];
+                                                
+                                                if (skillGap?.priorityA?.length > 0) {
+                                                    skills = skillGap.priorityA;
+                                                } else if (skillGap?.priorityB?.length > 0) {
+                                                    skills = skillGap.priorityB;
+                                                } else if (results?.aptitude?.areasToImprove?.length > 0) {
+                                                    skills = results.aptitude.areasToImprove;
+                                                } else if (results?.employability?.improvementAreas?.length > 0) {
+                                                    skills = results.employability.improvementAreas;
+                                                } else {
+                                                    // Fallback
+                                                    skills = [
+                                                        { skill: 'Technical skills' }, 
+                                                        { skill: 'Industry knowledge' }, 
+                                                        { skill: 'Practical experience' },
+                                                        { skill: 'Networking' }
+                                                    ];
+                                                }
+                                                
+                                                return skills.slice(0, 4).map((item, idx) => (
+                                                    <li key={idx} className="flex items-center gap-2 text-gray-600 text-sm">
+                                                        <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                                        {typeof item === 'string' ? item : item?.skill || item?.name || 'Skill'}
+                                                    </li>
+                                                ));
+                                            })()}
                                         </ul>
                                     </div>
                                 </div>
@@ -1270,8 +1263,9 @@ END:VCALENDAR`;
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
+                                className="flex flex-col items-center justify-center min-h-[60vh]"
                             >
-                                <div className="mb-6">
+                                <div className="mb-6 text-center">
                                     <h3 className="text-2xl font-bold text-gray-800 mb-1">
                                         Ready to Begin Your Journey?
                                     </h3>
@@ -1280,29 +1274,29 @@ END:VCALENDAR`;
                                     </p>
                                 </div>
 
-                                <div className="max-w-xl">
-                                    <div className="p-6 rounded-xl bg-gradient-to-br from-slate-800 to-slate-700 mb-6">
-                                        <div className="flex items-center gap-4 mb-4">
-                                            <div className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-xl" style={{ backgroundColor: accentColor }}>
+                                <div className="max-w-xl w-full">
+                                    <div className="p-6 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 mb-6">
+                                        <div className="flex items-center justify-left gap-4 mb-4">
+                                            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-xl" style={{ backgroundColor: accentColor }}>
                                                 {selectedTrack.index + 1}
                                             </div>
-                                            <div>
-                                                <h4 className="text-lg font-bold text-white">{getRoleName(selectedRole)}</h4>
-                                                {getSalary(selectedRole) && <p className="text-green-400 text-sm">{getSalary(selectedRole)} per annum</p>}
+                                            <div className="text-left">
+                                                <h4 className="text-xl font-bold text-gray-800">{getRoleName(selectedRole)}</h4>
+                                                {getSalary(selectedRole) && <p className="text-green-600 text-base">{getSalary(selectedRole)} per annum</p>}
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-3 gap-4 text-center">
                                             <div>
-                                                <p className="text-2xl font-bold text-white">6</p>
-                                                <p className="text-gray-400 text-xs">Months</p>
+                                                <p className="text-2xl font-bold text-blue-700">6</p>
+                                                <p className="text-gray-500 text-xs">Months</p>
                                             </div>
                                             <div>
-                                                <p className="text-2xl font-bold text-white">{relevantCourses.length || 4}</p>
-                                                <p className="text-gray-400 text-xs">Courses</p>
+                                                <p className="text-2xl font-bold text-blue-700">{relevantCourses.length || 4}</p>
+                                                <p className="text-gray-500 text-xs">Courses</p>
                                             </div>
                                             <div>
-                                                <p className="text-2xl font-bold text-white">{getRoadmapProjects().length || 3}</p>
-                                                <p className="text-gray-400 text-xs">Projects</p>
+                                                <p className="text-2xl font-bold text-blue-700">{getRoadmapProjects().length || 3}</p>
+                                                <p className="text-gray-500 text-xs">Projects</p>
                                             </div>
                                         </div>
                                     </div>

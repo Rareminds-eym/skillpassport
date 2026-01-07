@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { SubscriptionDashboard } from '../../components/subscription/SubscriptionDashboard';
+import { SubscriptionDashboard } from '../../components/Subscription/SubscriptionDashboard';
 import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';

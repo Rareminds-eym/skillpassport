@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 
 /**
  * Fetch all assessment sections
- * @param {string} gradeLevel - Grade level filter: 'middle', 'highschool', or 'after12'
+ * @param {string} gradeLevel - Grade level filter: 'middle', 'highschool', 'higher_secondary', or 'after12'
  */
 export const fetchSections = async (gradeLevel = null) => {
   let query = supabase
@@ -67,7 +67,7 @@ export const fetchQuestionsBySection = async (sectionId, streamId = null) => {
 /**
  * Fetch all questions for an assessment (organized by section)
  * @param {string} streamId - Student's selected stream
- * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
+ * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
  */
 export const fetchAllQuestions = async (streamId, gradeLevel = null) => {
   const sections = await fetchSections(gradeLevel);
@@ -92,7 +92,7 @@ export const fetchAllQuestions = async (streamId, gradeLevel = null) => {
  * Create a new assessment attempt
  * @param {string} studentId - Student's user_id
  * @param {string} streamId - Selected stream
- * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
+ * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
  */
 export const createAttempt = async (studentId, streamId, gradeLevel) => {
   const { data, error } = await supabase
@@ -133,6 +133,11 @@ export const updateAttemptProgress = async (attemptId, progress) => {
   if (progress.elapsedTime !== undefined && progress.elapsedTime !== null) {
     updateData.elapsed_time = progress.elapsedTime;
   }
+
+  // Include adaptive_aptitude_session_id if provided (for adaptive section)
+  if (progress.adaptiveAptitudeSessionId) {
+    updateData.adaptive_aptitude_session_id = progress.adaptiveAptitudeSessionId;
+  }
   
   const { data, error } = await supabase
     .from('personal_assessment_attempts')
@@ -143,6 +148,36 @@ export const updateAttemptProgress = async (attemptId, progress) => {
 
   if (error) throw error;
   return data;
+};
+
+/**
+ * Update the adaptive aptitude session ID for an attempt
+ * @param {string} attemptId - Attempt UUID
+ * @param {string} adaptiveSessionId - Adaptive aptitude session UUID
+ */
+export const updateAttemptAdaptiveSession = async (attemptId, adaptiveSessionId) => {
+  try {
+    const { data, error } = await supabase
+      .from('personal_assessment_attempts')
+      .update({
+        adaptive_aptitude_session_id: adaptiveSessionId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', attemptId)
+      .select()
+      .single();
+
+    if (error) {
+      // Log but don't throw - this is a non-critical operation
+      console.warn('Could not update adaptive session ID:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    // Catch any unexpected errors - column might not exist yet
+    console.warn('Error updating adaptive session ID:', err.message);
+    return null;
+  }
 };
 
 /**
@@ -224,7 +259,7 @@ export const getAttemptResponses = async (attemptId) => {
  * @param {string} attemptId - Attempt UUID
  * @param {string} studentId - Student's user_id
  * @param {string} streamId - Selected stream
- * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
+ * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
  * @param {object} geminiResults - Full Gemini AI analysis results
  * @param {object} sectionTimings - Time spent on each section
  */
@@ -390,7 +425,7 @@ export const getLatestResult = async (studentId) => {
  * In development mode, the restriction is bypassed for testing.
  * 
  * @param {string} studentId - Student's user_id
- * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
+ * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
  * @returns {object} { canTake: boolean, lastAttemptDate: Date|null, nextAvailableDate: Date|null }
  */
 export const canTakeAssessment = async (studentId, gradeLevel = null) => {

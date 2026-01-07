@@ -1248,7 +1248,7 @@ async function handleAnalyzeAssessment(request: Request, env: Env): Promise<Resp
           }
         ],
         temperature: 0.1,
-        max_tokens: 8192
+        max_tokens: 2000  // Reduced to fit within credit limits
       })
     });
 

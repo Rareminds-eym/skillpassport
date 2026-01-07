@@ -18,5 +18,8 @@ export * as examinationService from './examinationService';
 export * as libraryService from './libraryService';
 export * as financeService from './financeService';
 
+// Reports & Analytics Service
+export { reportsService } from './reportsService';
+
 // Re-export types
 export type * from '../../types/college';

@@ -38,6 +38,7 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
     const isSimplifiedAssessment =
         gradeLevel === 'middle' ||
         gradeLevel === 'highschool' ||
+        gradeLevel === 'higher_secondary' ||
         (results.profileSnapshot && (results.profileSnapshot.aptitudeStrengths || results.profileSnapshot.keyPatterns));
 
     // Default student info if not provided

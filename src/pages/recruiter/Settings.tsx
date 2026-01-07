@@ -12,7 +12,7 @@ import {
     User
 } from "lucide-react"
 import React, { useEffect, useId, useState } from "react"
-import { SubscriptionSettingsSection } from "../../components/subscription/SubscriptionSettingsSection"
+import { SubscriptionSettingsSection } from "../../components/Subscription/SubscriptionSettingsSection"
 import { useAuth } from "../../context/AuthContext"
 import { supabase } from "../../lib/supabaseClient"
 

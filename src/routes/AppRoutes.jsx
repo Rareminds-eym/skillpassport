@@ -152,6 +152,7 @@ const AssessmentTestPage = lazy(() => import("../pages/student/AssessmentTestPag
 const AssessmentResults = lazy(() => import("../pages/student/AssessmentResults"));
 const AssessmentStart = lazy(() => import("../pages/student/AssessmentStart"));
 const DynamicAssessment = lazy(() => import("../pages/student/DynamicAssessment"));
+const AdaptiveAptitudeTest = lazy(() => import("../pages/student/AdaptiveAptitudeTest"));
 
 // Educator pages
 const EducatorDashboard = lazy(() => import("../pages/educator/Dashboard"));
@@ -367,7 +368,7 @@ const Reports = lazy(() =>
   import("../pages/admin/schoolAdmin/Reports")
 );
 // Finance & infrastructure buddy
-const FinanceInfrastructure = lazy(() => import("../pages/admin/schoolAdmin/FeeStructureSetup"))
+const SchoolFinanceModule = lazy(() => import("../pages/admin/schoolAdmin/finance/index"))
 const Library = lazy(() => import("../pages/admin/schoolAdmin/Library"))
 const AttendanceReports = lazy(() =>
   import("../pages/admin/schoolAdmin/AttendanceReports")
@@ -598,7 +599,7 @@ const AppRoutes = () => {
           <Route path="skills/clubs" element={<SkillCurricular />} />
           <Route path="skills/badges" element={<SkillBadges />} />
           <Route path="skills/reports" element={<Reports />} />
-          <Route path="finance/fees" element={<FinanceInfrastructure />} />
+          <Route path="finance/fees" element={<SchoolFinanceModule />} />
           <Route path="infrastructure/library" element={<Library />} />
           {/* Finance & Infrastructure*/}
 
@@ -706,6 +707,7 @@ const AppRoutes = () => {
           <Route path="assessment/result" element={<AssessmentResult />} />
           <Route path="assessment/platform" element={<AssessmentStart />} />
           <Route path="assessment/dynamic" element={<DynamicAssessment />} />
+          <Route path="adaptive-aptitude-test" element={<AdaptiveAptitudeTest />} />
           <Route path="assessment/start" element={<TestProvider><AssessmentTestPage /></TestProvider>} />
           <Route path="assessment/results" element={<TestProvider><AssessmentResults /></TestProvider>} />
 
