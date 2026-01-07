@@ -5,7 +5,6 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
-import { ensureStudentEmbedding } from './embeddingService';
 
 /**
  * Match student profile with opportunities using AI
@@ -19,6 +18,7 @@ import { ensureStudentEmbedding } from './embeddingService';
  * 
  * NOTE: The API queries opportunities directly from the database using 
  * vector similarity search for better performance.
+ * NOTE: The API auto-generates student embeddings if missing.
  * 
  * @param {Object} studentProfile - Student profile data
  * @param {number} topN - Number of top matches to return (default: 3)
@@ -44,8 +44,8 @@ export async function matchJobsWithAI(studentProfile, topN = 3, forceRefresh = f
     throw new Error('studentId is required');
   }
 
-  // Ensure student has an embedding
-  await ensureStudentEmbedding(studentId);
+  // NOTE: The API auto-generates student embeddings if missing
+  // No need to call ensureStudentEmbedding here
 
   const response = await fetch(`${API_URL}/recommend-opportunities`, {
     method: 'POST',

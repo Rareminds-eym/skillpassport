@@ -8,7 +8,39 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
-import { cosineSimilarity, generateEmbedding } from './embeddingService';
+import { cosineSimilarity } from '../utils/vectorUtils';
+
+// API URL for embedding generation (uses career-api Cloudflare worker)
+const EMBEDDING_API_URL = import.meta.env.VITE_CAREER_API_URL;
+
+/**
+ * Generate embedding for text via the career-api Cloudflare worker
+ * @param {string} text - Text to generate embedding for
+ * @returns {Promise<number[]>} - Embedding vector
+ */
+async function generateEmbedding(text) {
+  if (!text || text.trim().length < 10) {
+    throw new Error('Text too short for embedding generation');
+  }
+
+  const response = await fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, returnEmbedding: true })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `API error: ${response.status}`);
+  }
+
+  const result = await response.json();
+  if (!result.embedding || !Array.isArray(result.embedding)) {
+    throw new Error('Invalid embedding response');
+  }
+
+  return result.embedding;
+}
 
 // Configuration
 const MAX_RECOMMENDATIONS = 10; // Maximum courses to return (Requirement 3.2)

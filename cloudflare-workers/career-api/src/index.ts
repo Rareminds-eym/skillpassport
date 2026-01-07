@@ -356,6 +356,153 @@ const RECOMMEND_CONFIG = {
   DEFAULT_LIMIT: 20
 };
 
+/**
+ * Generate embedding for a student internally (used by recommend-opportunities)
+ * Fetches student data, builds text, generates embedding via OpenRouter, and saves to DB
+ */
+async function generateStudentEmbeddingInternal(
+  supabase: SupabaseClient,
+  studentId: string,
+  env: Env
+): Promise<number[] | null> {
+  try {
+    // Fetch student with related data
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('id, name, branch_field, course_name, university')
+      .eq('id', studentId)
+      .single();
+
+    if (studentError || !student) {
+      console.error('Failed to fetch student for embedding:', studentError);
+      return null;
+    }
+
+    // Fetch skills
+    const { data: skills } = await supabase
+      .from('skills')
+      .select('name, level, type')
+      .eq('student_id', studentId)
+      .eq('enabled', true);
+
+    // Fetch course enrollments
+    const { data: courseEnrollments } = await supabase
+      .from('course_enrollments')
+      .select('course_title, status, skills_acquired')
+      .eq('student_id', studentId)
+      .in('status', ['completed', 'in_progress', 'active']);
+
+    // Fetch trainings
+    const { data: trainings } = await supabase
+      .from('trainings')
+      .select('title, organization, status')
+      .eq('student_id', studentId);
+
+    // Build embedding text
+    const parts: string[] = [];
+
+    if (student.name) parts.push(`Name: ${student.name}`);
+    if (student.branch_field) parts.push(`Field of Study: ${student.branch_field}`);
+    if (student.course_name) parts.push(`Course: ${student.course_name}`);
+    if (student.university) parts.push(`University: ${student.university}`);
+
+    // Add skills
+    if (skills && skills.length > 0) {
+      const skillNames = skills.map(s => s.name).filter(Boolean);
+      if (skillNames.length > 0) {
+        parts.push(`Technical Skills: ${skillNames.join(', ')}`);
+      }
+    }
+
+    // Add completed courses
+    if (courseEnrollments && courseEnrollments.length > 0) {
+      const completedCourses = courseEnrollments
+        .filter(c => c.status === 'completed')
+        .map(c => c.course_title)
+        .filter(Boolean);
+      if (completedCourses.length > 0) {
+        parts.push(`Completed Courses: ${completedCourses.join(', ')}`);
+      }
+
+      // Extract skills from courses
+      const acquiredSkills = courseEnrollments
+        .filter(c => c.status === 'completed' && c.skills_acquired?.length > 0)
+        .flatMap(c => c.skills_acquired)
+        .filter(Boolean);
+      if (acquiredSkills.length > 0) {
+        parts.push(`Skills from Courses: ${acquiredSkills.join(', ')}`);
+      }
+    }
+
+    // Add trainings
+    if (trainings && trainings.length > 0) {
+      const trainingNames = trainings.map(t => t.title).filter(Boolean);
+      if (trainingNames.length > 0) {
+        parts.push(`Training: ${trainingNames.join(', ')}`);
+      }
+    }
+
+    const text = parts.join('\n');
+    if (text.length < 10) {
+      console.log(`[AUTO-EMBED] Insufficient data for student ${studentId}`);
+      return null;
+    }
+
+    // Generate embedding via OpenRouter
+    const openRouterKey = getOpenRouterKey(env);
+    if (!openRouterKey) {
+      console.error('[AUTO-EMBED] OpenRouter API key not configured');
+      return null;
+    }
+
+    const embeddingResponse = await fetch('https://openrouter.ai/api/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openRouterKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://skillpassport.rareminds.in',
+        'X-Title': 'SkillPassport Auto-Embedding',
+      },
+      body: JSON.stringify({
+        model: 'openai/text-embedding-3-small',
+        input: text.slice(0, 8000),
+      }),
+    });
+
+    if (!embeddingResponse.ok) {
+      const errorText = await embeddingResponse.text();
+      console.error('[AUTO-EMBED] OpenRouter error:', embeddingResponse.status, errorText);
+      return null;
+    }
+
+    const data = await embeddingResponse.json() as { data: Array<{ embedding: number[] }> };
+    const embedding = data.data[0]?.embedding;
+
+    if (!embedding || !Array.isArray(embedding)) {
+      console.error('[AUTO-EMBED] Invalid embedding response');
+      return null;
+    }
+
+    // Save embedding to database
+    const { error: updateError } = await supabase
+      .from('students')
+      .update({ embedding })
+      .eq('id', studentId);
+
+    if (updateError) {
+      console.error('[AUTO-EMBED] Failed to save embedding:', updateError);
+      // Still return the embedding even if save failed
+    }
+
+    console.log(`[AUTO-EMBED] Generated ${embedding.length}-dim embedding for student ${studentId}`);
+    return embedding;
+
+  } catch (error) {
+    console.error('[AUTO-EMBED] Error:', error);
+    return null;
+  }
+}
+
 async function handleRecommendOpportunities(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
@@ -436,8 +583,21 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
     return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_profile');
   }
 
-  if (!student.embedding) {
-    return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_embedding');
+  // Auto-generate embedding if missing
+  let studentEmbedding = student.embedding;
+  if (!studentEmbedding) {
+    console.log(`[AUTO-EMBED] Student ${studentId} has no embedding - generating...`);
+    try {
+      studentEmbedding = await generateStudentEmbeddingInternal(supabase, studentId, env);
+      if (!studentEmbedding) {
+        console.log(`[AUTO-EMBED] Failed to generate embedding for student ${studentId}`);
+        return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'embedding_generation_failed');
+      }
+      console.log(`[AUTO-EMBED] Successfully generated embedding for student ${studentId}`);
+    } catch (embedError) {
+      console.error('[AUTO-EMBED ERROR]', embedError);
+      return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'embedding_generation_error');
+    }
   }
 
   // Get dismissed opportunities
@@ -451,7 +611,7 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
 
   // Run enhanced matching
   const { data: recommendations, error: matchError } = await supabase.rpc('match_opportunities_enhanced', {
-    query_embedding: student.embedding,
+    query_embedding: studentEmbedding,
     student_id_param: studentId,
     dismissed_ids: dismissedIds,
     match_threshold: RECOMMEND_CONFIG.MATCH_THRESHOLD,
