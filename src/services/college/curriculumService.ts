@@ -274,16 +274,26 @@ export const curriculumService = {
 
       // Transform data and add semester information
       let result: CurriculumWithDetails[] = curriculums.map(curriculum => {
-        const mapping = mappings.find(m => 
+        // Find ALL mappings for this course-program combination
+        const allMappings = mappings.filter(m => 
           m.program_id === curriculum.program_id && 
           m.course_id === curriculum.course_id
         );
+        
+        // If semester filter is specified, find the mapping for that semester
+        let selectedMapping;
+        if (filters.semester !== undefined) {
+          selectedMapping = allMappings.find(m => m.semester === filters.semester);
+        } else {
+          // If no semester filter, use the first mapping
+          selectedMapping = allMappings[0];
+        }
 
         return {
           ...curriculum,
           course_code: curriculum.course?.course_code,
           course_name: curriculum.course?.course_name,
-          semester: mapping?.semester,
+          semester: selectedMapping?.semester,
           units: [],
           outcomes: [],
           department_name: curriculum.departments?.name,
@@ -291,7 +301,7 @@ export const curriculumService = {
         };
       });
 
-      // Apply semester filter if specified
+      // Apply semester filter - only include curriculums that have a mapping for the requested semester
       if (filters.semester !== undefined) {
         result = result.filter(curriculum => curriculum.semester === filters.semester);
       }
@@ -1119,18 +1129,12 @@ export const curriculumService = {
    */
   async getAssessmentTypes(): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
-      console.log('🔍 Getting assessment types...');
-      
       const collegeId = await getCurrentUserCollegeId();
-      console.log('🏫 College ID:', collegeId);
-      
       if (!collegeId) {
-        console.log('❌ No college ID found');
         return { success: false, error: { message: 'Unable to determine user college' } };
       }
 
       // Get college-specific and global assessment types
-      console.log('📡 Fetching assessment types from database...');
       const { data, error } = await supabase
         .from('assessment_types')
         .select('id, name, description, is_active, institution_id, institution_type')
@@ -1138,15 +1142,10 @@ export const curriculumService = {
         .eq('is_active', true)
         .order('name');
 
-      console.log('📊 Database response:', { data, error });
-
       if (error) throw error;
 
-      console.log('✅ Successfully fetched', data?.length, 'assessment types');
       return { success: true, data: data || [] };
     } catch (error: any) {
-      console.log('⚠️ Primary query failed, trying fallback approach...');
-      
       // If the complex query fails, try a simpler approach
       try {
         const collegeId = await getCurrentUserCollegeId();
@@ -1167,13 +1166,6 @@ export const curriculumService = {
           .is('institution_id', null)
           .eq('is_active', true);
 
-        console.log('📊 Fallback results:', { 
-          collegeTypes: collegeTypes?.length, 
-          globalTypes: globalTypes?.length,
-          collegeError,
-          globalError 
-        });
-
         if (collegeError && globalError) {
           throw new Error('Failed to fetch assessment types');
         }
@@ -1183,10 +1175,8 @@ export const curriculumService = {
           ...(globalTypes || [])
         ].sort((a, b) => a.name.localeCompare(b.name));
 
-        console.log('✅ Fallback successful! Found', combinedData.length, 'assessment types');
         return { success: true, data: combinedData };
       } catch (fallbackError: any) {
-        console.error('❌ Both primary and fallback failed:', fallbackError);
         return {
           success: false,
           error: {
