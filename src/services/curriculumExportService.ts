@@ -35,6 +35,7 @@ interface CurriculumExportData {
   learningOutcomes: LearningOutcome[];
   status: string;
   schoolName?: string;
+  collegeName?: string; // Added support for college context
 }
 
 /**
@@ -62,7 +63,10 @@ export const exportCurriculumToPDF = (data: CurriculumExportData): void => {
   yPosition += 7;
   doc.text(`Status: ${data.status.toUpperCase()}`, 20, yPosition);
   yPosition += 7;
-  if (data.schoolName) {
+  if (data.collegeName) {
+    doc.text(`Department: ${data.collegeName}`, 20, yPosition);
+    yPosition += 7;
+  } else if (data.schoolName) {
     doc.text(`School: ${data.schoolName}`, 20, yPosition);
     yPosition += 7;
   }
@@ -77,7 +81,8 @@ export const exportCurriculumToPDF = (data: CurriculumExportData): void => {
 
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Total Chapters: ${data.chapters.length}`, 20, yPosition);
+  const unitLabel = data.collegeName ? 'Units' : 'Chapters';
+  doc.text(`Total ${unitLabel}: ${data.chapters.length}`, 20, yPosition);
   yPosition += 6;
   doc.text(`Total Learning Outcomes: ${data.learningOutcomes.length}`, 20, yPosition);
   yPosition += 6;
@@ -106,7 +111,8 @@ export const exportCurriculumToPDF = (data: CurriculumExportData): void => {
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(79, 70, 229); // Indigo color
-    const chapterTitle = `Chapter ${index + 1}: ${chapter.name}`;
+    const unitLabel = data.collegeName ? 'Unit' : 'Chapter';
+    const chapterTitle = `${unitLabel} ${index + 1}: ${chapter.name}`;
     doc.text(chapterTitle, 20, yPosition);
     yPosition += 8;
 
@@ -232,11 +238,12 @@ export const exportCurriculumToExcel = (data: CurriculumExportData): void => {
     ['Class', data.class],
     ['Academic Year', data.academicYear],
     ['Status', data.status.toUpperCase()],
+    ...(data.collegeName ? [['Department', data.collegeName]] : []),
     ...(data.schoolName ? [['School', data.schoolName]] : []),
     ['Generated', new Date().toLocaleDateString()],
     [],
     ['Summary Statistics'],
-    ['Total Chapters', data.chapters.length],
+    [`Total ${data.collegeName ? 'Units' : 'Chapters'}`, data.chapters.length],
     ['Total Learning Outcomes', data.learningOutcomes.length],
   ];
 
@@ -261,9 +268,10 @@ export const exportCurriculumToExcel = (data: CurriculumExportData): void => {
 
   XLSX.utils.book_append_sheet(workbook, overviewSheet, 'Overview');
 
-  // Sheet 2: Chapters
+  // Sheet 2: Units/Chapters
+  const unitLabel = data.collegeName ? 'Unit' : 'Chapter';
   const chaptersData: any[][] = [
-    ['Chapter #', 'Code', 'Name', 'Description', 'Duration', 'Unit', 'Outcomes Count']
+    [`${unitLabel} #`, 'Code', 'Name', 'Description', 'Duration', 'Unit', 'Outcomes Count']
   ];
 
   data.chapters.forEach((chapter, index) => {
@@ -295,11 +303,12 @@ export const exportCurriculumToExcel = (data: CurriculumExportData): void => {
     { wch: 15 }
   ];
 
-  XLSX.utils.book_append_sheet(workbook, chaptersSheet, 'Chapters');
+  const unitSheetName = data.collegeName ? 'Units' : 'Chapters';
+  XLSX.utils.book_append_sheet(workbook, chaptersSheet, unitSheetName);
 
   // Sheet 3: Learning Outcomes
   const outcomesData: any[][] = [
-    ['Chapter #', 'Chapter Name', 'Outcome #', 'Learning Outcome', "Bloom's Level", 'Assessment Types', 'Weightages']
+    [`${unitLabel} #`, `${unitLabel} Name`, 'Outcome #', 'Learning Outcome', "Bloom's Level", 'Assessment Types', 'Weightages']
   ];
 
   data.chapters.forEach((chapter, chapterIndex) => {
@@ -345,7 +354,7 @@ export const exportCurriculumToExcel = (data: CurriculumExportData): void => {
 
   // Sheet 4: Assessment Mappings (Detailed)
   const assessmentData: any[][] = [
-    ['Chapter', 'Learning Outcome', 'Assessment Type', 'Weightage (%)']
+    [unitLabel, 'Learning Outcome', 'Assessment Type', 'Weightage (%)']
   ];
 
   data.chapters.forEach((chapter) => {
