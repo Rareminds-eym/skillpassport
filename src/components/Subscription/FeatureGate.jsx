@@ -3,7 +3,7 @@
  */
 
 import { ArrowLeft, ArrowRight, Check, Lock, Shield, Sparkles, X, Zap } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { clearFeatureAccessCache, useFeatureGate } from '../../hooks/useFeatureGate';
@@ -231,7 +231,19 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
   const [billing, setBilling] = useState('annual'); // Default to annual for better value
   const [error, setError] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const { refreshAccess, fetchUserEntitlements } = useSubscriptionContext();
+  const { refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionContext();
+
+  // Check if user already owns this add-on (including cancelled but not expired)
+  const isAlreadyOwned = useMemo(() => {
+    if (!addOn?.feature_key || !activeEntitlements) return false;
+    const now = new Date();
+    return activeEntitlements.some(ent => 
+      ent.feature_key === addOn.feature_key && 
+      (ent.status === 'active' || 
+       ent.status === 'grace_period' ||
+       (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
+    );
+  }, [addOn?.feature_key, activeEntitlements]);
 
   const monthly = upgradePrice?.monthly ? parseFloat(upgradePrice.monthly) : 0;
   const annual = upgradePrice?.annual ? parseFloat(upgradePrice.annual) : 0;
@@ -246,6 +258,13 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
       setError('Unable to process purchase - missing feature information');
       return;
     }
+    
+    // Check for duplicate purchase
+    if (isAlreadyOwned) {
+      setError('You already own this add-on. Access is active until your subscription expires.');
+      return;
+    }
+    
     try {
       setError(null);
       console.log('[PurchaseModal] Starting purchase for:', addOn.feature_key, billing);

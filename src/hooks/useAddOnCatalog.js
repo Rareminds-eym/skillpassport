@@ -91,13 +91,20 @@ export function useAddOnCatalog(options = {}) {
     gcTime: CACHE_TIME,
   });
 
-  // Mark owned add-ons
+  // Mark owned add-ons (including cancelled but not expired)
   const addOnsWithOwnership = useMemo(() => {
     if (!addOnsData) return [];
     
+    const now = new Date();
     const ownedFeatureKeys = new Set(
       (activeEntitlements || [])
-        .filter(ent => ent.status === 'active' || ent.status === 'grace_period')
+        .filter(ent => {
+          // Active or grace period entitlements
+          if (ent.status === 'active' || ent.status === 'grace_period') return true;
+          // Cancelled entitlements that haven't expired yet
+          if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now) return true;
+          return false;
+        })
         .map(ent => ent.feature_key)
     );
 
@@ -108,13 +115,20 @@ export function useAddOnCatalog(options = {}) {
     }));
   }, [addOnsData, activeEntitlements]);
 
-  // Mark owned bundles (owned if all features are owned)
+  // Mark owned bundles (owned if all features are owned, including cancelled but not expired)
   const bundlesWithOwnership = useMemo(() => {
     if (!bundlesData) return [];
     
+    const now = new Date();
     const ownedFeatureKeys = new Set(
       (activeEntitlements || [])
-        .filter(ent => ent.status === 'active' || ent.status === 'grace_period')
+        .filter(ent => {
+          // Active or grace period entitlements
+          if (ent.status === 'active' || ent.status === 'grace_period') return true;
+          // Cancelled entitlements that haven't expired yet
+          if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now) return true;
+          return false;
+        })
         .map(ent => ent.feature_key)
     );
 
@@ -263,13 +277,16 @@ export function useAddOn(featureKey) {
     gcTime: CACHE_TIME,
   });
 
-  // Check if owned
+  // Check if owned (including cancelled but not expired)
   const isOwned = useMemo(() => {
     if (!addOn || !activeEntitlements) return false;
     
+    const now = new Date();
     return activeEntitlements.some(
       ent => ent.feature_key === featureKey && 
-             (ent.status === 'active' || ent.status === 'grace_period')
+             (ent.status === 'active' || 
+              ent.status === 'grace_period' ||
+              (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
     );
   }, [addOn, activeEntitlements, featureKey]);
 
@@ -312,15 +329,20 @@ export function useBundle(bundleId) {
     gcTime: CACHE_TIME,
   });
 
-  // Calculate ownership status
+  // Calculate ownership status (including cancelled but not expired)
   const ownershipInfo = useMemo(() => {
     if (!bundle || !activeEntitlements) {
       return { isOwned: false, isPartiallyOwned: false, ownedCount: 0 };
     }
 
+    const now = new Date();
     const ownedFeatureKeys = new Set(
       activeEntitlements
-        .filter(ent => ent.status === 'active' || ent.status === 'grace_period')
+        .filter(ent => 
+          ent.status === 'active' || 
+          ent.status === 'grace_period' ||
+          (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now)
+        )
         .map(ent => ent.feature_key)
     );
 

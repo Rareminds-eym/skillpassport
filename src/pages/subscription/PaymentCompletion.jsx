@@ -309,14 +309,20 @@ function PaymentCompletion() {
     validateAndFetchUser();
   }, [authLoading, isAuthenticated, user, navigate, plan, studentType]);
 
-  // Redirect if active subscription
+  // Redirect if active subscription (including cancelled but not expired)
   useEffect(() => {
     if (!subscriptionLoading && subscriptionData) {
-      const isActive = isActiveOrPaused(subscriptionData.status);
-      const hasValidEndDate = subscriptionData.endDate
-        ? new Date(subscriptionData.endDate) > new Date()
-        : true;
-      if (isActive && hasValidEndDate) {
+      const status = subscriptionData.status;
+      const endDate = subscriptionData.endDate ? new Date(subscriptionData.endDate) : null;
+      const now = new Date();
+      
+      // Check if subscription has valid access
+      const hasValidAccess = 
+        status === 'active' || 
+        status === 'paused' ||
+        (status === 'cancelled' && endDate && endDate > now);
+      
+      if (hasValidAccess) {
         navigate(managePath, { replace: true });
       }
     }

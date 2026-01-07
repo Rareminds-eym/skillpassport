@@ -13,9 +13,11 @@
  */
 
 import { ArrowRight, ExternalLink, Lock, Sparkles, X, Zap } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
+import { clearFeatureAccessCache } from '../../hooks/useFeatureGate';
+import addOnPaymentService from '../../services/addOnPaymentService';
 import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
 
 /**
@@ -52,17 +54,42 @@ export function UpgradePrompt({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { purchaseAddOn, isPurchasing, refreshAccess, fetchUserEntitlements } = useSubscriptionContext();
+  const { purchaseAddOn, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionContext();
   const [billingPeriod, setBillingPeriod] = useState('monthly');
   const [error, setError] = useState(null);
   
   const basePath = getSubscriptionBasePath(location.pathname);
 
+  // Check if user already owns this add-on (including cancelled but not expired)
+  const isAlreadyOwned = useMemo(() => {
+    const key = addOn?.feature_key || featureKey;
+    if (!key || !activeEntitlements) return false;
+    const now = new Date();
+    return activeEntitlements.some(ent => 
+      ent.feature_key === key && 
+      (ent.status === 'active' || 
+       ent.status === 'grace_period' ||
+       (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
+    );
+  }, [addOn?.feature_key, featureKey, activeEntitlements]);
+
   if (!isOpen || (!addOn && !featureKey)) return null;
+
+  // If already owned, show a different message
+  if (isAlreadyOwned) {
+    onClose?.();
+    return null;
+  }
 
   const handlePurchase = async () => {
     const key = addOn?.feature_key || featureKey;
     if (!key) return;
+
+    // Double-check ownership before purchase
+    if (isAlreadyOwned) {
+      setError('You already own this add-on.');
+      return;
+    }
 
     try {
       setError(null);

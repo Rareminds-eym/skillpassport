@@ -38,11 +38,18 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
   const [redirecting, setRedirecting] = useState(false);
   const managePath = useMemo(() => getManagePath(role), [role]);
 
-  // Memoize active subscription check
-  const hasActiveSubscription = useMemo(
-    () => user && subscriptionData && isActiveOrPaused(subscriptionData.status),
-    [user, subscriptionData]
-  );
+  // Memoize active subscription check (including cancelled but not expired)
+  const hasActiveSubscription = useMemo(() => {
+    if (!user || !subscriptionData) return false;
+    const status = subscriptionData.status;
+    // Active or paused subscriptions
+    if (isActiveOrPaused(status)) return true;
+    // Cancelled subscriptions that haven't expired yet
+    if (status === 'cancelled' && subscriptionData.endDate) {
+      return new Date(subscriptionData.endDate) > new Date();
+    }
+    return false;
+  }, [user, subscriptionData]);
 
   // Check if user has any manageable subscription (active or paused)
   const hasManageableSubscription = useMemo(
