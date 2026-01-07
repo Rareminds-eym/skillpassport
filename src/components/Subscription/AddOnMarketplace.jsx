@@ -171,11 +171,25 @@ export function AddOnMarketplace({
         console.log('[AddOnMarketplace] Payment successful, verifying...', response);
         
         try {
-          const verifyResult = await addOnPaymentService.verifyAddonPayment(
-            response.razorpay_order_id,
-            response.razorpay_payment_id,
-            response.razorpay_signature
-          );
+          let verifyResult;
+          
+          if (type === 'bundle') {
+            // Use bundle verification endpoint
+            verifyResult = await addOnPaymentService.verifyBundlePayment(
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature,
+              orderData.bundleId,
+              orderData.billingPeriod
+            );
+          } else {
+            // Use addon verification endpoint
+            verifyResult = await addOnPaymentService.verifyAddonPayment(
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature
+            );
+          }
           
           console.log('[AddOnMarketplace] Verification result:', verifyResult);
           
