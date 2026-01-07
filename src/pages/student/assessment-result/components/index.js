@@ -6,4 +6,5 @@ export { default as ErrorState } from './ErrorState';
 export { default as LoadingState } from './LoadingState';
 export { default as ReportHeader } from './ReportHeader';
 export { default as CourseRecommendationCard } from './CourseRecommendationCard';
+export { default as CoverPage, BRANDING, ILLUSTRATION_THEMES } from './CoverPage';
 export * from './sections';

@@ -5,6 +5,9 @@
  * Now supports different grade levels: middle, highschool, after12
  */
 
+import CoverPage from './CoverPage';
+import PrintHeader from './PrintHeader';
+
 // Helper function to safely render items that might be objects or strings
 const safeRender = (item) => {
     if (item === null || item === undefined) return '';
@@ -18,6 +21,97 @@ const safeRender = (item) => {
 const safeJoin = (arr, separator = ', ') => {
     if (!arr || !Array.isArray(arr)) return '';
     return arr.map(safeRender).join(separator);
+};
+
+// RIASEC Icons with colors matching the reference image
+const RiasecIcon = ({ code, size = 24 }) => {
+    const iconConfig = {
+        R: { // Realistic - Gear with pencil (yellow/gold)
+            color: '#d4a017',
+            bgColor: '#fef3c7',
+            icon: (
+                <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                    <path d="M16 8l-2 6-4-2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            )
+        },
+        I: { // Investigative - Brain (orange)
+            color: '#ea580c',
+            bgColor: '#ffedd5',
+            icon: (
+                <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M12 4.5c-4 0-7 3-7 6.5 0 2 1 3.5 2.5 4.5v2.5c0 1 .5 2 2 2h5c1.5 0 2-1 2-2v-2.5c1.5-1 2.5-2.5 2.5-4.5 0-3.5-3-6.5-7-6.5z" />
+                    <path d="M9 13c0-1.5 1.5-2.5 3-2.5s3 1 3 2.5" />
+                    <path d="M12 4.5V3M8 6l-1-1M16 6l1-1" />
+                </svg>
+            )
+        },
+        A: { // Artistic - Lightbulb (pink/coral)
+            color: '#e11d48',
+            bgColor: '#fce7f3',
+            icon: (
+                <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M9 21h6M12 3a6 6 0 0 0-4 10.5V17h8v-3.5A6 6 0 0 0 12 3z" />
+                    <path d="M12 3v1M5 12H4M20 12h-1M7.05 7.05l-.7-.7M16.95 7.05l.7-.7" />
+                </svg>
+            )
+        },
+        S: { // Social - Head with connections (purple)
+            color: '#7c3aed',
+            bgColor: '#ede9fe',
+            icon: (
+                <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+                    <circle cx="19" cy="8" r="2" />
+                    <circle cx="5" cy="8" r="2" />
+                </svg>
+            )
+        },
+        E: { // Enterprising - Person with star (green)
+            color: '#059669',
+            bgColor: '#d1fae5',
+            icon: (
+                <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="10" cy="8" r="4" />
+                    <path d="M4 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+                    <path d="M19 8l.5 1.5L21 10l-1.5.5L19 12l-.5-1.5L17 10l1.5-.5L19 8z" />
+                </svg>
+            )
+        },
+        C: { // Conventional - Head with gear (blue)
+            color: '#0284c7',
+            bgColor: '#e0f2fe',
+            icon: (
+                <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="12" cy="10" r="4" />
+                    <path d="M12 14v4M8 20h8" />
+                    <circle cx="17" cy="6" r="2" />
+                    <path d="M17 4v-1M17 9v1M14.5 6h-1M19.5 6h1M15.2 4.2l-.7-.7M18.8 7.8l.7.7M15.2 7.8l-.7.7M18.8 4.2l.7-.7" />
+                </svg>
+            )
+        }
+    };
+
+    const config = iconConfig[code] || iconConfig.R;
+    
+    return (
+        <div style={{
+            width: size + 8,
+            height: size + 8,
+            borderRadius: '50%',
+            backgroundColor: config.bgColor,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: config.color,
+            flexShrink: 0
+        }}>
+            {config.icon}
+        </div>
+    );
 };
 
 const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, traitNames }) => {
@@ -90,47 +184,6 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
             lineHeight: '1.4',
             color: '#1f2937',
             padding: '0',
-        },
-        header: {
-            background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
-            color: 'white',
-            padding: '12px 16px',
-            marginBottom: '20px',
-        },
-        headerTitle: {
-            fontSize: '22px',
-            fontWeight: 'bold',
-            margin: '0 0 4px 0',
-        },
-        headerSubtitle: {
-            fontSize: '11px',
-            color: '#94a3b8',
-            margin: '0',
-        },
-        infoGrid: {
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '10px',
-            marginBottom: '20px',
-        },
-        infoBox: {
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
-            borderRadius: '6px',
-            padding: '10px 12px',
-        },
-        infoLabel: {
-            fontSize: '9px',
-            color: '#64748b',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            margin: '0 0 2px 0',
-        },
-        infoValue: {
-            fontSize: '11px',
-            fontWeight: '600',
-            color: '#1e293b',
-            margin: '0',
         },
         sectionTitle: {
             fontSize: '14px',
@@ -217,6 +270,122 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
 
     return (
         <div className="print-view" style={{ background: 'white', position: 'relative' }}>
+            {/* Print-specific CSS styles for A4 dimensions and page breaks */}
+            {/* Requirements: 4.1 (A4 dimensions), 4.2 (margins), 4.3 (print-ready images), 4.4 (page breaks), 4.5 (color accuracy) */}
+            <style>
+                {`
+                    /* @page rules for A4 dimensions (210mm x 297mm) and 15mm margins */
+                    /* Validates: Requirements 4.1, 4.2 */
+                    @page {
+                        size: A4;
+                        margin: 15mm;
+                    }
+                    
+                    /* First page (cover page) specific rules */
+                    @page :first {
+                        margin: 0;
+                    }
+                    
+                    @media print {
+                        /* A4 page dimensions - Validates: Requirement 4.1 */
+                        .print-view {
+                            width: 210mm;
+                            min-height: 297mm;
+                            margin: 0;
+                            padding: 0;
+                        }
+                        
+                        /* Cover page print styles - Validates: Requirement 4.4 */
+                        .cover-page {
+                            width: 210mm;
+                            height: 297mm;
+                            padding: 15mm;
+                            box-sizing: border-box;
+                            page-break-after: always;
+                            page-break-inside: avoid;
+                            break-after: page;
+                            break-inside: avoid;
+                            position: relative;
+                            overflow: hidden;
+                        }
+                        
+                        /* Notebook label print styles */
+                        .notebook-label {
+                            border: 2px dashed #1e3a5f !important;
+                            border-radius: 8px !important;
+                            print-color-adjust: exact;
+                            -webkit-print-color-adjust: exact;
+                        }
+                        
+                        /* Connector line print styles */
+                        .connector-line {
+                            border-left: 2px dashed #1e3a5f !important;
+                            print-color-adjust: exact;
+                            -webkit-print-color-adjust: exact;
+                        }
+                        
+                        .print-content {
+                            page-break-before: auto;
+                        }
+                        
+                        .print-only-watermark {
+                            display: block !important;
+                        }
+                        
+                        /* Ensure images are print-ready with appropriate resolution */
+                        /* Validates: Requirement 4.3 */
+                        img {
+                            max-width: 100%;
+                            print-color-adjust: exact;
+                            -webkit-print-color-adjust: exact;
+                            image-rendering: -webkit-optimize-contrast;
+                            image-rendering: crisp-edges;
+                        }
+                        
+                        /* Maintain color accuracy for branding elements */
+                        /* Validates: Requirement 4.5 */
+                        * {
+                            print-color-adjust: exact;
+                            -webkit-print-color-adjust: exact;
+                            color-adjust: exact;
+                        }
+                        
+                        /* SVG print optimization for illustrations */
+                        svg {
+                            print-color-adjust: exact;
+                            -webkit-print-color-adjust: exact;
+                        }
+                        
+                        /* Prevent orphaned content */
+                        h1, h2, h3, h4, h5, h6 {
+                            page-break-after: avoid;
+                            break-after: avoid;
+                        }
+                        
+                        /* Keep cards and sections together */
+                        .card, .info-box, .summary-box {
+                            page-break-inside: avoid;
+                            break-inside: avoid;
+                        }
+                    }
+                    
+                    @media screen {
+                        .print-only-watermark {
+                            display: none;
+                        }
+                        
+                        /* Screen preview styling for cover page */
+                        .cover-page {
+                            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                            margin-bottom: 20px;
+                        }
+                    }
+                `}
+            </style>
+            
+            {/* Cover Page - Page 1 of the Assessment Report */}
+            <CoverPage studentInfo={safeStudentInfo} />
+            
             {/* Rareminds Bulb Logo Watermark - Center - PRINT ONLY */}
             <div className="print-only-watermark" style={{
                 position: 'fixed', 
@@ -338,48 +507,8 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
             
             {/* Continuous Content */}
             <div className="print-content" style={{position: 'relative', zIndex: 1, paddingBottom: '70px'}}>
-                {/* Header with Branding */}
-                <div style={styles.header}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-                            <img src="/RareMinds%20ISO%20Logo-01.png" alt="Rareminds" style={{width: '144px', height: '88px', objectFit: 'contain'}} />
-                            <div style={{paddingLeft: '15px'}}>
-                                <h1 style={styles.headerTitle}>RAREMINDS SkillPassport • AI-Powered Career Assessment</h1>
-                            </div>
-                        </div>
-                        <div style={{textAlign: 'right'}}>
-                            <p style={{margin: '0', fontSize: '12px', fontWeight: 'bold', color: 'white'}}>Career Assessment Report</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Student Info Grid */}
-                <div style={styles.infoGrid}>
-                    <div style={styles.infoBox}>
-                        <p style={styles.infoLabel}>Student Name</p>
-                        <p style={styles.infoValue}>{safeStudentInfo.name}</p>
-                    </div>
-                    <div style={styles.infoBox}>
-                        <p style={styles.infoLabel}>Register No.</p>
-                        <p style={styles.infoValue}>{safeStudentInfo.regNo}</p>
-                    </div>
-                    <div style={styles.infoBox}>
-                        <p style={styles.infoLabel}>Programme</p>
-                        <p style={styles.infoValue}>{safeStudentInfo.stream}</p>
-                    </div>
-                    <div style={styles.infoBox}>
-                        <p style={styles.infoLabel}>College</p>
-                        <p style={styles.infoValue}>{safeStudentInfo.college}</p>
-                    </div>
-                    <div style={styles.infoBox}>
-                        <p style={styles.infoLabel}>Assessment Date</p>
-                        <p style={styles.infoValue}>{new Date().toLocaleDateString()}</p>
-                    </div>
-                    <div style={styles.infoBox}>
-                        <p style={styles.infoLabel}>Assessor</p>
-                        <p style={styles.infoValue}>SkillPassport AI</p>
-                    </div>
-                </div>
+                {/* Decorative Print Header - appears on all pages except cover */}
+                <PrintHeader />
 
                 {/* Data Privacy Notice */}
                 <div style={{background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px', padding: '10px 12px', marginBottom: '20px', fontSize: '8px', color: '#0c4a6e', lineHeight: '1.5'}}>
@@ -411,7 +540,12 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
                                     return (
                                         <tr key={code}>
                                             <td style={styles.td}>#{idx + 1}</td>
-                                            <td style={styles.td}><strong>{safeRiasecNames[code]}</strong> ({code})</td>
+                                            <td style={styles.td}>
+                                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                                    <RiasecIcon code={code} size={20} />
+                                                    <strong>{safeRiasecNames[code]}</strong> ({code})
+                                                </div>
+                                            </td>
                                             <td style={{...styles.td, textAlign: 'center'}}>
                                                 <span style={{...styles.badge, background: scoreStyle.bg, color: scoreStyle.color}}>{score}/{maxScore}</span>
                                             </td>
