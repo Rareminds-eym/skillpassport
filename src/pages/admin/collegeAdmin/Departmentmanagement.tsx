@@ -22,6 +22,7 @@ import {
   EllipsisVerticalIcon,
   PencilSquareIcon,
   UserIcon,
+  ChevronUpIcon,
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../../components/common/SearchBar";
 import Pagination from "../../../components/admin/Pagination";
@@ -352,22 +353,115 @@ const DepartmentManagement: React.FC = () => {
     enabled: !!collegeId,
   });
 
-  const [filters, setFilters] = useState({ status: [] as string[] });
+  const [filters, setFilters] = useState({ 
+    status: [] as string[],
+    hodAssigned: [] as string[],
+    facultyRange: [] as string[],
+    hasPrograms: [] as string[],
+  });
 
-  const filteredDepartments = useMemo(() => {
-    return departments.filter((dept) => {
+  // Sorting state
+  type SortField = 'name' | 'code' | 'facultyCount' | 'studentCount' | 'programCount' | 'createdAt';
+  type SortDirection = 'asc' | 'desc';
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Sort options for dropdown
+  const sortOptions = [
+    { value: 'name', label: 'Department Name' },
+    { value: 'code', label: 'Department Code' },
+    { value: 'facultyCount', label: 'Faculty Count' },
+    { value: 'studentCount', label: 'Student Count' },
+    { value: 'programCount', label: 'Program Count' },
+    { value: 'createdAt', label: 'Date Created' },
+  ];
+
+  const handleSortChange = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const filteredAndSortedDepartments = useMemo(() => {
+    // First filter
+    const filtered = departments.filter((dept) => {
+      // Search filter
       const matchesSearch =
         searchQuery.trim() === "" ||
         dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         dept.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (dept.hod || '').toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Status filter
       const matchesStatus =
         filters.status.length === 0 ||
         filters.status.includes((dept.status || 'active').toLowerCase());
-      return matchesSearch && matchesStatus;
-    });
-  }, [departments, searchQuery, filters]);
+      
+      // HOD Assigned filter
+      const hodName = dept.hod || dept.metadata?.hod || '';
+      const hasHod = hodName && hodName !== 'Not Assigned' && hodName.trim() !== '';
+      const matchesHodAssigned =
+        filters.hodAssigned.length === 0 ||
+        (filters.hodAssigned.includes('yes') && hasHod) ||
+        (filters.hodAssigned.includes('no') && !hasHod);
+      
+      // Faculty Range filter
+      const facultyCount = dept.facultyCount || dept.faculty_count || 0;
+      const matchesFacultyRange =
+        filters.facultyRange.length === 0 ||
+        (filters.facultyRange.includes('none') && facultyCount === 0) ||
+        (filters.facultyRange.includes('1-5') && facultyCount >= 1 && facultyCount <= 5) ||
+        (filters.facultyRange.includes('6-10') && facultyCount >= 6 && facultyCount <= 10) ||
+        (filters.facultyRange.includes('10+') && facultyCount > 10);
+      
+      // Has Programs filter
+      const programCount = dept.programs_offered?.length || 0;
+      const matchesHasPrograms =
+        filters.hasPrograms.length === 0 ||
+        (filters.hasPrograms.includes('yes') && programCount > 0) ||
+        (filters.hasPrograms.includes('no') && programCount === 0);
 
+      return matchesSearch && matchesStatus && matchesHodAssigned && matchesFacultyRange && matchesHasPrograms;
+    });
+
+    // Then sort
+    return filtered.sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortField) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'code':
+          comparison = a.code.localeCompare(b.code);
+          break;
+        case 'facultyCount':
+          comparison = (a.facultyCount || a.faculty_count || 0) - (b.facultyCount || b.faculty_count || 0);
+          break;
+        case 'studentCount':
+          comparison = (a.studentCount || a.student_count || 0) - (b.studentCount || b.student_count || 0);
+          break;
+        case 'programCount':
+          comparison = (a.programs_offered?.length || 0) - (b.programs_offered?.length || 0);
+          break;
+        case 'createdAt':
+          comparison = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+          break;
+        default:
+          comparison = 0;
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [departments, searchQuery, filters, sortField, sortDirection]);
+
+  // Alias for backward compatibility
+  const filteredDepartments = filteredAndSortedDepartments;
+
+  // Status options with counts
   const statusOptions = useMemo(() => {
     const counts: Record<string, number> = {};
     departments.forEach((d) => {
@@ -381,7 +475,60 @@ const DepartmentManagement: React.FC = () => {
     }));
   }, [departments]);
 
-  const totalFilters = filters.status.length;
+  // HOD Assigned options with counts
+  const hodAssignedOptions = useMemo(() => {
+    let withHod = 0;
+    let withoutHod = 0;
+    departments.forEach((d) => {
+      const hodName = d.hod || d.metadata?.hod || '';
+      if (hodName && hodName !== 'Not Assigned' && hodName.trim() !== '') {
+        withHod++;
+      } else {
+        withoutHod++;
+      }
+    });
+    return [
+      { value: 'yes', label: 'HOD Assigned', count: withHod },
+      { value: 'no', label: 'No HOD', count: withoutHod },
+    ];
+  }, [departments]);
+
+  // Faculty Range options with counts
+  const facultyRangeOptions = useMemo(() => {
+    let none = 0, small = 0, medium = 0, large = 0;
+    departments.forEach((d) => {
+      const count = d.facultyCount || d.faculty_count || 0;
+      if (count === 0) none++;
+      else if (count <= 5) small++;
+      else if (count <= 10) medium++;
+      else large++;
+    });
+    return [
+      { value: 'none', label: 'No Faculty', count: none },
+      { value: '1-5', label: '1-5 Faculty', count: small },
+      { value: '6-10', label: '6-10 Faculty', count: medium },
+      { value: '10+', label: '10+ Faculty', count: large },
+    ].filter(opt => opt.count > 0);
+  }, [departments]);
+
+  // Has Programs options with counts
+  const hasProgramsOptions = useMemo(() => {
+    let withPrograms = 0;
+    let withoutPrograms = 0;
+    departments.forEach((d) => {
+      if ((d.programs_offered?.length || 0) > 0) {
+        withPrograms++;
+      } else {
+        withoutPrograms++;
+      }
+    });
+    return [
+      { value: 'yes', label: 'Has Programs', count: withPrograms },
+      { value: 'no', label: 'No Programs', count: withoutPrograms },
+    ];
+  }, [departments]);
+
+  const totalFilters = filters.status.length + filters.hodAssigned.length + filters.facultyRange.length + filters.hasPrograms.length;
   const totalItems = filteredDepartments.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -394,7 +541,12 @@ const DepartmentManagement: React.FC = () => {
   };
 
   const handleClearFilters = () => {
-    setFilters({ status: [] });
+    setFilters({ 
+      status: [], 
+      hodAssigned: [], 
+      facultyRange: [], 
+      hasPrograms: [] 
+    });
   };
 
   const handleViewDetails = (dept: Department) => {
@@ -578,6 +730,35 @@ const DepartmentManagement: React.FC = () => {
         </div>
 
         <div className="w-80 flex-shrink-0 pl-4 flex items-center justify-end space-x-2">
+          {/* Sort Dropdown */}
+          <div className="relative">
+            <select
+              value={sortField}
+              onChange={(e) => handleSortChange(e.target.value as SortField)}
+              className="appearance-none pl-3 pr-8 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              {sortOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+            </div>
+          </div>
+          <button
+            onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
+            className="inline-flex items-center px-2 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            type="button"
+            title={sortDirection === 'asc' ? 'Ascending' : 'Descending'}
+          >
+            {sortDirection === 'asc' ? (
+              <ChevronUpIcon className="h-4 w-4" />
+            ) : (
+              <ChevronDownIcon className="h-4 w-4" />
+            )}
+          </button>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 relative"
@@ -632,6 +813,37 @@ const DepartmentManagement: React.FC = () => {
             placeholder="Search departments"
             size="md"
           />
+        </div>
+
+        {/* Mobile Sort Controls */}
+        <div className="flex items-center space-x-2">
+          <div className="relative flex-1">
+            <select
+              value={sortField}
+              onChange={(e) => handleSortChange(e.target.value as SortField)}
+              className="w-full appearance-none pl-3 pr-8 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {sortOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  Sort: {option.label}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+            </div>
+          </div>
+          <button
+            onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
+            className="inline-flex items-center px-2 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white"
+            type="button"
+          >
+            {sortDirection === 'asc' ? (
+              <ChevronUpIcon className="h-4 w-4" />
+            ) : (
+              <ChevronDownIcon className="h-4 w-4" />
+            )}
+          </button>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -712,6 +924,36 @@ const DepartmentManagement: React.FC = () => {
                       selectedValues={filters.status}
                       onChange={(values: string[]) =>
                         setFilters((prev) => ({ ...prev, status: values }))
+                      }
+                    />
+                  </FilterSection>
+
+                  <FilterSection title="HOD Assignment" defaultOpen>
+                    <CheckboxGroup
+                      options={hodAssignedOptions}
+                      selectedValues={filters.hodAssigned}
+                      onChange={(values: string[]) =>
+                        setFilters((prev) => ({ ...prev, hodAssigned: values }))
+                      }
+                    />
+                  </FilterSection>
+
+                  <FilterSection title="Faculty Count" defaultOpen>
+                    <CheckboxGroup
+                      options={facultyRangeOptions}
+                      selectedValues={filters.facultyRange}
+                      onChange={(values: string[]) =>
+                        setFilters((prev) => ({ ...prev, facultyRange: values }))
+                      }
+                    />
+                  </FilterSection>
+
+                  <FilterSection title="Programs" defaultOpen>
+                    <CheckboxGroup
+                      options={hasProgramsOptions}
+                      selectedValues={filters.hasPrograms}
+                      onChange={(values: string[]) =>
+                        setFilters((prev) => ({ ...prev, hasPrograms: values }))
                       }
                     />
                   </FilterSection>
