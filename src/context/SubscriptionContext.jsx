@@ -154,15 +154,21 @@ export const SubscriptionProvider = ({ children }) => {
   /**
    * Synchronous check for add-on access using cached entitlements
    * Use this for immediate UI rendering decisions
+   * Includes cancelled entitlements that haven't expired yet
    */
   const hasAddOnAccessSync = useCallback((featureKey) => {
     if (!entitlementsData?.entitlements) return false;
     
-    const activeEntitlements = entitlementsData.entitlements.filter(
-      ent => ent.status === 'active' || ent.status === 'grace_period'
-    );
+    const now = new Date();
+    const validEntitlements = entitlementsData.entitlements.filter(ent => {
+      // Active or grace period entitlements
+      if (ent.status === 'active' || ent.status === 'grace_period') return true;
+      // Cancelled entitlements that haven't expired yet
+      if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now) return true;
+      return false;
+    });
     
-    return activeEntitlements.some(ent => ent.feature_key === featureKey);
+    return validEntitlements.some(ent => ent.feature_key === featureKey);
   }, [entitlementsData?.entitlements]);
 
   // Purchase add-on mutation
@@ -267,10 +273,16 @@ export const SubscriptionProvider = ({ children }) => {
   
   // Add-on entitlements
   const userEntitlements = useMemo(() => entitlementsData?.entitlements ?? [], [entitlementsData]);
-  const activeEntitlements = useMemo(() => 
-    userEntitlements.filter(ent => ent.status === 'active' || ent.status === 'grace_period'),
-    [userEntitlements]
-  );
+  const activeEntitlements = useMemo(() => {
+    const now = new Date();
+    return userEntitlements.filter(ent => {
+      // Active or grace period entitlements
+      if (ent.status === 'active' || ent.status === 'grace_period') return true;
+      // Cancelled entitlements that haven't expired yet (user retains access until end_date)
+      if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now) return true;
+      return false;
+    });
+  }, [userEntitlements]);
   const totalAddOnCost = useMemo(() => entitlementsData?.totalCost ?? { monthly: 0, annual: 0 }, [entitlementsData]);
 
   const value = useMemo(() => ({
