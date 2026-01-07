@@ -18,7 +18,6 @@ import { TestProvider } from '../context/assessment/TestContext';
 import HomePage from '../pages/digital-pp/HomePage';
 import DigitalPassportPage from '../pages/digital-pp/PassportPage';
 import DigitalPortfolioPage from '../pages/digital-pp/PortfolioPage';
-import DigitalSettingsPage from '../pages/digital-pp/SettingsPage';
 import DigitalVideoPortfolioPage from '../pages/digital-pp/VideoPortfolioPage';
 import DigitalExportSettings from '../pages/digital-pp/settings/ExportSettings';
 import DigitalLayoutSettings from '../pages/digital-pp/settings/LayoutSettings';
@@ -45,9 +44,6 @@ const PaymentSuccess = lazy(() =>
 const PaymentFailure = lazy(() =>
   import("../pages/subscription/PaymentFailure")
 );
-const MySubscription = lazy(() =>
-  import("../pages/subscription/MySubscription")
-);
 const SubscriptionManage = lazy(() =>
   import("../pages/subscription/SubscriptionManage")
 );
@@ -71,9 +67,6 @@ const SimpleEventRegistration = lazy(() =>
   import("../pages/register/SimpleEventRegistration")
 );
 
-const LoginStudent = lazy(() => import("../pages/auth/LoginStudent"));
-const LoginRecruiter = lazy(() => import("../pages/auth/LoginRecruiter"));
-const LoginAdmin = lazy(() => import("../pages/auth/LoginAdmin"));
 const Register = lazy(() => import("../pages/auth/components/SignIn/Register"));
 const UnifiedLogin = lazy(() => import("../pages/auth/UnifiedLogin"));
 const UnifiedSignup = lazy(() => import("../pages/auth/UnifiedSignup"));
@@ -117,7 +110,6 @@ const VerifiedWork = lazy(() => import("../pages/recruiter/VerifiedStudentWork")
 const Analytics = lazy(() => import("../pages/recruiter/Analytics"));
 const Activities = lazy(() => import("../pages/recruiter/Activities"));
 const RecruiterMessages = lazy(() => import("../pages/recruiter/Messages"));
-const RecruiterAI = lazy(() => import("../pages/recruiter/RecruiterAI"));
 const ProjectHiringWithNav = lazy(() => import("../pages/recruiter/ProjectHiringWithNav"));
 
 const StudentDashboard = lazy(() => import("../pages/student/Dashboard"));
@@ -134,7 +126,6 @@ const AppliedJobs = lazy(() => import("../pages/student/AppliedJobs"));
 const BrowseJobs = lazy(() => import("../pages/student/BrowseJobs"));
 const Messages = lazy(() => import("../pages/student/Messages"));
 const StudentAnalytics = lazy(() => import("../pages/student/Analytics"));
-const Assignments = lazy(() => import("../pages/student/Assignments"));
 const MyClass = lazy(() => import("../pages/student/MyClass"));
 const Clubs = lazy(() => import ("../pages/student/Clubs"))
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
@@ -147,7 +138,6 @@ const StudentPublicViewer = lazy(() =>
 const Settings = lazy(() => import("../pages/student/Settings"));
 const AssessmentTest = lazy(() => import("../pages/student/AssessmentTest"));
 const AssessmentResult = lazy(() => import("../pages/student/AssessmentResult"));
-const AssessmentPlatform = lazy(() => import("../pages/student/AssessmentPlatform"));
 const AssessmentTestPage = lazy(() => import("../pages/student/AssessmentTestPage"));
 const AssessmentResults = lazy(() => import("../pages/student/AssessmentResults"));
 const AssessmentStart = lazy(() => import("../pages/student/AssessmentStart"));
@@ -156,7 +146,6 @@ const AdaptiveAptitudeTest = lazy(() => import("../pages/student/AdaptiveAptitud
 
 // Educator pages
 const EducatorDashboard = lazy(() => import("../pages/educator/Dashboard"));
-const EducatorLogin = lazy(() => import("../pages/auth/LoginEducator"));
 const EducatorStudents = lazy(() => import("../pages/educator/StudentsPage"));
 const EducatorClasses = lazy(() => import("../pages/educator/ClassesPage"));
 const EducatorAssessmentResults = lazy(() => import("../pages/educator/AssessmentResults"));
@@ -204,9 +193,6 @@ const CourseMapping = lazy(() =>
 );
 const StudentDataAdmission = lazy(() =>
   import("../pages/admin/collegeAdmin/Studentdataadmission")
-);
-const AdminEducatorManagement = lazy(() =>
-  import("../pages/admin/collegeAdmin/EducatorManagement")
 );
 const FacultyManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/FacultyManagement")
@@ -755,18 +741,6 @@ const AppRoutes = () => {
                 <PortfolioProvider>
                   <div>
                     <DigitalVideoPortfolioPage />
-                  </div>
-                </PortfolioProvider>
-              </ThemeProvider>
-            }
-          />
-          <Route
-            path="digital-portfolio/settings"
-            element={
-              <ThemeProvider>
-                <PortfolioProvider>
-                  <div>
-                    <DigitalSettingsPage />
                   </div>
                 </PortfolioProvider>
               </ThemeProvider>
