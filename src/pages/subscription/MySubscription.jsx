@@ -361,6 +361,31 @@ function MySubscription() {
     return dashboardRoutes[userRole] || '/student/dashboard';
   }, [user, role]);
 
+  // Get role-specific settings URL for back navigation
+  const getSettingsUrl = useCallback(() => {
+    const userRole = user?.user_metadata?.role || user?.raw_user_meta_data?.role || role;
+    
+    const settingsRoutes = {
+      super_admin: '/admin/settings',
+      rm_admin: '/admin/settings',
+      rm_manager: '/admin/settings',
+      admin: '/admin/settings',
+      company_admin: '/admin/settings',
+      school_admin: '/school-admin/settings',
+      college_admin: '/college-admin/settings',
+      university_admin: '/university-admin/settings',
+      educator: '/educator/settings',
+      school_educator: '/educator/settings',
+      college_educator: '/educator/settings',
+      recruiter: '/recruitment/settings',
+      student: '/student/settings',
+      school_student: '/student/settings',
+      college_student: '/student/settings',
+    };
+    
+    return settingsRoutes[userRole] || '/student/settings';
+  }, [user, role]);
+
   // Fetch billing history from database (with caching)
   const fetchBillingHistory = useCallback(async (force = false) => {
     if (!user) return;
@@ -549,11 +574,11 @@ function MySubscription() {
         <div className="bg-white border-b border-neutral-200">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate(getSettingsUrl())}
               className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors group"
             >
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-              Back to Home
+              Back to Settings
             </button>
           </div>
         </div>
@@ -584,13 +609,13 @@ function MySubscription() {
       {/* Header */}
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Back to Home Button */}
+          {/* Back to Settings Button */}
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(getSettingsUrl())}
             className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 mb-4 transition-colors group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            Back to Home
+            Back to Settings
           </button>
           
           <div className="flex items-start justify-between">

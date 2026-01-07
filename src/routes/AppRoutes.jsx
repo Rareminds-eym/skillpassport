@@ -436,13 +436,6 @@ const AppRoutes = () => {
           <Route path="/subscription/payment" element={<PaymentCompletion />} />
           <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
-          <Route path="/subscription/manage" element={<SubscriptionManage />} />
-          <Route path="/subscription/add-ons" element={<AddOns />} />
-          {/* Legacy route - redirect to new manage route */}
-          <Route
-            path="/my-subscription"
-            element={<Navigate to="/subscription/manage" replace />}
-          />
           <Route path="/debug-qr" element={<DebugQRTest />} />
           <Route
             path="/student/profile/:studentId"
@@ -466,7 +459,6 @@ const AppRoutes = () => {
             <Route path="/digital-pp/homepage" element={<HomePage />} />
             <Route path="/passport" element={<DigitalPassportPage />} />
             <Route path="/video-portfolio" element={<DigitalVideoPortfolioPage />} />
-            <Route path="/settings" element={<DigitalSettingsPage />} />
             {/* Settings sub-pages for digital passport */}
             <Route path="/settings/theme" element={<DigitalThemeSettings />} />
             <Route path="/settings/layout" element={<DigitalLayoutSettings />} />
@@ -542,6 +534,8 @@ const AppRoutes = () => {
 
           {/* Settings */}
           <Route path="settings" element={<CollegeSettings />} />
+          <Route path="subscription/manage" element={<SubscriptionManage />} />
+          <Route path="subscription/add-ons" element={<AddOns />} />
 
           <Route path="" element={<Navigate to="/college-admin/dashboard" replace />} />
         </Route>
@@ -591,6 +585,8 @@ const AppRoutes = () => {
 
           {/* Settings */}
           <Route path="settings" element={<SchoolAdminSettings />} />
+          <Route path="subscription/manage" element={<SubscriptionManage />} />
+          <Route path="subscription/add-ons" element={<AddOns />} />
           <Route
             path=""
             element={<Navigate to="/school-admin/dashboard" replace />}
@@ -616,6 +612,8 @@ const AppRoutes = () => {
           <Route path="placements/readiness" element={<PlacementReadiness />} />
           <Route path="analytics/obe-tracking" element={<OutcomeBasedEducation />} />
           <Route path="ai-counselling" element={<AICounselling />} />
+          <Route path="subscription/manage" element={<SubscriptionManage />} />
+          <Route path="subscription/add-ons" element={<AddOns />} />
           <Route
             path=""
             element={<Navigate to="/university-admin/dashboard" replace />}
@@ -646,6 +644,8 @@ const AppRoutes = () => {
           <Route path="messages" element={<RecruiterMessages />} />
           <Route path="profile" element={<RecruiterProfile />} />
           <Route path="settings" element={<RecruiterSettings />} />
+          <Route path="subscription/manage" element={<SubscriptionManage />} />
+          <Route path="subscription/add-ons" element={<AddOns />} />
           <Route
             path="*"
             element={<Navigate to="/recruitment/overview" replace />}
@@ -682,6 +682,8 @@ const AppRoutes = () => {
           <Route path="messages" element={<Messages />} />
           <Route path="career-ai" element={<CareerAI />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="subscription/manage" element={<SubscriptionManage />} />
+          <Route path="subscription/add-ons" element={<AddOns />} />
           <Route path="analytics" element={<StudentAnalytics />} />
           <Route path="my-class" element={<MyClass />} />
           <Route path="assignments" element={<Navigate to="/student/my-class" replace />} />
@@ -833,6 +835,8 @@ const AppRoutes = () => {
           <Route path="mentornotes" element={<EducatorMentorNotes />} />
           <Route path="digital-portfolio" element={<EducatorDigitalPortfolio />} />
           <Route path="settings" element={<EducatorSettings />} />
+          <Route path="subscription/manage" element={<SubscriptionManage />} />
+          <Route path="subscription/add-ons" element={<AddOns />} />
           <Route path="profile" element={<EducatorProfile />} />
           <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
           <Route path="profile-debug" element={<EducatorProfileDebug />} />

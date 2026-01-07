@@ -29,15 +29,30 @@ import {
     X
 } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import entitlementService from '../../services/entitlementService';
+
+/**
+ * Get the base path for subscription routes based on current location
+ */
+function getSubscriptionBasePath(pathname) {
+  if (pathname.startsWith('/student')) return '/student';
+  if (pathname.startsWith('/recruitment')) return '/recruitment';
+  if (pathname.startsWith('/educator')) return '/educator';
+  if (pathname.startsWith('/college-admin')) return '/college-admin';
+  if (pathname.startsWith('/school-admin')) return '/school-admin';
+  if (pathname.startsWith('/university-admin')) return '/university-admin';
+  return ''; // fallback to root
+}
 
 /**
  * SubscriptionDashboard - Main dashboard for subscription management
  */
 export function SubscriptionDashboard({ className = '' }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const basePath = getSubscriptionBasePath(location.pathname);
   const {
     subscription,
     userEntitlements,
@@ -99,7 +114,7 @@ export function SubscriptionDashboard({ className = '' }) {
           <p className="text-gray-600 mt-1">Manage your plan and add-ons</p>
         </div>
         <button
-          onClick={() => navigate('/subscription/add-ons')}
+          onClick={() => navigate(`${basePath}/subscription/add-ons`)}
           className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
         >
           <Sparkles className="w-4 h-4" />
@@ -197,7 +212,7 @@ export function SubscriptionDashboard({ className = '' }) {
             <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500 mb-4">No active add-ons</p>
             <button
-              onClick={() => navigate('/subscription/add-ons')}
+              onClick={() => navigate(`${basePath}/subscription/add-ons`)}
               className="text-indigo-600 hover:underline"
             >
               Browse available add-ons
