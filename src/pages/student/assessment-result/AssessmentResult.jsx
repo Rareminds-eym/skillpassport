@@ -13,7 +13,8 @@ import {
     GraduationCap,
     CheckCircle2,
     Star,
-    TrendingUp
+    TrendingUp,
+    ChevronRight
 } from 'lucide-react';
 import { Button } from '../../../components/Students/components/ui/button';
 import {
@@ -48,6 +49,9 @@ import { useAssessmentResults } from './hooks/useAssessmentResults';
 
 // Import course matching engine
 import { calculateCourseMatchScores } from './utils/courseMatchingEngine';
+
+// Import stream matching engine for after 10th students
+import { calculateStreamRecommendations } from './utils/streamMatchingEngine';
 
 /**
  * Gemini-Style Career Path Connector
@@ -616,12 +620,13 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
  * Assessment Result Page
  * Displays comprehensive career assessment results with modular components
  */
-const AssessmentResult = () => {
+    const AssessmentResult = () => {
     const [activeSection, setActiveSection] = useState(null);
     const [isNavbarVisible, setIsNavbarVisible] = useState(true);
     const [selectedTrack, setSelectedTrack] = useState(null);
     const [selectedRole, setSelectedRole] = useState(null);
     const [currentStep, setCurrentStep] = useState(0); // 0 = role selection, 1-3 = wizard pages
+    const [activeRecommendationTab, setActiveRecommendationTab] = useState('career'); // 'primary' or 'career' - default to career recommendations
     const lastScrollY = useRef(0);
 
     useEffect(() => {
@@ -668,6 +673,30 @@ const AssessmentResult = () => {
             studentAcademicData
         );
     }, [results?.courseRecommendations, results?.riasec?.scores, studentAcademicData]);
+
+    // Calculate stream recommendations for after 10th students using academic data
+    const enhancedStreamRecommendation = useMemo(() => {
+        if (gradeLevel !== 'after10') return null;
+        
+        // Use the stream matching engine with academic data (marks, projects, experiences)
+        const streamRec = calculateStreamRecommendations(results, studentAcademicData);
+        
+        // Merge with AI recommendation if available, preferring data-driven results
+        if (results?.streamRecommendation) {
+            return {
+                ...results.streamRecommendation,
+                ...streamRec,
+                // Keep AI reasoning if our engine didn't find specific reasons
+                reasoning: {
+                    interests: streamRec.reasoning?.interests || results.streamRecommendation.reasoning?.interests,
+                    aptitude: streamRec.reasoning?.aptitude || results.streamRecommendation.reasoning?.aptitude,
+                    personality: streamRec.reasoning?.personality || results.streamRecommendation.reasoning?.personality
+                }
+            };
+        }
+        
+        return streamRec;
+    }, [gradeLevel, results, studentAcademicData]);
 
     // Custom print function that opens print view in new window
     const handlePrint = () => {
@@ -787,9 +816,18 @@ const AssessmentResult = () => {
 
     if (!results) return null;
 
-    const { riasec, aptitude, knowledge, careerFit, skillGap, roadmap, employability } = results;
+    const { riasec, aptitude, knowledge, careerFit, skillGap, roadmap, employability, streamRecommendation } = results;
     const missingFields = validateResults();
     const hasIncompleteData = missingFields.length > 0;
+
+    // Debug log for stream recommendation
+    console.log('AssessmentResult Debug:', {
+        gradeLevel,
+        hasStreamRecommendation: !!streamRecommendation,
+        streamRecommendation: streamRecommendation,
+        isAfter10: streamRecommendation?.isAfter10,
+        recommendedStream: streamRecommendation?.recommendedStream
+    });
 
     return (
         <>
@@ -996,335 +1034,382 @@ const AssessmentResult = () => {
                         </div>
                     </div>*/}
 
-                    {/* Course Recommendations Section - Only for after12 students */}
-                    {gradeLevel === 'after12' && enhancedCourseRecommendations && enhancedCourseRecommendations.length > 0 && (
+                    {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+                    {/* RECOMMENDATION TOGGLE SECTION - For After 10th and After 12th students */}
+                    {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+                    {(gradeLevel === 'after10' || gradeLevel === 'after12') && (
                         <div className="mb-8">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
-                                    <GraduationCap className="w-6 h-6 text-white" />
-                                </div>
-                                <div>
-                                    <h2 className="text-2xl font-bold text-gray-800">Recommended Programs for You</h2>
-                                    <p className="text-gray-500">Based on your interests, academics, projects & experiences</p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {enhancedCourseRecommendations.slice(0, 5).map((course, index) => (
-                                    <div 
-                                        key={course.courseId}
-                                        className={`relative bg-white rounded-xl border-2 p-5 transition-all hover:shadow-lg ${
-                                            index === 0 ? 'border-emerald-300 shadow-emerald-100 shadow-lg' : 'border-gray-100'
+                            {/* Toggle Buttons */}
+                            <div className="flex justify-center mb-6">
+                                <div className="inline-flex bg-gray-100 rounded-xl p-1 shadow-inner">
+                                    <button
+                                        onClick={() => setActiveRecommendationTab('primary')}
+                                        className={`px-6 py-3 rounded-lg font-medium text-sm transition-all duration-300 ${
+                                            activeRecommendationTab === 'primary'
+                                                ? 'bg-white text-indigo-600 shadow-md'
+                                                : 'text-gray-600 hover:text-gray-800'
                                         }`}
                                     >
-                                        {/* Rank Badge */}
-                                        <div className={`absolute -top-3 -right-3 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg ${
-                                            index === 0 ? 'bg-gradient-to-br from-emerald-500 to-teal-600' :
-                                            index === 1 ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
-                                            'bg-gradient-to-br from-gray-400 to-gray-500'
-                                        }`}>
-                                            #{index + 1}
-                                        </div>
-
-                                        {/* Top Pick Badge */}
-                                        {index === 0 && (
-                                            <div className="flex items-center gap-1 text-emerald-600 text-xs font-semibold mb-2">
-                                                <Star className="w-3 h-3 fill-current" />
-                                                TOP RECOMMENDATION
-                                            </div>
+                                        {gradeLevel === 'after10' ? (
+                                            <span className="flex items-center gap-2">
+                                                <GraduationCap className="w-4 h-4" />
+                                                11th/12th Stream
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-2">
+                                                <GraduationCap className="w-4 h-4" />
+                                                Recommended Programs
+                                            </span>
                                         )}
-
-                                        {/* Course Name */}
-                                        <h3 className="font-semibold text-gray-800 text-lg mb-2 pr-8">{course.courseName}</h3>
-
-                                        {/* Category Badge */}
-                                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-3 ${
-                                            course.category === 'Science' ? 'bg-blue-100 text-blue-700' :
-                                            course.category === 'Commerce' ? 'bg-amber-100 text-amber-700' :
-                                            'bg-purple-100 text-purple-700'
-                                        }`}>
-                                            {course.category}
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveRecommendationTab('career')}
+                                        className={`px-6 py-3 rounded-lg font-medium text-sm transition-all duration-300 ${
+                                            activeRecommendationTab === 'career'
+                                                ? 'bg-white text-indigo-600 shadow-md'
+                                                : 'text-gray-600 hover:text-gray-800'
+                                        }`}
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <Briefcase className="w-4 h-4" />
+                                            Career Recommendations
                                         </span>
-
-                                        {/* Match Score */}
-                                        <div className="mb-3">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-sm text-gray-600">Match Score</span>
-                                                <span className={`font-bold ${
-                                                    course.matchScore >= 80 ? 'text-emerald-600' :
-                                                    course.matchScore >= 65 ? 'text-blue-600' :
-                                                    'text-gray-600'
-                                                }`}>
-                                                    {course.matchScore}%
-                                                </span>
-                                            </div>
-                                            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                                                <div 
-                                                    className={`h-full rounded-full transition-all ${
-                                                        course.matchScore >= 80 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' :
-                                                        course.matchScore >= 65 ? 'bg-gradient-to-r from-blue-400 to-blue-500' :
-                                                        'bg-gradient-to-r from-gray-300 to-gray-400'
-                                                    }`}
-                                                    style={{ width: `${course.matchScore}%` }}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Match Level */}
-                                        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
-                                            course.matchLevel === 'Exceptional' || course.matchLevel === 'Excellent' ? 'bg-emerald-50 text-emerald-700' :
-                                            course.matchLevel === 'Very Good' || course.matchLevel === 'Good' ? 'bg-blue-50 text-blue-700' :
-                                            course.matchLevel === 'Moderate' ? 'bg-amber-50 text-amber-700' :
-                                            'bg-gray-50 text-gray-600'
-                                        }`}>
-                                            {(course.matchLevel === 'Exceptional' || course.matchLevel === 'Excellent') && <TrendingUp className="w-3 h-3" />}
-                                            {course.matchEmoji && <span>{course.matchEmoji}</span>}
-                                            {course.matchLevel} Match
-                                        </div>
-
-                                        {/* Score Breakdown (for top 3 courses) */}
-                                        {index < 3 && course.scoreBreakdown && (
-                                            <div className="mt-2 grid grid-cols-4 gap-1 text-[10px]">
-                                                <div className="text-center p-1 bg-blue-50 rounded" title="Interest Alignment">
-                                                    <div className="font-bold text-blue-600">{course.scoreBreakdown.interest || 0}</div>
-                                                    <div className="text-blue-500">Interest</div>
-                                                </div>
-                                                <div className="text-center p-1 bg-green-50 rounded" title="Academic Performance">
-                                                    <div className="font-bold text-green-600">{course.scoreBreakdown.academic || 0}</div>
-                                                    <div className="text-green-500">Academic</div>
-                                                </div>
-                                                <div className="text-center p-1 bg-purple-50 rounded" title="Projects">
-                                                    <div className="font-bold text-purple-600">{course.scoreBreakdown.projects || 0}</div>
-                                                    <div className="text-purple-500">Projects</div>
-                                                </div>
-                                                <div className="text-center p-1 bg-orange-50 rounded" title="Experience">
-                                                    <div className="font-bold text-orange-600">{course.scoreBreakdown.experience || 0}</div>
-                                                    <div className="text-orange-500">Exp</div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Reasons */}
-                                        {course.reasons && course.reasons.length > 0 && (
-                                            <div className="mt-3 pt-3 border-t border-gray-100">
-                                                <p className="text-xs font-medium text-gray-500 mb-2">Why this fits you:</p>
-                                                <ul className="space-y-1">
-                                                    {course.reasons.slice(0, 3).map((reason, idx) => (
-                                                        <li key={idx} className="flex items-start gap-2 text-xs text-gray-600">
-                                                            <CheckCircle2 className="w-3 h-3 text-emerald-500 mt-0.5 flex-shrink-0" />
-                                                            {reason}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
-
-                                        {/* Career Paths */}
-                                        {course.careerPaths && course.careerPaths.length > 0 && (
-                                            <div className="mt-3 pt-3 border-t border-gray-100">
-                                                <p className="text-xs font-medium text-gray-500 mb-2">Career Paths:</p>
-                                                <div className="flex flex-wrap gap-1">
-                                                    {course.careerPaths.slice(0, 3).map((path, idx) => (
-                                                        <span key={idx} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs">
-                                                            {path}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Guidance Note */}
-                            <div className="mt-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">
-                                <div className="flex gap-3">
-                                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                                    <div className="text-sm text-amber-800">
-                                        <p className="font-semibold mb-1">Next Steps</p>
-                                        <p>Research these programs at universities you're interested in. Consider factors like curriculum, faculty expertise, placement records, location, and your personal preferences when making your final decision.</p>
-                                    </div>
+                                    </button>
                                 </div>
                             </div>
+
+                            {/* PRIMARY TAB CONTENT */}
+                            {activeRecommendationTab === 'primary' && (
+                                <>
+                                    {/* After 10th: Stream Recommendation */}
+                                    {gradeLevel === 'after10' && (enhancedStreamRecommendation || streamRecommendation) && (enhancedStreamRecommendation?.recommendedStream || streamRecommendation?.recommendedStream) && (
+                                        (() => {
+                                            const streamRec = enhancedStreamRecommendation || streamRecommendation;
+                                            return (
+                                                <div className="relative w-full rounded-xl overflow-hidden bg-white shadow-lg">
+                                                    {/* Header with slate background matching assessment result style */}
+                                                    <div className="relative px-6 md:px-8 py-6 bg-gradient-to-r from-slate-800 to-slate-700">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
+                                                                <GraduationCap className="w-7 h-7 text-white" />
+                                                            </div>
+                                                            <div>
+                                                                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-1">
+                                                                    Your Recommended 11th/12th Stream
+                                                                </h2>
+                                                                <p className="text-slate-300 text-sm">Based on your marks, projects, experiences, and interests</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Content */}
+                                                    <div className="px-6 md:px-8 py-8">
+                                                        {/* Main Recommendation Card */}
+                                                        <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 mb-6">
+                                                            <div className="flex items-center justify-between mb-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center">
+                                                                        <Star className="w-6 h-6 text-white" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-sm text-slate-600 font-medium">Best Match for You</p>
+                                                                        <h3 className="text-2xl font-bold text-slate-800">{streamRec.recommendedStream || 'N/A'}</h3>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="text-sm text-slate-500">Confidence</p>
+                                                                    <p className={`text-lg font-bold ${streamRec.streamFit === 'High' ? 'text-slate-800' : 'text-slate-700'}`}>
+                                                                        {streamRec.streamFit || 'Medium'} Fit
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Reasoning */}
+                                                            {streamRec.reasoning && (
+                                                                <div className="space-y-3 mb-4">
+                                                                    {streamRec.reasoning.interests && (
+                                                                        <div className="flex gap-2">
+                                                                            <span className="text-slate-700 font-medium text-sm min-w-[80px]">Interests:</span>
+                                                                            <span className="text-slate-600 text-sm">{streamRec.reasoning.interests}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {streamRec.reasoning.aptitude && (
+                                                                        <div className="flex gap-2">
+                                                                            <span className="text-slate-700 font-medium text-sm min-w-[80px]">Aptitude:</span>
+                                                                            <span className="text-slate-600 text-sm">{streamRec.reasoning.aptitude}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {streamRec.reasoning.personality && (
+                                                                        <div className="flex gap-2">
+                                                                            <span className="text-slate-700 font-medium text-sm min-w-[80px]">Activities:</span>
+                                                                            <span className="text-slate-600 text-sm">{streamRec.reasoning.personality}</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Subjects to Focus */}
+                                                            {streamRec.subjectsToFocus && streamRec.subjectsToFocus.length > 0 && (
+                                                                <div>
+                                                                    <p className="text-sm font-semibold text-slate-700 mb-2">Subjects to Focus On:</p>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {streamRec.subjectsToFocus.map((subject, idx) => (
+                                                                            <span key={idx} className="px-3 py-1 bg-white text-slate-700 rounded-full text-sm font-medium border border-slate-300">
+                                                                                {subject}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Alternative Stream */}
+                                                        {streamRec.alternativeStream && (
+                                                            <div className="mb-6">
+                                                                <h4 className="text-lg font-semibold text-slate-800 mb-3">Alternative Option to Consider</h4>
+                                                                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                                                    <div className="flex items-center justify-between mb-2">
+                                                                        <h5 className="font-semibold text-slate-800">{streamRec.alternativeStream}</h5>
+                                                                        <span className="text-sm px-2 py-1 rounded-full bg-slate-200 text-slate-700">Good Fit</span>
+                                                                    </div>
+                                                                    {streamRec.alternativeReason && (
+                                                                        <p className="text-sm text-slate-600">{streamRec.alternativeReason}</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Future Career Paths */}
+                                                        {streamRec.careerPathsAfter12 && streamRec.careerPathsAfter12.length > 0 && (
+                                                            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 mb-6">
+                                                                <h4 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                                                                    <TrendingUp className="w-5 h-5 text-slate-700" />
+                                                                    Career Paths After 12th with {streamRec.recommendedStream}
+                                                                </h4>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {streamRec.careerPathsAfter12.map((career, idx) => (
+                                                                        <span key={idx} className="px-3 py-2 bg-white text-slate-700 rounded-lg text-sm border border-slate-300 shadow-sm">
+                                                                            {career}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Entrance Exams */}
+                                                        {streamRec.entranceExams && streamRec.entranceExams.length > 0 && (
+                                                            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 mb-6">
+                                                                <h4 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                                                                    <Target className="w-5 h-5 text-slate-700" />
+                                                                    Entrance Exams to Prepare For
+                                                                </h4>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {streamRec.entranceExams.map((exam, idx) => (
+                                                                        <span key={idx} className="px-3 py-2 bg-white text-slate-700 rounded-lg text-sm border border-slate-300 shadow-sm font-medium">
+                                                                            {exam}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Advice Note */}
+                                                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                                            <div className="flex gap-3">
+                                                                <AlertCircle className="w-5 h-5 text-slate-600 flex-shrink-0 mt-0.5" />
+                                                                <div className="text-sm text-slate-700">
+                                                                    <p className="font-semibold mb-1">Important Note</p>
+                                                                    <p>This recommendation is based on your marks, projects, experiences, and interests. Discuss with your parents, teachers, and career counselors before making your final decision.</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()
+                                    )}
+
+                                    {/* After 12th: Course Recommendations */}
+                                    {gradeLevel === 'after12' && enhancedCourseRecommendations && enhancedCourseRecommendations.length > 0 && (
+                                        <div>
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center shadow-lg">
+                                                    <GraduationCap className="w-6 h-6 text-white" />
+                                                </div>
+                                                <div>
+                                                    <h2 className="text-2xl font-bold text-slate-800">Recommended Programs for You</h2>
+                                                    <p className="text-slate-600">Based on your interests, academics, projects & experiences</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {enhancedCourseRecommendations.slice(0, 5).map((course, index) => (
+                                                    <div 
+                                                        key={course.courseId}
+                                                        className={`relative bg-white rounded-xl border-2 p-5 transition-all hover:shadow-lg ${
+                                                            index === 0 ? 'border-slate-300 shadow-slate-100 shadow-lg' : 'border-slate-100'
+                                                        }`}
+                                                    >
+                                                        {/* Rank Badge */}
+                                                        <div className={`absolute -top-3 -right-3 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg ${
+                                                            index === 0 ? 'bg-slate-700' :
+                                                            index === 1 ? 'bg-slate-600' :
+                                                            'bg-slate-500'
+                                                        }`}>
+                                                            #{index + 1}
+                                                        </div>
+
+                                                        {/* Top Pick Badge */}
+                                                        {index === 0 && (
+                                                            <div className="flex items-center gap-1 text-slate-700 text-xs font-semibold mb-2">
+                                                                <Star className="w-3 h-3 fill-current" />
+                                                                TOP RECOMMENDATION
+                                                            </div>
+                                                        )}
+
+                                                        {/* Course Name */}
+                                                        <h3 className="font-semibold text-slate-800 text-lg mb-2 pr-8">{course.courseName}</h3>
+
+                                                        {/* Category Badge */}
+                                                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-3 ${
+                                                            course.category === 'Science' ? 'bg-slate-100 text-slate-700' :
+                                                            course.category === 'Commerce' ? 'bg-slate-100 text-slate-700' :
+                                                            'bg-slate-100 text-slate-700'
+                                                        }`}>
+                                                            {course.category}
+                                                        </span>
+
+                                                        {/* Match Score */}
+                                                        <div className="mb-3">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-sm text-slate-600">Match Score</span>
+                                                                <span className={`font-bold ${
+                                                                    course.matchScore >= 80 ? 'text-slate-800' :
+                                                                    course.matchScore >= 65 ? 'text-slate-700' :
+                                                                    'text-slate-600'
+                                                                }`}>
+                                                                    {course.matchScore}%
+                                                                </span>
+                                                            </div>
+                                                            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                                <div 
+                                                                    className={`h-full rounded-full transition-all ${
+                                                                        course.matchScore >= 80 ? 'bg-slate-700' :
+                                                                        course.matchScore >= 65 ? 'bg-slate-600' :
+                                                                        'bg-slate-400'
+                                                                    }`}
+                                                                    style={{ width: `${course.matchScore}%` }}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Reasons */}
+                                                        {course.reasons && course.reasons.length > 0 && (
+                                                            <div className="mt-3 pt-3 border-t border-slate-100">
+                                                                <p className="text-xs font-medium text-slate-600 mb-2">Why this fits you:</p>
+                                                                <ul className="space-y-1">
+                                                                    {course.reasons.slice(0, 3).map((reason, idx) => (
+                                                                        <li key={idx} className="flex items-start gap-2 text-xs text-slate-600">
+                                                                            <CheckCircle2 className="w-3 h-3 text-slate-600 mt-0.5 flex-shrink-0" />
+                                                                            {reason}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* Guidance Note */}
+                                            <div className="mt-6 bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                                <div className="flex gap-3">
+                                                    <AlertCircle className="w-5 h-5 text-slate-600 flex-shrink-0 mt-0.5" />
+                                                    <div className="text-sm text-slate-700">
+                                                        <p className="font-semibold mb-1">Next Steps</p>
+                                                        <p>Research these programs at universities you're interested in. Consider factors like curriculum, faculty expertise, placement records, location, and your personal preferences.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            {/* CAREER TAB CONTENT */}
+                            {activeRecommendationTab === 'career' && careerFit && careerFit.clusters && careerFit.clusters.length > 0 && (
+                                <div className="space-y-8">
+                                    {/* Career Recommendations using CareerCard components */}
+                                    {careerFit.clusters.map((cluster, index) => (
+                                        <CareerCard
+                                            key={index}
+                                            cluster={cluster}
+                                            index={index}
+                                            fitType={index === 0 ? 'TRACK 1' : index === 1 ? 'TRACK 2' : 'TRACK 3'}
+                                            color={index === 0 ? 'green' : index === 1 ? 'yellow' : 'purple'}
+                                            reverse={index === 1}
+                                            specificRoles={careerFit?.specificOptions?.[
+                                                index === 0 ? 'highFit' : 
+                                                index === 1 ? 'mediumFit' : 
+                                                'exploreLater'
+                                            ] || cluster.specificRoles || []}
+                                            onCardClick={handleTrackClick}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Career Track Detail Modal - Multi-Step Wizard */}
+                            {selectedTrack && (
+                                <CareerTrackModal
+                                    selectedTrack={selectedTrack}
+                                    onClose={closeTrackModal}
+                                    skillGap={skillGap}
+                                    roadmap={roadmap}
+                                    results={results}
+                                />
+                            )}
                         </div>
                     )}
 
-                    {/* Career Recommendations Section - Matching ReportHeader styling */}
-                    <div className="mb-8">
-                        {/* Main Card - Light Glass */}
-                        <div className="relative w-full rounded-xl overflow-hidden bg-white backdrop-blur-xl shadow-lg">
-                            {/* Subtle gradient overlay */}
-                            <div 
-                                className="absolute inset-0 pointer-events-none"
-                                style={{
-                                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.03), transparent 50%, rgba(147, 197, 253, 0.03))'
-                                }}
-                            />
-
-                            {/* Header Section */}
-                            <div className="relative p-6 md:p-8 bg-gradient-to-r from-slate-800 to-slate-700">
-                                <div>
-                                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
-                                        Your Career Recommendations
-                                    </h2>
-                                    {/* Animated Gradient Underline */}
-                                    <div className="relative h-[2px] w-40 md:w-56 mb-2 rounded-full overflow-hidden">
-                                        <div 
-                                            className="absolute inset-0 rounded-full"
-                                            style={{
-                                                background: 'linear-gradient(90deg, #1E3A8A, #3B82F6, #60A5FA, #93C5FD, #BFDBFE)',
-                                                backgroundSize: '200% 100%',
-                                                animation: 'shimmer 3s linear infinite'
-                                            }}
-                                        />
-                                    </div>
-                                    <p className="text-slate-300 text-sm md:text-base">
-                                        Personalized job matches based on your assessment
-                                    </p>
-                                </div>
+                    {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+                    {/* CAREER RECOMMENDATIONS - For all other grade levels (middle, high school, etc.) */}
+                    {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+                    {gradeLevel !== 'after10' && gradeLevel !== 'after12' && careerFit && careerFit.clusters && careerFit.clusters.length > 0 && (
+                        <div className="mb-8">
+                            <div className="space-y-8">
+                                {/* Career Recommendations using CareerCard components with original colorful design */}
+                                {careerFit.clusters.map((cluster, index) => (
+                                    <CareerCard
+                                        key={index}
+                                        cluster={cluster}
+                                        index={index}
+                                        fitType={index === 0 ? 'TRACK 1' : index === 1 ? 'TRACK 2' : 'TRACK 3'}
+                                        color={index === 0 ? 'green' : index === 1 ? 'yellow' : 'purple'}
+                                        reverse={index === 1}
+                                        specificRoles={careerFit?.specificOptions?.[
+                                            index === 0 ? 'highFit' : 
+                                            index === 1 ? 'mediumFit' : 
+                                            'exploreLater'
+                                        ] || cluster.specificRoles || []}
+                                        onCardClick={handleTrackClick}
+                                    />
+                                ))}
                             </div>
 
-                            {/* Career Cards Container */}
-                            <div className="relative px-6 md:px-8 py-6 bg-gray-50">
-                                <CareerCard
-                                    cluster={careerFit?.clusters?.find(c => c.fit === 'High')}
-                                    index={0}
-                                    fitType="TRACK 1"
-                                    color="green"
-                                    reverse={false}
-                                    specificRoles={careerFit?.specificOptions?.highFit || []}
-                                    onCardClick={handleTrackClick}
+                            {/* Career Track Detail Modal */}
+                            {selectedTrack && (
+                                <CareerTrackModal
+                                    selectedTrack={selectedTrack}
+                                    onClose={closeTrackModal}
+                                    skillGap={skillGap}
+                                    roadmap={roadmap}
+                                    results={results}
                                 />
-
-                                <CareerCard
-                                    cluster={careerFit?.clusters?.find(c => c.fit === 'Medium')}
-                                    index={1}
-                                    fitType="TRACK 2"
-                                    color="yellow"
-                                    reverse={true}
-                                    specificRoles={careerFit?.specificOptions?.mediumFit || []}
-                                    onCardClick={handleTrackClick}
-                                />
-
-                                <CareerCard
-                                    cluster={careerFit?.clusters?.find(c => c.fit !== 'High' && c.fit !== 'Medium')}
-                                    index={2}
-                                    fitType="TRACK 3"
-                                    color="purple"
-                                    reverse={false}
-                                    specificRoles={careerFit?.specificOptions?.exploreLater || []}
-                                    onCardClick={handleTrackClick}
-                                />
-                            </div>
+                            )}
                         </div>
-
-                        {/* Keyframes for shimmer animation */}
-                        <style>{`
-                            @keyframes shimmer {
-                                0% { background-position: 200% 0; }
-                                100% { background-position: -200% 0; }
-                            }
-                        `}</style>
-                    </div>
+                    )}
                 </div>
-
-                {/* Detail Modal - COMMENTED OUT FOR NOW */}
-                {/* <Dialog open={activeSection !== null} onOpenChange={() => setActiveSection(null)}>
-                    <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] !p-0 gap-0 overflow-hidden border-0 shadow-2xl rounded-2xl">
-                        <DialogHeader className="bg-slate-800 px-8 py-6 relative !mb-0">
-                            <DialogTitle className="sr-only">
-                                {activeSection === 'profile' && 'Student Profile Snapshot'}
-                                {activeSection === 'career' && 'Career Fit Results'}
-                                {activeSection === 'skills' && 'Skill Gap & Development'}
-                                {activeSection === 'roadmap' && 'Action Roadmap'}
-                            </DialogTitle>
-                            <button
-                                onClick={() => setActiveSection(null)}
-                                className="absolute top-4 right-4 w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-                                aria-label="Close modal"
-                            >
-                                <X className="w-6 h-6 text-white" />
-                            </button>
-                            <div className="flex items-center gap-4 pr-12">
-                                {activeSection === 'profile' && (
-                                    <>
-                                        <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
-                                            <Target className="w-8 h-8 text-white" />
-                                        </div>
-                                        <span className="text-3xl font-bold text-white">Student Profile Snapshot - Your interests, aptitudes & personality</span>
-                                    </>
-                                )}
-                                {activeSection === 'career' && (
-                                    <>
-                                        <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
-                                            <Briefcase className="w-8 h-8 text-white" />
-                                        </div>
-                                        <span className="text-3xl font-bold text-white">Career Fit Results - Best-matching career paths for you</span>
-                                    </>
-                                )}
-                                {activeSection === 'skills' && (
-                                    <>
-                                        <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
-                                            <Zap className="w-8 h-8 text-white" />
-                                        </div>
-                                        <span className="text-3xl font-bold text-white">Skill Gap & Development - Skills to build for career success</span>
-                                    </>
-                                )}
-                                {activeSection === 'roadmap' && (
-                                    <>
-                                        <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
-                                            <Rocket className="w-8 h-8 text-white" />
-                                        </div>
-                                        <span className="text-3xl font-bold text-white">Action Roadmap - Your 6-12 month career plan</span>
-                                    </>
-                                )}
-                            </div>
-                        </DialogHeader>
-
-                        <div className="overflow-y-auto max-h-[calc(95vh-100px)] bg-gray-50">
-                            <div className="p-6 pb-12">
-                                {activeSection === 'profile' && (
-                                    <ProfileSection
-                                        results={results}
-                                        riasecNames={RIASEC_NAMES}
-                                        riasecColors={RIASEC_COLORS}
-                                        traitNames={TRAIT_NAMES}
-                                        traitColors={TRAIT_COLORS}
-                                    />
-                                )}
-                                {activeSection === 'career' && careerFit && (
-                                    <CareerSection careerFit={careerFit} />
-                                )}
-                                {activeSection === 'skills' && skillGap && employability && (
-                                    <SkillsSection
-                                        skillGap={skillGap}
-                                        employability={employability}
-                                        skillGapCourses={results.skillGapCourses}
-                                    />
-                                )}
-                                {activeSection === 'roadmap' && roadmap && (
-                                    <RoadmapSection
-                                        roadmap={roadmap}
-                                        platformCourses={results.platformCourses}
-                                        coursesByType={results.coursesByType}
-                                        skillGapCourses={results.skillGapCourses}
-                                    />
-                                )}
-                            </div>
-                        </div>
-                    </DialogContent>
-                </Dialog> */}
-
-                {/* Career Track Detail Modal - Multi-Step Wizard */}
-                {selectedTrack && (
-                    <CareerTrackModal
-                        selectedTrack={selectedTrack}
-                        onClose={closeTrackModal}
-                        skillGap={skillGap}
-                        roadmap={roadmap}
-                        results={results}
-                    />
-                )}
             </div>
         </>
     );

@@ -1,22 +1,45 @@
 import { supabase } from '@/lib/supabaseClient';
 
 // Types
-export interface CourseMapping {
+export interface Course {
   id: string;
-  program_id: string;
-  semester: number;
+  college_id: string;
   course_code: string;
   course_name: string;
   credits: number;
-  type: 'core' | 'dept_elective' | 'open_elective';
+  description?: string;
+  prerequisites: string[];
+  course_type: 'theory' | 'lab' | 'project' | 'seminar' | 'workshop' | 'practical';
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
+  metadata?: any;
+}
+
+export interface CourseMapping {
+  id: string;
+  course_id: string;
+  program_id: string;
+  semester: number;
+  offering_type: 'core' | 'dept_elective' | 'open_elective';
   faculty_id?: string;
   capacity?: number;
+  current_enrollment: number;
   is_locked: boolean;
   created_at: string;
   updated_at: string;
   created_by?: string;
   updated_by?: string;
   metadata?: any;
+  // Joined course data
+  course?: Course;
+  // Legacy fields for backward compatibility with UI
+  course_code?: string;
+  course_name?: string;
+  credits?: number;
+  type?: 'core' | 'dept_elective' | 'open_elective';
 }
 
 export interface Department {
@@ -92,6 +115,105 @@ export function clearUserCache(): void {
 }
 
 /**
+ * Get all available courses from master catalog
+ */
+export async function getCourses(searchQuery?: string, courseType?: string): Promise<Course[]> {
+  const collegeId = await getCurrentUserCollegeId();
+  if (!collegeId) {
+    throw new Error('Unable to determine user college');
+  }
+
+  try {
+    let query = supabase
+      .from('college_courses')
+      .select('*')
+      .eq('college_id', collegeId)
+      .eq('is_active', true);
+
+    if (searchQuery?.trim()) {
+      const searchTerm = searchQuery.trim();
+      query = query.or(`course_name.ilike.%${searchTerm}%,course_code.ilike.%${searchTerm}%`);
+    }
+
+    if (courseType) {
+      query = query.eq('course_type', courseType);
+    }
+
+    query = query.order('course_code');
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching courses:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a new course in the master catalog
+ */
+export async function createCourse(courseData: Omit<Course, 'id' | 'created_at' | 'updated_at'>): Promise<Course> {
+  const collegeId = await getCurrentUserCollegeId();
+  const currentUserId = await getCurrentUserId();
+  
+  if (!collegeId) {
+    throw new Error('Unable to determine user college');
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('college_courses')
+      .insert([{
+        ...courseData,
+        college_id: collegeId,
+        created_by: currentUserId,
+        updated_by: currentUserId
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        throw new Error('Course code already exists in this college');
+      }
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error creating course:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update a course in the master catalog
+ */
+export async function updateCourse(courseId: string, updates: Partial<Course>): Promise<Course> {
+  const currentUserId = await getCurrentUserId();
+
+  try {
+    const { data, error } = await supabase
+      .from('college_courses')
+      .update({
+        ...updates,
+        updated_by: currentUserId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', courseId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error updating course:', error);
+    throw error;
+  }
+}
+
+/**
  * Get all departments for the current user's college
  */
 export async function getDepartments(): Promise<Department[]> {
@@ -141,106 +263,157 @@ export async function getFaculty(departmentId?: string): Promise<Faculty[]> {
   }
 
   try {
-    let userIds: string[] = [];
-
+    // Strategy 1: Try to get faculty from department assignments if they exist
     if (departmentId) {
-      // Get assigned lecturer IDs for the department
-      const { data: assignments, error: assignmentError } = await supabase
+      const { data: assignments } = await supabase
         .from('department_faculty_assignments')
-        .select('lecturer_id')
+        .select(`
+          lecturer_id,
+          college_lecturers!inner(
+            id,
+            first_name,
+            last_name,
+            email,
+            user_id,
+            accountStatus,
+            collegeId
+          )
+        `)
         .eq('department_id', departmentId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('college_lecturers.collegeId', collegeId)
+        .eq('college_lecturers.accountStatus', 'active');
 
-      if (assignmentError) throw assignmentError;
+      if (assignments && assignments.length > 0) {
+        // Get user IDs for workload calculation
+        const lecturerUserIds = assignments
+          .map(a => a.college_lecturers?.user_id)
+          .filter(Boolean);
 
-      if (!assignments || assignments.length === 0) {
-        return [];
-      }
+        // Calculate workload for assigned faculty
+        const workloadMap = await calculateFacultyWorkload(lecturerUserIds);
 
-      // Get user IDs for assigned lecturers
-      const { data: collegeLecturers, error: lecturerError } = await supabase
-        .from('college_lecturers')
-        .select('user_id')
-        .in('id', assignments.map(a => a.lecturer_id))
-        .eq('collegeId', collegeId)
-        .eq('accountStatus', 'active')
-        .not('user_id', 'is', null);
-
-      if (lecturerError) throw lecturerError;
-
-      userIds = (collegeLecturers || []).map(cl => cl.user_id).filter(Boolean);
-      
-      if (userIds.length === 0) {
-        return [];
+        return assignments.map(assignment => {
+          const lecturer = assignment.college_lecturers;
+          const displayName = `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || lecturer.email || 'Unknown';
+          
+          return {
+            id: lecturer.user_id || lecturer.id, // Prefer user_id if available
+            name: displayName,
+            email: lecturer.email || '',
+            maxWorkload: 18,
+            currentWorkload: workloadMap.get(lecturer.user_id || lecturer.id) || 0
+          };
+        });
       }
     }
 
-    // Build query for educators
-    let query = supabase
-      .from('users')
+    // Strategy 2: Get all college educators for this college (fallback)
+    // First, get college lecturers with user accounts
+    const { data: collegeLecturers, error: lecturersError } = await supabase
+      .from('college_lecturers')
       .select(`
-        id, 
-        firstName, 
-        lastName, 
+        id,
+        first_name,
+        last_name,
         email,
-        college_lecturers!inner(
-          collegeId,
-          first_name,
-          last_name,
-          accountStatus
-        )
+        user_id,
+        department,
+        accountStatus
       `)
-      .eq('role', 'college_educator')
-      .eq('college_lecturers.collegeId', collegeId)
-      .eq('college_lecturers.accountStatus', 'active');
+      .eq('collegeId', collegeId)
+      .eq('accountStatus', 'active')
+      .not('user_id', 'is', null);
 
-    if (departmentId && userIds.length > 0) {
-      query = query.in('id', userIds);
+    if (lecturersError) throw lecturersError;
+
+    // Get users with college_educator role for this college
+    const { data: educatorUsers, error: usersError } = await supabase
+      .from('users')
+      .select('id, firstName, lastName, email')
+      .eq('role', 'college_educator');
+
+    if (usersError) throw usersError;
+
+    // Combine both sources
+    const facultyMap = new Map<string, Faculty>();
+
+    // Add college lecturers with user accounts
+    if (collegeLecturers) {
+      for (const lecturer of collegeLecturers) {
+        if (lecturer.user_id) {
+          const displayName = `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || lecturer.email || 'Unknown';
+          facultyMap.set(lecturer.user_id, {
+            id: lecturer.user_id,
+            name: displayName,
+            email: lecturer.email || '',
+            maxWorkload: 18,
+            currentWorkload: 0
+          });
+        }
+      }
     }
 
-    const { data: educators, error: educatorsError } = await query;
-    if (educatorsError) throw educatorsError;
-
-    if (!educators || educators.length === 0) {
-      return [];
+    // Add college_educator users (in case some don't have lecturer records)
+    if (educatorUsers) {
+      for (const user of educatorUsers) {
+        if (!facultyMap.has(user.id)) {
+          const displayName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown';
+          facultyMap.set(user.id, {
+            id: user.id,
+            name: displayName,
+            email: user.email || '',
+            maxWorkload: 18,
+            currentWorkload: 0
+          });
+        }
+      }
     }
 
-    // Batch fetch workload for all educators
-    const { data: workloadData } = await supabase
-      .from('college_course_mappings')
-      .select('faculty_id, credits')
-      .in('faculty_id', educators.map(e => e.id));
+    // Filter by department if specified
+    if (departmentId && collegeLecturers) {
+      // Get department info to filter by department name
+      const { data: department } = await supabase
+        .from('departments')
+        .select('name, code')
+        .eq('id', departmentId)
+        .single();
 
-    // Calculate workload map
-    const workloadMap = new Map<string, number>();
-    (workloadData || []).forEach(mapping => {
-      const current = workloadMap.get(mapping.faculty_id) || 0;
-      workloadMap.set(mapping.faculty_id, current + Number(mapping.credits));
-    });
+      if (department) {
+        // Filter lecturers by department
+        const departmentLecturers = collegeLecturers.filter(lecturer => 
+          lecturer.department && (
+            lecturer.department.toLowerCase().includes(department.name.toLowerCase()) ||
+            lecturer.department.toLowerCase().includes(department.code.toLowerCase()) ||
+            department.name.toLowerCase().includes(lecturer.department.toLowerCase())
+          )
+        );
 
-    // Build faculty list with workload
-    return educators.map(educator => {
-      const lecturerData = educator.college_lecturers[0];
-      let displayName = '';
-      
-      if (educator.firstName || educator.lastName) {
-        displayName = `${educator.firstName || ''} ${educator.lastName || ''}`.trim();
-      } else if (lecturerData?.first_name || lecturerData?.last_name) {
-        displayName = `${lecturerData.first_name || ''} ${lecturerData.last_name || ''}`.trim();
+        // Keep only faculty from this department
+        const departmentFacultyIds = new Set(
+          departmentLecturers.map(l => l.user_id).filter(Boolean)
+        );
+
+        for (const [id, faculty] of facultyMap.entries()) {
+          if (!departmentFacultyIds.has(id)) {
+            facultyMap.delete(id);
+          }
+        }
       }
+    }
+
+    // Calculate workload for all faculty
+    const facultyIds = Array.from(facultyMap.keys());
+    if (facultyIds.length > 0) {
+      const workloadMap = await calculateFacultyWorkload(facultyIds);
       
-      if (!displayName) {
-        displayName = educator.email;
+      // Update workload in faculty map
+      for (const [id, faculty] of facultyMap.entries()) {
+        faculty.currentWorkload = workloadMap.get(id) || 0;
       }
-      
-      return {
-        id: educator.id,
-        name: displayName,
-        email: educator.email,
-        maxWorkload: 18,
-        currentWorkload: workloadMap.get(educator.id) || 0
-      };
-    });
+    }
+
+    return Array.from(facultyMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   } catch (error) {
     console.error('Error fetching faculty:', error);
     throw error;
@@ -248,9 +421,50 @@ export async function getFaculty(departmentId?: string): Promise<Faculty[]> {
 }
 
 /**
+ * Helper function to calculate faculty workload
+ */
+async function calculateFacultyWorkload(facultyIds: string[]): Promise<Map<string, number>> {
+  const workloadMap = new Map<string, number>();
+  
+  if (facultyIds.length === 0) return workloadMap;
+
+  try {
+    const { data: workloadData } = await supabase
+      .from('college_course_mappings')
+      .select(`
+        faculty_id,
+        course:college_courses(credits)
+      `)
+      .in('faculty_id', facultyIds);
+
+    (workloadData || []).forEach(mapping => {
+      const current = workloadMap.get(mapping.faculty_id) || 0;
+      const credits = mapping.course?.credits || 0;
+      workloadMap.set(mapping.faculty_id, current + Number(credits));
+    });
+  } catch (error) {
+    console.error('Error calculating faculty workload:', error);
+  }
+
+  return workloadMap;
+}
+
+/**
  * Map a course to a program semester (optimized with validation)
  */
-export async function mapCourse(data: Partial<CourseMapping>): Promise<CourseMapping> {
+export async function mapCourse(data: {
+  course_id?: string;
+  program_id: string;
+  semester: number;
+  offering_type?: 'core' | 'dept_elective' | 'open_elective';
+  faculty_id?: string;
+  capacity?: number;
+  // Legacy fields for backward compatibility
+  course_code?: string;
+  course_name?: string;
+  credits?: number;
+  type?: 'core' | 'dept_elective' | 'open_elective';
+}): Promise<CourseMapping> {
   if (!data.program_id || !data.semester) {
     throw new Error('VALIDATION_ERROR: Program ID and semester are required');
   }
@@ -265,16 +479,129 @@ export async function mapCourse(data: Partial<CourseMapping>): Promise<CourseMap
     const currentUserId = await getCurrentUserId();
     const timestamp = new Date().toISOString();
 
+    // Handle legacy format where course data is provided directly
+    let courseId = data.course_id;
+    
+    if (!courseId && data.course_code && data.course_name) {
+      // Create course in catalog first if it doesn't exist
+      const collegeId = await getCurrentUserCollegeId();
+      if (!collegeId) {
+        throw new Error('Unable to determine user college');
+      }
+
+      // Check if course already exists
+      const { data: existingCourse } = await supabase
+        .from('college_courses')
+        .select('id')
+        .eq('college_id', collegeId)
+        .eq('course_code', data.course_code)
+        .single();
+
+      if (existingCourse) {
+        courseId = existingCourse.id;
+      } else {
+        // Create new course
+        const newCourse = await createCourse({
+          college_id: collegeId,
+          course_code: data.course_code,
+          course_name: data.course_name,
+          credits: data.credits || 3,
+          description: '',
+          prerequisites: [],
+          course_type: 'theory',
+          is_active: true
+        });
+        courseId = newCourse.id;
+      }
+    }
+
+    if (!courseId) {
+      throw new Error('VALIDATION_ERROR: Course ID is required or course data must be provided');
+    }
+
+    // Map offering_type from legacy type field
+    let offeringType = data.offering_type;
+    if (!offeringType && data.type) {
+      switch (data.type) {
+        case 'core':
+          offeringType = 'core';
+          break;
+        case 'dept_elective':
+          offeringType = 'dept_elective';
+          break;
+        case 'open_elective':
+          offeringType = 'open_elective';
+          break;
+        default:
+          offeringType = 'core';
+      }
+    } else if (offeringType) {
+      // Map from service layer types to database types
+      switch (offeringType) {
+        case 'mandatory':
+          offeringType = 'core';
+          break;
+        case 'department_elective':
+          offeringType = 'dept_elective';
+          break;
+        case 'elective':
+          offeringType = 'open_elective';
+          break;
+        // Keep existing valid values
+        case 'core':
+        case 'dept_elective':
+        case 'open_elective':
+          break;
+        default:
+          offeringType = 'core';
+      }
+    } else {
+      offeringType = 'core'; // Default to core
+    }
+
+    // Validate faculty ID if provided
+    if (data.faculty_id) {
+      const { data: facultyCheck } = await supabase
+        .from('users')
+        .select('id, role')
+        .eq('id', data.faculty_id)
+        .eq('role', 'college_educator')
+        .single();
+
+      if (!facultyCheck) {
+        // Try to find in college_lecturers table
+        const { data: lecturerCheck } = await supabase
+          .from('college_lecturers')
+          .select('id, user_id')
+          .eq('user_id', data.faculty_id)
+          .eq('accountStatus', 'active')
+          .single();
+
+        if (!lecturerCheck) {
+          throw new Error('VALIDATION_ERROR: Invalid faculty ID provided');
+        }
+      }
+    }
+
     const { data: mapping, error } = await supabase
       .from('college_course_mappings')
       .insert([{
-        ...data,
+        course_id: courseId,
+        program_id: data.program_id,
+        semester: data.semester,
+        offering_type: offeringType || 'mandatory',
+        faculty_id: data.faculty_id,
+        capacity: data.capacity,
+        current_enrollment: 0,
         created_by: currentUserId,
         updated_by: currentUserId,
         created_at: timestamp,
         updated_at: timestamp
       }])
-      .select()
+      .select(`
+        *,
+        course:college_courses(*)
+      `)
       .single();
 
     if (error) {
@@ -303,7 +630,7 @@ export async function updateCourseMapping(id: string, updates: Partial<CourseMap
     // Check if locked
     const { data: existing } = await supabase
       .from('college_course_mappings')
-      .select('is_locked')
+      .select('is_locked, offering_type')
       .eq('id', id)
       .single();
 
@@ -313,15 +640,31 @@ export async function updateCourseMapping(id: string, updates: Partial<CourseMap
 
     const currentUserId = await getCurrentUserId();
 
+    // Handle capacity constraint based on offering_type
+    const finalUpdates = { ...updates };
+    if (finalUpdates.offering_type) {
+      if (finalUpdates.offering_type === 'core') {
+        finalUpdates.capacity = null; // Core courses must have no capacity
+      } else if ((finalUpdates.offering_type === 'dept_elective' || finalUpdates.offering_type === 'open_elective') && !finalUpdates.capacity) {
+        throw new Error('VALIDATION_ERROR: Elective courses must have a capacity');
+      }
+    } else if (existing?.offering_type === 'core' && finalUpdates.capacity !== undefined) {
+      // If updating a core course, ensure capacity remains null
+      finalUpdates.capacity = null;
+    }
+
     const { data, error } = await supabase
       .from('college_course_mappings')
       .update({
-        ...updates,
+        ...finalUpdates,
         updated_by: currentUserId,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .select()
+      .select(`
+        *,
+        course:college_courses(*)
+      `)
       .single();
 
     if (error) throw error;
@@ -380,29 +723,47 @@ export async function getCourseMappings(
   try {
     let query = supabase
       .from('college_course_mappings')
-      .select('*')
+      .select(`
+        *,
+        course:college_courses(*)
+      `)
       .eq('program_id', programId);
 
     if (semester !== undefined) {
       query = query.eq('semester', semester);
     }
 
-    if (searchQuery?.trim()) {
-      const searchTerm = searchQuery.trim();
-      query = query.or(`course_name.ilike.%${searchTerm}%,course_code.ilike.%${searchTerm}%`);
-    }
-
     if (typeFilter) {
-      query = query.eq('type', typeFilter);
+      query = query.eq('offering_type', typeFilter);
     }
 
     query = query
-      .order('semester', { ascending: true })
-      .order('course_code', { ascending: true });
+      .order('semester', { ascending: true });
 
     const { data, error } = await query;
     if (error) throw error;
-    return data || [];
+    
+    let mappings = data || [];
+
+    // Add legacy fields for backward compatibility
+    mappings = mappings.map(mapping => ({
+      ...mapping,
+      course_code: mapping.course?.course_code,
+      course_name: mapping.course?.course_name,
+      credits: mapping.course?.credits,
+      type: mapping.offering_type // Use offering_type directly since they now match
+    }));
+
+    // Apply client-side search filter if provided
+    if (searchQuery?.trim()) {
+      const searchTerm = searchQuery.trim().toLowerCase();
+      mappings = mappings.filter(mapping => 
+        mapping.course?.course_name?.toLowerCase().includes(searchTerm) ||
+        mapping.course?.course_code?.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    return mappings;
   } catch (error) {
     console.error('Error fetching course mappings:', error);
     throw error;
@@ -510,15 +871,18 @@ export async function cloneSemesterStructure(
 
     // Prepare cloned mappings
     const timestamp = new Date().toISOString();
+    const currentUserId = await getCurrentUserId();
+    
     const clonedMappings = sourceMappings.map(mapping => ({
+      course_id: mapping.course_id,
       program_id: toProgramId,
       semester: toSemester,
-      course_code: mapping.course_code,
-      course_name: mapping.course_name,
-      credits: mapping.credits,
-      type: mapping.type,
+      offering_type: mapping.offering_type,
       capacity: mapping.capacity,
+      current_enrollment: 0,
       is_locked: false,
+      created_by: currentUserId,
+      updated_by: currentUserId,
       created_at: timestamp,
       updated_at: timestamp
     }));
@@ -580,8 +944,7 @@ export async function calculateWorkload(facultyId: string): Promise<WorkloadSumm
       supabase
         .from('college_course_mappings')
         .select(`
-          course_name,
-          credits,
+          course:college_courses(course_name, credits),
           programs:program_id (name)
         `)
         .eq('faculty_id', facultyId),
@@ -598,17 +961,20 @@ export async function calculateWorkload(facultyId: string): Promise<WorkloadSumm
     const courses = coursesResult.data || [];
     const faculty = facultyResult.data;
 
-    const total_credits = courses.reduce((sum, course) => sum + course.credits, 0);
+    const total_credits = courses.reduce((sum, mapping) => {
+      return sum + (mapping.course?.credits || 0);
+    }, 0);
+    
     const faculty_name = `${faculty.firstName || ''} ${faculty.lastName || ''}`.trim() || faculty.email;
 
     return {
       faculty_id: facultyId,
       faculty_name,
       total_credits,
-      courses: courses.map(c => ({
-        course_name: c.course_name,
-        credits: c.credits,
-        program: (c.programs as any)?.name || 'Unknown'
+      courses: courses.map(mapping => ({
+        course_name: mapping.course?.course_name || 'Unknown',
+        credits: mapping.course?.credits || 0,
+        program: (mapping.programs as any)?.name || 'Unknown'
       }))
     };
   } catch (error) {
@@ -627,9 +993,11 @@ export async function getAllCourseMappings(
   try {
     let query = supabase
       .from('college_course_mappings')
-      .select('*')
-      .order('semester', { ascending: true })
-      .order('course_code', { ascending: true });
+      .select(`
+        *,
+        course:college_courses(*)
+      `)
+      .order('semester', { ascending: true });
 
     if (limit) {
       query = query.limit(limit);
@@ -663,21 +1031,14 @@ export async function checkElectiveCapacity(mappingId: string): Promise<{
   try {
     const { data: mapping, error: mappingError } = await supabase
       .from('college_course_mappings')
-      .select('capacity')
+      .select('capacity, current_enrollment')
       .eq('id', mappingId)
       .single();
 
     if (mappingError) throw mappingError;
 
-    // TODO: Implement actual enrollment count when student_enrollments table is available
-    // const { count: enrolled } = await supabase
-    //   .from('student_enrollments')
-    //   .select('*', { count: 'exact', head: true })
-    //   .eq('course_mapping_id', mappingId)
-    //   .eq('status', 'enrolled');
-
     const capacity = mapping.capacity || 0;
-    const enrolled = 0; // Placeholder until enrollment tracking is implemented
+    const enrolled = mapping.current_enrollment || 0;
 
     return {
       enrolled,
