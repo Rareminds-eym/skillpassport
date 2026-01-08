@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     ArrowPathIcon,
     CalendarDaysIcon,
@@ -28,6 +27,7 @@ import Pagination from "../../components/educator/Pagination"
 import { useAuth } from "../../context/AuthContext"
 import { supabase } from "../../lib/supabaseClient"
 import { createClass, EducatorClass, updateClass } from "../../services/classService"
+import ProgramSectionsPage from "./ProgramSectionsPage"
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen)
@@ -993,6 +993,11 @@ const ClassesPage = () => {
   const hasError = error && error !== 'Educator record not found'
   const isEmpty = !isLoading && paginatedClasses.length === 0 && !hasError && !searchQuery && totalFilters === 0
 
+  // For college educators, show program sections page instead
+  if (educatorType === 'college') {
+    return <ProgramSectionsPage />
+  }
+
   return (
     <div className="flex  overflow-y-auto mb-4 flex-col h-screen">
       <div className='p-4 sm:p-6 lg:p-8 mb-2'>
@@ -1411,7 +1416,7 @@ const ClassesPage = () => {
         classItem={manageStudentsClass}
         schoolId={educatorSchool?.id}
         collegeId={educatorCollege?.id}
-        educatorType={educatorType}
+        educatorType={educatorType as 'school' | 'college'}
         onStudentsUpdated={(updated) => {
           upsertClass(updated)
           setManageStudentsClass(updated)

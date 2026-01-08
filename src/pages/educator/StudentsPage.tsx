@@ -24,6 +24,7 @@ import BulkDeleteStudentsModal from '../../components/educator/modals/BulkDelete
 import { UserPlusIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MessageService from '../../services/messageService';
+import { useAuth } from '../../context/AuthContext';
 
 const FilterSection = ({ title, children, defaultOpen = false }: {
   title: string;
@@ -398,12 +399,16 @@ const StudentsPage = () => {
   // Get educator's school/college information
   const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
+  // Get auth context for user ID
+  const { user } = useAuth();
+
   // Fetch students filtered by educator's assigned classes or institution
   const { students, loading, error, refetch } = useStudents({ 
     schoolId: educatorSchool?.id,
     collegeId: educatorCollege?.id,
     classIds: (educatorType === 'school' && educatorRole !== 'admin') || (educatorType === 'college' && educatorRole !== 'admin') ? assignedClassIds : undefined,
-    educatorType: educatorType
+    educatorType: educatorType,
+    userId: educatorType === 'college' ? user?.id : undefined
   });
 
   // Reset to page 1 when filters or search change
