@@ -20,7 +20,9 @@ import {
  * @returns {Promise<Object>} - The analyzed results
  */
 const callOpenRouterAssessment = async (assessmentData) => {
-  const API_URL = import.meta.env.VITE_CAREER_API_URL || 'https://career-api.dark-mode-d021.workers.dev';
+  // Use production worker URL
+  const API_URL = import.meta.env.VITE_ASSESSMENT_API_URL || 
+                  'https://analyze-assessment-api.dark-mode-d021.workers.dev';
 
   // Get current session for auth token
   const { data: { session } } = await import('../lib/supabaseClient').then(m => m.supabase.auth.getSession());

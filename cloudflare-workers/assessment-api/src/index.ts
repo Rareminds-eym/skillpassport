@@ -121,13 +121,12 @@ function repairAndParseJSON(text: string): any {
   throw new Error('Failed to parse JSON after all repair attempts');
 }
 
-// List of models to try in order (mix of free and paid for reliability)
+// List of models to try in order (using reliable free models)
 const FREE_MODELS = [
-  'google/gemini-2.0-flash-exp:free',
-  'google/gemini-flash-1.5',
-  'anthropic/claude-3-haiku',
-  'meta-llama/llama-3.1-8b-instruct:free',
-  'mistralai/mistral-7b-instruct:free'
+  'xiaomi/mimo-v2-flash:free',             // Xiaomi's free model - fast and reliable
+  'google/gemini-2.0-flash-exp:free',      // Google's free model
+  'meta-llama/llama-3.1-8b-instruct:free', // Meta's free model
+  'google/gemini-flash-1.5-8b:free'        // Gemini free tier
 ];
 
 // Helper function to call OpenRouter with retry and model fallback
