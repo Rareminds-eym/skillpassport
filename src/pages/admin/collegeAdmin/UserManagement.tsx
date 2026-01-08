@@ -9,6 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useUsers } from "../../../hooks/college/useUsers";
 import { departmentService } from "../../../services/college";
+import { supabase } from "../../../lib/supabaseClient";
 import UserFormModal from "./components/UserFormModal";
 import type { User } from "../../../types/college";
 
@@ -19,6 +20,7 @@ const UserManagement: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const { users, loading, error, createUser, updateUser, deactivateUser, resetPassword } = useUsers({
     search: searchTerm,
@@ -29,9 +31,58 @@ const UserManagement: React.FC = () => {
   useEffect(() => {
     // Fetch departments for the form
     const fetchDepartments = async () => {
-      const result = await departmentService.getDepartments({ status: 'active' });
-      if (result.success) {
-        setDepartments(result.data.map(d => ({ id: d.id, name: d.name })));
+      try {
+        // Get college ID from current user
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        
+        if (!currentUser?.email) {
+          console.error('No user logged in');
+          return;
+        }
+
+        // Try to get college ID from college_lecturers
+        const { data: lecturerData } = await supabase
+          .from('college_lecturers')
+          .select('collegeId')
+          .eq('email', currentUser.email)
+          .maybeSingle();
+
+        let collegeId = lecturerData?.collegeId;
+
+        // If not found, try colleges table
+        if (!collegeId) {
+          const { data: collegeData } = await supabase
+            .from('colleges')
+            .select('id')
+            .or(`email.eq.${currentUser.email},deanEmail.eq.${currentUser.email}`)
+            .maybeSingle();
+          
+          collegeId = collegeData?.id;
+        }
+
+        // If still not found, get first college
+        if (!collegeId) {
+          const { data: firstCollege } = await supabase
+            .from('colleges')
+            .select('id')
+            .limit(1)
+            .maybeSingle();
+          
+          collegeId = firstCollege?.id;
+        }
+
+        if (!collegeId) {
+          console.error('Could not determine college ID for departments');
+          return;
+        }
+
+        // Fetch departments with the college ID
+        const result = await departmentService.getDepartments(collegeId);
+        if (result && Array.isArray(result)) {
+          setDepartments(result.map(d => ({ id: d.id, name: d.name })));
+        }
+      } catch (error) {
+        console.error('Error fetching departments:', error);
       }
     };
     fetchDepartments();
@@ -48,11 +99,23 @@ const UserManagement: React.FC = () => {
   };
 
   const handleSubmitUser = async (userData: Partial<User>) => {
-    if (selectedUser) {
-      return await updateUser(selectedUser.id, userData);
-    } else {
-      return await createUser(userData);
+    const result = await (selectedUser 
+      ? updateUser(selectedUser.id, userData)
+      : createUser(userData)
+    );
+    
+    if (result.success) {
+      if (!selectedUser && result.data?.metadata?.temporary_password) {
+        setSuccessMessage(
+          `User created successfully!\n\nEmail: ${result.data.email}\nTemporary Password: ${result.data.metadata.temporary_password}\n\nPlease save this password and share it with the user.`
+        );
+      } else {
+        setSuccessMessage(selectedUser ? 'User updated successfully!' : 'User created successfully!');
+      }
+      setTimeout(() => setSuccessMessage(null), 10000);
     }
+    
+    return result;
   };
 
   const handleDeactivateUser = async (userId: string) => {
@@ -67,10 +130,11 @@ const UserManagement: React.FC = () => {
   };
 
   const handleResetPassword = async (userId: string) => {
-    if (confirm('Send password reset email to this user?')) {
+    if (confirm('Generate a new temporary password for this user?')) {
       const result = await resetPassword(userId);
       if (result.success) {
-        alert('Password reset email sent successfully');
+        setSuccessMessage('Password reset successfully! Check the console for the new temporary password.');
+        setTimeout(() => setSuccessMessage(null), 5000);
       } else {
         alert(result.error);
       }
@@ -113,6 +177,22 @@ const UserManagement: React.FC = () => {
                   </p>
                 </div>
               ) : null}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-green-800">Success</h3>
+              <pre className="mt-1 text-sm text-green-700 whitespace-pre-wrap font-mono">{successMessage}</pre>
             </div>
           </div>
         </div>
