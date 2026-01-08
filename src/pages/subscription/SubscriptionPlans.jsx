@@ -318,8 +318,11 @@ function SubscriptionPlans() {
   const [planToSelect, setPlanToSelect] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { type } = useParams();
+  const { type: pathType } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Get type from path params OR query params (for redirects from protected routes)
+  const type = pathType || searchParams.get('type');
   
   // Tab state - 'plans' or 'addons'
   const activeTab = searchParams.get('tab') || 'plans';

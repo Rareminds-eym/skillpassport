@@ -471,9 +471,13 @@ const AppRoutes = () => {
         <Route
           path="/college-admin/*"
           element={
-            <ProtectedRoute allowedRoles={["college_admin"]}>
+            <SubscriptionProtectedRoute 
+              allowedRoles={["college_admin"]}
+              requireSubscription={true}
+              subscriptionFallbackPath="/subscription/plans?type=college_admin"
+            >
               <AdminLayout />
-            </ProtectedRoute>
+            </SubscriptionProtectedRoute>
           }
         >
           <Route path="dashboard" element={<CollegeDashboard />} />
@@ -543,9 +547,13 @@ const AppRoutes = () => {
         <Route
           path="/school-admin/*"
           element={
-            <ProtectedRoute allowedRoles={["school_admin"]}>
+            <SubscriptionProtectedRoute 
+              allowedRoles={["school_admin"]}
+              requireSubscription={true}
+              subscriptionFallbackPath="/subscription/plans?type=school_admin"
+            >
               <AdminLayout />
-            </ProtectedRoute>
+            </SubscriptionProtectedRoute>
           }
         >
           <Route path="dashboard" element={<SchoolAdminDashboard />} />
@@ -596,9 +604,13 @@ const AppRoutes = () => {
         <Route
           path="/university-admin/*"
           element={
-            <ProtectedRoute allowedRoles={["university_admin"]}>
+            <SubscriptionProtectedRoute 
+              allowedRoles={["university_admin"]}
+              requireSubscription={true}
+              subscriptionFallbackPath="/subscription/plans?type=university_admin"
+            >
               <AdminLayout />
-            </ProtectedRoute>
+            </SubscriptionProtectedRoute>
           }
         >
           <Route path="dashboard" element={<UniversityAdminDashboard />} />
@@ -623,9 +635,13 @@ const AppRoutes = () => {
         <Route
           path="/recruitment/*"
           element={
-            <ProtectedRoute allowedRoles={["recruiter"]}>
+            <SubscriptionProtectedRoute 
+              allowedRoles={["recruiter"]}
+              requireSubscription={true}
+              subscriptionFallbackPath="/subscription/plans?type=recruiter"
+            >
               <RecruiterLayout />
-            </ProtectedRoute>
+            </SubscriptionProtectedRoute>
           }
         >
           <Route path="overview" element={<Overview />} />
@@ -658,7 +674,7 @@ const AppRoutes = () => {
             <SubscriptionProtectedRoute 
               allowedRoles={["student", "school_student", "college_student"]}
               requireSubscription={true}
-              subscriptionFallbackPath="/subscription/plans"
+              subscriptionFallbackPath="/subscription/plans?type=student"
             >
               <StudentLayout />
             </SubscriptionProtectedRoute>
@@ -818,9 +834,13 @@ const AppRoutes = () => {
         <Route
           path="/educator/*"
           element={
-            <ProtectedRoute allowedRoles={["educator"]}>
+            <SubscriptionProtectedRoute 
+              allowedRoles={["educator"]}
+              requireSubscription={true}
+              subscriptionFallbackPath="/subscription/plans?type=educator"
+            >
               <EducatorLayout />
-            </ProtectedRoute>
+            </SubscriptionProtectedRoute>
           }
         >
           <Route path="dashboard" element={<EducatorDashboard />} />

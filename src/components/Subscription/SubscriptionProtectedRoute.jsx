@@ -40,6 +40,17 @@ const SubscriptionProtectedRoute = ({
     isRefetching,
   } = useSubscriptionContext();
 
+  // Helper to build the subscription fallback URL with user's role
+  const getSubscriptionFallbackUrl = () => {
+    // If the fallback path already has a type parameter, use it as-is
+    if (subscriptionFallbackPath.includes('type=')) {
+      return subscriptionFallbackPath;
+    }
+    // Otherwise, append the user's role as the type parameter
+    const separator = subscriptionFallbackPath.includes('?') ? '&' : '?';
+    return `${subscriptionFallbackPath}${separator}type=${role || 'student'}`;
+  };
+
   // Step 1: Wait for auth to load
   if (authLoading) {
     return <Loader />;
@@ -65,7 +76,6 @@ const SubscriptionProtectedRoute = ({
   }
 
   // Step 5: Wait for subscription check to complete
-  // Step 5: Wait for subscription check to complete
   // If loading (first load) or if we don't have access but are refetching (checking if we gained access)
   if (subscriptionLoading || (!hasAccess && isRefetching)) {
     return <Loader />;
@@ -88,17 +98,20 @@ const SubscriptionProtectedRoute = ({
 
   // Step 7: Check subscription access
   if (!hasAccess) {
+    const fallbackUrl = getSubscriptionFallbackUrl();
+    
     // Determine redirect based on reason
     const redirectState = {
       from: location,
       reason: accessReason,
+      userRole: role, // Pass the user's role for better UX on plans page
     };
 
     // For expired subscriptions, redirect to plans with renewal message
     if (accessReason === ACCESS_REASONS.EXPIRED) {
       return (
         <Navigate 
-          to={subscriptionFallbackPath} 
+          to={fallbackUrl} 
           state={{ ...redirectState, message: 'Your subscription has expired. Please renew to continue.' }}
           replace 
         />
@@ -109,7 +122,7 @@ const SubscriptionProtectedRoute = ({
     if (accessReason === ACCESS_REASONS.CANCELLED) {
       return (
         <Navigate 
-          to={subscriptionFallbackPath} 
+          to={fallbackUrl} 
           state={{ ...redirectState, message: 'Your subscription was cancelled. Subscribe again to access.' }}
           replace 
         />
@@ -119,7 +132,7 @@ const SubscriptionProtectedRoute = ({
     // For no subscription
     return (
       <Navigate 
-        to={subscriptionFallbackPath} 
+        to={fallbackUrl} 
         state={{ ...redirectState, message: 'A subscription is required to access this area.' }}
         replace 
       />
