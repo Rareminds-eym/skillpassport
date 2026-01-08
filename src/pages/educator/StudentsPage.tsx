@@ -402,7 +402,8 @@ const StudentsPage = () => {
   const { students, loading, error, refetch } = useStudents({ 
     schoolId: educatorSchool?.id,
     collegeId: educatorCollege?.id,
-    classIds: educatorType === 'school' && educatorRole !== 'admin' ? assignedClassIds : undefined
+    classIds: (educatorType === 'school' && educatorRole !== 'admin') || (educatorType === 'college' && educatorRole !== 'admin') ? assignedClassIds : undefined,
+    educatorType: educatorType
   });
 
   // Reset to page 1 when filters or search change
