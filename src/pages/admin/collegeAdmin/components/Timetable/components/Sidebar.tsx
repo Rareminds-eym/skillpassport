@@ -1,15 +1,18 @@
 import React from "react";
-import { Coffee, Filter, Plus, Pencil, X } from "lucide-react";
-import { Faculty, CollegeClass, Break } from "../types";
+import { Coffee, Filter, Plus, Pencil, X, Building2 } from "lucide-react";
+import { Department, Faculty, CollegeClass, Break } from "../types";
 import { BREAK_CARD_COLORS, BREAK_TYPE_LABELS } from "../constants";
 
 interface SidebarProps {
+  departments: Department[];
   faculty: Faculty[];
   classes: CollegeClass[];
   facultyClasses: CollegeClass[];
   breaks: Break[];
+  selectedDepartmentFilter: string;
   selectedFacultyFilter: string;
   selectedClassFilter: string;
+  onDepartmentFilterChange: (value: string) => void;
   onFacultyFilterChange: (value: string) => void;
   onClassFilterChange: (value: string) => void;
   onAddBreak: () => void;
@@ -18,18 +21,30 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
+  departments,
   faculty,
   classes,
   facultyClasses,
   breaks,
+  selectedDepartmentFilter,
   selectedFacultyFilter,
   selectedClassFilter,
+  onDepartmentFilterChange,
   onFacultyFilterChange,
   onClassFilterChange,
   onAddBreak,
   onEditBreak,
   onDeleteBreak,
 }) => {
+  // Filter faculty and classes by department
+  const filteredFaculty = selectedDepartmentFilter
+    ? faculty.filter(f => f.department_id === selectedDepartmentFilter)
+    : faculty;
+  
+  const filteredClasses = selectedDepartmentFilter
+    ? classes.filter(c => c.department_id === selectedDepartmentFilter)
+    : classes;
+
   return (
     <div className="w-72 bg-white border-r border-gray-200 flex flex-col">
       {/* Filters */}
@@ -39,6 +54,31 @@ const Sidebar: React.FC<SidebarProps> = ({
         </h3>
 
         <div className="space-y-3">
+          {/* Department Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1 flex items-center gap-1">
+              <Building2 className="h-3 w-3 text-indigo-600" />
+              Department
+            </label>
+            <select
+              value={selectedDepartmentFilter}
+              onChange={(e) => onDepartmentFilterChange(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">All Departments</option>
+              {departments.map((dept) => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name} ({dept.code})
+                </option>
+              ))}
+            </select>
+            {selectedDepartmentFilter && (
+              <p className="text-[10px] text-indigo-600 mt-1">
+                {filteredFaculty.length} faculty, {filteredClasses.length} classes
+              </p>
+            )}
+          </div>
+
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Faculty</label>
             <select
@@ -47,12 +87,15 @@ const Sidebar: React.FC<SidebarProps> = ({
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">All Faculty</option>
-              {faculty.map((f) => (
+              {filteredFaculty.map((f) => (
                 <option key={f.id} value={f.id}>
-                  {f.first_name} {f.last_name}
+                  {f.first_name} {f.last_name} {f.is_hod ? "(HOD)" : ""}
                 </option>
               ))}
             </select>
+            {selectedDepartmentFilter && filteredFaculty.length === 0 && (
+              <p className="text-xs text-amber-600 mt-1">No faculty in this department</p>
+            )}
           </div>
 
           <div>
@@ -63,7 +106,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">All Classes</option>
-              {(selectedFacultyFilter ? facultyClasses : classes).map((c) => (
+              {(selectedFacultyFilter ? facultyClasses : filteredClasses).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.grade}-{c.section})
                 </option>
@@ -71,6 +114,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             </select>
             {selectedFacultyFilter && facultyClasses.length === 0 && (
               <p className="text-xs text-amber-600 mt-1">No classes assigned to this faculty.</p>
+            )}
+            {selectedDepartmentFilter && !selectedFacultyFilter && filteredClasses.length === 0 && (
+              <p className="text-xs text-amber-600 mt-1">No classes in this department</p>
             )}
           </div>
         </div>
