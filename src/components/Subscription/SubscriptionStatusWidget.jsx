@@ -47,7 +47,7 @@ const SubscriptionStatusWidget = () => {
               Unlock Premium Features
             </h3>
             <p className="text-xs text-neutral-600 mb-3">
-              Get access to advanced assessments, priority visibility, and more
+              Get access to Career AI, Video Portfolio, and more premium features
             </p>
             <button
               onClick={() => navigate('/subscription/plans?type=student&mode=purchase')}

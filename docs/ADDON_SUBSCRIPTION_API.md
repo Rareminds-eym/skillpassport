@@ -61,7 +61,7 @@ Retrieve available add-ons and bundles.
       "price_annual": 4990,
       "discount_percentage": 20,
       "target_roles": ["student"],
-      "feature_keys": ["ai_job_matching", "career_ai", "skills_analytics"]
+      "feature_keys": ["ai_job_matching", "career_ai", "video_portfolio"]
     }
   ]
 }
@@ -259,7 +259,7 @@ Create a Razorpay order for purchasing a bundle.
   "amount": 499000,
   "currency": "INR",
   "bundle_name": "Student Pro Bundle",
-  "feature_keys": ["ai_job_matching", "career_ai", "skills_analytics"],
+  "feature_keys": ["ai_job_matching", "career_ai", "video_portfolio"],
   "key": "rzp_xxx"
 }
 ```

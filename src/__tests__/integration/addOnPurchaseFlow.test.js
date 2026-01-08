@@ -218,7 +218,7 @@ describe('Add-On Purchase Flow Integration', () => {
         success: true,
         data: [
           { feature_key: 'career_ai', status: 'active' },
-          { feature_key: 'advanced_assessments', status: 'active' }
+          { feature_key: 'video_portfolio', status: 'active' }
         ]
       });
 
