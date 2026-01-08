@@ -4,19 +4,21 @@
  * Works with your actual students table structure (profile JSONB column)
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  getStudentByEmail,
-  updateStudentByEmail,
-  updateEducationByEmail,
-  updateTrainingByEmail,
-  updateSingleTrainingById,
-  updateExperienceByEmail,
-  updateTechnicalSkillsByEmail,
-  updateSoftSkillsByEmail,
-  updateProjectsByEmail,
-  updateCertificatesByEmail
+    getStudentByEmail,
+    updateCertificatesByEmail,
+    updateEducationByEmail,
+    updateExperienceByEmail,
+    updateProjectsByEmail,
+    updateSingleTrainingById,
+    updateSoftSkillsByEmail,
+    updateStudentByEmail,
+    updateTechnicalSkillsByEmail,
+    updateTrainingByEmail
 } from '../services/studentServiceProfile';
+// Note: Embedding regeneration is now handled automatically by database triggers
+// No need to call scheduleEmbeddingRegeneration from frontend
 
 export const useStudentDataByEmail = (email, fallbackToMock = true) => {
   const [studentData, setStudentData] = useState(null);
@@ -91,6 +93,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
       const result = await updateStudentByEmail(email, updates);
       if (result.success) {
         setStudentData(result.data);
+        // Embedding regeneration handled by database trigger
         return { success: true };
       } else {
         throw new Error(result.error);
@@ -108,6 +111,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
       if (result.success) {
         console.log('✅ Education saved successfully:', result.data);
         setStudentData(result.data);
+        // Embedding regeneration handled by database trigger
         return { success: true };
       } else {
         console.error('❌ Failed to save education:', result.error);
@@ -125,6 +129,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
       
       if (result.success) {
         setStudentData(result.data);
+        // Embedding regeneration handled by database trigger
         return { success: true };
       } else {
         throw new Error(result.error);
@@ -144,6 +149,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
         const refreshResult = await getStudentByEmail(email);
         if (refreshResult.success) {
           setStudentData(refreshResult.data);
+          // Embedding regeneration handled by database trigger
         }
         return { success: true };
       } else {
@@ -160,6 +166,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
       const result = await updateExperienceByEmail(email, experienceData);
       if (result.success) {
         setStudentData(result.data);
+        // Embedding regeneration handled by database trigger
         return { success: true };
       } else {
         throw new Error(result.error);
@@ -175,6 +182,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
       const result = await updateTechnicalSkillsByEmail(email, skillsData);
       if (result.success) {
         setStudentData(result.data);
+        // Embedding regeneration handled by database trigger
         return { success: true };
       } else {
         throw new Error(result.error);
@@ -190,6 +198,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
       const result = await updateSoftSkillsByEmail(email, skillsData);
       if (result.success) {
         setStudentData(result.data);
+        // Embedding regeneration handled by database trigger
         return { success: true };
       } else {
         throw new Error(result.error);
@@ -205,6 +214,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
     if (result.success) {
       // Refresh data after successful update
       await refresh();
+      // Embedding regeneration handled by database trigger
     }
     return result;
   };
@@ -213,6 +223,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
     const result = await updateCertificatesByEmail(email, certificatesData);
     if (result.success) {
       setStudentData(result.data);
+      // Embedding regeneration handled by database trigger
     }
     return result;
   };

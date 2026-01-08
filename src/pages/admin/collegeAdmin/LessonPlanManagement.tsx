@@ -1,40 +1,40 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 
-// Import the college-adapted lesson plan UI
+// Import the college lesson plan UI
 import CollegeLessonPlanUI from '../../../components/admin/collegeAdmin/CollegeLessonPlanUI';
+import { lessonPlanService, type CollegeLessonPlan } from '../../../services/college/lessonPlanService';
 
 /**
- * College Lesson Plan Management (Offline Mode)
- * No database connections - works with local state only
- * Adapted for college terminology and workflow
+ * CollegeLessonPlanManagement - Lesson plan management for college faculty
+ * 
+ * Follows the same pattern as CurriculumBuilder with department → program → semester → course flow
  */
 const CollegeLessonPlanManagement: React.FC = () => {
   // Local state for college-specific selections
-  const [selectedCourse, setSelectedCourse] = useState(''); // Course/Subject
+  const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedProgram, setSelectedProgram] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedAcademicYear, setSelectedAcademicYear] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Notification state
-  const [notification, setNotification] = useState<{
-    type: 'success' | 'error';
-    message: string;
-  } | null>(null);
-  
-  // Configuration data (hardcoded for offline mode)
-  const [courses, setCourses] = useState<string[]>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
-  const [programs, setPrograms] = useState<string[]>([]);
-  const [semesters, setSemesters] = useState<string[]>([]);
+  // Configuration data from database
+  const [courses, setCourses] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [semesters, setSemesters] = useState<number[]>([]);
   const [academicYears, setAcademicYears] = useState<string[]>([]);
 
-  // Local state for lesson plan data
-  const [lessonPlans, setLessonPlans] = useState<any[]>([]);
+  // Current lesson plan data
+  const [lessonPlans, setLessonPlans] = useState<CollegeLessonPlan[]>([]);
   const [units, setUnits] = useState<any[]>([]);
   const [learningOutcomes, setLearningOutcomes] = useState<any[]>([]);
+  const [currentCurriculumId, setCurrentCurriculumId] = useState<string | undefined>(undefined);
+  
+  // UI state
+  const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   // Load configuration data on mount
@@ -42,248 +42,446 @@ const CollegeLessonPlanManagement: React.FC = () => {
     loadConfigurationData();
   }, []);
 
+  // Load programs when department changes
+  useEffect(() => {
+    if (selectedDepartment) {
+      loadPrograms(selectedDepartment);
+    } else {
+      setPrograms([]);
+      setSelectedProgram('');
+    }
+  }, [selectedDepartment]);
+
+  // Load semesters when program changes
+  useEffect(() => {
+    if (selectedProgram) {
+      loadSemesters(selectedProgram);
+    } else {
+      setSemesters([]);
+      setSelectedSemester('');
+    }
+  }, [selectedProgram]);
+
+  // Load courses when program and semester change
+  useEffect(() => {
+    if (selectedProgram && selectedSemester) {
+      loadCourses(selectedProgram, parseInt(selectedSemester));
+    } else {
+      setCourses([]);
+      setSelectedCourse('');
+    }
+  }, [selectedProgram, selectedSemester]);
+
+  // Load lesson plans when filters change
+  useEffect(() => {
+    loadLessonPlans();
+  }, [selectedDepartment, selectedProgram, selectedCourse, selectedSemester, selectedAcademicYear]);
+
   const loadConfigurationData = async () => {
     try {
-      // College-specific configuration data (hardcoded for offline mode)
-      const coursesData = [
-        "Computer Science Fundamentals",
-        "Data Structures and Algorithms", 
-        "Database Management Systems",
-        "Software Engineering",
-        "Web Development",
-        "Machine Learning",
-        "Artificial Intelligence",
-        "Computer Networks",
-        "Operating Systems",
-        "Mathematics for CS",
-        "Statistics and Probability",
-        "Digital Electronics"
-      ];
+      setLoading(true);
 
-      const departmentsData = [
-        "Computer Science",
-        "Information Technology", 
-        "Electronics and Communication",
-        "Mechanical Engineering",
-        "Civil Engineering",
-        "Electrical Engineering",
-        "Mathematics",
-        "Physics",
-        "Chemistry"
-      ];
+      // Load departments
+      const deptResult = await lessonPlanService.getDepartments();
+      if (deptResult.success) {
+        setDepartments(deptResult.data || []);
+      } else {
+        toast.error('Failed to load departments');
+      }
 
-      const programsData = [
-        "B.Tech",
-        "B.E.",
-        "M.Tech", 
-        "M.E.",
-        "B.Sc",
-        "M.Sc",
-        "BCA",
-        "MCA",
-        "MBA"
-      ];
-
-      const semestersData = ["1", "2", "3", "4", "5", "6", "7", "8"];
-
-      const yearsData = [
-        "2024-2025",
-        "2025-2026", 
-        "2026-2027"
-      ];
+      // Load academic years
+      const years = lessonPlanService.getAcademicYears();
+      setAcademicYears(years);
       
-      setCourses(coursesData);
-      setDepartments(departmentsData);
-      setPrograms(programsData);
-      setSemesters(semestersData);
-      setAcademicYears(yearsData);
+      // Auto-select current academic year (2025-2026 is the current academic year)
+      const currentYear = years.find(year => year === '2025-2026') || years[0];
       
-      // Auto-select current academic year
-      setSelectedAcademicYear("2024-2025");
-
-      // Load sample units for demo
-      const sampleUnits = [
-        {
-          id: "1",
-          name: "Introduction to Programming",
-          code: "UNIT-01",
-          description: "Basic programming concepts and syntax",
-          credits: 3,
-          estimatedDuration: 15,
-          durationUnit: "hours"
-        },
-        {
-          id: "2", 
-          name: "Control Structures",
-          code: "UNIT-02",
-          description: "Loops, conditions, and decision making",
-          credits: 2,
-          estimatedDuration: 12,
-          durationUnit: "hours"
-        }
-      ];
-      setUnits(sampleUnits);
-
-      // Load sample learning outcomes
-      const sampleOutcomes = [
-        {
-          id: "1",
-          unitId: "1",
-          outcome: "Students will be able to write basic programs using variables and data types",
-          bloomLevel: "Apply",
-          assessmentMappings: [
-            { assessmentType: "IA (Internal Assessment)", weightage: 30 },
-            { assessmentType: "End-Semester Exam", weightage: 70 }
-          ]
-        },
-        {
-          id: "2",
-          unitId: "2", 
-          outcome: "Students will be able to implement control structures for program flow",
-          bloomLevel: "Apply",
-          assessmentMappings: [
-            { assessmentType: "Practical Exam", weightage: 50 },
-            { assessmentType: "IA (Internal Assessment)", weightage: 50 }
-          ]
-        }
-      ];
-      setLearningOutcomes(sampleOutcomes);
+      if (currentYear) {
+        setSelectedAcademicYear(currentYear);
+      }
 
     } catch (error: any) {
       console.error('Error loading configuration:', error);
-      setNotification({ type: 'error', message: 'Failed to load configuration data.' });
-      setTimeout(() => setNotification(null), 5000);
+      toast.error('Failed to load configuration data');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Local handlers (no database connection)
-  const handleAddLessonPlan = async (lessonPlan: any) => {
-    setSaveStatus("saving");
-    
-    // Simulate async operation
-    setTimeout(() => {
-      if (lessonPlan.id && lessonPlans.find(lp => lp.id === lessonPlan.id)) {
-        // Update existing
-        setLessonPlans(prev => prev.map(lp => lp.id === lessonPlan.id ? lessonPlan : lp));
+  const loadPrograms = async (departmentId: string) => {
+    try {
+      const result = await lessonPlanService.getPrograms(departmentId);
+      if (result.success) {
+        setPrograms(result.data || []);
       } else {
-        // Create new
-        const newLessonPlan = { ...lessonPlan, id: Date.now().toString(), status: 'draft' };
-        setLessonPlans(prev => [newLessonPlan, ...prev]);
+        toast.error('Failed to load programs');
+        setPrograms([]);
+      }
+    } catch (error) {
+      console.error('Error loading programs:', error);
+      toast.error('Failed to load programs');
+      setPrograms([]);
+    }
+  };
+
+  const loadSemesters = async (programId: string) => {
+    try {
+      const result = await lessonPlanService.getSemesters(programId);
+      if (result.success) {
+        setSemesters(result.data || []);
+      } else {
+        toast.error('Failed to load semesters');
+        setSemesters([]);
+      }
+    } catch (error) {
+      console.error('Error loading semesters:', error);
+      toast.error('Failed to load semesters');
+      setSemesters([]);
+    }
+  };
+
+  const loadCourses = async (programId: string, semester: number) => {
+    try {
+      const result = await lessonPlanService.getCourses(programId, semester);
+      if (result.success) {
+        setCourses(result.data || []);
+      } else {
+        toast.error('Failed to load courses');
+        setCourses([]);
+      }
+    } catch (error) {
+      console.error('Error loading courses:', error);
+      toast.error('Failed to load courses');
+      setCourses([]);
+    }
+  };
+
+  const loadLessonPlans = async () => {
+    try {
+      setLoading(true);
+      
+      const filters: any = {};
+      if (selectedDepartment) filters.department_id = selectedDepartment;
+      if (selectedProgram) filters.program_id = selectedProgram;
+      if (selectedCourse) filters.course_id = selectedCourse;
+      if (selectedSemester) filters.semester = parseInt(selectedSemester);
+      if (selectedAcademicYear) filters.academic_year = selectedAcademicYear;
+
+      const result = await lessonPlanService.getLessonPlans(filters);
+      if (result.success) {
+        setLessonPlans(result.data || []);
+      } else {
+        toast.error('Failed to load lesson plans');
+        setLessonPlans([]);
+      }
+    } catch (error) {
+      console.error('Error loading lesson plans:', error);
+      toast.error('Failed to load lesson plans');
+      setLessonPlans([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handler for department change in form
+  const handleDepartmentChange = async (departmentId: string) => {
+    if (departmentId && typeof departmentId === 'string') {
+      const result = await lessonPlanService.getPrograms(departmentId);
+      if (result.success) {
+        return {
+          programs: result.data || [],
+          courses: [], // Courses will be loaded after program selection
+        };
+      }
+    }
+    
+    return {
+      programs: [],
+      courses: [],
+    };
+  };
+
+  // Handler for program change in form
+  const handleProgramChange = async (programId: string) => {
+    if (programId && typeof programId === 'string') {
+      const semesterResult = await lessonPlanService.getSemesters(programId);
+      if (semesterResult.success) {
+        // Update the semesters state for the form
+        setSemesters(semesterResult.data || []);
+        return {
+          semesters: (semesterResult.data || []).map(s => s.toString()),
+          courses: [], // Courses will be loaded after semester selection
+        };
+      }
+    }
+    
+    return {
+      semesters: [],
+      courses: [],
+    };
+  };
+
+  // Handler for semester change in form
+  const handleSemesterChange = async (semester: string, programId: string) => {
+    if (semester && programId && typeof programId === 'string') {
+      const result = await lessonPlanService.getCourses(programId, parseInt(semester));
+      if (result.success) {
+        return {
+          courses: result.data || [],
+        };
+      }
+    }
+    
+    return {
+      courses: [],
+    };
+  };
+
+  // Handler for curriculum context change (course + program + academic year)
+  const handleCurriculumContextChange = async (courseId: string, programId: string, academicYear: string) => {
+    if (courseId && programId && academicYear) {
+      try {
+        // Load curriculum units
+        const unitsResult = await lessonPlanService.getCurriculumUnits(courseId, programId, academicYear);
+        
+        if (unitsResult.success) {
+          setUnits(unitsResult.data || []);
+          setCurrentCurriculumId(unitsResult.curriculumId);
+          
+          // Clear learning outcomes since unit hasn't been selected yet
+          setLearningOutcomes([]);
+        } else {
+          setUnits([]);
+          setLearningOutcomes([]);
+          setCurrentCurriculumId(undefined);
+        }
+      } catch (error) {
+        console.error('Error loading curriculum context:', error);
+        setUnits([]);
+        setLearningOutcomes([]);
+        setCurrentCurriculumId(undefined);
+      }
+    } else {
+      setUnits([]);
+      setLearningOutcomes([]);
+      setCurrentCurriculumId(undefined);
+    }
+  };
+
+  // Handler for unit selection change
+  const handleUnitChange = async (unitId: string) => {
+    if (unitId) {
+      try {
+        const outcomesResult = await lessonPlanService.getLearningOutcomes(unitId);
+        if (outcomesResult.success) {
+          setLearningOutcomes(outcomesResult.data || []);
+        } else {
+          setLearningOutcomes([]);
+        }
+      } catch (error) {
+        console.error('Error loading learning outcomes:', error);
+        setLearningOutcomes([]);
+      }
+    } else {
+      setLearningOutcomes([]);
+    }
+  };
+
+  // Handler for adding/updating lesson plan
+  const handleAddLessonPlan = async (lessonPlan: any) => {
+    try {
+      setSaveStatus("saving");
+      
+      // Debug: Log the received lesson plan data structure
+      
+      // Validate required fields before sending to service
+      const sessionDate = lessonPlan.sessionDate || lessonPlan.session_date;
+      if (!sessionDate || sessionDate.trim() === '') {
+        toast.error('Session date is required');
+        setSaveStatus("idle");
+        return;
       }
       
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
+      // Validate date format
+      const dateObj = new Date(sessionDate);
+      if (isNaN(dateObj.getTime())) {
+        toast.error('Please enter a valid session date');
+        setSaveStatus("idle");
+        return;
+      }
       
-      setNotification({ type: 'success', message: 'Lesson plan saved successfully!' });
-      setTimeout(() => setNotification(null), 3000);
-    }, 500);
+      if (lessonPlan.id && lessonPlans.find(lp => lp.id === lessonPlan.id)) {
+        // Update existing lesson plan
+        const result = await lessonPlanService.updateLessonPlan(lessonPlan.id, {
+          title: lessonPlan.title,
+          session_date: lessonPlan.session_date || lessonPlan.sessionDate,
+          duration_minutes: lessonPlan.duration ? parseInt(lessonPlan.duration) : lessonPlan.duration_minutes,
+          department_id: lessonPlan.department_id || lessonPlan.department,
+          program_id: lessonPlan.program_id || lessonPlan.program,
+          course_id: lessonPlan.course_id || lessonPlan.course,
+          semester: parseInt(lessonPlan.semester),
+          academic_year: lessonPlan.academic_year || lessonPlan.academicYear,
+          curriculum_id: currentCurriculumId, // Include curriculum_id
+          unit_id: lessonPlan.unit_id || lessonPlan.unitId,
+          selected_learning_outcomes: lessonPlan.selected_learning_outcomes || lessonPlan.selectedLearningOutcomes,
+          session_objectives: lessonPlan.session_objectives || lessonPlan.sessionObjectives,
+          teaching_methodology: lessonPlan.teaching_methodology || lessonPlan.teachingMethodology,
+          required_materials: lessonPlan.required_materials || lessonPlan.requiredMaterials,
+          resource_files: lessonPlan.resource_files || lessonPlan.resourceFiles,
+          resource_links: lessonPlan.resource_links || lessonPlan.resourceLinks,
+          evaluation_criteria: lessonPlan.evaluation_criteria || lessonPlan.evaluationCriteria,
+          evaluation_items: lessonPlan.evaluation_items || lessonPlan.evaluationItems,
+          follow_up_activities: lessonPlan.follow_up_activities || lessonPlan.followUpActivities,
+          additional_notes: lessonPlan.additional_notes || lessonPlan.additionalNotes,
+          status: lessonPlan.status,
+        });
+
+        if (result.success && result.data) {
+          setLessonPlans(prev => prev.map(lp => lp.id === lessonPlan.id ? result.data! : lp));
+          setSaveStatus("saved");
+          toast.success('Lesson plan updated successfully');
+        } else {
+          setSaveStatus("idle");
+          const errorMessage = result.error?.message || 'Failed to update lesson plan';
+          
+          // Handle specific database errors
+          if (errorMessage.includes('session_date') && errorMessage.includes('not-null')) {
+            toast.error('Session date is required and cannot be empty');
+          } else if (errorMessage.includes('violates not-null constraint')) {
+            toast.error('Please fill in all required fields');
+          } else {
+            toast.error(errorMessage);
+          }
+        }
+      } else {
+        // Create new lesson plan
+        const result = await lessonPlanService.createLessonPlan({
+          title: lessonPlan.title,
+          session_date: lessonPlan.session_date || lessonPlan.sessionDate,
+          duration_minutes: lessonPlan.duration ? parseInt(lessonPlan.duration) : lessonPlan.duration_minutes,
+          department_id: lessonPlan.department_id || lessonPlan.department,
+          program_id: lessonPlan.program_id || lessonPlan.program,
+          course_id: lessonPlan.course_id || lessonPlan.course,
+          semester: parseInt(lessonPlan.semester),
+          academic_year: lessonPlan.academic_year || lessonPlan.academicYear,
+          curriculum_id: currentCurriculumId, // Include curriculum_id
+          unit_id: lessonPlan.unit_id || lessonPlan.unitId,
+          selected_learning_outcomes: lessonPlan.selected_learning_outcomes || lessonPlan.selectedLearningOutcomes,
+          session_objectives: lessonPlan.session_objectives || lessonPlan.sessionObjectives,
+          teaching_methodology: lessonPlan.teaching_methodology || lessonPlan.teachingMethodology,
+          required_materials: lessonPlan.required_materials || lessonPlan.requiredMaterials,
+          resource_files: lessonPlan.resource_files || lessonPlan.resourceFiles,
+          resource_links: lessonPlan.resource_links || lessonPlan.resourceLinks,
+          evaluation_criteria: lessonPlan.evaluation_criteria || lessonPlan.evaluationCriteria,
+          evaluation_items: lessonPlan.evaluation_items || lessonPlan.evaluationItems,
+          follow_up_activities: lessonPlan.follow_up_activities || lessonPlan.followUpActivities,
+          additional_notes: lessonPlan.additional_notes || lessonPlan.additionalNotes,
+          status: lessonPlan.status,
+          metadata: {},
+        });
+
+        if (result.success && result.data) {
+          setLessonPlans(prev => [result.data!, ...prev]);
+          setSaveStatus("saved");
+          toast.success('Lesson plan created successfully');
+        } else {
+          setSaveStatus("idle");
+          const errorMessage = result.error?.message || 'Failed to create lesson plan';
+          
+          // Handle specific database errors
+          if (errorMessage.includes('session_date') && errorMessage.includes('not-null')) {
+            toast.error('Session date is required and cannot be empty');
+          } else if (errorMessage.includes('violates not-null constraint')) {
+            toast.error('Please fill in all required fields');
+          } else {
+            toast.error(errorMessage);
+          }
+        }
+      }
+      
+      // Reset save status after a delay
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    } catch (error: any) {
+      console.error('Error saving lesson plan:', error);
+      setSaveStatus("idle");
+      toast.error('Failed to save lesson plan');
+    }
   };
 
+  // Handler for deleting lesson plan
   const handleDeleteLessonPlan = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this lesson plan?')) return;
-    
-    setSaveStatus("saving");
-    
-    // Simulate async operation
-    setTimeout(() => {
-      setLessonPlans(prev => prev.filter(lp => lp.id !== id));
-      
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-      
-      setNotification({ type: 'success', message: 'Lesson plan deleted successfully!' });
-      setTimeout(() => setNotification(null), 3000);
-    }, 300);
+    try {
+      const result = await lessonPlanService.deleteLessonPlan(id);
+      if (result.success) {
+        setLessonPlans(prev => prev.filter(lp => lp.id !== id));
+        toast.success('Lesson plan deleted successfully');
+      } else {
+        toast.error(result.error?.message || 'Failed to delete lesson plan');
+      }
+    } catch (error: any) {
+      console.error('Error deleting lesson plan:', error);
+      toast.error('Failed to delete lesson plan');
+    }
   };
 
+  // Handler for publishing lesson plan
   const handlePublishLessonPlan = async (id: string) => {
-    if (!window.confirm('Are you sure you want to publish this lesson plan?')) return;
-    
-    setSaveStatus("saving");
-    
-    // Simulate async operation
-    setTimeout(() => {
-      setLessonPlans(prev => prev.map(lp => 
-        lp.id === id ? { ...lp, status: 'published' } : lp
-      ));
-      
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-      
-      setNotification({ type: 'success', message: 'Lesson plan published successfully!' });
-      setTimeout(() => setNotification(null), 3000);
-    }, 500);
+    try {
+      const result = await lessonPlanService.updateLessonPlan(id, {
+        status: 'published',
+        published_at: new Date().toISOString(),
+      });
+
+      if (result.success && result.data) {
+        setLessonPlans(prev => prev.map(lp => lp.id === id ? result.data! : lp));
+        toast.success('Lesson plan published successfully');
+      } else {
+        toast.error(result.error?.message || 'Failed to publish lesson plan');
+      }
+    } catch (error: any) {
+      console.error('Error publishing lesson plan:', error);
+      toast.error('Failed to publish lesson plan');
+    }
   };
 
-  // Pass all props to the college-adapted component
   return (
-    <>
-      {/* Notification Banner */}
-      {notification && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2">
-          <div
-            className={`rounded-lg border px-6 py-4 shadow-lg ${
-              notification.type === 'success'
-                ? 'bg-green-50 border-green-200 text-green-800'
-                : 'bg-red-50 border-red-200 text-red-800'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              {notification.type === 'success' ? (
-                <svg className="h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <svg className="h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              )}
-              <p className="text-sm font-medium">{notification.message}</p>
-              <button
-                onClick={() => setNotification(null)}
-                className="ml-4 text-current opacity-70 hover:opacity-100"
-              >
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <CollegeLessonPlanUI
-        // College-specific selections
-        selectedCourse={selectedCourse}
-        setSelectedCourse={setSelectedCourse}
-        selectedDepartment={selectedDepartment}
-        setSelectedDepartment={setSelectedDepartment}
-        selectedProgram={selectedProgram}
-        setSelectedProgram={setSelectedProgram}
-        selectedSemester={selectedSemester}
-        setSelectedSemester={setSelectedSemester}
-        selectedAcademicYear={selectedAcademicYear}
-        setSelectedAcademicYear={setSelectedAcademicYear}
-        // Configuration data
-        courses={courses}
-        departments={departments}
-        programs={programs}
-        semesters={semesters}
-        academicYears={academicYears}
-        // Data
-        lessonPlans={lessonPlans}
-        units={units}
-        learningOutcomes={learningOutcomes}
-        saveStatus={saveStatus}
-        // Search
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        // Handlers
-        onAddLessonPlan={handleAddLessonPlan}
-        onDeleteLessonPlan={handleDeleteLessonPlan}
-        onPublishLessonPlan={handlePublishLessonPlan}
-      />
-    </>
+    <CollegeLessonPlanUI
+      // College-specific selections
+      selectedCourse={selectedCourse}
+      setSelectedCourse={setSelectedCourse}
+      selectedDepartment={selectedDepartment}
+      setSelectedDepartment={setSelectedDepartment}
+      selectedProgram={selectedProgram}
+      setSelectedProgram={setSelectedProgram}
+      selectedSemester={selectedSemester}
+      setSelectedSemester={setSelectedSemester}
+      selectedAcademicYear={selectedAcademicYear}
+      setSelectedAcademicYear={setSelectedAcademicYear}
+      // Configuration data
+      courses={courses}
+      departments={departments}
+      programs={programs}
+      semesters={semesters.map(s => s.toString())}
+      academicYears={academicYears}
+      // Data
+      lessonPlans={lessonPlans}
+      units={units}
+      learningOutcomes={learningOutcomes}
+      saveStatus={saveStatus}
+      loading={loading}
+      searchQuery={searchQuery}
+      setSearchQuery={setSearchQuery}
+      // Handlers
+      onAddLessonPlan={handleAddLessonPlan}
+      onDeleteLessonPlan={handleDeleteLessonPlan}
+      onPublishLessonPlan={handlePublishLessonPlan}
+      // Dynamic handlers for form
+      onDepartmentChange={handleDepartmentChange}
+      onProgramChange={handleProgramChange}
+      onSemesterChange={handleSemesterChange}
+      onCurriculumContextChange={handleCurriculumContextChange}
+      onUnitChange={handleUnitChange}
+    />
   );
 };
 

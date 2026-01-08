@@ -2,9 +2,10 @@
  * Authenticated handlers (Admin creates users)
  * - Create student (admin adds student)
  * - Create teacher (admin adds teacher)
+ * - Create college staff (college admin adds staff)
  */
 
-import { Env, CreateStudentRequest, CreateTeacherRequest } from '../types';
+import { Env, CreateStudentRequest, CreateTeacherRequest, CreateCollegeStaffRequest } from '../types';
 import { jsonResponse, validateEmail, splitName, generatePassword, calculateAge } from '../utils/helpers';
 import { getSupabaseAdmin, authenticateUser, deleteAuthUser } from '../utils/supabase';
 
@@ -427,5 +428,254 @@ export async function handleUpdateStudentDocuments(request: Request, env: Env): 
     });
   } catch (error) {
     return jsonResponse({ error: (error as Error).message }, 500);
+  }
+}
+
+/**
+ * Handle college admin creating a staff member
+ * Supports roles: College Admin, HoD, Faculty, Lecturer, Exam Cell, Finance Admin, Placement Officer
+ */
+export async function handleCreateCollegeStaff(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticateUser(request, env);
+  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const { user, supabaseAdmin } = auth;
+
+  const body = (await request.json()) as CreateCollegeStaffRequest;
+  const { staff, collegeId: requestCollegeId } = body;
+
+  if (!staff || !staff.name || !staff.email) {
+    return jsonResponse({ error: 'Missing required fields: name and email' }, 400);
+  }
+
+  if (!staff.roles || staff.roles.length === 0) {
+    return jsonResponse({ error: 'At least one role must be selected' }, 400);
+  }
+
+  if (!validateEmail(staff.email)) {
+    return jsonResponse({ error: 'Invalid email format' }, 400);
+  }
+
+  // Get college ID from request or current user context
+  let collegeId = requestCollegeId || null;
+
+  // First, try to get organizationId from users table
+  if (!collegeId) {
+    const { data: userData } = await supabaseAdmin
+      .from('users')
+      .select('organizationId')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (userData?.organizationId) {
+      collegeId = userData.organizationId;
+      console.log('Found collegeId from users.organizationId:', collegeId);
+    }
+  }
+
+  // Try to find college by deanEmail
+  if (!collegeId) {
+    const { data: collegeByDean } = await supabaseAdmin
+      .from('colleges')
+      .select('id')
+      .ilike('deanEmail', user.email || '')
+      .maybeSingle();
+
+    if (collegeByDean?.id) {
+      collegeId = collegeByDean.id;
+      console.log('Found collegeId from colleges.deanEmail:', collegeId);
+    }
+  }
+
+  // Try to find college by email
+  if (!collegeId) {
+    const { data: collegeByEmail } = await supabaseAdmin
+      .from('colleges')
+      .select('id')
+      .ilike('email', user.email || '')
+      .maybeSingle();
+
+    if (collegeByEmail?.id) {
+      collegeId = collegeByEmail.id;
+      console.log('Found collegeId from colleges.email:', collegeId);
+    }
+  }
+
+  // Try to get from college_lecturers table by userId
+  if (!collegeId) {
+    const { data: lecturerByUserId } = await supabaseAdmin
+      .from('college_lecturers')
+      .select('collegeId')
+      .eq('userId', user.id)
+      .maybeSingle();
+
+    if (lecturerByUserId?.collegeId) {
+      collegeId = lecturerByUserId.collegeId;
+      console.log('Found collegeId from college_lecturers.userId:', collegeId);
+    }
+  }
+
+  // Try to get from college_lecturers table by user_id
+  if (!collegeId) {
+    const { data: lecturerByUser_id } = await supabaseAdmin
+      .from('college_lecturers')
+      .select('collegeId')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (lecturerByUser_id?.collegeId) {
+      collegeId = lecturerByUser_id.collegeId;
+      console.log('Found collegeId from college_lecturers.user_id:', collegeId);
+    }
+  }
+
+  // Try to get from college_lecturers by email in metadata
+  if (!collegeId && user.email) {
+    const { data: lecturerByEmail } = await supabaseAdmin
+      .from('college_lecturers')
+      .select('collegeId')
+      .eq('metadata->>email', user.email.toLowerCase())
+      .maybeSingle();
+
+    if (lecturerByEmail?.collegeId) {
+      collegeId = lecturerByEmail.collegeId;
+      console.log('Found collegeId from college_lecturers.metadata.email:', collegeId);
+    }
+  }
+
+  if (!collegeId) {
+    console.error('Could not find college ID for user:', { userId: user.id, email: user.email });
+    return jsonResponse({ error: 'College ID not found. Please ensure you are logged in as a college admin.' }, 400);
+  }
+
+  console.log('Using collegeId:', collegeId);
+
+  // Check if email already exists in auth
+  const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
+  const emailExists = existingAuthUsers?.users?.some(
+    (u) => u.email?.toLowerCase() === staff.email.toLowerCase()
+  );
+  if (emailExists) {
+    return jsonResponse({ error: `User with email ${staff.email} already exists` }, 400);
+  }
+
+  // Check if email exists in college_lecturers
+  const { data: existingLecturer } = await supabaseAdmin
+    .from('college_lecturers')
+    .select('id')
+    .eq('metadata->>email', staff.email.toLowerCase())
+    .maybeSingle();
+
+  if (existingLecturer) {
+    return jsonResponse({ error: `Staff member with email ${staff.email} already exists` }, 400);
+  }
+
+  const staffPassword = generatePassword();
+  const { firstName, lastName } = splitName(staff.name);
+
+  // Map role to internal role format
+  const roleMap: Record<string, string> = {
+    'College Admin': 'college_admin',
+    'HoD': 'hod',
+    'Faculty': 'faculty',
+    'Lecturer': 'lecturer',
+    'Exam Cell': 'exam_cell',
+    'Finance Admin': 'finance_admin',
+    'Placement Officer': 'placement_officer',
+  };
+
+  const primaryRole = roleMap[staff.roles[0]] || 'faculty';
+
+  // Create auth user
+  const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    email: staff.email.toLowerCase(),
+    password: staffPassword,
+    email_confirm: true,
+    user_metadata: {
+      name: staff.name,
+      first_name: firstName,
+      last_name: lastName,
+      role: primaryRole,
+      roles: staff.roles,
+      college_id: collegeId,
+      added_by: user.id,
+    },
+  });
+
+  if (authError || !authUser.user) {
+    return jsonResponse({ error: `Failed to create auth account: ${authError?.message}` }, 500);
+  }
+
+  try {
+    // Create public.users record
+    await supabaseAdmin.from('users').insert({
+      id: authUser.user.id,
+      email: staff.email.toLowerCase(),
+      firstName,
+      lastName,
+      full_name: staff.name,
+      name: staff.name,
+      role: primaryRole,
+      organizationId: collegeId,
+      isActive: true,
+      entity_type: 'college_staff',
+      metadata: {
+        source: 'college_admin_added',
+        collegeId,
+        addedBy: user.id,
+        roles: staff.roles,
+        password: staffPassword,
+      },
+    });
+
+    // Create college_lecturers record
+    const { data: staffRecord, error: staffError } = await supabaseAdmin
+      .from('college_lecturers')
+      .insert({
+        userId: authUser.user.id,
+        user_id: authUser.user.id,
+        collegeId: collegeId,
+        employeeId: staff.employee_id || null,
+        department: staff.department_id || null,
+        specialization: staff.specialization || null,
+        qualification: staff.qualification || null,
+        experienceYears: staff.experience_years || null,
+        accountStatus: 'active',
+        metadata: {
+          first_name: firstName,
+          last_name: lastName,
+          email: staff.email.toLowerCase(),
+          phone: staff.phone || null,
+          role: primaryRole,
+          roles: staff.roles,
+          temporary_password: staffPassword,
+          password_created_at: new Date().toISOString(),
+          created_by: user.email,
+        },
+      })
+      .select()
+      .single();
+
+    if (staffError) {
+      throw new Error(`Failed to create staff profile: ${staffError.message}`);
+    }
+
+    return jsonResponse({
+      success: true,
+      message: `Staff member ${staff.name} created successfully`,
+      data: {
+        authUserId: authUser.user.id,
+        staffId: staffRecord.id,
+        email: staff.email,
+        name: staff.name,
+        roles: staff.roles,
+        password: staffPassword,
+        collegeId,
+      },
+    });
+  } catch (error) {
+    // Rollback auth user
+    await deleteAuthUser(supabaseAdmin, authUser.user.id);
+    return jsonResponse({ error: (error as Error).message }, 400);
   }
 }

@@ -1,19 +1,20 @@
-import React, { useState, useEffect, useId } from "react"
 import {
-  RefreshCw,
-  Database,
-  CheckCircle2,
-  Lock,
-  Mail,
-  Bell,
-  User,
-  KeyRound,
-  Phone,
-  Globe,
-  CheckCircle,
+    Bell,
+    CheckCircle,
+    CheckCircle2,
+    Database,
+    Globe,
+    KeyRound,
+    Lock,
+    Mail,
+    Phone,
+    RefreshCw,
+    User
 } from "lucide-react"
-import { supabase } from "../../lib/supabaseClient"
+import React, { useEffect, useId, useState } from "react"
+import { SubscriptionSettingsSection } from "../../components/Subscription/SubscriptionSettingsSection"
 import { useAuth } from "../../context/AuthContext"
+import { supabase } from "../../lib/supabaseClient"
 
 /* ---------- UI Primitives ---------- */
 
@@ -295,6 +296,9 @@ export default function SettingsPage() {
             </div>
           </div>
         </SectionCard>
+
+        {/* Subscription & Billing */}
+        <SubscriptionSettingsSection />
 
         {/* System Management (super admin only) */}
         {user?.role === "super_admin" && (

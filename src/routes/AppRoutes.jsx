@@ -11,8 +11,7 @@ import PortfolioLayout from "../layouts/PortfolioLayout";
 import PublicLayout from "../layouts/PublicLayout";
 import RecruiterLayout from "../layouts/RecruiterLayout";
 import StudentLayout from "../layouts/StudentLayout";
-//digital passport
-import StudentDigitalPortfolioNav from '../components/digital-pp/ui/StudentDigitalPortfolioNav';
+//digital passport - StudentDigitalPortfolioNav removed (merged into Header dropdown)
 import { PortfolioProvider } from '../context/PortfolioContext';
 import { ThemeProvider } from '../context/ThemeContext';
 import { TestProvider } from '../context/assessment/TestContext';
@@ -52,6 +51,9 @@ const MySubscription = lazy(() =>
 const SubscriptionManage = lazy(() =>
   import("../pages/subscription/SubscriptionManage")
 );
+const AddOns = lazy(() =>
+  import("../pages/subscription/AddOns")
+);
 
 // Event Sales (no auth required)
 const EventSales = lazy(() =>
@@ -62,6 +64,11 @@ const EventSalesSuccess = lazy(() =>
 );
 const EventSalesFailure = lazy(() =>
   import("../pages/event/EventSalesFailure")
+);
+
+// Simple Event Registration (social media campaigns)
+const SimpleEventRegistration = lazy(() =>
+  import("../pages/register/SimpleEventRegistration")
 );
 
 const LoginStudent = lazy(() => import("../pages/auth/LoginStudent"));
@@ -132,7 +139,7 @@ const MyClass = lazy(() => import("../pages/student/MyClass"));
 const Clubs = lazy(() => import ("../pages/student/Clubs"))
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
 const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
-const CareerAI = lazy(() => import("../features/career-assistant/components/CareerAssistant"));
+const CareerAI = lazy(() => import("../pages/student/CareerAI"));
 const DebugQRTest = lazy(() => import("../pages/DebugQRTest"));
 const StudentPublicViewer = lazy(() =>
   import("../components/Students/components/StudentPublicViewer")
@@ -145,6 +152,7 @@ const AssessmentTestPage = lazy(() => import("../pages/student/AssessmentTestPag
 const AssessmentResults = lazy(() => import("../pages/student/AssessmentResults"));
 const AssessmentStart = lazy(() => import("../pages/student/AssessmentStart"));
 const DynamicAssessment = lazy(() => import("../pages/student/DynamicAssessment"));
+const AdaptiveAptitudeTest = lazy(() => import("../pages/student/AdaptiveAptitudeTest"));
 
 // Educator pages
 const EducatorDashboard = lazy(() => import("../pages/educator/Dashboard"));
@@ -360,7 +368,7 @@ const Reports = lazy(() =>
   import("../pages/admin/schoolAdmin/Reports")
 );
 // Finance & infrastructure buddy
-const FinanceInfrastructure = lazy(() => import("../pages/admin/schoolAdmin/FeeStructureSetup"))
+const SchoolFinanceModule = lazy(() => import("../pages/admin/schoolAdmin/finance/index"))
 const Library = lazy(() => import("../pages/admin/schoolAdmin/Library"))
 const AttendanceReports = lazy(() =>
   import("../pages/admin/schoolAdmin/AttendanceReports")
@@ -385,10 +393,18 @@ const AppRoutes = () => {
     <Suspense fallback={<Loader />}>
       <ScrollToTop />
       <Routes>
+        {/* Simple Event Registration - Social media campaigns (standalone, no layout) */}
+        <Route path="/register" element={<SimpleEventRegistration />} />
+        
         {/* Event Sales - Standalone without layout (no header/footer) */}
         <Route path="/signup/plans" element={<EventSales />} />
         <Route path="/signup/plans/success" element={<EventSalesSuccess />} />
         <Route path="/signup/plans/failure" element={<EventSalesFailure />} />
+        
+        {/* Register plans - alias for Event Sales (standalone, no layout) */}
+        <Route path="/register/plans" element={<EventSales />} />
+        <Route path="/register/plans/success" element={<EventSalesSuccess />} />
+        <Route path="/register/plans/failure" element={<EventSalesFailure />} />
 
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
@@ -435,6 +451,7 @@ const AppRoutes = () => {
           <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
           <Route path="/subscription/manage" element={<SubscriptionManage />} />
+          <Route path="/subscription/add-ons" element={<AddOns />} />
           {/* Legacy route - redirect to new manage route */}
           <Route
             path="/my-subscription"
@@ -582,7 +599,7 @@ const AppRoutes = () => {
           <Route path="skills/clubs" element={<SkillCurricular />} />
           <Route path="skills/badges" element={<SkillBadges />} />
           <Route path="skills/reports" element={<Reports />} />
-          <Route path="finance/fees" element={<FinanceInfrastructure />} />
+          <Route path="finance/fees" element={<SchoolFinanceModule />} />
           <Route path="infrastructure/library" element={<Library />} />
           {/* Finance & Infrastructure*/}
 
@@ -690,6 +707,7 @@ const AppRoutes = () => {
           <Route path="assessment/result" element={<AssessmentResult />} />
           <Route path="assessment/platform" element={<AssessmentStart />} />
           <Route path="assessment/dynamic" element={<DynamicAssessment />} />
+          <Route path="adaptive-aptitude-test" element={<AdaptiveAptitudeTest />} />
           <Route path="assessment/start" element={<TestProvider><AssessmentTestPage /></TestProvider>} />
           <Route path="assessment/results" element={<TestProvider><AssessmentResults /></TestProvider>} />
 
@@ -699,7 +717,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
+                  <div>
                     <HomePage />
                   </div>
                 </PortfolioProvider>
@@ -711,8 +729,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
+                  <div>
                     <DigitalPortfolioPage />
                   </div>
                 </PortfolioProvider>
@@ -724,8 +741,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
+                  <div>
                     <DigitalPassportPage />
                   </div>
                 </PortfolioProvider>
@@ -737,8 +753,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
+                  <div>
                     <DigitalVideoPortfolioPage />
                   </div>
                 </PortfolioProvider>
@@ -750,8 +765,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
+                  <div>
                     <DigitalSettingsPage />
                   </div>
                 </PortfolioProvider>
@@ -763,8 +777,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
+                  <div>
                     <DigitalThemeSettings />
                   </div>
                 </PortfolioProvider>
@@ -776,8 +789,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
+                  <div>
                     <DigitalLayoutSettings />
                   </div>
                 </PortfolioProvider>
@@ -789,8 +801,7 @@ const AppRoutes = () => {
             element={
               <ThemeProvider>
                 <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
+                  <div>
                     <DigitalExportSettings />
                   </div>
                 </PortfolioProvider>
@@ -803,7 +814,6 @@ const AppRoutes = () => {
               <ThemeProvider>
                 <PortfolioProvider>
                   <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
                     <DigitalSharingSettings />
                   </div>
                 </PortfolioProvider>
@@ -816,7 +826,6 @@ const AppRoutes = () => {
               <ThemeProvider>
                 <PortfolioProvider>
                   <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioNav />
                     <DigitalProfileSettings />
                   </div>
                 </PortfolioProvider>

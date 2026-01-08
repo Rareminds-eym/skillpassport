@@ -1,39 +1,143 @@
 import { supabase } from '../../lib/supabaseClient';
-import type { Curriculum, ApiResponse } from '../../types/college';
 
 /**
- * Curriculum Service
- * Handles curriculum creation, approval workflow, and version control
+ * College Curriculum Service
+ * Handles curriculum creation, approval workflow, and CRUD operations
+ * Works with the new college_curriculums, college_curriculum_units, and college_curriculum_outcomes tables
  */
+
+// Types for the new schema
+export interface CollegeCurriculum {
+  id: string;
+  college_id: string;
+  department_id: string;
+  program_id: string;
+  course_id: string;
+  academic_year: string;
+  status: 'draft' | 'approved' | 'published';
+  created_by: string;
+  approved_by?: string;
+  approval_date?: string;
+  published_date?: string;
+  archived_date?: string;
+  rejection_reason?: string;
+  cloned_from_id?: string;
+  version: number;
+  created_at: string;
+  updated_at: string;
+  // Joined fields from related tables
+  course_code?: string;
+  course_name?: string;
+  semester?: number;
+}
+
+export interface CurriculumUnit {
+  id: string;
+  curriculum_id: string;
+  name: string;
+  code?: string;
+  description: string;
+  credits?: number;
+  estimated_duration?: number;
+  duration_unit?: 'hours' | 'weeks';
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CurriculumOutcome {
+  id: string;
+  curriculum_id: string;
+  unit_id: string;
+  outcome_text: string;
+  bloom_level?: string;
+  assessment_mappings: Array<{
+    assessmentType: string;
+    weightage?: number;
+  }>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CurriculumWithDetails extends CollegeCurriculum {
+  units: CurriculumUnit[];
+  outcomes: CurriculumOutcome[];
+  department_name?: string;
+  program_name?: string;
+}
+
+// Get current user's college ID
+async function getCurrentUserCollegeId(): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: lecturer } = await supabase
+    .from('college_lecturers')
+    .select('collegeId')
+    .eq('user_id', user.id)
+    .single();
+
+  return lecturer?.collegeId || null;
+}
 
 export const curriculumService = {
   /**
-   * Create curriculum
-   * Property 11: Curriculum mandatory fields
+   * Create new curriculum
    */
-  async createCurriculum(data: Partial<Curriculum>): Promise<ApiResponse<Curriculum>> {
+  async createCurriculum(data: {
+    department_id: string;
+    program_id: string;
+    course_id: string;
+    academic_year: string;
+  }): Promise<{ success: boolean; data?: CollegeCurriculum; error?: any }> {
     try {
-      // Validate mandatory fields
-      if (!data.academic_year || !data.department_id || !data.program_id || 
-          !data.semester || !data.course_id) {
-        return {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'All mandatory fields must be specified (academic_year, department, program, semester, course)',
-          },
-        };
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { success: false, error: { message: 'User not authenticated' } };
       }
 
+      const collegeId = await getCurrentUserCollegeId();
+      if (!collegeId) {
+        return { success: false, error: { message: 'Unable to determine user college' } };
+      }
+
+      // Create curriculum
       const { data: curriculum, error } = await supabase
-        .from('curriculum')
-        .insert([{ ...data, status: 'draft', version: 1 }])
-        .select()
+        .from('college_curriculums')
+        .insert([{
+          college_id: collegeId,
+          department_id: data.department_id,
+          program_id: data.program_id,
+          course_id: data.course_id,
+          academic_year: data.academic_year,
+          status: 'draft',
+          created_by: user.id,
+        }])
+        .select(`
+          *,
+          course:college_courses!college_curriculums_course_id_fkey(course_code, course_name)
+        `)
         .single();
 
       if (error) throw error;
 
-      return { success: true, data: curriculum };
+      // Get semester from course mapping (separate query)
+      const { data: mapping } = await supabase
+        .from('college_course_mappings')
+        .select('semester')
+        .eq('program_id', data.program_id)
+        .eq('course_id', data.course_id)
+        .single();
+
+      // Flatten the response
+      const result = {
+        ...curriculum,
+        course_code: curriculum.course?.course_code,
+        course_name: curriculum.course?.course_name,
+        semester: mapping?.semester,
+      };
+
+      return { success: true, data: result };
     } catch (error: any) {
       return {
         success: false,
@@ -46,32 +150,200 @@ export const curriculumService = {
   },
 
   /**
-   * Update curriculum
-   * Property 13: Approved curriculum immutability
+   * Get curriculum by ID with units and outcomes
    */
-  async updateCurriculum(id: string, updates: Partial<Curriculum>): Promise<ApiResponse<Curriculum>> {
+  async getCurriculumById(id: string): Promise<{ success: boolean; data?: CurriculumWithDetails; error?: any }> {
+    try {
+      // Get curriculum with department, program names, and course details
+      const { data: curriculum, error: curriculumError } = await supabase
+        .from('college_curriculums')
+        .select(`
+          *,
+          departments!inner(name),
+          programs!inner(name),
+          course:college_courses!college_curriculums_course_id_fkey(course_code, course_name)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (curriculumError) throw curriculumError;
+
+      // Get semester from course mapping
+      const { data: mapping } = await supabase
+        .from('college_course_mappings')
+        .select('semester')
+        .eq('program_id', curriculum.program_id)
+        .eq('course_id', curriculum.course_id)
+        .single();
+
+      // Get units
+      const { data: units, error: unitsError } = await supabase
+        .from('college_curriculum_units')
+        .select('*')
+        .eq('curriculum_id', id)
+        .order('order_index');
+
+      if (unitsError) throw unitsError;
+
+      // Get outcomes
+      const { data: outcomes, error: outcomesError } = await supabase
+        .from('college_curriculum_outcomes')
+        .select('*')
+        .eq('curriculum_id', id);
+
+      if (outcomesError) throw outcomesError;
+
+      const result: CurriculumWithDetails = {
+        ...curriculum,
+        course_code: curriculum.course?.course_code,
+        course_name: curriculum.course?.course_name,
+        semester: mapping?.semester,
+        units: units || [],
+        outcomes: outcomes || [],
+        department_name: curriculum.departments?.name,
+        program_name: curriculum.programs?.name,
+      };
+
+      return { success: true, data: result };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'FETCH_ERROR',
+          message: error.message || 'Failed to fetch curriculum',
+        },
+      };
+    }
+  },
+
+  /**
+   * Get curriculums with filters
+   */
+  async getCurriculums(filters: {
+    department_id?: string;
+    program_id?: string;
+    semester?: number;
+    academic_year?: string;
+    status?: string;
+    course_id?: string;
+  } = {}): Promise<{ success: boolean; data?: CurriculumWithDetails[]; error?: any }> {
+    try {
+      const collegeId = await getCurrentUserCollegeId();
+      if (!collegeId) {
+        return { success: false, error: { message: 'Unable to determine user college' } };
+      }
+
+      let query = supabase
+        .from('college_curriculums')
+        .select(`
+          *,
+          departments!inner(name),
+          programs!inner(name),
+          course:college_courses!college_curriculums_course_id_fkey(course_code, course_name)
+        `)
+        .eq('college_id', collegeId);
+
+      if (filters.department_id) query = query.eq('department_id', filters.department_id);
+      if (filters.program_id) query = query.eq('program_id', filters.program_id);
+      if (filters.academic_year) query = query.eq('academic_year', filters.academic_year);
+      if (filters.status) query = query.eq('status', filters.status);
+      if (filters.course_id) query = query.eq('course_id', filters.course_id);
+
+      const { data: curriculums, error } = await query.order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (!curriculums || curriculums.length === 0) {
+        return { success: true, data: [] };
+      }
+
+      // Get semester information for curriculums (separate query)
+      const coursePrograms = curriculums.map(c => ({ 
+        course_id: c.course_id, 
+        program_id: c.program_id 
+      }));
+
+      let mappings: any[] = [];
+      if (coursePrograms.length > 0) {
+        const { data: mappingData } = await supabase
+          .from('college_course_mappings')
+          .select('course_id, program_id, semester');
+
+        mappings = mappingData || [];
+      }
+
+      // Transform data and add semester information
+      let result: CurriculumWithDetails[] = curriculums.map(curriculum => {
+        // Find ALL mappings for this course-program combination
+        const allMappings = mappings.filter(m => 
+          m.program_id === curriculum.program_id && 
+          m.course_id === curriculum.course_id
+        );
+        
+        // If semester filter is specified, find the mapping for that semester
+        let selectedMapping;
+        if (filters.semester !== undefined) {
+          selectedMapping = allMappings.find(m => m.semester === filters.semester);
+        } else {
+          // If no semester filter, use the first mapping
+          selectedMapping = allMappings[0];
+        }
+
+        return {
+          ...curriculum,
+          course_code: curriculum.course?.course_code,
+          course_name: curriculum.course?.course_name,
+          semester: selectedMapping?.semester,
+          units: [],
+          outcomes: [],
+          department_name: curriculum.departments?.name,
+          program_name: curriculum.programs?.name,
+        };
+      });
+
+      // Apply semester filter - only include curriculums that have a mapping for the requested semester
+      if (filters.semester !== undefined) {
+        result = result.filter(curriculum => curriculum.semester === filters.semester);
+      }
+
+      return { success: true, data: result };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'FETCH_ERROR',
+          message: error.message || 'Failed to fetch curriculums',
+        },
+      };
+    }
+  },
+
+  /**
+   * Update curriculum
+   */
+  async updateCurriculum(id: string, updates: Partial<CollegeCurriculum>): Promise<{ success: boolean; data?: CollegeCurriculum; error?: any }> {
     try {
       // Check if curriculum is approved
       const { data: existing, error: fetchError } = await supabase
-        .from('curriculum')
+        .from('college_curriculums')
         .select('status')
         .eq('id', id)
         .single();
 
       if (fetchError) throw fetchError;
 
-      if (existing.status === 'approved' || existing.status === 'published') {
+      if (existing.status === 'approved') {
         return {
           success: false,
           error: {
             code: 'INVALID_STATE',
-            message: 'Cannot modify approved curriculum without creating new version',
+            message: 'Cannot modify approved curriculum',
           },
         };
       }
 
       const { data, error } = await supabase
-        .from('curriculum')
+        .from('college_curriculums')
         .update(updates)
         .eq('id', id)
         .select()
@@ -92,53 +364,181 @@ export const curriculumService = {
   },
 
   /**
-   * Submit curriculum for approval
+   * Add unit to curriculum
    */
-  async submitForApproval(id: string): Promise<ApiResponse<void>> {
+  async addUnit(data: {
+    curriculum_id: string;
+    name: string;
+    code?: string;
+    description: string;
+    credits?: number;
+    estimated_duration?: number;
+    duration_unit?: 'hours' | 'weeks';
+  }): Promise<{ success: boolean; data?: CurriculumUnit; error?: any }> {
     try {
-      // Validate outcome assessment mapping completeness (Property 12)
-      const { data: curriculum, error: fetchError } = await supabase
-        .from('curriculum')
-        .select('outcomes, assessment_mappings')
-        .eq('id', id)
+      // Get next order index
+      const { data: maxOrder } = await supabase
+        .from('college_curriculum_units')
+        .select('order_index')
+        .eq('curriculum_id', data.curriculum_id)
+        .order('order_index', { ascending: false })
+        .limit(1)
         .single();
 
-      if (fetchError) throw fetchError;
+      const nextOrder = (maxOrder?.order_index || 0) + 1;
 
-      // Check if all outcomes are mapped to at least one assessment
-      const outcomes = curriculum.outcomes || [];
-      const mappings = curriculum.assessment_mappings || [];
-      
-      for (const outcome of outcomes) {
-        const hasMapping = mappings.some((m: any) => 
-          m.outcome_id === outcome.id && m.assessment_types && m.assessment_types.length > 0
-        );
-        
-        if (!hasMapping) {
-          return {
-            success: false,
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: `Learning outcome "${outcome.text}" is not mapped to any assessment type`,
-            },
-          };
-        }
-      }
-
-      const { error } = await supabase
-        .from('curriculum')
-        .update({ status: 'submitted' })
-        .eq('id', id);
+      const { data: unit, error } = await supabase
+        .from('college_curriculum_units')
+        .insert([{
+          ...data,
+          order_index: nextOrder,
+        }])
+        .select()
+        .single();
 
       if (error) throw error;
 
-      return { success: true, data: undefined };
+      return { success: true, data: unit };
     } catch (error: any) {
       return {
         success: false,
         error: {
-          code: 'SUBMIT_ERROR',
-          message: error.message || 'Failed to submit curriculum',
+          code: 'CREATE_ERROR',
+          message: error.message || 'Failed to add unit',
+        },
+      };
+    }
+  },
+
+  /**
+   * Update unit
+   */
+  async updateUnit(id: string, updates: Partial<CurriculumUnit>): Promise<{ success: boolean; data?: CurriculumUnit; error?: any }> {
+    try {
+      const { data, error } = await supabase
+        .from('college_curriculum_units')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'UPDATE_ERROR',
+          message: error.message || 'Failed to update unit',
+        },
+      };
+    }
+  },
+
+  /**
+   * Delete unit
+   */
+  async deleteUnit(id: string): Promise<{ success: boolean; error?: any }> {
+    try {
+      const { error } = await supabase
+        .from('college_curriculum_units')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      return { success: true };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'DELETE_ERROR',
+          message: error.message || 'Failed to delete unit',
+        },
+      };
+    }
+  },
+
+  /**
+   * Add learning outcome
+   */
+  async addOutcome(data: {
+    curriculum_id: string;
+    unit_id: string;
+    outcome_text: string;
+    bloom_level?: string;
+    assessment_mappings: Array<{
+      assessmentType: string;
+      weightage?: number;
+    }>;
+  }): Promise<{ success: boolean; data?: CurriculumOutcome; error?: any }> {
+    try {
+      const { data: outcome, error } = await supabase
+        .from('college_curriculum_outcomes')
+        .insert([data])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data: outcome };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'CREATE_ERROR',
+          message: error.message || 'Failed to add outcome',
+        },
+      };
+    }
+  },
+
+  /**
+   * Update learning outcome
+   */
+  async updateOutcome(id: string, updates: Partial<CurriculumOutcome>): Promise<{ success: boolean; data?: CurriculumOutcome; error?: any }> {
+    try {
+      const { data, error } = await supabase
+        .from('college_curriculum_outcomes')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'UPDATE_ERROR',
+          message: error.message || 'Failed to update outcome',
+        },
+      };
+    }
+  },
+
+  /**
+   * Delete learning outcome
+   */
+  async deleteOutcome(id: string): Promise<{ success: boolean; error?: any }> {
+    try {
+      const { error } = await supabase
+        .from('college_curriculum_outcomes')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      return { success: true };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'DELETE_ERROR',
+          message: error.message || 'Failed to delete outcome',
         },
       };
     }
@@ -147,16 +547,103 @@ export const curriculumService = {
   /**
    * Approve curriculum
    */
-  async approveCurriculum(id: string, approvedBy: string): Promise<ApiResponse<void>> {
+  async approveCurriculum(id: string): Promise<{ success: boolean; error?: any }> {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { success: false, error: { message: 'User not authenticated' } };
+      }
+
+      // Validate that curriculum has units and outcomes
+      const { data: units } = await supabase
+        .from('college_curriculum_units')
+        .select('id')
+        .eq('curriculum_id', id);
+
+      const { data: outcomes } = await supabase
+        .from('college_curriculum_outcomes')
+        .select('id')
+        .eq('curriculum_id', id);
+
+      if (!units || units.length === 0) {
+        return {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Curriculum must have at least one unit before approval',
+          },
+        };
+      }
+
+      if (!outcomes || outcomes.length === 0) {
+        return {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Curriculum must have at least one learning outcome before approval',
+          },
+        };
+      }
+
+      // Validate that every unit has at least one outcome
+      const unitIds = units.map(u => u.id);
+      const { data: detailedOutcomes } = await supabase
+        .from('college_curriculum_outcomes')
+        .select('id, unit_id, assessment_mappings')
+        .eq('curriculum_id', id);
+
+      const outcomesByUnit = (detailedOutcomes || []).reduce((acc, outcome) => {
+        acc[outcome.unit_id] = (acc[outcome.unit_id] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const unitsWithoutOutcomes = unitIds.filter(unitId => !outcomesByUnit[unitId]);
+      if (unitsWithoutOutcomes.length > 0) {
+        // Get unit names for better error message
+        const { data: unitDetails } = await supabase
+          .from('college_curriculum_units')
+          .select('name')
+          .in('id', unitsWithoutOutcomes);
+        
+        const unitNames = unitDetails?.map(u => u.name).join(', ') || 'some units';
+        return {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: `These units need learning outcomes: ${unitNames}`,
+          },
+        };
+      }
+
+      // Validate that every outcome has at least one assessment mapping
+      const outcomesWithoutAssessments = (detailedOutcomes || []).filter(outcome => 
+        !outcome.assessment_mappings || 
+        outcome.assessment_mappings.length === 0 ||
+        JSON.stringify(outcome.assessment_mappings) === '[]'
+      );
+
+      if (outcomesWithoutAssessments.length > 0) {
+        return {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: `${outcomesWithoutAssessments.length} learning outcome(s) need assessment type mappings`,
+          },
+        };
+      }
+
       const { error } = await supabase
-        .from('curriculum')
-        .update({ status: 'approved', approved_by: approvedBy })
+        .from('college_curriculums')
+        .update({ 
+          status: 'approved',
+          approved_by: user.id,
+          approval_date: new Date().toISOString(),
+        })
         .eq('id', id);
 
       if (error) throw error;
 
-      return { success: true, data: undefined };
+      return { success: true };
     } catch (error: any) {
       return {
         success: false,
@@ -169,19 +656,45 @@ export const curriculumService = {
   },
 
   /**
-   * Publish curriculum
+   * Publish curriculum (make it active)
    */
-  async publishCurriculum(id: string): Promise<ApiResponse<void>> {
+  async publishCurriculum(id: string): Promise<{ success: boolean; error?: any }> {
     try {
-      const { error } = await supabase
-        .from('curriculum')
-        .update({ status: 'published' })
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { success: false, error: { message: 'User not authenticated' } };
+      }
+
+      // Check if curriculum is approved
+      const { data: curriculum, error: fetchError } = await supabase
+        .from('college_curriculums')
+        .select('status')
         .eq('id', id)
-        .eq('status', 'approved');
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (curriculum.status !== 'approved') {
+        return {
+          success: false,
+          error: {
+            code: 'INVALID_STATE',
+            message: 'Only approved curriculums can be published',
+          },
+        };
+      }
+
+      const { error } = await supabase
+        .from('college_curriculums')
+        .update({ 
+          status: 'published',
+          published_date: new Date().toISOString(),
+        })
+        .eq('id', id);
 
       if (error) throw error;
 
-      return { success: true, data: undefined };
+      return { success: true };
     } catch (error: any) {
       return {
         success: false,
@@ -194,41 +707,103 @@ export const curriculumService = {
   },
 
   /**
-   * Clone curriculum to new academic year
+   * Clone curriculum from another academic year/semester
    */
-  async cloneCurriculum(id: string, targetYear: string, createdBy: string): Promise<ApiResponse<Curriculum>> {
+  async cloneCurriculum(sourceId: string, targetData: {
+    academic_year: string;
+    semester?: number;
+    department_id?: string;
+    program_id?: string;
+  }): Promise<{ success: boolean; data?: CollegeCurriculum; error?: any }> {
     try {
-      const { data: source, error: fetchError } = await supabase
-        .from('curriculum')
-        .select('*')
-        .eq('id', id)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { success: false, error: { message: 'User not authenticated' } };
+      }
+
+      const collegeId = await getCurrentUserCollegeId();
+      if (!collegeId) {
+        return { success: false, error: { message: 'Unable to determine user college' } };
+      }
+
+      // Get source curriculum with units and outcomes
+      const sourceResult = await this.getCurriculumById(sourceId);
+      if (!sourceResult.success || !sourceResult.data) {
+        return { success: false, error: { message: 'Source curriculum not found' } };
+      }
+
+      const source = sourceResult.data;
+
+      // Create new curriculum
+      const { data: newCurriculum, error: curriculumError } = await supabase
+        .from('college_curriculums')
+        .insert([{
+          college_id: collegeId,
+          department_id: targetData.department_id || source.department_id,
+          program_id: targetData.program_id || source.program_id,
+          course_id: source.course_id,
+          academic_year: targetData.academic_year,
+          status: 'draft',
+          created_by: user.id,
+          cloned_from_id: sourceId,
+          version: 1,
+        }])
+        .select(`
+          *,
+          course:college_courses!college_curriculums_course_id_fkey(course_code, course_name)
+        `)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (curriculumError) throw curriculumError;
 
-      const clonedData = {
-        academic_year: targetYear,
-        department_id: source.department_id,
-        program_id: source.program_id,
-        semester: source.semester,
-        course_id: source.course_id,
-        units: source.units,
-        outcomes: source.outcomes,
-        assessment_mappings: source.assessment_mappings,
-        status: 'draft',
-        version: 1,
-        created_by: createdBy,
+      // Clone units
+      const unitMapping: Record<string, string> = {};
+      for (const unit of source.units) {
+        const { data: newUnit, error: unitError } = await supabase
+          .from('college_curriculum_units')
+          .insert([{
+            curriculum_id: newCurriculum.id,
+            name: unit.name,
+            code: unit.code,
+            description: unit.description,
+            credits: unit.credits,
+            estimated_duration: unit.estimated_duration,
+            duration_unit: unit.duration_unit,
+            order_index: unit.order_index,
+          }])
+          .select()
+          .single();
+
+        if (unitError) throw unitError;
+        unitMapping[unit.id] = newUnit.id;
+      }
+
+      // Clone outcomes
+      for (const outcome of source.outcomes) {
+        const newUnitId = unitMapping[outcome.unit_id];
+        if (newUnitId) {
+          const { error: outcomeError } = await supabase
+            .from('college_curriculum_outcomes')
+            .insert([{
+              curriculum_id: newCurriculum.id,
+              unit_id: newUnitId,
+              outcome_text: outcome.outcome_text,
+              bloom_level: outcome.bloom_level,
+              assessment_mappings: outcome.assessment_mappings,
+            }]);
+
+          if (outcomeError) throw outcomeError;
+        }
+      }
+
+      // Add course details to response
+      const result = {
+        ...newCurriculum,
+        course_code: newCurriculum.course?.course_code,
+        course_name: newCurriculum.course?.course_name,
       };
 
-      const { data: cloned, error } = await supabase
-        .from('curriculum')
-        .insert([clonedData])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return { success: true, data: cloned };
+      return { success: true, data: result };
     } catch (error: any) {
       return {
         success: false,
@@ -241,25 +816,223 @@ export const curriculumService = {
   },
 
   /**
-   * Get curriculum by filters
+   * Export curriculum data in different formats
    */
-  async getCurriculum(filters: {
-    academic_year?: string;
+  async exportCurriculum(id: string, format: 'json' | 'csv' | 'pdf' = 'json'): Promise<{ success: boolean; data?: any; error?: any }> {
+    try {
+      const result = await this.getCurriculumById(id);
+      if (!result.success || !result.data) {
+        return { success: false, error: { message: 'Curriculum not found' } };
+      }
+
+      const curriculum = result.data;
+      
+      if (format === 'csv') {
+        // Format for CSV export
+        const csvData = [];
+        
+        // Header
+        csvData.push([
+          'Unit Order',
+          'Unit Name', 
+          'Unit Code',
+          'Unit Description',
+          'Credits',
+          'Duration',
+          'Learning Outcome',
+          'Bloom Level',
+          'Assessment Types'
+        ]);
+
+        // Data rows
+        curriculum.units.forEach(unit => {
+          const unitOutcomes = curriculum.outcomes.filter(outcome => outcome.unit_id === unit.id);
+          
+          if (unitOutcomes.length === 0) {
+            // Unit without outcomes
+            csvData.push([
+              unit.order_index,
+              unit.name,
+              unit.code || '',
+              unit.description,
+              unit.credits || '',
+              unit.estimated_duration ? `${unit.estimated_duration} ${unit.duration_unit || 'hours'}` : '',
+              '',
+              '',
+              ''
+            ]);
+          } else {
+            // Unit with outcomes
+            unitOutcomes.forEach((outcome, index) => {
+              const assessmentTypes = outcome.assessment_mappings
+                .map((m: any) => `${m.assessmentType}${m.weightage ? ` (${m.weightage}%)` : ''}`)
+                .join('; ');
+                
+              csvData.push([
+                index === 0 ? unit.order_index : '', // Only show unit details on first row
+                index === 0 ? unit.name : '',
+                index === 0 ? (unit.code || '') : '',
+                index === 0 ? unit.description : '',
+                index === 0 ? (unit.credits || '') : '',
+                index === 0 ? (unit.estimated_duration ? `${unit.estimated_duration} ${unit.duration_unit || 'hours'}` : '') : '',
+                outcome.outcome_text,
+                outcome.bloom_level || '',
+                assessmentTypes
+              ]);
+            });
+          }
+        });
+
+        return { success: true, data: { format: 'csv', content: csvData } };
+      }
+      
+      // Default JSON format
+      const exportData = {
+        curriculum: {
+          course_code: curriculum.course_code,
+          course_name: curriculum.course_name,
+          department: curriculum.department_name,
+          program: curriculum.program_name,
+          semester: curriculum.semester,
+          academic_year: curriculum.academic_year,
+          status: curriculum.status,
+          created_at: curriculum.created_at,
+        },
+        units: curriculum.units.map(unit => ({
+          name: unit.name,
+          code: unit.code,
+          description: unit.description,
+          credits: unit.credits,
+          estimated_duration: unit.estimated_duration,
+          duration_unit: unit.duration_unit,
+          order: unit.order_index,
+        })),
+        learning_outcomes: curriculum.outcomes.map(outcome => ({
+          unit_name: curriculum.units.find(u => u.id === outcome.unit_id)?.name,
+          outcome_text: outcome.outcome_text,
+          bloom_level: outcome.bloom_level,
+          assessment_mappings: outcome.assessment_mappings,
+        })),
+        export_metadata: {
+          exported_at: new Date().toISOString(),
+          total_units: curriculum.units.length,
+          total_outcomes: curriculum.outcomes.length,
+          total_credits: curriculum.units.reduce((sum, unit) => sum + (unit.credits || 0), 0),
+        }
+      };
+
+      return { success: true, data: exportData };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'EXPORT_ERROR',
+          message: error.message || 'Failed to export curriculum',
+        },
+      };
+    }
+  },
+
+  /**
+   * Get curriculums available for cloning
+   */
+  async getCurriculumsForCloning(filters: {
     department_id?: string;
     program_id?: string;
-    semester?: number;
-    course_id?: string;
-    status?: string;
-  }): Promise<ApiResponse<Curriculum[]>> {
+    course_code?: string;
+    exclude_academic_year?: string;
+  } = {}): Promise<{ success: boolean; data?: CurriculumWithDetails[]; error?: any }> {
     try {
-      let query = supabase.from('curriculum').select('*');
+      const collegeId = await getCurrentUserCollegeId();
+      if (!collegeId) {
+        return { success: false, error: { message: 'Unable to determine user college' } };
+      }
 
-      if (filters.academic_year) query = query.eq('academic_year', filters.academic_year);
+      let query = supabase
+        .from('college_curriculums')
+        .select(`
+          *,
+          departments!inner(name),
+          programs!inner(name)
+        `)
+        .eq('college_id', collegeId)
+        .in('status', ['published', 'approved']); // Only allow cloning from published/approved curriculums
+
       if (filters.department_id) query = query.eq('department_id', filters.department_id);
       if (filters.program_id) query = query.eq('program_id', filters.program_id);
-      if (filters.semester) query = query.eq('semester', filters.semester);
-      if (filters.course_id) query = query.eq('course_id', filters.course_id);
-      if (filters.status) query = query.eq('status', filters.status);
+      if (filters.course_code) query = query.eq('course_code', filters.course_code);
+      if (filters.exclude_academic_year) query = query.neq('academic_year', filters.exclude_academic_year);
+
+      const { data: curriculums, error } = await query.order('academic_year', { ascending: false });
+
+      if (error) throw error;
+
+      // Transform data
+      const result: CurriculumWithDetails[] = (curriculums || []).map(curriculum => ({
+        ...curriculum,
+        units: [],
+        outcomes: [],
+        department_name: curriculum.departments?.name,
+        program_name: curriculum.programs?.name,
+      }));
+
+      return { success: true, data: result };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'FETCH_ERROR',
+          message: error.message || 'Failed to fetch curriculums for cloning',
+        },
+      };
+    }
+  },
+
+  /**
+   * Get departments for current user's college
+   */
+  async getDepartments(): Promise<{ success: boolean; data?: any[]; error?: any }> {
+    try {
+      const collegeId = await getCurrentUserCollegeId();
+      if (!collegeId) {
+        return { success: false, error: { message: 'Unable to determine user college' } };
+      }
+
+      const { data, error } = await supabase
+        .from('departments')
+        .select('id, name, code')
+        .eq('college_id', collegeId)
+        .eq('status', 'active')
+        .order('name');
+
+      if (error) throw error;
+
+      return { success: true, data: data || [] };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'FETCH_ERROR',
+          message: error.message || 'Failed to fetch departments',
+        },
+      };
+    }
+  },
+
+  /**
+   * Get programs for a department
+   */
+  async getPrograms(departmentId?: string): Promise<{ success: boolean; data?: any[]; error?: any }> {
+    try {
+      let query = supabase
+        .from('programs')
+        .select('id, name, code, department_id')
+        .eq('status', 'active')
+        .order('name');
+
+      if (departmentId) {
+        query = query.eq('department_id', departmentId);
+      }
 
       const { data, error } = await query;
 
@@ -271,36 +1044,163 @@ export const curriculumService = {
         success: false,
         error: {
           code: 'FETCH_ERROR',
-          message: error.message || 'Failed to fetch curriculum',
+          message: error.message || 'Failed to fetch programs',
         },
       };
     }
   },
 
   /**
-   * Export curriculum as JSON
+   * Get courses for a specific program and semester
    */
-  async exportCurriculum(id: string): Promise<ApiResponse<Blob>> {
+  async getCourses(programId: string, semester: number): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
       const { data, error } = await supabase
-        .from('curriculum')
-        .select('*')
-        .eq('id', id)
-        .single();
+        .from('college_course_mappings')
+        .select(`
+          id, 
+          offering_type,
+          course:college_courses(
+            id,
+            course_code, 
+            course_name, 
+            credits,
+            course_type
+          )
+        `)
+        .eq('program_id', programId)
+        .eq('semester', semester);
 
       if (error) throw error;
 
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      // Transform data to match expected format
+      const transformedData = (data || []).map(mapping => ({
+        id: mapping.course?.id, // Use the actual course ID, not the mapping ID
+        mapping_id: mapping.id, // Keep mapping ID for reference
+        course_code: mapping.course?.course_code,
+        course_name: mapping.course?.course_name,
+        credits: mapping.course?.credits,
+        type: mapping.offering_type,
+        course_type: mapping.course?.course_type
+      }));
 
-      return { success: true, data: blob };
+      return { success: true, data: transformedData };
     } catch (error: any) {
       return {
         success: false,
         error: {
-          code: 'EXPORT_ERROR',
-          message: error.message || 'Failed to export curriculum',
+          code: 'FETCH_ERROR',
+          message: error.message || 'Failed to fetch courses',
         },
       };
     }
+  },
+
+  /**
+   * Get available semesters for a program
+   */
+  async getSemesters(programId: string): Promise<{ success: boolean; data?: number[]; error?: any }> {
+    try {
+      const { data, error } = await supabase
+        .from('college_course_mappings')
+        .select('semester')
+        .eq('program_id', programId)
+        .order('semester');
+
+      if (error) throw error;
+
+      // Get unique semesters
+      const uniqueSemesters = [...new Set((data || []).map(item => item.semester))];
+      
+      return { success: true, data: uniqueSemesters };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'FETCH_ERROR',
+          message: error.message || 'Failed to fetch semesters',
+        },
+      };
+    }
+  },
+
+  /**
+   * Get assessment types for current user's college
+   */
+  async getAssessmentTypes(): Promise<{ success: boolean; data?: any[]; error?: any }> {
+    try {
+      const collegeId = await getCurrentUserCollegeId();
+      if (!collegeId) {
+        return { success: false, error: { message: 'Unable to determine user college' } };
+      }
+
+      // Get college-specific and global assessment types
+      const { data, error } = await supabase
+        .from('assessment_types')
+        .select('id, name, description, is_active, institution_id, institution_type')
+        .or(`and(institution_id.eq.${collegeId},institution_type.eq.college),institution_id.is.null`)
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+
+      return { success: true, data: data || [] };
+    } catch (error: any) {
+      // If the complex query fails, try a simpler approach
+      try {
+        const collegeId = await getCurrentUserCollegeId();
+        if (!collegeId) {
+          return { success: false, error: { message: 'Unable to determine user college' } };
+        }
+
+        const { data: collegeTypes, error: collegeError } = await supabase
+          .from('assessment_types')
+          .select('id, name, description, is_active')
+          .eq('institution_id', collegeId)
+          .eq('institution_type', 'college')
+          .eq('is_active', true);
+
+        const { data: globalTypes, error: globalError } = await supabase
+          .from('assessment_types')
+          .select('id, name, description, is_active')
+          .is('institution_id', null)
+          .eq('is_active', true);
+
+        if (collegeError && globalError) {
+          throw new Error('Failed to fetch assessment types');
+        }
+
+        const combinedData = [
+          ...(collegeTypes || []),
+          ...(globalTypes || [])
+        ].sort((a, b) => a.name.localeCompare(b.name));
+
+        return { success: true, data: combinedData };
+      } catch (fallbackError: any) {
+        return {
+          success: false,
+          error: {
+            code: 'FETCH_ERROR',
+            message: fallbackError.message || 'Failed to fetch assessment types',
+          },
+        };
+      }
+    }
+  },
+
+  /**
+   * Generate academic years
+   */
+  getAcademicYears(): string[] {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    
+    for (let i = -1; i <= 2; i++) {
+      const startYear = currentYear + i;
+      const endYear = startYear + 1;
+      years.push(`${startYear}-${endYear}`);
+    }
+    
+    return years;
   },
 };

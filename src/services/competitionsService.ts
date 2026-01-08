@@ -50,6 +50,7 @@ export interface CompetitionResult {
 async function getCurrentUserSchoolId(): Promise<string | null> {
     try {
         const userEmail = localStorage.getItem('userEmail');
+        console.log('🔍 [CompetitionsService] Getting school ID for user:', userEmail);
         if (!userEmail) return null;
 
         // Try school_educators first
@@ -60,19 +61,26 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
             .maybeSingle();
 
         if (educatorData?.school_id) {
+            console.log('✅ [CompetitionsService] Found school ID from school_educators:', educatorData.school_id);
             return educatorData.school_id;
         }
 
-        // Try schools table (for admins)
+        // Try schools table (for admins) - check both email and principal_email
         const { data: schoolData } = await supabase
             .from('schools')
             .select('id')
-            .eq('principal_email', userEmail)
+            .or(`email.eq.${userEmail},principal_email.eq.${userEmail}`)
             .maybeSingle();
 
-        return schoolData?.id || null;
+        if (schoolData?.id) {
+            console.log('✅ [CompetitionsService] Found school ID from schools table:', schoolData.id);
+            return schoolData.id;
+        }
+
+        console.log('❌ [CompetitionsService] No school ID found for user:', userEmail);
+        return null;
     } catch (error) {
-        console.error('Error getting school_id:', error);
+        console.error('❌ [CompetitionsService] Error getting school_id:', error);
         return null;
     }
 }
@@ -94,11 +102,11 @@ async function getCurrentUserInfo(): Promise<{ type: 'educator' | 'admin', id: s
             return { type: 'educator', id: educatorData.id };
         }
 
-        // Check if admin
+        // Check if admin - check both email and principal_email
         const { data: schoolData } = await supabase
             .from('schools')
             .select('id')
-            .eq('principal_email', userEmail)
+            .or(`email.eq.${userEmail},principal_email.eq.${userEmail}`)
             .maybeSingle();
 
         if (schoolData?.id) {
@@ -274,17 +282,22 @@ export async function registerForCompetition(
 // Get competition registrations
 export async function getCompetitionRegistrations(compId: string): Promise<CompetitionRegistration[]> {
     try {
+        console.log('🔍 [CompetitionsService] Fetching registrations for competition:', compId);
         const { data, error } = await supabase
             .from('competition_registrations')
             .select('*')
             .eq('comp_id', compId)
             .order('registration_date', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ [CompetitionsService] Error fetching registrations:', error);
+            throw error;
+        }
 
+        console.log('📋 [CompetitionsService] Found registrations:', data?.length || 0, data);
         return data || [];
     } catch (error) {
-        console.error('Error fetching registrations:', error);
+        console.error('❌ [CompetitionsService] Error fetching registrations:', error);
         throw error;
     }
 }
@@ -444,15 +457,31 @@ export async function updateCompetition(
 
         // Update participating clubs if provided
         if (updateData.participatingClubs !== undefined) {
-            // Delete existing club associations
-            await supabase
+            // Get current participating clubs
+            const { data: currentClubs } = await supabase
                 .from('competition_clubs')
-                .delete()
+                .select('club_id')
                 .eq('comp_id', compId);
 
-            // Add new club associations
-            if (updateData.participatingClubs.length > 0) {
-                const clubRecords = updateData.participatingClubs.map(clubId => ({
+            const currentClubIds = new Set(currentClubs?.map(c => c.club_id) || []);
+            const newClubIds = new Set(updateData.participatingClubs);
+
+            // Find clubs to remove and clubs to add
+            const clubsToRemove = [...currentClubIds].filter(id => !newClubIds.has(id));
+            const clubsToAdd = [...newClubIds].filter(id => !currentClubIds.has(id));
+
+            // Remove clubs that are no longer participating
+            if (clubsToRemove.length > 0) {
+                await supabase
+                    .from('competition_clubs')
+                    .delete()
+                    .eq('comp_id', compId)
+                    .in('club_id', clubsToRemove);
+            }
+
+            // Add new participating clubs
+            if (clubsToAdd.length > 0) {
+                const clubRecords = clubsToAdd.map(clubId => ({
                     comp_id: compId,
                     club_id: clubId,
                     registered_by_type: userInfo.type,

@@ -1,8 +1,7 @@
+import { Download, FileText, Save } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, FileText, Save } from 'lucide-react';
 import { usePortfolio } from '../../../context/PortfolioContext';
-import ThemeToggle from '../../../components/digital-pp/ThemeToggle';
 import { exportAsJSON, exportResume } from '../../../utils/exportppUtils';
 
 const ExportSettings: React.FC = () => {
@@ -102,27 +101,6 @@ const ExportSettings: React.FC = () => {
           <button onClick={() => setExportError(null)} className="ml-2 hover:bg-red-700 rounded px-2">×</button>
         </div>
       )}
-
-      {/* Header */}
-      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                type="button"
-                onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
-                className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 mr-2" />
-                Back
-              </button>
-              <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Export & Download</h1>
-            </div>
-            <ThemeToggle />
-          </div>
-        </div>
-      </div>
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto p-8">

@@ -4,10 +4,13 @@ import { supabase } from "../../../../lib/supabaseClient";
 import { FeeStructure, StudentFeeSummary } from "./types";
 import { useFeeStructures } from "./hooks/useFeeStructures";
 import { useFeeTracking } from "./hooks/useFeeTracking";
+import { useDepartmentBudgets } from "./hooks/useDepartmentBudgets";
 import { usePrograms } from "./hooks/usePrograms";
 import { FeeStructureTab } from "./components/FeeStructureTab";
 import { FeeStructureFormModal } from "./components/FeeStructureFormModal";
 import { FeeTrackingTab } from "./components/FeeTrackingTab";
+import { DepartmentBudgetsTab } from "./components/DepartmentBudgetsTab";
+import { ExpenditureReportsTab } from "./components/ExpenditureReportsTab";
 import { PaymentFormModal } from "./components/PaymentFormModal";
 import { StudentLedgerModal } from "./components/StudentLedgerModal";
 
@@ -28,26 +31,78 @@ const FinanceModule: React.FC = () => {
   const [isLedgerModalOpen, setIsLedgerModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentFeeSummary | null>(null);
 
-  // Fetch college ID
+  // Fetch college ID for fee structures and programs (still needed for those hooks)
   useEffect(() => {
     const fetchCollegeId = async () => {
       try {
+        console.log('🚀 [Finance] Fetching college ID...');
+        
+        // First, check if user is logged in via AuthContext (for college admins)
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const userData = JSON.parse(storedUser);
+            console.log('📦 Found user in localStorage:', userData.email, 'role:', userData.role);
+            
+            if (userData.role === 'college_admin' && userData.collegeId) {
+              console.log('✅ College admin detected, using collegeId from localStorage:', userData.collegeId);
+              setCollegeId(userData.collegeId);
+              return;
+            }
+          } catch (e) {
+            console.error('Error parsing stored user:', e);
+          }
+        }
+        
+        // If not found in localStorage, try Supabase Auth
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: college } = await supabase.from("colleges").select("id").eq("created_by", user.id).single();
-          if (college?.id) { setCollegeId(college.id); return; }
+          console.log('🔍 Checking Supabase auth user:', user.email);
+          
+          // Check for college admin by matching deanEmail
+          const { data: college } = await supabase
+            .from('colleges')
+            .select('id, name, deanEmail')
+            .ilike('deanEmail', user.email || '')
+            .single();
+          
+          if (college?.id) {
+            console.log('✅ Found college_id for college admin:', college.id, 'College:', college.name);
+            setCollegeId(college.id);
+            return;
+          }
+          
+          // Fallback methods
+          const { data: createdCollege } = await supabase.from("colleges").select("id").eq("created_by", user.id).single();
+          if (createdCollege?.id) { 
+            console.log('✅ Found college via created_by:', createdCollege.id);
+            setCollegeId(createdCollege.id); 
+            return; 
+          }
+          
           const { data: lecturer } = await supabase.from("college_lecturers").select("collegeId").or(`userId.eq.${user.id},user_id.eq.${user.id}`).single();
-          if (lecturer?.collegeId) { setCollegeId(lecturer.collegeId); return; }
-          if (user.user_metadata?.college_id) setCollegeId(user.user_metadata.college_id);
+          if (lecturer?.collegeId) { 
+            console.log('✅ Found college via lecturer:', lecturer.collegeId);
+            setCollegeId(lecturer.collegeId); 
+            return; 
+          }
+          
+          if (user.user_metadata?.college_id) {
+            console.log('✅ Found college in user metadata:', user.user_metadata.college_id);
+            setCollegeId(user.user_metadata.college_id);
+          }
         }
-      } catch (error) { console.error("Error fetching college ID:", error); }
+      } catch (error) { 
+        console.error("Error fetching college ID:", error); 
+      }
     };
     fetchCollegeId();
   }, []);
 
   // Hooks
   const feeStructuresHook = useFeeStructures(collegeId);
-  const feeTrackingHook = useFeeTracking(collegeId);
+  const feeTrackingHook = useFeeTracking();
+  const departmentBudgetsHook = useDepartmentBudgets();
   const { programs, departments } = usePrograms(collegeId);
 
   // Stats for display
@@ -159,22 +214,15 @@ const FinanceModule: React.FC = () => {
         )}
 
         {activeTab === "budgets" && (
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Department Budgets</h2>
-            <p className="text-gray-600 mb-4">Manage budget allocation, approval, and usage tracking for departments.</p>
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-              <p className="text-sm text-blue-700">
-                Budget allocation allows you to define and track departmental budgets for various expense categories.
-              </p>
-            </div>
-          </div>
+          <DepartmentBudgetsTab
+            budgets={departmentBudgetsHook.budgets}
+            loading={departmentBudgetsHook.loading}
+            stats={departmentBudgetsHook.stats}
+          />
         )}
 
         {activeTab === "expenditure" && (
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Expenditure Reports</h2>
-            <p className="text-gray-600">Track vendor details, amounts, invoice uploads, and planned vs actual expenditure.</p>
-          </div>
+          <ExpenditureReportsTab />
         )}
       </div>
 

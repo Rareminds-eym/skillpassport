@@ -6,7 +6,6 @@ export interface Env {
   SUPABASE_SERVICE_ROLE_KEY: string;
   VITE_OPENROUTER_API_KEY: string;
   OPENROUTER_API_KEY?: string; // Alternative key name
-  EMBEDDING_SERVICE_URL?: string;
 }
 
 export interface ChatRequest {

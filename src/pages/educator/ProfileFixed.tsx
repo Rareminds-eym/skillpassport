@@ -11,6 +11,7 @@ import {
   BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
 import { supabase } from '../../lib/supabaseClient';
+import { getDocumentUrl } from '../../services/fileUploadService';
 
 interface EducatorProfile {
   id: string;
@@ -61,6 +62,34 @@ const ProfileFixed = () => {
   const [formData, setFormData] = useState<Partial<EducatorProfile>>({});
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
+
+  // Helper function to safely get document URL
+  const getSafeDocumentUrl = (url: string | undefined | null): string | null => {
+    if (!url || url.trim() === '' || url === 'null') {
+      return null;
+    }
+    
+    // If it's already a full URL, use the proxy
+    if (url.startsWith('http')) {
+      return getDocumentUrl(url, 'inline');
+    }
+    
+    // If it's a relative path, construct the full URL first
+    return getDocumentUrl(url, 'inline');
+  };
+
+  // Helper function to check if URL is valid
+  const isValidUrl = (url: string | undefined | null): boolean => {
+    if (!url || url.trim() === '' || url === 'null') {
+      return false;
+    }
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   // Stable function to get user email
   const getUserEmail = useCallback(() => {
@@ -404,17 +433,17 @@ const ProfileFixed = () => {
           {/* Profile Header */}
           <div className="flex items-center space-x-6 mb-8">
             <div className="relative">
-              {profile.photo_url ? (
+              {profile.photo_url && getSafeDocumentUrl(profile.photo_url) ? (
                 <div className="relative">
                   <img
-                    src={profile.photo_url}
+                    src={getSafeDocumentUrl(profile.photo_url) || ''}
                     alt={profile.full_name || 'Profile Photo'}
                     className="h-24 w-24 rounded-full object-cover border-2 border-gray-200 shadow-sm"
                     onError={(e) => {
                       // Fallback to icon if image fails to load
                       console.log('Photo failed to load, showing fallback');
-                      e.target.style.display = 'none';
-                      const fallback = e.target.parentNode.nextSibling;
+                      e.currentTarget.style.display = 'none';
+                      const fallback = e.currentTarget.parentNode?.nextElementSibling as HTMLElement;
                       if (fallback) fallback.style.display = 'block';
                     }}
                   />
@@ -476,16 +505,17 @@ const ProfileFixed = () => {
                           Enter a direct URL to your profile photo (JPG, PNG, etc.)
                         </p>
                       </div>
-                      {formData.photo_url && (
+                      {formData.photo_url && isValidUrl(formData.photo_url) && (
                         <div className="flex-shrink-0">
                           <p className="text-xs text-gray-500 mb-1">Preview:</p>
                           <img
-                            src={formData.photo_url}
+                            src={getSafeDocumentUrl(formData.photo_url) || ''}
                             alt="Photo preview"
                             className="h-16 w-16 rounded-full object-cover border-2 border-gray-200"
                             onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.nextSibling.style.display = 'block';
+                              e.currentTarget.style.display = 'none';
+                              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'block';
                             }}
                           />
                           <div className="h-16 w-16 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center hidden">
@@ -880,8 +910,20 @@ const ProfileFixed = () => {
                     />
                   ) : (
                     <span className="text-gray-900 font-medium">
-                      {profile.resume_url ? (
-                        <a href={profile.resume_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                      {profile.resume_url && isValidUrl(profile.resume_url) ? (
+                        <a 
+                          href={getSafeDocumentUrl(profile.resume_url) || '#'} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-600 hover:underline"
+                          onClick={(e) => {
+                            const url = getSafeDocumentUrl(profile.resume_url);
+                            if (!url) {
+                              e.preventDefault();
+                              alert('Document URL is not available');
+                            }
+                          }}
+                        >
                           View Resume
                         </a>
                       ) : (
@@ -907,8 +949,20 @@ const ProfileFixed = () => {
                     />
                   ) : (
                     <span className="text-gray-900 font-medium">
-                      {profile.id_proof_url ? (
-                        <a href={profile.id_proof_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                      {profile.id_proof_url && isValidUrl(profile.id_proof_url) ? (
+                        <a 
+                          href={getSafeDocumentUrl(profile.id_proof_url) || '#'} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-600 hover:underline"
+                          onClick={(e) => {
+                            const url = getSafeDocumentUrl(profile.id_proof_url);
+                            if (!url) {
+                              e.preventDefault();
+                              alert('Document URL is not available');
+                            }
+                          }}
+                        >
                           View ID Proof
                         </a>
                       ) : (
@@ -934,8 +988,20 @@ const ProfileFixed = () => {
                     />
                   ) : (
                     <span className="text-gray-900 font-medium">
-                      {profile.photo_url ? (
-                        <a href={profile.photo_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                      {profile.photo_url && isValidUrl(profile.photo_url) ? (
+                        <a 
+                          href={getSafeDocumentUrl(profile.photo_url) || '#'} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-600 hover:underline"
+                          onClick={(e) => {
+                            const url = getSafeDocumentUrl(profile.photo_url);
+                            if (!url) {
+                              e.preventDefault();
+                              alert('Photo URL is not available');
+                            }
+                          }}
+                        >
                           View Photo
                         </a>
                       ) : (

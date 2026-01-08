@@ -1,8 +1,7 @@
+import { motion } from 'framer-motion';
+import { ArrowRight, BookOpen, CheckCircle, Sparkles, User } from 'lucide-react';
 import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowRight, Sparkles, CheckCircle, User, BookOpen } from 'lucide-react';
-import Navbar from '../../components/digital-pp/ui/navbar/Navbar';
 import { BackgroundRippleEffect } from '../../components/digital-pp/ui/background-ripple-effect';
 import { usePortfolio } from '../../context/PortfolioContext';
 
@@ -19,7 +18,6 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
-      <Navbar />
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-6 min-h-[90vh] flex items-center justify-center overflow-hidden">

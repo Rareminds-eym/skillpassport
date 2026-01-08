@@ -184,56 +184,73 @@ export const CareerPathEffect = ({
         <div
             ref={containerRef}
             className={cn(
-                "relative min-h-screen w-full overflow-hidden",
+                "relative w-full overflow-hidden mb-8",
                 className
             )}
         >
-            {/* Background gradient */}
-            <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900" />
-            
-            {/* Animated path background */}
-            <div className="absolute inset-0 opacity-60">
-                <CareerPathSVG pathLengths={pathLengths} />
-            </div>
+            {/* Main Card - Light Glass (matching ReportHeader) */}
+            <div className="relative w-full rounded-xl overflow-hidden bg-white backdrop-blur-xl shadow-lg">
+                {/* Subtle gradient overlay */}
+                <div 
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.03), transparent 50%, rgba(147, 197, 253, 0.03))'
+                    }}
+                />
 
-            {/* Grid pattern overlay */}
-            <div 
-                className="absolute inset-0 opacity-10"
-                style={{
-                    backgroundImage: `
-                        linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
-                    `,
-                    backgroundSize: '50px 50px'
-                }}
-            />
+                {/* Header Section - Dark gradient like ReportHeader */}
+                <div className="relative p-6 md:p-8 bg-gradient-to-r from-slate-800 to-slate-700">
+                    {/* Animated path background (subtle) */}
+                    <div className="absolute inset-0 opacity-30 overflow-hidden">
+                        <CareerPathSVG pathLengths={pathLengths} />
+                    </div>
+                    
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6 }}
+                        viewport={{ once: true }}
+                        className="relative z-10"
+                    >
+                        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
+                            {title}
+                        </h2>
+                        {/* Animated Gradient Underline */}
+                        <div className="relative h-[2px] w-40 md:w-56 mb-2 rounded-full overflow-hidden">
+                            <div 
+                                className="absolute inset-0 rounded-full"
+                                style={{
+                                    background: 'linear-gradient(90deg, #1E3A8A, #3B82F6, #60A5FA, #93C5FD, #BFDBFE)',
+                                    backgroundSize: '200% 100%',
+                                    animation: 'shimmer 3s linear infinite'
+                                }}
+                            />
+                        </div>
+                        <p className="text-slate-300 text-sm md:text-base">
+                            {description}
+                        </p>
+                    </motion.div>
+                </div>
 
-            {/* Content */}
-            <div className="relative z-10 py-20">
-                {/* Header */}
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8 }}
-                    viewport={{ once: true }}
-                    className="text-center mb-16 px-4"
-                >
-                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
-                        {title}
-                    </h2>
-                    <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-                        {description}
-                    </p>
-                </motion.div>
-
-                {/* Career cards container */}
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    {children}
+                {/* Career cards container - Light background like ReportHeader info section */}
+                <div className="relative px-6 md:px-8 py-6 bg-gray-50">
+                    <div className="max-w-7xl mx-auto">
+                        {children}
+                    </div>
                 </div>
             </div>
 
-            {/* Bottom fade */}
-            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-slate-50 to-transparent" />
+            {/* Keyframes for animations */}
+            <style>{`
+                @keyframes shimmer {
+                    0% {
+                        background-position: 200% 0;
+                    }
+                    100% {
+                        background-position: -200% 0;
+                    }
+                }
+            `}</style>
         </div>
     );
 };

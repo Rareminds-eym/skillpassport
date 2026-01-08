@@ -98,8 +98,8 @@ const Courses: React.FC = () => {
 
       // Check if educator is part of a college
       const { data: collegeEducator, error: collegeError } = await supabase
-        .from('college_educators')
-        .select('college_id, colleges(name)')
+        .from('college_lecturers')
+        .select('collegeId, colleges(name)')
         .eq('user_id', educatorId)
         .maybeSingle();
 

@@ -150,42 +150,42 @@ const Dashboard: React.FC = () => {
       title: "Department Management",
       description: "Manage departments & faculty",
       icon: Building2,
-      color: "bg-blue-500",
+      color: "bg-blue-50 text-blue-600",
       route: "/college-admin/departments/management",
     },
     {
       title: "Student Admissions",
       description: "Process new admissions",
       icon: Users,
-      color: "bg-purple-500",
+      color: "bg-blue-50 text-blue-600",
       route: "/college-admin/students/data-management",
     },
     {
       title: "Attendance Tracking",
       description: "View attendance reports",
       icon: CheckCircle,
-      color: "bg-green-500",
+      color: "bg-blue-50 text-blue-600",
       route: "/college-admin/students/attendance",
     },
     {
       title: "Course Mapping",
       description: "Map courses to programs",
       icon: BookOpen,
-      color: "bg-orange-500",
+      color: "bg-blue-50 text-blue-600",
       route: "/college-admin/departments/mapping",
     },
     {
       title: "Exam Management",
       description: "Schedule & manage exams",
       icon: FileText,
-      color: "bg-red-500",
+      color: "bg-blue-50 text-blue-600",
       route: "/college-admin/examinations",
     },
     {
       title: "Placement Dashboard",
       description: "Track placement activities",
       icon: Briefcase,
-      color: "bg-indigo-500",
+      color: "bg-blue-50 text-blue-600",
       route: "/college-admin/placements",
     },
   ];
@@ -204,7 +204,7 @@ const Dashboard: React.FC = () => {
               Overview of institutional performance and program analytics
             </p>
           </div>
-          <div className="flex gap-2">
+          {/* <div className="flex gap-2">
             <button
               onClick={() => setFilterOpen(!filterOpen)}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
@@ -216,7 +216,7 @@ const Dashboard: React.FC = () => {
               <Download className="h-4 w-4" />
               <span className="text-sm font-medium">Export PDF</span>
             </button>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -239,7 +239,7 @@ const Dashboard: React.FC = () => {
                 onClick={() => navigate(action.route)}
                 className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 transition group"
               >
-                <div className={`${action.color} p-3 rounded-lg text-white group-hover:scale-110 transition`}>
+                <div className={`${action.color} p-3 rounded-lg group-hover:scale-110 transition`}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <div className="text-left">

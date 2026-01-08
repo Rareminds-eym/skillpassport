@@ -1,67 +1,71 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    ChevronRight,
-    ChevronLeft,
-    CheckCircle2,
-    BrainCircuit,
-    Heart,
-    Target,
-    Clock,
     AlertCircle,
+    ArrowLeft,
     Award,
+    BarChart3,
+    BookOpen,
+    Brain,
+    BrainCircuit,
+    CheckCircle2,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    Code,
+    FlaskConical,
+    Heart,
+    Loader2,
+    Target,
     TrendingUp,
     Users,
-    Code,
-    Zap,
-    Loader2,
-    ArrowLeft,
-    FlaskConical,
-    BarChart3,
-    BookOpen
+    Zap
 } from 'lucide-react';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 import { Label } from '../../components/Students/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 
 // Import question banks (fallback for offline/legacy mode)
-import { riasecQuestions as fallbackRiasecQuestions } from './assessment-data/riasecQuestions';
-import { getAllAptitudeQuestions, getModuleQuestionIndex, aptitudeModules } from './assessment-data/aptitudeQuestions';
+import { aptitudeModules, getModuleQuestionIndex } from './assessment-data/aptitudeQuestions';
 import { bigFiveQuestions as fallbackBigFiveQuestions } from './assessment-data/bigFiveQuestions';
-import { workValuesQuestions as fallbackWorkValuesQuestions } from './assessment-data/workValuesQuestions';
 import { employabilityQuestions as fallbackEmployabilityQuestions, getCurrentEmployabilityModule } from './assessment-data/employabilityQuestions';
-import { streamKnowledgeQuestions as fallbackStreamKnowledgeQuestions } from './assessment-data/streamKnowledgeQuestions';
 import {
-    interestExplorerQuestions,
-    strengthsCharacterQuestions,
-    learningPreferencesQuestions,
-    strengthsRatingScale,
-    highSchoolInterestQuestions,
-    highSchoolStrengthsQuestions,
-    highSchoolLearningQuestions,
-    highSchoolAptitudeQuestions,
+    aptitudeRatingScale,
     highSchoolRatingScale,
-    aptitudeRatingScale
+    strengthsRatingScale
 } from './assessment-data/middleSchoolQuestions';
+import { riasecQuestions as fallbackRiasecQuestions } from './assessment-data/riasecQuestions';
+import { workValuesQuestions as fallbackWorkValuesQuestions } from './assessment-data/workValuesQuestions';
 
 // Import Gemini assessment service
 import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentService';
 
 // Import AI question generation service for Aptitude & Knowledge
-import { loadCareerAssessmentQuestions, STREAM_KNOWLEDGE_PROMPTS } from '../../services/careerAssessmentAIService';
+import { loadCareerAssessmentQuestions, STREAM_KNOWLEDGE_PROMPTS, normalizeStreamId } from '../../services/careerAssessmentAIService';
 
 // Import database services
-import { useAssessment } from '../../hooks/useAssessment';
 import { useAuth } from '../../context/AuthContext';
+import { useAssessment } from '../../hooks/useAssessment';
 import * as assessmentService from '../../services/assessmentService';
+
+// Import adaptive aptitude hook for integrated adaptive testing
+import { useAdaptiveAptitude } from '../../hooks/useAdaptiveAptitude';
 
 import { supabase } from '../../lib/supabaseClient';
 
 // Helper function to determine grade level from student's grade
 const getGradeLevelFromGrade = (grade) => {
     if (!grade) return null;
+    
+    // Handle program-based grades (UG, PG, Diploma, etc.)
+    const upperGrade = grade.toUpperCase();
+    if (upperGrade === 'UG' || upperGrade === 'UNDERGRADUATE') return 'after12';
+    if (upperGrade === 'PG' || upperGrade === 'POSTGRADUATE') return 'after12'; // Post-graduation also uses after12 assessment
+    if (upperGrade === 'DIPLOMA') return 'after10'; // Diploma can be after 10th
+    if (upperGrade === 'CERTIFICATE') return 'after12';
+    
     const gradeNum = parseInt(grade, 10);
     if (isNaN(gradeNum)) {
         // Handle non-numeric grades like "12th", "10th"
@@ -69,12 +73,14 @@ const getGradeLevelFromGrade = (grade) => {
         if (match) {
             const num = parseInt(match[1], 10);
             if (num >= 6 && num <= 8) return 'middle';
-            if (num >= 9 && num <= 12) return 'highschool';
+            if (num >= 9 && num <= 10) return 'highschool';
+            if (num >= 11 && num <= 12) return 'higher_secondary';
         }
         return null;
     }
     if (gradeNum >= 6 && gradeNum <= 8) return 'middle';
-    if (gradeNum >= 9 && gradeNum <= 12) return 'highschool';
+    if (gradeNum >= 9 && gradeNum <= 10) return 'highschool';
+    if (gradeNum >= 11 && gradeNum <= 12) return 'higher_secondary';
     return null;
 };
 
@@ -90,7 +96,8 @@ const AssessmentTest = () => {
         saveResponse: saveDbResponse,
         updateProgress,
         completeAssessment,
-        checkInProgressAttempt
+        checkInProgressAttempt,
+        studentRecordId
     } = useAssessment();
 
     // State for questions loaded from database
@@ -107,7 +114,7 @@ const AssessmentTest = () => {
     const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [answers, setAnswers] = useState({});
-    const [gradeLevel, setGradeLevel] = useState(null); // 'middle' (6-8), 'highschool' (9-12), 'after12' (After 12th), or 'college'
+    const [gradeLevel, setGradeLevel] = useState(null); // 'middle' (6-8), 'highschool' (9-10), 'higher_secondary' (11-12), 'after12' (After 12th), or 'college'
     const [showGradeSelection, setShowGradeSelection] = useState(false); // Show grade level selection first
     const [studentStream, setStudentStream] = useState(null);
     const [showStreamSelection, setShowStreamSelection] = useState(false); // Start false, set true after check
@@ -125,6 +132,12 @@ const AssessmentTest = () => {
     const [aptitudeQuestionTimer, setAptitudeQuestionTimer] = useState(60); // Per-question timer for first 30 aptitude questions
     const [aptitudePhase, setAptitudePhase] = useState('individual'); // 'individual' for first 30, 'shared' for last 20
     
+    // Adaptive Aptitude Test state (for high school 5th section)
+    const [adaptiveAptitudeAnswer, setAdaptiveAptitudeAnswer] = useState(null);
+    const [adaptiveQuestionStartTime, setAdaptiveQuestionStartTime] = useState(null);
+    const [adaptiveQuestionTimer, setAdaptiveQuestionTimer] = useState(90); // 90 seconds per question
+    const ADAPTIVE_QUESTION_TIME_LIMIT = 90; // seconds per question
+    
     // TEST MODE - Auto-fill answers for development/testing
     const [testMode, setTestMode] = useState(false);
     const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
@@ -139,7 +152,19 @@ const AssessmentTest = () => {
     const [studentSchoolClassId, setStudentSchoolClassId] = useState(null);
     const [studentId, setStudentId] = useState(null); // Student record ID for AI question saving
     const [isCollegeStudent, setIsCollegeStudent] = useState(false);
+    const [studentProgram, setStudentProgram] = useState(null); // Program name for college students (BBA, BCA, BSC, etc.)
+    const [gradeStartDate, setGradeStartDate] = useState(null); // When student started current grade
+    const [monthsInGrade, setMonthsInGrade] = useState(null); // Months since starting current grade
     const [loadingStudentGrade, setLoadingStudentGrade] = useState(true);
+    
+    // Helper function to calculate months between two dates
+    const calculateMonthsInGrade = (startDate) => {
+        if (!startDate) return null;
+        const start = new Date(startDate);
+        const now = new Date();
+        const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+        return Math.max(0, months);
+    };
     
     // Fetch student's grade from database (either from student.grade or from school_classes.grade)
     useEffect(() => {
@@ -154,10 +179,10 @@ const AssessmentTest = () => {
             }
             
             try {
-                // First try to get student by user_id with school_class grade joined
+                // First try to get student by user_id with school_class grade and program name joined
                 let { data: student, error } = await supabase
                     .from('students')
-                    .select('id, grade, school_class_id, school_id, university_college_id, school_classes:school_class_id(grade)')
+                    .select('id, grade, grade_start_date, school_class_id, school_id, university_college_id, program_id, course_name, school_classes:school_class_id(grade, academic_year), program:program_id(name, code)')
                     .eq('user_id', user.id)
                     .maybeSingle();
                 
@@ -167,7 +192,7 @@ const AssessmentTest = () => {
                 if (!student && user.email) {
                     const result = await supabase
                         .from('students')
-                        .select('id, grade, school_class_id, school_id, university_college_id, school_classes:school_class_id(grade)')
+                        .select('id, grade, grade_start_date, school_class_id, school_id, university_college_id, program_id, course_name, school_classes:school_class_id(grade, academic_year), program:program_id(name, code)')
                         .eq('email', user.email)
                         .maybeSingle();
                     student = result.data;
@@ -188,6 +213,34 @@ const AssessmentTest = () => {
                     console.log('Is college student:', isCollege);
                     setIsCollegeStudent(isCollege);
                     
+                    // Set program name if available (BBA, BCA, BSC, etc.)
+                    // Priority: program.name > program.code > course_name
+                    const programName = student.program?.name || student.program?.code || student.course_name;
+                    if (programName) {
+                        console.log('Student program:', programName);
+                        setStudentProgram(programName);
+                    }
+                    
+                    // Set grade_start_date and calculate months in grade
+                    if (student.grade_start_date) {
+                        setGradeStartDate(student.grade_start_date);
+                        const months = calculateMonthsInGrade(student.grade_start_date);
+                        setMonthsInGrade(months);
+                        console.log('Grade start date:', student.grade_start_date, 'Months in grade:', months);
+                    } else if (student.school_classes?.academic_year) {
+                        // Fallback: estimate from academic year (e.g., "2024-2025" -> started June 2024)
+                        const academicYear = student.school_classes.academic_year;
+                        const yearMatch = academicYear.match(/^(\d{4})/);
+                        if (yearMatch) {
+                            const startYear = parseInt(yearMatch[1]);
+                            // Assume academic year starts in June
+                            const estimatedStartDate = `${startYear}-06-01`;
+                            const months = calculateMonthsInGrade(estimatedStartDate);
+                            setMonthsInGrade(months);
+                            console.log('Estimated from academic year:', academicYear, 'Months in grade:', months);
+                        }
+                    }
+                    
                     // Use student.grade first, if not available use grade from school_classes
                     const effectiveGrade = student.grade || student.school_classes?.grade;
                     console.log('Effective grade:', effectiveGrade);
@@ -206,6 +259,64 @@ const AssessmentTest = () => {
         
         fetchStudentGrade();
     }, [user?.id, user?.email, shouldFilterByGrade]);
+
+    // Map UI grade level to adaptive aptitude grade level
+    const getAdaptiveGradeLevel = () => {
+        if (gradeLevel === 'highschool') return 'high_school';
+        if (gradeLevel === 'higher_secondary') return 'high_school';
+        if (gradeLevel === 'middle') return 'middle_school';
+        // For after12 and college, use high_school level questions
+        return 'high_school';
+    };
+
+    // Adaptive Aptitude Hook for adaptive aptitude section
+    const adaptiveAptitude = useAdaptiveAptitude({
+        studentId: studentId || '',
+        gradeLevel: getAdaptiveGradeLevel(),
+        onTestComplete: (testResults) => {
+            console.log('✅ Adaptive aptitude test completed:', testResults);
+            // Store results in answers for final submission
+            setAnswers(prev => ({
+                ...prev,
+                adaptive_aptitude_results: testResults
+            }));
+            // Move to section complete
+            setShowSectionComplete(true);
+        },
+        onError: (err) => {
+            console.error('❌ Adaptive aptitude test error:', err);
+            setError(`Adaptive test error: ${err}`);
+        },
+    });
+
+    // Save adaptive session ID to assessment attempt when it becomes available
+    useEffect(() => {
+        const saveAdaptiveSessionLink = async () => {
+            if (adaptiveAptitude.session?.id && currentAttempt?.id) {
+                try {
+                    await assessmentService.updateAttemptAdaptiveSession(currentAttempt.id, adaptiveAptitude.session.id);
+                    console.log('✅ Linked adaptive session to assessment attempt:', adaptiveAptitude.session.id);
+                } catch (linkErr) {
+                    console.warn('Could not link adaptive session to attempt:', linkErr.message);
+                }
+            }
+        };
+        saveAdaptiveSessionLink();
+    }, [adaptiveAptitude.session?.id, currentAttempt?.id]);
+
+    // Debug: Track when adaptive question changes
+    useEffect(() => {
+        if (adaptiveAptitude.currentQuestion) {
+            console.log('🔄 [AssessmentTest] Adaptive question changed:', {
+                questionId: adaptiveAptitude.currentQuestion.id,
+                questionText: adaptiveAptitude.currentQuestion.text?.substring(0, 50),
+                questionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
+                currentQuestionIndex: adaptiveAptitude.progress?.currentQuestionIndex,
+                phase: adaptiveAptitude.phase,
+                difficulty: adaptiveAptitude.session?.currentDifficulty,
+            });
+        }
+    }, [adaptiveAptitude.currentQuestion?.id]);
 
     // Auto-fill all answers for test mode
     const autoFillAllAnswers = () => {
@@ -320,9 +431,11 @@ const AssessmentTest = () => {
 
     // Skip to last section for quick testing
     const skipToLastSection = () => {
+        if (!sections || sections.length === 0) return;
         autoFillAllAnswers();
         setCurrentSectionIndex(sections.length - 1);
-        setCurrentQuestionIndex(sections[sections.length - 1].questions.length - 1);
+        const lastSection = sections[sections.length - 1];
+        setCurrentQuestionIndex(lastSection?.questions?.length ? lastSection.questions.length - 1 : 0);
         setShowSectionIntro(false);
         setShowSectionComplete(false);
     };
@@ -353,15 +466,16 @@ const AssessmentTest = () => {
         if (initialCheckDone || assessmentStarted) return;
 
         const checkExistingAttempt = async () => {
-            // Wait for auth hook to be ready
-            if (dbLoading) return;
+            // Wait for auth hook to be ready and student ID to be loaded
+            if (dbLoading || loadingStudentGrade) return;
 
             setCheckingExistingAttempt(true);
 
             try {
-                if (user?.id) {
+                // Use studentId (from students table) instead of user.id (auth user)
+                if (studentId) {
                     // First check if user can take assessment (6-month restriction)
-                    const eligibility = await assessmentService.canTakeAssessment(user.id);
+                    const eligibility = await assessmentService.canTakeAssessment(studentId);
                     
                     if (!eligibility.canTake) {
                         // User cannot take assessment yet
@@ -410,9 +524,12 @@ const AssessmentTest = () => {
                         // No existing attempt, show grade selection
                         setShowGradeSelection(true);
                     }
-                } else {
+                } else if (!user?.id) {
                     // Not logged in, show grade selection
                     setShowGradeSelection(true);
+                } else {
+                    // User logged in but no student record found yet, wait
+                    console.log('Waiting for student record to load...');
                 }
             } catch (err) {
                 console.error('Error checking for existing attempt:', err);
@@ -423,7 +540,7 @@ const AssessmentTest = () => {
             }
         };
         checkExistingAttempt();
-    }, [user?.id, dbLoading, checkInProgressAttempt, initialCheckDone, assessmentStarted]);
+    }, [studentId, user?.id, dbLoading, loadingStudentGrade, checkInProgressAttempt, initialCheckDone, assessmentStarted]);
 
     // Handle resume assessment
     const handleResumeAssessment = async () => {
@@ -461,9 +578,36 @@ const AssessmentTest = () => {
             setCurrentSectionIndex(sectionIdx);
             setCurrentQuestionIndex(questionIdx);
 
+            // Track if we successfully resumed an adaptive session
+            let adaptiveSessionResumed = false;
+
+            // Check if there's an adaptive aptitude session to resume
+            if (pendingAttempt.adaptive_aptitude_session_id) {
+                console.log('🔄 Found linked adaptive aptitude session:', pendingAttempt.adaptive_aptitude_session_id);
+                try {
+                    await adaptiveAptitude.resumeTest(pendingAttempt.adaptive_aptitude_session_id);
+                    console.log('✅ Adaptive aptitude session resumed');
+                    adaptiveSessionResumed = true;
+                    // Reset the per-question timer for resumed adaptive test
+                    setAdaptiveQuestionTimer(ADAPTIVE_QUESTION_TIME_LIMIT);
+                    setAdaptiveQuestionStartTime(Date.now());
+                } catch (adaptiveErr) {
+                    console.warn('Could not resume adaptive session:', adaptiveErr.message);
+                    // Continue anyway - the adaptive section will start fresh if needed
+                }
+            }
+
             // Don't show section intro when resuming - go directly to the question
             // Users have already seen the intro when they first started
-            setShowSectionIntro(false);
+            // Exception: If we're in an adaptive section but couldn't resume, show intro so user can start fresh
+            if (adaptiveSessionResumed || !pendingAttempt.adaptive_aptitude_session_id) {
+                setShowSectionIntro(false);
+            } else {
+                // Show section intro for adaptive section that couldn't be resumed
+                // This allows the user to start the adaptive test fresh
+                console.log('📋 Showing section intro for adaptive section (session not resumed)');
+                setShowSectionIntro(true);
+            }
             setShowSectionComplete(false);
 
             if (pendingAttempt.section_timings) {
@@ -527,14 +671,15 @@ const AssessmentTest = () => {
     const [aiQuestions, setAiQuestions] = useState({ aptitude: null, knowledge: null });
     const [aiQuestionsLoading, setAiQuestionsLoading] = useState(false);
 
-    // Load AI questions for after12 students
+    // Load AI questions for after10, after12 AND college students
     useEffect(() => {
         const loadAIQuestions = async () => {
             // Only require gradeLevel and studentStream - studentId is optional for saving
-            if (gradeLevel === 'after12' && studentStream) {
+            // Support 'after10', 'after12' and 'college' grade levels
+            if ((gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'college') && studentStream) {
                 setAiQuestionsLoading(true);
                 try {
-                    console.log('🤖 Loading AI questions for stream:', studentStream, 'studentId:', studentId || 'not set yet');
+                    console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, studentStream, 'studentId:', studentId || 'not set yet');
                     // Pass studentId and attemptId for save/resume functionality (optional)
                     const questions = await loadCareerAssessmentQuestions(
                         studentStream, 
@@ -556,7 +701,7 @@ const AssessmentTest = () => {
         loadAIQuestions();
     }, [gradeLevel, studentStream, studentId, currentAttempt?.id]);
 
-    // Get questions for a section - from database or AI (no fallback for after12)
+    // Get questions for a section - from database or AI (no fallback for after10/after12/college)
     const getQuestionsForSection = (sectionId) => {
         // Helper to normalize AI question format (AI uses 'question', UI expects 'text')
         const normalizeAIQuestion = (q) => ({
@@ -565,8 +710,8 @@ const AssessmentTest = () => {
             correct: q.correct_answer || q.correct // Map 'correct_answer' to 'correct'
         });
 
-        // For after12 grade level, use AI questions ONLY for aptitude and knowledge
-        if (gradeLevel === 'after12') {
+        // For after10, after12 AND college grade levels, use AI questions ONLY for aptitude and knowledge
+        if (gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'college') {
             if (sectionId === 'aptitude') {
                 if (aiQuestionsLoading) {
                     console.log('⏳ AI aptitude questions still loading...');
@@ -610,7 +755,7 @@ const AssessmentTest = () => {
 
     // Define assessment sections with dynamic questions
     const sections = useMemo(() => {
-        // For middle school (grades 6-8), show simplified assessment with 3 sections
+        // For middle school (grades 6-8), show simplified assessment with 4 sections (including adaptive aptitude)
         // IMPORTANT: Section IDs must match database section names in personal_assessment_sections table
         if (gradeLevel === 'middle') {
             return [
@@ -641,11 +786,21 @@ const AssessmentTest = () => {
                     color: "blue",
                     questions: getQuestionsForSection('middle_learning_preferences'),  // Load from database
                     instruction: "Choose the options that best describe you."
+                },
+                {
+                    id: 'adaptive_aptitude',
+                    title: 'Adaptive Aptitude Test',
+                    icon: <img src="/RMLogo.webp" alt="RM Logo" className="w-6 h-6 object-contain" />,
+                    description: "A smart test that adjusts to your skill level. It gets easier or harder based on how you're doing!",
+                    color: "indigo",
+                    questions: [], // Questions are generated dynamically by the adaptive engine
+                    isAdaptive: true, // Flag to indicate this is the adaptive aptitude section
+                    instruction: "Take your time with each question. There's no rush - just do your best!"
                 }
             ];
         }
 
-        // For high school (grades 9-12), show detailed assessment with 4 sections
+        // For high school (grades 9-10), show detailed assessment with 4 sections
         if (gradeLevel === 'highschool') {
             return [
                 {
@@ -685,109 +840,175 @@ const AssessmentTest = () => {
                     questions: getQuestionsForSection('hs_aptitude_sampling'),  // Load from database
                     responseScale: aptitudeRatingScale,
                     instruction: "After each task, rate: Ease 1–4, Enjoyment 1–4"
+                },
+                {
+                    id: 'adaptive_aptitude',
+                    title: 'Adaptive Aptitude Test',
+                    icon: <img src="/RMLogo.webp" alt="RM Logo" className="w-6 h-6 object-contain" />,
+                    description: "An intelligent test that adapts to your ability level for accurate aptitude measurement.",
+                    color: "indigo",
+                    questions: [], // Questions are generated dynamically by the adaptive engine
+                    isAdaptive: true, // Flag to indicate this is the adaptive aptitude section
+                    instruction: "Answer each question carefully. The test will adapt to your performance level."
                 }
             ];
         }
 
-        // For after 12th and college, show full comprehensive assessment
-        // Currently both use the same sections, but can be customized differently if needed
-        if (gradeLevel === 'after12' || gradeLevel === 'college') {
+        // For higher secondary (grades 11-12), show comprehensive assessment with stream focus
+        if (gradeLevel === 'higher_secondary') {
             return [
-        {
-            id: 'riasec',
-            title: 'Career Interests',
-            icon: <Heart className="w-6 h-6 text-rose-500" />,
-            description: "Discover what types of work environments and activities appeal to you most.",
-            color: "rose",
-            questions: getQuestionsForSection('riasec'),
-            responseScale: [
-                { value: 1, label: "Strongly Dislike" },
-                { value: 2, label: "Dislike" },
-                { value: 3, label: "Neutral" },
-                { value: 4, label: "Like" },
-                { value: 5, label: "Strongly Like" }
-            ],
-            instruction: "Rate how much you would LIKE or DISLIKE each activity."
-        },
+                {
+                    id: 'hs_interest_explorer',
+                    title: 'Interest Explorer',
+                    icon: <Heart className="w-6 h-6 text-rose-500" />,
+                    description: "Discover what activities and subjects truly excite you.",
+                    color: "rose",
+                    questions: getQuestionsForSection('hs_interest_explorer'),  // Load from database
+                    instruction: "Answer honestly based on your real preferences, not what others expect."
+                },
+                {
+                    id: 'hs_strengths_character',
+                    title: 'Strengths & Character',
+                    icon: <Award className="w-6 h-6 text-amber-500" />,
+                    description: "Identify your personal strengths and character traits.",
+                    color: "amber",
+                    questions: getQuestionsForSection('hs_strengths_character'),  // Load from database
+                    responseScale: highSchoolRatingScale,
+                    instruction: "Rate each: 1 = not me, 2 = a bit, 3 = mostly, 4 = strongly me"
+                },
+                {
+                    id: 'hs_learning_preferences',
+                    title: 'Learning & Work Preferences',
+                    icon: <Users className="w-6 h-6 text-blue-500" />,
+                    description: "Understand how you work, learn, and contribute best.",
+                    color: "blue",
+                    questions: getQuestionsForSection('hs_learning_preferences'),  // Load from database
+                    instruction: "Select the options that best describe you."
+                },
+                {
+                    id: 'hs_aptitude_sampling',
+                    title: 'Aptitude Sampling',
+                    icon: <Zap className="w-6 h-6 text-purple-500" />,
+                    description: "Rate your experience with different types of tasks.",
+                    color: "purple",
+                    questions: getQuestionsForSection('hs_aptitude_sampling'),  // Load from database
+                    responseScale: aptitudeRatingScale,
+                    instruction: "After each task, rate: Ease 1–4, Enjoyment 1–4"
+                },
+                {
+                    id: 'adaptive_aptitude',
+                    title: 'Adaptive Aptitude Test',
+                    icon: <img src="/RMLogo.webp" alt="RM Logo" className="w-6 h-6 object-contain" />,
+                    description: "An intelligent test that adapts to your ability level for accurate aptitude measurement.",
+                    color: "indigo",
+                    questions: [], // Questions are generated dynamically by the adaptive engine
+                    isAdaptive: true, // Flag to indicate this is the adaptive aptitude section
+                    instruction: "Answer each question carefully. The test will adapt to your performance level."
+                }
+            ];
+        }
 
-        {
-            id: 'bigfive',
-            title: 'Big Five Personality',
-            icon: <BrainCircuit className="w-6 h-6 text-purple-500" />,
-            description: "Understand your work style, approach to tasks, and how you interact with others.",
-            color: "purple",
-            questions: getQuestionsForSection('bigfive'),
-            responseScale: [
-                { value: 1, label: "Very Inaccurate" },
-                { value: 2, label: "Moderately Inaccurate" },
-                { value: 3, label: "Neither" },
-                { value: 4, label: "Moderately Accurate" },
-                { value: 5, label: "Very Accurate" }
-            ],
-            instruction: "How accurately does each statement describe you?"
-        },
-        {
-            id: 'values',
-            title: 'Work Values & Motivators',
-            icon: <Target className="w-6 h-6 text-indigo-500" />,
-            description: "Identify what drives your career satisfaction and choices.",
-            color: "indigo",
-            questions: getQuestionsForSection('values'),
-            responseScale: [
-                { value: 1, label: "Not Important" },
-                { value: 2, label: "Slightly Important" },
-                { value: 3, label: "Moderately Important" },
-                { value: 4, label: "Very Important" },
-                { value: 5, label: "Extremely Important" }
-            ],
-            instruction: "How important is each factor in your ideal career?"
-        },
-        {
-            id: 'employability',
-            title: 'Employability Skills',
-            icon: <TrendingUp className="w-6 h-6 text-green-500" />,
-            description: "Assess your job-readiness and 21st-century skills.",
-            color: "green",
-            questions: getQuestionsForSection('employability'),
-            responseScale: [
-                { value: 1, label: "Not Like Me" },
-                { value: 2, label: "Slightly" },
-                { value: 3, label: "Somewhat" },
-                { value: 4, label: "Mostly" },
-                { value: 5, label: "Very Much Like Me" }
-            ],
-            instruction: "How well does each statement describe you?"
-        },
-        {
-            id: 'aptitude',
-            title: 'Multi-Aptitude',
-            icon: <Zap className="w-6 h-6 text-amber-500" />,
-            description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
-            color: "amber",
-            questions: getQuestionsForSection('aptitude'),
-            isTimed: true,
-            timeLimit: 15 * 60, // Fallback shared timer
-            isAptitude: true,
-            individualTimeLimit: 60, // 1 minute per question
-            get individualQuestionCount() { return this.questions.length; }, // All questions have individual timers
-            instruction: "Choose the correct answer. You have 1 minute per question."
-        },
-        {
-            id: 'knowledge',
-            title: 'Stream Knowledge',
-            icon: <Code className="w-6 h-6 text-blue-500" />,
-            description: "Test your understanding of core concepts in your field.",
-            color: "blue",
-            questions: getQuestionsForSection('knowledge'),
-            isTimed: true,
-            timeLimit: 30 * 60, // 30 minutes in seconds
-            instruction: "Choose the best answer for each question."
+        // For after 10th, after 12th and college, show full comprehensive assessment
+        // Currently all use the same sections, but can be customized differently if needed
+        if (gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'college') {
+            return [
+                {
+                    id: 'riasec',
+                    title: 'Career Interests',
+                    icon: <Heart className="w-6 h-6 text-rose-500" />,
+                    description: "Discover what types of work environments and activities appeal to you most.",
+                    color: "rose",
+                    questions: getQuestionsForSection('riasec'),
+                    responseScale: [
+                        { value: 1, label: "Strongly Dislike" },
+                        { value: 2, label: "Dislike" },
+                        { value: 3, label: "Neutral" },
+                        { value: 4, label: "Like" },
+                        { value: 5, label: "Strongly Like" }
+                    ],
+                    instruction: "Rate how much you would LIKE or DISLIKE each activity."
+                },
+                {
+                    id: 'bigfive',
+                    title: 'Big Five Personality',
+                    icon: <BrainCircuit className="w-6 h-6 text-purple-500" />,
+                    description: "Understand your work style, approach to tasks, and how you interact with others.",
+                    color: "purple",
+                    questions: getQuestionsForSection('bigfive'),
+                    responseScale: [
+                        { value: 1, label: "Very Inaccurate" },
+                        { value: 2, label: "Moderately Inaccurate" },
+                        { value: 3, label: "Neither" },
+                        { value: 4, label: "Moderately Accurate" },
+                        { value: 5, label: "Very Accurate" }
+                    ],
+                    instruction: "How accurately does each statement describe you?"
+                },
+                {
+                    id: 'values',
+                    title: 'Work Values & Motivators',
+                    icon: <Target className="w-6 h-6 text-indigo-500" />,
+                    description: "Identify what drives your career satisfaction and choices.",
+                    color: "indigo",
+                    questions: getQuestionsForSection('values'),
+                    responseScale: [
+                        { value: 1, label: "Not Important" },
+                        { value: 2, label: "Slightly Important" },
+                        { value: 3, label: "Moderately Important" },
+                        { value: 4, label: "Very Important" },
+                        { value: 5, label: "Extremely Important" }
+                    ],
+                    instruction: "How important is each factor in your ideal career?"
+                },
+                {
+                    id: 'employability',
+                    title: 'Employability Skills',
+                    icon: <TrendingUp className="w-6 h-6 text-green-500" />,
+                    description: "Assess your job-readiness and 21st-century skills.",
+                    color: "green",
+                    questions: getQuestionsForSection('employability'),
+                    responseScale: [
+                        { value: 1, label: "Not Like Me" },
+                        { value: 2, label: "Slightly" },
+                        { value: 3, label: "Somewhat" },
+                        { value: 4, label: "Mostly" },
+                        { value: 5, label: "Very Much Like Me" }
+                    ],
+                    instruction: "How well does each statement describe you?"
+                },
+                {
+                    id: 'aptitude',
+                    title: 'Multi-Aptitude',
+                    icon: <Zap className="w-6 h-6 text-amber-500" />,
+                    description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
+                    color: "amber",
+                    questions: getQuestionsForSection('aptitude'),
+                    isTimed: true,
+                    timeLimit: 15 * 60, // Fallback shared timer
+                    isAptitude: true,
+                    individualTimeLimit: 60, // 1 minute per question
+                    get individualQuestionCount() { return this.questions.length; }, // All questions have individual timers
+                    instruction: "Choose the correct answer. You have 1 minute per question."
+                },
+                {
+                    id: 'knowledge',
+                    title: 'Stream Knowledge',
+                    icon: <Code className="w-6 h-6 text-blue-500" />,
+                    description: "Test your understanding of core concepts in your field.",
+                    color: "blue",
+                    questions: getQuestionsForSection('knowledge'),
+                    isTimed: true,
+                    timeLimit: 30 * 60, // 30 minutes in seconds
+                    instruction: "Choose the best answer for each question."
+                }
+            ];
         }
-        ];
-        }
+        
+        // Default: return empty array when gradeLevel is not set
+        return [];
     }, [dbQuestions, studentStream, gradeLevel, aiQuestions, aiQuestionsLoading]);
 
-    // Stream categories for After 12th
+    // Stream categories for After 12th (also used for After 10th)
     const streamCategories = [
         { id: 'science', label: 'Science', icon: <FlaskConical className="w-7 h-7 text-blue-600" />, description: 'Engineering, Medical, Pure Sciences' },
         { id: 'commerce', label: 'Commerce', icon: <BarChart3 className="w-7 h-7 text-green-600" />, description: 'Business, Finance, Accounting' },
@@ -823,7 +1044,7 @@ const AssessmentTest = () => {
     };
 
     // Get streams based on selected category (for backward compatibility)
-    const streams = selectedCategory ? streamsByCategory[selectedCategory] : [
+    const categoryStreams = selectedCategory ? streamsByCategory[selectedCategory] : [
         { id: 'cs', label: 'B.Sc Computer Science / B.Tech CS/IT' },
         { id: 'bca', label: 'BCA General' },
         { id: 'bba', label: 'BBA General' },
@@ -831,11 +1052,24 @@ const AssessmentTest = () => {
         { id: 'animation', label: 'B.Sc Animation' }
     ];
 
-    // Calculate progress
-    const currentSection = sections[currentSectionIndex];
-    const totalQuestions = sections.reduce((sum, section) => sum + section.questions.length, 0);
-    const answeredCount = Object.keys(answers).length;
-    const progress = (answeredCount / totalQuestions) * 100;
+    // Select appropriate streams based on grade level - use categoryStreams for all levels
+    const streams = categoryStreams;
+
+    // Calculate progress (including adaptive section)
+    const currentSection = sections?.[currentSectionIndex];
+    const totalQuestions = sections?.reduce((sum, section) => {
+        // For adaptive sections, use estimated total questions (~21)
+        if (section?.isAdaptive) {
+            return sum + (adaptiveAptitude.progress?.estimatedTotalQuestions || 21);
+        }
+        return sum + (section?.questions?.length || 0);
+    }, 0) || 0;
+    
+    // Count answered questions including adaptive section progress
+    const regularAnsweredCount = Object.keys(answers).filter(key => !key.startsWith('adaptive_aptitude')).length;
+    const adaptiveAnsweredCount = adaptiveAptitude.progress?.questionsAnswered || 0;
+    const answeredCount = regularAnsweredCount + adaptiveAnsweredCount;
+    const progress = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
 
     // Timer for timed sections
     // Persistence Effect
@@ -952,6 +1186,51 @@ const AssessmentTest = () => {
         setElapsedTime(0);
     }, [currentSectionIndex]);
 
+    // Timer for adaptive aptitude section (90 seconds per question)
+    useEffect(() => {
+        // Only run timer for adaptive section when not showing intro/complete screens
+        if (currentSection?.isAdaptive && !showSectionIntro && !showSectionComplete && !isSubmitting && adaptiveAptitude.currentQuestion) {
+            const timer = setInterval(() => {
+                setAdaptiveQuestionTimer(prev => {
+                    if (prev <= 1) {
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+
+            return () => clearInterval(timer);
+        }
+    }, [currentSection?.isAdaptive, showSectionIntro, showSectionComplete, isSubmitting, adaptiveAptitude.currentQuestion?.id]);
+
+    // Handle adaptive timer expiry - auto-submit or skip
+    useEffect(() => {
+        if (currentSection?.isAdaptive && adaptiveQuestionTimer === 0 && adaptiveAptitude.currentQuestion && !adaptiveAptitude.submitting) {
+            console.log('⏰ [AssessmentTest] Adaptive timer expired, auto-submitting...');
+            
+            // If student selected an answer, submit it
+            // If no answer selected, submit a random answer (or skip)
+            const answerToSubmit = adaptiveAptitudeAnswer || 'A'; // Default to 'A' if no answer
+            
+            (async () => {
+                try {
+                    const result = await adaptiveAptitude.submitAnswer(answerToSubmit);
+                    
+                    // Reset for next question
+                    setAdaptiveAptitudeAnswer(null);
+                    setAdaptiveQuestionTimer(ADAPTIVE_QUESTION_TIME_LIMIT);
+                    setAdaptiveQuestionStartTime(Date.now());
+                    
+                    if (result?.testComplete) {
+                        setShowSectionComplete(true);
+                    }
+                } catch (err) {
+                    console.error('Error auto-submitting on timer expiry:', err);
+                }
+            })();
+        }
+    }, [adaptiveQuestionTimer, currentSection?.isAdaptive, adaptiveAptitude.currentQuestion, adaptiveAptitude.submitting, adaptiveAptitudeAnswer]);
+
     // Periodically save timer/elapsed time (every 30 seconds)
     useEffect(() => {
         if (useDatabase && currentAttempt?.id && !showSectionIntro && !showSectionComplete) {
@@ -988,7 +1267,7 @@ const AssessmentTest = () => {
         setGradeLevel(level);
         setShowGradeSelection(false);
 
-        // For middle school and high school, skip stream selection and go directly to assessment
+        // For middle school, high school, and higher secondary, skip stream selection and go directly to assessment
         if (level === 'middle') {
             setAssessmentStarted(true);
             const streamId = 'middle_school'; // Use a generic stream for middle school
@@ -997,13 +1276,16 @@ const AssessmentTest = () => {
             // Load questions and create attempt for middle school
             await loadQuestionsFromDatabase(streamId, 'middle');
 
-            if (user?.id) {
+            if (studentRecordId) {
                 try {
+                    console.log('Creating assessment attempt with studentRecordId:', studentRecordId);
                     await startAssessment(streamId, 'middle');
                     setUseDatabase(true);
                 } catch (err) {
                     console.log('Could not create database attempt:', err.message);
                 }
+            } else {
+                console.log('No studentRecordId available, skipping database attempt creation');
             }
 
             setShowSectionIntro(true);
@@ -1015,9 +1297,38 @@ const AssessmentTest = () => {
             // Load questions and create attempt for high school
             await loadQuestionsFromDatabase(streamId, 'highschool');
 
-            if (user?.id) {
+            if (studentRecordId) {
                 try {
+                    console.log('Creating assessment attempt with studentRecordId:', studentRecordId);
                     await startAssessment(streamId, 'highschool');
+                    setUseDatabase(true);
+                } catch (err) {
+                    console.log('Could not create database attempt:', err.message);
+                }
+            } else {
+                console.log('No studentRecordId available, skipping database attempt creation');
+            }
+
+            setShowSectionIntro(true);
+        } else if (level === 'after10') {
+            // For after 10th, show category selection (Science/Commerce/Arts) similar to after12
+            setShowCategorySelection(true);
+        } else if (level === 'college') {
+            // For college students (UG/PG), go directly to assessment using their program
+            setAssessmentStarted(true);
+            
+            // Use student's program as the stream, normalize it to match STREAM_KNOWLEDGE_PROMPTS
+            // Pass the original program name to normalizeStreamId (it handles the conversion)
+            const streamId = normalizeStreamId(studentProgram || 'college');
+            console.log(`🎓 College student stream: ${studentProgram} -> normalized: ${streamId}`);
+            setStudentStream(streamId);
+
+            // Load questions and create attempt for college
+            await loadQuestionsFromDatabase(streamId, 'college');
+
+            if (studentRecordId) {
+                try {
+                    await startAssessment(streamId, 'college');
                     setUseDatabase(true);
                 } catch (err) {
                     console.log('Could not create database attempt:', err.message);
@@ -1025,6 +1336,9 @@ const AssessmentTest = () => {
             }
 
             setShowSectionIntro(true);
+        } else if (level === 'higher_secondary') {
+            // For higher secondary (11-12), show category selection (Science/Commerce/Arts)
+            setShowCategorySelection(true);
         } else {
             // For after 12th, show category selection (Science/Commerce/Arts)
             setShowCategorySelection(true);
@@ -1040,21 +1354,26 @@ const AssessmentTest = () => {
         // Mark that user has started an assessment
         setAssessmentStarted(true);
         
-        // Use category as the stream for now - specific course will be recommended after assessment
-        const streamId = categoryId; // 'science', 'commerce', or 'arts'
+        // Use category as the stream - for after10, use the specific stream like 'science_pcmb'
+        const streamId = categoryId;
         setStudentStream(streamId);
 
+        // Determine the effective grade level for database
+        // Use the current gradeLevel state which was set in handleGradeSelect
+        const effectiveGradeLevel = gradeLevel || 'after12';
+        console.log('📚 handleCategorySelect - gradeLevel:', gradeLevel, 'effectiveGradeLevel:', effectiveGradeLevel, 'categoryId:', categoryId);
+
         // Load questions from database
-        await loadQuestionsFromDatabase(streamId, gradeLevel || 'after12');
+        await loadQuestionsFromDatabase(streamId, effectiveGradeLevel);
 
         setShowSectionIntro(true);
 
-        // Try to create a database attempt if user is logged in
-        if (user?.id) {
+        // Try to create a database attempt if student record exists
+        if (studentRecordId) {
             try {
-                await startAssessment(streamId, gradeLevel || 'after12');
+                await startAssessment(streamId, effectiveGradeLevel);
                 setUseDatabase(true);
-                console.log('Assessment attempt created in database for category:', categoryId);
+                console.log('Assessment attempt created in database for category:', categoryId, 'gradeLevel:', effectiveGradeLevel);
             } catch (err) {
                 console.log('Could not create database attempt, using localStorage mode:', err.message);
             }
@@ -1073,8 +1392,8 @@ const AssessmentTest = () => {
 
         setShowSectionIntro(true);
 
-        // Try to create a database attempt if user is logged in
-        if (user?.id) {
+        // Try to create a database attempt if student record exists
+        if (studentRecordId) {
             try {
                 await startAssessment(streamId, gradeLevel || 'after12');
                 setUseDatabase(true);
@@ -1086,12 +1405,38 @@ const AssessmentTest = () => {
         }
     };
 
-    const handleStartSection = () => {
+    const handleStartSection = async () => {
+        // Check if this is the adaptive aptitude section
+        if (currentSection?.isAdaptive) {
+            // Initialize the adaptive aptitude test inline
+            console.log('🚀 Starting adaptive aptitude section inline');
+            try {
+                // Check for existing session first
+                const hasExisting = await adaptiveAptitude.checkAndResumeSession();
+                if (!hasExisting) {
+                    await adaptiveAptitude.startTest();
+                }
+                // Note: Session ID linking is handled by useEffect when session becomes available
+                
+                // Set the question start time for response timing
+                setAdaptiveQuestionStartTime(Date.now());
+                // Reset the per-question timer
+                setAdaptiveQuestionTimer(ADAPTIVE_QUESTION_TIME_LIMIT);
+            } catch (err) {
+                console.error('Failed to start adaptive test:', err);
+                setError(`Failed to start adaptive test: ${err.message}`);
+            }
+            setShowSectionIntro(false);
+            setShowSectionComplete(false);
+            return;
+        }
         setShowSectionIntro(false);
         setShowSectionComplete(false);
     };
 
     const handleAnswer = (value) => {
+        if (!currentSection?.questions?.[currentQuestionIndex]) return;
+        
         const question = currentSection.questions[currentQuestionIndex];
         const questionId = `${currentSection.id}_${question.id}`;
 
@@ -1124,6 +1469,62 @@ const AssessmentTest = () => {
     };
 
     const handleNext = async () => {
+        // Handle adaptive aptitude section differently
+        if (currentSection?.isAdaptive) {
+            if (adaptiveAptitudeAnswer && adaptiveAptitude.currentQuestion) {
+                console.log('🎯 [AssessmentTest] Submitting adaptive answer:', {
+                    answer: adaptiveAptitudeAnswer,
+                    questionId: adaptiveAptitude.currentQuestion?.id,
+                    questionText: adaptiveAptitude.currentQuestion?.text?.substring(0, 50),
+                    sessionId: adaptiveAptitude.session?.id,
+                    currentQuestionIndex: adaptiveAptitude.session?.currentQuestionIndex,
+                    questionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
+                });
+                
+                try {
+                    // Submit the answer to the adaptive engine (only pass the answer, hook handles timing)
+                    const result = await adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer);
+                    
+                    console.log('✅ [AssessmentTest] Answer submitted, result:', {
+                        isCorrect: result?.isCorrect,
+                        testComplete: result?.testComplete,
+                        phaseComplete: result?.phaseComplete,
+                        newDifficulty: result?.newDifficulty,
+                    });
+                    
+                    // Log the updated state after submission
+                    console.log('📊 [AssessmentTest] State after submission:', {
+                        newQuestionId: adaptiveAptitude.currentQuestion?.id,
+                        newQuestionText: adaptiveAptitude.currentQuestion?.text?.substring(0, 50),
+                        newQuestionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
+                        newCurrentQuestionIndex: adaptiveAptitude.session?.currentQuestionIndex,
+                        isTestComplete: adaptiveAptitude.isTestComplete,
+                    });
+                    
+                    // Reset for next question
+                    setAdaptiveAptitudeAnswer(null);
+                    // Reset timer for next question
+                    setAdaptiveQuestionTimer(ADAPTIVE_QUESTION_TIME_LIMIT);
+                    setAdaptiveQuestionStartTime(Date.now());
+                    
+                    // Check if test is complete (check the result, not the state which may not have updated yet)
+                    if (result?.testComplete) {
+                        console.log('🏁 [AssessmentTest] Adaptive test complete!');
+                        setShowSectionComplete(true);
+                    }
+                } catch (err) {
+                    console.error('❌ [AssessmentTest] Error submitting adaptive answer:', err);
+                    setError(`Failed to submit answer: ${err.message}`);
+                }
+            } else {
+                console.warn('⚠️ [AssessmentTest] Cannot submit - no answer or question:', {
+                    hasAnswer: !!adaptiveAptitudeAnswer,
+                    hasQuestion: !!adaptiveAptitude.currentQuestion,
+                });
+            }
+            return;
+        }
+        
         if (currentQuestionIndex < currentSection.questions.length - 1) {
             const nextQuestionIndex = currentQuestionIndex + 1;
 
@@ -1390,6 +1791,7 @@ const AssessmentTest = () => {
             // Save answers and timings to localStorage (for backward compatibility)
             localStorage.setItem('assessment_answers', JSON.stringify(answers));
             localStorage.setItem('assessment_stream', studentStream);
+            localStorage.setItem('assessment_grade_level', gradeLevel || 'after12');
             localStorage.setItem('assessment_section_timings', JSON.stringify(finalTimings));
             // Clear any previous results
             localStorage.removeItem('assessment_gemini_results');
@@ -1401,7 +1803,7 @@ const AssessmentTest = () => {
                 if (gradeLevel === 'middle') {
                     const map = { 'riasec': 'middle_interest_explorer', 'bigfive': 'middle_strengths_character', 'knowledge': 'middle_learning_preferences' };
                     return map[baseSection] || baseSection;
-                } else if (gradeLevel === 'highschool') {
+                } else if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
                     const map = { 'riasec': 'hs_interest_explorer', 'aptitude': 'hs_aptitude_sampling', 'bigfive': 'hs_strengths_character', 'knowledge': 'hs_learning_preferences' };
                     return map[baseSection] || baseSection;
                 }
@@ -1417,9 +1819,17 @@ const AssessmentTest = () => {
                 streamKnowledgeQuestions: { [studentStream]: getQuestionsForSection(getSectionId('knowledge')) }
             };
 
+            // Include adaptive aptitude results in the answers if available (for high school)
+            const answersWithAdaptive = { ...answers };
+            if (gradeLevel === 'highschool' && answers.adaptive_aptitude_results) {
+                console.log('📊 Including adaptive aptitude results in analysis:', answers.adaptive_aptitude_results);
+                // The adaptive_aptitude_results contains detailed aptitude breakdown
+                // This will be used by the AI to enhance career recommendations
+            }
+
             // Analyze with Gemini AI - this is required, no fallback
             const geminiResults = await analyzeAssessmentWithGemini(
-                answers,
+                answersWithAdaptive,
                 studentStream,
                 questionBanks,
                 finalTimings, // Pass section timings to Gemini
@@ -1427,6 +1837,51 @@ const AssessmentTest = () => {
             );
 
             if (geminiResults) {
+                // Enhance results with adaptive aptitude data for high school students
+                if (gradeLevel === 'highschool' && answers.adaptive_aptitude_results) {
+                    const adaptiveResults = answers.adaptive_aptitude_results;
+                    console.log('🎯 Enhancing results with adaptive aptitude data');
+                    
+                    // Add adaptive aptitude insights to the results
+                    geminiResults.adaptiveAptitude = {
+                        aptitudeLevel: adaptiveResults.aptitudeLevel,
+                        confidenceTag: adaptiveResults.confidenceTag,
+                        tier: adaptiveResults.tier,
+                        overallAccuracy: adaptiveResults.overallAccuracy,
+                        accuracyBySubtag: adaptiveResults.accuracyBySubtag,
+                        pathClassification: adaptiveResults.pathClassification,
+                        totalQuestions: adaptiveResults.totalQuestions,
+                        totalCorrect: adaptiveResults.totalCorrect
+                    };
+                    
+                    // Enhance aptitude scores with adaptive test results
+                    if (geminiResults.aptitude) {
+                        geminiResults.aptitude.adaptiveLevel = adaptiveResults.aptitudeLevel;
+                        geminiResults.aptitude.adaptiveConfidence = adaptiveResults.confidenceTag;
+                        
+                        // Map adaptive subtag accuracy to aptitude categories
+                        if (adaptiveResults.accuracyBySubtag) {
+                            const subtagMapping = {
+                                numerical_reasoning: 'numerical',
+                                logical_reasoning: 'abstract',
+                                verbal_reasoning: 'verbal',
+                                spatial_reasoning: 'spatial',
+                                data_interpretation: 'numerical',
+                                pattern_recognition: 'abstract'
+                            };
+                            
+                            Object.entries(adaptiveResults.accuracyBySubtag).forEach(([subtag, data]) => {
+                                const category = subtagMapping[subtag];
+                                if (category && geminiResults.aptitude.scores?.[category]) {
+                                    geminiResults.aptitude.scores[category].adaptiveAccuracy = data.accuracy;
+                                }
+                            });
+                        }
+                    }
+                    
+                    console.log('✅ Adaptive aptitude data integrated into results');
+                }
+                
                 // Add course recommendations for after12 students
                 if (gradeLevel === 'after12') {
                     geminiResults.courseRecommendations = generateCourseRecommendations(geminiResults);
@@ -1517,11 +1972,20 @@ const AssessmentTest = () => {
         }
     };
 
-    const currentQuestion = currentSection?.questions[currentQuestionIndex];
-    const questionId = `${currentSection?.id}_${currentQuestion?.id}`;
+    // For adaptive sections, use the question from the adaptive hook
+    const currentQuestion = currentSection?.isAdaptive 
+        ? adaptiveAptitude.currentQuestion 
+        : currentSection?.questions[currentQuestionIndex];
+    const questionId = currentSection?.isAdaptive 
+        ? `adaptive_aptitude_${adaptiveAptitude.currentQuestion?.id}` 
+        : `${currentSection?.id}_${currentQuestion?.id}`;
 
     // Check if current question is answered (SJT needs both BEST and WORST, multiselect needs required count, text needs content)
     const isCurrentAnswered = (() => {
+        // For adaptive sections, check if an answer is selected
+        if (currentSection?.isAdaptive) {
+            return adaptiveAptitudeAnswer !== null;
+        }
         const answer = answers[questionId];
         if (!answer) return false;
         // For SJT questions, both best and worst must be selected
@@ -1628,7 +2092,12 @@ const AssessmentTest = () => {
 
     // Resume Prompt Screen - shown when user has an in-progress assessment
     if (showResumePrompt && pendingAttempt) {
-        const streamLabel = streams.find(s => s.id === pendingAttempt.stream_id)?.label || pendingAttempt.stream_id;
+        // Find stream label from streamCategories or streamsByCategory
+        const allStreams = [
+            ...streamCategories,
+            ...Object.values(streamsByCategory).flat()
+        ];
+        const streamLabel = allStreams.find(s => s.id === pendingAttempt.stream_id)?.label || pendingAttempt.stream_id;
         const answeredCount = Object.keys(pendingAttempt.restoredResponses || {}).length;
 
         return (
@@ -1784,14 +2253,18 @@ const AssessmentTest = () => {
                                     <p className="text-sm text-gray-600 group-hover:text-gray-700">Middle School Students</p>
                                     <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                                         <Clock className="w-4 h-4" />
-                                        <span>Assessment: 20 questions (15-20 minutes)</span>
+                                        <span>Assessment: 41 questions (50-60 minutes)</span>
                                     </div>
                                 </div>
                             </button>
                             )}
 
-                            {/* Grades 9-12 (High School) - Show if: show all OR not filtering OR grade is 9-12 */}
-                            {(shouldShowAllOptions || !shouldFilterByGrade || detectedGradeLevel === 'highschool') && (
+                            {/* Grades 9-12 (High School) - Show if: show all OR not filtering OR grade is 9/11 OR (grade is 10 AND less than 6 months) OR (grade is 12 AND less than 6 months) */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || 
+                              (detectedGradeLevel === 'highschool' && !(studentGrade === '10' || studentGrade === '10th' || studentGrade === '12' || studentGrade === '12th')) ||
+                              (detectedGradeLevel === 'highschool' && (studentGrade === '10' || studentGrade === '10th') && monthsInGrade !== null && monthsInGrade < 6) ||
+                              (detectedGradeLevel === 'highschool' && (studentGrade === '12' || studentGrade === '12th') && monthsInGrade !== null && monthsInGrade < 6)
+                            ) && (
                             <button
                                 onClick={() => handleGradeSelect('highschool')}
                                 className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
@@ -1799,7 +2272,7 @@ const AssessmentTest = () => {
                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                 <div className="relative z-10">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">Grades 9–12</h3>
+                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">Grades 9–10</h3>
                                         <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
                                             <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
                                         </div>
@@ -1807,14 +2280,85 @@ const AssessmentTest = () => {
                                     <p className="text-sm text-gray-600 group-hover:text-gray-700">High School Students</p>
                                     <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                                         <Clock className="w-4 h-4" />
-                                        <span>Assessment: 32 questions (30-40 minutes)</span>
+                                        <span>Assessment: 53 questions (55-65 minutes)</span>
                                     </div>
                                 </div>
                             </button>
                             )}
 
-                            {/* After 12th (College Level) - Show if: show all OR not filtering OR is college student */}
-                            {(shouldShowAllOptions || !shouldFilterByGrade || isCollegeStudent) && (
+                            {/* Grades 11-12 (Higher Secondary) - Show if: show all OR not filtering OR (grade is 11-12 AND NOT grade 12 with 6+ months) */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || 
+                              (detectedGradeLevel === 'higher_secondary' && 
+                               !((studentGrade === '12' || studentGrade === '12th') && monthsInGrade !== null && monthsInGrade >= 6))
+                            ) && (
+                            <button
+                                onClick={() => handleGradeSelect('higher_secondary')}
+                                className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">Grades 11–12</h3>
+                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
+                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">Higher Secondary Students</p>
+                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                                        <Clock className="w-4 h-4" />
+                                        <span>Assessment: 53 questions (55-65 minutes)</span>
+                                    </div>
+                                    {/* Show months info for grade 12 students */}
+                                    {(studentGrade === '12' || studentGrade === '12th') && monthsInGrade !== null && monthsInGrade < 6 && (
+                                        <div className="mt-2 text-xs text-indigo-600 font-medium">
+                                            {monthsInGrade} month{monthsInGrade !== 1 ? 's' : ''} in 12th grade
+                                        </div>
+                                    )}
+                                    {/* Show months info for grade 10 students */}
+                                    {(studentGrade === '10' || studentGrade === '10th') && monthsInGrade !== null && monthsInGrade < 6 && (
+                                        <div className="mt-2 text-xs text-indigo-600 font-medium">
+                                            {monthsInGrade} month{monthsInGrade !== 1 ? 's' : ''} in 10th grade
+                                        </div>
+                                    )}
+                                </div>
+                            </button>
+                            )}
+
+                            {/* After 10th - Show if: show all OR not filtering OR (grade is 10 AND 6+ months in grade) */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || 
+                              (detectedGradeLevel === 'highschool' && (studentGrade === '10' || studentGrade === '10th') && (monthsInGrade === null || monthsInGrade >= 6))
+                            ) && (
+                            <button
+                                onClick={() => handleGradeSelect('after10')}
+                                className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">After 10th</h3>
+                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
+                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">Students who have completed 10th grade</p>
+                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                                        <Clock className="w-4 h-4" />
+                                        <span>Assessment: (30-40 minutes)</span>
+                                    </div>
+                                    {/* Show months info for grade 10 students */}
+                                    {(studentGrade === '10' || studentGrade === '10th') && monthsInGrade !== null && monthsInGrade >= 6 && (
+                                        <div className="mt-2 text-xs text-green-600 font-medium">
+                                            {monthsInGrade} month{monthsInGrade !== 1 ? 's' : ''} in 10th grade - Ready for stream selection!
+                                        </div>
+                                    )}
+                                </div>
+                            </button>
+                            )}
+
+                            {/* After 12th - Show if: show all OR not filtering OR (grade is 12 AND 6+ months in grade) */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || 
+                              (detectedGradeLevel === 'higher_secondary' && (studentGrade === '12' || studentGrade === '12th') && (monthsInGrade === null || monthsInGrade >= 6))
+                            ) && (
                             <button
                                 onClick={() => handleGradeSelect('after12')}
                                 className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
@@ -1832,12 +2376,20 @@ const AssessmentTest = () => {
                                         <Clock className="w-4 h-4" />
                                         <span>Assessment: (35-45 minutes)</span>
                                     </div>
+                                    {/* Show months info for grade 12 students */}
+                                    {(studentGrade === '12' || studentGrade === '12th') && monthsInGrade !== null && monthsInGrade >= 6 && (
+                                        <div className="mt-2 text-xs text-green-600 font-medium">
+                                            {monthsInGrade} month{monthsInGrade !== 1 ? 's' : ''} in 12th grade - Ready for career planning!
+                                        </div>
+                                    )}
                                 </div>
                             </button>
                             )}
 
-                            {/* College */}
-                            {(shouldShowAllOptions || !shouldFilterByGrade || isCollegeStudent) && (
+                            {/* College (UG/PG) - Show if: show all OR not filtering OR is college student (UG/PG grade) */}
+                            {(shouldShowAllOptions || !shouldFilterByGrade || isCollegeStudent || 
+                              detectedGradeLevel === 'after12'
+                            ) && (
                             <button
                                 onClick={() => handleGradeSelect('college')}
                                 className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
@@ -1845,15 +2397,19 @@ const AssessmentTest = () => {
                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                 <div className="relative z-10">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">College</h3>
+                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">
+                                            {studentProgram ? studentProgram : 'College'}
+                                        </h3>
                                         <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
                                             <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
                                         </div>
                                     </div>
-                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">College/University Students</p>
+                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">
+                                        {studentProgram ? 'College/University Student' : 'Undergraduate & Postgraduate Students'}
+                                    </p>
                                     <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                                         <Clock className="w-4 h-4" />
-                                        <span>Comprehensive assessment (45-60 minutes)</span>
+                                        <span>Assessment: (45-60 minutes)</span>
                                     </div>
                                 </div>
                             </button>
@@ -1885,12 +2441,20 @@ const AssessmentTest = () => {
                             <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                                 <Award className="w-8 h-8 text-white" />
                             </div>
-                            <h1 className="text-3xl font-bold text-gray-800 mb-2">Career Assessment - After 12th</h1>
-                            <p className="text-gray-600">Select your stream category to continue</p>
+                            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                                Career Assessment - {gradeLevel === 'after10' ? 'After 10th' : 'After 12th'}
+                            </h1>
+                            <p className="text-gray-600">
+                                {gradeLevel === 'after10' 
+                                    ? 'Select your interest area - we\'ll recommend the best 11th/12th stream for you' 
+                                    : 'Select your stream category to continue'}
+                            </p>
                         </div>
 
                         <div className="space-y-4">
-                            <Label className="text-sm font-semibold text-gray-700">Choose Your Stream Category</Label>
+                            <Label className="text-sm font-semibold text-gray-700">
+                                {gradeLevel === 'after10' ? 'Which area interests you most?' : 'Choose Your Stream Category'}
+                            </Label>
                             
                             {streamCategories.map((category) => (
                                 <button
@@ -1922,7 +2486,11 @@ const AssessmentTest = () => {
                                 <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                                 <div className="text-sm text-blue-700">
                                     <p className="font-semibold mb-1">How It Works</p>
-                                    <p>After completing the assessment, we'll recommend the best courses/programs for you based on your interests, aptitude, and personality.</p>
+                                    <p>
+                                        {gradeLevel === 'after10'
+                                            ? 'After completing the assessment, we\'ll recommend the best 11th/12th stream (PCMB, PCMS, PCM, PCB, Commerce, Arts) based on your aptitude, interests, and academic performance.'
+                                            : 'After completing the assessment, we\'ll recommend the best courses/programs for you based on your interests, aptitude, and personality.'}
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -1944,13 +2512,90 @@ const AssessmentTest = () => {
         );
     }
 
-    // Stream selection is no longer shown - students go directly from category to assessment
-    // The specific course/program is recommended after assessment completion based on scores
+    // Stream selection is no longer used - college students go directly to assessment
+    // Keeping this commented for reference if needed in future
+    /*
     if (showStreamSelection) {
-        // Redirect to category selection if somehow reached
-        setShowStreamSelection(false);
-        setShowCategorySelection(true);
-        return null;
+        // Default streams for college students
+        const collegeStreams = [
+            { id: 'cs', label: 'B.Sc Computer Science / B.Tech CS/IT' },
+            { id: 'bca', label: 'BCA General' },
+            { id: 'bba', label: 'BBA General' },
+            { id: 'dm', label: 'BBA Digital Marketing' },
+            { id: 'animation', label: 'B.Sc Animation' }
+        ];
+
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+                <Card className="w-full max-w-2xl border-none shadow-2xl">
+                    <CardContent className="p-8">
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                                <Award className="w-8 h-8 text-white" />
+                            </div>
+                            <h1 className="text-3xl font-bold text-gray-800 mb-2">Career Assessment</h1>
+                            <p className="text-gray-600">Let's personalize your assessment based on your stream</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <Label className="text-sm font-semibold text-gray-700">Select Your Stream/Course</Label>
+                            
+                            {collegeStreams.map((stream) => (
+                                <button
+                                    key={stream.id}
+                                    onClick={() => handleStreamSelect(stream.id)}
+                                    className="w-full p-4 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-xl shadow-sm hover:shadow-lg hover:border-indigo-300 transition-all duration-300 text-left group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-gray-800 font-medium group-hover:text-indigo-700">{stream.label}</span>
+                                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-600" />
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                            <div className="flex gap-3">
+                                <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                                <div className="text-sm text-blue-700">
+                                    <p className="font-semibold mb-1">What to expect:</p>
+                                    <ul className="space-y-1">
+                                        <li>• 6 assessment sections covering interests, personality, values, skills, and knowledge</li>
+                                        <li>• Approximately 45-60 minutes to complete</li>
+                                        <li>• Your responses are private and used only for career guidance</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowStreamSelection(false);
+                                setShowGradeSelection(true);
+                            }}
+                            className="w-full mt-4 py-4"
+                        >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to Grade Selection
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+    */
+
+    // Guard: Don't render main assessment UI if sections is empty
+    if (!sections || sections.length === 0 || !currentSection) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading assessment...</p>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -2039,8 +2684,15 @@ const AssessmentTest = () => {
                             if (idx < currentSectionIndex) {
                                 lineProgress = 100;
                             } else if (idx === currentSectionIndex) {
-                                const totalQuestions = sections[idx].questions.length;
-                                lineProgress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
+                                // Handle adaptive section progress differently
+                                if (sections[idx].isAdaptive) {
+                                    const adaptiveTotal = adaptiveAptitude.progress?.estimatedTotalQuestions || 21;
+                                    const adaptiveAnswered = adaptiveAptitude.progress?.questionsAnswered || 0;
+                                    lineProgress = adaptiveTotal > 0 ? (adaptiveAnswered / adaptiveTotal) * 100 : 0;
+                                } else {
+                                    const totalQuestions = sections[idx].questions.length;
+                                    lineProgress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
+                                }
                             }
 
                             return (
@@ -2182,8 +2834,17 @@ const AssessmentTest = () => {
                                         onClick={handleNextSection}
                                         className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-10 py-6 text-lg shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 rounded-xl font-bold tracking-wide"
                                     >
-                                        Continue
-                                        <ChevronRight className="w-5 h-5 ml-2" />
+                                        {currentSectionIndex === sections.length - 1 ? (
+                                            <>
+                                                Submit Assessment
+                                                <CheckCircle2 className="w-5 h-5 ml-2" />
+                                            </>
+                                        ) : (
+                                            <>
+                                                Continue
+                                                <ChevronRight className="w-5 h-5 ml-2" />
+                                            </>
+                                        )}
                                     </Button>
                                 </motion.div>
                             </motion.div>
@@ -2299,6 +2960,24 @@ const AssessmentTest = () => {
                                         </div>
                                     </motion.div>
                                 )}
+
+                                {/* Adaptive Aptitude Test info */}
+                                {currentSection?.isAdaptive && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.5, duration: 0.3 }}
+                                        className="mb-4 p-4 bg-indigo-50 rounded-xl border border-indigo-200 max-w-lg w-full"
+                                    >
+                                        <p className="text-xs font-bold text-indigo-800 mb-2">About this test:</p>
+                                        <div className="space-y-2 text-xs">
+                                            <div className="bg-white/70 rounded-lg p-2">
+                                                <p className="text-indigo-600">This intelligent test adapts to your ability level in real-time, providing an accurate measurement of your aptitude across different reasoning areas.</p>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -2311,9 +2990,15 @@ const AssessmentTest = () => {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Users className="w-4 h-4" />
-                                        <span>{currentSection.questions.length} questions</span>
+                                        <span>{currentSection?.isAdaptive ? '18-22' : currentSection.questions.length} questions</span>
                                     </div>
-                                    {currentSection.isTimed && (
+                                    {currentSection?.isAdaptive && (
+                                        <div className="flex items-center gap-2 text-indigo-600 font-medium">
+                                            <Brain className="w-4 h-4" />
+                                            <span>Adaptive</span>
+                                        </div>
+                                    )}
+                                    {currentSection.isTimed && !currentSection?.isAdaptive && (
                                         <div className="flex items-center gap-2 text-orange-600 font-medium">
                                             <Clock className="w-4 h-4" />
                                             <span>{currentSection.id === 'aptitude' ? '10 minutes' : '30 minutes'}</span>
@@ -2329,7 +3014,7 @@ const AssessmentTest = () => {
                                 >
                                     {/* Show loading state for AI sections with no questions */}
                                     {(currentSection.id === 'aptitude' || currentSection.id === 'knowledge') && 
-                                     currentSection.questions.length === 0 ? (
+                                     currentSection.questions.length === 0 && !currentSection?.isAdaptive ? (
                                         <div className="flex flex-col items-center gap-4">
                                             {aiQuestionsLoading ? (
                                                 <>
@@ -2349,9 +3034,16 @@ const AssessmentTest = () => {
                                                 </>
                                             )}
                                         </div>
+                                    ) : currentSection?.isAdaptive && adaptiveAptitude.loading ? (
+                                        <div className="flex flex-col items-center gap-4">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                            <p className="text-gray-600">Preparing adaptive test...</p>
+                                            <p className="text-sm text-gray-400">Questions will adapt to your level</p>
+                                        </div>
                                     ) : (
                                         <Button
                                             onClick={handleStartSection}
+                                            disabled={currentSection?.isAdaptive && adaptiveAptitude.loading}
                                             className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-10 py-6 text-lg shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 rounded-xl font-bold tracking-wide"
                                         >
                                             Start Section
@@ -2495,14 +3187,28 @@ const AssessmentTest = () => {
 
                                         <div className="flex items-center gap-3 text-sm text-gray-600">
                                             <Users className="w-4 h-4" />
-                                            <span>Question {currentQuestionIndex + 1} / {
-                                                (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 :
-                                                (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 :
-                                                currentSection.questions.length
+                                            <span>Question {
+                                                currentSection?.isAdaptive 
+                                                    ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1}`
+                                                    : `${currentQuestionIndex + 1}`
+                                            } / {
+                                                currentSection?.isAdaptive 
+                                                    ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 21}`
+                                                    : (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 
+                                                    : (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 
+                                                    : currentSection.questions.length
                                             }</span>
                                         </div>
 
-                                        {currentSection.isTimed ? (
+                                        {/* Adaptive section progress */}
+                                        {currentSection?.isAdaptive && adaptiveAptitude.progress && (
+                                            <div className="flex items-center gap-3 text-sm text-indigo-600 font-medium">
+                                                <Brain className="w-4 h-4" />
+                                                <span>{adaptiveAptitude.progress.completionPercentage}% Complete</span>
+                                            </div>
+                                        )}
+
+                                        {currentSection?.isTimed && !currentSection?.isAdaptive ? (
                                             currentSection.isAptitude ? (
                                                 aptitudePhase === 'individual' ? (
                                                     <div className="flex flex-col gap-2">
@@ -2598,7 +3304,7 @@ const AssessmentTest = () => {
                                             </motion.div>
                                         ) : (
                                             <motion.div
-                                                key={`${currentSectionIndex}-${currentQuestionIndex}`}
+                                                key={currentSection?.isAdaptive ? `adaptive-${adaptiveAptitude.currentQuestion?.id}` : `${currentSectionIndex}-${currentQuestionIndex}`}
                                                 initial={{ opacity: 0, x: 30 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 exit={{ opacity: 0, x: -30 }}
@@ -2607,20 +3313,95 @@ const AssessmentTest = () => {
                                             >
                                                 <div className="mb-6">
                                                     <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 block">
-                                                        Question {currentQuestionIndex + 1} / {
-                                                            (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 :
-                                                            (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 :
-                                                            currentSection.questions.length
+                                                        Question {
+                                                            currentSection?.isAdaptive 
+                                                                ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1}`
+                                                                : `${currentQuestionIndex + 1}`
+                                                        } / {
+                                                            currentSection?.isAdaptive 
+                                                                ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 21}`
+                                                                : (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 
+                                                                : (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 
+                                                                : currentSection.questions.length
                                                         }
                                                     </span>
                                                     <h3 className="text-2xl md:text-3xl font-medium text-gray-800 leading-snug">
-                                                        {currentQuestion.text}
+                                                        {currentQuestion?.text}
                                                     </h3>
                                                 </div>
 
                                                 <div className="space-y-3 mt-4">
-                                                    {/* SJT Questions - Select BEST and WORST */}
-                                                    {currentQuestion.partType === 'sjt' ? (
+                                                    {/* Adaptive Aptitude Questions - Special handling */}
+                                                    {currentSection?.isAdaptive ? (
+                                                        <div className="space-y-4">
+                                                            {/* Adaptive test info badges with timer */}
+                                                            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 rounded-full text-xs font-medium text-purple-700">
+                                                                        <Target className="w-3 h-3" />
+                                                                        Level {adaptiveAptitude.session?.currentDifficulty || 3}
+                                                                    </span>
+                                                                    {currentQuestion?.subtag && (
+                                                                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600">
+                                                                            {currentQuestion.subtag.replace(/_/g, ' ')}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {/* Per-question timer */}
+                                                                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold ${
+                                                                    adaptiveQuestionTimer <= 10 
+                                                                        ? 'bg-red-100 text-red-700 animate-pulse' 
+                                                                        : adaptiveQuestionTimer <= 30 
+                                                                            ? 'bg-amber-100 text-amber-700' 
+                                                                            : 'bg-indigo-100 text-indigo-700'
+                                                                }`}>
+                                                                    <Clock className="w-4 h-4" />
+                                                                    {Math.floor(adaptiveQuestionTimer / 60)}:{(adaptiveQuestionTimer % 60).toString().padStart(2, '0')}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Answer options for adaptive questions */}
+                                                            {currentQuestion?.options && ['A', 'B', 'C', 'D'].map((optionKey) => {
+                                                                const isSelected = adaptiveAptitudeAnswer === optionKey;
+                                                                return (
+                                                                    <button
+                                                                        key={optionKey}
+                                                                        type="button"
+                                                                        onClick={() => setAdaptiveAptitudeAnswer(optionKey)}
+                                                                        className={`w-full border-2 rounded-xl p-4 transition-all text-left ${
+                                                                            isSelected
+                                                                                ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
+                                                                                : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex items-start gap-3">
+                                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold transition-all ${
+                                                                                isSelected
+                                                                                    ? 'bg-indigo-500 text-white'
+                                                                                    : 'bg-gray-100 text-gray-600'
+                                                                            }`}>
+                                                                                {optionKey}
+                                                                            </div>
+                                                                            <p className={`flex-1 font-medium text-lg ${
+                                                                                isSelected ? 'text-indigo-700' : 'text-gray-700'
+                                                                            }`}>
+                                                                                {currentQuestion.options[optionKey]}
+                                                                            </p>
+                                                                        </div>
+                                                                    </button>
+                                                                );
+                                                            })}
+
+                                                            {/* Loading state for adaptive questions */}
+                                                            {adaptiveAptitude.loading && !currentQuestion && (
+                                                                <div className="flex flex-col items-center justify-center py-8">
+                                                                    <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-4" />
+                                                                    <p className="text-gray-600">Loading next question...</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : /* SJT Questions - Select BEST and WORST */
+                                                    currentQuestion.partType === 'sjt' ? (
                                                         <div className="space-y-4">
                                                             <div className="p-3 bg-rose-50 rounded-lg border border-rose-200 mb-4">
                                                                 <p className="text-sm font-medium text-rose-700">
@@ -2903,14 +3684,20 @@ const AssessmentTest = () => {
 
                                             <Button
                                                 onClick={handleNext}
-                                                disabled={!isCurrentAnswered || isSaving}
-                                                className={`bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-8 py-6 rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 font-bold tracking-wide ${(!isCurrentAnswered || isSaving) ? 'opacity-50 cursor-not-allowed grayscale shadow-none' : ''
+                                                disabled={!isCurrentAnswered || isSaving || adaptiveAptitude.submitting}
+                                                className={`bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-8 py-6 rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 font-bold tracking-wide ${(!isCurrentAnswered || isSaving || adaptiveAptitude.submitting) ? 'opacity-50 cursor-not-allowed grayscale shadow-none' : ''
                                                     }`}
                                             >
-                                                {isSaving ? (
+                                                {(isSaving || adaptiveAptitude.submitting) ? (
                                                     <>
                                                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                                                         Saving...
+                                                    </>
+                                                ) : currentSection?.isAdaptive ? (
+                                                    // Adaptive section: always show "Next Question" - submission happens via section complete screen
+                                                    <>
+                                                        Next Question
+                                                        <ChevronRight className="w-5 h-5 ml-2" />
                                                     </>
                                                 ) : currentSectionIndex === sections.length - 1 && currentQuestionIndex === currentSection.questions.length - 1 ? (
                                                     <>

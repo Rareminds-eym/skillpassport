@@ -308,6 +308,21 @@ export interface ResetPasswordRequest {
   newPassword?: string;
 }
 
+export interface CreateCollegeStaffRequest {
+  staff?: {
+    name: string;
+    email: string;
+    employee_id?: string;
+    roles: string[];
+    department_id?: string;
+    phone?: string;
+    qualification?: string;
+    specialization?: string;
+    experience_years?: number;
+  };
+  collegeId?: string;
+}
+
 // ==================== UTILITY ====================
 
 export interface CheckCodeRequest {
