@@ -61,6 +61,18 @@ import {
     handleProcessEntitlementLifecycle,
     handleSendRenewalReminders
 } from './handlers/entitlementLifecycle';
+import {
+    handleAssignLicense,
+    handleBulkAssignLicenses,
+    handleCalculateOrgPricing,
+    handleCreateLicensePool,
+    handleGetLicensePools,
+    handleGetOrgSubscriptions,
+    handleGetUserAssignments,
+    handlePurchaseOrgSubscription,
+    handleUnassignLicense,
+    handleUpdateSeatCount
+} from './handlers/organization';
 import { handleGetSubscriptionFeatures, handleGetSubscriptionPlan, handleGetSubscriptionPlans } from './handlers/plans';
 
 // Re-export Env type for use in other modules
@@ -2190,6 +2202,61 @@ export default {
         case '/check-addon-access':
           return await handleCheckAddonAccess(request, env);
         
+        // Organization Subscription endpoints
+        case '/org-subscriptions/calculate-pricing':
+          if (request.method === 'POST') {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            return await handleCalculateOrgPricing(request, env, auth.supabase, auth.user.id);
+          }
+          break;
+        
+        case '/org-subscriptions/purchase':
+          if (request.method === 'POST') {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            return await handlePurchaseOrgSubscription(request, env, auth.supabase, auth.user.id);
+          }
+          break;
+        
+        case '/org-subscriptions':
+          if (request.method === 'GET') {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            return await handleGetOrgSubscriptions(request, env, auth.supabase, auth.user.id);
+          }
+          break;
+        
+        // License Pool endpoints
+        case '/license-pools':
+          const authPool = await authenticateUser(request, env);
+          if (!authPool) return jsonResponse({ error: 'Unauthorized' }, 401);
+          
+          if (request.method === 'POST') {
+            return await handleCreateLicensePool(request, env, authPool.supabase, authPool.user.id);
+          } else if (request.method === 'GET') {
+            return await handleGetLicensePools(request, env, authPool.supabase, authPool.user.id);
+          }
+          break;
+        
+        // License Assignment endpoints
+        case '/license-assignments':
+          const authAssign = await authenticateUser(request, env);
+          if (!authAssign) return jsonResponse({ error: 'Unauthorized' }, 401);
+          
+          if (request.method === 'POST') {
+            return await handleAssignLicense(request, env, authAssign.supabase, authAssign.user.id);
+          }
+          break;
+        
+        case '/license-assignments/bulk':
+          if (request.method === 'POST') {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            return await handleBulkAssignLicenses(request, env, auth.supabase, auth.user.id);
+          }
+          break;
+        
         // Entitlement lifecycle endpoints (for cron jobs)
         case '/process-entitlement-lifecycle':
           return await handleProcessEntitlementLifecycle(request, env);
@@ -2238,6 +2305,17 @@ export default {
               'POST /verify-bundle-payment',
               'POST /cancel-addon',
               'GET  /check-addon-access',
+              // Organization Subscription endpoints
+              'POST /org-subscriptions/calculate-pricing',
+              'POST /org-subscriptions/purchase',
+              'GET  /org-subscriptions',
+              'PUT  /org-subscriptions/:id/seats',
+              'POST /license-pools',
+              'GET  /license-pools',
+              'POST /license-assignments',
+              'POST /license-assignments/bulk',
+              'DELETE /license-assignments/:id',
+              'GET  /license-assignments/user/:userId',
               // Entitlement Lifecycle endpoints (CRON)
               'POST /process-entitlement-lifecycle',
               'POST /expire-entitlements',
@@ -2390,6 +2468,34 @@ export default {
           }
         
         default:
+          // Handle dynamic routes for organization endpoints
+          if (path.startsWith('/org-subscriptions/') && path.includes('/seats')) {
+            if (request.method === 'PUT') {
+              const auth = await authenticateUser(request, env);
+              if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+              const subscriptionId = path.split('/')[2];
+              return await handleUpdateSeatCount(request, env, auth.supabase, auth.user.id, subscriptionId);
+            }
+          }
+          
+          if (path.startsWith('/license-assignments/') && !path.includes('/bulk')) {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            
+            const parts = path.split('/');
+            if (parts[2] === 'user' && parts[3]) {
+              // GET /license-assignments/user/:userId
+              if (request.method === 'GET') {
+                return await handleGetUserAssignments(request, env, auth.supabase, auth.user.id, parts[3]);
+              }
+            } else if (parts[2]) {
+              // DELETE /license-assignments/:id
+              if (request.method === 'DELETE') {
+                return await handleUnassignLicense(request, env, auth.supabase, auth.user.id, parts[2]);
+              }
+            }
+          }
+          
           return jsonResponse({ error: 'Not found' }, 404);
       }
     } catch (error) {
