@@ -30,7 +30,20 @@ function getSubscriptionBasePath(pathname) {
   return ''; // fallback to root
 }
 
-const DefaultFallback = ({ requiredPlan, basePath }) => (
+/**
+ * Get the user type for subscription plans based on current path
+ */
+function getUserTypeFromPath(pathname) {
+  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/recruitment')) return 'recruiter';
+  if (pathname.startsWith('/educator')) return 'educator';
+  if (pathname.startsWith('/college-admin')) return 'college_admin';
+  if (pathname.startsWith('/school-admin')) return 'school_admin';
+  if (pathname.startsWith('/university-admin')) return 'university_admin';
+  return 'student'; // fallback
+}
+
+const DefaultFallback = ({ requiredPlan, basePath, userType }) => (
   <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-lg p-6 text-center">
     <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
       <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -46,7 +59,7 @@ const DefaultFallback = ({ requiredPlan, basePath }) => (
         : 'This feature requires an active subscription.'}
     </p>
     <Link
-      to="/subscription/plans"
+      to={`/subscription/plans?type=${userType}`}
       className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
     >
       Upgrade Now
@@ -74,6 +87,7 @@ const SubscriptionGate = ({
 }) => {
   const location = useLocation();
   const basePath = getSubscriptionBasePath(location.pathname);
+  const userType = getUserTypeFromPath(location.pathname);
   const { 
     hasAccess, 
     subscription,
@@ -87,7 +101,7 @@ const SubscriptionGate = ({
 
   // Check basic access
   if (requireActive && !hasAccess) {
-    return fallback || <DefaultFallback requiredPlan={requiredPlan} basePath={basePath} />;
+    return fallback || <DefaultFallback requiredPlan={requiredPlan} basePath={basePath} userType={userType} />;
   }
 
   // Check plan level if specified
@@ -96,7 +110,7 @@ const SubscriptionGate = ({
     const requiredPlanLevel = getPlanLevel(requiredPlan);
 
     if (userPlanLevel < requiredPlanLevel) {
-      return fallback || <DefaultFallback requiredPlan={requiredPlan} basePath={basePath} />;
+      return fallback || <DefaultFallback requiredPlan={requiredPlan} basePath={basePath} userType={userType} />;
     }
   }
 

@@ -89,15 +89,18 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
         // Manage page - requires authentication and manageable subscription
         // Allow active, paused, or recently cancelled subscriptions
         if (!user) {
+          // Build plans URL with user role type
+          const plansUrlNoUser = role ? `/subscription/plans?type=${role}` : '/subscription/plans';
           setRedirecting(true);
-          navigate(addQueryParams('/subscription/plans'), { 
+          navigate(addQueryParams(plansUrlNoUser), { 
             replace: true,
             state: { from: location.pathname }
           });
         } else if (!hasManageableSubscription) {
-          // No subscription or expired subscription - redirect to plans
+          // No subscription or expired subscription - redirect to plans with user role
+          const plansUrl = role ? `/subscription/plans?type=${role}` : '/subscription/plans';
           setRedirecting(true);
-          navigate(addQueryParams('/subscription/plans'), { 
+          navigate(addQueryParams(plansUrl), { 
             replace: true,
             state: { from: location.pathname, message: 'no-subscription' }
           });

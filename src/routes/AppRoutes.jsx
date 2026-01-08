@@ -1,7 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import Loader from "../components/Loader";
-import ProtectedRoute from "../components/ProtectedRoute";
 import ScrollToTop from "../components/ScrollToTop";
 import SubscriptionProtectedRoute from "../components/Subscription/SubscriptionProtectedRoute";
 
@@ -266,6 +265,9 @@ const UniversityAdminDigitalPortfolio = lazy(() =>
 );
 const UniversityAdminAssessmentResults = lazy(() =>
   import("../pages/admin/universityAdmin/AssessmentResults")
+);
+const UniversityAdminSettings = lazy(() =>
+  import("../pages/admin/universityAdmin/Settings")
 );
 
 const AttendanceTracking = lazy(() =>
@@ -624,6 +626,7 @@ const AppRoutes = () => {
           <Route path="placements/readiness" element={<PlacementReadiness />} />
           <Route path="analytics/obe-tracking" element={<OutcomeBasedEducation />} />
           <Route path="ai-counselling" element={<AICounselling />} />
+          <Route path="settings" element={<UniversityAdminSettings />} />
           <Route path="subscription/manage" element={<SubscriptionManage />} />
           <Route path="subscription/add-ons" element={<AddOns />} />
           <Route
@@ -835,7 +838,7 @@ const AppRoutes = () => {
           path="/educator/*"
           element={
             <SubscriptionProtectedRoute 
-              allowedRoles={["educator"]}
+              allowedRoles={["educator", "school_educator", "college_educator"]}
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=educator"
             >

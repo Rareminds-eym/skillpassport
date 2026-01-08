@@ -29,6 +29,19 @@ function getSubscriptionBasePath(pathname) {
   return ''; // fallback to root
 }
 
+/**
+ * Get the user type for subscription plans based on current path
+ */
+function getUserTypeFromPath(pathname) {
+  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/recruitment')) return 'recruiter';
+  if (pathname.startsWith('/educator')) return 'educator';
+  if (pathname.startsWith('/college-admin')) return 'college_admin';
+  if (pathname.startsWith('/school-admin')) return 'school_admin';
+  if (pathname.startsWith('/university-admin')) return 'university_admin';
+  return 'student'; // fallback
+}
+
 const bannerStyles = {
   expiring_soon: {
     bg: 'bg-amber-50 border-amber-200',
@@ -65,6 +78,7 @@ const SubscriptionBanner = ({
   const [isDismissed, setIsDismissed] = useState(false);
   const location = useLocation();
   const basePath = getSubscriptionBasePath(location.pathname);
+  const userType = getUserTypeFromPath(location.pathname);
 
   if (isDismissed) return null;
 
@@ -86,7 +100,7 @@ const SubscriptionBanner = ({
         <div className="flex items-center gap-3">
           {showRenew && (
             <Link
-              to="/subscription/plans"
+              to={`/subscription/plans?type=${userType}`}
               className="text-sm font-semibold text-indigo-600 hover:text-indigo-500 whitespace-nowrap"
             >
               Renew Now →

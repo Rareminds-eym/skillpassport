@@ -185,7 +185,10 @@ function AddOns() {
                   Contact Support
                 </a>
                 <button
-                  onClick={() => navigate('/subscription/plans')}
+                  onClick={() => {
+                    const userType = role || 'student';
+                    navigate(`/subscription/plans?type=${userType}`);
+                  }}
                   className="px-6 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   View Plans

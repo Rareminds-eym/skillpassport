@@ -16,6 +16,19 @@ function getSubscriptionBasePath(pathname) {
 }
 
 /**
+ * Get the user type for subscription plans based on current path
+ */
+function getUserTypeFromPath(pathname) {
+  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/recruitment')) return 'recruiter';
+  if (pathname.startsWith('/educator')) return 'educator';
+  if (pathname.startsWith('/college-admin')) return 'college_admin';
+  if (pathname.startsWith('/school-admin')) return 'school_admin';
+  if (pathname.startsWith('/university-admin')) return 'university_admin';
+  return 'student'; // fallback
+}
+
+/**
  * Subscription Status Widget
  * Shows quick subscription status on dashboard with appropriate CTAs
  */
@@ -24,6 +37,7 @@ const SubscriptionStatusWidget = () => {
   const location = useLocation();
   const { subscriptionData, loading } = useSubscriptionQuery();
   const basePath = getSubscriptionBasePath(location.pathname);
+  const userType = getUserTypeFromPath(location.pathname);
 
   if (loading) {
     return (
@@ -50,7 +64,7 @@ const SubscriptionStatusWidget = () => {
               Get access to Career AI, Video Portfolio, and more premium features
             </p>
             <button
-              onClick={() => navigate('/subscription/plans?type=student&mode=purchase')}
+              onClick={() => navigate(`/subscription/plans?type=${userType}&mode=purchase`)}
               className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
             >
               View Plans

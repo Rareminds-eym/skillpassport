@@ -174,7 +174,19 @@ export function SubscriptionSettingsSection({ className = '' }) {
 
           {!hasSubscription && (
             <button
-              onClick={() => navigate('/subscription/plans')}
+              onClick={() => {
+                // Get user type from basePath for proper plan display
+                const typeMap = {
+                  '/student': 'student',
+                  '/recruitment': 'recruiter',
+                  '/educator': 'educator',
+                  '/college-admin': 'college_admin',
+                  '/school-admin': 'school_admin',
+                  '/university-admin': 'university_admin'
+                };
+                const userType = typeMap[basePath] || 'student';
+                navigate(`/subscription/plans?type=${userType}`);
+              }}
               className="w-full flex items-center justify-between px-4 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors group"
             >
               <div className="flex items-center gap-3">

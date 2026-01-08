@@ -410,10 +410,17 @@ function SubscriptionPlans() {
     [subscriptionData, plans]
   );
 
+  // Check if user is in upgrade mode (should not redirect to manage page)
+  const isUpgradeMode = useMemo(
+    () => searchParams.get('mode') === 'upgrade',
+    [searchParams]
+  );
+
   // Compute whether redirect should occur
+  // Don't redirect if user is in upgrade mode - they want to see plans to upgrade
   const shouldRedirect = useMemo(
-    () => isAuthenticated && hasActiveOrPausedSubscription,
-    [isAuthenticated, hasActiveOrPausedSubscription]
+    () => isAuthenticated && hasActiveOrPausedSubscription && !isUpgradeMode,
+    [isAuthenticated, hasActiveOrPausedSubscription, isUpgradeMode]
   );
 
   // Show welcome message from signup flow (only once)

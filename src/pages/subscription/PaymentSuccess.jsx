@@ -262,9 +262,11 @@ function PaymentSuccess() {
 
   useEffect(() => {
     if (!paymentParams.razorpay_payment_id && verificationStatus !== 'loading') {
-      navigate('/subscription/plans', { replace: true });
+      // Include user role type for proper plan display
+      const userType = role || 'student';
+      navigate(`/subscription/plans?type=${userType}`, { replace: true });
     }
-  }, [paymentParams, verificationStatus, navigate]);
+  }, [paymentParams, verificationStatus, navigate, role]);
 
   useEffect(() => {
     if (verificationError?.code === 'NO_SESSION') {

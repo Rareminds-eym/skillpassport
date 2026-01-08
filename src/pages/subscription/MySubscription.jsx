@@ -162,7 +162,9 @@ function MySubscription() {
   const formatDate = useCallback((dateString) => formatDateUtil(dateString), []);
 
   const handleUpgradePlan = () => {
-    navigate('/subscription/plans?mode=upgrade');
+    // Include user role type for proper plan display
+    const userType = role || 'student';
+    navigate(`/subscription/plans?type=${userType}&mode=upgrade`);
   };
 
   const handleRenewSubscription = () => {
@@ -593,7 +595,10 @@ function MySubscription() {
               You don't have an active subscription yet. Choose a plan to get started.
             </p>
             <button
-              onClick={() => navigate('/subscription/plans')}
+              onClick={() => {
+                const userType = role || 'student';
+                navigate(`/subscription/plans?type=${userType}`);
+              }}
               className="w-full bg-neutral-900 text-white py-2.5 px-6 rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors"
             >
               View Plans
