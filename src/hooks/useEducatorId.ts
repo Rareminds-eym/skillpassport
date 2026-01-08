@@ -44,36 +44,72 @@ export function useEducatorId(): EducatorIdData {
           throw new Error('No active session found');
         }
 
-        // Look up educator by user_id (from Supabase auth)
-        const { data: educatorData, error: educatorError } = await supabase
+        // Look up educator by user_id (from Supabase auth) - check both school and college
+        // First try school_educators
+        const { data: schoolEducatorData, error: schoolEducatorError } = await supabase
           .from('school_educators')
           .select('id')
           .eq('user_id', session.user.id)
           .maybeSingle();
 
-        if (educatorError) {
-          throw educatorError;
+        if (schoolEducatorError && schoolEducatorError.code !== 'PGRST116') {
+          throw schoolEducatorError;
         }
 
-        if (educatorData) {
-          setEducatorId(educatorData.id);
+        if (schoolEducatorData) {
+          setEducatorId(schoolEducatorData.id);
+          setLoading(false);
+          return;
+        }
+
+        // If not found in school_educators, try college_lecturers
+        const { data: collegeEducatorData, error: collegeEducatorError } = await supabase
+          .from('college_lecturers')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        if (collegeEducatorError && collegeEducatorError.code !== 'PGRST116') {
+          throw collegeEducatorError;
+        }
+
+        if (collegeEducatorData) {
+          setEducatorId(collegeEducatorData.id);
+          setLoading(false);
+          return;
+        }
+
+        // Fallback: try to find by email in both tables
+        const { data: schoolEducatorByEmail, error: schoolEmailError } = await supabase
+          .from('school_educators')
+          .select('id')
+          .eq('email', user.email)
+          .maybeSingle();
+
+        if (schoolEmailError && schoolEmailError.code !== 'PGRST116') {
+          throw schoolEmailError;
+        }
+
+        if (schoolEducatorByEmail) {
+          setEducatorId(schoolEducatorByEmail.id);
+          setLoading(false);
+          return;
+        }
+
+        const { data: collegeEducatorByEmail, error: collegeEmailError } = await supabase
+          .from('college_lecturers')
+          .select('id')
+          .eq('email', user.email)
+          .maybeSingle();
+
+        if (collegeEmailError && collegeEmailError.code !== 'PGRST116') {
+          throw collegeEmailError;
+        }
+
+        if (collegeEducatorByEmail) {
+          setEducatorId(collegeEducatorByEmail.id);
         } else {
-          // Fallback: try to find by email if user_id lookup fails
-          const { data: educatorByEmail, error: emailError } = await supabase
-            .from('school_educators')
-            .select('id')
-            .eq('email', user.email)
-            .maybeSingle();
-
-          if (emailError) {
-            throw emailError;
-          }
-
-          if (educatorByEmail) {
-            setEducatorId(educatorByEmail.id);
-          } else {
-            setError('Educator record not found');
-          }
+          setError('Educator record not found');
         }
       } catch (err) {
         console.error('Error fetching educator ID:', err);
