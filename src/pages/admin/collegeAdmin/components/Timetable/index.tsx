@@ -29,6 +29,7 @@ interface CalendarTimetableProps {
 const CalendarTimetable: React.FC<CalendarTimetableProps> = ({ collegeId }) => {
   // Data hook
   const {
+    departments,
     faculty,
     classes,
     slots,
@@ -51,6 +52,7 @@ const CalendarTimetable: React.FC<CalendarTimetableProps> = ({ collegeId }) => {
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => getWeekStart());
 
   // Filters
+  const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState<string>("");
   const [selectedFacultyFilter, setSelectedFacultyFilter] = useState<string>("");
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>("");
   const [facultyClasses, setFacultyClasses] = useState<CollegeClass[]>([]);
@@ -323,12 +325,21 @@ const CalendarTimetable: React.FC<CalendarTimetableProps> = ({ collegeId }) => {
     <div className="flex h-full bg-gray-50">
       {/* Left Sidebar */}
       <Sidebar
+        departments={departments}
         faculty={faculty}
         classes={classes}
         facultyClasses={facultyClasses}
         breaks={breaks}
+        selectedDepartmentFilter={selectedDepartmentFilter}
         selectedFacultyFilter={selectedFacultyFilter}
         selectedClassFilter={selectedClassFilter}
+        onDepartmentFilterChange={(value) => {
+          setSelectedDepartmentFilter(value);
+          // Reset faculty and class filters when department changes
+          setSelectedFacultyFilter("");
+          setSelectedClassFilter("");
+          setFacultyClasses([]);
+        }}
         onFacultyFilterChange={setSelectedFacultyFilter}
         onClassFilterChange={setSelectedClassFilter}
         onAddBreak={handleAddBreak}

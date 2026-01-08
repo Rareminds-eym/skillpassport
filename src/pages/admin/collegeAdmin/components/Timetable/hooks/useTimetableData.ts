@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../../../../../lib/supabaseClient";
-import { Faculty, CollegeClass, ScheduleSlot, Break, TimePeriod, Substitution } from "../types";
+import { Faculty, CollegeClass, ScheduleSlot, Break, TimePeriod, Substitution, Department } from "../types";
 import { DEFAULT_PERIODS } from "../constants";
 
 interface UseTimetableDataProps {
@@ -8,6 +8,7 @@ interface UseTimetableDataProps {
 }
 
 export const useTimetableData = ({ collegeId }: UseTimetableDataProps) => {
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [faculty, setFaculty] = useState<Faculty[]>([]);
   const [classes, setClasses] = useState<CollegeClass[]>([]);
   const [slots, setSlots] = useState<ScheduleSlot[]>([]);
@@ -18,22 +19,53 @@ export const useTimetableData = ({ collegeId }: UseTimetableDataProps) => {
   const [publishStatus, setPublishStatus] = useState<"draft" | "published">("draft");
   const [loading, setLoading] = useState(false);
 
-  const loadFaculty = async () => {
+  const loadDepartments = async () => {
     if (!collegeId) return;
     const { data } = await supabase
+      .from("departments")
+      .select("id, name, code")
+      .eq("college_id", collegeId)
+      .eq("status", "active")
+      .order("name");
+    if (data) setDepartments(data);
+  };
+
+  const loadFaculty = async () => {
+    if (!collegeId) return;
+    
+    // Load faculty with department assignments
+    const { data: lecturers } = await supabase
       .from("college_lecturers")
       .select("id, first_name, last_name, employeeId, subject_expertise")
       .eq("collegeId", collegeId)
       .eq("accountStatus", "active")
       .order("first_name");
-    if (data) setFaculty(data);
+    
+    if (lecturers) {
+      // Get department assignments
+      const { data: assignments } = await supabase
+        .from("department_faculty_assignments")
+        .select("lecturer_id, department_id, is_hod")
+        .eq("is_active", true);
+      
+      const facultyWithDept = lecturers.map(f => {
+        const assignment = assignments?.find(a => a.lecturer_id === f.id);
+        return {
+          ...f,
+          department_id: assignment?.department_id || null,
+          is_hod: assignment?.is_hod || false
+        };
+      });
+      
+      setFaculty(facultyWithDept);
+    }
   };
 
   const loadClasses = async () => {
     if (!collegeId) return;
     const { data } = await supabase
       .from("college_classes")
-      .select("id, name, grade, section")
+      .select("id, name, grade, section, department_id")
       .eq("college_id", collegeId)
       .eq("status", "active")
       .order("grade");
@@ -252,6 +284,7 @@ export const useTimetableData = ({ collegeId }: UseTimetableDataProps) => {
   // Initial data load
   useEffect(() => {
     if (collegeId) {
+      loadDepartments();
       loadFaculty();
       loadClasses();
       loadOrCreateTimetable();
@@ -269,6 +302,7 @@ export const useTimetableData = ({ collegeId }: UseTimetableDataProps) => {
   }, [timetableId]);
 
   return {
+    departments,
     faculty,
     classes,
     slots,
