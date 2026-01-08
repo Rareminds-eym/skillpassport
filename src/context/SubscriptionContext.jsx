@@ -47,6 +47,14 @@ export const useSubscriptionContext = () => {
   return context;
 };
 
+/**
+ * Safe version of useSubscriptionContext that returns null instead of throwing
+ * Use this in components that may render before the provider is ready
+ */
+export const useSubscriptionContextSafe = () => {
+  return useContext(SubscriptionContext);
+};
+
 // Query keys
 const SUBSCRIPTION_ACCESS_KEY = 'subscription-access';
 const USER_ENTITLEMENTS_KEY = 'user-entitlements';

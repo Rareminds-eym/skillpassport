@@ -16,7 +16,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
-import { useSubscriptionContext } from '../context/SubscriptionContext';
+import { useSubscriptionContextSafe } from '../context/SubscriptionContext';
 import { useSupabaseAuth } from '../context/SupabaseAuthContext';
 import addOnCatalogService from '../services/addOnCatalogService';
 
@@ -39,7 +39,8 @@ const CACHE_TIME = 10 * 60 * 1000; // 10 minutes
  */
 export function useAddOnCatalog(options = {}) {
   const { user } = useSupabaseAuth();
-  const { activeEntitlements } = useSubscriptionContext();
+  const subscriptionContext = useSubscriptionContextSafe();
+  const activeEntitlements = subscriptionContext?.activeEntitlements || [];
   const queryClient = useQueryClient();
 
   // Determine user role from profile or options
@@ -253,7 +254,8 @@ export function useAddOnCatalog(options = {}) {
  * @returns {Object} Add-on data and loading state
  */
 export function useAddOn(featureKey) {
-  const { activeEntitlements } = useSubscriptionContext();
+  const subscriptionContext = useSubscriptionContextSafe();
+  const activeEntitlements = subscriptionContext?.activeEntitlements || [];
 
   const {
     data: addOn,
@@ -305,7 +307,8 @@ export function useAddOn(featureKey) {
  * @returns {Object} Bundle data and loading state
  */
 export function useBundle(bundleId) {
-  const { activeEntitlements } = useSubscriptionContext();
+  const subscriptionContext = useSubscriptionContextSafe();
+  const activeEntitlements = subscriptionContext?.activeEntitlements || [];
 
   const {
     data: bundle,

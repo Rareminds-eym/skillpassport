@@ -35,6 +35,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Use email from props, auth user, or fallback
   // Prefer email to resolve to Profile ID, otherwise fallback to user ID
@@ -327,7 +328,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
         </div>
       )}
 
-      <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+      <div ref={panelRef} className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
         {/* Header */}
         <div className="px-5 py-3 border-b border-gray-100">
           <div className="flex justify-between items-center">
