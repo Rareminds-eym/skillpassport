@@ -175,18 +175,29 @@ export async function handleCreateAddonOrder(request: Request, env: Env): Promis
       return jsonResponse({ error: 'Add-on not found for feature_key: ' + feature_key }, 404);
     }
 
-    // Check if user already has an active entitlement
+    // Check if user already has an active or cancelled (but not expired) entitlement
     const { data: existingEntitlement } = await supabaseAdmin
       .from('user_entitlements')
-      .select('id')
+      .select('id, status, end_date')
       .eq('user_id', user.id)
       .eq('feature_key', feature_key)
-      .eq('status', 'active')
+      .in('status', ['active', 'grace_period', 'cancelled'])
       .gte('end_date', new Date().toISOString())
       .maybeSingle();
 
     if (existingEntitlement) {
-      return jsonResponse({ error: 'You already have an active subscription for this add-on' }, 400);
+      const message = existingEntitlement.status === 'cancelled'
+        ? 'You have a cancelled subscription for this add-on that is still active until ' + new Date(existingEntitlement.end_date).toLocaleDateString()
+        : 'You already have an active subscription for this add-on';
+      return jsonResponse({ 
+        error: message,
+        code: 'ENTITLEMENT_EXISTS',
+        existing_entitlement: {
+          id: existingEntitlement.id,
+          status: existingEntitlement.status,
+          end_date: existingEntitlement.end_date
+        }
+      }, 409);
     }
 
     // Calculate price
@@ -544,6 +555,33 @@ export async function handleCreateBundleOrder(request: Request, env: Env): Promi
 
     if (bundleError || !bundle) {
       return jsonResponse({ error: 'Bundle not found' }, 404);
+    }
+
+    // Get bundle feature keys
+    const bundleFeatureKeys = bundle.bundle_features?.map((bf: any) => bf.feature_key) || [];
+    
+    if (bundleFeatureKeys.length === 0) {
+      return jsonResponse({ error: 'Bundle has no features' }, 400);
+    }
+
+    // Check if user already owns all features in the bundle (active or cancelled but not expired)
+    const { data: existingEntitlements } = await supabaseAdmin
+      .from('user_entitlements')
+      .select('id, feature_key, status, end_date')
+      .eq('user_id', user.id)
+      .in('feature_key', bundleFeatureKeys)
+      .in('status', ['active', 'grace_period', 'cancelled'])
+      .gte('end_date', new Date().toISOString());
+
+    const ownedFeatureKeys = new Set((existingEntitlements || []).map((e: any) => e.feature_key));
+    const allFeaturesOwned = bundleFeatureKeys.every((key: string) => ownedFeatureKeys.has(key));
+
+    if (allFeaturesOwned) {
+      return jsonResponse({ 
+        error: 'You already own all features in this bundle',
+        code: 'BUNDLE_FULLY_OWNED',
+        owned_features: Array.from(ownedFeatureKeys)
+      }, 409);
     }
 
     // Calculate price

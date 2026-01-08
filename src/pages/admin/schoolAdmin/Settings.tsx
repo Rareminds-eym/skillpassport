@@ -10,6 +10,7 @@ import {
     CheckIcon,
     ClockIcon,
     Cog6ToothIcon,
+    CreditCardIcon,
     DocumentTextIcon,
     ExclamationTriangleIcon,
     EyeIcon,
@@ -24,6 +25,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import SearchBar from "../../../components/common/SearchBar";
+import { SubscriptionSettingsSection } from "../../../components/Subscription/SubscriptionSettingsSection";
 // import { supabase } from "../../../supabaseClient";
 
 /* ==============================

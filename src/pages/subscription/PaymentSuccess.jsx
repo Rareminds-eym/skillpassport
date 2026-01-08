@@ -19,6 +19,28 @@ import { downloadReceipt, generateReceiptBase64 } from '../../services/Subscript
 import { getPaymentReceiptUrl, uploadPaymentReceipt } from '../../services/storageApiService';
 import { clearPendingUserData } from '../../utils/authCleanup';
 
+/**
+ * Get the subscription manage path based on user role
+ */
+function getManagePath(userRole) {
+  const manageRoutes = {
+    super_admin: '/admin/subscription/manage',
+    rm_admin: '/admin/subscription/manage',
+    admin: '/admin/subscription/manage',
+    school_admin: '/school-admin/subscription/manage',
+    college_admin: '/college-admin/subscription/manage',
+    university_admin: '/university-admin/subscription/manage',
+    educator: '/educator/subscription/manage',
+    school_educator: '/educator/subscription/manage',
+    college_educator: '/educator/subscription/manage',
+    recruiter: '/recruitment/subscription/manage',
+    student: '/student/subscription/manage',
+    school_student: '/student/subscription/manage',
+    college_student: '/student/subscription/manage',
+  };
+  return manageRoutes[userRole] || '/student/subscription/manage';
+}
+
 // Receipt Card with clean design
 const ReceiptCard = ({ header, children }) => {
   return (
@@ -56,6 +78,7 @@ function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const { user, role } = useAuth();
   const { refreshAccess } = useSubscriptionContext();
+  const managePath = useMemo(() => getManagePath(role), [role]);
 
   const [activationStatus, setActivationStatus] = useState('pending');
   const [subscriptionData, setSubscriptionData] = useState(null);
@@ -239,9 +262,11 @@ function PaymentSuccess() {
 
   useEffect(() => {
     if (!paymentParams.razorpay_payment_id && verificationStatus !== 'loading') {
-      navigate('/subscription/plans', { replace: true });
+      // Use studentType from payment plan details if available, otherwise fall back to role
+      const userType = planDetails?.studentType || role || 'student';
+      navigate(`/subscription/plans?type=${userType}`, { replace: true });
     }
-  }, [paymentParams, verificationStatus, navigate]);
+  }, [paymentParams, verificationStatus, navigate, role, planDetails]);
 
   useEffect(() => {
     if (verificationError?.code === 'NO_SESSION') {
@@ -486,7 +511,7 @@ function PaymentSuccess() {
           </button>
           <div className="grid grid-cols-2 gap-2.5">
             <button
-              onClick={() => navigate('/subscription/manage')}
+              onClick={() => navigate(managePath)}
               className="py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50"
             >
               Manage

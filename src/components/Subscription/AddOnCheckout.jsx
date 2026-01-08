@@ -23,8 +23,9 @@ import {
     Trash2,
     X
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
+import { clearFeatureAccessCache } from '../../hooks/useFeatureGate';
 import addOnPaymentService from '../../services/addOnPaymentService';
 import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
 
@@ -45,7 +46,7 @@ export function AddOnCheckout({
   onSuccess,
   className = ''
 }) {
-  const { purchaseAddOn, purchaseBundle, isPurchasing, refreshAccess, fetchUserEntitlements } = useSubscriptionContext();
+  const { purchaseAddOn, purchaseBundle, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionContext();
   
   const [billingPeriod, setBillingPeriod] = useState('monthly');
   const [discountCode, setDiscountCode] = useState('');
@@ -53,6 +54,24 @@ export function AddOnCheckout({
   const [isValidatingCode, setIsValidatingCode] = useState(false);
   const [discountError, setDiscountError] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
+
+  // Helper to check if user already owns an add-on (including cancelled but not expired)
+  const isAddOnOwned = useCallback((featureKey) => {
+    if (!activeEntitlements) return false;
+    const now = new Date();
+    return activeEntitlements.some(ent => 
+      ent.feature_key === featureKey && 
+      (ent.status === 'active' || 
+       ent.status === 'grace_period' ||
+       (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
+    );
+  }, [activeEntitlements]);
+
+  // Helper to check if user owns all features in a bundle
+  const isBundleFullyOwned = useCallback((bundleFeatureKeys) => {
+    if (!activeEntitlements || !bundleFeatureKeys?.length) return false;
+    return bundleFeatureKeys.every(key => isAddOnOwned(key));
+  }, [activeEntitlements, isAddOnOwned]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -116,13 +135,29 @@ export function AddOnCheckout({
     setDiscountError(null);
   };
 
-  // Process checkout
+  // Process checkout with duplicate check
   const handleCheckout = async () => {
     if (cartItems.length === 0) return;
 
     setCheckoutError(null);
 
     try {
+      // Check for duplicate purchases before proceeding
+      const { type, item } = cartItems[0];
+      
+      if (type === 'addon') {
+        if (isAddOnOwned(item.feature_key)) {
+          setCheckoutError('You already own this add-on. Access is active until your subscription expires.');
+          return;
+        }
+      } else if (type === 'bundle') {
+        const bundleFeatureKeys = item.bundle_features?.map(bf => bf.feature_key) || [];
+        if (isBundleFullyOwned(bundleFeatureKeys)) {
+          setCheckoutError('You already own all features in this bundle.');
+          return;
+        }
+      }
+      
       // Load Razorpay script first
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
@@ -131,7 +166,6 @@ export function AddOnCheckout({
       }
       
       // For simplicity, process first item (can be extended for multi-item cart)
-      const { type, item } = cartItems[0];
       let orderData;
 
       if (type === 'addon') {

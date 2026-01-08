@@ -34,15 +34,15 @@ const PLAN_ADDON_MAPPING = {
     description: 'Basic plan - no add-ons included'
   },
   professional: {
-    addOns: ['career_ai', 'advanced_assessments'],
-    description: 'Professional plan includes Career AI and Advanced Assessments'
+    addOns: ['career_ai'],
+    description: 'Professional plan includes Career AI'
   },
   enterprise: {
-    addOns: ['career_ai', 'advanced_assessments', 'kpi_dashboard', 'educator_ai'],
-    description: 'Enterprise plan includes all professional features plus KPI Dashboard and Educator AI'
+    addOns: ['career_ai', 'kpi_dashboard', 'educator_ai'],
+    description: 'Enterprise plan includes Career AI, KPI Dashboard and Educator AI'
   },
   ecosystem: {
-    addOns: ['career_ai', 'advanced_assessments', 'kpi_dashboard', 'educator_ai', 'sso', 'api_webhooks'],
+    addOns: ['career_ai', 'kpi_dashboard', 'educator_ai', 'sso', 'api_webhooks'],
     description: 'Ecosystem plan includes all features'
   }
 };

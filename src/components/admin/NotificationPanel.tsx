@@ -39,11 +39,29 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     } = useAdminNotifications(userId);
 
     const [selectedFilter, setSelectedFilter] = useState<FilterKey>('all')
-    
+
     // Track new notifications for animation
     const [newNotificationIds, setNewNotificationIds] = useState<Set<string>>(new Set());
     const [showNewNotificationToast, setShowNewNotificationToast] = useState(false);
     const prevIdsRef = useRef<Set<string>>(new Set());
+
+
+    // Close when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+                onClose();
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isOpen, onClose]);
 
     // Detect new notifications and animate them
     useEffect(() => {
@@ -130,7 +148,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
             case 'approvals':
                 return [
                     'training_submitted',
-                    'experience_submitted', 
+                    'experience_submitted',
                     'project_submitted',
                     'approval_required',
                     'verification_required'
@@ -169,7 +187,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 return notifications.filter((n) =>
                     [
                         'training_submitted',
-                        'experience_submitted', 
+                        'experience_submitted',
                         'project_submitted',
                         'approval_required',
                         'verification_required'
@@ -220,10 +238,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
             {/* New notification toast */}
             {showNewNotificationToast && (
                 <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
-                    <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 shadow-lg">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 shadow-lg">
                         <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span className="text-sm font-medium text-green-800">New notification received</span>
+                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                            <span className="text-sm font-medium text-blue-800">New notification received</span>
                         </div>
                     </div>
                 </div>
@@ -237,7 +255,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
             />
 
             {/* Notification Popup - Fully Mobile Responsive */}
-            <div className="fixed top-16 md:absolute bottom-0 md:bottom-auto left-0 md:left-auto right-0 md:right-0 md:top-14 w-full md:w-96 bg-white shadow-2xl z-40 overflow-hidden md:border border-gray-100 md:rounded-xl lg:rounded-t-xl max-h-[85vh] md:max-h-96 flex flex-col">
+            <div className="fixed top-16 md:absolute bottom-0 md:bottom-auto left-0 md:left-auto right-0 md:right-0 md:top-14 w-full md:w-[28rem] bg-white shadow-xl z-40 overflow-hidden md:border border-gray-100 md:rounded-xl lg:rounded-t-xl max-h-[85vh] md:max-h-[32rem] flex flex-col">
                 {/* Header */}
                 <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 flex-shrink-0">
                     <div className="flex justify-between items-start">
@@ -335,10 +353,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                             <li
                                 key={notification.id}
                                 className={`px-3 sm:px-4 py-2.5 sm:py-3 hover:bg-gray-50 transition-all duration-200 group ${!notification.read ? 'bg-blue-50/50' : ''
-                                    } ${newNotificationIds.has(notification.id) ? "animate-pulse bg-green-50 border-l-4 border-green-400" : ""}`}
+                                    } ${newNotificationIds.has(notification.id) ? "animate-pulse bg-blue-50 border-l-4 border-blue-400" : ""}`}
                             >
                                 {newNotificationIds.has(notification.id) && (
-                                    <div className="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                                    <div className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
                                 )}
                                 <div className="flex items-start gap-2 sm:gap-3">
                                     {/* Icon */}
@@ -392,11 +410,11 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
                     {hasMore && (
                         <div className="p-3 border-t border-gray-100 text-center">
-                            <button 
+                            <button
                                 onClick={() => {
                                     console.log('🔵 Load more clicked');
                                     loadMore();
-                                }} 
+                                }}
                                 className="text-sm text-blue-600 hover:underline"
                             >
                                 Load more

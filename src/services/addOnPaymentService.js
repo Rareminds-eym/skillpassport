@@ -149,6 +149,8 @@ export const addOnPaymentService = {
           amount: data.amount,
           currency: data.currency || 'INR',
           bundleName: data.bundle_name,
+          bundleId: bundleId, // Include for verification
+          billingPeriod: billingPeriod, // Include for verification
           razorpayKeyId: import.meta.env.VITE_RAZORPAY_KEY_ID,
           userEmail,
           userName,
@@ -257,6 +259,87 @@ export const addOnPaymentService = {
       return await attemptVerification(1);
     } catch (error) {
       console.error('Error verifying addon payment:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  },
+
+  /**
+   * Verify bundle payment after Razorpay callback with retry logic
+   * @param {string} razorpayOrderId - Razorpay order ID
+   * @param {string} razorpayPaymentId - Razorpay payment ID
+   * @param {string} razorpaySignature - Razorpay signature
+   * @param {string} bundleId - Bundle ID
+   * @param {string} billingPeriod - 'monthly' or 'annual'
+   * @param {number} retries - Number of retries (default: 3)
+   * @returns {Promise<Object>} - Verification result
+   */
+  async verifyBundlePayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, bundleId, billingPeriod, retries = 3) {
+    const attemptVerification = async (attempt) => {
+      try {
+        console.log(`[AddOnPayment] Bundle verification attempt ${attempt} for order: ${razorpayOrderId}`);
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          throw new Error('User not authenticated');
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+        const response = await fetch(`${PAYMENTS_API_URL}/verify-bundle-payment`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            razorpay_order_id: razorpayOrderId,
+            razorpay_payment_id: razorpayPaymentId,
+            razorpay_signature: razorpaySignature,
+            bundle_id: bundleId,
+            billing_period: billingPeriod,
+          }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Bundle payment verification failed');
+        }
+
+        console.log(`[AddOnPayment] Bundle verification successful for order: ${razorpayOrderId}`);
+        return {
+          success: true,
+          entitlements: data.entitlements,
+          bundleName: data.bundle_name,
+          endDate: data.end_date,
+          message: data.message,
+        };
+      } catch (error) {
+        console.error(`[AddOnPayment] Bundle verification attempt ${attempt} failed:`, error);
+        
+        // If we have retries left and it's a network error, retry
+        if (attempt < retries && (error.name === 'AbortError' || error.message === 'Failed to fetch')) {
+          console.log(`[AddOnPayment] Retrying in ${attempt * 1000}ms...`);
+          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+          return attemptVerification(attempt + 1);
+        }
+        
+        throw error;
+      }
+    };
+
+    try {
+      return await attemptVerification(1);
+    } catch (error) {
+      console.error('Error verifying bundle payment:', error);
       return {
         success: false,
         error: error.message,

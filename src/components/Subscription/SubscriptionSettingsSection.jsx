@@ -16,17 +16,34 @@ import {
     Shield,
     Sparkles
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
+
+/**
+ * Get the base path for subscription routes based on current location
+ */
+function getSubscriptionBasePath(pathname) {
+  if (pathname.startsWith('/student')) return '/student';
+  if (pathname.startsWith('/recruitment')) return '/recruitment';
+  if (pathname.startsWith('/educator')) return '/educator';
+  if (pathname.startsWith('/college-admin')) return '/college-admin';
+  if (pathname.startsWith('/school-admin')) return '/school-admin';
+  if (pathname.startsWith('/university-admin')) return '/university-admin';
+  return ''; // fallback to root
+}
 
 /**
  * SubscriptionSettingsSection - Displays subscription info and management links
  */
 export function SubscriptionSettingsSection({ className = '' }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { subscriptionData, loading } = useSubscriptionQuery();
   const { activeEntitlements = [], totalAddOnCost = { monthly: 0, annual: 0 } } = useSubscriptionContext() || {};
+
+  // Get the base path for subscription routes
+  const basePath = getSubscriptionBasePath(location.pathname);
 
   if (loading) {
     return (
@@ -134,7 +151,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
         {/* Action Buttons */}
         <div className="space-y-2 pt-2">
           <button
-            onClick={() => navigate('/subscription/manage')}
+            onClick={() => navigate(`${basePath}/subscription/manage`)}
             className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors group"
           >
             <div className="flex items-center gap-3">
@@ -145,7 +162,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
           </button>
 
           <button
-            onClick={() => navigate('/subscription/add-ons')}
+            onClick={() => navigate(`${basePath}/subscription/add-ons`)}
             className="w-full flex items-center justify-between px-4 py-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors group"
           >
             <div className="flex items-center gap-3">
@@ -157,7 +174,19 @@ export function SubscriptionSettingsSection({ className = '' }) {
 
           {!hasSubscription && (
             <button
-              onClick={() => navigate('/subscription/plans')}
+              onClick={() => {
+                // Get user type from basePath for proper plan display
+                const typeMap = {
+                  '/student': 'student',
+                  '/recruitment': 'recruiter',
+                  '/educator': 'educator',
+                  '/college-admin': 'college_admin',
+                  '/school-admin': 'school_admin',
+                  '/university-admin': 'university_admin'
+                };
+                const userType = typeMap[basePath] || 'student';
+                navigate(`/subscription/plans?type=${userType}`);
+              }}
               className="w-full flex items-center justify-between px-4 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors group"
             >
               <div className="flex items-center gap-3">

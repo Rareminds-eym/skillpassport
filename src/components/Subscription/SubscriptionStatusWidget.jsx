@@ -1,6 +1,32 @@
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Shield, Clock, AlertCircle, TrendingUp } from 'lucide-react';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
+
+/**
+ * Get the base path for subscription routes based on current location
+ */
+function getSubscriptionBasePath(pathname) {
+  if (pathname.startsWith('/student')) return '/student';
+  if (pathname.startsWith('/recruitment')) return '/recruitment';
+  if (pathname.startsWith('/educator')) return '/educator';
+  if (pathname.startsWith('/college-admin')) return '/college-admin';
+  if (pathname.startsWith('/school-admin')) return '/school-admin';
+  if (pathname.startsWith('/university-admin')) return '/university-admin';
+  return ''; // fallback to root
+}
+
+/**
+ * Get the user type for subscription plans based on current path
+ */
+function getUserTypeFromPath(pathname) {
+  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/recruitment')) return 'recruiter';
+  if (pathname.startsWith('/educator')) return 'educator';
+  if (pathname.startsWith('/college-admin')) return 'college_admin';
+  if (pathname.startsWith('/school-admin')) return 'school_admin';
+  if (pathname.startsWith('/university-admin')) return 'university_admin';
+  return 'student'; // fallback
+}
 
 /**
  * Subscription Status Widget
@@ -8,7 +34,10 @@ import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQu
  */
 const SubscriptionStatusWidget = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { subscriptionData, loading } = useSubscriptionQuery();
+  const basePath = getSubscriptionBasePath(location.pathname);
+  const userType = getUserTypeFromPath(location.pathname);
 
   if (loading) {
     return (
@@ -32,10 +61,10 @@ const SubscriptionStatusWidget = () => {
               Unlock Premium Features
             </h3>
             <p className="text-xs text-neutral-600 mb-3">
-              Get access to advanced assessments, priority visibility, and more
+              Get access to Career AI, Video Portfolio, and more premium features
             </p>
             <button
-              onClick={() => navigate('/subscription/plans?type=student&mode=purchase')}
+              onClick={() => navigate(`/subscription/plans?type=${userType}&mode=purchase`)}
               className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
             >
               View Plans
@@ -70,7 +99,7 @@ const SubscriptionStatusWidget = () => {
               Renew now to restore access to premium features
             </p>
             <button
-              onClick={() => navigate('/subscription/manage')}
+              onClick={() => navigate(`${basePath}/subscription/manage`)}
               className="text-xs font-medium text-red-600 hover:text-red-700"
             >
               Renew Now →
@@ -97,7 +126,7 @@ const SubscriptionStatusWidget = () => {
               Only {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} left on your {subscriptionData.planName || 'Basic'} plan
             </p>
             <button
-              onClick={() => navigate('/subscription/manage')}
+              onClick={() => navigate(`${basePath}/subscription/manage`)}
               className="text-xs font-medium text-orange-600 hover:text-orange-700"
             >
               Manage Subscription →
@@ -123,7 +152,7 @@ const SubscriptionStatusWidget = () => {
             {daysRemaining} days remaining
           </p>
           <button
-            onClick={() => navigate('/subscription/manage')}
+            onClick={() => navigate(`${basePath}/subscription/manage`)}
             className="text-xs font-medium text-green-600 hover:text-green-700"
           >
             View Details →

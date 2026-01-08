@@ -761,24 +761,30 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
   }
 
   // ==================== LAYER 2: CHECK EXISTING SUBSCRIPTION ====================
-  // CRITICAL: Check for active subscription BEFORE creating order
-  // This prevents users from paying when they already have an active subscription
+  // CRITICAL: Check for active or cancelled (but not expired) subscription BEFORE creating order
+  // This prevents users from paying when they already have valid subscription access
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
   
+  // Check for active subscriptions
   const { data: existingSubscription, error: subCheckError } = await supabaseAdmin
     .from('subscriptions')
     .select('id, plan_type, status, subscription_end_date')
     .eq('user_id', user.id)
-    .eq('status', 'active')
+    .in('status', ['active', 'cancelled'])
+    .gte('subscription_end_date', new Date().toISOString())
     .maybeSingle();
 
   if (existingSubscription) {
-    // User already has an active subscription - block order creation
-    console.log(`[CREATE-ORDER] Blocked: User ${user.id} already has active ${existingSubscription.plan_type} subscription`);
+    // User already has a valid subscription (active or cancelled but not expired)
+    const message = existingSubscription.status === 'cancelled'
+      ? `You have a cancelled subscription that is still active until ${new Date(existingSubscription.subscription_end_date).toLocaleDateString()}`
+      : 'You already have an active subscription';
+    
+    console.log(`[CREATE-ORDER] Blocked: User ${user.id} already has ${existingSubscription.status} ${existingSubscription.plan_type} subscription`);
     
     return jsonResponse({
-      error: 'You already have an active subscription',
+      error: message,
       code: 'SUBSCRIPTION_EXISTS',
       existing_subscription: {
         id: existingSubscription.id,
@@ -786,7 +792,9 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
         status: existingSubscription.status,
         end_date: existingSubscription.subscription_end_date,
       },
-      suggestion: 'Please manage your existing subscription from your account settings, or wait for it to expire before purchasing a new plan.'
+      suggestion: existingSubscription.status === 'cancelled'
+        ? 'Your subscription access continues until the end date. You can purchase a new plan after it expires.'
+        : 'Please manage your existing subscription from your account settings, or wait for it to expire before purchasing a new plan.'
     }, 409); // 409 Conflict
   }
 

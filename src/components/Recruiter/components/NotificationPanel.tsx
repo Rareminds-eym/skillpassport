@@ -53,6 +53,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
   const [showNewNotificationToast, setShowNewNotificationToast] = useState(false);
   const prevIdsRef = useRef<Set<string>>(new Set());
 
+
+  // Close when clicking outside
+
+
   // Detect new notifications and animate them
   useEffect(() => {
     const currentIds = new Set(notifications.map((n) => n.id));
@@ -192,17 +196,17 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     <>
       {/* New notification toast */}
       {showNewNotificationToast && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
-          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 shadow-lg">
+        <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-top-2 duration-300">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 shadow-lg">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-green-800">New notification received</span>
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-blue-800">New notification received</span>
             </div>
           </div>
         </div>
       )}
 
-      <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl z-50 overflow-hidden">
+      <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
         {/* Header */}
         <div className="px-5 py-3 border-b border-gray-100">
           <div className="flex justify-between items-center">
@@ -231,11 +235,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
               <button
                 key={key}
                 onClick={() => setSelectedFilter(key)}
-                className={`text-xs px-2.5 py-1 rounded-full transition ${
-                  selectedFilter === key
-                    ? "bg-blue-100 text-blue-700 font-medium"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
+                className={`text-xs px-2.5 py-1 rounded-full transition ${selectedFilter === key
+                  ? "bg-blue-100 text-blue-700 font-medium"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
               >
                 {key[0].toUpperCase() + key.slice(1)}
                 {count > 0 && <span className="ml-1 text-[10px]">({count})</span>}
@@ -256,12 +259,11 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
             {filteredNotifications.map((n) => (
               <li
                 key={n.id}
-                className={`px-5 py-4 hover:bg-gray-50 transition-all duration-300 group relative ${
-                  !n.read ? "bg-blue-50/50" : ""
-                } ${newNotificationIds.has(n.id) ? "animate-pulse bg-green-50 border-l-4 border-green-400" : ""}`}
+                className={`px-5 py-4 hover:bg-gray-50 transition-all duration-300 group relative ${!n.read ? "bg-blue-50/50" : ""
+                  } ${newNotificationIds.has(n.id) ? "animate-pulse bg-blue-50 border-l-4 border-blue-400" : ""}`}
               >
                 {newNotificationIds.has(n.id) && (
-                  <div className="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                  <div className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
                 )}
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100">
