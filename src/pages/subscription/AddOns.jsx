@@ -23,29 +23,22 @@ function getSubscriptionBasePath(pathname) {
   if (pathname.startsWith('/college-admin')) return '/college-admin';
   if (pathname.startsWith('/school-admin')) return '/school-admin';
   if (pathname.startsWith('/university-admin')) return '/university-admin';
+  if (pathname.startsWith('/admin')) return '/admin';
   return ''; // fallback to root
 }
 
 /**
- * Get the settings path based on user role
+ * Get the settings path based on current URL path (more reliable than role)
  */
-function getSettingsPath(userRole) {
-  const settingsRoutes = {
-    super_admin: '/admin/settings',
-    rm_admin: '/admin/settings',
-    admin: '/admin/settings',
-    school_admin: '/school-admin/settings',
-    college_admin: '/college-admin/settings',
-    university_admin: '/university-admin/settings',
-    educator: '/educator/settings',
-    school_educator: '/educator/settings',
-    college_educator: '/educator/settings',
-    recruiter: '/recruitment/settings',
-    student: '/student/settings',
-    school_student: '/student/settings',
-    college_student: '/student/settings',
-  };
-  return settingsRoutes[userRole] || '/student/settings';
+function getSettingsPathFromUrl(pathname) {
+  if (pathname.startsWith('/student')) return '/student/settings';
+  if (pathname.startsWith('/recruitment')) return '/recruitment/settings';
+  if (pathname.startsWith('/educator')) return '/educator/settings';
+  if (pathname.startsWith('/college-admin')) return '/college-admin/settings';
+  if (pathname.startsWith('/school-admin')) return '/school-admin/settings';
+  if (pathname.startsWith('/university-admin')) return '/university-admin/settings';
+  if (pathname.startsWith('/admin')) return '/admin/settings';
+  return '/student/settings'; // fallback
 }
 
 function AddOns() {
@@ -54,7 +47,7 @@ function AddOns() {
   const [searchParams] = useSearchParams();
   const { user, role, loading: authLoading } = useAuth();
   
-  // Get base path for subscription routes
+  // Get base path for subscription routes from URL (more reliable)
   const basePath = useMemo(() => getSubscriptionBasePath(location.pathname), [location.pathname]);
   
   // Check if we're in checkout mode
@@ -63,8 +56,8 @@ function AddOns() {
   // Get role for filtering add-ons
   const userRole = user?.user_metadata?.role || user?.raw_user_meta_data?.role || role || 'student';
   
-  // Get settings path for back navigation
-  const settingsPath = useMemo(() => getSettingsPath(userRole), [userRole]);
+  // Get settings path from URL (more reliable than role)
+  const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
 
   // Map user roles to add-on categories
   const getAddOnRole = useCallback(() => {

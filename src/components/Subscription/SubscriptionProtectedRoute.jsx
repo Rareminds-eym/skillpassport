@@ -67,7 +67,11 @@ const SubscriptionProtectedRoute = ({
 
   // Step 3: Check role (if allowedRoles specified)
   if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
-    return <Navigate to="/" replace />;
+    console.log('[SubscriptionProtectedRoute] Role check failed - role:', role, 'allowedRoles:', allowedRoles);
+    // Instead of redirecting to home, redirect to subscription plans with the expected role
+    // This provides a better UX - user can see plans and potentially fix their subscription
+    const expectedRole = allowedRoles[0] || 'student';
+    return <Navigate to={`/subscription/plans?type=${expectedRole}`} replace />;
   }
 
   // Step 4: If subscription not required, allow access

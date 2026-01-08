@@ -46,6 +46,41 @@ function getManagePath(userRole) {
   return manageRoutes[userRole] || '/student/subscription/manage';
 }
 
+/**
+ * Get the subscription manage path based on URL type parameter (more reliable)
+ */
+function getManagePathFromType(type) {
+  if (!type) return '/student/subscription/manage';
+  
+  const typeToPath = {
+    // Student types
+    'student': '/student/subscription/manage',
+    'school_student': '/student/subscription/manage',
+    'school-student': '/student/subscription/manage',
+    'college_student': '/student/subscription/manage',
+    'college-student': '/student/subscription/manage',
+    // Educator types
+    'educator': '/educator/subscription/manage',
+    'school_educator': '/educator/subscription/manage',
+    'school-educator': '/educator/subscription/manage',
+    'college_educator': '/educator/subscription/manage',
+    'college-educator': '/educator/subscription/manage',
+    // Admin types
+    'school_admin': '/school-admin/subscription/manage',
+    'school-admin': '/school-admin/subscription/manage',
+    'college_admin': '/college-admin/subscription/manage',
+    'college-admin': '/college-admin/subscription/manage',
+    'university_admin': '/university-admin/subscription/manage',
+    'university-admin': '/university-admin/subscription/manage',
+    // Recruiter
+    'recruiter': '/recruitment/subscription/manage',
+    // Generic admin
+    'admin': '/admin/subscription/manage',
+  };
+  
+  return typeToPath[type] || '/student/subscription/manage';
+}
+
 // Feature comparison data
 const FEATURE_COMPARISON = {
   'Core Features': {
@@ -336,8 +371,16 @@ function SubscriptionPlans() {
   // Use new authentication hook
   const { isAuthenticated, user, loading: authLoading, role: userRole } = useAuth();
   
-  // Get the manage path based on user role
-  const managePath = useMemo(() => getManagePath(userRole), [userRole]);
+  // Get the manage path based on URL type parameter (more reliable than userRole)
+  // Falls back to userRole if type is not available
+  const managePath = useMemo(() => {
+    // First try to get path from URL type parameter
+    if (type) {
+      return getManagePathFromType(type);
+    }
+    // Fall back to userRole from auth
+    return getManagePath(userRole);
+  }, [type, userRole]);
   
   // Parse entity and role from type
   const { entity, role: pageRole } = useMemo(() => parseStudentType(type || 'student'), [type]);
@@ -456,7 +499,7 @@ function SubscriptionPlans() {
     } else {
       navigate('/subscription/payment', { state: { plan, studentType, isUpgrade: !!subscriptionData } });
     }
-  }, [isAuthenticated, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription]);
+  }, [isAuthenticated, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription, managePath]);
 
   const handleSignupSuccess = useCallback(() => {
     setShowSignupModal(false);

@@ -22,7 +22,7 @@ import {
     X as XIcon
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { SubscriptionDashboard } from '../../components/Subscription/SubscriptionDashboard';
 import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
@@ -31,6 +31,34 @@ import { supabase } from '../../lib/supabaseClient';
 import { getUserSubscriptions } from '../../services/Subscriptions/subscriptionService';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '../../services/paymentsApiService';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from '../../utils/subscriptionHelpers';
+
+/**
+ * Get the settings path based on current URL path (more reliable than role)
+ */
+function getSettingsPathFromUrl(pathname) {
+  if (pathname.startsWith('/student')) return '/student/settings';
+  if (pathname.startsWith('/recruitment')) return '/recruitment/settings';
+  if (pathname.startsWith('/educator')) return '/educator/settings';
+  if (pathname.startsWith('/college-admin')) return '/college-admin/settings';
+  if (pathname.startsWith('/school-admin')) return '/school-admin/settings';
+  if (pathname.startsWith('/university-admin')) return '/university-admin/settings';
+  if (pathname.startsWith('/admin')) return '/admin/settings';
+  return '/student/settings'; // fallback
+}
+
+/**
+ * Get the dashboard path based on current URL path
+ */
+function getDashboardPathFromUrl(pathname) {
+  if (pathname.startsWith('/student')) return '/student/dashboard';
+  if (pathname.startsWith('/recruitment')) return '/recruitment/overview';
+  if (pathname.startsWith('/educator')) return '/educator/dashboard';
+  if (pathname.startsWith('/college-admin')) return '/college-admin/dashboard';
+  if (pathname.startsWith('/school-admin')) return '/school-admin/dashboard';
+  if (pathname.startsWith('/university-admin')) return '/university-admin/dashboard';
+  if (pathname.startsWith('/admin')) return '/admin/dashboard';
+  return '/student/dashboard'; // fallback
+}
 
 // Fallback plans only used if API fails - these match database structure
 const FALLBACK_PLANS = [
@@ -94,9 +122,14 @@ const FALLBACK_PLANS = [
 
 function MySubscription() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { user, role, loading: authLoading } = useAuth();
   const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
+  
+  // Get settings and dashboard paths from current URL (more reliable than role)
+  const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
+  const dashboardPath = useMemo(() => getDashboardPathFromUrl(location.pathname), [location.pathname]);
   
   // Tab state - 'subscription' or 'addons'
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'subscription');
@@ -333,60 +366,9 @@ function MySubscription() {
     navigate('/support?topic=billing');
   };
 
-  // Get role-specific dashboard URL
-  const getDashboardUrl = useCallback(() => {
-    const userRole = user?.user_metadata?.role || user?.raw_user_meta_data?.role || role;
-    
-    const dashboardRoutes = {
-      // Admin roles
-      super_admin: '/admin/dashboard',
-      rm_admin: '/admin/dashboard',
-      rm_manager: '/admin/dashboard',
-      admin: '/admin/dashboard',
-      company_admin: '/admin/dashboard',
-      // Institution admin roles
-      school_admin: '/school-admin/dashboard',
-      college_admin: '/college-admin/dashboard',
-      university_admin: '/university-admin/dashboard',
-      // Educator roles
-      educator: '/educator/dashboard',
-      school_educator: '/educator/dashboard',
-      college_educator: '/educator/dashboard',
-      // Recruiter role
-      recruiter: '/recruitment/overview',
-      // Student roles
-      student: '/student/dashboard',
-      school_student: '/student/dashboard',
-      college_student: '/student/dashboard',
-    };
-    
-    return dashboardRoutes[userRole] || '/student/dashboard';
-  }, [user, role]);
-
-  // Get role-specific settings URL for back navigation
-  const getSettingsUrl = useCallback(() => {
-    const userRole = user?.user_metadata?.role || user?.raw_user_meta_data?.role || role;
-    
-    const settingsRoutes = {
-      super_admin: '/admin/settings',
-      rm_admin: '/admin/settings',
-      rm_manager: '/admin/settings',
-      admin: '/admin/settings',
-      company_admin: '/admin/settings',
-      school_admin: '/school-admin/settings',
-      college_admin: '/college-admin/settings',
-      university_admin: '/university-admin/settings',
-      educator: '/educator/settings',
-      school_educator: '/educator/settings',
-      college_educator: '/educator/settings',
-      recruiter: '/recruitment/settings',
-      student: '/student/settings',
-      school_student: '/student/settings',
-      college_student: '/student/settings',
-    };
-    
-    return settingsRoutes[userRole] || '/student/settings';
-  }, [user, role]);
+  // Use URL-based paths (already computed from location.pathname)
+  const getDashboardUrl = useCallback(() => dashboardPath, [dashboardPath]);
+  const getSettingsUrl = useCallback(() => settingsPath, [settingsPath]);
 
   // Fetch billing history from database (with caching)
   const fetchBillingHistory = useCallback(async (force = false) => {
