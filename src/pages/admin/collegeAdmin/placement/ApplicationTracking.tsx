@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users,
   Search,
@@ -13,23 +13,14 @@ import {
   User,
   GraduationCap,
   Award,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import toast from 'react-hot-toast';
-
-interface EligibleStudent {
-  id: string;
-  name: string;
-  email: string;
-  department: string;
-  cgpa: number;
-  graduation_year: string;
-  backlogs: number;
-  skills: string[];
-  status: 'eligible' | 'applied' | 'shortlisted' | 'selected' | 'rejected';
-  application_stage: string;
-  job_title?: string;
-  company_name?: string;
-}
+import { opportunitiesService } from '@/services/opportunitiesService';
+import type { Opportunity } from '@/services/opportunitiesService';
+import { applicationTrackingService } from '@/services/applicationTrackingService';
+import type { ApplicationTrackingData, ApplicationFilters, ApplicationStats } from '@/services/applicationTrackingService';
 
 const ApplicationTracking: React.FC = () => {
   const [applicationSearchTerm, setApplicationSearchTerm] = useState("");
@@ -37,337 +28,189 @@ const ApplicationTracking: React.FC = () => {
   const [showApplicationFilterModal, setShowApplicationFilterModal] = useState(false);
   const [showStudentDetailsModal, setShowStudentDetailsModal] = useState(false);
   const [showUpdateStageModal, setShowUpdateStageModal] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<EligibleStudent | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<ApplicationTrackingData | null>(null);
   const [showJobDetailsModal, setShowJobDetailsModal] = useState(false);
   const [newApplicationStage, setNewApplicationStage] = useState("");
   const [newApplicationStatus, setNewApplicationStatus] = useState("");
 
-  // Static data for eligible students with enhanced application tracking
-  const eligibleStudentsData: EligibleStudent[] = [
-    {
-      id: "CS2021001",
-      name: "Rahul Sharma",
-      email: "rahul.sharma@college.edu",
-      department: "Computer Science",
-      cgpa: 8.5,
-      graduation_year: "2024",
-      backlogs: 0,
-      skills: ["JavaScript", "React", "Node.js", "Python"],
-      status: "shortlisted",
-      application_stage: "Aptitude Test - Passed",
-      job_title: "Software Engineer - Full Stack",
-      company_name: "TechCorp Solutions"
-    },
-    {
-      id: "CS2021002",
-      name: "Priya Patel",
-      email: "priya.patel@college.edu",
-      department: "Computer Science",
-      cgpa: 7.8,
-      graduation_year: "2024",
-      backlogs: 1,
-      skills: ["Java", "Spring", "MySQL", "React"],
-      status: "applied",
-      application_stage: "Technical Interview - Scheduled",
-      job_title: "Software Engineer - Full Stack",
-      company_name: "TechCorp Solutions"
-    },
-    {
-      id: "IT2021001",
-      name: "Amit Kumar",
-      email: "amit.kumar@college.edu",
-      department: "Information Technology",
-      cgpa: 8.2,
-      graduation_year: "2024",
-      backlogs: 0,
-      skills: ["JavaScript", "Angular", "Node.js", "MongoDB"],
-      status: "shortlisted",
-      application_stage: "HR Interview - Pending",
-      job_title: "Software Engineer - Full Stack",
-      company_name: "TechCorp Solutions"
-    },
-    {
-      id: "CS2021003",
-      name: "Sneha Reddy",
-      email: "sneha.reddy@college.edu",
-      department: "Computer Science",
-      cgpa: 9.1,
-      graduation_year: "2024",
-      backlogs: 0,
-      skills: ["React", "Node.js", "TypeScript", "AWS"],
-      status: "selected",
-      application_stage: "Final Selection - Offer Extended",
-      job_title: "Data Analyst",
-      company_name: "HealthPlus Medical"
-    },
-    {
-      id: "IT2021002",
-      name: "Vikram Singh",
-      email: "vikram.singh@college.edu",
-      department: "Information Technology",
-      cgpa: 6.8,
-      graduation_year: "2024",
-      backlogs: 3,
-      skills: ["HTML", "CSS", "JavaScript"],
-      status: "rejected",
-      application_stage: "Not Eligible - CGPA Below Minimum",
-      job_title: "Software Engineer - Full Stack",
-      company_name: "TechCorp Solutions"
-    },
-    {
-      id: "CS2021004",
-      name: "Ananya Gupta",
-      email: "ananya.gupta@college.edu",
-      department: "Computer Science",
-      cgpa: 8.7,
-      graduation_year: "2024",
-      backlogs: 0,
-      skills: ["Python", "Django", "PostgreSQL", "Docker"],
-      status: "applied",
-      application_stage: "Application Under Review",
-      job_title: "Data Analyst",
-      company_name: "HealthPlus Medical"
-    },
-    {
-      id: "IT2021003",
-      name: "Karthik Nair",
-      email: "karthik.nair@college.edu",
-      department: "Information Technology",
-      cgpa: 7.9,
-      graduation_year: "2024",
-      backlogs: 1,
-      skills: ["Java", "Spring Boot", "MySQL", "Microservices"],
-      status: "shortlisted",
-      application_stage: "Aptitude Test - Completed",
-      job_title: "Software Engineer - Full Stack",
-      company_name: "TechCorp Solutions"
-    },
-    {
-      id: "CS2021005",
-      name: "Meera Joshi",
-      email: "meera.joshi@college.edu",
-      department: "Computer Science",
-      cgpa: 8.3,
-      graduation_year: "2024",
-      backlogs: 0,
-      skills: ["React", "Node.js", "GraphQL", "MongoDB"],
-      status: "eligible",
-      application_stage: "Eligible - Not Applied",
-      job_title: "Software Engineer - Full Stack",
-      company_name: "TechCorp Solutions"
-    },
-    {
-      id: "MATH2021001",
-      name: "Arjun Mehta",
-      email: "arjun.mehta@college.edu",
-      department: "Mathematics",
-      cgpa: 8.1,
-      graduation_year: "2024",
-      backlogs: 0,
-      skills: ["Python", "R", "Statistics", "Machine Learning"],
-      status: "applied",
-      application_stage: "Online Assessment - Scheduled",
-      job_title: "Data Analyst",
-      company_name: "HealthPlus Medical"
-    },
-    {
-      id: "MKT2021001",
-      name: "Riya Sharma",
-      email: "riya.sharma@college.edu",
-      department: "Management",
-      cgpa: 7.6,
-      graduation_year: "2024",
-      backlogs: 2,
-      skills: ["Digital Marketing", "Content Writing", "SEO", "Analytics"],
-      status: "shortlisted",
-      application_stage: "Portfolio Review - Passed",
-      job_title: "Marketing Intern",
-      company_name: "EduTech Learning"
-    }
-  ];
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
 
-  // Available jobs data
-  const jobPostingsData = [
-    {
-      id: "1",
-      title: "Software Engineer - Full Stack",
-      company_name: "TechCorp Solutions",
-      department: "Engineering",
-      employment_type: "Full-time",
-      location: "Bangalore, Karnataka",
-      mode: "Hybrid",
-      salary_range: "₹8.0L - ₹12.0L",
-      experience_required: "2-4 years",
-      description: "We are looking for a talented Full Stack Developer to join our growing team. You will be responsible for developing and maintaining web applications using modern technologies.",
-      skills_required: ["React", "Node.js", "MongoDB", "TypeScript"],
-      requirements: ["Bachelor's degree in Computer Science", "2+ years of experience", "Strong problem-solving skills"],
-      responsibilities: ["Develop web applications", "Collaborate with team", "Write clean code"],
-      benefits: ["Health Insurance", "Flexible Hours", "Learning Budget"],
-      deadline: "2024-04-15",
-      intake_count: 15,
-      eligibility_criteria: {
-        min_cgpa: 7.0,
-        eligible_departments: ["Computer Science", "Information Technology"],
-        required_skills: ["JavaScript", "React", "Node.js"],
-        max_backlogs: 2,
-        graduation_year: ["2024", "2025"]
-      },
-      rounds_schedule: [
-        {
-          round_name: "Aptitude Test",
-          date: "2024-04-20",
-          time: "10:00",
-          duration: "90 minutes",
-          location: "Online",
-          instructions: "Logical reasoning and quantitative aptitude test"
-        },
-        {
-          round_name: "Technical Interview",
-          date: "2024-04-22",
-          time: "14:00",
-          duration: "60 minutes",
-          location: "Campus - Room 101",
-          instructions: "Coding and system design discussion"
-        },
-        {
-          round_name: "HR Interview",
-          date: "2024-04-24",
-          time: "11:00",
-          duration: "30 minutes",
-          location: "Campus - Room 102",
-          instructions: "Final interview with HR team"
-        }
-      ]
-    },
-    {
-      id: "2",
-      title: "Data Analyst",
-      company_name: "HealthPlus Medical",
-      department: "Analytics",
-      employment_type: "Full-time",
-      location: "Mumbai, Maharashtra",
-      mode: "On-site",
-      salary_range: "₹6.0L - ₹9.0L",
-      experience_required: "1-3 years",
-      description: "Join our data team to analyze healthcare trends and improve patient outcomes through data-driven insights.",
-      skills_required: ["Python", "SQL", "Tableau", "Excel"],
-      requirements: ["Bachelor's in Statistics/Math", "SQL proficiency", "Analytical mindset"],
-      responsibilities: ["Analyze data trends", "Create reports", "Present insights"],
-      benefits: ["Medical Coverage", "Performance Bonus", "Training Programs"],
-      deadline: "2024-04-20",
-      intake_count: 8,
-      eligibility_criteria: {
-        min_cgpa: 6.5,
-        eligible_departments: ["Computer Science", "Mathematics", "Statistics"],
-        required_skills: ["Python", "SQL"],
-        max_backlogs: 1,
-        graduation_year: ["2024", "2025"]
-      },
-      rounds_schedule: [
-        {
-          round_name: "Online Assessment",
-          date: "2024-04-25",
-          time: "09:00",
-          duration: "120 minutes",
-          location: "Online",
-          instructions: "Data analysis and SQL test"
-        },
-        {
-          round_name: "Technical Interview",
-          date: "2024-04-27",
-          time: "15:00",
-          duration: "45 minutes",
-          location: "Campus - Room 201",
-          instructions: "Python and data visualization discussion"
-        }
-      ]
-    },
-    {
-      id: "3",
-      title: "Marketing Intern",
-      company_name: "EduTech Learning",
-      department: "Marketing",
-      employment_type: "Internship",
-      location: "Pune, Maharashtra",
-      mode: "Remote",
-      salary_range: "₹15K - ₹25K",
-      experience_required: "0-1 years",
-      description: "Great opportunity for students to gain hands-on marketing experience in the EdTech industry.",
-      skills_required: ["Digital Marketing", "Content Writing", "Social Media"],
-      requirements: ["Currently pursuing degree", "Good communication skills", "Creative thinking"],
-      responsibilities: ["Content creation", "Social media management", "Campaign support"],
-      benefits: ["Mentorship", "Certificate", "Flexible Schedule"],
-      deadline: "2024-04-10",
-      intake_count: 5,
-      eligibility_criteria: {
-        min_cgpa: 6.0,
-        eligible_departments: ["Management", "Marketing", "Communications"],
-        required_skills: ["Communication", "Creativity"],
-        max_backlogs: 3,
-        graduation_year: ["2024", "2025", "2026"]
-      },
-      rounds_schedule: [
-        {
-          round_name: "Portfolio Review",
-          date: "2024-04-12",
-          time: "11:00",
-          duration: "30 minutes",
-          location: "Online",
-          instructions: "Present your marketing portfolio and creative work"
-        },
-        {
-          round_name: "Interview",
-          date: "2024-04-14",
-          time: "14:00",
-          duration: "30 minutes",
-          location: "Online",
-          instructions: "Discussion about marketing interests and goals"
-        }
-      ]
-    }
-  ];
+  // State for real data from database
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<Opportunity | null>(null);
+  const [isLoadingOpportunities, setIsLoadingOpportunities] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
-  // Initialize selectedJobDetails with first job for details viewing
-  const [selectedJobDetails, setSelectedJobDetails] = useState<any>(jobPostingsData[0]);
-
-  // Filter applications - show all students
-  const filteredApplications = eligibleStudentsData.filter(student => {
-    const matchesSearch = student.name.toLowerCase().includes(applicationSearchTerm.toLowerCase()) ||
-                         student.email.toLowerCase().includes(applicationSearchTerm.toLowerCase()) ||
-                         student.department.toLowerCase().includes(applicationSearchTerm.toLowerCase()) ||
-                         (student.job_title && student.job_title.toLowerCase().includes(applicationSearchTerm.toLowerCase()));
-    
-    const matchesStatus = !selectedApplicationStatus || student.status === selectedApplicationStatus;
-    
-    return matchesSearch && matchesStatus;
+  // Application tracking state
+  const [applications, setApplications] = useState<ApplicationTrackingData[]>([]);
+  const [filteredApplications, setFilteredApplications] = useState<ApplicationTrackingData[]>([]);
+  const [applicationStats, setApplicationStats] = useState<ApplicationStats>({
+    total: 0,
+    applied: 0,
+    viewed: 0,
+    under_review: 0,
+    interview_scheduled: 0,
+    interviewed: 0,
+    offer_received: 0,
+    accepted: 0,
+    rejected: 0,
+    withdrawn: 0
   });
+  const [companies, setCompanies] = useState<Array<{id: string, name: string}>>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [isLoadingApplications, setIsLoadingApplications] = useState(false);
+  const [applicationError, setApplicationError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Load opportunities and applications from database on component mount
+  useEffect(() => {
+    loadOpportunities();
+    loadApplications();
+  }, []);
+
+  // Apply filters when data or filters change
+  useEffect(() => {
+    applyFilters();
+  }, [applications, applicationSearchTerm, selectedApplicationStatus]);
+
+  const loadOpportunities = async () => {
+    try {
+      setIsLoadingOpportunities(true);
+      setHasError(false);
+      
+      const opportunitiesData = await opportunitiesService.getAllOpportunities({
+        is_active: true // Only show active opportunities
+      });
+      
+      setOpportunities(opportunitiesData);
+      
+      // Set the first opportunity as selected by default
+      if (opportunitiesData.length > 0) {
+        setSelectedJobDetails(opportunitiesData[0]);
+      }
+    } catch (error) {
+      console.error('Error loading opportunities:', error);
+      setHasError(true);
+      toast.error('Failed to load job opportunities');
+      setOpportunities([]);
+    } finally {
+      setIsLoadingOpportunities(false);
+    }
+  };
+
+  const loadApplications = async () => {
+    try {
+      setIsLoadingApplications(true);
+      setApplicationError(null);
+
+      // Load applications, stats, companies, and departments in parallel
+      const [applicationsData, statsData, companiesData, departmentsData] = await Promise.all([
+        applicationTrackingService.getAllApplications(),
+        applicationTrackingService.getApplicationStats(),
+        applicationTrackingService.getCompaniesWithApplications(),
+        applicationTrackingService.getDepartmentsWithApplications()
+      ]);
+
+      setApplications(applicationsData);
+      setApplicationStats(statsData);
+      setCompanies(companiesData);
+      setDepartments(departmentsData);
+
+    } catch (error) {
+      console.error('Error loading applications:', error);
+      setApplicationError('Failed to load application data. Please try again.');
+      toast.error('Failed to load applications');
+    } finally {
+      setIsLoadingApplications(false);
+    }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...applications];
+
+    // Search filter
+    if (applicationSearchTerm) {
+      const search = applicationSearchTerm.toLowerCase();
+      filtered = filtered.filter(app => 
+        app.student?.name?.toLowerCase().includes(search) ||
+        app.student?.email?.toLowerCase().includes(search) ||
+        app.opportunity?.title?.toLowerCase().includes(search) ||
+        app.opportunity?.job_title?.toLowerCase().includes(search) ||
+        app.opportunity?.company_name?.toLowerCase().includes(search) ||
+        app.company?.name?.toLowerCase().includes(search)
+      );
+    }
+
+    // Status filter
+    if (selectedApplicationStatus) {
+      filtered = filtered.filter(app => app.application_status === selectedApplicationStatus);
+    }
+
+    setTotalItems(filtered.length);
+    setFilteredApplications(filtered);
+  };
+
+  // Get paginated data
+  const getPaginatedApplications = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredApplications.slice(startIndex, endIndex);
+  };
+
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const paginatedApplications = getPaginatedApplications();
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [applicationSearchTerm, selectedApplicationStatus]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'eligible':
-        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Eligible</span>;
       case 'applied':
-        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Applied</span>;
-      case 'shortlisted':
-        return <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">Shortlisted</span>;
-      case 'selected':
-        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Selected</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Applied</span>;
+      case 'viewed':
+        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Viewed</span>;
+      case 'under_review':
+        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">Under Review</span>;
+      case 'interview_scheduled':
+        return <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">Interview Scheduled</span>;
+      case 'interviewed':
+        return <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">Interviewed</span>;
+      case 'offer_received':
+        return <span className="px-2 py-1 text-xs font-medium bg-cyan-100 text-cyan-800 rounded-full">Offer Received</span>;
+      case 'accepted':
+        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Accepted</span>;
       case 'rejected':
         return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Rejected</span>;
+      case 'withdrawn':
+        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Withdrawn</span>;
       default:
         return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Unknown</span>;
     }
   };
 
-  const updateStudentStage = (student: EligibleStudent) => {
-    setSelectedStudent(student);
-    setNewApplicationStage(student.application_stage);
-    setNewApplicationStatus(student.status);
+  const updateApplicationStage = (application: ApplicationTrackingData) => {
+    setSelectedApplication(application);
+    setNewApplicationStage(application.notes || '');
+    setNewApplicationStatus(application.application_status);
     setShowUpdateStageModal(true);
   };
 
-  const viewStudentDetails = (student: EligibleStudent) => {
-    setSelectedStudent(student);
+  const viewApplicationDetails = (application: ApplicationTrackingData) => {
+    setSelectedApplication(application);
     setShowStudentDetailsModal(true);
   };
 
@@ -375,13 +218,32 @@ const ApplicationTracking: React.FC = () => {
     setShowJobDetailsModal(true);
   };
 
-  const handleStageUpdate = () => {
-    if (selectedStudent && newApplicationStage && newApplicationStatus) {
-      toast.success(`${selectedStudent.name}'s application updated successfully!`);
-      setShowUpdateStageModal(false);
-      setSelectedStudent(null);
-      setNewApplicationStage("");
-      setNewApplicationStatus("");
+  const handleStageUpdate = async () => {
+    if (selectedApplication && newApplicationStatus) {
+      try {
+        setIsUpdating(true);
+        
+        await applicationTrackingService.updateApplicationStatus(
+          selectedApplication.id,
+          newApplicationStatus,
+          newApplicationStage || undefined
+        );
+        
+        toast.success(`${selectedApplication.student?.name}'s application updated successfully!`);
+        
+        // Reload applications to reflect changes
+        await loadApplications();
+        
+        setShowUpdateStageModal(false);
+        setSelectedApplication(null);
+        setNewApplicationStage("");
+        setNewApplicationStatus("");
+      } catch (error) {
+        console.error('Error updating application:', error);
+        toast.error("Failed to update application. Please try again.");
+      } finally {
+        setIsUpdating(false);
+      }
     } else {
       toast.error("Please fill in all required fields");
     }
@@ -389,20 +251,20 @@ const ApplicationTracking: React.FC = () => {
 
   const exportApplications = () => {
     // Create CSV content
-    const headers = ['Student ID', 'Name', 'Email', 'Department', 'CGPA', 'Graduation Year', 'Backlogs', 'Skills', 'Status', 'Application Stage'];
+    const headers = ['Application ID', 'Student Name', 'Email', 'Department', 'CGPA', 'Company', 'Job Title', 'Status', 'Applied Date', 'Last Updated'];
     const csvContent = [
       headers.join(','),
-      ...filteredApplications.map(student => [
-        student.id,
-        `"${student.name}"`,
-        student.email,
-        `"${student.department}"`,
-        student.cgpa,
-        student.graduation_year,
-        student.backlogs,
-        `"${student.skills.join('; ')}"`,
-        student.status,
-        `"${student.application_stage}"`
+      ...filteredApplications.map(app => [
+        app.id,
+        `"${app.student?.name || 'N/A'}"`,
+        app.student?.email || 'N/A',
+        `"${app.student?.branch_field || app.student?.course_name || 'N/A'}"`,
+        app.student?.currentCgpa || 'N/A',
+        `"${app.opportunity?.company_name || 'N/A'}"`,
+        `"${app.opportunity?.title || app.opportunity?.job_title || 'N/A'}"`,
+        app.application_status,
+        new Date(app.applied_at).toLocaleDateString(),
+        new Date(app.updated_at).toLocaleDateString()
       ].join(','))
     ].join('\n');
 
@@ -411,7 +273,7 @@ const ApplicationTracking: React.FC = () => {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `all_student_applications.csv`);
+    link.setAttribute('download', `application_tracking_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -461,6 +323,14 @@ const ApplicationTracking: React.FC = () => {
         <h2 className="text-xl font-bold text-gray-900">Application Tracking</h2>
         <div className="flex gap-2">
           <button 
+            onClick={loadApplications}
+            disabled={isLoadingApplications}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoadingApplications ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <button 
             onClick={viewJobDetails}
             className="flex items-center gap-2 px-4 py-2 border border-blue-300 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition"
           >
@@ -469,7 +339,8 @@ const ApplicationTracking: React.FC = () => {
           </button>
           <button 
             onClick={exportApplications}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            disabled={filteredApplications.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
           >
             <Download className="h-4 w-4" />
             Export Applications
@@ -479,77 +350,104 @@ const ApplicationTracking: React.FC = () => {
       
       <p className="text-gray-600 mb-4">Track application stages, update student status, and manage recruitment rounds for all students.</p>
 
-      {/* Current Job Selection Status */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Users className="h-5 w-5 text-blue-600" />
+      {/* Loading State */}
+      {isLoadingApplications && (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Loading applications...</span>
+        </div>
+      )}
+
+      {/* Error State */}
+      {applicationError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+            <span className="text-red-700">{applicationError}</span>
+          </div>
+          <button
+            onClick={loadApplications}
+            className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Show content only when not loading and no error */}
+      {!isLoadingApplications && !applicationError && (
+        <>
+          {/* Current Job Selection Status */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Users className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-blue-900">All Student Applications</h3>
+                  <p className="text-sm text-blue-700">Viewing applications across all job postings</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-medium text-blue-900">{filteredApplications.length} Total Applications</p>
+                <p className="text-sm text-blue-700">Multiple Job Postings</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-blue-900">All Student Applications</h3>
-              <p className="text-sm text-blue-700">Viewing applications across all job postings</p>
+          </div>
+
+          {/* Enhanced Pipeline Status Cards */}
+          <div className="grid grid-cols-5 gap-4 mb-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+              <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mx-auto mb-2">
+                <Users className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="text-2xl font-bold text-blue-600">
+                {applicationStats.applied}
+              </div>
+              <div className="text-sm font-medium text-blue-800">Applied</div>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+              <div className="flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-full mx-auto mb-2">
+                <Clock className="h-6 w-6 text-yellow-600" />
+              </div>
+              <div className="text-2xl font-bold text-yellow-600">
+                {applicationStats.viewed}
+              </div>
+              <div className="text-sm font-medium text-yellow-800">Viewed</div>
+            </div>
+
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
+              <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full mx-auto mb-2">
+                <UserCheck className="h-6 w-6 text-purple-600" />
+              </div>
+              <div className="text-2xl font-bold text-purple-600">
+                {applicationStats.interview_scheduled}
+              </div>
+              <div className="text-sm font-medium text-purple-800">Interview Scheduled</div>
+            </div>
+
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+              <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mx-auto mb-2">
+                <CheckCircle className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="text-2xl font-bold text-green-600">
+                {applicationStats.accepted}
+              </div>
+              <div className="text-sm font-medium text-green-800">Accepted</div>
+            </div>
+
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+              <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mx-auto mb-2">
+                <X className="h-6 w-6 text-red-600" />
+              </div>
+              <div className="text-2xl font-bold text-red-600">
+                {applicationStats.rejected}
+              </div>
+              <div className="text-sm font-medium text-red-800">Rejected</div>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-sm font-medium text-blue-900">{filteredApplications.length} Total Applications</p>
-            <p className="text-sm text-blue-700">Multiple Job Postings</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Enhanced Pipeline Status Cards */}
-      <div className="grid grid-cols-5 gap-4 mb-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-          <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mx-auto mb-2">
-            <Users className="h-6 w-6 text-blue-600" />
-          </div>
-          <div className="text-2xl font-bold text-blue-600">
-            {filteredApplications.filter(s => s.status === 'eligible').length}
-          </div>
-          <div className="text-sm font-medium text-blue-800">Eligible</div>
-        </div>
-
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-          <div className="flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-full mx-auto mb-2">
-            <Clock className="h-6 w-6 text-yellow-600" />
-          </div>
-          <div className="text-2xl font-bold text-yellow-600">
-            {filteredApplications.filter(s => s.status === 'applied').length}
-          </div>
-          <div className="text-sm font-medium text-yellow-800">Applied</div>
-        </div>
-
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
-          <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full mx-auto mb-2">
-            <UserCheck className="h-6 w-6 text-purple-600" />
-          </div>
-          <div className="text-2xl font-bold text-purple-600">
-            {filteredApplications.filter(s => s.status === 'shortlisted').length}
-          </div>
-          <div className="text-sm font-medium text-purple-800">Shortlisted</div>
-        </div>
-
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-          <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mx-auto mb-2">
-            <CheckCircle className="h-6 w-6 text-green-600" />
-          </div>
-          <div className="text-2xl font-bold text-green-600">
-            {filteredApplications.filter(s => s.status === 'selected').length}
-          </div>
-          <div className="text-sm font-medium text-green-800">Selected</div>
-        </div>
-
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-          <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mx-auto mb-2">
-            <X className="h-6 w-6 text-red-600" />
-          </div>
-          <div className="text-2xl font-bold text-red-600">
-            {filteredApplications.filter(s => s.status === 'rejected').length}
-          </div>
-          <div className="text-sm font-medium text-red-800">Rejected</div>
-        </div>
-      </div>
       
       <div className="flex gap-2 mb-6">
         <div className="flex-1 relative">
@@ -603,9 +501,9 @@ const ApplicationTracking: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredApplications.length > 0 ? (
-                filteredApplications.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50">
+              {paginatedApplications.length > 0 ? (
+                paginatedApplications.map((application) => (
+                  <tr key={application.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
@@ -614,40 +512,42 @@ const ApplicationTracking: React.FC = () => {
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                          <div className="text-sm text-gray-500">{student.email}</div>
-                          <div className="text-sm text-gray-500">{student.id}</div>
+                          <div className="text-sm font-medium text-gray-900">{application.student?.name || 'Unknown'}</div>
+                          <div className="text-sm text-gray-500">{application.student?.email || 'N/A'}</div>
+                          <div className="text-sm text-gray-500">{application.student?.id || application.student_id}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{student.department}</div>
-                      <div className="text-sm text-gray-500">CGPA: {student.cgpa}</div>
+                      <div className="text-sm text-gray-900">{application.student?.branch_field || application.student?.course_name || 'N/A'}</div>
+                      <div className="text-sm text-gray-500">CGPA: {application.student?.currentCgpa || 'N/A'}</div>
                       <div className="text-sm text-gray-500">
-                        Backlogs: {student.backlogs} • Grad: {student.graduation_year}
+                        University: {application.student?.university || 'N/A'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{student.job_title || "N/A"}</div>
-                      <div className="text-sm text-gray-500">{student.company_name || "N/A"}</div>
+                      <div className="text-sm font-medium text-gray-900">{application.opportunity?.title || application.opportunity?.job_title || "N/A"}</div>
+                      <div className="text-sm text-gray-500">{application.opportunity?.company_name || "N/A"}</div>
+                      <div className="text-sm text-gray-500">{application.opportunity?.employment_type} • {application.opportunity?.location}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{student.application_stage}</div>
+                      <div className="text-sm text-gray-900">{application.notes || 'No notes'}</div>
+                      <div className="text-sm text-gray-500">Applied: {new Date(application.applied_at).toLocaleDateString()}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(student.status)}
+                      {getStatusBadge(application.application_status)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-2">
                         <button 
-                          onClick={() => viewStudentDetails(student)}
+                          onClick={() => viewApplicationDetails(application)}
                           className="text-blue-600 hover:text-blue-900"
-                          title="View Student Details"
+                          title="View Application Details"
                         >
                           <Eye className="h-4 w-4" />
                         </button>
                         <button 
-                          onClick={() => updateStudentStage(student)}
+                          onClick={() => updateApplicationStage(application)}
                           className="text-green-600 hover:text-green-900"
                           title="Update Application Stage"
                         >
@@ -679,19 +579,94 @@ const ApplicationTracking: React.FC = () => {
         </div>
       </div>
 
-      {/* Applications Results Summary */}
-      {filteredApplications.length > 0 && (
-        <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-          <div>
-            Showing {filteredApplications.length} of {eligibleStudentsData.length} applications
+      {/* Pagination and Results Summary */}
+      {totalItems > 0 && (
+        <div className="mt-4 space-y-4">
+          {/* Show entries selector and results info */}
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <span>Show</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                className="border border-gray-300 rounded px-2 py-1 text-sm"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span>entries</span>
+            </div>
+            <div>
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} applications
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <span>Eligible: {filteredApplications.filter(s => s.status === 'eligible').length}</span>
-            <span>Applied: {filteredApplications.filter(s => s.status === 'applied').length}</span>
-            <span>Shortlisted: {filteredApplications.filter(s => s.status === 'shortlisted').length}</span>
-            <span>Selected: {filteredApplications.filter(s => s.status === 'selected').length}</span>
-          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <span>Applied: {applicationStats.applied}</span>
+                <span>Viewed: {applicationStats.viewed}</span>
+                <span>Interview Scheduled: {applicationStats.interview_scheduled}</span>
+                <span>Accepted: {applicationStats.accepted}</span>
+                <span>Rejected: {applicationStats.rejected}</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                
+                {/* Page numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`px-3 py-1 text-sm border rounded ${
+                          currentPage === pageNum
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
+      )}
+        </>
       )}
 
       {/* Filter Modal */}
@@ -709,11 +684,15 @@ const ApplicationTracking: React.FC = () => {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">All Statuses</option>
-                  <option value="eligible">Eligible</option>
                   <option value="applied">Applied</option>
-                  <option value="shortlisted">Shortlisted</option>
-                  <option value="selected">Selected</option>
+                  <option value="viewed">Viewed</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="interview_scheduled">Interview Scheduled</option>
+                  <option value="interviewed">Interviewed</option>
+                  <option value="offer_received">Offer Received</option>
+                  <option value="accepted">Accepted</option>
                   <option value="rejected">Rejected</option>
+                  <option value="withdrawn">Withdrawn</option>
                 </select>
               </div>
             </div>
@@ -737,7 +716,7 @@ const ApplicationTracking: React.FC = () => {
       )}
 
       {/* Student Details Modal */}
-      {showStudentDetailsModal && selectedStudent && (
+      {showStudentDetailsModal && selectedApplication && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
@@ -747,13 +726,13 @@ const ApplicationTracking: React.FC = () => {
                   <User className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Application Status</h2>
-                  <p className="text-sm text-gray-600">Current stage in recruitment process</p>
+                  <h2 className="text-xl font-bold text-gray-900">Application Details</h2>
+                  <p className="text-sm text-gray-600">Student application information</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <div className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
-                  {getStatusBadge(selectedStudent.status)}
+                  {getStatusBadge(selectedApplication.application_status)}
                 </div>
                 <button
                   onClick={() => setShowStudentDetailsModal(false)}
@@ -767,23 +746,23 @@ const ApplicationTracking: React.FC = () => {
             <div className="p-6 space-y-6">
               {/* Student Overview */}
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">{selectedStudent.name}</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">{selectedApplication.student?.name || 'Unknown'}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600">Student ID:</p>
-                    <p className="font-medium text-gray-900">{selectedStudent.id}</p>
+                    <p className="font-medium text-gray-900">{selectedApplication.student?.id || selectedApplication.student_id}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Email Address:</p>
-                    <p className="font-medium text-gray-900">{selectedStudent.email}</p>
+                    <p className="font-medium text-gray-900">{selectedApplication.student?.email || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Department:</p>
-                    <p className="font-medium text-gray-900">{selectedStudent.department}</p>
+                    <p className="font-medium text-gray-900">{selectedApplication.student?.branch_field || selectedApplication.student?.course_name || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Graduation Year:</p>
-                    <p className="font-medium text-gray-900">{selectedStudent.graduation_year}</p>
+                    <p className="text-sm text-gray-600">University:</p>
+                    <p className="font-medium text-gray-900">{selectedApplication.student?.university || 'N/A'}</p>
                   </div>
                 </div>
               </div>
@@ -798,15 +777,19 @@ const ApplicationTracking: React.FC = () => {
                   <div className="space-y-2">
                     <div>
                       <p className="text-sm text-gray-600">Full Name</p>
-                      <p className="font-medium text-gray-900">{selectedStudent.name}</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.student?.name || 'Unknown'}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Student ID</p>
-                      <p className="font-medium text-gray-900">{selectedStudent.id}</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.student?.id || selectedApplication.student_id}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Email Address</p>
-                      <p className="font-medium text-gray-900">{selectedStudent.email}</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.student?.email || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Contact Number</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.student?.contact_number || 'N/A'}</p>
                     </div>
                   </div>
                 </div>
@@ -819,39 +802,47 @@ const ApplicationTracking: React.FC = () => {
                   <div className="space-y-2">
                     <div>
                       <p className="text-sm text-gray-600">Department</p>
-                      <p className="font-medium text-gray-900">{selectedStudent.department}</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.student?.branch_field || selectedApplication.student?.course_name || 'N/A'}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">CGPA</p>
-                      <p className="font-medium text-gray-900">{selectedStudent.cgpa}</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.student?.currentCgpa || 'N/A'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Graduation Year</p>
-                      <p className="font-medium text-gray-900">{selectedStudent.graduation_year}</p>
+                      <p className="text-sm text-gray-600">University</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.student?.university || 'N/A'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Backlogs</p>
-                      <p className="font-medium text-gray-900">{selectedStudent.backlogs}</p>
+                      <p className="text-sm text-gray-600">Expected Graduation</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.student?.expectedGraduationDate || 'N/A'}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Skills & Competencies */}
+              {/* Job Information */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Award className="h-5 w-5 text-purple-600" />
-                  <h4 className="font-semibold text-gray-900">Skills & Competencies</h4>
+                  <h4 className="font-semibold text-gray-900">Job Information</h4>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {selectedStudent.skills.map((skill, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
-                    >
-                      {skill}
-                    </span>
-                  ))}
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm text-gray-600">Job Title:</p>
+                    <p className="font-medium text-gray-900">{selectedApplication.opportunity?.title || selectedApplication.opportunity?.job_title || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Company:</p>
+                    <p className="font-medium text-gray-900">{selectedApplication.opportunity?.company_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Employment Type:</p>
+                    <p className="font-medium text-gray-900">{selectedApplication.opportunity?.employment_type || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Location:</p>
+                    <p className="font-medium text-gray-900">{selectedApplication.opportunity?.location || 'N/A'}</p>
+                  </div>
                 </div>
               </div>
 
@@ -863,17 +854,23 @@ const ApplicationTracking: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <div>
-                    <p className="text-sm text-gray-600">Current Stage:</p>
-                    <p className="font-medium text-gray-900">{selectedStudent.application_stage}</p>
+                    <p className="text-sm text-gray-600">Current Status:</p>
+                    <p className="font-medium text-gray-900">{selectedApplication.application_status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Job Applied:</p>
-                    <p className="font-medium text-gray-900">{selectedStudent.job_title || "N/A"}</p>
+                    <p className="text-sm text-gray-600">Applied Date:</p>
+                    <p className="font-medium text-gray-900">{new Date(selectedApplication.applied_at).toLocaleDateString()}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Company:</p>
-                    <p className="font-medium text-gray-900">{selectedStudent.company_name || "N/A"}</p>
+                    <p className="text-sm text-gray-600">Last Updated:</p>
+                    <p className="font-medium text-gray-900">{new Date(selectedApplication.updated_at).toLocaleDateString()}</p>
                   </div>
+                  {selectedApplication.notes && (
+                    <div>
+                      <p className="text-sm text-gray-600">Notes:</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.notes}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -889,12 +886,12 @@ const ApplicationTracking: React.FC = () => {
               <button
                 onClick={() => {
                   setShowStudentDetailsModal(false);
-                  updateStudentStage(selectedStudent);
+                  updateApplicationStage(selectedApplication);
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
                 <Edit className="h-4 w-4" />
-                Update Stage
+                Update Status
               </button>
             </div>
           </div>
@@ -902,7 +899,7 @@ const ApplicationTracking: React.FC = () => {
       )}
 
       {/* Update Application Stage Modal */}
-      {showUpdateStageModal && selectedStudent && (
+      {showUpdateStageModal && selectedApplication && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-md">
             {/* Modal Header */}
@@ -912,8 +909,8 @@ const ApplicationTracking: React.FC = () => {
                   <UserCheck className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">Update Application Stage</h2>
-                  <p className="text-sm text-gray-600">{selectedStudent.name} • {selectedStudent.department}</p>
+                  <h2 className="text-lg font-bold text-gray-900">Update Application Status</h2>
+                  <p className="text-sm text-gray-600">{selectedApplication.student?.name} • {selectedApplication.student?.branch_field || selectedApplication.student?.course_name}</p>
                 </div>
               </div>
               <button
@@ -926,45 +923,38 @@ const ApplicationTracking: React.FC = () => {
 
             <div className="p-6 space-y-4">
               <div>
-                <p className="text-sm text-gray-600 mb-2">Current Stage: <span className="font-medium">{selectedStudent.application_stage}</span></p>
+                <p className="text-sm text-gray-600 mb-2">Current Status: <span className="font-medium">{selectedApplication.application_status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span></p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">New Application Stage</label>
-                <select
-                  value={newApplicationStage}
-                  onChange={(e) => setNewApplicationStage(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select Stage</option>
-                  <option value="Application Submitted">Application Submitted</option>
-                  <option value="Eligibility Screening - Passed">Eligibility Screening - Passed</option>
-                  <option value="Aptitude Test - Scheduled">Aptitude Test - Scheduled</option>
-                  <option value="Aptitude Test - Passed">Aptitude Test - Passed</option>
-                  <option value="Technical Interview - Scheduled">Technical Interview - Scheduled</option>
-                  <option value="Technical Interview - Passed">Technical Interview - Passed</option>
-                  <option value="HR Interview - Scheduled">HR Interview - Scheduled</option>
-                  <option value="HR Interview - Passed">HR Interview - Passed</option>
-                  <option value="Final Selection - Offer Extended">Final Selection - Offer Extended</option>
-                  <option value="Not Eligible - CGPA Below Minimum">Not Eligible - CGPA Below Minimum</option>
-                  <option value="Rejected - Failed Assessment">Rejected - Failed Assessment</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Update Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">New Application Status</label>
                 <select
                   value={newApplicationStatus}
                   onChange={(e) => setNewApplicationStatus(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Select Status</option>
-                  <option value="eligible">Eligible</option>
                   <option value="applied">Applied</option>
-                  <option value="shortlisted">Shortlisted</option>
-                  <option value="selected">Selected</option>
+                  <option value="viewed">Viewed</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="interview_scheduled">Interview Scheduled</option>
+                  <option value="interviewed">Interviewed</option>
+                  <option value="offer_received">Offer Received</option>
+                  <option value="accepted">Accepted</option>
                   <option value="rejected">Rejected</option>
+                  <option value="withdrawn">Withdrawn</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                <textarea
+                  value={newApplicationStage}
+                  onChange={(e) => setNewApplicationStage(e.target.value)}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Add any notes about this status update..."
+                />
               </div>
             </div>
 
@@ -973,15 +963,18 @@ const ApplicationTracking: React.FC = () => {
               <button
                 onClick={() => setShowUpdateStageModal(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                disabled={isUpdating}
               >
                 Cancel
               </button>
               <button
                 onClick={handleStageUpdate}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                disabled={isUpdating || !newApplicationStatus}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
+                {isUpdating && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
                 <UserCheck className="h-4 w-4" />
-                Update Stage
+                {isUpdating ? 'Updating...' : 'Update Status'}
               </button>
             </div>
           </div>
@@ -1012,135 +1005,181 @@ const ApplicationTracking: React.FC = () => {
             </div>
 
             <div className="p-6">
-              {/* Job Selection Dropdown */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Select Job Posting</label>
-                <select
-                  value={selectedJobDetails.id}
-                  onChange={(e) => {
-                    const job = jobPostingsData.find(j => j.id === e.target.value);
-                    if (job) setSelectedJobDetails(job);
-                  }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  {jobPostingsData.map(job => (
-                    <option key={job.id} value={job.id}>
-                      {job.title} - {job.company_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Job Overview */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{selectedJobDetails.title}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Company:</p>
-                    <p className="font-medium text-gray-900">{selectedJobDetails.company_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Department:</p>
-                    <p className="font-medium text-gray-900">{selectedJobDetails.department}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Location:</p>
-                    <p className="font-medium text-gray-900">{selectedJobDetails.location}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Mode:</p>
-                    <p className="font-medium text-gray-900">{selectedJobDetails.mode}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Salary:</p>
-                    <p className="font-medium text-gray-900">{selectedJobDetails.salary_range}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Intake:</p>
-                    <p className="font-medium text-gray-900">{selectedJobDetails.intake_count} positions</p>
-                  </div>
+              {isLoadingOpportunities ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-gray-600">Loading opportunities...</span>
                 </div>
-              </div>
-
-              {/* Eligibility Criteria */}
-              <div className="bg-gray-50 rounded-lg p-6 mb-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">Eligibility Criteria</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Min CGPA:</p>
-                    <p className="font-medium text-gray-900">{selectedJobDetails.eligibility_criteria.min_cgpa}</p>
+              ) : hasError ? (
+                <div className="text-center py-12">
+                  <div className="text-red-500 mb-4">
+                    <X className="h-12 w-12 mx-auto" />
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Max Backlogs:</p>
-                    <p className="font-medium text-gray-900">{selectedJobDetails.eligibility_criteria.max_backlogs}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Eligible Departments:</p>
-                    <p className="font-medium text-gray-900">{selectedJobDetails.eligibility_criteria.eligible_departments.join(', ')}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Graduation Years:</p>
-                    <p className="font-medium text-gray-900">{selectedJobDetails.eligibility_criteria.graduation_year.join(', ')}</p>
-                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Opportunities</h3>
+                  <p className="text-gray-500 mb-4">There was an error loading job opportunities. Please try again.</p>
+                  <button
+                    onClick={() => loadOpportunities()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Retry
+                  </button>
                 </div>
-                <div className="mt-4">
-                  <p className="text-sm text-gray-600 mb-2">Required Skills:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedJobDetails.eligibility_criteria.required_skills.map((skill: string, index: number) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
+              ) : opportunities.length === 0 ? (
+                <div className="text-center py-12">
+                  <Eye className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Job Opportunities Found</h3>
+                  <p className="text-gray-500">No active job opportunities are currently available in the system.</p>
                 </div>
-              </div>
+              ) : (
+                <>
+                  {/* Job Selection Dropdown */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Job Posting</label>
+                    <select
+                      value={selectedJobDetails.id}
+                      onChange={(e) => {
+                        const job = opportunities.find(j => j.id === parseInt(e.target.value));
+                        if (job) setSelectedJobDetails(job);
+                      }}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {opportunities.map(job => (
+                        <option key={job.id} value={job.id}>
+                          {job.title} - {job.company_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              {/* Recruitment Rounds Schedule */}
-              <div className="bg-gray-50 rounded-lg p-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">Recruitment Rounds Schedule</h4>
-                <div className="space-y-4">
-                  {selectedJobDetails.rounds_schedule.map((round: any, index: number) => (
-                    <div key={index} className="bg-white rounded-lg p-4 border border-gray-200">
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="font-semibold text-gray-900">{round.round_name}</h5>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          round.round_name.toLowerCase().includes('aptitude') ? 'bg-purple-100 text-purple-800' :
-                          round.round_name.toLowerCase().includes('technical') ? 'bg-blue-100 text-blue-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {round.round_name.toLowerCase().includes('aptitude') ? 'aptitude' :
-                           round.round_name.toLowerCase().includes('technical') ? 'technical' : 'interview'}
-                        </span>
+                  {/* Job Overview */}
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{selectedJobDetails.title}</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Company:</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails.company_name || 'Not specified'}</p>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-600">Date:</p>
-                          <p className="font-medium text-gray-900">{round.date}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Time:</p>
-                          <p className="font-medium text-gray-900">{round.time}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Duration:</p>
-                          <p className="font-medium text-gray-900">{round.duration}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Location:</p>
-                          <p className="font-medium text-gray-900">{round.location}</p>
-                        </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Department:</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails.department}</p>
                       </div>
-                      <div className="mt-3">
-                        <p className="text-sm text-gray-600">Instructions:</p>
-                        <p className="font-medium text-gray-900">{round.instructions}</p>
+                      <div>
+                        <p className="text-sm text-gray-600">Location:</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails.location}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Mode:</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails.mode || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Salary:</p>
+                        <p className="font-medium text-gray-900">
+                          {opportunitiesService.formatSalary(selectedJobDetails)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Experience:</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails.experience_required || 'Not specified'}</p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+
+                  {/* Job Description */}
+                  {selectedJobDetails.description && (
+                    <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Job Description</h4>
+                      <p className="text-gray-700 whitespace-pre-wrap">{selectedJobDetails.description}</p>
+                    </div>
+                  )}
+
+                  {/* Skills Required */}
+                  {selectedJobDetails.skills_required && (
+                    <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Skills Required</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {opportunitiesService.formatSkills(selectedJobDetails.skills_required).map((skill, index) => (
+                          <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Requirements */}
+                  {selectedJobDetails.requirements && (
+                    <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Requirements</h4>
+                      <div className="text-gray-700">
+                        {Array.isArray(selectedJobDetails.requirements) ? (
+                          <ul className="list-disc list-inside space-y-1">
+                            {selectedJobDetails.requirements.map((req, index) => (
+                              <li key={index}>{req}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="whitespace-pre-wrap">{selectedJobDetails.requirements}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Responsibilities */}
+                  {selectedJobDetails.responsibilities && (
+                    <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Responsibilities</h4>
+                      <div className="text-gray-700">
+                        {Array.isArray(selectedJobDetails.responsibilities) ? (
+                          <ul className="list-disc list-inside space-y-1">
+                            {selectedJobDetails.responsibilities.map((resp, index) => (
+                              <li key={index}>{resp}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="whitespace-pre-wrap">{selectedJobDetails.responsibilities}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Benefits */}
+                  {selectedJobDetails.benefits && (
+                    <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Benefits</h4>
+                      <div className="text-gray-700">
+                        {Array.isArray(selectedJobDetails.benefits) ? (
+                          <ul className="list-disc list-inside space-y-1">
+                            {selectedJobDetails.benefits.map((benefit, index) => (
+                              <li key={index}>{benefit}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="whitespace-pre-wrap">{selectedJobDetails.benefits}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Application Statistics */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Application Statistics</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Total Applications:</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails.applications_count || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Total Views:</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails.views_count || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Messages:</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails.messages_count || 0}</p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Modal Footer */}
@@ -1151,15 +1190,33 @@ const ApplicationTracking: React.FC = () => {
               >
                 Close
               </button>
-              <button
-                onClick={() => {
-                  exportJobDetails();
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-              >
-                <Download className="h-4 w-4" />
-                Export Job Details
-              </button>
+              {selectedJobDetails && (
+                <button
+                  onClick={() => {
+                    const exportData = {
+                      job_details: selectedJobDetails,
+                      export_timestamp: new Date().toISOString()
+                    };
+
+                    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                    const link = document.createElement('a');
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', `${selectedJobDetails.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_job_details.json`);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    
+                    toast.success("Job details exported successfully");
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                >
+                  <Download className="h-4 w-4" />
+                  Export Job Details
+                </button>
+              )}
             </div>
           </div>
         </div>

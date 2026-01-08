@@ -1,12 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Building2, Briefcase, Users, TrendingUp } from "lucide-react";
 import CompanyRegistration from "./CompanyRegistration";
 import JobPostings from "./JobPostings";
 import ApplicationTracking from "./ApplicationTracking";
 import PlacementAnalytics from "./PlacementAnalytics";
+import { companyService } from "@/services/companyService";
+import { opportunitiesService } from "@/services/opportunitiesService";
 
 const PlacementManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState("companies");
+  const [placementStats, setPlacementStats] = useState([
+    { label: "Total Companies", value: "0", icon: Building2, color: "bg-blue-500" },
+    { label: "Active Job Postings", value: "34", icon: Briefcase, color: "bg-purple-500" },
+    { label: "Students Placed", value: "1,245", icon: Users, color: "bg-green-500" },
+    { label: "Placement Rate", value: "87.3%", icon: TrendingUp, color: "bg-orange-500" },
+  ]);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   const tabs = [
     { id: "companies", label: "Company Registration" },
@@ -15,17 +24,45 @@ const PlacementManagement: React.FC = () => {
     { id: "analytics", label: "Placement Analytics" },
   ];
 
-  const placementStats = [
-    { label: "Total Companies", value: "87", icon: Building2, color: "bg-blue-500" },
-    { label: "Active Job Postings", value: "34", icon: Briefcase, color: "bg-purple-500" },
-    { label: "Students Placed", value: "1,245", icon: Users, color: "bg-green-500" },
-    { label: "Placement Rate", value: "87.3%", icon: TrendingUp, color: "bg-orange-500" },
-  ];
+  // Load placement statistics
+  useEffect(() => {
+    loadPlacementStats();
+  }, []);
+
+  const loadPlacementStats = async () => {
+    try {
+      setIsLoadingStats(true);
+      
+      // Load company stats and opportunities stats in parallel
+      const [companyStats, opportunitiesStats] = await Promise.all([
+        companyService.getCompaniesStats(),
+        opportunitiesService.getOpportunitiesStats()
+      ]);
+      
+      setPlacementStats([
+        { label: "Total Companies", value: companyStats.total.toString(), icon: Building2, color: "bg-blue-500" },
+        { label: "Active Job Postings", value: opportunitiesStats.active.toString(), icon: Briefcase, color: "bg-purple-500" },
+        { label: "Students Placed", value: "1,245", icon: Users, color: "bg-green-500" },
+        { label: "Placement Rate", value: "87.3%", icon: TrendingUp, color: "bg-orange-500" },
+      ]);
+    } catch (error) {
+      console.error('Error loading placement stats:', error);
+      // Fallback to default values on error
+      setPlacementStats([
+        { label: "Total Companies", value: "0", icon: Building2, color: "bg-blue-500" },
+        { label: "Active Job Postings", value: "0", icon: Briefcase, color: "bg-purple-500" },
+        { label: "Students Placed", value: "1,245", icon: Users, color: "bg-green-500" },
+        { label: "Placement Rate", value: "87.3%", icon: TrendingUp, color: "bg-orange-500" },
+      ]);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  };
 
   const renderActiveTab = () => {
     switch (activeTab) {
       case "companies":
-        return <CompanyRegistration />;
+        return <CompanyRegistration onStatsUpdate={loadPlacementStats} />;
       case "jobs":
         return <JobPostings />;
       case "applications":
@@ -33,7 +70,7 @@ const PlacementManagement: React.FC = () => {
       case "analytics":
         return <PlacementAnalytics />;
       default:
-        return <CompanyRegistration />;
+        return <CompanyRegistration onStatsUpdate={loadPlacementStats} />;
     }
   };
 
@@ -58,7 +95,14 @@ const PlacementManagement: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm mb-1">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  {isLoadingStats ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                      <span className="text-gray-400 text-sm">Loading...</span>
+                    </div>
+                  ) : (
+                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  )}
                 </div>
                 <div className={`${stat.color} p-3 rounded-lg text-white`}>
                   <Icon className="h-6 w-6" />

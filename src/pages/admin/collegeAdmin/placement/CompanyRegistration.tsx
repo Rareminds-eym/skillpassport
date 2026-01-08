@@ -7,83 +7,21 @@ import {
   Eye,
   Edit,
   Clock,
-  CheckCircle,
   X,
-  ChevronDown,
   MapPin,
   Phone,
   User,
 } from "lucide-react";
 import toast from 'react-hot-toast';
+import { companyService } from '@/services/companyService';
+import type { Company, CompanyFormData } from '@/services/companyService';
+import CompanyStatusModal from '@/components/modals/CompanyStatusModal';
 
-interface Company {
-  id: string;
-  name: string;
-  code: string;
-  industry: string;
-  companySize: string;
-  hqCity: string;
-  hqState: string;
-  phone: string;
-  email: string;
-  website: string;
-  establishedYear: number;
-  contactPersonName: string;
-  contactPersonDesignation: string;
-  accountStatus: 'pending' | 'approved' | 'rejected' | 'active' | 'inactive' | 'blacklisted';
-  approvalStatus: 'pending' | 'approved' | 'rejected';
-  createdAt: string;
-  eligibilityTemplate: string;
-  mouDocument?: string;
-  jdDocument?: string;
-  companyDescription: string;
-  specialRequirements: string;
-  lastUpdated: string;
-  updatedBy: string;
-  hqAddress?: string;
-  hqCountry?: string;
-  hqPincode?: string;
-  contactPersonEmail?: string;
-  contactPersonPhone?: string;
-  history?: CompanyHistoryEntry[];
+interface CompanyRegistrationProps {
+  onStatsUpdate?: () => void;
 }
 
-interface CompanyHistoryEntry {
-  id: string;
-  action: string;
-  performedBy: string;
-  timestamp: string;
-  details: string;
-  previousStatus?: string;
-  newStatus?: string;
-}
-
-interface CompanyFormData {
-  name: string;
-  code: string;
-  industry: string;
-  companySize: string;
-  establishedYear: string;
-  hqAddress: string;
-  hqCity: string;
-  hqState: string;
-  hqCountry: string;
-  hqPincode: string;
-  phone: string;
-  email: string;
-  website: string;
-  contactPersonName: string;
-  contactPersonDesignation: string;
-  contactPersonEmail: string;
-  contactPersonPhone: string;
-  eligibilityTemplate: string;
-  companyDescription: string;
-  specialRequirements: string;
-  mouDocument: File | null;
-  jdDocument: File | null;
-}
-
-const CompanyRegistration: React.FC = () => {
+const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIndustry, setSelectedIndustry] = useState("");
   const [selectedCompanySize, setSelectedCompanySize] = useState("");
@@ -93,11 +31,21 @@ const CompanyRegistration: React.FC = () => {
   const [showCompanyHistoryModal, setShowCompanyHistoryModal] = useState(false);
   const [showCompanyDetailsModal, setShowCompanyDetailsModal] = useState(false);
   const [showEditCompanyModal, setShowEditCompanyModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedCompanyForHistory, setSelectedCompanyForHistory] = useState<Company | null>(null);
   const [selectedCompanyForDetails, setSelectedCompanyForDetails] = useState<Company | null>(null);
   const [selectedCompanyForEdit, setSelectedCompanyForEdit] = useState<Company | null>(null);
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [selectedCompanyForStatus, setSelectedCompanyForStatus] = useState<Company | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [filteredCompanies, setFilteredCompanies] = useState<Company[]>([]);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
   const [editFormData, setEditFormData] = useState<CompanyFormData>({
     name: "",
     code: "",
@@ -116,11 +64,8 @@ const CompanyRegistration: React.FC = () => {
     contactPersonDesignation: "",
     contactPersonEmail: "",
     contactPersonPhone: "",
-    eligibilityTemplate: "",
     companyDescription: "",
     specialRequirements: "",
-    mouDocument: null,
-    jdDocument: null,
   });
 
   // Form data state
@@ -142,138 +87,91 @@ const CompanyRegistration: React.FC = () => {
     contactPersonDesignation: "",
     contactPersonEmail: "",
     contactPersonPhone: "",
-    eligibilityTemplate: "",
     companyDescription: "",
     specialRequirements: "",
-    mouDocument: null,
-    jdDocument: null,
   });
 
-  // Static data for companies
-  const companiesData: Company[] = [
-    {
-      id: "1",
-      name: "TechCorp Solutions",
-      code: "TECH001",
-      industry: "Technology",
-      companySize: "501-1000 employees",
-      hqCity: "Bangalore",
-      hqState: "Karnataka",
-      phone: "+91 80 1234 5678",
-      email: "hr@techcorp.com",
-      website: "https://www.techcorp.com",
-      establishedYear: 2010,
-      contactPersonName: "Priya Sharma",
-      contactPersonDesignation: "HR Manager",
-      accountStatus: "active",
-      approvalStatus: "approved",
-      createdAt: "2024-01-15",
-      eligibilityTemplate: "tech_premium",
-      mouDocument: "techcorp_mou_2024.pdf",
-      jdDocument: "techcorp_jd_software_engineer.pdf",
-      companyDescription: "Leading technology solutions provider specializing in enterprise software development and digital transformation services.",
-      specialRequirements: "Strong programming skills, experience with modern frameworks, good communication skills",
-      lastUpdated: "2024-03-10",
-      updatedBy: "Admin User",
-      history: [
-        {
-          id: "h1",
-          action: "Company Approved",
-          performedBy: "Admin User",
-          timestamp: "2024-01-20T10:30:00Z",
-          details: "Company registration approved after document verification",
-          previousStatus: "pending",
-          newStatus: "approved"
-        },
-        {
-          id: "h2",
-          action: "Status Activated",
-          performedBy: "Admin User",
-          timestamp: "2024-01-22T14:15:00Z",
-          details: "Company status activated for placement activities",
-          previousStatus: "approved",
-          newStatus: "active"
-        }
-      ]
-    },
-    {
-      id: "2",
-      name: "HealthPlus Medical",
-      code: "HLTH002",
-      industry: "Healthcare",
-      companySize: "201-500 employees",
-      hqCity: "Mumbai",
-      hqState: "Maharashtra",
-      phone: "+91 22 9876 5432",
-      email: "careers@healthplus.com",
-      website: "https://www.healthplus.com",
-      establishedYear: 2015,
-      contactPersonName: "Dr. Rajesh Kumar",
-      contactPersonDesignation: "Recruitment Head",
-      accountStatus: "active",
-      approvalStatus: "approved",
-      createdAt: "2024-02-10",
-      eligibilityTemplate: "tech_standard",
-      mouDocument: "healthplus_mou_2024.pdf",
-      jdDocument: "healthplus_jd_data_analyst.pdf",
-      companyDescription: "Healthcare technology company focused on improving patient care through data analytics and digital health solutions.",
-      specialRequirements: "Healthcare domain knowledge preferred, analytical skills, attention to detail",
-      lastUpdated: "2024-02-15",
-      updatedBy: "HR Admin",
-      history: [
-        {
-          id: "h3",
-          action: "Company Registered",
-          performedBy: "System",
-          timestamp: "2024-02-10T09:00:00Z",
-          details: "Company registration submitted",
-          newStatus: "pending"
-        },
-        {
-          id: "h4",
-          action: "Documents Verified",
-          performedBy: "Verification Team",
-          timestamp: "2024-02-12T11:30:00Z",
-          details: "MoU and JD documents verified successfully"
-        }
-      ]
-    },
-    {
-      id: "3",
-      name: "FinanceFirst Bank",
-      code: "FIN003",
-      industry: "Finance",
-      companySize: "1000+ employees",
-      hqCity: "Delhi",
-      hqState: "Delhi",
-      phone: "+91 11 5555 7777",
-      email: "recruitment@financefirst.com",
-      website: "https://www.financefirst.com",
-      establishedYear: 2005,
-      contactPersonName: "Anita Verma",
-      contactPersonDesignation: "Senior HR Executive",
-      accountStatus: "pending",
-      approvalStatus: "pending",
-      createdAt: "2024-03-05",
-      eligibilityTemplate: "finance_standard",
-      mouDocument: "financefirst_mou_draft.pdf",
-      jdDocument: "financefirst_jd_analyst.pdf",
-      companyDescription: "Leading financial services provider offering comprehensive banking and investment solutions across India.",
-      specialRequirements: "Strong analytical skills, financial modeling experience, CFA certification preferred",
-      lastUpdated: "2024-03-05",
-      updatedBy: "System",
-      history: [
-        {
-          id: "h5",
-          action: "Company Registered",
-          performedBy: "System",
-          timestamp: "2024-03-05T16:45:00Z",
-          details: "New company registration submitted for review",
-          newStatus: "pending"
-        }
-      ]
+  // Load companies on component mount
+  useEffect(() => {
+    loadCompanies();
+  }, []);
+
+  // Apply filters when data or filters change
+  useEffect(() => {
+    applyFilters();
+  }, [companies, searchTerm, selectedIndustry, selectedCompanySize, selectedStatus]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedIndustry, selectedCompanySize, selectedStatus]);
+
+  const loadCompanies = async () => {
+    try {
+      setIsLoading(true);
+      const companiesData = await companyService.getAllCompanies();
+      setCompanies(companiesData);
+    } catch (error) {
+      console.error('Error loading companies:', error);
+      toast.error('Failed to load companies');
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
+
+  const applyFilters = () => {
+    let filtered = [...companies];
+
+    // Search filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(company => 
+        company.name?.toLowerCase().includes(search) ||
+        company.code?.toLowerCase().includes(search) ||
+        company.industry?.toLowerCase().includes(search) ||
+        company.hqCity?.toLowerCase().includes(search)
+      );
+    }
+
+    // Industry filter
+    if (selectedIndustry) {
+      filtered = filtered.filter(company => company.industry === selectedIndustry);
+    }
+
+    // Company size filter
+    if (selectedCompanySize) {
+      filtered = filtered.filter(company => company.companySize === selectedCompanySize);
+    }
+
+    // Status filter
+    if (selectedStatus) {
+      filtered = filtered.filter(company => company.accountStatus === selectedStatus);
+    }
+
+    setTotalItems(filtered.length);
+    setFilteredCompanies(filtered);
+  };
+
+  // Get paginated data
+  const getPaginatedCompanies = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredCompanies.slice(startIndex, endIndex);
+  };
+
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const paginatedCompanies = getPaginatedCompanies();
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
+  // Static data for companies - removed as we're now using Supabase data
 
   const industryOptions = [
     "Technology", "Healthcare", "Finance", "Education", "Manufacturing", 
@@ -286,16 +184,7 @@ const CompanyRegistration: React.FC = () => {
     "201-500 employees", "501-1000 employees", "1000+ employees"
   ];
 
-  const eligibilityTemplateOptions = [
-    "tech_premium",
-    "tech_standard", 
-    "finance_standard",
-    "healthcare_standard",
-    "manufacturing_standard",
-    "retail_standard",
-    "consulting_standard",
-    "custom_template"
-  ];
+
 
   const indianStates = [
     "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
@@ -307,41 +196,14 @@ const CompanyRegistration: React.FC = () => {
     "Andaman and Nicobar Islands", "Dadra and Nagar Haveli and Daman and Diu", "Lakshadweep"
   ];
 
-  // Filter companies based on search and filters
-  const filteredCompanies = companiesData.filter(company => {
-    const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         company.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         company.industry.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesIndustry = !selectedIndustry || company.industry === selectedIndustry;
-    const matchesSize = !selectedCompanySize || company.companySize === selectedCompanySize;
-    const matchesStatus = !selectedStatus || company.accountStatus === selectedStatus;
-    
-    return matchesSearch && matchesIndustry && matchesSize && matchesStatus;
-  });
+  // Filter companies based on search and filters - now using loaded companies
+  // Filtering is handled by applyFilters() function and filteredCompanies state
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span>;
-      case 'approved':
-        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Approved</span>;
-      case 'pending':
-        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Pending</span>;
-      case 'rejected':
-        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Rejected</span>;
-      case 'inactive':
-        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Inactive</span>;
-      case 'blacklisted':
-        return <span className="px-2 py-1 text-xs font-medium bg-black text-white rounded-full">Blacklisted</span>;
-      default:
-        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Unknown</span>;
-    }
-  };
+
 
   const getClickableStatusBadge = (company: Company) => {
-    const status = company.accountStatus;
-    let badgeClasses = "px-2 py-1 text-xs font-medium rounded-full cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1";
+    const status = company.accountStatus || 'pending';
+    let badgeClasses = "px-2 py-1 text-xs font-medium rounded-full cursor-pointer hover:opacity-80 transition-opacity";
     
     switch (status) {
       case 'active':
@@ -357,108 +219,59 @@ const CompanyRegistration: React.FC = () => {
         badgeClasses += " bg-red-100 text-red-800 hover:bg-red-200";
         break;
       case 'inactive':
-        badgeClasses += " bg-gray-100 text-gray-800 hover:bg-gray-200";
+        badgeClasses += " bg-orange-100 text-orange-800 hover:bg-orange-200";
+        break;
+      case 'suspended':
+        badgeClasses += " bg-red-100 text-red-800 hover:bg-red-200";
         break;
       case 'blacklisted':
-        badgeClasses += " bg-black text-white hover:bg-gray-800";
+        badgeClasses += " bg-gray-100 text-gray-800 hover:bg-gray-200";
         break;
       default:
         badgeClasses += " bg-gray-100 text-gray-800 hover:bg-gray-200";
     }
 
     return (
-      <div className="relative">
-        <button 
-          onClick={() => toggleDropdown(company.id)}
-          className={badgeClasses}
-          title="Click to change status"
-        >
-          {status.charAt(0).toUpperCase() + status.slice(1)}
-          <ChevronDown className="h-3 w-3" />
-        </button>
-        
-        {openDropdownId === company.id && (
-          <div className="absolute left-0 top-8 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[200px]">
-            <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b border-gray-100">
-              Change Status To:
-            </div>
-            {getAvailableStatusOptions(company.accountStatus).map((statusOption, index) => {
-              const StatusIcon = statusOption.icon;
-              return (
-                <button
-                  key={index}
-                  onClick={() => handleActionSelect(company, statusOption.action)}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-start gap-2 ${statusOption.color} transition-colors`}
-                >
-                  <StatusIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="font-medium">{statusOption.title}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">{statusOption.description}</div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <button 
+        onClick={() => openStatusModal(company)}
+        className={badgeClasses}
+        title="Click to change status"
+      >
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </button>
     );
   };
 
-  const getAvailableStatusOptions = (currentStatus: string) => {
-    const allStatuses = [
-      { 
-        status: 'approved', 
-        action: 'approve', 
-        icon: CheckCircle, 
-        color: 'text-blue-600', 
-        title: 'Set as Approved',
-        description: 'Company is approved but not yet active'
-      },
-      { 
-        status: 'active', 
-        action: 'activate', 
-        icon: CheckCircle, 
-        color: 'text-green-600', 
-        title: 'Set as Active',
-        description: 'Company can post jobs and recruit'
-      },
-      { 
-        status: 'inactive', 
-        action: 'deactivate', 
-        icon: Clock, 
-        color: 'text-orange-600', 
-        title: 'Set as Inactive',
-        description: 'Company cannot post new jobs'
-      },
-      { 
-        status: 'blacklisted', 
-        action: 'blacklist', 
-        icon: X, 
-        color: 'text-red-600', 
-        title: 'Set as Blacklisted',
-        description: 'Company is permanently restricted'
-      },
-      { 
-        status: 'rejected', 
-        action: 'reject', 
-        icon: X, 
-        color: 'text-red-500', 
-        title: 'Set as Rejected',
-        description: 'Company registration is rejected'
+  const openStatusModal = (company: Company) => {
+    setSelectedCompanyForStatus(company);
+    setShowStatusModal(true);
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!selectedCompanyForStatus) return;
+    
+    setIsUpdatingStatus(true);
+    try {
+      await companyService.updateCompanyStatus(selectedCompanyForStatus.id, newStatus);
+      toast.success(`Company status updated to ${newStatus}`);
+      
+      // Reload companies to reflect the change
+      loadCompanies();
+      
+      // Update stats in parent component
+      if (onStatsUpdate) {
+        onStatsUpdate();
       }
-    ];
-
-    return allStatuses.filter(statusOption => statusOption.status !== currentStatus);
+    } catch (error) {
+      console.error('Error updating company status:', error);
+      toast.error('Failed to update company status');
+      throw error; // Re-throw to let modal handle it
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
-  const toggleDropdown = (companyId: string) => {
-    setOpenDropdownId(openDropdownId === companyId ? null : companyId);
-  };
 
-  const handleActionSelect = (company: Company, action: string) => {
-    setOpenDropdownId(null);
-    toast.success(`Company status changed to ${action}`);
-  };
 
   const viewCompanyHistory = (company: Company) => {
     setSelectedCompanyForHistory(company);
@@ -475,41 +288,31 @@ const CompanyRegistration: React.FC = () => {
     setEditFormData({
       name: company.name,
       code: company.code,
-      industry: company.industry,
-      companySize: company.companySize,
-      establishedYear: company.establishedYear.toString(),
+      industry: company.industry || "",
+      companySize: company.companySize || "",
+      establishedYear: company.establishedYear?.toString() || "",
       hqAddress: company.hqAddress || "",
-      hqCity: company.hqCity,
-      hqState: company.hqState,
+      hqCity: company.hqCity || "",
+      hqState: company.hqState || "",
       hqCountry: company.hqCountry || "India",
       hqPincode: company.hqPincode || "",
-      phone: company.phone,
-      email: company.email,
-      website: company.website,
-      contactPersonName: company.contactPersonName,
-      contactPersonDesignation: company.contactPersonDesignation,
+      phone: company.phone || "",
+      email: company.email || "",
+      website: company.website || "",
+      contactPersonName: company.contactPersonName || "",
+      contactPersonDesignation: company.contactPersonDesignation || "",
       contactPersonEmail: company.contactPersonEmail || "",
       contactPersonPhone: company.contactPersonPhone || "",
-      eligibilityTemplate: company.eligibilityTemplate,
-      companyDescription: company.companyDescription,
-      specialRequirements: company.specialRequirements,
-      mouDocument: null,
-      jdDocument: null,
+      companyDescription: company.metadata?.companyDescription || "",
+      specialRequirements: company.metadata?.specialRequirements || "",
     });
     setShowEditCompanyModal(true);
   };
 
-  const handleEditInputChange = (field: keyof CompanyFormData, value: string | File | null) => {
-    setEditFormData(prev => ({
+  const handleEditInputChange = (field: keyof CompanyFormData, value: string) => {
+    setEditFormData((prev: CompanyFormData) => ({
       ...prev,
       [field]: value
-    }));
-  };
-
-  const handleEditFileChange = (field: 'mouDocument' | 'jdDocument', file: File | null) => {
-    setEditFormData(prev => ({
-      ...prev,
-      [field]: file
     }));
   };
 
@@ -518,40 +321,80 @@ const CompanyRegistration: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      console.log("Updating company:", selectedCompanyForEdit?.id, editFormData);
+      if (!selectedCompanyForEdit) {
+        toast.error("No company selected for editing");
+        return;
+      }
+
+      // Validate required fields
+      if (!editFormData.name.trim()) {
+        toast.error("Company name is required");
+        return;
+      }
+
+      if (!editFormData.code.trim()) {
+        toast.error("Company code is required");
+        return;
+      }
+
+      // Prepare the update data - convert null to undefined for TypeScript compatibility
+      const updateData: Partial<CompanyFormData> = {
+        name: editFormData.name.trim(),
+        code: editFormData.code.trim(),
+        industry: editFormData.industry || undefined,
+        companySize: editFormData.companySize || undefined,
+        establishedYear: editFormData.establishedYear || undefined,
+        hqAddress: editFormData.hqAddress || undefined,
+        hqCity: editFormData.hqCity || undefined,
+        hqState: editFormData.hqState || undefined,
+        hqCountry: editFormData.hqCountry || "India",
+        hqPincode: editFormData.hqPincode || undefined,
+        phone: editFormData.phone || undefined,
+        email: editFormData.email || undefined,
+        website: editFormData.website || undefined,
+        contactPersonName: editFormData.contactPersonName || undefined,
+        contactPersonDesignation: editFormData.contactPersonDesignation || undefined,
+        contactPersonEmail: editFormData.contactPersonEmail || undefined,
+        contactPersonPhone: editFormData.contactPersonPhone || undefined,
+        companyDescription: editFormData.companyDescription || undefined,
+        specialRequirements: editFormData.specialRequirements || undefined,
+      };
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await companyService.updateCompany(selectedCompanyForEdit.id, updateData);
       
       toast.success("Company updated successfully!");
       setShowEditCompanyModal(false);
       setSelectedCompanyForEdit(null);
       
+      // Reload companies to reflect the changes
+      loadCompanies();
+      
+      // Update stats in parent component
+      if (onStatsUpdate) {
+        onStatsUpdate();
+      }
+      
     } catch (error) {
       console.error("Error updating company:", error);
-      toast.error("Error updating company. Please try again.");
+      
+      // More specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('duplicate') || error.message.includes('unique')) {
+          toast.error("Company code already exists. Please use a different code.");
+        } else if (error.message.includes('permission') || error.message.includes('unauthorized')) {
+          toast.error("You don't have permission to update this company.");
+        } else {
+          toast.error(`Update failed: ${error.message}`);
+        }
+      } else {
+        toast.error("Error updating company. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const formatDate = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-      month: '2-digit',
-      day: '2-digit',
-      year: 'numeric'
-    });
-  };
 
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
@@ -566,17 +409,10 @@ const CompanyRegistration: React.FC = () => {
     }
   };
 
-  const handleInputChange = (field: keyof CompanyFormData, value: string | File | null) => {
-    setFormData(prev => ({
+  const handleInputChange = (field: keyof CompanyFormData, value: string) => {
+    setFormData((prev: CompanyFormData) => ({
       ...prev,
       [field]: value
-    }));
-  };
-
-  const handleFileChange = (field: 'mouDocument' | 'jdDocument', file: File | null) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: file
     }));
   };
 
@@ -585,11 +421,8 @@ const CompanyRegistration: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Here you would typically make an API call to save the company
-      console.log("Company data to submit:", formData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Add company to Supabase
+      await companyService.addCompany(formData);
       
       // Reset form and close modal
       setFormData({
@@ -610,15 +443,20 @@ const CompanyRegistration: React.FC = () => {
         contactPersonDesignation: "",
         contactPersonEmail: "",
         contactPersonPhone: "",
-        eligibilityTemplate: "",
         companyDescription: "",
         specialRequirements: "",
-        mouDocument: null,
-        jdDocument: null,
       });
       setShowAddCompanyModal(false);
       
       toast.success("Company added successfully!");
+      
+      // Reload companies to show the new company
+      loadCompanies();
+      
+      // Update stats in parent component
+      if (onStatsUpdate) {
+        onStatsUpdate();
+      }
       
     } catch (error) {
       console.error("Error adding company:", error);
@@ -648,11 +486,8 @@ const CompanyRegistration: React.FC = () => {
       contactPersonDesignation: "",
       contactPersonEmail: "",
       contactPersonPhone: "",
-      eligibilityTemplate: "",
       companyDescription: "",
       specialRequirements: "",
-      mouDocument: null,
-      jdDocument: null,
     });
   };
 
@@ -663,19 +498,7 @@ const CompanyRegistration: React.FC = () => {
     setShowFilterModal(false);
   };
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (openDropdownId) {
-        setOpenDropdownId(null);
-      }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [openDropdownId]);
 
   return (
     <div className="p-6">
@@ -718,135 +541,459 @@ const CompanyRegistration: React.FC = () => {
       </div>
 
       {/* Companies Table */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Company
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Industry
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Size
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Location
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact Person
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredCompanies.length > 0 ? (
-                filteredCompanies.map((company) => (
-                  <tr key={company.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                            <Building2 className="h-5 w-5 text-blue-600" />
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{company.name}</div>
-                          <div className="text-sm text-gray-500">{company.code}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{company.industry}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{company.companySize}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{company.hqCity}</div>
-                      <div className="text-sm text-gray-500">{company.hqState}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{company.contactPersonName}</div>
-                      <div className="text-sm text-gray-500">{company.contactPersonDesignation}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getClickableStatusBadge(company)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center gap-1">
-                        <button 
-                          onClick={() => viewCompanyDetails(company)}
-                          className="text-blue-600 hover:text-blue-900 p-1"
-                          title="View Details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => editCompany(company)}
-                          className="text-green-600 hover:text-green-900 p-1"
-                          title="Edit Company"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => viewCompanyHistory(company)}
-                          className="text-purple-600 hover:text-purple-900 p-1"
-                          title="View History"
-                        >
-                          <Clock className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center">
-                      <Building2 className="h-12 w-12 text-gray-400 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No companies found</h3>
-                      <p className="text-gray-500 mb-4">
-                        {searchTerm || selectedIndustry || selectedCompanySize || selectedStatus
-                          ? "Try adjusting your search or filters"
-                          : "Get started by adding your first company"}
-                      </p>
-                      {!(searchTerm || selectedIndustry || selectedCompanySize || selectedStatus) && (
-                        <button 
-                          onClick={() => setShowAddCompanyModal(true)}
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                        >
-                          <Plus className="h-4 w-4" />
-                          Add First Company
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {isLoading ? (
+        <div className="bg-white border border-gray-200 rounded-lg p-8">
+          <div className="flex items-center justify-center">
+            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <span className="ml-3 text-gray-600">Loading companies...</span>
+          </div>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Desktop Table View (Large screens) */}
+          <div className="hidden xl:block bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full table-fixed">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="w-64 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Company
+                    </th>
+                    <th className="w-32 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Industry
+                    </th>
+                    <th className="w-36 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Size
+                    </th>
+                    <th className="w-40 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Location
+                    </th>
+                    <th className="w-48 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Contact Person
+                    </th>
+                    <th className="w-32 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedCompanies.length > 0 ? (
+                    paginatedCompanies.map((company) => (
+                      <tr key={company.id} className="hover:bg-gray-50">
+                        <td className="w-64 px-4 py-4">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-8 w-8">
+                              <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                                <Building2 className="h-4 w-4 text-blue-600" />
+                              </div>
+                            </div>
+                            <div className="ml-3 min-w-0 flex-1">
+                              <div className="text-sm font-medium text-gray-900 truncate" title={company.name}>
+                                {company.name}
+                              </div>
+                              <div className="text-xs text-gray-500 truncate" title={company.code}>
+                                {company.code}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="w-32 px-4 py-4">
+                          <div className="text-sm text-gray-900 break-words" title={company.industry || 'N/A'}>
+                            {company.industry || 'N/A'}
+                          </div>
+                        </td>
+                        <td className="w-36 px-4 py-4">
+                          <div className="text-sm text-gray-900 break-words" title={company.companySize || 'N/A'}>
+                            {company.companySize || 'N/A'}
+                          </div>
+                        </td>
+                        <td className="w-40 px-4 py-4">
+                          <div className="text-sm text-gray-900 break-words" title={`${company.hqCity || 'N/A'}, ${company.hqState || 'N/A'}`}>
+                            {company.hqCity || 'N/A'}
+                          </div>
+                          <div className="text-xs text-gray-500 break-words">
+                            {company.hqState || 'N/A'}
+                          </div>
+                        </td>
+                        <td className="w-48 px-4 py-4">
+                          <div className="text-sm text-gray-900 break-words" title={company.contactPersonName || 'N/A'}>
+                            {company.contactPersonName || 'N/A'}
+                          </div>
+                          <div className="text-xs text-gray-500 break-words" title={company.contactPersonDesignation || 'N/A'}>
+                            {company.contactPersonDesignation || 'N/A'}
+                          </div>
+                        </td>
+                        <td className="w-32 px-4 py-4">
+                          {getClickableStatusBadge(company)}
+                        </td>
+                        <td className="w-28 px-4 py-4 text-sm font-medium">
+                          <div className="flex items-center justify-center gap-1">
+                            <button 
+                              onClick={() => viewCompanyDetails(company)}
+                              className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                              title="View Details"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => editCompany(company)}
+                              className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
+                              title="Edit Company"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => viewCompanyHistory(company)}
+                              className="text-purple-600 hover:text-purple-900 p-1 rounded hover:bg-purple-50 transition-colors"
+                              title="View History"
+                            >
+                              <Clock className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center">
+                          <Building2 className="h-12 w-12 text-gray-400 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No companies found</h3>
+                          <p className="text-gray-500 mb-4">
+                            {searchTerm || selectedIndustry || selectedCompanySize || selectedStatus
+                              ? "Try adjusting your search or filters"
+                              : "Get started by adding your first company"}
+                          </p>
+                          {!(searchTerm || selectedIndustry || selectedCompanySize || selectedStatus) && (
+                            <button 
+                              onClick={() => setShowAddCompanyModal(true)}
+                              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                            >
+                              <Plus className="h-4 w-4" />
+                              Add First Company
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-      {/* Results Summary */}
-      {filteredCompanies.length > 0 && (
-        <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-          <div>
-            Showing {filteredCompanies.length} of {companiesData.length} companies
+          {/* Tablet Horizontal Scroll Table View (Medium to Large screens) */}
+          <div className="hidden md:block xl:hidden bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Company
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Industry
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Size
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Location
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Contact Person
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Status
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedCompanies.length > 0 ? (
+                    paginatedCompanies.map((company) => (
+                      <tr key={company.id} className="hover:bg-gray-50">
+                        <td className="px-3 py-4 whitespace-nowrap">
+                          <div className="flex items-center min-w-0">
+                            <div className="flex-shrink-0 h-8 w-8">
+                              <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                                <Building2 className="h-4 w-4 text-blue-600" />
+                              </div>
+                            </div>
+                            <div className="ml-3 min-w-0">
+                              <div className="text-sm font-medium text-gray-900 truncate max-w-[150px]" title={company.name}>
+                                {company.name}
+                              </div>
+                              <div className="text-xs text-gray-500 truncate" title={company.code}>
+                                {company.code}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 max-w-[100px] truncate" title={company.industry || 'N/A'}>
+                            {company.industry || 'N/A'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 max-w-[120px] truncate" title={company.companySize || 'N/A'}>
+                            {company.companySize || 'N/A'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 max-w-[120px] truncate" title={`${company.hqCity || 'N/A'}, ${company.hqState || 'N/A'}`}>
+                            {company.hqCity || 'N/A'}
+                          </div>
+                          <div className="text-xs text-gray-500 max-w-[120px] truncate">
+                            {company.hqState || 'N/A'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 max-w-[140px] truncate" title={company.contactPersonName || 'N/A'}>
+                            {company.contactPersonName || 'N/A'}
+                          </div>
+                          <div className="text-xs text-gray-500 max-w-[140px] truncate" title={company.contactPersonDesignation || 'N/A'}>
+                            {company.contactPersonDesignation || 'N/A'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 whitespace-nowrap">
+                          {getClickableStatusBadge(company)}
+                        </td>
+                        <td className="px-3 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center gap-1">
+                            <button 
+                              onClick={() => viewCompanyDetails(company)}
+                              className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                              title="View Details"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => editCompany(company)}
+                              className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
+                              title="Edit Company"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => viewCompanyHistory(company)}
+                              className="text-purple-600 hover:text-purple-900 p-1 rounded hover:bg-purple-50 transition-colors"
+                              title="View History"
+                            >
+                              <Clock className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center">
+                          <Building2 className="h-12 w-12 text-gray-400 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No companies found</h3>
+                          <p className="text-gray-500 mb-4">
+                            {searchTerm || selectedIndustry || selectedCompanySize || selectedStatus
+                              ? "Try adjusting your search or filters"
+                              : "Get started by adding your first company"}
+                          </p>
+                          {!(searchTerm || selectedIndustry || selectedCompanySize || selectedStatus) && (
+                            <button 
+                              onClick={() => setShowAddCompanyModal(true)}
+                              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                            >
+                              <Plus className="h-4 w-4" />
+                              Add First Company
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <span>Active: {filteredCompanies.filter(c => c.accountStatus === 'active').length}</span>
-            <span>Pending: {filteredCompanies.filter(c => c.accountStatus === 'pending').length}</span>
-            <span>Rejected: {filteredCompanies.filter(c => c.accountStatus === 'rejected').length}</span>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-4">
+            {paginatedCompanies.length > 0 ? (
+              paginatedCompanies.map((company) => (
+                <div key={company.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center">
+                      <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <Building2 className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-gray-900">{company.name}</h3>
+                        <p className="text-xs text-gray-500">{company.code}</p>
+                      </div>
+                    </div>
+                    {getClickableStatusBadge(company)}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Industry</p>
+                      <p className="text-sm text-gray-900 mt-1">{company.industry || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Size</p>
+                      <p className="text-sm text-gray-900 mt-1">{company.companySize || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Location</p>
+                      <p className="text-sm text-gray-900 mt-1">{company.hqCity || 'N/A'}, {company.hqState || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</p>
+                      <p className="text-sm text-gray-900 mt-1">{company.contactPersonName || 'N/A'}</p>
+                      <p className="text-xs text-gray-500">{company.contactPersonDesignation || 'N/A'}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
+                    <button 
+                      onClick={() => viewCompanyDetails(company)}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
+                      title="View Details"
+                    >
+                      <Eye className="h-3 w-3" />
+                      View
+                    </button>
+                    <button 
+                      onClick={() => editCompany(company)}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs text-green-600 hover:text-green-900 hover:bg-green-50 rounded transition-colors"
+                      title="Edit Company"
+                    >
+                      <Edit className="h-3 w-3" />
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => viewCompanyHistory(company)}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs text-purple-600 hover:text-purple-900 hover:bg-purple-50 rounded transition-colors"
+                      title="View History"
+                    >
+                      <Clock className="h-3 w-3" />
+                      History
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+                <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No companies found</h3>
+                <p className="text-gray-500 mb-4">
+                  {searchTerm || selectedIndustry || selectedCompanySize || selectedStatus
+                    ? "Try adjusting your search or filters"
+                    : "Get started by adding your first company"}
+                </p>
+                {!(searchTerm || selectedIndustry || selectedCompanySize || selectedStatus) && (
+                  <button 
+                    onClick={() => setShowAddCompanyModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition mx-auto"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add First Company
+                  </button>
+                )}
+              </div>
+            )}
           </div>
+        </>
+      )}
+
+      {/* Pagination and Results Summary */}
+      {!isLoading && totalItems > 0 && (
+        <div className="mt-4 space-y-4">
+          {/* Show entries selector and results info */}
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <span>Show</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                className="border border-gray-300 rounded px-2 py-1 text-sm"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span>entries</span>
+            </div>
+            <div>
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} companies
+            </div>
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <span>Active: {filteredCompanies.filter(c => c.accountStatus === 'active').length}</span>
+                <span>Pending: {filteredCompanies.filter(c => c.accountStatus === 'pending').length}</span>
+                <span>Approved: {filteredCompanies.filter(c => c.accountStatus === 'approved').length}</span>
+                <span>Rejected: {filteredCompanies.filter(c => c.accountStatus === 'rejected').length}</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                
+                {/* Page numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`px-3 py-1 text-sm border rounded ${
+                          currentPage === pageNum
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -893,11 +1040,12 @@ const CompanyRegistration: React.FC = () => {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="approved">Approved</option>
                   <option value="pending">Pending</option>
-                  <option value="rejected">Rejected</option>
+                  <option value="approved">Approved</option>
+                  <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
+                  <option value="suspended">Suspended</option>
+                  <option value="rejected">Rejected</option>
                   <option value="blacklisted">Blacklisted</option>
                 </select>
               </div>
@@ -946,49 +1094,11 @@ const CompanyRegistration: React.FC = () => {
 
             {/* Modal Content */}
             <div className="p-6 overflow-y-auto max-h-[60vh]">
-              {selectedCompanyForHistory.history && selectedCompanyForHistory.history.length > 0 ? (
-                <div className="space-y-4">
-                  {selectedCompanyForHistory.history.map((entry, index) => (
-                    <div key={entry.id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
-                      <div className="flex-shrink-0">
-                        <div className="w-3 h-3 bg-blue-500 rounded-full mt-2"></div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-sm font-semibold text-gray-900">{entry.action}</h3>
-                          <div className="text-right">
-                            <div className="text-sm text-gray-900">{formatDate(entry.timestamp)}</div>
-                            <div className="text-sm text-gray-500">{formatTime(entry.timestamp)}</div>
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-2">{entry.details}</p>
-                        
-                        {entry.previousStatus && entry.newStatus && (
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeColor(entry.previousStatus)}`}>
-                              {entry.previousStatus.charAt(0).toUpperCase() + entry.previousStatus.slice(1)}
-                            </span>
-                            <span className="text-gray-400">→</span>
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeColor(entry.newStatus)}`}>
-                              {entry.newStatus.charAt(0).toUpperCase() + entry.newStatus.slice(1)}
-                            </span>
-                          </div>
-                        )}
-                        
-                        <div className="text-xs text-gray-500">
-                          Performed by {entry.performedBy}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No History Available</h3>
-                  <p className="text-gray-500">No historical records found for this company.</p>
-                </div>
-              )}
+              <div className="text-center py-8">
+                <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No History Available</h3>
+                <p className="text-gray-500">Company history feature will be implemented soon.</p>
+              </div>
             </div>
 
             {/* Modal Footer */}
@@ -1280,22 +1390,6 @@ const CompanyRegistration: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Eligibility Template</label>
-                  <select
-                    value={formData.eligibilityTemplate}
-                    onChange={(e) => handleInputChange('eligibilityTemplate', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select Template</option>
-                    {eligibilityTemplateOptions.map(template => (
-                      <option key={template} value={template}>
-                        {template.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Company Description</label>
                   <textarea
                     value={formData.companyDescription}
@@ -1315,54 +1409,6 @@ const CompanyRegistration: React.FC = () => {
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">MoU Document</label>
-                    <div className="relative">
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={(e) => handleFileChange('mouDocument', e.target.files?.[0] || null)}
-                        className="hidden"
-                        id="mouDocument"
-                      />
-                      <label
-                        htmlFor="mouDocument"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between"
-                      >
-                        <span className="text-gray-500">
-                          {formData.mouDocument ? formData.mouDocument.name : "Choose File"}
-                        </span>
-                        <span className="text-sm text-gray-400">No file chosen</span>
-                      </label>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Upload MoU document (PDF, DOC, DOCX)</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">JD Document</label>
-                    <div className="relative">
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={(e) => handleFileChange('jdDocument', e.target.files?.[0] || null)}
-                        className="hidden"
-                        id="jdDocument"
-                      />
-                      <label
-                        htmlFor="jdDocument"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between"
-                      >
-                        <span className="text-gray-500">
-                          {formData.jdDocument ? formData.jdDocument.name : "Choose File"}
-                        </span>
-                        <span className="text-sm text-gray-400">No file chosen</span>
-                      </label>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Upload Job Description template (PDF, DOC, DOCX)</p>
-                  </div>
                 </div>
               </div>
 
@@ -1427,11 +1473,11 @@ const CompanyRegistration: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Current Status</h3>
                 <p className="text-sm text-gray-600 mb-3">Account status and approval information</p>
                 <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusBadgeColor(selectedCompanyForDetails.accountStatus)}`}>
-                    {selectedCompanyForDetails.accountStatus.charAt(0).toUpperCase() + selectedCompanyForDetails.accountStatus.slice(1)}
+                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusBadgeColor(selectedCompanyForDetails.accountStatus || 'pending')}`}>
+                    {(selectedCompanyForDetails.accountStatus || 'pending').charAt(0).toUpperCase() + (selectedCompanyForDetails.accountStatus || 'pending').slice(1)}
                   </span>
-                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusBadgeColor(selectedCompanyForDetails.approvalStatus)}`}>
-                    {selectedCompanyForDetails.approvalStatus.charAt(0).toUpperCase() + selectedCompanyForDetails.approvalStatus.slice(1)}
+                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusBadgeColor(selectedCompanyForDetails.approvalStatus || 'pending')}`}>
+                    {(selectedCompanyForDetails.approvalStatus || 'pending').charAt(0).toUpperCase() + (selectedCompanyForDetails.approvalStatus || 'pending').slice(1)}
                   </span>
                 </div>
               </div>
@@ -1447,21 +1493,25 @@ const CompanyRegistration: React.FC = () => {
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Industry</label>
-                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.industry}</p>
+                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.industry || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Company Size</label>
-                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.companySize}</p>
+                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.companySize || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Established Year</label>
-                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.establishedYear}</p>
+                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.establishedYear || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Website</label>
-                      <a href={selectedCompanyForDetails.website} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-800">
-                        {selectedCompanyForDetails.website}
-                      </a>
+                      {selectedCompanyForDetails.website ? (
+                        <a href={selectedCompanyForDetails.website} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-800">
+                          {selectedCompanyForDetails.website}
+                        </a>
+                      ) : (
+                        <p className="text-sm text-gray-900">N/A</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1476,15 +1526,15 @@ const CompanyRegistration: React.FC = () => {
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Headquarters</label>
-                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.hqCity}, {selectedCompanyForDetails.hqState}</p>
+                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.hqCity || 'N/A'}, {selectedCompanyForDetails.hqState || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Phone</label>
-                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.phone}</p>
+                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.phone || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Email</label>
-                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.email}</p>
+                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.email || 'N/A'}</p>
                     </div>
                   </div>
                 </div>
@@ -1500,11 +1550,11 @@ const CompanyRegistration: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Name</label>
-                    <p className="text-sm text-gray-900">{selectedCompanyForDetails.contactPersonName}</p>
+                    <p className="text-sm text-gray-900">{selectedCompanyForDetails.contactPersonName || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Designation</label>
-                    <p className="text-sm text-gray-900">{selectedCompanyForDetails.contactPersonDesignation}</p>
+                    <p className="text-sm text-gray-900">{selectedCompanyForDetails.contactPersonDesignation || 'N/A'}</p>
                   </div>
                 </div>
               </div>
@@ -1512,7 +1562,9 @@ const CompanyRegistration: React.FC = () => {
               {/* Company Description */}
               <div className="mt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Company Description</h3>
-                <p className="text-sm text-gray-700 leading-relaxed">{selectedCompanyForDetails.companyDescription}</p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {selectedCompanyForDetails.metadata?.companyDescription || 'No description available'}
+                </p>
               </div>
             </div>
           </div>
@@ -1783,22 +1835,6 @@ const CompanyRegistration: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Eligibility Template</label>
-                  <select
-                    value={editFormData.eligibilityTemplate}
-                    onChange={(e) => handleEditInputChange('eligibilityTemplate', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select Template</option>
-                    {eligibilityTemplateOptions.map(template => (
-                      <option key={template} value={template}>
-                        {template.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Company Description</label>
                   <textarea
                     value={editFormData.companyDescription}
@@ -1847,6 +1883,16 @@ const CompanyRegistration: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Company Status Modal */}
+      <CompanyStatusModal
+        isOpen={showStatusModal}
+        onClose={() => setShowStatusModal(false)}
+        currentStatus={selectedCompanyForStatus?.accountStatus || 'pending'}
+        companyName={selectedCompanyForStatus?.name || ''}
+        onStatusChange={handleStatusChange}
+        isUpdating={isUpdatingStatus}
+      />
 
     </div>
   );
