@@ -27,6 +27,21 @@ function getManagePath(userRole) {
 }
 
 /**
+ * Get the user type for subscription plans based on current URL path
+ * This is more reliable than using the role from auth context
+ */
+function getUserTypeFromPath(pathname) {
+  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/recruitment')) return 'recruiter';
+  if (pathname.startsWith('/educator')) return 'educator';
+  if (pathname.startsWith('/college-admin')) return 'college_admin';
+  if (pathname.startsWith('/school-admin')) return 'school_admin';
+  if (pathname.startsWith('/university-admin')) return 'university_admin';
+  if (pathname.startsWith('/admin')) return 'admin';
+  return 'student'; // fallback
+}
+
+/**
  * Centralized Subscription Route Guard
  * Handles all subscription-related routing logic in one place for smooth transitions
  */
@@ -89,16 +104,18 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
         // Manage page - requires authentication and manageable subscription
         // Allow active, paused, or recently cancelled subscriptions
         if (!user) {
-          // Build plans URL with user role type
-          const plansUrlNoUser = role ? `/subscription/plans?type=${role}` : '/subscription/plans';
+          // Build plans URL with user type from current path (more reliable than role)
+          const userType = getUserTypeFromPath(location.pathname);
+          const plansUrlNoUser = `/subscription/plans?type=${userType}`;
           setRedirecting(true);
           navigate(addQueryParams(plansUrlNoUser), { 
             replace: true,
             state: { from: location.pathname }
           });
         } else if (!hasManageableSubscription) {
-          // No subscription or expired subscription - redirect to plans with user role
-          const plansUrl = role ? `/subscription/plans?type=${role}` : '/subscription/plans';
+          // No subscription or expired subscription - redirect to plans with user type from path
+          const userType = getUserTypeFromPath(location.pathname);
+          const plansUrl = `/subscription/plans?type=${userType}`;
           setRedirecting(true);
           navigate(addQueryParams(plansUrl), { 
             replace: true,

@@ -60,6 +60,20 @@ function getDashboardPathFromUrl(pathname) {
   return '/student/dashboard'; // fallback
 }
 
+/**
+ * Get the user type for subscription plans based on current URL path (more reliable than role)
+ */
+function getUserTypeFromUrl(pathname) {
+  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/recruitment')) return 'recruiter';
+  if (pathname.startsWith('/educator')) return 'educator';
+  if (pathname.startsWith('/college-admin')) return 'college_admin';
+  if (pathname.startsWith('/school-admin')) return 'school_admin';
+  if (pathname.startsWith('/university-admin')) return 'university_admin';
+  if (pathname.startsWith('/admin')) return 'admin';
+  return 'student'; // fallback
+}
+
 // Fallback plans only used if API fails - these match database structure
 const FALLBACK_PLANS = [
   { 
@@ -127,9 +141,10 @@ function MySubscription() {
   const { user, role, loading: authLoading } = useAuth();
   const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
   
-  // Get settings and dashboard paths from current URL (more reliable than role)
+  // Get settings, dashboard paths, and user type from current URL (more reliable than role)
   const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
   const dashboardPath = useMemo(() => getDashboardPathFromUrl(location.pathname), [location.pathname]);
+  const userType = useMemo(() => getUserTypeFromUrl(location.pathname), [location.pathname]);
   
   // Tab state - 'subscription' or 'addons'
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'subscription');
@@ -195,8 +210,7 @@ function MySubscription() {
   const formatDate = useCallback((dateString) => formatDateUtil(dateString), []);
 
   const handleUpgradePlan = () => {
-    // Include user role type for proper plan display
-    const userType = role || 'student';
+    // Use userType from URL path (more reliable than role from auth)
     navigate(`/subscription/plans?type=${userType}&mode=upgrade`);
   };
 
@@ -578,7 +592,7 @@ function MySubscription() {
             </p>
             <button
               onClick={() => {
-                const userType = role || 'student';
+                // Use userType from URL path (already computed at top of component)
                 navigate(`/subscription/plans?type=${userType}`);
               }}
               className="w-full bg-neutral-900 text-white py-2.5 px-6 rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors"

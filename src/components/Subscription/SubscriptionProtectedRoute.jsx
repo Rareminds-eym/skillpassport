@@ -19,6 +19,21 @@ import { ACCESS_REASONS, useSubscriptionContext } from '../../context/Subscripti
 import Loader from '../Loader';
 import SubscriptionBanner from './SubscriptionBanner';
 
+/**
+ * Get the user type for subscription plans based on current URL path
+ * This is more reliable than using the role from auth context
+ */
+function getUserTypeFromPath(pathname) {
+  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/recruitment')) return 'recruiter';
+  if (pathname.startsWith('/educator')) return 'educator';
+  if (pathname.startsWith('/college-admin')) return 'college_admin';
+  if (pathname.startsWith('/school-admin')) return 'school_admin';
+  if (pathname.startsWith('/university-admin')) return 'university_admin';
+  if (pathname.startsWith('/admin')) return 'admin';
+  return 'student'; // fallback
+}
+
 const SubscriptionProtectedRoute = ({ 
   children, 
   allowedRoles = [],
@@ -40,15 +55,17 @@ const SubscriptionProtectedRoute = ({
     isRefetching,
   } = useSubscriptionContext();
 
-  // Helper to build the subscription fallback URL with user's role
+  // Helper to build the subscription fallback URL with user's type from URL path
   const getSubscriptionFallbackUrl = () => {
     // If the fallback path already has a type parameter, use it as-is
     if (subscriptionFallbackPath.includes('type=')) {
       return subscriptionFallbackPath;
     }
-    // Otherwise, append the user's role as the type parameter
+    // Get user type from current URL path (more reliable than role from auth)
+    const userType = getUserTypeFromPath(location.pathname);
+    // Otherwise, append the user's type as the type parameter
     const separator = subscriptionFallbackPath.includes('?') ? '&' : '?';
-    return `${subscriptionFallbackPath}${separator}type=${role || 'student'}`;
+    return `${subscriptionFallbackPath}${separator}type=${userType}`;
   };
 
   // Step 1: Wait for auth to load

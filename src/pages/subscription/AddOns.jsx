@@ -28,6 +28,20 @@ function getSubscriptionBasePath(pathname) {
 }
 
 /**
+ * Get the user type for subscription plans based on current URL path
+ */
+function getUserTypeFromUrl(pathname) {
+  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/recruitment')) return 'recruiter';
+  if (pathname.startsWith('/educator')) return 'educator';
+  if (pathname.startsWith('/college-admin')) return 'college_admin';
+  if (pathname.startsWith('/school-admin')) return 'school_admin';
+  if (pathname.startsWith('/university-admin')) return 'university_admin';
+  if (pathname.startsWith('/admin')) return 'admin';
+  return 'student'; // fallback
+}
+
+/**
  * Get the settings path based on current URL path (more reliable than role)
  */
 function getSettingsPathFromUrl(pathname) {
@@ -49,6 +63,9 @@ function AddOns() {
   
   // Get base path for subscription routes from URL (more reliable)
   const basePath = useMemo(() => getSubscriptionBasePath(location.pathname), [location.pathname]);
+  
+  // Get user type from URL path (more reliable than role from auth)
+  const userType = useMemo(() => getUserTypeFromUrl(location.pathname), [location.pathname]);
   
   // Check if we're in checkout mode
   const checkoutMode = searchParams.get('checkout') === 'true';
@@ -179,7 +196,7 @@ function AddOns() {
                 </a>
                 <button
                   onClick={() => {
-                    const userType = role || 'student';
+                    // Use userType from URL path (already computed at top of component)
                     navigate(`/subscription/plans?type=${userType}`);
                   }}
                   className="px-6 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
