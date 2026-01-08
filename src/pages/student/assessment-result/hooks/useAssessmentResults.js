@@ -22,9 +22,11 @@ export const useAssessmentResults = () => {
     const [error, setError] = useState(null);
     const [retrying, setRetrying] = useState(false);
     const [gradeLevel, setGradeLevel] = useState('after12'); // Default to after12
+    const [gradeLevelFromAttempt, setGradeLevelFromAttempt] = useState(false); // Track if grade level was set from attempt
     const [studentInfo, setStudentInfo] = useState({
         name: '—',
         regNo: '—',
+        rollNumberType: 'school',
         college: '—',
         school: '—',
         stream: '—',
@@ -55,11 +57,85 @@ export const useAssessmentResults = () => {
             const { data: { user } } = await supabase.auth.getUser();
 
             if (user) {
-                const { data: studentData } = await supabase
+                // First, try to fetch student data with relationships
+                let { data: studentData, error: fetchError } = await supabase
                     .from('students')
-                    .select('id, name, registration_number, college_id, colleges(name)')
+                    .select(`
+                        id, 
+                        name, 
+                        registration_number,
+                        school_roll_no,
+                        institute_roll_no,
+                        university_roll_no,
+                        grade,
+                        year,
+                        semester,
+                        college_id, 
+                        school_id,
+                        school_class_id,
+                        branch_field,
+                        course_name,
+                        colleges(name),
+                        schools(name),
+                        school_classes(grade)
+                    `)
                     .eq('user_id', user.id)
                     .single();
+
+                // If the query with relationships fails, try without relationships
+                if (fetchError) {
+                    console.warn('Query with relationships failed, trying without:', fetchError.message);
+                    const simpleQuery = await supabase
+                        .from('students')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .single();
+                    
+                    studentData = simpleQuery.data;
+                    fetchError = simpleQuery.error;
+                    
+                    // If we got data, fetch related college/school names separately
+                    if (studentData) {
+                        if (studentData.college_id) {
+                            const { data: collegeData } = await supabase
+                                .from('colleges')
+                                .select('name')
+                                .eq('id', studentData.college_id)
+                                .single();
+                            if (collegeData) {
+                                studentData.colleges = { name: collegeData.name };
+                            }
+                        }
+                        if (studentData.school_id) {
+                            const { data: schoolData } = await supabase
+                                .from('schools')
+                                .select('name')
+                                .eq('id', studentData.school_id)
+                                .single();
+                            if (schoolData) {
+                                studentData.schools = { name: schoolData.name };
+                            }
+                        }
+                        if (studentData.school_class_id) {
+                            const { data: classData } = await supabase
+                                .from('school_classes')
+                                .select('grade')
+                                .eq('id', studentData.school_class_id)
+                                .single();
+                            if (classData) {
+                                studentData.school_classes = { grade: classData.grade };
+                            }
+                        }
+                    }
+                }
+
+                if (fetchError) {
+                    console.error('Error fetching student data:', fetchError);
+                    console.error('Error details:', fetchError.message, fetchError.details, fetchError.hint);
+                }
+
+                console.log('Fetched student data:', studentData);
+                console.log('Student data keys:', studentData ? Object.keys(studentData) : 'null');
 
                 if (studentData) {
                     const rawName = studentData.name ||
@@ -68,43 +144,105 @@ export const useAssessmentResults = () => {
 
                     const fullName = toTitleCase(rawName);
 
-                    // Get grade from school_classes if available, otherwise from students table
-                    const studentGrade = studentData.school_classes?.grade || studentData.grade || '—';
+                    // Get grade - prioritize students.grade, then school_classes.grade as fallback
+                    let studentGrade = studentData.grade || studentData.school_classes?.grade;
+                    
+                    // If no grade and student is in college, try year or semester
+                    if (!studentGrade && studentData.college_id) {
+                        if (studentData.year) {
+                            studentGrade = `Year ${studentData.year}`;
+                        } else if (studentData.semester) {
+                            studentGrade = `Semester ${studentData.semester}`;
+                        } else {
+                            studentGrade = '—';
+                        }
+                    } else if (!studentGrade) {
+                        studentGrade = '—';
+                    }
+                    
+                    console.log('Student grade:', studentGrade, 'from students.grade:', studentData.grade, 'from school_classes:', studentData.school_classes?.grade, 'year:', studentData.year, 'semester:', studentData.semester);
                     
                     // Get institution name - school for school students, college for college students
                     const institutionName = studentData.schools?.name || studentData.colleges?.name || '—';
+                    const schoolName = studentData.schools?.name || '—';
+                    
+                    console.log('Institution names - school:', studentData.schools?.name, 'college:', studentData.colleges?.name, 'final institution:', institutionName, 'final school:', schoolName);
+                    console.log('Roll numbers - school_roll_no:', studentData.school_roll_no, 'institute_roll_no:', studentData.institute_roll_no, 'university_roll_no:', studentData.university_roll_no);
+                    console.log('IDs - school_id:', studentData.school_id, 'college_id:', studentData.college_id, 'school_class_id:', studentData.school_class_id);
+
+                    // Determine which roll number to use and roll number type
+                    let rollNumber = '—';
+                    let rollNumberType = 'school'; // default
+                    const gradeNum = parseInt(studentGrade);
+                    
+                    // Priority 1: Check if student has college_id (college student)
+                    if (studentData.college_id) {
+                        rollNumber = studentData.university_roll_no || '—';
+                        rollNumberType = 'university';
+                    } 
+                    // Priority 2: Check grade number for 11th/12th
+                    else if (!isNaN(gradeNum) && gradeNum >= 11 && gradeNum <= 12) {
+                        rollNumber = studentData.institute_roll_no || '—';
+                        rollNumberType = 'institute';
+                    }
+                    // Priority 3: Check if grade is "12th" or "after12" (string format)
+                    else if (studentGrade && (studentGrade.toString().toLowerCase().includes('12') || studentGrade.toString().toLowerCase().includes('after'))) {
+                        rollNumber = studentData.institute_roll_no || studentData.university_roll_no || '—';
+                        rollNumberType = studentData.university_roll_no ? 'university' : 'institute';
+                    }
+                    // Priority 4: If no grade but has university_roll_no, assume university student
+                    else if (studentData.university_roll_no && studentData.university_roll_no !== '—') {
+                        rollNumber = studentData.university_roll_no;
+                        rollNumberType = 'university';
+                    }
+                    // Priority 5: If no grade but has institute_roll_no, assume 11th/12th student
+                    else if (studentData.institute_roll_no && studentData.institute_roll_no !== '—') {
+                        rollNumber = studentData.institute_roll_no;
+                        rollNumberType = 'institute';
+                    }
+                    // Default: School students
+                    else {
+                        rollNumber = studentData.school_roll_no || '—';
+                        rollNumberType = 'school';
+                    }
 
                     // Determine grade level based on student data
+                    // NOTE: This is only used as a fallback. The assessment attempt's grade_level
+                    // takes priority and is set in loadResults() after this runs.
                     let derivedGradeLevel = 'after12'; // default
                     if (studentData.school_id || studentData.school_class_id) {
                         // School student - determine if middle or high school based on grade
-                        const gradeNum = parseInt(studentGrade);
                         if (!isNaN(gradeNum)) {
                             if (gradeNum >= 6 && gradeNum <= 8) {
                                 derivedGradeLevel = 'middle';
-                            } else if (gradeNum >= 9 && gradeNum <= 12) {
-                                derivedGradeLevel = 'high';
+                            } else if (gradeNum >= 9 && gradeNum <= 10) {
+                                derivedGradeLevel = 'highschool';
+                            } else if (gradeNum >= 11 && gradeNum <= 12) {
+                                // 11th and 12th grade students should see after12 assessment results
+                                derivedGradeLevel = 'after12';
                             }
                         } else {
-                            // If grade is not a number, default to high school for school students
-                            derivedGradeLevel = 'high';
+                            // If grade is not a number, default to after12 for school students
+                            derivedGradeLevel = 'after12';
                         }
                     } else if (studentData.college_id) {
                         // College student
-                        derivedGradeLevel = 'college';
+                        derivedGradeLevel = 'after12';
                     }
                     
-                    // Update gradeLevel state - this will be the source of truth for display
-                    // The assessment attempt's grade_level is for the assessment context,
-                    // but for display purposes we use the student's actual grade level
-                    setGradeLevel(derivedGradeLevel);
+                    // Update gradeLevel state - this is a fallback value
+                    // Only set if grade level wasn't already set from the assessment attempt
+                    if (!gradeLevelFromAttempt) {
+                        setGradeLevel(derivedGradeLevel);
+                    }
                     console.log('Derived gradeLevel from student data:', derivedGradeLevel, 'grade:', studentGrade, 'school_id:', studentData.school_id, 'college_id:', studentData.college_id);
 
                     setStudentInfo({
                         name: fullName,
-                        regNo: studentData.admission_number || studentData.registration_number || '—',
+                        regNo: rollNumber,
+                        rollNumberType: rollNumberType,
                         college: institutionName,
-                        school: studentData.schools?.name || '—',
+                        school: schoolName,
                         stream: (localStorage.getItem('assessment_stream') || '—').toUpperCase(),
                         grade: studentGrade,
                         branchField: studentData.branch_field || '—',
@@ -112,7 +250,7 @@ export const useAssessmentResults = () => {
                     });
 
                     localStorage.setItem('studentName', fullName);
-                    localStorage.setItem('studentRegNo', studentData.registration_number || '');
+                    localStorage.setItem('studentRegNo', rollNumber);
                     localStorage.setItem('collegeName', studentData.colleges?.name || '');
                     
                     // Fetch academic data (marks, projects, experiences)
@@ -134,6 +272,7 @@ export const useAssessmentResults = () => {
             setStudentInfo({
                 name: toTitleCase(storedName),
                 regNo: localStorage.getItem('studentRegNo') || '—',
+                rollNumberType: 'school',
                 college: localStorage.getItem('collegeName') || '—',
                 school: '—',
                 stream: (localStorage.getItem('assessment_stream') || '—').toUpperCase(),
@@ -207,6 +346,7 @@ export const useAssessmentResults = () => {
         setLoading(true);
         setError(null);
 
+        // Don't await fetchStudentInfo - it runs in parallel but won't override attempt grade_level
         fetchStudentInfo();
 
         // Check if we have an attemptId in URL params (database mode)
@@ -223,6 +363,7 @@ export const useAssessmentResults = () => {
                     // Set grade level from attempt
                     if (attempt.grade_level) {
                         setGradeLevel(attempt.grade_level);
+                        setGradeLevelFromAttempt(true);
                     }
 
                     // Ensure recommendations are saved (in case they weren't before)
@@ -264,6 +405,7 @@ export const useAssessmentResults = () => {
                     // Set grade level from result
                     if (latestResult.grade_level) {
                         setGradeLevel(latestResult.grade_level);
+                        setGradeLevelFromAttempt(true);
                     }
 
                     // Ensure recommendations are saved
@@ -292,6 +434,7 @@ export const useAssessmentResults = () => {
         const answersJson = localStorage.getItem('assessment_answers');
         const geminiResultsJson = localStorage.getItem('assessment_gemini_results');
         const stream = localStorage.getItem('assessment_stream');
+        const storedGradeLevel = localStorage.getItem('assessment_grade_level');
 
         if (!answersJson) {
             navigate('/student/assessment/test');
@@ -304,12 +447,21 @@ export const useAssessmentResults = () => {
                 console.log('=== useAssessmentResults Debug (from cache) ===');
                 console.log('Cached results aptitude:', geminiResults.aptitude);
                 console.log('Cached results aptitude.scores:', geminiResults.aptitude?.scores);
-                if (geminiResults.careerFit) {
+                console.log('Cached results streamRecommendation:', geminiResults.streamRecommendation);
+                
+                // Check if results are complete (have careerFit AND streamRecommendation)
+                // If streamRecommendation is missing, re-analyze to get it
+                if (geminiResults.careerFit && geminiResults.streamRecommendation) {
                     setResults(geminiResults);
+                    // Set grade level from localStorage if available
+                    if (storedGradeLevel) {
+                        setGradeLevel(storedGradeLevel);
+                        setGradeLevelFromAttempt(true);
+                    }
                     setLoading(false);
                     return;
                 }
-                console.log('Old result format detected, re-analyzing...');
+                console.log('Results missing streamRecommendation, re-analyzing...');
             } catch (e) {
                 console.error('Error parsing Gemini results:', e);
             }
@@ -326,10 +478,19 @@ export const useAssessmentResults = () => {
                     streamKnowledgeQuestions
                 };
 
-                const geminiResults = await analyzeAssessmentWithGemini(answers, stream, questionBanks);
+                // Pass gradeLevel to get proper stream recommendations
+                const effectiveGradeLevel = storedGradeLevel || 'after12';
+                console.log('Re-analyzing with gradeLevel:', effectiveGradeLevel);
+                const geminiResults = await analyzeAssessmentWithGemini(answers, stream, questionBanks, {}, effectiveGradeLevel);
 
                 if (geminiResults) {
                     localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
+                    
+                    // Set grade level
+                    if (storedGradeLevel) {
+                        setGradeLevel(storedGradeLevel);
+                        setGradeLevelFromAttempt(true);
+                    }
                     
                     // Also try to save to database if user is logged in
                     try {
@@ -405,6 +566,7 @@ export const useAssessmentResults = () => {
             // Get answers and stream from localStorage
             const answersJson = localStorage.getItem('assessment_answers');
             const stream = localStorage.getItem('assessment_stream');
+            const storedGradeLevel = localStorage.getItem('assessment_grade_level') || gradeLevel || 'after12';
             
             if (!answersJson || !stream) {
                 setError('No assessment data found. Please retake the assessment.');
@@ -423,12 +585,13 @@ export const useAssessmentResults = () => {
             
             console.log('Regenerating AI analysis...');
             console.log('Stream:', stream);
+            console.log('Grade Level:', storedGradeLevel);
             console.log('Answer keys:', Object.keys(answers));
             console.log('Total answers:', Object.keys(answers).length);
             console.log('Sample answers:', JSON.stringify(answers).substring(0, 500));
             
-            // Force regenerate with AI
-            const geminiResults = await analyzeAssessmentWithGemini(answers, stream, questionBanks);
+            // Force regenerate with AI - pass gradeLevel
+            const geminiResults = await analyzeAssessmentWithGemini(answers, stream, questionBanks, {}, storedGradeLevel);
             
             if (!geminiResults) {
                 throw new Error('AI analysis returned no results');
@@ -493,6 +656,22 @@ export const useAssessmentResults = () => {
     useEffect(() => {
         loadResults();
     }, [navigate]);
+
+    // Update roll number type when grade level changes to after12/after10
+    useEffect(() => {
+        if (gradeLevel === 'after12' || gradeLevel === 'after10') {
+            setStudentInfo(prev => {
+                // Only update if currently showing 'school' type
+                if (prev.rollNumberType === 'school' && prev.regNo === '—') {
+                    return {
+                        ...prev,
+                        rollNumberType: 'university' // Default to university for after12/after10
+                    };
+                }
+                return prev;
+            });
+        }
+    }, [gradeLevel]);
 
     // Validate results - only check critical fields that affect display
     // Different validation based on grade level

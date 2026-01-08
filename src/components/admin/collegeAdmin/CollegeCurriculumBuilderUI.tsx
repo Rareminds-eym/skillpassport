@@ -12,12 +12,11 @@ import {
   TrashIcon,
   PencilSquareIcon,
   DocumentCheckIcon,
-  ClockIcon,
   ExclamationTriangleIcon,
-  ArchiveBoxIcon,
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../common/SearchBar";
 import Pagination from "../Pagination";
+import KPICard from "../KPICard";
 import toast from "react-hot-toast";
 
 /* ==============================
@@ -52,24 +51,7 @@ interface AssessmentType {
   name: string;
   description: string;
 }
-// Curriculum interface - keeping for reference but not used in component
-// interface Curriculum {
-//   id: string;
-//   course: string; // Changed from subject
-//   department: string; // College-specific
-//   program: string; // College-specific  
-//   semester: string; // Changed from class
-//   academicYear: string;
-//   units: Unit[]; // Changed from chapters
-//   learningOutcomes: LearningOutcome[];
-//   assessmentTypes: AssessmentType[];
-//   status: "draft" | "pending_approval" | "approved" | "rejected";
-//   lastModified: string;
-//   createdBy: string; // Faculty ID (required)
-//   approvedBy?: string; // Academic Head ID
-//   approvalDate?: string;
-//   rejectionReason?: string;
-// }
+
 
 /* ==============================
    MODAL WRAPPER COMPONENT
@@ -119,46 +101,7 @@ const ModalWrapper = ({
     </div>
   );
 };
-/* ==============================
-   STATS CARD COMPONENT
-   ============================== */
-const StatsCard = ({
-  label,
-  value,
-  icon: Icon,
-  color = "blue",
-}: {
-  label: string;
-  value: number | string;
-  icon: any;
-  color?: "blue" | "green" | "purple" | "amber" | "red";
-}) => {
-  const colorClasses = {
-    blue: "bg-blue-50 text-blue-600 border-blue-200",
-    green: "bg-green-50 text-green-600 border-green-200",
-    purple: "bg-purple-50 text-purple-600 border-purple-200",
-    amber: "bg-amber-50 text-amber-600 border-amber-200",
-    red: "bg-red-50 text-red-600 border-red-200",
-  };
 
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-            {label}
-          </p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-        </div>
-        <div
-          className={`p-3 rounded-xl border ${colorClasses[color]} transition-colors`}
-        >
-          <Icon className="h-5 w-5" />
-        </div>
-      </div>
-    </div>
-  );
-};
 /* ==============================
    ADD UNIT MODAL (College-adapted)
    ============================== */
@@ -372,6 +315,7 @@ const AddUnitModal = ({
     </ModalWrapper>
   );
 };
+
 /* ==============================
    ADD LEARNING OUTCOME MODAL (College-adapted)
    ============================== */
@@ -790,9 +734,300 @@ const UnitCard = ({
     </div>
   );
 };
+
 /* ==============================
-   MAIN COLLEGE CURRICULUM BUILDER COMPONENT
+   CLONE CURRICULUM MODAL - Enhanced Dynamic Version
    ============================== */
+const CloneCurriculumModal = ({
+  isOpen,
+  onClose,
+  onClone,
+  departments,
+  programs,
+  academicYears,
+  semesters,
+  currentCurriculumId,
+  currentAcademicYear,
+  currentDepartment,
+  currentProgram,
+  currentCourse,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onClone: (targetData: any) => void;
+  departments: Array<{ id: string; name: string }>;
+  programs: Array<{ id: string; name: string }>;
+  academicYears: string[];
+  semesters: string[];
+  currentCurriculumId?: string | null;
+  currentAcademicYear?: string;
+  currentDepartment?: string;
+  currentProgram?: string;
+  currentCourse?: string;
+}) => {
+  const [targetAcademicYear, setTargetAcademicYear] = useState("");
+  const [targetDepartment, setTargetDepartment] = useState("");
+  const [targetProgram, setTargetProgram] = useState("");
+  const [targetSemester, setTargetSemester] = useState("");
+  const [availableSourceCurriculums, setAvailableSourceCurriculums] = useState<any[]>([]);
+  const [selectedSourceId, setSelectedSourceId] = useState(currentCurriculumId || "");
+  const [loadingSources, setLoadingSources] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Load available source curriculums when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadAvailableSourceCurriculums();
+    }
+  }, [isOpen, currentDepartment, currentProgram, currentCourse]);
+
+  const loadAvailableSourceCurriculums = async () => {
+    setLoadingSources(true);
+    try {
+      // This would call the getCurriculumsForCloning service
+      // For now, we'll use a placeholder
+      const mockSources = [
+        {
+          id: currentCurriculumId,
+          course_name: currentCourse,
+          academic_year: currentAcademicYear,
+          department_name: departments.find(d => d.id === currentDepartment)?.name,
+          program_name: programs.find(p => p.id === currentProgram)?.name,
+          status: 'published'
+        }
+      ];
+      setAvailableSourceCurriculums(mockSources);
+      setSelectedSourceId(currentCurriculumId || "");
+    } catch (error) {
+      console.error('Failed to load source curriculums:', error);
+    } finally {
+      setLoadingSources(false);
+    }
+  };
+
+  const resetForm = () => {
+    setTargetAcademicYear("");
+    setTargetDepartment("");
+    setTargetProgram("");
+    setTargetSemester("");
+    setSelectedSourceId(currentCurriculumId || "");
+    setError(null);
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
+  const handleSubmit = () => {
+    if (!selectedSourceId) {
+      setError("Please select a source curriculum to clone");
+      return;
+    }
+    if (!targetAcademicYear) {
+      setError("Target Academic Year is required");
+      return;
+    }
+
+    // Check if target combination would be the same as source
+    const selectedSource = availableSourceCurriculums.find(s => s.id === selectedSourceId);
+    if (selectedSource && 
+        targetAcademicYear === selectedSource.academic_year &&
+        (!targetDepartment || targetDepartment === currentDepartment) &&
+        (!targetProgram || targetProgram === currentProgram) &&
+        (!targetSemester || targetSemester === selectedSource.semester?.toString())) {
+      setError("Target configuration cannot be the same as source");
+      return;
+    }
+
+    setError(null);
+    setSubmitting(true);
+
+    setTimeout(() => {
+      onClone({
+        sourceId: selectedSourceId,
+        academic_year: targetAcademicYear,
+        department_id: targetDepartment || undefined,
+        program_id: targetProgram || undefined,
+        semester: targetSemester ? parseInt(targetSemester) : undefined,
+      });
+      setSubmitting(false);
+      handleClose();
+    }, 400);
+  };
+
+  return (
+    <ModalWrapper
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Clone Curriculum"
+      subtitle="Create a copy of a curriculum for another academic year or program"
+    >
+      {error && (
+        <div className="mb-5 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
+          <ExclamationTriangleIcon className="h-5 w-5 flex-shrink-0 text-red-600 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-red-800">{error}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-5">
+        {/* Source Curriculum Selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Source Curriculum <span className="text-red-500">*</span>
+          </label>
+          {loadingSources ? (
+            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+              <ArrowPathIcon className="h-4 w-4 animate-spin text-gray-500" />
+              <span className="text-sm text-gray-600">Loading available curriculums...</span>
+            </div>
+          ) : (
+            <select
+              value={selectedSourceId}
+              onChange={(e) => setSelectedSourceId(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+            >
+              <option value="">Select source curriculum</option>
+              {availableSourceCurriculums.map((curriculum) => (
+                <option key={curriculum.id} value={curriculum.id}>
+                  {curriculum.course_name} - {curriculum.academic_year} ({curriculum.status})
+                </option>
+              ))}
+            </select>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            Only published or approved curriculums can be cloned
+          </p>
+        </div>
+
+        {/* Target Academic Year */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Target Academic Year <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={targetAcademicYear}
+            onChange={(e) => setTargetAcademicYear(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+          >
+            <option value="">Select Academic Year</option>
+            {academicYears.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Target Department */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Target Department (Optional)
+          </label>
+          <select
+            value={targetDepartment}
+            onChange={(e) => setTargetDepartment(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+          >
+            <option value="">Keep same department</option>
+            {departments.map((dept) => (
+              <option key={dept.id} value={dept.id}>
+                {dept.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Target Program */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Target Program (Optional)
+          </label>
+          <select
+            value={targetProgram}
+            onChange={(e) => setTargetProgram(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+          >
+            <option value="">Keep same program</option>
+            {programs.map((program) => (
+              <option key={program.id} value={program.id}>
+                {program.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Target Semester */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Target Semester (Optional)
+          </label>
+          <select
+            value={targetSemester}
+            onChange={(e) => setTargetSemester(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+          >
+            <option value="">Keep same semester</option>
+            {semesters.map((sem) => (
+              <option key={sem} value={sem}>
+                Semester {sem}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Preview Section */}
+        {selectedSourceId && targetAcademicYear && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h4 className="text-sm font-medium text-blue-900 mb-2">Clone Preview:</h4>
+            <div className="text-xs text-blue-700 space-y-1">
+              <p><strong>From:</strong> {availableSourceCurriculums.find(s => s.id === selectedSourceId)?.course_name} ({availableSourceCurriculums.find(s => s.id === selectedSourceId)?.academic_year})</p>
+              <p><strong>To:</strong> Same course ({targetAcademicYear})</p>
+              {(targetDepartment || targetProgram || targetSemester) && (
+                <p><strong>Changes:</strong> {[
+                  targetDepartment && `Department: ${departments.find(d => d.id === targetDepartment)?.name}`,
+                  targetProgram && `Program: ${programs.find(p => p.id === targetProgram)?.name}`,
+                  targetSemester && `Semester: ${targetSemester}`
+                ].filter(Boolean).join(', ')}</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-8 flex justify-end gap-3">
+        <button
+          onClick={handleClose}
+          disabled={submitting}
+          className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={submitting || loadingSources}
+          className="rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+        >
+          {submitting ? (
+            <>
+              <ArrowPathIcon className="h-4 w-4 animate-spin" />
+              Cloning...
+            </>
+          ) : (
+            <>
+              <DocumentCheckIcon className="h-4 w-4" />
+              Clone Curriculum
+            </>
+          )}
+        </button>
+      </div>
+    </ModalWrapper>
+  );
+};
+
 interface CollegeCurriculumBuilderProps {
   // College-specific selections
   selectedCourse?: string;
@@ -816,10 +1051,8 @@ interface CollegeCurriculumBuilderProps {
   units?: Unit[]; // Changed from chapters
   learningOutcomes?: LearningOutcome[];
   assessmentTypes?: AssessmentType[];
-  status?: "draft" | "pending_approval" | "approved" | "rejected";
-  rejectionReason?: string;
+  status?: "draft" | "approved" | "published";
   loading?: boolean;
-  saveStatus?: "idle" | "saving" | "saved";
   searchQuery?: string;
   setSearchQuery?: (value: string) => void;
   // Handlers (adapted for college)
@@ -827,25 +1060,18 @@ interface CollegeCurriculumBuilderProps {
   onDeleteUnit?: (id: string) => Promise<void>;
   onAddOutcome?: (outcome: LearningOutcome) => Promise<void>;
   onDeleteOutcome?: (id: string) => Promise<void>;
-  onSubmitForApproval?: () => Promise<void>;
+  onSaveDraft?: () => Promise<void>;
   onApprove?: () => Promise<void>;
-  onReject?: () => Promise<void>;
+  onPublish?: () => Promise<void>;
+  onClone?: (sourceId: string, targetData: any) => Promise<void>;
+  onExport?: (format: 'csv' | 'pdf') => Promise<void>;
 }
 const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props) => {
   // Mock user role (no database connection)
   const [isCollegeAdmin] = React.useState(true); // College admin has direct approval authority
 
   // College-specific assessment types (as per requirements)
-  const defaultCollegeAssessmentTypes: AssessmentType[] = [
-    { id: "1", name: "IA (Internal Assessment)", description: "Continuous internal assessment" },
-    { id: "2", name: "End-Semester Exam", description: "Final semester examination" },
-    { id: "3", name: "Practical Exam", description: "Hands-on practical assessment" },
-    { id: "4", name: "Viva", description: "Oral examination/interview" },
-    { id: "5", name: "Arrears", description: "Supplementary examination" },
-    { id: "6", name: "Project", description: "Project-based evaluation" },
-    { id: "7", name: "Assignment", description: "Take-home assignments" },
-    { id: "8", name: "Presentation", description: "Oral presentation" },
-  ];
+  const defaultCollegeAssessmentTypes: AssessmentType[] = [];
 
   const assessmentTypes = props.assessmentTypes ?? defaultCollegeAssessmentTypes;
 
@@ -864,10 +1090,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   const [localSelectedAcademicYear, localSetSelectedAcademicYear] = useState("");
   const [localUnits, localSetUnits] = useState<Unit[]>([]);
   const [localLearningOutcomes, localSetLearningOutcomes] = useState<LearningOutcome[]>([]);
-  const [localStatus, localSetStatus] = useState<"draft" | "pending_approval" | "approved" | "rejected">("draft");
+  const [localStatus, localSetStatus] = useState<"draft" | "approved" | "published">("draft");
   const [localSearchQuery, localSetSearchQuery] = useState("");
-  const [localSaveStatus, localSetSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-  const [localRejectionReason] = useState<string | undefined>();
 
   // Pagination state
   const [unitsCurrentPage, setUnitsCurrentPage] = useState(1);
@@ -893,11 +1117,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   const setStatus = localSetStatus;
   const searchQuery = props.searchQuery ?? localSearchQuery;
   const setSearchQuery = props.setSearchQuery ?? localSetSearchQuery;
-  const saveStatus = props.saveStatus ?? localSaveStatus;
-  const setSaveStatus = localSetSaveStatus;
-  const rejectionReason = props.rejectionReason ?? localRejectionReason;
   
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [approvedBy] = useState<string | undefined>();
   
   // State for outcomes search
@@ -906,19 +1126,11 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   // Modal states
   const [showAddUnitModal, setShowAddUnitModal] = useState(false);
   const [showAddOutcomeModal, setShowAddOutcomeModal] = useState(false);
+  const [showCloneModal, setShowCloneModal] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
   const [editingOutcome, setEditingOutcome] = useState<LearningOutcome | null>(null);
   const [selectedUnitForOutcome, setSelectedUnitForOutcome] = useState<string | null>(null);
-
-  // Validation errors
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Track changes
-  useEffect(() => {
-    if (units.length > 0 || learningOutcomes.length > 0) {
-      setHasUnsavedChanges(true);
-    }
-  }, [units, learningOutcomes]);
 
   // Reset pagination when search changes
   useEffect(() => {
@@ -928,23 +1140,120 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   useEffect(() => {
     setOutcomesCurrentPage(1);
   }, [outcomesSearchQuery]);
-  // Auto-save effect
-  useEffect(() => {
-    if (hasUnsavedChanges && (status === "draft" || status === "rejected")) {
-      const timer = setTimeout(() => {
-        handleAutoSave();
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [hasUnsavedChanges, units, learningOutcomes, status]);
 
-  const handleAutoSave = () => {
-    setSaveStatus("saving");
-    setTimeout(() => {
-      setSaveStatus("saved");
-      setHasUnsavedChanges(false);
-      setTimeout(() => setSaveStatus("idle"), 2000);
-    }, 800);
+  // Close export dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (showExportDropdown && !target.closest('.export-dropdown')) {
+        setShowExportDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showExportDropdown]);
+  // Enhanced validation for different button states
+  const validateForApproval = (): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    // Basic requirements
+    if (!selectedAcademicYear || !selectedCourse || !selectedDepartment || !selectedProgram || !selectedSemester) {
+      errors.push("Please select all required fields above");
+    }
+
+    if (units.length === 0) {
+      errors.push("Create at least one unit");
+    }
+
+    if (learningOutcomes.length === 0) {
+      errors.push("Add learning outcomes to your units");
+    }
+
+    // Unit-outcome validation
+    if (units.length > 0) {
+      const outcomesByUnit = learningOutcomes.reduce((acc, outcome) => {
+        acc[outcome.unitId] = (acc[outcome.unitId] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const unitsWithoutOutcomes = units.filter(unit => !outcomesByUnit[unit.id]);
+      if (unitsWithoutOutcomes.length > 0) {
+        if (unitsWithoutOutcomes.length === 1) {
+          errors.push(`"${unitsWithoutOutcomes[0].name}" unit needs learning outcomes`);
+        } else {
+          errors.push(`${unitsWithoutOutcomes.length} units need learning outcomes`);
+        }
+      }
+    }
+
+    // Assessment mapping validation
+    if (learningOutcomes.length > 0) {
+      const outcomesWithoutAssessments = learningOutcomes.filter(outcome => 
+        !outcome.assessmentMappings || outcome.assessmentMappings.length === 0
+      );
+
+      if (outcomesWithoutAssessments.length > 0) {
+        errors.push(`${outcomesWithoutAssessments.length} learning outcomes need assessment mappings`);
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
+
+  // Content-only validation for error banner (excludes context validation)
+  const validateContentOnly = (): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    if (units.length === 0) {
+      errors.push("Create your first unit to get started");
+    }
+
+    if (learningOutcomes.length === 0) {
+      errors.push("Add learning outcomes to your units");
+    }
+
+    // Unit-outcome validation
+    if (units.length > 0) {
+      const outcomesByUnit = learningOutcomes.reduce((acc, outcome) => {
+        acc[outcome.unitId] = (acc[outcome.unitId] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const unitsWithoutOutcomes = units.filter(unit => !outcomesByUnit[unit.id]);
+      if (unitsWithoutOutcomes.length > 0) {
+        if (unitsWithoutOutcomes.length === 1) {
+          errors.push(`Add learning outcomes to "${unitsWithoutOutcomes[0].name}" unit`);
+        } else if (unitsWithoutOutcomes.length === 2) {
+          errors.push(`Add learning outcomes to "${unitsWithoutOutcomes[0].name}" and "${unitsWithoutOutcomes[1].name}" units`);
+        } else {
+          errors.push(`${unitsWithoutOutcomes.length} units need learning outcomes (click + button on each unit)`);
+        }
+      }
+    }
+
+    // Assessment mapping validation
+    if (learningOutcomes.length > 0) {
+      const outcomesWithoutAssessments = learningOutcomes.filter(outcome => 
+        !outcome.assessmentMappings || outcome.assessmentMappings.length === 0
+      );
+
+      if (outcomesWithoutAssessments.length > 0) {
+        if (outcomesWithoutAssessments.length === 1) {
+          errors.push(`Add assessment mapping to 1 learning outcome`);
+        } else {
+          errors.push(`Add assessment mappings to ${outcomesWithoutAssessments.length} learning outcomes`);
+        }
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
   };
 
   // Filtered units based on search
@@ -1000,35 +1309,6 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   }, [unitsWithFilteredOutcomes, outcomesCurrentPage, outcomesPerPage]);
 
   const outcomesTotalPages = Math.ceil(unitsWithFilteredOutcomes.length / outcomesPerPage);
-  // Validation
-  const validateCurriculum = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!selectedAcademicYear) {
-      newErrors.academicYear = "Academic Year is mandatory";
-    }
-    if (!selectedCourse) {
-      newErrors.course = "Course is mandatory";
-    }
-    if (!selectedDepartment) {
-      newErrors.department = "Department is mandatory";
-    }
-    if (!selectedProgram) {
-      newErrors.program = "Program is mandatory";
-    }
-    if (!selectedSemester) {
-      newErrors.semester = "Semester is mandatory";
-    }
-    if (units.length === 0) {
-      newErrors.units = "At least one unit is required";
-    }
-    if (learningOutcomes.length === 0) {
-      newErrors.outcomes = "Learning Outcomes cannot be empty";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
   // Unit handlers
   const handleAddUnit = async (unit: Unit) => {
@@ -1042,12 +1322,32 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         setUnits((prev) =>
           prev.map((u) => (u.id === unit.id ? unit : u))
         );
+        // If curriculum was approved or published and is being edited, set to draft for re-approval
+        if (status === "approved" || status === "published") {
+          setStatus("draft");
+          toast("Curriculum moved to draft status. Please get approval before publishing again.", {
+            icon: "ℹ️",
+            duration: 4000,
+          });
+        } else {
+          toast.success('Unit updated successfully');
+        }
         setEditingUnit(null);
       } else {
         setUnits((prev) => [
           ...prev,
           { ...unit, order: prev.length + 1 },
         ]);
+        // If curriculum was approved or published and is being edited, set to draft for re-approval
+        if (status === "approved" || status === "published") {
+          setStatus("draft");
+          toast("Curriculum moved to draft status. Please get approval before publishing again.", {
+            icon: "ℹ️",
+            duration: 4000,
+          });
+        } else {
+          toast.success('Unit added successfully');
+        }
       }
       setShowAddUnitModal(false);
     }
@@ -1061,14 +1361,9 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   const handleDeleteUnit = async (id: string) => {
     if (props.onDeleteUnit) {
       await props.onDeleteUnit(id);
-    } else {
-      // Fallback to local state
-      if (window.confirm("Are you sure you want to delete this unit?")) {
-        setUnits((prev) => prev.filter((u) => u.id !== id));
-        setLearningOutcomes((prev) => prev.filter((lo) => lo.unitId !== id));
-      }
     }
   };
+
   // Learning outcome handlers
   const handleAddOutcome = async (outcome: LearningOutcome) => {
     if (props.onAddOutcome) {
@@ -1082,9 +1377,29 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         setLearningOutcomes((prev) =>
           prev.map((lo) => (lo.id === outcome.id ? outcome : lo))
         );
+        // If curriculum was approved or published and is being edited, set to draft for re-approval
+        if (status === "approved" || status === "published") {
+          setStatus("draft");
+          toast("Curriculum moved to draft status. Please get approval before publishing again.", {
+            icon: "ℹ️",
+            duration: 4000,
+          });
+        } else {
+          toast.success('Learning outcome updated successfully');
+        }
         setEditingOutcome(null);
       } else {
         setLearningOutcomes((prev) => [...prev, outcome]);
+        // If curriculum was approved or published and is being edited, set to draft for re-approval
+        if (status === "approved" || status === "published") {
+          setStatus("draft");
+          toast("Curriculum moved to draft status. Please get approval before publishing again.", {
+            icon: "ℹ️",
+            duration: 4000,
+          });
+        } else {
+          toast.success('Learning outcome added successfully');
+        }
       }
       setShowAddOutcomeModal(false);
       setSelectedUnitForOutcome(null);
@@ -1099,11 +1414,6 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   const handleDeleteOutcome = async (id: string) => {
     if (props.onDeleteOutcome) {
       await props.onDeleteOutcome(id);
-    } else {
-      // Fallback to local state
-      if (window.confirm("Are you sure you want to delete this outcome?")) {
-        setLearningOutcomes((prev) => prev.filter((lo) => lo.id !== id));
-      }
     }
   };
 
@@ -1112,35 +1422,162 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     setShowAddOutcomeModal(true);
   };
 
-  // Submit for approval handler
-  const handleSubmitForApproval = async () => {
-    if (props.onSubmitForApproval) {
-      await props.onSubmitForApproval();
+  // Action handlers
+  const handleSaveDraft = async () => {
+    if (props.onSaveDraft) {
+      await props.onSaveDraft();
     } else {
-      // Fallback to local state
-      if (!validateCurriculum()) {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
-      }
-
-      // College admin can directly approve and publish
-      if (window.confirm("Are you sure you want to publish this curriculum? It will be immediately available to students and faculty.")) {
-        setStatus("approved");
-        setHasUnsavedChanges(false);
-        toast.success("Curriculum published successfully! It is now active and available.");
-      }
+      toast.success('Draft saved successfully');
     }
   };
-  // Note: Approve and Reject handlers are available via props but not used in current UI
-  // They can be added later for Academic Head functionality
 
-  const handleSaveDraft = () => {
-    setSaveStatus("saving");
-    setTimeout(() => {
-      setSaveStatus("saved");
-      setHasUnsavedChanges(false);
-      setTimeout(() => setSaveStatus("idle"), 2000);
-    }, 800);
+  // Check if there's content to save
+  const hasContentToSave = units.length > 0 || learningOutcomes.length > 0;
+  
+  // Check if Save Draft should be disabled
+  const isSaveDraftDisabled = !hasContentToSave;
+  
+  // Check if Approve button should be disabled
+  const approvalValidation = validateForApproval();
+  const isApproveDisabled = !approvalValidation.isValid;
+  
+  // Content validation for error banner (only when context is complete)
+  const contentValidation = validateContentOnly();
+  
+  // Determine save draft button text and state
+  const getSaveDraftButtonText = () => {
+    if (!hasContentToSave) {
+      return 'Nothing to Save';
+    }
+    return 'Save Draft';
+  };
+
+  // Get approval button tooltip
+  const getApprovalTooltip = () => {
+    if (approvalValidation.isValid) {
+      return 'Approve this curriculum for publishing';
+    }
+    return `Complete these steps first: ${approvalValidation.errors.join(', ')}`;
+  };
+
+  const handlePublish = async () => {
+    const validation = validateForApproval();
+    if (!validation.isValid) {
+      toast.error(`Please complete these steps first:\n• ${validation.errors.join('\n• ')}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    if (props.onPublish) {
+      await props.onPublish();
+    }
+  };
+
+  const confirmPublish = async () => {
+    if (props.onPublish) {
+      await props.onPublish();
+    } else {
+      // Fallback to local state
+      setStatus("published");
+      toast.success("Curriculum published successfully! It is now active and available.");
+    }
+  };
+
+  const confirmApprove = async () => {
+    if (props.onApprove) {
+      await props.onApprove();
+    } else {
+      setStatus("approved");
+      toast.success("Curriculum approved successfully!");
+    }
+  };
+
+  const handleExportCSV = async () => {
+    if (props.onExport) {
+      await props.onExport('csv');
+    } else {
+      // Create CSV export
+      const csvData = [];
+      
+      // Header
+      csvData.push([
+        'Unit Order',
+        'Unit Name', 
+        'Unit Code',
+        'Unit Description',
+        'Credits',
+        'Duration',
+        'Learning Outcome',
+        'Bloom Level',
+        'Assessment Types'
+      ]);
+
+      // Data rows
+      units.forEach(unit => {
+        const unitOutcomes = learningOutcomes.filter(lo => lo.unitId === unit.id);
+        
+        if (unitOutcomes.length === 0) {
+          // Unit without outcomes
+          csvData.push([
+            unit.order,
+            unit.name,
+            unit.code || '',
+            unit.description,
+            unit.credits || '',
+            unit.estimatedDuration ? `${unit.estimatedDuration} ${unit.durationUnit || 'hours'}` : '',
+            '',
+            '',
+            ''
+          ]);
+        } else {
+          // Unit with outcomes
+          unitOutcomes.forEach((outcome, index) => {
+            const assessmentTypes = outcome.assessmentMappings
+              .map(m => `${m.assessmentType}${m.weightage ? ` (${m.weightage}%)` : ''}`)
+              .join('; ');
+              
+            csvData.push([
+              index === 0 ? unit.order : '', // Only show unit details on first row
+              index === 0 ? unit.name : '',
+              index === 0 ? (unit.code || '') : '',
+              index === 0 ? unit.description : '',
+              index === 0 ? (unit.credits || '') : '',
+              index === 0 ? (unit.estimatedDuration ? `${unit.estimatedDuration} ${unit.durationUnit || 'hours'}` : '') : '',
+              outcome.outcome,
+              outcome.bloomLevel || '',
+              assessmentTypes
+            ]);
+          });
+        }
+      });
+
+      // Convert to CSV string
+      const csvContent = csvData.map(row => 
+        row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')
+      ).join('\n');
+
+      // Download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `curriculum-${selectedCourse}-${selectedAcademicYear}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Curriculum exported as CSV successfully!');
+    }
+    setShowExportDropdown(false);
+  };
+
+  const handleExportPDF = async () => {
+    if (props.onExport) {
+      await props.onExport('pdf');
+    } else {
+      toast.error('PDF export not available in demo mode');
+    }
+    setShowExportDropdown(false);
   };
 
   // Stats
@@ -1159,31 +1596,6 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
       : 0;
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
-      {/* Auto-save indicator */}
-      {saveStatus !== "idle" && (
-        <div className="fixed top-4 right-4 z-50">
-          <div
-            className={`px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 ${
-              saveStatus === "saving"
-                ? "bg-blue-500 text-white"
-                : "bg-green-500 text-white"
-            }`}
-          >
-            {saveStatus === "saving" ? (
-              <>
-                <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <CheckIcon className="h-4 w-4" />
-                Saved
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1202,59 +1614,93 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
           </div>
 
           <div className="flex items-center gap-3">
-            {status === "approved" && (
+            {/* Top Action Buttons - Export and Clone */}
+            <div className="flex items-center gap-2">
+              {/* Export Dropdown */}
+              <div className="relative export-dropdown">
+                <button
+                  onClick={() => setShowExportDropdown(!showExportDropdown)}
+                  disabled={totalUnits === 0}
+                  className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition font-medium disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+                >
+                  <DocumentCheckIcon className="h-4 w-4" />
+                  Export
+                  <svg className="h-3 w-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {showExportDropdown && (
+                  <div className="absolute top-full left-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="py-1">
+                      <button
+                        onClick={handleExportCSV}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Export as CSV
+                      </button>
+                      <button
+                        onClick={handleExportPDF}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        Export as PDF
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Clone Button - Available for published/approved curriculums */}
+              {(status === "published" || status === "approved") && (
+                <button
+                  onClick={() => setShowCloneModal(true)}
+                  className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium text-sm"
+                >
+                  <DocumentCheckIcon className="h-4 w-4" />
+                  Clone
+                </button>
+              )}
+            </div>
+
+            {/* Status Badges */}
+            {status === "published" && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
                 <CheckCircleIcon className="h-4 w-4" />
                 Published
               </span>
             )}
-            {status === "pending_approval" && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-sm font-medium">
-                <ClockIcon className="h-4 w-4" />
-                Pending Approval
-              </span>
-            )}
-            {status === "rejected" && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-sm font-medium">
-                <ExclamationTriangleIcon className="h-4 w-4" />
-                Rejected
+            {status === "approved" && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
+                <CheckCircleIcon className="h-4 w-4" />
+                Approved
               </span>
             )}
           </div>
         </div>
       </div>
-      {/* Error Banner */}
-      {Object.keys(errors).length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+      {/* Error Banner - Only show when all context fields are selected */}
+      {selectedAcademicYear && selectedCourse && selectedDepartment && selectedProgram && selectedSemester && !contentValidation.isValid && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
           <div className="flex items-start gap-3">
-            <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <InformationCircleIcon className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
-              <h3 className="text-red-800 font-semibold mb-1">
-                Please fix the following errors:
+              <h3 className="text-amber-800 font-medium mb-2">
+                Complete these steps to approve your curriculum:
               </h3>
-              <ul className="list-disc list-inside text-red-700 text-sm space-y-1">
-                {Object.values(errors).map((error, idx) => (
-                  <li key={idx}>{error}</li>
+              <div className="space-y-1">
+                {contentValidation.errors.map((error, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-sm text-amber-700">
+                    <div className="w-1.5 h-1.5 bg-amber-400 rounded-full flex-shrink-0"></div>
+                    <span>{error}</span>
+                  </div>
                 ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Rejection Reason Banner */}
-      {status === "rejected" && rejectionReason && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="text-red-800 font-semibold mb-1">
-                Curriculum Rejected by Academic Head
-              </h3>
-              <p className="text-red-700 text-sm">{rejectionReason}</p>
-              <p className="text-red-600 text-xs mt-2">
-                Please make the necessary changes and resubmit for approval.
-              </p>
+              </div>
             </div>
           </div>
         </div>
@@ -1272,6 +1718,13 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                 </p>
               </div>
             )}
+            {(selectedAcademicYear && selectedCourse && selectedDepartment && selectedProgram && selectedSemester && !props.curriculumId) && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs font-medium text-blue-800">
+                  ✨ Ready to build! Add your first unit to create the curriculum
+                </p>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Academic Year <span className="text-red-500">*</span>
@@ -1279,10 +1732,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               <select
                 value={selectedAcademicYear}
                 onChange={(e) => setSelectedAcademicYear(e.target.value)}
-                disabled={(status === "approved" && !isCollegeAdmin) || status === "pending_approval"}
-                className={`w-full rounded-lg border ${
-                  errors.academicYear ? "border-red-300" : "border-gray-300"
-                } px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
+                disabled={status === "published" && !isCollegeAdmin}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="">Select Academic Year</option>
                 {academicYears.map((year) => (
@@ -1300,10 +1751,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               <select
                 value={selectedDepartment}
                 onChange={(e) => setSelectedDepartment(e.target.value)}
-                disabled={(status === "approved" && !isCollegeAdmin) || status === "pending_approval"}
-                className={`w-full rounded-lg border ${
-                  errors.department ? "border-red-300" : "border-gray-300"
-                } px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
+                disabled={status === "published" && !isCollegeAdmin}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="">Select Department</option>
                 {departments.map((dept) => (
@@ -1321,10 +1770,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               <select
                 value={selectedProgram}
                 onChange={(e) => setSelectedProgram(e.target.value)}
-                disabled={!selectedDepartment || (status === "approved" && !isCollegeAdmin) || status === "pending_approval"}
-                className={`w-full rounded-lg border ${
-                  errors.program ? "border-red-300" : "border-gray-300"
-                } px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
+                disabled={!selectedDepartment || (status === "published" && !isCollegeAdmin)}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="">{!selectedDepartment ? "Select Department First" : "Select Program"}</option>
                 {programs.map((program) => (
@@ -1341,10 +1788,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               <select
                 value={selectedSemester}
                 onChange={(e) => setSelectedSemester(e.target.value)}
-                disabled={!selectedProgram || (status === "approved" && !isCollegeAdmin) || status === "pending_approval"}
-                className={`w-full rounded-lg border ${
-                  errors.semester ? "border-red-300" : "border-gray-300"
-                } px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
+                disabled={!selectedProgram || (status === "published" && !isCollegeAdmin)}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="">{!selectedProgram ? "Select Program First" : "Select Semester"}</option>
                 {semesters.map((sem) => (
@@ -1362,10 +1807,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               <select
                 value={selectedCourse}
                 onChange={(e) => setSelectedCourse(e.target.value)}
-                disabled={!selectedProgram || !selectedSemester || (status === "approved" && !isCollegeAdmin) || status === "pending_approval"}
-                className={`w-full rounded-lg border ${
-                  errors.course ? "border-red-300" : "border-gray-300"
-                } px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
+                disabled={!selectedProgram || !selectedSemester || (status === "published" && !isCollegeAdmin)}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="">{!selectedProgram || !selectedSemester ? "Select Program & Semester First" : courses.length === 0 ? "No courses available" : "Select Course"}</option>
                 {courses.map((course) => (
@@ -1379,99 +1822,81 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
 
           {/* Stats */}
           <div className="space-y-3">
-            <StatsCard
-              label="Total Units"
+            <KPICard
+              title="Total Units"
               value={totalUnits}
-              icon={BookOpenIcon}
+              icon={<BookOpenIcon className="h-5 w-5" />}
               color="blue"
             />
-            <StatsCard
-              label="Learning Outcomes"
+            <KPICard
+              title="Learning Outcomes"
               value={totalOutcomes}
-              icon={AcademicCapIcon}
+              icon={<AcademicCapIcon className="h-5 w-5" />}
               color="green"
             />
-            <StatsCard
-              label="Total Credits"
+            <KPICard
+              title="Total Credits"
               value={totalCredits}
-              icon={DocumentCheckIcon}
+              icon={<DocumentCheckIcon className="h-5 w-5" />}
               color="purple"
             />
-            <StatsCard
-              label="Completion"
+            <KPICard
+              title="Completion"
               value={`${completionRate}%`}
-              icon={CheckCircleIcon}
-              color="amber"
+              icon={<CheckCircleIcon className="h-5 w-5" />}
+              color="yellow"
             />
           </div>
           {/* Status Card */}
           <div className={`rounded-xl border p-5 ${
-            status === "approved"
+            status === "published"
               ? "bg-gradient-to-br from-green-50 to-emerald-100 border-green-200"
-              : status === "pending_approval"
-              ? "bg-gradient-to-br from-amber-50 to-yellow-100 border-amber-200"
-              : status === "rejected"
-              ? "bg-gradient-to-br from-red-50 to-rose-100 border-red-200"
+              : status === "approved"
+              ? "bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200"
               : "bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200"
           }`}>
             <div className="flex items-start gap-3 mb-3">
               <div
                 className={`p-2 rounded-lg ${
-                  status === "approved"
+                  status === "published"
                     ? "bg-green-500 text-white"
-                    : status === "pending_approval"
-                    ? "bg-amber-500 text-white"
-                    : status === "rejected"
-                    ? "bg-red-500 text-white"
+                    : status === "approved"
+                    ? "bg-blue-500 text-white"
                     : "bg-indigo-500 text-white"
                 }`}
               >
-                {status === "approved" ? (
+                {status === "published" ? (
                   <CheckCircleIcon className="h-4 w-4" />
-                ) : status === "pending_approval" ? (
-                  <ClockIcon className="h-4 w-4" />
-                ) : status === "rejected" ? (
-                  <ExclamationTriangleIcon className="h-4 w-4" />
+                ) : status === "approved" ? (
+                  <CheckCircleIcon className="h-4 w-4" />
                 ) : (
                   <DocumentCheckIcon className="h-4 w-4" />
                 )}
               </div>
               <div className="flex-1">
                 <h3 className={`text-sm font-semibold mb-1 ${
-                  status === "approved" ? "text-green-900" :
-                  status === "pending_approval" ? "text-amber-900" :
-                  status === "rejected" ? "text-red-900" : "text-indigo-900"
+                  status === "published" ? "text-green-900" :
+                  status === "approved" ? "text-blue-900" : "text-indigo-900"
                 }`}>
-                  {status === "approved" ? "Published" :
-                   status === "pending_approval" ? "Pending Approval" :
-                   status === "rejected" ? "Rejected" : "Draft"}
+                  {status === "published" ? "Published" :
+                   status === "approved" ? "Approved" : "Draft"}
                 </h3>
                 <p className={`text-xs ${
-                  status === "approved" ? "text-green-700" :
-                  status === "pending_approval" ? "text-amber-700" :
-                  status === "rejected" ? "text-red-700" : "text-indigo-700"
+                  status === "published" ? "text-green-700" :
+                  status === "approved" ? "text-blue-700" : "text-indigo-700"
                 }`}>
-                  {status === "approved"
-                    ? "This curriculum is published and active"
-                    : status === "pending_approval"
-                    ? "Waiting for Academic Head approval"
-                    : status === "rejected"
-                    ? "Needs revision before republishing"
-                    : "Save your progress or publish when ready"}
+                  {status === "published"
+                    ? "This curriculum is published"
+                    : status === "approved"
+                    ? "Ready to be published"
+                    : "Save your progress and get approval when ready"}
                 </p>
               </div>
             </div>
-            {hasUnsavedChanges && status === "draft" && (
-              <div className="mt-3 pt-3 border-t border-indigo-200">
-                <p className="text-xs font-medium text-indigo-800">
-                  ⚠️ You have unsaved changes
-                </p>
-              </div>
-            )}
-            {approvedBy && status === "approved" && (
+            {approvedBy && (status === "approved" || status === "published") && (
               <div className="mt-3 pt-3 border-t border-green-200">
                 <p className="text-xs font-medium text-green-800">
-                  ✓ Published by College Admin
+                  ✓ Approved by Academic Head
                 </p>
               </div>
             )}
@@ -1502,21 +1927,23 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                 <h2 className="text-lg font-bold text-gray-900">
                   Units/Modules ({totalUnits})
                 </h2>
-                <button
-                  onClick={() => {
-                    if (!selectedAcademicYear || !selectedCourse || !selectedDepartment || !selectedProgram || !selectedSemester) {
-                      toast.error('Please select all context fields first before adding units.');
-                      return;
-                    }
-                    setEditingUnit(null);
-                    setShowAddUnitModal(true);
-                  }}
-                  disabled={(status === "approved" && !isCollegeAdmin) || status === "pending_approval"}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 active:scale-95 transition-all disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  <PlusCircleIcon className="h-5 w-5" />
-                  Add Unit
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (!selectedAcademicYear || !selectedCourse || !selectedDepartment || !selectedProgram || !selectedSemester) {
+                        toast.error('Please select all context fields first before adding units.');
+                        return;
+                      }
+                      setEditingUnit(null);
+                      setShowAddUnitModal(true);
+                    }}
+                    disabled={status === "published" && !isCollegeAdmin}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 active:scale-95 transition-all disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  >
+                    <PlusCircleIcon className="h-5 w-5" />
+                    Add Unit
+                  </button>
+                </div>
               </div>
 
               {units.length > 0 && (
@@ -1542,10 +1969,10 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                   </h3>
                   <p className="text-sm text-gray-500 max-w-sm">
                     {units.length === 0
-                      ? "Start building your curriculum by adding units/modules"
+                      ? (props.curriculumId ? "Start building your curriculum by adding units/modules" : "Select all fields above, then add your first unit to create the curriculum")
                       : "Try adjusting your search criteria"}
                   </p>
-                  {units.length === 0 && ((status !== "approved" || isCollegeAdmin) && status !== "pending_approval") && (
+                  {units.length === 0 && ((status !== "published" || isCollegeAdmin)) && (
                     <button
                       onClick={() => {
                         if (!selectedAcademicYear || !selectedCourse || !selectedDepartment || !selectedProgram || !selectedSemester) {
@@ -1558,7 +1985,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                       className="mt-6 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
                     >
                       <PlusCircleIcon className="h-5 w-5" />
-                      Add Your First Unit
+                      {props.curriculumId ? 'Add Your First Unit' : 'Start Building Curriculum'}
                     </button>
                   )}
                 </div>
@@ -1605,30 +2032,33 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             </div>
           </section>
           {/* Learning Outcomes Section - Redesigned */}
-          <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-blue-50">
+         <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-200 bg-gray-50">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                    <AcademicCapIcon className="h-5 w-5 text-indigo-600" />
+                  <h2 className="text-lg font-bold text-gray-900">
                     Learning Outcomes by Unit
                   </h2>
-                  <p className="text-xs text-gray-600 mt-0.5">
+                  <p className="text-xs text-gray-500 mt-0.5">
                     {totalOutcomes} total outcome{totalOutcomes !== 1 ? "s" : ""} across {units.length} unit{units.length !== 1 ? "s" : ""}
                   </p>
                 </div>
-                {learningOutcomes.length > 0 && (
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <SearchBar
-                        value={outcomesSearchQuery}
-                        onChange={setOutcomesSearchQuery}
-                        placeholder="Search outcomes..."
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
+
+              {learningOutcomes.length > 0 && (
+                <div className="mt-4">
+                  <SearchBar
+                    value={outcomesSearchQuery}
+                    onChange={setOutcomesSearchQuery}
+                    placeholder="Search learning outcomes, Bloom's levels, or assessment types..."
+                  />
+                  {outcomesSearchQuery && (
+                    <p className="mt-2 text-xs text-gray-600">
+                      Found {filteredLearningOutcomes.length} outcome{filteredLearningOutcomes.length !== 1 ? "s" : ""} in {unitsWithFilteredOutcomes.length} unit{unitsWithFilteredOutcomes.length !== 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="p-5">
@@ -1694,7 +2124,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                                   </div>
                                 </div>
                               </div>
-                              {((status !== "approved" || isCollegeAdmin) && status !== "pending_approval") && (
+                              {((status !== "published" || isCollegeAdmin)) && (
                                 <button
                                   onClick={() => handleAddOutcomeToUnit(unit.id)}
                                   className="p-1.5 text-green-600 hover:bg-green-50 rounded-md transition-colors flex-shrink-0"
@@ -1714,7 +2144,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                                 <p className="text-xs text-gray-500 mb-3">
                                   No outcomes defined yet
                                 </p>
-                                {((status !== "approved" || isCollegeAdmin) && status !== "pending_approval") && (
+                                {((status !== "published" || isCollegeAdmin)) && (
                                   <button
                                     onClick={() => handleAddOutcomeToUnit(unit.id)}
                                     className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
@@ -1768,7 +2198,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                                       </div>
                                       
                                       {/* Action Buttons */}
-                                      {((status !== "approved" || isCollegeAdmin) && status !== "pending_approval") && (
+                                      {((status !== "published" || isCollegeAdmin)) && (
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                           <button
                                             onClick={() => handleEditOutcome(outcome)}
@@ -1814,32 +2244,76 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             </div>
           </section>
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-4 pb-6">
-            {(status === "draft" || status === "rejected" || (status === "approved" && isCollegeAdmin)) && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pb-6">
+            {/* Only show action buttons when curriculum context is complete */}
+            {selectedAcademicYear && selectedCourse && selectedDepartment && selectedProgram && selectedSemester && (
               <>
-                <button
-                  onClick={handleSaveDraft}
-                  disabled={!hasUnsavedChanges}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  <ArchiveBoxIcon className="h-5 w-5" />
-                  Save Draft
-                </button>
-                <button
-                  onClick={handleSubmitForApproval}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium shadow-md hover:shadow-lg"
-                >
-                  <DocumentCheckIcon className="h-5 w-5" />
-                  {status === "approved" 
-                    ? "Update & Re-publish" 
-                    : "Publish Curriculum"}
-                </button>
+                {/* Draft Actions - Admin can directly approve */}
+                {status === "draft" && (
+                  <>
+                    <button
+                      onClick={handleSaveDraft}
+                      disabled={isSaveDraftDisabled}
+                      className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition font-medium text-sm ${
+                        isSaveDraftDisabled
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-gray-600 text-white hover:bg-gray-700'
+                      }`}
+                      title={isSaveDraftDisabled ? 'Add units and outcomes to save draft' : 'Confirm draft save (changes are auto-saved)'}
+                    >
+                      <DocumentCheckIcon className="h-4 w-4" />
+                      {getSaveDraftButtonText()}
+                    </button>
+                    {isCollegeAdmin && (
+                      <button
+                        onClick={async () => {
+                          const validation = validateForApproval();
+                          if (!validation.isValid) {
+                            // Show detailed error message
+                            toast.error(`Please complete these steps first:\n• ${validation.errors.join('\n• ')}`);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                            return;
+                          }
+                          
+                          if (props.onApprove) {
+                            await props.onApprove();
+                          }
+                        }}
+                        disabled={isApproveDisabled}
+                        className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg transition font-medium shadow-md hover:shadow-lg text-sm ${
+                          isApproveDisabled
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
+                        title={getApprovalTooltip()}
+                      >
+                        <CheckCircleIcon className="h-4 w-4" />
+                        {isApproveDisabled ? 'Complete Steps Above' : 'Approve Curriculum'}
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {/* Approved Actions - Admin can publish */}
+                {status === "approved" && isCollegeAdmin && (
+                  <button
+                    onClick={handlePublish}
+                    disabled={isApproveDisabled}
+                    className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg transition font-medium shadow-md hover:shadow-lg text-sm ${
+                      isApproveDisabled
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-green-600 text-white hover:bg-green-700'
+                    }`}
+                    title={isApproveDisabled ? getApprovalTooltip() : 'Publish curriculum to make it active'}
+                  >
+                    <CheckCircleIcon className="h-4 w-4" />
+                    {isApproveDisabled ? 'Complete Steps Above' : 'Publish Curriculum'}
+                  </button>
+                )}
+
+                {/* Published Actions - No additional message needed */}
+                {/* Published curriculums can still be edited by admins, triggering re-approval workflow */}
               </>
-            )}
-            {status === "pending_approval" && !isCollegeAdmin && (
-              <div className="text-sm text-amber-600 font-medium">
-                ⏳ Waiting for Academic Head approval...
-              </div>
             )}
           </div>
         </main>
@@ -1868,6 +2342,27 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         editOutcome={editingOutcome}
         assessmentTypes={assessmentTypes}
         selectedUnitForOutcome={selectedUnitForOutcome}
+      />
+
+      <CloneCurriculumModal
+        isOpen={showCloneModal}
+        onClose={() => setShowCloneModal(false)}
+        onClone={(targetData) => {
+          if (props.onClone && props.curriculumId) {
+            props.onClone(props.curriculumId, targetData);
+          } else {
+            toast.success('Clone functionality not implemented in demo mode');
+          }
+        }}
+        departments={departments}
+        programs={programs}
+        academicYears={academicYears}
+        semesters={semesters}
+        currentCurriculumId={props.curriculumId}
+        currentAcademicYear={selectedAcademicYear}
+        currentDepartment={selectedDepartment}
+        currentProgram={selectedProgram}
+        currentCourse={courses.find(c => c.value === selectedCourse)?.label}
       />
     </div>
   );

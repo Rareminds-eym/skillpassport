@@ -392,6 +392,7 @@ interface UseStudentsOptions {
   schoolId?: string | null;
   collegeId?: string | null;
   classIds?: string[]; // Add class IDs for filtering
+  educatorType?: 'school' | 'college' | null; // Add educator type
 }
 
 export function useStudents(options?: UseStudentsOptions) {
@@ -401,6 +402,7 @@ export function useStudents(options?: UseStudentsOptions) {
   const schoolId = options?.schoolId
   const collegeId = options?.collegeId
   const classIds = options?.classIds
+  const educatorType = options?.educatorType
 
   const fetchStudents = async () => {
     setLoading(true)
@@ -408,7 +410,7 @@ export function useStudents(options?: UseStudentsOptions) {
     
     try {
       // Check if educator has no class assignments (and is not admin)
-      if (classIds !== undefined && classIds.length === 0 && schoolId) {
+      if (classIds !== undefined && classIds.length === 0 && (schoolId || collegeId)) {
         // Educator has no class assignments - return empty array
         setData([]);
         return;
@@ -573,10 +575,15 @@ export function useStudents(options?: UseStudentsOptions) {
         `)
         .eq('is_deleted', false)
 
-      // Apply filtering logic
+      // Apply filtering logic based on educator type
       if (classIds && classIds.length > 0) {
-        // For school educators: filter by assigned class IDs
-        query = query.in('school_class_id', classIds)
+        if (educatorType === 'school') {
+          // For school educators: filter by assigned school class IDs
+          query = query.in('school_class_id', classIds)
+        } else if (educatorType === 'college') {
+          // For college educators: filter by assigned college class IDs
+          query = query.in('college_class_id', classIds)
+        }
       } else if (schoolId) {
         // Fallback: filter by school ID (for admins or when no class assignments check)
         query = query.eq('school_id', schoolId)
@@ -615,7 +622,7 @@ export function useStudents(options?: UseStudentsOptions) {
       isMounted = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId, collegeId, classIds])
+  }, [schoolId, collegeId, classIds, educatorType])
 
   const stats = useMemo(() => ({ count: data.length }), [data])
 

@@ -624,6 +624,45 @@ export async function updateTeacherDocuments(teacherId, documents, token) {
   return result;
 }
 
+/**
+ * Create a new college staff member (college admin adds staff)
+ * @param {Object} staffData - Staff data including name, email, roles, etc.
+ * @param {string} token - Auth token
+ * @returns {Promise<Object>} Created staff data with temporary password
+ */
+export async function createCollegeStaff(staffData, token) {
+  console.log('🔑 userApiService.createCollegeStaff called with token length:', token?.length || 'no token');
+  
+  const response = await fetch(`${getBaseUrl()}/create-college-staff`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(staffData),
+  });
+
+  console.log('📡 Response status:', response.status, response.statusText);
+  
+  if (!response.ok) {
+    let errorDetails;
+    try {
+      errorDetails = await response.json();
+    } catch (e) {
+      errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
+    }
+    
+    console.error('❌ API Error:', errorDetails);
+    
+    if (response.status === 401) {
+      throw new Error('Authentication failed. Please login again.');
+    }
+    
+    throw new Error(errorDetails.error || `Failed to create staff member (${response.status})`);
+  }
+
+  const result = await response.json();
+  console.log('✅ API Success:', result);
+  return result;
+}
+
 export default {
   // School Signup (no auth)
   signupSchoolAdmin,
@@ -652,6 +691,7 @@ export default {
   // Authenticated
   createStudent,
   createTeacher,
+  createCollegeStaff,
   createEventUser,
   sendInterviewReminder,
   resetPassword,

@@ -53,6 +53,8 @@ const callOpenRouterAssessment = async (assessmentData) => {
   }
 
   console.log('✅ Assessment analysis successful via OpenRouter backend');
+  console.log('📊 AI Response keys:', Object.keys(result.data));
+  console.log('📊 streamRecommendation in response:', result.data.streamRecommendation);
   return result.data;
 };
 

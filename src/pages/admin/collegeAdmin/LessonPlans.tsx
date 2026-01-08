@@ -7,11 +7,11 @@ import CollegeLessonPlanUI from '../../../components/admin/collegeAdmin/CollegeL
 import { lessonPlanService, type CollegeLessonPlan } from '../../../services/college/lessonPlanService';
 
 /**
- * CollegeLessonPlanManagement - Lesson plan management for college faculty
+ * CollegeLessonPlans - Lesson plan management for college faculty
  * 
  * Follows the same pattern as CurriculumBuilder with department → program → semester → course flow
  */
-const CollegeLessonPlanManagement: React.FC = () => {
+const CollegeLessonPlans: React.FC = () => {
   // Local state for college-specific selections
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -93,8 +93,19 @@ const CollegeLessonPlanManagement: React.FC = () => {
       const years = lessonPlanService.getAcademicYears();
       setAcademicYears(years);
       
-      // Auto-select current academic year (2025-2026 is the current academic year)
-      const currentYear = years.find(year => year === '2025-2026') || years[0];
+      // Auto-select current academic year
+      const currentYear = years.find(year => {
+        const startYear = parseInt(year.split('-')[0]);
+        const now = new Date();
+        const currentYearNum = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        
+        if (currentMonth >= 7) {
+          return startYear === currentYearNum;
+        } else {
+          return startYear === currentYearNum - 1;
+        }
+      });
       
       if (currentYear) {
         setSelectedAcademicYear(currentYear);
@@ -185,7 +196,9 @@ const CollegeLessonPlanManagement: React.FC = () => {
 
   // Handler for department change in form
   const handleDepartmentChange = async (departmentId: string) => {
-    if (departmentId && typeof departmentId === 'string') {
+    console.log('🔄 Department changed to:', departmentId);
+    
+    if (departmentId) {
       const result = await lessonPlanService.getPrograms(departmentId);
       if (result.success) {
         return {
@@ -203,7 +216,9 @@ const CollegeLessonPlanManagement: React.FC = () => {
 
   // Handler for program change in form
   const handleProgramChange = async (programId: string) => {
-    if (programId && typeof programId === 'string') {
+    console.log('🔄 Program changed to:', programId);
+    
+    if (programId) {
       const semesterResult = await lessonPlanService.getSemesters(programId);
       if (semesterResult.success) {
         // Update the semesters state for the form
@@ -223,7 +238,9 @@ const CollegeLessonPlanManagement: React.FC = () => {
 
   // Handler for semester change in form
   const handleSemesterChange = async (semester: string, programId: string) => {
-    if (semester && programId && typeof programId === 'string') {
+    console.log('🔄 Semester changed to:', semester, 'for program:', programId);
+    
+    if (semester && programId) {
       const result = await lessonPlanService.getCourses(programId, parseInt(semester));
       if (result.success) {
         return {
@@ -239,14 +256,16 @@ const CollegeLessonPlanManagement: React.FC = () => {
 
   // Handler for curriculum context change (course + program + academic year)
   const handleCurriculumContextChange = async (courseId: string, programId: string, academicYear: string) => {
+    console.log('🔄 Curriculum context changed:', { courseId, programId, academicYear });
+    
     if (courseId && programId && academicYear) {
       try {
         // Load curriculum units
         const unitsResult = await lessonPlanService.getCurriculumUnits(courseId, programId, academicYear);
-        
         if (unitsResult.success) {
           setUnits(unitsResult.data || []);
           setCurrentCurriculumId(unitsResult.curriculumId);
+          console.log('📚 Loaded curriculum:', unitsResult.curriculumId, 'with', unitsResult.data?.length, 'units');
           
           // Clear learning outcomes since unit hasn't been selected yet
           setLearningOutcomes([]);
@@ -270,6 +289,8 @@ const CollegeLessonPlanManagement: React.FC = () => {
 
   // Handler for unit selection change
   const handleUnitChange = async (unitId: string) => {
+    console.log('🔄 Unit changed to:', unitId);
+    
     if (unitId) {
       try {
         const outcomesResult = await lessonPlanService.getLearningOutcomes(unitId);
@@ -292,47 +313,29 @@ const CollegeLessonPlanManagement: React.FC = () => {
     try {
       setSaveStatus("saving");
       
-      // Debug: Log the received lesson plan data structure
-      
-      // Validate required fields before sending to service
-      const sessionDate = lessonPlan.sessionDate || lessonPlan.session_date;
-      if (!sessionDate || sessionDate.trim() === '') {
-        toast.error('Session date is required');
-        setSaveStatus("idle");
-        return;
-      }
-      
-      // Validate date format
-      const dateObj = new Date(sessionDate);
-      if (isNaN(dateObj.getTime())) {
-        toast.error('Please enter a valid session date');
-        setSaveStatus("idle");
-        return;
-      }
-      
       if (lessonPlan.id && lessonPlans.find(lp => lp.id === lessonPlan.id)) {
         // Update existing lesson plan
         const result = await lessonPlanService.updateLessonPlan(lessonPlan.id, {
           title: lessonPlan.title,
-          session_date: lessonPlan.session_date || lessonPlan.sessionDate,
-          duration_minutes: lessonPlan.duration ? parseInt(lessonPlan.duration) : lessonPlan.duration_minutes,
-          department_id: lessonPlan.department_id || lessonPlan.department,
-          program_id: lessonPlan.program_id || lessonPlan.program,
-          course_id: lessonPlan.course_id || lessonPlan.course,
+          session_date: lessonPlan.sessionDate,
+          duration_minutes: lessonPlan.duration ? parseInt(lessonPlan.duration) : undefined,
+          department_id: lessonPlan.department,
+          program_id: lessonPlan.program,
+          course_id: lessonPlan.course,
           semester: parseInt(lessonPlan.semester),
-          academic_year: lessonPlan.academic_year || lessonPlan.academicYear,
+          academic_year: lessonPlan.academicYear,
           curriculum_id: currentCurriculumId, // Include curriculum_id
-          unit_id: lessonPlan.unit_id || lessonPlan.unitId,
-          selected_learning_outcomes: lessonPlan.selected_learning_outcomes || lessonPlan.selectedLearningOutcomes,
-          session_objectives: lessonPlan.session_objectives || lessonPlan.sessionObjectives,
-          teaching_methodology: lessonPlan.teaching_methodology || lessonPlan.teachingMethodology,
-          required_materials: lessonPlan.required_materials || lessonPlan.requiredMaterials,
-          resource_files: lessonPlan.resource_files || lessonPlan.resourceFiles,
-          resource_links: lessonPlan.resource_links || lessonPlan.resourceLinks,
-          evaluation_criteria: lessonPlan.evaluation_criteria || lessonPlan.evaluationCriteria,
-          evaluation_items: lessonPlan.evaluation_items || lessonPlan.evaluationItems,
-          follow_up_activities: lessonPlan.follow_up_activities || lessonPlan.followUpActivities,
-          additional_notes: lessonPlan.additional_notes || lessonPlan.additionalNotes,
+          unit_id: lessonPlan.unitId,
+          selected_learning_outcomes: lessonPlan.selectedLearningOutcomes,
+          session_objectives: lessonPlan.sessionObjectives,
+          teaching_methodology: lessonPlan.teachingMethodology,
+          required_materials: lessonPlan.requiredMaterials,
+          resource_files: lessonPlan.resourceFiles,
+          resource_links: lessonPlan.resourceLinks,
+          evaluation_criteria: lessonPlan.evaluationCriteria,
+          evaluation_items: lessonPlan.evaluationItems,
+          follow_up_activities: lessonPlan.followUpActivities,
+          additional_notes: lessonPlan.additionalNotes,
           status: lessonPlan.status,
         });
 
@@ -342,40 +345,31 @@ const CollegeLessonPlanManagement: React.FC = () => {
           toast.success('Lesson plan updated successfully');
         } else {
           setSaveStatus("idle");
-          const errorMessage = result.error?.message || 'Failed to update lesson plan';
-          
-          // Handle specific database errors
-          if (errorMessage.includes('session_date') && errorMessage.includes('not-null')) {
-            toast.error('Session date is required and cannot be empty');
-          } else if (errorMessage.includes('violates not-null constraint')) {
-            toast.error('Please fill in all required fields');
-          } else {
-            toast.error(errorMessage);
-          }
+          toast.error(result.error?.message || 'Failed to update lesson plan');
         }
       } else {
         // Create new lesson plan
         const result = await lessonPlanService.createLessonPlan({
           title: lessonPlan.title,
-          session_date: lessonPlan.session_date || lessonPlan.sessionDate,
-          duration_minutes: lessonPlan.duration ? parseInt(lessonPlan.duration) : lessonPlan.duration_minutes,
-          department_id: lessonPlan.department_id || lessonPlan.department,
-          program_id: lessonPlan.program_id || lessonPlan.program,
-          course_id: lessonPlan.course_id || lessonPlan.course,
+          session_date: lessonPlan.sessionDate,
+          duration_minutes: lessonPlan.duration ? parseInt(lessonPlan.duration) : undefined,
+          department_id: lessonPlan.department,
+          program_id: lessonPlan.program,
+          course_id: lessonPlan.course,
           semester: parseInt(lessonPlan.semester),
-          academic_year: lessonPlan.academic_year || lessonPlan.academicYear,
+          academic_year: lessonPlan.academicYear,
           curriculum_id: currentCurriculumId, // Include curriculum_id
-          unit_id: lessonPlan.unit_id || lessonPlan.unitId,
-          selected_learning_outcomes: lessonPlan.selected_learning_outcomes || lessonPlan.selectedLearningOutcomes,
-          session_objectives: lessonPlan.session_objectives || lessonPlan.sessionObjectives,
-          teaching_methodology: lessonPlan.teaching_methodology || lessonPlan.teachingMethodology,
-          required_materials: lessonPlan.required_materials || lessonPlan.requiredMaterials,
-          resource_files: lessonPlan.resource_files || lessonPlan.resourceFiles,
-          resource_links: lessonPlan.resource_links || lessonPlan.resourceLinks,
-          evaluation_criteria: lessonPlan.evaluation_criteria || lessonPlan.evaluationCriteria,
-          evaluation_items: lessonPlan.evaluation_items || lessonPlan.evaluationItems,
-          follow_up_activities: lessonPlan.follow_up_activities || lessonPlan.followUpActivities,
-          additional_notes: lessonPlan.additional_notes || lessonPlan.additionalNotes,
+          unit_id: lessonPlan.unitId,
+          selected_learning_outcomes: lessonPlan.selectedLearningOutcomes,
+          session_objectives: lessonPlan.sessionObjectives,
+          teaching_methodology: lessonPlan.teachingMethodology,
+          required_materials: lessonPlan.requiredMaterials,
+          resource_files: lessonPlan.resourceFiles,
+          resource_links: lessonPlan.resourceLinks,
+          evaluation_criteria: lessonPlan.evaluationCriteria,
+          evaluation_items: lessonPlan.evaluationItems,
+          follow_up_activities: lessonPlan.followUpActivities,
+          additional_notes: lessonPlan.additionalNotes,
           status: lessonPlan.status,
           metadata: {},
         });
@@ -386,16 +380,7 @@ const CollegeLessonPlanManagement: React.FC = () => {
           toast.success('Lesson plan created successfully');
         } else {
           setSaveStatus("idle");
-          const errorMessage = result.error?.message || 'Failed to create lesson plan';
-          
-          // Handle specific database errors
-          if (errorMessage.includes('session_date') && errorMessage.includes('not-null')) {
-            toast.error('Session date is required and cannot be empty');
-          } else if (errorMessage.includes('violates not-null constraint')) {
-            toast.error('Please fill in all required fields');
-          } else {
-            toast.error(errorMessage);
-          }
+          toast.error(result.error?.message || 'Failed to create lesson plan');
         }
       }
       
@@ -485,4 +470,4 @@ const CollegeLessonPlanManagement: React.FC = () => {
   );
 };
 
-export default CollegeLessonPlanManagement;
+export default CollegeLessonPlans;

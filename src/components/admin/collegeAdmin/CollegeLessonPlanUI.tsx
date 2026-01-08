@@ -21,9 +21,14 @@ import {
   AcademicCapIcon,
   VideoCameraIcon,
   PhotoIcon,
+  TrashIcon,
+  ArrowUpTrayIcon,
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../common/SearchBar";
+import Pagination from "../Pagination";
 import { FileTextIcon } from "lucide-react";
+import { uploadFile, validateFile, deleteFile, getDocumentUrl } from "../../../services/fileUploadService";
+import type { CollegeLessonPlan } from "../../../services/college/lessonPlanService";
 
 /* ==============================
    TYPES & INTERFACES (College-adapted)
@@ -34,6 +39,7 @@ interface ResourceFile {
   size: number;
   type: string;
   url?: string;
+  tempFile?: File; // For temporary files before upload
 }
 
 interface ResourceLink {
@@ -68,31 +74,6 @@ interface LearningOutcome {
     assessmentType: string;
     weightage?: number;
   }>;
-}
-
-interface LessonPlan {
-  id: string;
-  title: string;
-  course: string; // Changed from subject
-  department: string; // College-specific
-  program: string; // College-specific
-  semester: string; // Changed from class
-  academicYear: string;
-  sessionDate: string; // Changed from date
-  unitId: string; // Changed from chapterId
-  unitName: string; // Changed from chapterName
-  duration?: string;
-  selectedLearningOutcomes: string[];
-  sessionObjectives: string; // Changed from learningObjectives
-  teachingMethodology: string;
-  requiredMaterials: string;
-  resourceFiles: ResourceFile[];
-  resourceLinks: ResourceLink[];
-  evaluationCriteria: string;
-  evaluationItems: EvaluationCriteria[];
-  followUpActivities?: string; // Changed from homework
-  additionalNotes?: string; // Changed from differentiationNotes
-  status?: string;
 }
 /* ==============================
    STATS CARD COMPONENT
@@ -200,7 +181,7 @@ const LessonPlanCard = ({
   onDuplicate,
   onView,
 }: {
-  plan: LessonPlan;
+  plan: CollegeLessonPlan;
   onEdit: () => void;
   onDuplicate: () => void;
   onView: () => void;
@@ -258,7 +239,9 @@ const LessonPlanCard = ({
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <BookOpenIcon className="h-4 w-4 flex-shrink-0" />
-          <span className="truncate">{plan.course}</span>
+          <span className="truncate">
+            {getPlanProperty(plan, 'courseName') || getPlanProperty(plan, 'course')}
+          </span>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <UserIcon className="h-4 w-4 flex-shrink-0" />
@@ -267,13 +250,15 @@ const LessonPlanCard = ({
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <CalendarIcon className="h-4 w-4 flex-shrink-0" />
           <span className="truncate">
-            {new Date(plan.sessionDate).toLocaleDateString()}
+            {plan.session_date ? new Date(plan.session_date).toLocaleDateString() : 'No date'}
           </span>
         </div>
-        {plan.duration && (
+        {plan.duration_minutes && (
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <ClockIcon className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate">{plan.duration}</span>
+            <span className="truncate">
+              {`${plan.duration_minutes} min`}
+            </span>
           </div>
         )}
       </div>
@@ -283,7 +268,7 @@ const LessonPlanCard = ({
         <div>
           <p className="text-xs font-medium text-gray-500 mb-1">Unit:</p>
           <p className="text-sm font-semibold text-indigo-700">
-            {plan.unitName}
+            {plan.unit_name || 'No unit selected'}
           </p>
         </div>
         <div>
@@ -291,7 +276,7 @@ const LessonPlanCard = ({
             Session Objectives:
           </p>
           <p className="text-sm text-gray-700 line-clamp-2">
-            {plan.sessionObjectives}
+            {plan.session_objectives}
           </p>
         </div>
       </div>
@@ -323,6 +308,36 @@ const getFileIcon = (fileName: string) => {
   }
 };
 
+// Helper function to safely access plan properties (handles both camelCase and snake_case)
+const getPlanProperty = (plan: CollegeLessonPlan, property: string): any => {
+  // Map of camelCase to snake_case properties
+  const propertyMap: Record<string, string> = {
+    'course': 'course_id',
+    'courseName': 'course_name',
+    'department': 'department_id',
+    'departmentName': 'department_name',
+    'program': 'program_id',
+    'programName': 'program_name',
+    'academicYear': 'academic_year',
+    'sessionDate': 'session_date',
+    'unitId': 'unit_id',
+    'unitName': 'unit_name',
+    'sessionObjectives': 'session_objectives',
+    'teachingMethodology': 'teaching_methodology',
+    'requiredMaterials': 'required_materials',
+    'resourceFiles': 'resource_files',
+    'resourceLinks': 'resource_links',
+    'evaluationCriteria': 'evaluation_criteria',
+    'evaluationItems': 'evaluation_items',
+    'selectedLearningOutcomes': 'selected_learning_outcomes',
+    'followUpActivities': 'follow_up_activities',
+    'additionalNotes': 'additional_notes',
+  };
+
+  const snakeCase = propertyMap[property] || property;
+  return (plan as any)[property] || (plan as any)[snakeCase];
+};
+
 /* ==============================
    VIEW LESSON PLAN MODAL (College-adapted)
    ============================== */
@@ -331,7 +346,7 @@ const ViewLessonPlanModal = ({
   isOpen,
   onClose,
 }: {
-  plan: LessonPlan | null;
+  plan: CollegeLessonPlan | null;
   isOpen: boolean;
   onClose: () => void;
 }) => {
@@ -350,15 +365,21 @@ const ViewLessonPlanModal = ({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-gray-50 rounded-lg p-3">
             <p className="text-xs font-medium text-gray-500 mb-1">Course</p>
-            <p className="text-sm font-semibold text-gray-900">{plan.course}</p>
+            <p className="text-sm font-semibold text-gray-900">
+              {plan.course_name || 'No course'}
+            </p>
           </div>
           <div className="bg-gray-50 rounded-lg p-3">
             <p className="text-xs font-medium text-gray-500 mb-1">Department</p>
-            <p className="text-sm font-semibold text-gray-900">{plan.department}</p>
+            <p className="text-sm font-semibold text-gray-900">
+              {plan.department_name || 'No department'}
+            </p>
           </div>
           <div className="bg-gray-50 rounded-lg p-3">
             <p className="text-xs font-medium text-gray-500 mb-1">Program</p>
-            <p className="text-sm font-semibold text-gray-900">{plan.program}</p>
+            <p className="text-sm font-semibold text-gray-900">
+              {plan.program_name || 'No program'}
+            </p>
           </div>
           <div className="bg-gray-50 rounded-lg p-3">
             <p className="text-xs font-medium text-gray-500 mb-1">Semester</p>
@@ -370,13 +391,15 @@ const ViewLessonPlanModal = ({
           <div className="bg-gray-50 rounded-lg p-3">
             <p className="text-xs font-medium text-gray-500 mb-1">Session Date</p>
             <p className="text-sm font-semibold text-gray-900">
-              {new Date(plan.sessionDate).toLocaleDateString()}
+              {plan.session_date ? new Date(plan.session_date).toLocaleDateString() : 'No date'}
             </p>
           </div>
-          {plan.duration && (
+          {plan.duration_minutes && (
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-xs font-medium text-gray-500 mb-1">Duration</p>
-              <p className="text-sm font-semibold text-gray-900">{plan.duration}</p>
+              <p className="text-sm font-semibold text-gray-900">
+                {`${plan.duration_minutes} min`}
+              </p>
             </div>
           )}
         </div>
@@ -386,7 +409,7 @@ const ViewLessonPlanModal = ({
             Unit (from Curriculum)
           </p>
           <p className="text-sm font-semibold text-indigo-900">
-            {plan.unitName}
+            {plan.unit_name || 'No unit selected'}
           </p>
         </div>
 
@@ -398,7 +421,7 @@ const ViewLessonPlanModal = ({
               Session Objectives
             </h4>
             <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-              {plan.sessionObjectives}
+              {plan.session_objectives}
             </p>
           </div>
 
@@ -408,7 +431,7 @@ const ViewLessonPlanModal = ({
               Teaching Methodology
             </h4>
             <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-              {plan.teachingMethodology}
+              {plan.teaching_methodology}
             </p>
           </div>
 
@@ -417,33 +440,75 @@ const ViewLessonPlanModal = ({
               <BookOpenIcon className="h-4 w-4 text-blue-600" />
               Required Materials
             </h4>
-            {plan.requiredMaterials && (
+            {plan.required_materials && (
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-3">
-                {plan.requiredMaterials}
+                {plan.required_materials}
               </p>
             )}
 
             {/* Files */}
-            {plan.resourceFiles && plan.resourceFiles.length > 0 && (
+            {plan.resource_files && plan.resource_files.length > 0 && (
               <div className="mb-3">
                 <p className="text-xs font-medium text-gray-500 mb-2">Attached Files:</p>
                 <div className="space-y-2">
-                  {plan.resourceFiles.map((file) => {
+                  {plan.resource_files.map((file) => {
                     const { icon: FileIcon, color } = getFileIcon(file.name);
+                    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(
+                      file.name.split('.').pop()?.toLowerCase() || ''
+                    );
+                    const isVideo = ['mp4', 'mov', 'avi', 'wmv', 'mkv', 'webm'].includes(
+                      file.name.split('.').pop()?.toLowerCase() || ''
+                    );
+                    
                     return (
                       <div
                         key={file.id}
-                        className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border border-gray-200"
+                        className="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
                       >
-                        <FileIcon className={`h-5 w-5 ${color} flex-shrink-0`} />
+                        <FileIcon className={`h-6 w-6 ${color} flex-shrink-0`} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {file.name}
                           </p>
-                          <p className="text-xs text-gray-500">
-                            {formatFileSize(file.size)}
-                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xs text-gray-500">
+                              {formatFileSize(file.size)}
+                            </p>
+                            {isImage && (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                                Image
+                              </span>
+                            )}
+                            {isVideo && (
+                              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                                Video
+                              </span>
+                            )}
+                          </div>
                         </div>
+                        {file.url && (
+                          <div className="flex items-center gap-1">
+                            <a
+                              href={getDocumentUrl(file.url, 'inline')}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="View file"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                              View
+                            </a>
+                            <a
+                              href={getDocumentUrl(file.url, 'download')}
+                              download={file.name}
+                              className="flex items-center gap-1 px-3 py-1.5 text-sm text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                              title="Download file"
+                            >
+                              <ArrowUpTrayIcon className="h-4 w-4 rotate-180" />
+                              Download
+                            </a>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -452,11 +517,11 @@ const ViewLessonPlanModal = ({
             )}
 
             {/* Links */}
-            {plan.resourceLinks && plan.resourceLinks.length > 0 && (
+            {plan.resource_links && plan.resource_links.length > 0 && (
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-2">Resource Links:</p>
                 <div className="space-y-2">
-                  {plan.resourceLinks.map((link) => (
+                  {plan.resource_links.map((link) => (
                     <div
                       key={link.id}
                       className="flex items-center gap-3 p-2 bg-blue-50 rounded-lg border border-blue-200"
@@ -481,9 +546,9 @@ const ViewLessonPlanModal = ({
               </div>
             )}
 
-            {!plan.requiredMaterials &&
-             (!plan.resourceFiles || plan.resourceFiles.length === 0) &&
-             (!plan.resourceLinks || plan.resourceLinks.length === 0) && (
+            {!plan.required_materials &&
+             (!plan.resource_files || plan.resource_files.length === 0) &&
+             (!plan.resource_links || plan.resource_links.length === 0) && (
               <p className="text-sm text-gray-500 italic">No materials added</p>
             )}
           </div>
@@ -494,15 +559,15 @@ const ViewLessonPlanModal = ({
               Evaluation Criteria
             </h4>
 
-            {plan.evaluationCriteria && !plan.evaluationItems?.length && (
+            {plan.evaluation_criteria && !plan.evaluation_items?.length && (
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-3">
-                {plan.evaluationCriteria}
+                {plan.evaluation_criteria}
               </p>
             )}
 
-            {plan.evaluationItems && plan.evaluationItems.length > 0 && (
+            {plan.evaluation_items && plan.evaluation_items.length > 0 && (
               <div className="space-y-2">
-                {plan.evaluationItems.map((item, index) => (
+                {plan.evaluation_items.map((item, index) => (
                   <div
                     key={item.id}
                     className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200"
@@ -524,43 +589,43 @@ const ViewLessonPlanModal = ({
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-700">Total</span>
                     <span className={`text-sm font-bold ${
-                      plan.evaluationItems.reduce((sum, item) => sum + item.percentage, 0) === 100
+                      plan.evaluation_items.reduce((sum, item) => sum + item.percentage, 0) === 100
                         ? 'text-green-600'
                         : 'text-amber-600'
                     }`}>
-                      {plan.evaluationItems.reduce((sum, item) => sum + item.percentage, 0)}%
+                      {plan.evaluation_items.reduce((sum, item) => sum + item.percentage, 0)}%
                     </span>
                   </div>
                 </div>
               </div>
             )}
 
-            {!plan.evaluationCriteria && (!plan.evaluationItems || plan.evaluationItems.length === 0) && (
+            {!plan.evaluation_criteria && (!plan.evaluation_items || plan.evaluation_items.length === 0) && (
               <p className="text-sm text-gray-500 italic">No evaluation criteria added</p>
             )}
           </div>
 
           {/* Optional Fields */}
-          {plan.followUpActivities && (
+          {plan.follow_up_activities && (
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
                 <DocumentIcon className="h-4 w-4 text-amber-600" />
                 Follow-up Activities
               </h4>
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {plan.followUpActivities}
+                {plan.follow_up_activities}
               </p>
             </div>
           )}
 
-          {plan.additionalNotes && (
+          {plan.additional_notes && (
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
                 <InformationCircleIcon className="h-4 w-4 text-purple-600" />
                 Additional Notes
               </h4>
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {plan.additionalNotes}
+                {plan.additional_notes}
               </p>
             </div>
           )}
@@ -585,22 +650,29 @@ interface CollegeLessonPlanProps {
   selectedAcademicYear?: string;
   setSelectedAcademicYear?: (value: string) => void;
   // Configuration data
-  courses?: string[];
-  departments?: string[];
-  programs?: string[];
+  courses?: any[];
+  departments?: any[];
+  programs?: any[];
   semesters?: string[];
   academicYears?: string[];
   // Data
-  lessonPlans?: LessonPlan[];
+  lessonPlans?: CollegeLessonPlan[];
   units?: Unit[];
   learningOutcomes?: LearningOutcome[];
   saveStatus?: "idle" | "saving" | "saved";
+  loading?: boolean;
   searchQuery?: string;
   setSearchQuery?: (value: string) => void;
   // Handlers
-  onAddLessonPlan?: (lessonPlan: LessonPlan) => Promise<void>;
+  onAddLessonPlan?: (lessonPlan: CollegeLessonPlan) => Promise<void>;
   onDeleteLessonPlan?: (id: string) => Promise<void>;
   onPublishLessonPlan?: (id: string) => Promise<void>;
+  // Dynamic handlers for form
+  onDepartmentChange?: (departmentId: string) => Promise<{ programs: any[]; courses: any[]; }>;
+  onProgramChange?: (programId: string) => Promise<{ semesters: string[]; courses: any[]; }>;
+  onSemesterChange?: (semester: string, programId: string) => Promise<{ courses: any[]; }>;
+  onCurriculumContextChange?: (courseId: string, programId: string, academicYear: string) => Promise<void>;
+  onUnitChange?: (unitId: string) => Promise<void>;
 }
 
 /* ==============================
@@ -610,17 +682,16 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
   // Configuration data - use props or fallback to defaults
   const courses = props.courses ?? [];
   const departments = props.departments ?? [];
-  const programs = props.programs ?? [];
   const semesters = props.semesters ?? [];
   const academicYears = props.academicYears ?? [];
   const units = props.units ?? [];
   const learningOutcomes = props.learningOutcomes ?? [];
+  const loading = props.loading ?? false;
 
   // State - use props if provided, otherwise use local state
-  const [localLessonPlans, localSetLessonPlans] = useState<LessonPlan[]>([]);
+  const [localLessonPlans, localSetLessonPlans] = useState<CollegeLessonPlan[]>([]);
   const [localSearchQuery, localSetSearchQuery] = useState("");
 
-  // Use props or local state
   const lessonPlans = props.lessonPlans ?? localLessonPlans;
   const setLessonPlans = localSetLessonPlans;
   const searchQuery = props.searchQuery ?? localSearchQuery;
@@ -629,11 +700,18 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
 
   // UI state
   const [showEditor, setShowEditor] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<LessonPlan | null>(null);
-  const [viewingPlan, setViewingPlan] = useState<LessonPlan | null>(null);
+  const [editingPlan, setEditingPlan] = useState<CollegeLessonPlan | null>(null);
+  const [viewingPlan, setViewingPlan] = useState<CollegeLessonPlan | null>(null);
   const [courseFilter, setCourseFilter] = useState<string>("");
   const [semesterFilter, setSemesterFilter] = useState<string>("");
   const [academicYearFilter, setAcademicYearFilter] = useState<string>("");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("");
+  const [programFilter, setProgramFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(6); // 6 lesson plans per page
 
   // Form state
   const [formData, setFormData] = useState({
@@ -659,6 +737,101 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
   const [evaluationItems, setEvaluationItems] = useState<EvaluationCriteria[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState<boolean>(false);
+
+  // Form-specific state for dynamic loading
+  const [formPrograms, setFormPrograms] = useState<any[]>([]);
+  const [formCourses, setFormCourses] = useState<any[]>([]);
+  const [formUnits, setFormUnits] = useState<any[]>([]);
+  const [formLearningOutcomes, setFormLearningOutcomes] = useState<any[]>([]);
+  const [loadingPrograms, setLoadingPrograms] = useState(false);
+  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [loadingUnits, setLoadingUnits] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(false); // New loading state for edit
+
+  // Generate filter options from actual lesson plans data
+  const filterOptions = useMemo(() => {
+    const coursesMap = new Map<string, {id: string, name: string, code: string}>();
+    const departmentsMap = new Map<string, {id: string, name: string}>();
+    const programsMap = new Map<string, {id: string, name: string}>();
+    const semestersSet = new Set<number>();
+    const academicYearsSet = new Set<string>();
+    const statusesSet = new Set<string>();
+
+    lessonPlans.forEach((plan) => {
+      // Handle different possible data structures
+      const courseId = plan.course_id;
+      const courseName = plan.course_name || plan.course?.course_name;
+      const courseCode = plan.course_code || plan.course?.course_code;
+      
+      const departmentId = plan.department_id;
+      const departmentName = plan.department_name || plan.department?.name;
+      
+      const programId = plan.program_id;
+      const programName = plan.program_name || plan.program?.name;
+      
+      // Courses
+      if (courseId && courseName) {
+        coursesMap.set(courseId, {
+          id: courseId,
+          name: courseName,
+          code: courseCode || ''
+        });
+      }
+      
+      // Departments
+      if (departmentId && departmentName) {
+        departmentsMap.set(departmentId, {
+          id: departmentId,
+          name: departmentName
+        });
+      }
+      
+      // Programs
+      if (programId && programName) {
+        programsMap.set(programId, {
+          id: programId,
+          name: programName
+        });
+      }
+      
+      // Semesters
+      if (plan.semester) {
+        semestersSet.add(plan.semester);
+      }
+      
+      // Academic Years
+      if (plan.academic_year) {
+        academicYearsSet.add(plan.academic_year);
+      }
+      
+      // Status
+      if (plan.status) {
+        statusesSet.add(plan.status);
+      }
+    });
+
+    // Fallback to props data if lesson plans don't have joined data
+    const fallbackCourses = Array.isArray(courses) ? courses.map(c => ({
+      id: c.id,
+      name: c.course_name || c.name || 'Unknown Course',
+      code: c.course_code || c.code || ''
+    })) : [];
+    
+    const fallbackDepartments = Array.isArray(departments) ? departments.map(d => ({
+      id: d.id,
+      name: d.name || 'Unknown Department'
+    })) : [];
+
+    return {
+      courses: coursesMap.size > 0 ? Array.from(coursesMap.values()).sort((a, b) => a.name.localeCompare(b.name)) : fallbackCourses,
+      departments: departmentsMap.size > 0 ? Array.from(departmentsMap.values()).sort((a, b) => a.name.localeCompare(b.name)) : fallbackDepartments,
+      programs: Array.from(programsMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
+      semesters: Array.from(semestersSet).sort((a, b) => a - b),
+      academicYears: Array.from(academicYearsSet).sort().reverse(), // Most recent first
+      statuses: Array.from(statusesSet).sort()
+    };
+  }, [lessonPlans, courses, departments]);
 
   // Filter lesson plans
   const filteredPlans = useMemo(() => {
@@ -667,49 +840,312 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
       const matchesSearch =
         q === "" ||
         plan.title.toLowerCase().includes(q) ||
-        plan.course.toLowerCase().includes(q);
+        (plan.course_name || '').toLowerCase().includes(q) ||
+        (plan.department_name || '').toLowerCase().includes(q) ||
+        (plan.program_name || '').toLowerCase().includes(q);
+        
       const matchesCourse =
-        courseFilter === "" || plan.course === courseFilter;
+        courseFilter === "" || plan.course_id === courseFilter;
+        
+      const matchesDepartment =
+        departmentFilter === "" || plan.department_id === departmentFilter;
+        
+      const matchesProgram =
+        programFilter === "" || plan.program_id === programFilter;
+        
       const matchesSemester =
-        semesterFilter === "" || plan.semester === semesterFilter;
+        semesterFilter === "" || plan.semester?.toString() === semesterFilter;
+        
       const matchesAcademicYear =
-        academicYearFilter === "" || plan.academicYear === academicYearFilter;
-      return matchesSearch && matchesCourse && matchesSemester && matchesAcademicYear;
+        academicYearFilter === "" || plan.academic_year === academicYearFilter;
+        
+      const matchesStatus =
+        statusFilter === "" || plan.status === statusFilter;
+        
+      return matchesSearch && matchesCourse && matchesDepartment && 
+             matchesProgram && matchesSemester && matchesAcademicYear && matchesStatus;
     });
-  }, [lessonPlans, searchQuery, courseFilter, semesterFilter, academicYearFilter]);
+  }, [lessonPlans, searchQuery, courseFilter, departmentFilter, programFilter, 
+      semesterFilter, academicYearFilter, statusFilter]);
+
+  // Paginated plans
+  const paginatedPlans = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredPlans.slice(startIndex, endIndex);
+  }, [filteredPlans, currentPage, itemsPerPage]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, courseFilter, departmentFilter, programFilter, semesterFilter, academicYearFilter, statusFilter]);
 
   // Stats
   const stats = {
     total: lessonPlans.length,
     thisWeek: lessonPlans.filter((p) => {
-      const planDate = new Date(p.sessionDate);
+      const sessionDate = p.session_date;
+      if (!sessionDate) return false;
+      const planDate = new Date(sessionDate);
       const today = new Date();
       const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
       return planDate >= today && planDate <= weekFromNow;
     }).length,
-    byCourse: courses.reduce((acc, course) => {
-      acc[course] = lessonPlans.filter((p) => p.course === course).length;
+    published: lessonPlans.filter(p => p.status === 'published').length,
+    draft: lessonPlans.filter(p => p.status === 'draft').length,
+    byCourse: filterOptions.courses.reduce((acc, course) => {
+      acc[course.id] = lessonPlans.filter(p => p.course_id === course.id).length;
       return acc;
     }, {} as Record<string, number>),
   };
 
-  // Get available units for selected context
+  // Get available units for selected context (use form-specific units)
   const availableUnits = useMemo(() => {
-    // In a real implementation, this would filter units based on selected course/department/program/semester
-    return units;
-  }, [units]);
+    return formUnits;
+  }, [formUnits]);
 
-  // Get learning outcomes for selected unit
+  // Get learning outcomes for selected unit (use form-specific outcomes)
   const availableLearningOutcomes = useMemo(() => {
     if (!formData.unitId) return [];
-    return learningOutcomes.filter(lo => lo.unitId === formData.unitId);
-  }, [learningOutcomes, formData.unitId]);
+    
+    // First try to get from formLearningOutcomes (form-specific)
+    let outcomes = formLearningOutcomes.filter(lo => 
+      (lo as any).unit_id === formData.unitId || lo.unitId === formData.unitId
+    );
+    
+    // If not found in formLearningOutcomes, try from props learningOutcomes (fallback)
+    if (outcomes.length === 0 && learningOutcomes.length > 0) {
+      outcomes = learningOutcomes.filter(lo => 
+        (lo as any).unit_id === formData.unitId || lo.unitId === formData.unitId
+      );
+    }
+    
+    return outcomes;
+  }, [formLearningOutcomes, learningOutcomes, formData.unitId]);
 
   // Get selected unit details
   const selectedUnit = useMemo(() => {
     if (!formData.unitId) return null;
-    return availableUnits.find((unit: any) => unit.id === formData.unitId);
-  }, [formData.unitId, availableUnits]);
+    
+    // First try to find in formUnits (form-specific units)
+    let unit = availableUnits.find((unit: any) => unit.id === formData.unitId);
+    
+    // If not found in formUnits, try to find in the props units (fallback)
+    if (!unit && units.length > 0) {
+      unit = units.find((unit: any) => unit.id === formData.unitId);
+    }
+    
+    return unit || null;
+  }, [formData.unitId, availableUnits, units]);
+
+  // Handle department change in form
+  const handleFormDepartmentChange = async (departmentId: string) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      department: departmentId, 
+      program: "", 
+      course: "",
+      unitId: "" 
+    }));
+    setSelectedLearningOutcomes([]);
+    setFormUnits([]);
+    setFormLearningOutcomes([]);
+    
+    if (departmentId && props.onDepartmentChange) {
+      setLoadingPrograms(true);
+      setLoadingCourses(true);
+      try {
+        const result = await props.onDepartmentChange(departmentId);
+        if (result) {
+          setFormPrograms(result.programs);
+          setFormCourses(result.courses);
+        }
+      } catch (error) {
+        console.error('Error loading programs/courses:', error);
+        setFormPrograms([]);
+        setFormCourses([]);
+      } finally {
+        setLoadingPrograms(false);
+        setLoadingCourses(false);
+      }
+    } else {
+      setFormPrograms([]);
+      setFormCourses([]);
+    }
+  };
+
+  // Handle program change in form
+  const handleFormProgramChange = async (programId: string) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      program: programId, 
+      course: "",
+      semester: "", // Reset semester when program changes
+      unitId: "" 
+    }));
+    setSelectedLearningOutcomes([]);
+    setFormUnits([]);
+    setFormLearningOutcomes([]);
+    
+    if (programId && props.onProgramChange) {
+      setLoadingCourses(true);
+      try {
+        const result = await props.onProgramChange(programId);
+        if (result) {
+          setFormCourses(result.courses);
+        }
+      } catch (error) {
+        console.error('Error in onProgramChange:', error);
+      } finally {
+        setLoadingCourses(false);
+      }
+    }
+  };
+
+  // Handle semester change in form
+  const handleFormSemesterChange = async (semester: string) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      semester: semester,
+      course: "", // Reset course when semester changes
+      unitId: "" 
+    }));
+    setSelectedLearningOutcomes([]);
+    setFormUnits([]);
+    setFormLearningOutcomes([]);
+    
+    if (semester && formData.program && props.onSemesterChange) {
+      setLoadingCourses(true);
+      try {
+        const result = await props.onSemesterChange(semester, formData.program);
+        if (result) {
+          setFormCourses(result.courses);
+        }
+      } catch (error) {
+        console.error('Error loading courses for semester:', error);
+        setFormCourses([]);
+      } finally {
+        setLoadingCourses(false);
+      }
+    }
+  };
+
+  // Handle curriculum context change (course + program + academic year)
+  const handleCurriculumContextChange = async () => {
+    const { course, program, academicYear } = formData;
+    
+    if (course && program && academicYear && props.onCurriculumContextChange) {
+      setLoadingUnits(true);
+      
+      // Only reset unitId if we're not in edit mode or if the unit is not already set
+      if (!loadingEdit && !editingPlan) {
+        setFormData(prev => ({ ...prev, unitId: "" }));
+        setSelectedLearningOutcomes([]);
+      }
+      
+      try {
+        await props.onCurriculumContextChange(course, program, academicYear);
+        // useEffect will handle updating formUnits when units prop changes
+      } catch (error) {
+        console.error('Error loading curriculum data:', error);
+        setFormUnits([]);
+        setFormLearningOutcomes([]);
+      } finally {
+        setLoadingUnits(false);
+      }
+    } else {
+      setFormUnits([]);
+      setFormLearningOutcomes([]);
+    }
+  };
+
+  // Handle unit selection change to load learning outcomes
+  const handleUnitChange = async (unitId: string) => {
+    setFormData(prev => ({ ...prev, unitId }));
+    setSelectedLearningOutcomes([]);
+    
+    if (unitId && props.onUnitChange) {
+      try {
+        await props.onUnitChange(unitId);
+        // No need for setTimeout - useEffect will handle the prop updates
+      } catch (error) {
+        console.error('Error loading learning outcomes for unit:', error);
+      }
+    } else {
+      // Clear learning outcomes when no unit is selected
+      setFormLearningOutcomes([]);
+    }
+  };
+
+  // Update form units when props change
+  useEffect(() => {
+    if (units && units.length > 0) {
+      setFormUnits(units);
+    } else {
+      setFormUnits([]);
+    }
+  }, [units]);
+
+  // Update form learning outcomes when props change and we have a selected unit
+  useEffect(() => {
+    if (formData.unitId && learningOutcomes && learningOutcomes.length > 0) {
+      // Filter learning outcomes for the selected unit (try both unitId and unit_id)
+      const unitOutcomes = learningOutcomes.filter(lo => 
+        (lo as any).unit_id === formData.unitId || lo.unitId === formData.unitId
+      );
+      setFormLearningOutcomes(unitOutcomes);
+    } else if (!formData.unitId) {
+      // Clear learning outcomes when no unit is selected
+      setFormLearningOutcomes([]);
+    }
+  }, [learningOutcomes, formData.unitId]);
+
+  // Update form units and outcomes when props change (for editor mode)
+  useEffect(() => {
+    if (showEditor) {
+      // Update form units when units prop changes
+      if (units && units.length > 0) {
+        setFormUnits(units);
+      }
+      
+      // Update form learning outcomes when learningOutcomes prop changes and we have a unit selected
+      if (formData.unitId && learningOutcomes && learningOutcomes.length > 0) {
+        const unitOutcomes = learningOutcomes.filter(lo => 
+          (lo as any).unit_id === formData.unitId || lo.unitId === formData.unitId
+        );
+        setFormLearningOutcomes(unitOutcomes);
+      }
+    }
+  }, [units, learningOutcomes, showEditor, formData.unitId]);
+
+  // Initialize form data when opening editor (only once)
+  useEffect(() => {
+    if (showEditor) {
+      // Initialize form courses with all available courses
+      setFormCourses(courses);
+      // Only reset programs if we don't have a department selected
+      if (!formData.department) {
+        setFormPrograms([]);
+      }
+      setFormUnits([]);
+      setFormLearningOutcomes([]);
+    }
+  }, [showEditor]); // Remove courses dependency to prevent reset when courses change
+
+  // Separate effect to update courses when they change (but don't reset programs)
+  useEffect(() => {
+    if (showEditor && !formData.department) {
+      // Only update courses if no department is selected
+      setFormCourses(courses);
+    }
+  }, [courses, showEditor, formData.department]);
+
+  // Trigger curriculum context change when relevant fields change (but not during edit)
+  useEffect(() => {
+    if (formData.course && formData.program && formData.academicYear && !loadingEdit) {
+      handleCurriculumContextChange();
+    }
+  }, [formData.course, formData.program, formData.academicYear, loadingEdit]);
 
   // Auto-fill duration when unit is selected
   useEffect(() => {
@@ -717,8 +1153,125 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
       // Duration is auto-filled from unit, no need to set in formData
     }
   }, [selectedUnit]);
+
+  // Handle file upload with temporary storage (only upload to R2 when saving)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingFiles(true);
+    const newTempFiles: ResourceFile[] = [];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Validate file
+        const validation = validateFile(file, {
+          maxSize: 50, // 50MB max
+          allowedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'wmv', 'mkv', 'webm']
+        });
+
+        if (!validation.valid) {
+          alert(`${file.name}: ${validation.error}`);
+          continue;
+        }
+
+        // Create temporary file object (no upload yet)
+        const fileId = `temp_${Date.now()}_${i}`;
+        const tempFile: ResourceFile = {
+          id: fileId,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          // Store the actual File object temporarily for later upload
+          tempFile: file,
+          // No URL yet - will be set after upload during save
+        };
+        
+        newTempFiles.push(tempFile);
+      }
+
+      // Add temporary files to the list (no R2 upload yet)
+      if (newTempFiles.length > 0) {
+        setResourceFiles(prev => [...prev, ...newTempFiles]);
+      }
+
+    } catch (error) {
+      console.error('File preparation error:', error);
+      alert('Error preparing files. Please try again.');
+    } finally {
+      setUploadingFiles(false);
+      e.target.value = ""; // Reset input
+    }
+  };
+
+  // Upload temporary files to R2 storage (called during save)
+  const uploadTemporaryFiles = async (tempFiles: ResourceFile[]): Promise<ResourceFile[]> => {
+    const uploadedFiles: ResourceFile[] = [];
+    
+    for (const tempFile of tempFiles) {
+      if (tempFile.tempFile) {
+        // This is a temporary file that needs to be uploaded
+        try {
+          const uploadResult = await uploadFile(
+            tempFile.tempFile,
+            'college-lesson-plans'
+          );
+          
+          if (uploadResult.success && uploadResult.url) {
+            uploadedFiles.push({
+              id: tempFile.id,
+              name: tempFile.name,
+              size: tempFile.size,
+              type: tempFile.type,
+              url: uploadResult.url,
+              // Remove tempFile reference after upload
+            });
+          } else {
+            // Skip this file but continue with others
+          }
+        } catch (error) {
+          console.error(`Error uploading ${tempFile.name}:`, error);
+          // Skip this file but continue with others
+        }
+      } else {
+        // This file was already uploaded (editing existing lesson plan)
+        uploadedFiles.push(tempFile);
+      }
+    }
+    
+    return uploadedFiles;
+  };
+
+  // Remove file (delete from R2 only if it was already uploaded)
+  const handleRemoveFile = async (fileId: string) => {
+    const fileToRemove = resourceFiles.find(f => f.id === fileId);
+    if (fileToRemove?.url) {
+      // File was already uploaded to R2, delete it
+      try {
+        await deleteFile(fileToRemove.url);
+      } catch (error) {
+        console.error('Error deleting file from storage:', error);
+        // Continue with removal from UI even if storage deletion fails
+      }
+    }
+    // Remove from UI (works for both temporary and uploaded files)
+    setResourceFiles(resourceFiles.filter((f) => f.id !== fileId));
+  };
+
+  // Clean up temporary files when canceling
+  const cleanupTemporaryFiles = () => {
+    // No need to delete from R2 since temporary files aren't uploaded yet
+    // Just clear the state
+    setResourceFiles([]);
+  };
+
   // Reset form
   const resetForm = () => {
+    // Clean up any temporary files first
+    cleanupTemporaryFiles();
+    
     setFormData({
       title: "",
       course: "",
@@ -741,6 +1294,11 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
     setEvaluationItems([]);
     setErrors({});
     setEditingPlan(null);
+    // Reset form-specific state
+    setFormPrograms([]);
+    setFormCourses([]);
+    setFormUnits([]);
+    setFormLearningOutcomes([]);
   };
 
   // Note: File upload, links, and evaluation criteria handlers can be added later if needed
@@ -770,6 +1328,19 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
     }
     if (!formData.sessionDate) {
       newErrors.sessionDate = "Please select a date for the session";
+    } else {
+      // Validate that the date is not in the past (optional - can be removed if past dates are allowed)
+      const selectedDate = new Date(formData.sessionDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+      
+      if (isNaN(selectedDate.getTime())) {
+        newErrors.sessionDate = "Please enter a valid date";
+      }
+      // Uncomment the following lines if you want to prevent past dates
+      // else if (selectedDate < today) {
+      //   newErrors.sessionDate = "Session date cannot be in the past";
+      // }
     }
     
     // Curriculum-linked fields
@@ -788,10 +1359,12 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
       newErrors.teachingMethodology = "Teaching Methodology is required";
     }
     if (!formData.requiredMaterials.trim() && resourceFiles.length === 0 && resourceLinks.length === 0) {
-      newErrors.requiredMaterials = "Please provide at least one material (text, file, or link)";
+      // Materials are optional now - remove this validation
+      // newErrors.requiredMaterials = "Please provide at least one material (text, file, or link)";
     }
     if (!formData.evaluationCriteria.trim() && evaluationItems.length === 0) {
-      newErrors.evaluationCriteria = "Evaluation Criteria are required";
+      // Evaluation criteria are optional now - remove this validation
+      // newErrors.evaluationCriteria = "Evaluation Criteria are required";
     }
 
     setErrors(newErrors);
@@ -804,24 +1377,48 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
       return;
     }
 
+    // Additional validation before submission
+    if (!formData.sessionDate || formData.sessionDate.trim() === '') {
+      setErrors(prev => ({ ...prev, sessionDate: "Session date is required" }));
+      return;
+    }
+
     setSubmitting(true);
 
     try {
+      // Upload temporary files to R2 storage before saving
+      const uploadedFiles = await uploadTemporaryFiles(resourceFiles);
+      
       const unit = selectedUnit;
-      const duration = unit?.estimatedDuration
-        ? `${unit.estimatedDuration} ${unit.durationUnit}`
-        : undefined;
 
-      const submitData: LessonPlan = {
+      const submitData: CollegeLessonPlan = {
         id: editingPlan?.id || Date.now().toString(),
-        ...formData,
-        unitName: unit?.name || "",
-        duration,
-        selectedLearningOutcomes,
-        resourceFiles,
-        resourceLinks,
-        evaluationItems,
-        status,
+        title: formData.title.trim(),
+        session_date: formData.sessionDate, // This should be in YYYY-MM-DD format from date input
+        duration_minutes: unit?.estimatedDuration ? parseInt(unit.estimatedDuration.toString()) : undefined,
+        department_id: formData.department,
+        program_id: formData.program,
+        course_id: formData.course,
+        semester: parseInt(formData.semester),
+        academic_year: formData.academicYear,
+        unit_id: formData.unitId,
+        selected_learning_outcomes: selectedLearningOutcomes,
+        session_objectives: formData.sessionObjectives.trim(),
+        teaching_methodology: formData.teachingMethodology.trim(),
+        required_materials: formData.requiredMaterials.trim(),
+        resource_files: uploadedFiles, // Use uploaded files with R2 URLs
+        resource_links: resourceLinks,
+        evaluation_criteria: formData.evaluationCriteria.trim(),
+        evaluation_items: evaluationItems,
+        follow_up_activities: formData.followUpActivities.trim(),
+        additional_notes: formData.additionalNotes.trim(),
+        status: status,
+        metadata: {},
+        // Required database fields - these will be set by the service layer
+        college_id: editingPlan?.college_id || '',
+        created_by: editingPlan?.created_by || '',
+        created_at: editingPlan?.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
       if (props.onAddLessonPlan) {
@@ -830,10 +1427,10 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
         // Fallback to local state
         if (editingPlan) {
           setLessonPlans((prev) =>
-            prev.map((p) => (p.id === editingPlan.id ? submitData : p))
+            prev.map((p) => (p.id === editingPlan.id ? { ...submitData } : p))
           );
         } else {
-          setLessonPlans((prev) => [submitData, ...prev]);
+          setLessonPlans((prev) => [{ ...submitData }, ...prev]);
         }
       }
 
@@ -848,55 +1445,165 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
   };
 
   // Handle edit
-  const handleEdit = (plan: LessonPlan) => {
-    setFormData({
-      title: plan.title,
-      course: plan.course,
-      department: plan.department,
-      program: plan.program,
-      semester: plan.semester,
-      academicYear: plan.academicYear,
-      sessionDate: plan.sessionDate,
-      unitId: plan.unitId || "",
-      sessionObjectives: plan.sessionObjectives,
-      teachingMethodology: plan.teachingMethodology,
-      requiredMaterials: plan.requiredMaterials,
-      evaluationCriteria: plan.evaluationCriteria,
-      followUpActivities: plan.followUpActivities || "",
-      additionalNotes: plan.additionalNotes || "",
-    });
-    setSelectedLearningOutcomes(plan.selectedLearningOutcomes || []);
-    setResourceFiles(plan.resourceFiles || []);
-    setResourceLinks(plan.resourceLinks || []);
-    setEvaluationItems(plan.evaluationItems || []);
-    setEditingPlan(plan);
-    setShowEditor(true);
+  const handleEdit = async (plan: CollegeLessonPlan) => {
+    setLoadingEdit(true);
+    
+    try {
+      // Extract IDs directly from the database fields (snake_case)
+      const deptId = plan.department_id;
+      const programId = plan.program_id;
+      const courseId = plan.course_id;
+      const unitId = plan.unit_id;
+      const semester = plan.semester?.toString() || '';
+      const academicYear = plan.academic_year;
+      
+      // Set basic form data first using direct database fields
+      setFormData({
+        title: plan.title,
+        course: courseId || '',
+        department: deptId || '',
+        program: programId || '',
+        semester: semester,
+        academicYear: academicYear || '',
+        sessionDate: plan.session_date || '',
+        unitId: unitId || '',
+        sessionObjectives: plan.session_objectives || '',
+        teachingMethodology: plan.teaching_methodology || '',
+        requiredMaterials: plan.required_materials || '',
+        evaluationCriteria: plan.evaluation_criteria || '',
+        followUpActivities: plan.follow_up_activities || '',
+        additionalNotes: plan.additional_notes || '',
+      });
+      
+      // Set other form state using direct database fields
+      setSelectedLearningOutcomes(plan.selected_learning_outcomes || []);
+      setResourceFiles(plan.resource_files || []);
+      setResourceLinks(plan.resource_links || []);
+      setEvaluationItems(plan.evaluation_items || []);
+      setEditingPlan(plan);
+      
+      // Show editor first
+      setShowEditor(true);
+      
+      // Small delay to ensure form data is set and UI is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Now load dependent data in sequence
+      
+      // 1. Load programs for the department
+      if (deptId && props.onDepartmentChange) {
+        const deptResult = await props.onDepartmentChange(deptId);
+        if (deptResult) {
+          setFormPrograms(deptResult.programs);
+        }
+      }
+      
+      // 2. Load semesters and courses for the program
+      if (programId && props.onProgramChange) {
+        await props.onProgramChange(programId);
+      }
+      
+      // 3. Load courses for the program and semester
+      if (programId && semester && props.onSemesterChange) {
+        const semesterResult = await props.onSemesterChange(semester, programId);
+        if (semesterResult) {
+          setFormCourses(semesterResult.courses);
+        }
+      }
+      
+      // 4. Load curriculum units for the course/program/academic year
+      if (courseId && programId && academicYear && props.onCurriculumContextChange) {
+        await props.onCurriculumContextChange(courseId, programId, academicYear);
+        // useEffect will handle updating formUnits when units prop changes
+      }
+      
+      // 5. Load learning outcomes for the unit (if not already loaded)
+      if (unitId && props.onUnitChange) {
+        await props.onUnitChange(unitId);
+        // useEffect will handle updating formLearningOutcomes when learningOutcomes prop changes
+      }
+      
+    } catch (error) {
+      console.error('Error loading dependent data for edit:', error);
+    } finally {
+      setLoadingEdit(false);
+    }
   };
 
   // Handle duplicate
-  const handleDuplicate = (plan: LessonPlan) => {
-    setFormData({
-      title: `${plan.title} (Copy)`,
-      course: plan.course,
-      department: plan.department,
-      program: plan.program,
-      semester: plan.semester,
-      academicYear: plan.academicYear,
-      sessionDate: "",
-      unitId: plan.unitId || "",
-      sessionObjectives: plan.sessionObjectives,
-      teachingMethodology: plan.teachingMethodology,
-      requiredMaterials: plan.requiredMaterials,
-      evaluationCriteria: plan.evaluationCriteria,
-      followUpActivities: plan.followUpActivities || "",
-      additionalNotes: plan.additionalNotes || "",
-    });
-    setSelectedLearningOutcomes(plan.selectedLearningOutcomes || []);
-    setResourceFiles(plan.resourceFiles || []);
-    setResourceLinks(plan.resourceLinks || []);
-    setEvaluationItems(plan.evaluationItems || []);
-    setEditingPlan(null);
-    setShowEditor(true);
+  const handleDuplicate = async (plan: CollegeLessonPlan) => {
+    try {
+      // Extract IDs directly from the database fields (snake_case)
+      const deptId = plan.department_id;
+      const programId = plan.program_id;
+      const courseId = plan.course_id;
+      const unitId = plan.unit_id;
+      const semester = plan.semester?.toString() || '';
+      const academicYear = plan.academic_year;
+      
+      // Set basic form data first (with copy title and empty date)
+      setFormData({
+        title: `${plan.title} (Copy)`,
+        course: courseId || '',
+        department: deptId || '',
+        program: programId || '',
+        semester: semester,
+        academicYear: academicYear || '',
+        sessionDate: '', // Empty for new session
+        unitId: unitId || '',
+        sessionObjectives: plan.session_objectives || '',
+        teachingMethodology: plan.teaching_methodology || '',
+        requiredMaterials: plan.required_materials || '',
+        evaluationCriteria: plan.evaluation_criteria || '',
+        followUpActivities: plan.follow_up_activities || '',
+        additionalNotes: plan.additional_notes || '',
+      });
+      
+      // Set other form state using direct database fields
+      setSelectedLearningOutcomes(plan.selected_learning_outcomes || []);
+      setResourceFiles(plan.resource_files || []);
+      setResourceLinks(plan.resource_links || []);
+      setEvaluationItems(plan.evaluation_items || []);
+      setEditingPlan(null); // Not editing, duplicating
+      
+      // Show editor first
+      setShowEditor(true);
+      
+      // Small delay to ensure form data is set and UI is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Load all dependent data in sequence (same as edit)
+      if (deptId && props.onDepartmentChange) {
+        const deptResult = await props.onDepartmentChange(deptId);
+        if (deptResult) {
+          setFormPrograms(deptResult.programs);
+        }
+      }
+      
+      if (programId && props.onProgramChange) {
+        await props.onProgramChange(programId);
+      }
+      
+      if (programId && semester && props.onSemesterChange) {
+        const semesterResult = await props.onSemesterChange(semester, programId);
+        if (semesterResult) {
+          setFormCourses(semesterResult.courses);
+        }
+      }
+      
+      if (courseId && programId && academicYear && props.onCurriculumContextChange) {
+        await props.onCurriculumContextChange(courseId, programId, academicYear);
+        // useEffect will handle updating formUnits when units prop changes
+      }
+      
+      if (unitId && props.onUnitChange) {
+        await props.onUnitChange(unitId);
+        // useEffect will handle updating formLearningOutcomes when learningOutcomes prop changes
+      }
+      
+    } catch (error) {
+      console.error('Error loading dependent data for duplicate:', error);
+    }
   };
 
   // Note: Delete and publish handlers are available via props but not used in current UI
@@ -948,8 +1655,13 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
             <button
               onClick={() => {
                 resetForm();
-                // Set current academic year as default
-                setFormData(prev => ({ ...prev, academicYear: "2024-2025" }));
+                // Set current academic year as default (2025-2026)
+                const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+                setFormData(prev => ({ 
+                  ...prev, 
+                  academicYear: "2025-2026",
+                  sessionDate: today // Set today as default session date
+                }));
                 setShowEditor(true);
               }}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 active:scale-95 transition-all"
@@ -964,7 +1676,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
       {!showEditor ? (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatsCard
               label="Total Plans"
               value={stats.total}
@@ -978,45 +1690,89 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
               color="purple"
             />
             <StatsCard
-              label="Courses Covered"
-              value={Object.keys(stats.byCourse).filter(c => stats.byCourse[c] > 0).length}
-              icon={BookOpenIcon}
+              label="Published"
+              value={stats.published}
+              icon={CheckCircleIcon}
               color="green"
+            />
+            <StatsCard
+              label="Drafts"
+              value={stats.draft}
+              icon={DocumentIcon}
+              color="blue"
             />
           </div>
 
           {/* Filters and Search */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
-            <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex flex-col gap-4">
               <div className="flex-1">
                 <SearchBar
                   value={searchQuery}
                   onChange={setSearchQuery}
-                  placeholder="Search by title or course..."
+                  placeholder="Search by title, course, department, or program..."
                 />
               </div>
 
-              <div className="flex gap-3 flex-wrap">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <select
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                  className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                >
+                  <option value="">All Departments</option>
+                  {filterOptions.departments.length > 0 ? (
+                    filterOptions.departments.map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>No departments found</option>
+                  )}
+                </select>
+
+                <select
+                  value={programFilter}
+                  onChange={(e) => setProgramFilter(e.target.value)}
+                  className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                >
+                  <option value="">All Programs</option>
+                  {filterOptions.programs.length > 0 ? (
+                    filterOptions.programs.map((program) => (
+                      <option key={program.id} value={program.id}>
+                        {program.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>No programs found</option>
+                  )}
+                </select>
+
                 <select
                   value={courseFilter}
                   onChange={(e) => setCourseFilter(e.target.value)}
-                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                  className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
                 >
                   <option value="">All Courses</option>
-                  {courses.map((course) => (
-                    <option key={course} value={course}>
-                      {course}
-                    </option>
-                  ))}
+                  {filterOptions.courses.length > 0 ? (
+                    filterOptions.courses.map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {course.name} {course.code && `(${course.code})`}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>No courses found</option>
+                  )}
                 </select>
 
                 <select
                   value={semesterFilter}
                   onChange={(e) => setSemesterFilter(e.target.value)}
-                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                  className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
                 >
                   <option value="">All Semesters</option>
-                  {semesters.map((sem) => (
+                  {filterOptions.semesters.map((sem) => (
                     <option key={sem} value={sem}>
                       Semester {sem}
                     </option>
@@ -1026,30 +1782,112 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                 <select
                   value={academicYearFilter}
                   onChange={(e) => setAcademicYearFilter(e.target.value)}
-                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                  className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
                 >
                   <option value="">All Academic Years</option>
-                  {academicYears.map((year) => (
+                  {filterOptions.academicYears.map((year) => (
                     <option key={year} value={year}>
                       {year}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                >
+                  <option value="">All Status</option>
+                  {filterOptions.statuses.map((status) => (
+                    <option key={status} value={status}>
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            {(searchQuery || courseFilter || semesterFilter || academicYearFilter) && (
+            {(searchQuery || courseFilter || departmentFilter || programFilter || semesterFilter || academicYearFilter || statusFilter) && (
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                <p className="text-sm text-gray-600">
-                  Showing <span className="font-semibold text-gray-900">{filteredPlans.length}</span> of{" "}
-                  <span className="font-semibold text-gray-900">{lessonPlans.length}</span> session plans
-                </p>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600">
+                    Showing <span className="font-semibold text-gray-900">{paginatedPlans.length}</span> of{" "}
+                    <span className="font-semibold text-gray-900">{filteredPlans.length}</span> filtered session plans
+                    {filteredPlans.length !== lessonPlans.length && (
+                      <span className="text-gray-500"> ({lessonPlans.length} total)</span>
+                    )}
+                  </p>
+                  
+                  {/* Active Filters Summary */}
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {searchQuery && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                        Search: "{searchQuery}"
+                        <button onClick={() => setSearchQuery("")} className="hover:bg-blue-200 rounded-full p-0.5">
+                          <XMarkIcon className="h-3 w-3" />
+                        </button>
+                      </span>
+                    )}
+                    {departmentFilter && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                        Dept: {filterOptions.departments.find(d => d.id === departmentFilter)?.name}
+                        <button onClick={() => setDepartmentFilter("")} className="hover:bg-green-200 rounded-full p-0.5">
+                          <XMarkIcon className="h-3 w-3" />
+                        </button>
+                      </span>
+                    )}
+                    {programFilter && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                        Program: {filterOptions.programs.find(p => p.id === programFilter)?.name}
+                        <button onClick={() => setProgramFilter("")} className="hover:bg-purple-200 rounded-full p-0.5">
+                          <XMarkIcon className="h-3 w-3" />
+                        </button>
+                      </span>
+                    )}
+                    {courseFilter && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full">
+                        Course: {filterOptions.courses.find(c => c.id === courseFilter)?.name}
+                        <button onClick={() => setCourseFilter("")} className="hover:bg-indigo-200 rounded-full p-0.5">
+                          <XMarkIcon className="h-3 w-3" />
+                        </button>
+                      </span>
+                    )}
+                    {semesterFilter && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                        Semester {semesterFilter}
+                        <button onClick={() => setSemesterFilter("")} className="hover:bg-yellow-200 rounded-full p-0.5">
+                          <XMarkIcon className="h-3 w-3" />
+                        </button>
+                      </span>
+                    )}
+                    {academicYearFilter && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                        {academicYearFilter}
+                        <button onClick={() => setAcademicYearFilter("")} className="hover:bg-orange-200 rounded-full p-0.5">
+                          <XMarkIcon className="h-3 w-3" />
+                        </button>
+                      </span>
+                    )}
+                    {statusFilter && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">
+                        {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+                        <button onClick={() => setStatusFilter("")} className="hover:bg-gray-200 rounded-full p-0.5">
+                          <XMarkIcon className="h-3 w-3" />
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <button
                   onClick={() => {
                     setSearchQuery("");
                     setCourseFilter("");
+                    setDepartmentFilter("");
+                    setProgramFilter("");
                     setSemesterFilter("");
                     setAcademicYearFilter("");
+                    setStatusFilter("");
+                    setCurrentPage(1); // Reset to first page
                   }}
                   className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
                 >
@@ -1062,43 +1900,78 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
           {/* Session Plans Grid */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-lg font-bold text-gray-900">
-                My Session Plans ({filteredPlans.length})
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900">
+                  My Session Plans ({filteredPlans.length})
+                </h2>
+                {filteredPlans.length > itemsPerPage && (
+                  <p className="text-sm text-gray-600">
+                    Page {currentPage} of {Math.ceil(filteredPlans.length / itemsPerPage)}
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="p-5">
-              {filteredPlans.length === 0 ? (
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Loading session plans...
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Please wait while we fetch your data
+                  </p>
+                </div>
+              ) : paginatedPlans.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <div className="p-4 bg-gray-100 rounded-full mb-4">
                     <FileTextIcon className="h-12 w-12 text-gray-400" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {lessonPlans.length === 0
-                      ? "No session plans yet"
-                      : "No matching session plans"}
+                    {filteredPlans.length === 0 && lessonPlans.length === 0
+                      ? "No lesson plans yet"
+                      : filteredPlans.length === 0
+                      ? "No matching lesson plans"
+                      : `No plans on page ${currentPage}`}
                   </h3>
                   <p className="text-sm text-gray-500 max-w-sm">
-                    {lessonPlans.length === 0
-                      ? "Create your first session plan to get started with structured teaching"
-                      : "Try adjusting your search or filter criteria"}
+                    {filteredPlans.length === 0 && lessonPlans.length === 0
+                      ? "Create your first lesson plan to get started with structured teaching"
+                      : filteredPlans.length === 0
+                      ? "Try adjusting your search or filter criteria"
+                      : `Go to page 1 to see the first ${Math.min(itemsPerPage, filteredPlans.length)} plans`}
                   </p>
-                  {lessonPlans.length === 0 && (
+                  {filteredPlans.length === 0 && lessonPlans.length === 0 && (
                     <button
                       onClick={() => {
                         resetForm();
+                        const today = new Date().toISOString().split('T')[0];
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          academicYear: "2025-2026",
+                          sessionDate: today
+                        }));
                         setShowEditor(true);
                       }}
                       className="mt-6 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
                     >
                       <PlusCircleIcon className="h-5 w-5" />
-                      Create Your First Session Plan
+                      Create Your First Lesson Plan
+                    </button>
+                  )}
+                  {filteredPlans.length > 0 && paginatedPlans.length === 0 && (
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      className="mt-6 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+                    >
+                      Go to First Page
                     </button>
                   )}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
-                  {filteredPlans.map((plan) => (
+                  {paginatedPlans.map((plan) => (
                     <LessonPlanCard
                       key={plan.id}
                       plan={plan}
@@ -1110,6 +1983,17 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                 </div>
               )}
             </div>
+            
+            {/* Pagination */}
+            {filteredPlans.length > itemsPerPage && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={Math.ceil(filteredPlans.length / itemsPerPage)}
+                totalItems={filteredPlans.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+              />
+            )}
           </div>
         </>
       ) : (
@@ -1122,7 +2006,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                   {editingPlan ? "Edit Session Plan" : "Create New Session Plan"}
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Fill in all required fields for your teaching session
+                  {loadingEdit ? "Loading lesson plan data..." : "Fill in all required fields for your teaching session"}
                 </p>
               </div>
               <button
@@ -1131,6 +2015,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                   resetForm();
                 }}
                 className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                disabled={loadingEdit}
               >
                 <XMarkIcon className="h-5 w-5" />
               </button>
@@ -1138,6 +2023,21 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
           </div>
 
           <div className="p-6">
+            {loadingEdit && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-blue-900 mb-1">
+                      Loading Lesson Plan Data
+                    </h4>
+                    <p className="text-xs text-blue-700">
+                      Please wait while we populate the form with the lesson plan details...
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Info Banner */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
               <div className="flex items-start gap-3">
@@ -1198,7 +2098,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                       } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors`}
                     >
                       <option value="">Select Academic Year</option>
-                      {academicYears.map((year) => (
+                      {Array.isArray(academicYears) && academicYears.map((year) => (
                         <option key={year} value={year}>
                           {year}
                         </option>
@@ -1216,6 +2116,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                     <input
                       type="date"
                       value={formData.sessionDate}
+                      min={new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]} // Allow dates up to 30 days in the past
                       onChange={(e) =>
                         setFormData({ ...formData, sessionDate: e.target.value })
                       }
@@ -1243,17 +2144,15 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                     </label>
                     <select
                       value={formData.department}
-                      onChange={(e) =>
-                        setFormData({ ...formData, department: e.target.value })
-                      }
+                      onChange={(e) => handleFormDepartmentChange(e.target.value)}
                       className={`w-full px-4 py-2.5 rounded-lg border ${
                         errors.department ? "border-red-300" : "border-gray-300"
                       } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors`}
                     >
                       <option value="">Select Department</option>
-                      {departments.map((dept) => (
-                        <option key={dept} value={dept}>
-                          {dept}
+                      {Array.isArray(departments) && departments.map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {dept.name} ({dept.code})
                         </option>
                       ))}
                     </select>
@@ -1268,22 +2167,41 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                     </label>
                     <select
                       value={formData.program}
-                      onChange={(e) =>
-                        setFormData({ ...formData, program: e.target.value })
-                      }
+                      onChange={(e) => handleFormProgramChange(e.target.value)}
+                      disabled={!formData.department || loadingPrograms}
                       className={`w-full px-4 py-2.5 rounded-lg border ${
                         errors.program ? "border-red-300" : "border-gray-300"
-                      } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors`}
+                      } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
                     >
-                      <option value="">Select Program</option>
-                      {programs.map((program) => (
-                        <option key={program} value={program}>
-                          {program}
+                      <option value="">
+                        {!formData.department 
+                          ? "Select Department First" 
+                          : loadingPrograms 
+                          ? "Loading Programs..." 
+                          : formPrograms.length === 0
+                          ? "No Programs Available for this Department"
+                          : "Select Program"
+                        }
+                      </option>
+                      {Array.isArray(formPrograms) && formPrograms.map((program) => (
+                        <option key={program.id} value={program.id}>
+                          {program.name} ({program.code})
                         </option>
                       ))}
                     </select>
                     {errors.program && (
                       <p className="mt-1 text-xs text-red-600">{errors.program}</p>
+                    )}
+                    {loadingPrograms && (
+                      <div className="mt-2 flex items-center gap-2 text-sm text-blue-600">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        Loading programs...
+                      </div>
+                    )}
+                    {!loadingPrograms && formData.department && formPrograms.length === 0 && (
+                      <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
+                        No programs available for this department.
+                      </div>
                     )}
                   </div>
 
@@ -1293,22 +2211,34 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                     </label>
                     <select
                       value={formData.semester}
-                      onChange={(e) =>
-                        setFormData({ ...formData, semester: e.target.value })
-                      }
+                      onChange={(e) => handleFormSemesterChange(e.target.value)}
+                      disabled={!formData.program}
                       className={`w-full px-4 py-2.5 rounded-lg border ${
                         errors.semester ? "border-red-300" : "border-gray-300"
-                      } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors`}
+                      } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
                     >
-                      <option value="">Select Semester</option>
-                      {semesters.map((sem) => (
-                        <option key={sem} value={sem}>
-                          Semester {sem}
+                      <option value="">
+                        {!formData.program ? "Select Program First" : "Select Semester"}
+                      </option>
+                      {semesters.length === 0 && formData.program ? (
+                        <option value="" disabled>
+                          No semesters available for this program
                         </option>
-                      ))}
+                      ) : (
+                        Array.isArray(semesters) && semesters.map((sem) => (
+                          <option key={sem} value={sem}>
+                            Semester {sem}
+                          </option>
+                        ))
+                      )}
                     </select>
                     {errors.semester && (
                       <p className="mt-1 text-xs text-red-600">{errors.semester}</p>
+                    )}
+                    {formData.program && semesters.length === 0 && (
+                      <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
+                        No semesters available for this program.
+                      </div>
                     )}
                   </div>
 
@@ -1319,21 +2249,35 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                     <select
                       value={formData.course}
                       onChange={(e) =>
-                        setFormData({ ...formData, course: e.target.value })
+                        setFormData({ ...formData, course: e.target.value, unitId: "" })
                       }
+                      disabled={loadingCourses}
                       className={`w-full px-4 py-2.5 rounded-lg border ${
                         errors.course ? "border-red-300" : "border-gray-300"
-                      } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors`}
+                      } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
                     >
-                      <option value="">Select Course</option>
-                      {courses.map((course) => (
-                        <option key={course} value={course}>
-                          {course}
+                      <option value="">
+                        {loadingCourses ? "Loading Courses..." : "Select Course"}
+                      </option>
+                      {Array.isArray(formCourses) && formCourses.map((course) => (
+                        <option key={course.id} value={course.id}>
+                          {course.course_name} ({course.course_code})
                         </option>
                       ))}
                     </select>
                     {errors.course && (
                       <p className="mt-1 text-xs text-red-600">{errors.course}</p>
+                    )}
+                    {loadingCourses && (
+                      <div className="mt-2 flex items-center gap-2 text-sm text-blue-600">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        Loading courses...
+                      </div>
+                    )}
+                    {!loadingCourses && formCourses.length === 0 && formData.department && (
+                      <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
+                        No courses available for this selection.
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1344,6 +2288,12 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                 <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <BookOpenIcon className="h-4 w-4 text-green-600" />
                   Curriculum Link
+                  {loadingUnits && (
+                    <div className="flex items-center gap-2 text-sm text-blue-600">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      Loading curriculum...
+                    </div>
+                  )}
                 </h3>
                 <div className="space-y-4">
                   <div>
@@ -1352,16 +2302,23 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                     </label>
                     <select
                       value={formData.unitId}
-                      onChange={(e) => {
-                        setFormData({ ...formData, unitId: e.target.value });
-                        setSelectedLearningOutcomes([]);
-                      }}
+                      onChange={(e) => handleUnitChange(e.target.value)}
+                      disabled={!formData.course || !formData.program || !formData.academicYear || loadingUnits}
                       className={`w-full px-4 py-2.5 rounded-lg border ${
                         errors.unitId ? "border-red-300" : "border-gray-300"
-                      } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors`}
+                      } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
                     >
-                      <option value="">Choose a unit from curriculum</option>
-                      {availableUnits.map((unit) => (
+                      <option value="">
+                        {!formData.course || !formData.program || !formData.academicYear
+                          ? "Select Course, Program & Academic Year First"
+                          : loadingUnits
+                          ? "Loading Units..."
+                          : availableUnits.length === 0
+                          ? "No Units Available (Check Curriculum)"
+                          : "Choose a unit from curriculum"
+                        }
+                      </option>
+                      {Array.isArray(availableUnits) && availableUnits.map((unit) => (
                         <option key={unit.id} value={unit.id}>
                           {unit.name} {unit.credits && `(${unit.credits} credits)`}
                         </option>
@@ -1373,17 +2330,23 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                     {selectedUnit && (
                       <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                         <p className="text-xs font-medium text-green-800 mb-1">Selected Unit:</p>
+                        <p className="text-sm text-green-700 font-semibold">{selectedUnit.name}</p>
                         <p className="text-sm text-green-700">{selectedUnit.description}</p>
-                        {selectedUnit.estimatedDuration && (
+                        {selectedUnit.estimated_duration && (
                           <p className="text-xs text-green-600 mt-1">
-                            Duration: {selectedUnit.estimatedDuration} {selectedUnit.durationUnit}
+                            Duration: {selectedUnit.estimated_duration} {selectedUnit.duration_unit}
+                          </p>
+                        )}
+                        {selectedUnit.credits && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Credits: {selectedUnit.credits}
                           </p>
                         )}
                       </div>
                     )}
                   </div>
 
-                  {availableLearningOutcomes.length > 0 && (
+                  {Array.isArray(availableLearningOutcomes) && availableLearningOutcomes.length > 0 && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Learning Outcomes <span className="text-red-500">*</span>
@@ -1406,10 +2369,10 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                               className="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                             />
                             <div className="flex-1">
-                              <p className="text-sm text-gray-900">{outcome.outcome}</p>
-                              {outcome.bloomLevel && (
+                              <p className="text-sm text-gray-900">{outcome.outcome_text}</p>
+                              {outcome.bloom_level && (
                                 <p className="text-xs text-purple-600 mt-1">
-                                  Bloom's Level: {outcome.bloomLevel}
+                                  Bloom's Level: {outcome.bloom_level}
                                 </p>
                               )}
                             </div>
@@ -1419,6 +2382,14 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                       {errors.learningOutcomes && (
                         <p className="mt-1 text-xs text-red-600">{errors.learningOutcomes}</p>
                       )}
+                    </div>
+                  )}
+
+                  {formData.unitId && availableLearningOutcomes.length === 0 && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-700">
+                        No learning outcomes available for this unit.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -1482,7 +2453,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Materials Description <span className="text-red-500">*</span>
+                      Materials Description
                     </label>
                     <textarea
                       value={formData.requiredMaterials}
@@ -1490,15 +2461,198 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                         setFormData({ ...formData, requiredMaterials: e.target.value })
                       }
                       rows={3}
-                      className={`w-full px-4 py-2.5 rounded-lg border ${
-                        errors.requiredMaterials ? "border-red-300" : "border-gray-300"
-                      } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none`}
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none"
                       placeholder="List the materials, resources, or equipment needed for this session"
                     />
-                    {errors.requiredMaterials && (
-                      <p className="mt-1 text-xs text-red-600">{errors.requiredMaterials}</p>
+                  </div>
+
+                  {/* File Upload Section */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Upload Files (PDF, DOC, PPT, Images, Videos)
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.mov,.avi,.wmv,.mkv,.webm"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        id="file-upload"
+                        disabled={uploadingFiles}
+                      />
+                      <label
+                        htmlFor="file-upload"
+                        className={`cursor-pointer inline-flex flex-col items-center ${
+                          uploadingFiles ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mb-2" />
+                        <span className="text-sm font-medium text-gray-700">
+                          {uploadingFiles ? 'Uploading...' : 'Click to upload files'}
+                        </span>
+                        <span className="text-xs text-gray-500 mt-1">
+                          PDF, DOC, PPT, Images, Videos (Max 50MB each)
+                        </span>
+                      </label>
+                    </div>
+
+                    {/* Files Display */}
+                    {resourceFiles.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Files:</h4>
+                        <div className="space-y-2">
+                          {resourceFiles.map((file) => {
+                            const { icon: FileIcon, color } = getFileIcon(file.name);
+                            const isTemporary = !!file.tempFile;
+                            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(
+                              file.name.split('.').pop()?.toLowerCase() || ''
+                            );
+                            const isVideo = ['mp4', 'mov', 'avi', 'wmv', 'mkv', 'webm'].includes(
+                              file.name.split('.').pop()?.toLowerCase() || ''
+                            );
+                            
+                            return (
+                              <div
+                                key={file.id}
+                                className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                                  isTemporary 
+                                    ? 'bg-amber-50 border-amber-200 hover:border-amber-300' 
+                                    : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                                }`}
+                              >
+                                <FileIcon className={`h-5 w-5 ${color} flex-shrink-0`} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {file.name}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <p className="text-xs text-gray-500">
+                                      {formatFileSize(file.size)}
+                                    </p>
+                                    {isImage && (
+                                      <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
+                                        Image
+                                      </span>
+                                    )}
+                                    {isVideo && (
+                                      <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">
+                                        Video
+                                      </span>
+                                    )}
+                                    {isTemporary && (
+                                      <span className="text-xs text-amber-600 font-medium">
+                                        • Will upload when saved
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {file.url && !isTemporary && (
+                                    <div className="flex items-center gap-1">
+                                      <a
+                                        href={getDocumentUrl(file.url, 'inline')}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                                        title="View file"
+                                      >
+                                        <EyeIcon className="h-3 w-3" />
+                                        View
+                                      </a>
+                                      <a
+                                        href={getDocumentUrl(file.url, 'download')}
+                                        download={file.name}
+                                        className="flex items-center gap-1 px-2 py-1 text-xs text-green-600 hover:bg-green-100 rounded transition-colors"
+                                        title="Download file"
+                                      >
+                                        <ArrowUpTrayIcon className="h-3 w-3 rotate-180" />
+                                        Download
+                                      </a>
+                                    </div>
+                                  )}
+                                  {isTemporary && (
+                                    <span className="text-xs text-amber-600 italic">
+                                      Save to view
+                                    </span>
+                                  )}
+                                  <button
+                                    onClick={() => handleRemoveFile(file.id)}
+                                    className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
+                                    title="Remove file"
+                                  >
+                                    <TrashIcon className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     )}
                   </div>
+
+                  {/* Resource Links Section */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Resource Links (URLs)
+                    </label>
+                    <div className="space-y-2">
+                      {resourceLinks.map((link, index) => (
+                        <div key={link.id} className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={link.title}
+                            onChange={(e) => {
+                              const newLinks = [...resourceLinks];
+                              newLinks[index].title = e.target.value;
+                              setResourceLinks(newLinks);
+                            }}
+                            placeholder="Link title"
+                            className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                          />
+                          <input
+                            type="url"
+                            value={link.url}
+                            onChange={(e) => {
+                              const newLinks = [...resourceLinks];
+                              newLinks[index].url = e.target.value;
+                              setResourceLinks(newLinks);
+                            }}
+                            placeholder="https://example.com"
+                            className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                          />
+                          <button
+                            onClick={() => {
+                              setResourceLinks(resourceLinks.filter((_, i) => i !== index));
+                            }}
+                            className="p-2 text-red-600 hover:bg-red-100 rounded transition-colors"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => {
+                          setResourceLinks([
+                            ...resourceLinks,
+                            { id: Date.now().toString(), title: '', url: '' }
+                          ]);
+                        }}
+                        className="inline-flex items-center gap-2 px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                      >
+                        <PlusCircleIcon className="h-4 w-4" />
+                        Add Resource Link
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Validation Message */}
+                  {errors.requiredMaterials && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-600">{errors.requiredMaterials}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

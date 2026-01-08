@@ -33,15 +33,27 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
         return 'School'; // Default to School instead of Institution
     };
 
+    // Determine the roll number label based on student type
+    const getRollNumberLabel = () => {
+        if (studentInfo.rollNumberType === 'university') {
+            return 'University Roll No';
+        } else if (studentInfo.rollNumberType === 'institute') {
+            return 'Institute Roll No';
+        } else {
+            return 'School Roll No';
+        }
+    };
+
     const gradeCourseField = getGradeCourseField();
     const institutionLabel = getInstitutionLabel();
+    const rollNumberLabel = getRollNumberLabel();
 
     const infoItems = [
         { label: 'Student Name', value: studentInfo.name },
-        { label: 'Registration No.', value: studentInfo.regNo },
+        { label: rollNumberLabel, value: studentInfo.regNo },
         { label: 'Programme/Stream', value: studentInfo.stream || studentInfo.branchField || '—' },
         { label: gradeCourseField.label, value: gradeCourseField.value },
-        { label: institutionLabel, value: studentInfo.college, truncate: true },
+        { label: institutionLabel, value: studentInfo.college || studentInfo.school, truncate: true },
         { label: 'Assessment Date', value: new Date().toLocaleDateString() },
     ];
 

@@ -356,6 +356,153 @@ const RECOMMEND_CONFIG = {
   DEFAULT_LIMIT: 20
 };
 
+/**
+ * Generate embedding for a student internally (used by recommend-opportunities)
+ * Fetches student data, builds text, generates embedding via OpenRouter, and saves to DB
+ */
+async function generateStudentEmbeddingInternal(
+  supabase: SupabaseClient,
+  studentId: string,
+  env: Env
+): Promise<number[] | null> {
+  try {
+    // Fetch student with related data
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('id, name, branch_field, course_name, university')
+      .eq('id', studentId)
+      .single();
+
+    if (studentError || !student) {
+      console.error('Failed to fetch student for embedding:', studentError);
+      return null;
+    }
+
+    // Fetch skills
+    const { data: skills } = await supabase
+      .from('skills')
+      .select('name, level, type')
+      .eq('student_id', studentId)
+      .eq('enabled', true);
+
+    // Fetch course enrollments
+    const { data: courseEnrollments } = await supabase
+      .from('course_enrollments')
+      .select('course_title, status, skills_acquired')
+      .eq('student_id', studentId)
+      .in('status', ['completed', 'in_progress', 'active']);
+
+    // Fetch trainings
+    const { data: trainings } = await supabase
+      .from('trainings')
+      .select('title, organization, status')
+      .eq('student_id', studentId);
+
+    // Build embedding text
+    const parts: string[] = [];
+
+    if (student.name) parts.push(`Name: ${student.name}`);
+    if (student.branch_field) parts.push(`Field of Study: ${student.branch_field}`);
+    if (student.course_name) parts.push(`Course: ${student.course_name}`);
+    if (student.university) parts.push(`University: ${student.university}`);
+
+    // Add skills
+    if (skills && skills.length > 0) {
+      const skillNames = skills.map(s => s.name).filter(Boolean);
+      if (skillNames.length > 0) {
+        parts.push(`Technical Skills: ${skillNames.join(', ')}`);
+      }
+    }
+
+    // Add completed courses
+    if (courseEnrollments && courseEnrollments.length > 0) {
+      const completedCourses = courseEnrollments
+        .filter(c => c.status === 'completed')
+        .map(c => c.course_title)
+        .filter(Boolean);
+      if (completedCourses.length > 0) {
+        parts.push(`Completed Courses: ${completedCourses.join(', ')}`);
+      }
+
+      // Extract skills from courses
+      const acquiredSkills = courseEnrollments
+        .filter(c => c.status === 'completed' && c.skills_acquired?.length > 0)
+        .flatMap(c => c.skills_acquired)
+        .filter(Boolean);
+      if (acquiredSkills.length > 0) {
+        parts.push(`Skills from Courses: ${acquiredSkills.join(', ')}`);
+      }
+    }
+
+    // Add trainings
+    if (trainings && trainings.length > 0) {
+      const trainingNames = trainings.map(t => t.title).filter(Boolean);
+      if (trainingNames.length > 0) {
+        parts.push(`Training: ${trainingNames.join(', ')}`);
+      }
+    }
+
+    const text = parts.join('\n');
+    if (text.length < 10) {
+      console.log(`[AUTO-EMBED] Insufficient data for student ${studentId}`);
+      return null;
+    }
+
+    // Generate embedding via OpenRouter
+    const openRouterKey = getOpenRouterKey(env);
+    if (!openRouterKey) {
+      console.error('[AUTO-EMBED] OpenRouter API key not configured');
+      return null;
+    }
+
+    const embeddingResponse = await fetch('https://openrouter.ai/api/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openRouterKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://skillpassport.rareminds.in',
+        'X-Title': 'SkillPassport Auto-Embedding',
+      },
+      body: JSON.stringify({
+        model: 'openai/text-embedding-3-small',
+        input: text.slice(0, 8000),
+      }),
+    });
+
+    if (!embeddingResponse.ok) {
+      const errorText = await embeddingResponse.text();
+      console.error('[AUTO-EMBED] OpenRouter error:', embeddingResponse.status, errorText);
+      return null;
+    }
+
+    const data = await embeddingResponse.json() as { data: Array<{ embedding: number[] }> };
+    const embedding = data.data[0]?.embedding;
+
+    if (!embedding || !Array.isArray(embedding)) {
+      console.error('[AUTO-EMBED] Invalid embedding response');
+      return null;
+    }
+
+    // Save embedding to database
+    const { error: updateError } = await supabase
+      .from('students')
+      .update({ embedding })
+      .eq('id', studentId);
+
+    if (updateError) {
+      console.error('[AUTO-EMBED] Failed to save embedding:', updateError);
+      // Still return the embedding even if save failed
+    }
+
+    console.log(`[AUTO-EMBED] Generated ${embedding.length}-dim embedding for student ${studentId}`);
+    return embedding;
+
+  } catch (error) {
+    console.error('[AUTO-EMBED] Error:', error);
+    return null;
+  }
+}
+
 async function handleRecommendOpportunities(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
@@ -436,8 +583,21 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
     return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_profile');
   }
 
-  if (!student.embedding) {
-    return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_embedding');
+  // Auto-generate embedding if missing
+  let studentEmbedding = student.embedding;
+  if (!studentEmbedding) {
+    console.log(`[AUTO-EMBED] Student ${studentId} has no embedding - generating...`);
+    try {
+      studentEmbedding = await generateStudentEmbeddingInternal(supabase, studentId, env);
+      if (!studentEmbedding) {
+        console.log(`[AUTO-EMBED] Failed to generate embedding for student ${studentId}`);
+        return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'embedding_generation_failed');
+      }
+      console.log(`[AUTO-EMBED] Successfully generated embedding for student ${studentId}`);
+    } catch (embedError) {
+      console.error('[AUTO-EMBED ERROR]', embedError);
+      return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'embedding_generation_error');
+    }
   }
 
   // Get dismissed opportunities
@@ -451,7 +611,7 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
 
   // Run enhanced matching
   const { data: recommendations, error: matchError } = await supabase.rpc('match_opportunities_enhanced', {
-    query_embedding: student.embedding,
+    query_embedding: studentEmbedding,
     student_id_param: studentId,
     dismissed_ids: dismissedIds,
     match_threshold: RECOMMEND_CONFIG.MATCH_THRESHOLD,
@@ -681,34 +841,58 @@ const buildAnalysisPrompt = (assessmentData: any) => {
   const gradeLevel = assessmentData.gradeLevel || 'after12';
   const isAfter10 = gradeLevel === 'after10';
 
-  // After 10th specific stream recommendation section
+  // After 10th specific stream recommendation section - ONLY for after10 students
   const after10StreamSection = isAfter10 ? `
 ## AFTER 10TH STREAM RECOMMENDATION (MANDATORY FOR THIS STUDENT):
 This student is completing 10th grade and needs guidance on which 11th/12th stream to choose.
-Based on their assessment results, you MUST recommend the best stream from these options:
+Based on their ACTUAL assessment scores below, you MUST recommend the best stream.
+
+**Available Streams (Choose ONE as primary recommendation):**
 
 **Science Streams:**
-- PCMB (Physics, Chemistry, Maths, Biology) - For students interested in Medical/Engineering/Research
-- PCMS (Physics, Chemistry, Maths, Computer Science) - For students interested in Engineering/IT/Technology
-- PCM (Physics, Chemistry, Maths) - For students interested in Engineering/Pure Sciences
-- PCB (Physics, Chemistry, Biology) - For students interested in Medical/Life Sciences
+- PCMB (Physics, Chemistry, Maths, Biology) - Best for: High I (Investigative) + Strong Numerical + Interest in Biology/Medicine
+- PCMS (Physics, Chemistry, Maths, Computer Science) - Best for: High I + Strong Numerical + Strong Abstract/Logical + Interest in Technology
+- PCM (Physics, Chemistry, Maths) - Best for: High I + Strong Numerical + Strong Spatial/Mechanical
+- PCB (Physics, Chemistry, Biology) - Best for: High I + High S (Social) + Interest in Healthcare/Life Sciences
 
 **Commerce Stream:**
-- Commerce with Maths - For students interested in CA/Finance/Business Analytics
-- Commerce without Maths - For students interested in Business/Management/Accounting
+- Commerce with Maths - Best for: High E (Enterprising) + High C (Conventional) + Strong Numerical
+- Commerce without Maths - Best for: High E + High C + Strong Verbal + Moderate Numerical
 
 **Arts/Humanities Stream:**
-- Arts with Psychology - For students interested in Psychology/Counseling/HR
-- Arts with Economics - For students interested in Economics/Civil Services/Journalism
-- Arts General - For students interested in Literature/History/Languages/Law
+- Arts with Psychology - Best for: High S (Social) + High A (Artistic) + Interest in Human Behavior
+- Arts with Economics - Best for: High I + High E + Strong Verbal + Interest in Society/Policy
+- Arts General - Best for: High A (Artistic) + Strong Verbal + Creative Interests
 
-STREAM RECOMMENDATION RULES:
-1. If RIASEC shows high I (Investigative) + high numerical aptitude → Recommend Science (PCMB/PCMS/PCM)
-2. If RIASEC shows high I + high verbal + interest in biology → Recommend Science (PCB/PCMB)
-3. If RIASEC shows high E (Enterprising) + C (Conventional) + numerical aptitude → Recommend Commerce
-4. If RIASEC shows high A (Artistic) + S (Social) + verbal aptitude → Recommend Arts
-5. If high spatial/mechanical aptitude → Recommend PCM or PCMS
-6. If high clerical + conventional → Recommend Commerce
+## SCORING-BASED RECOMMENDATION ALGORITHM (FOLLOW EXACTLY):
+
+**Step 1: Analyze RIASEC Scores**
+- Calculate which RIASEC types have scores >= 60%
+- Identify top 2-3 dominant types
+
+**Step 2: Analyze Aptitude Scores**
+- Numerical >= 70%: Strong fit for Science/Commerce with Maths
+- Verbal >= 70%: Strong fit for Arts/Commerce
+- Abstract/Logical >= 70%: Strong fit for Science (especially PCMS)
+- Spatial >= 70%: Strong fit for Engineering (PCM/PCMS)
+- Clerical >= 70%: Strong fit for Commerce
+
+**Step 3: Match Pattern to Stream**
+| Pattern | Recommended Stream |
+|---------|-------------------|
+| High I + High Numerical + High Abstract | PCMS or PCM |
+| High I + High Numerical + Biology Interest | PCMB or PCB |
+| High I + High S + Biology Interest | PCB |
+| High E + High C + High Numerical | Commerce with Maths |
+| High E + High C + High Verbal | Commerce without Maths |
+| High A + High S + High Verbal | Arts |
+| High I + High E + High Verbal | Arts with Economics |
+
+**Step 4: Determine Confidence**
+- High Fit: Pattern matches clearly (2+ indicators align)
+- Medium Fit: Pattern partially matches (1-2 indicators align)
+
+IMPORTANT: Base your recommendation on the ACTUAL scores provided, not assumptions!
 ` : '';
 
   return `You are a career counselor and psychometric assessment expert. Analyze the following student assessment data and provide comprehensive results.
@@ -997,17 +1181,25 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
   },
   "streamRecommendation": {
     "isAfter10": ${assessmentData.gradeLevel === 'after10'},
-    "recommendedStream": "<PCMB/PCMS/PCM/PCB/Commerce/Arts - ONLY for after10 students>",
-    "streamFit": "<High/Medium - confidence level>",
+    "recommendedStream": "<REQUIRED: PCMB/PCMS/PCM/PCB/Commerce with Maths/Commerce without Maths/Arts with Psychology/Arts with Economics/Arts General - MUST be filled for after10 students>",
+    "streamFit": "<High/Medium>",
+    "confidenceScore": "<75-100 for High, 50-74 for Medium>",
     "reasoning": {
-      "interests": "<Why this stream matches their RIASEC interests>",
-      "aptitude": "<Why this stream matches their aptitude strengths>",
-      "personality": "<Why this stream suits their personality>"
+      "interests": "<REQUIRED: Specific RIASEC scores that support this recommendation>",
+      "aptitude": "<REQUIRED: Specific aptitude scores that support this recommendation>",
+      "personality": "<How Big Five traits support this>"
+    },
+    "scoreBasedAnalysis": {
+      "riasecTop3": ["<Top RIASEC type 1>", "<Type 2>", "<Type 3>"],
+      "strongAptitudes": ["<Aptitude 1 with score>", "<Aptitude 2 with score>"],
+      "matchingPattern": "<Which pattern from the algorithm matched>"
     },
     "alternativeStream": "<Second best stream option>",
-    "alternativeReason": "<Why this could also work>",
-    "subjectsToFocus": ["<Subject 1>", "<Subject 2>", "<Subject 3>"],
-    "careerPathsAfter12": ["<Career 1 after completing 12th in this stream>", "<Career 2>", "<Career 3>"]
+    "alternativeReason": "<Why this could also work based on scores>",
+    "subjectsToFocus": ["<Core subject 1>", "<Core subject 2>", "<Core subject 3>", "<Optional subject if applicable>"],
+    "careerPathsAfter12": ["<Career 1>", "<Career 2>", "<Career 3>", "<Career 4>", "<Career 5>"],
+    "entranceExams": ["<Relevant entrance exam 1>", "<Exam 2>"],
+    "collegeTypes": ["<Type of colleges to target>"]
   },
   "roadmap": {
     "projects": [
@@ -1070,6 +1262,15 @@ CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL OF THESE:
   * Highest RIASEC score determines primary career cluster
   * Second highest determines secondary cluster
   * Third highest determines exploratory cluster
+
+## STREAM RECOMMENDATION - MANDATORY FOR AFTER 10TH STUDENTS:
+${assessmentData.gradeLevel === 'after10' ? `
+**THIS STUDENT IS AFTER 10TH - YOU MUST INCLUDE streamRecommendation!**
+- The "streamRecommendation" field is ABSOLUTELY REQUIRED in your response
+- You MUST recommend one of: PCMB, PCMS, PCM, PCB, Commerce with Maths, Commerce without Maths, Arts with Psychology, Arts with Economics, Arts General
+- Base your recommendation on the RIASEC scores and aptitude scores provided
+- DO NOT skip or omit the streamRecommendation field - it is the MOST IMPORTANT part of this report!
+` : '- streamRecommendation is optional for after12 students'}
 
 ## APTITUDE STRENGTHS - INTERPRETATION RULES (MANDATORY):
 - aptitudeStrengths should reflect the student's TOP 2 demonstrated strengths based on ALL assessment data
@@ -1226,7 +1427,8 @@ async function handleAnalyzeAssessment(request: Request, env: Env): Promise<Resp
 
   const prompt = buildAnalysisPrompt(assessmentData);
 
-  try {
+  // Helper function to call AI with a specific model
+  const callAI = async (model: string) => {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -1236,11 +1438,11 @@ async function handleAnalyzeAssessment(request: Request, env: Env): Promise<Resp
         'X-Title': 'Assessment Analyzer'
       },
       body: JSON.stringify({
-        model: 'openai/gpt-4o-mini',
+        model: model,
         messages: [
           {
             role: 'system',
-            content: 'You are an expert career counselor and psychometric analyst. You provide detailed, deterministic, and consistent career analysis based on assessment data.'
+            content: 'You are an expert career counselor and psychometric analyst. You provide detailed, deterministic, and consistent career analysis based on assessment data. CRITICAL: Always return complete, valid JSON. Never truncate your response. Ensure all arrays and objects are properly closed.'
           },
           {
             role: 'user',
@@ -1248,29 +1450,40 @@ async function handleAnalyzeAssessment(request: Request, env: Env): Promise<Resp
           }
         ],
         temperature: 0.1,
-        max_tokens: 2000  // Reduced to fit within credit limits
+        max_tokens: 8000
       })
     });
+    return response;
+  };
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[ASSESSMENT AI ERROR]', response.status, errorText);
-      // Parse error for better message
-      let errorMessage = `AI service error: ${response.status}`;
+  // Try models in order of preference
+  const models = ['anthropic/claude-3.5-sonnet', 'openai/gpt-4o-mini', 'openai/gpt-4o'];
+  
+  try {
+    let response: Response | null = null;
+    let lastError = '';
+    
+    for (const model of models) {
+      console.log(`[ASSESSMENT] Trying model: ${model}`);
       try {
-        const errorJson = JSON.parse(errorText);
-        if (errorJson.error?.message) {
-          errorMessage = errorJson.error.message;
-        } else if (errorJson.error?.code) {
-          errorMessage = `${errorJson.error.code}: ${response.status}`;
+        response = await callAI(model);
+        if (response.ok) {
+          console.log(`[ASSESSMENT] Success with model: ${model}`);
+          break;
         }
-      } catch {
-        // Use raw error text if not JSON
-        if (response.status === 402) {
-          errorMessage = 'OpenRouter API credits exhausted. Please add funds at https://openrouter.ai/credits';
-        }
+        const errorText = await response.text();
+        lastError = errorText;
+        console.error(`[ASSESSMENT] Model ${model} failed:`, response.status, errorText);
+        response = null;
+      } catch (e) {
+        console.error(`[ASSESSMENT] Model ${model} error:`, e);
+        lastError = (e as Error).message;
       }
-      return jsonResponse({ error: `AI service error: ${errorMessage}` }, 500);
+    }
+
+    if (!response || !response.ok) {
+      console.error('[ASSESSMENT AI ERROR] All models failed');
+      return jsonResponse({ error: `AI service error: ${lastError}` }, 500);
     }
 
     const data = await response.json() as any;
@@ -1280,21 +1493,72 @@ async function handleAnalyzeAssessment(request: Request, env: Env): Promise<Resp
       return jsonResponse({ error: 'Empty response from AI' }, 500);
     }
 
-    // Clean up response
-    const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || content.match(/\{[\s\S]*\}/);
+    // Clean up response - try multiple extraction methods
+    let jsonStr = content;
+    
+    // Method 1: Extract from markdown code block
+    const codeBlockMatch = content.match(/```(?:json)?\n?([\s\S]*?)\n?```/);
+    if (codeBlockMatch) {
+      jsonStr = codeBlockMatch[1].trim();
+    } else {
+      // Method 2: Find the outermost JSON object
+      const firstBrace = content.indexOf('{');
+      const lastBrace = content.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        jsonStr = content.substring(firstBrace, lastBrace + 1);
+      }
+    }
 
-    if (!jsonMatch) {
+    if (!jsonStr || (!jsonStr.startsWith('{') && !jsonStr.startsWith('['))) {
+      console.error('Could not extract JSON from response:', content.substring(0, 500));
       return jsonResponse({ error: 'Invalid response format from AI' }, 500);
     }
 
-    const jsonStr = jsonMatch[1] || jsonMatch[0];
     let parsedResults;
 
     try {
       parsedResults = JSON.parse(jsonStr);
     } catch (e) {
       console.error('JSON Parse Error:', e);
-      return jsonResponse({ error: 'Failed to parse AI response' }, 500);
+      console.error('Raw content length:', content.length);
+      console.error('Extracted JSON length:', jsonStr.length);
+      console.error('First 500 chars of extracted JSON:', jsonStr.substring(0, 500));
+      console.error('Last 500 chars of extracted JSON:', jsonStr.substring(jsonStr.length - 500));
+      
+      // Try to fix common JSON issues
+      let fixedJson = jsonStr;
+      
+      // Fix 1: Remove trailing commas before closing brackets
+      fixedJson = fixedJson.replace(/,(\s*[}\]])/g, '$1');
+      
+      // Fix 2: Handle truncated response - try to close open brackets
+      const openBraces = (fixedJson.match(/{/g) || []).length;
+      const closeBraces = (fixedJson.match(/}/g) || []).length;
+      const openBrackets = (fixedJson.match(/\[/g) || []).length;
+      const closeBrackets = (fixedJson.match(/]/g) || []).length;
+      
+      // If response appears truncated, try to close it
+      if (openBraces > closeBraces || openBrackets > closeBrackets) {
+        console.log('Attempting to fix truncated JSON...');
+        // Add missing closing brackets
+        for (let i = 0; i < openBrackets - closeBrackets; i++) {
+          fixedJson += ']';
+        }
+        for (let i = 0; i < openBraces - closeBraces; i++) {
+          fixedJson += '}';
+        }
+      }
+      
+      try {
+        parsedResults = JSON.parse(fixedJson);
+        console.log('Successfully parsed after fixing JSON');
+      } catch (e2) {
+        console.error('Still failed after fix attempt:', e2);
+        return jsonResponse({ 
+          error: 'Failed to parse AI response. Please try again.',
+          details: 'The AI response was incomplete or malformed. This can happen with complex assessments.'
+        }, 500);
+      }
     }
 
     return jsonResponse({ success: true, data: parsedResults });
