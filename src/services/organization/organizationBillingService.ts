@@ -337,7 +337,6 @@ export class OrganizationBillingService {
 
       // 2. Get organization subscription details if applicable
       let lineItems: InvoiceLineItem[] = [];
-      let subscriptionDetails = null;
 
       if (transaction.organization_id) {
         const { data: orgSub } = await supabase
@@ -350,8 +349,6 @@ export class OrganizationBillingService {
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
-
-        subscriptionDetails = orgSub;
 
         if (orgSub) {
           const baseAmount = parseFloat(orgSub.total_amount);
@@ -393,7 +390,7 @@ export class OrganizationBillingService {
       }
 
       // 3. Generate invoice number
-      const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).slice(2, 11).toUpperCase()}`;
 
       // 4. Calculate totals
       const amount = parseFloat(transaction.amount);
@@ -495,6 +492,41 @@ export class OrganizationBillingService {
       return invoices;
     } catch (error) {
       console.error('Error fetching invoice history:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Download invoice as PDF
+   * Calls the backend API to generate and return a PDF blob
+   */
+  async downloadInvoice(invoiceId: string): Promise<Blob> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev'}/org-billing/invoice/${invoiceId}/download`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to download invoice: ${response.status}`);
+      }
+
+      // Return the PDF blob
+      return await response.blob();
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
       throw error;
     }
   }

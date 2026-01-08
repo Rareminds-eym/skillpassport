@@ -69,7 +69,9 @@ import {
     handleCalculateOrgPricing,
     handleCalculateSeatAdditionCost,
     handleCancelInvitation,
+    handleConfigureAutoAssignment,
     handleCreateLicensePool,
+    handleDownloadInvoice,
     // Billing handlers
     handleGetBillingDashboard,
     handleGetCostProjection,
@@ -83,7 +85,9 @@ import {
     handleInviteMember,
     handlePurchaseOrgSubscription,
     handleResendInvitation,
+    handleTransferLicense,
     handleUnassignLicense,
+    handleUpdatePoolAllocation,
     handleUpdateSeatCount
 } from './handlers/organization';
 import { handleGetSubscriptionFeatures, handleGetSubscriptionPlan, handleGetSubscriptionPlans } from './handlers/plans';
@@ -2270,6 +2274,14 @@ export default {
           }
           break;
         
+        case '/license-assignments/transfer':
+          if (request.method === 'POST') {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            return await handleTransferLicense(request, env, auth.supabase, auth.user.id);
+          }
+          break;
+        
         // Organization Billing endpoints
         case '/org-billing/dashboard':
           if (request.method === 'GET') {
@@ -2396,11 +2408,15 @@ export default {
               'GET  /license-pools',
               'POST /license-assignments',
               'POST /license-assignments/bulk',
+              'POST /license-assignments/transfer',
               'DELETE /license-assignments/:id',
               'GET  /license-assignments/user/:userId',
+              'PUT  /license-pools/:id/allocation',
+              'POST /license-pools/:id/auto-assignment',
               // Organization Billing endpoints
               'GET  /org-billing/dashboard',
               'GET  /org-billing/invoices',
+              'GET  /org-billing/invoice/:id/download',
               'GET  /org-billing/cost-projection',
               'POST /org-billing/calculate-seat-addition',
               // Organization Invitation endpoints
@@ -2610,6 +2626,48 @@ export default {
               if (request.method === 'DELETE') {
                 return await handleCancelInvitation(request, env, auth.supabase, auth.user.id, invitationId);
               }
+            }
+          }
+          
+          // Handle dynamic routes for license pool endpoints
+          if (path.startsWith('/license-pools/') && path.includes('/allocation')) {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            
+            const parts = path.split('/');
+            const poolId = parts[2];
+            
+            // PUT /license-pools/:id/allocation
+            if (request.method === 'PUT' && poolId) {
+              return await handleUpdatePoolAllocation(request, env, auth.supabase, auth.user.id, poolId);
+            }
+          }
+          
+          // Handle dynamic routes for license pool auto-assignment
+          if (path.startsWith('/license-pools/') && path.includes('/auto-assignment')) {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            
+            const parts = path.split('/');
+            const poolId = parts[2];
+            
+            // POST /license-pools/:id/auto-assignment
+            if (request.method === 'POST' && poolId) {
+              return await handleConfigureAutoAssignment(request, env, auth.supabase, auth.user.id, poolId);
+            }
+          }
+          
+          // Handle dynamic routes for invoice download
+          if (path.startsWith('/org-billing/invoice/') && path.includes('/download')) {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            
+            const parts = path.split('/');
+            const invoiceId = parts[3];
+            
+            // GET /org-billing/invoice/:id/download
+            if (request.method === 'GET' && invoiceId) {
+              return await handleDownloadInvoice(request, env, auth.supabase, auth.user.id, invoiceId);
             }
           }
           

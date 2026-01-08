@@ -12,6 +12,158 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import type { Env } from '../index';
 
 // ============================================================================
+// Rate Limiting
+// ============================================================================
+
+interface RateLimitConfig {
+  maxRequests: number;      // Maximum requests allowed
+  windowMs: number;         // Time window in milliseconds
+  maxBatchSize?: number;    // Maximum items per batch (for bulk operations)
+}
+
+const RATE_LIMITS: Record<string, RateLimitConfig> = {
+  bulkAssignLicenses: { maxRequests: 10, windowMs: 60000, maxBatchSize: 100 },
+  bulkInviteMembers: { maxRequests: 5, windowMs: 60000, maxBatchSize: 50 },
+  purchaseSubscription: { maxRequests: 5, windowMs: 60000 },
+};
+
+// In-memory rate limit store (resets on worker restart)
+// For production, consider using Cloudflare KV or Durable Objects
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+/**
+ * Check rate limit for a user/operation combination
+ * Returns true if request is allowed, false if rate limited
+ */
+function checkRateLimit(userId: string, operation: string): { allowed: boolean; retryAfter?: number } {
+  const config = RATE_LIMITS[operation];
+  if (!config) return { allowed: true };
+
+  const key = `${userId}:${operation}`;
+  const now = Date.now();
+  const entry = rateLimitStore.get(key);
+
+  if (!entry || now > entry.resetTime) {
+    // First request or window expired - reset counter
+    rateLimitStore.set(key, { count: 1, resetTime: now + config.windowMs });
+    return { allowed: true };
+  }
+
+  if (entry.count >= config.maxRequests) {
+    // Rate limit exceeded
+    const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
+    return { allowed: false, retryAfter };
+  }
+
+  // Increment counter
+  entry.count++;
+  return { allowed: true };
+}
+
+/**
+ * Validate batch size for bulk operations
+ */
+function validateBatchSize(operation: string, batchSize: number): { valid: boolean; maxSize?: number } {
+  const config = RATE_LIMITS[operation];
+  if (!config?.maxBatchSize) return { valid: true };
+
+  if (batchSize > config.maxBatchSize) {
+    return { valid: false, maxSize: config.maxBatchSize };
+  }
+  return { valid: true };
+}
+
+/**
+ * Create rate limit error response
+ */
+function rateLimitResponse(retryAfter: number): Response {
+  return new Response(
+    JSON.stringify({ 
+      error: 'Rate limit exceeded. Please try again later.',
+      retryAfter 
+    }),
+    { 
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'Retry-After': String(retryAfter)
+      }
+    }
+  );
+}
+
+/**
+ * Create batch size error response
+ */
+function batchSizeResponse(maxSize: number): Response {
+  return new Response(
+    JSON.stringify({ 
+      error: `Batch size exceeds maximum allowed (${maxSize}). Please split your request.`,
+      maxBatchSize: maxSize
+    }),
+    { status: 400 }
+  );
+}
+
+// ============================================================================
+// Validation Helpers
+// ============================================================================
+
+const VALID_ORGANIZATION_TYPES = ['school', 'college', 'university'] as const;
+const VALID_MEMBER_TYPES = ['educator', 'student', 'both'] as const;
+const VALID_BILLING_CYCLES = ['monthly', 'annual'] as const;
+
+/**
+ * Validate email format
+ */
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+/**
+ * Validate organization type
+ */
+function isValidOrganizationType(type: string): type is 'school' | 'college' | 'university' {
+  return VALID_ORGANIZATION_TYPES.includes(type as any);
+}
+
+/**
+ * Validate member type
+ */
+function isValidMemberType(type: string): type is 'educator' | 'student' | 'both' {
+  return VALID_MEMBER_TYPES.includes(type as any);
+}
+
+/**
+ * Validate billing cycle
+ */
+function isValidBillingCycle(cycle: string): cycle is 'monthly' | 'annual' {
+  return VALID_BILLING_CYCLES.includes(cycle as any);
+}
+
+/**
+ * Validate UUID format
+ */
+function isValidUUID(id: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+}
+
+/**
+ * Create validation error response
+ */
+function validationErrorResponse(errors: string[]): Response {
+  return new Response(
+    JSON.stringify({ 
+      error: 'Validation failed',
+      details: errors
+    }),
+    { status: 400 }
+  );
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -122,6 +274,7 @@ export async function handleCalculateOrgPricing(
 /**
  * POST /org-subscriptions/purchase
  * Purchase organization subscription with Razorpay integration
+ * Rate limited: 5 requests per minute
  */
 export async function handlePurchaseOrgSubscription(
   request: Request,
@@ -130,12 +283,44 @@ export async function handlePurchaseOrgSubscription(
   userId: string
 ): Promise<Response> {
   try {
+    // Check rate limit
+    const rateCheck = checkRateLimit(userId, 'purchaseSubscription');
+    if (!rateCheck.allowed) {
+      return rateLimitResponse(rateCheck.retryAfter!);
+    }
+
     const body = await request.json() as OrganizationSubscriptionRequest;
     const { organizationId, organizationType, planId, seatCount, targetMemberType, billingCycle, autoRenew } = body;
 
     // Validate required fields
     if (!organizationId || !organizationType || !planId || !seatCount || !targetMemberType || !billingCycle) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
+    }
+
+    // Validate field formats and values
+    const validationErrors: string[] = [];
+    
+    if (!isValidUUID(organizationId)) {
+      validationErrors.push('Invalid organizationId format');
+    }
+    if (!isValidOrganizationType(organizationType)) {
+      validationErrors.push(`Invalid organizationType. Must be one of: ${VALID_ORGANIZATION_TYPES.join(', ')}`);
+    }
+    if (!isValidUUID(planId)) {
+      validationErrors.push('Invalid planId format');
+    }
+    if (typeof seatCount !== 'number' || seatCount < 1 || seatCount > 10000) {
+      validationErrors.push('seatCount must be a number between 1 and 10000');
+    }
+    if (!isValidMemberType(targetMemberType)) {
+      validationErrors.push(`Invalid targetMemberType. Must be one of: ${VALID_MEMBER_TYPES.join(', ')}`);
+    }
+    if (!isValidBillingCycle(billingCycle)) {
+      validationErrors.push(`Invalid billingCycle. Must be one of: ${VALID_BILLING_CYCLES.join(', ')}`);
+    }
+
+    if (validationErrors.length > 0) {
+      return validationErrorResponse(validationErrors);
     }
 
     // Get plan details
@@ -324,6 +509,32 @@ export async function handleCreateLicensePool(
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
     }
 
+    // Validate field formats and values
+    const validationErrors: string[] = [];
+    
+    if (!isValidUUID(organizationSubscriptionId)) {
+      validationErrors.push('Invalid organizationSubscriptionId format');
+    }
+    if (!isValidUUID(organizationId)) {
+      validationErrors.push('Invalid organizationId format');
+    }
+    if (!isValidOrganizationType(organizationType)) {
+      validationErrors.push(`Invalid organizationType. Must be one of: ${VALID_ORGANIZATION_TYPES.join(', ')}`);
+    }
+    if (!poolName.trim() || poolName.length > 100) {
+      validationErrors.push('Pool name must be between 1 and 100 characters');
+    }
+    if (memberType !== 'educator' && memberType !== 'student') {
+      validationErrors.push('Invalid memberType. Must be educator or student');
+    }
+    if (typeof allocatedSeats !== 'number' || allocatedSeats < 1 || allocatedSeats > 10000) {
+      validationErrors.push('allocatedSeats must be a number between 1 and 10000');
+    }
+
+    if (validationErrors.length > 0) {
+      return validationErrorResponse(validationErrors);
+    }
+
     // Validate subscription has enough available seats
     const { data: subscription, error: subError } = await supabase
       .from('organization_subscriptions')
@@ -428,6 +639,18 @@ export async function handleAssignLicense(
       return new Response(JSON.stringify({ error: 'Missing poolId or userId' }), { status: 400 });
     }
 
+    // Validate UUID formats
+    const validationErrors: string[] = [];
+    if (!isValidUUID(poolId)) {
+      validationErrors.push('Invalid poolId format');
+    }
+    if (!isValidUUID(targetUserId)) {
+      validationErrors.push('Invalid userId format');
+    }
+    if (validationErrors.length > 0) {
+      return validationErrorResponse(validationErrors);
+    }
+
     // Get pool details
     const { data: pool, error: poolError } = await supabase
       .from('license_pools')
@@ -486,6 +709,7 @@ export async function handleAssignLicense(
 /**
  * POST /license-assignments/bulk
  * Bulk assign licenses to multiple users
+ * Rate limited: 10 requests per minute, max 100 users per batch
  */
 export async function handleBulkAssignLicenses(
   request: Request,
@@ -494,11 +718,36 @@ export async function handleBulkAssignLicenses(
   userId: string
 ): Promise<Response> {
   try {
+    // Check rate limit
+    const rateCheck = checkRateLimit(userId, 'bulkAssignLicenses');
+    if (!rateCheck.allowed) {
+      return rateLimitResponse(rateCheck.retryAfter!);
+    }
+
     const body = await request.json() as BulkAssignmentRequest;
     const { poolId, userIds } = body;
 
     if (!poolId || !userIds || !Array.isArray(userIds) || userIds.length === 0) {
       return new Response(JSON.stringify({ error: 'Invalid poolId or userIds' }), { status: 400 });
+    }
+
+    // Validate UUID formats
+    const validationErrors: string[] = [];
+    if (!isValidUUID(poolId)) {
+      validationErrors.push('Invalid poolId format');
+    }
+    const invalidUserIds = userIds.filter(id => !isValidUUID(id));
+    if (invalidUserIds.length > 0) {
+      validationErrors.push(`Invalid userId format for: ${invalidUserIds.slice(0, 5).join(', ')}${invalidUserIds.length > 5 ? '...' : ''}`);
+    }
+    if (validationErrors.length > 0) {
+      return validationErrorResponse(validationErrors);
+    }
+
+    // Validate batch size
+    const batchCheck = validateBatchSize('bulkAssignLicenses', userIds.length);
+    if (!batchCheck.valid) {
+      return batchSizeResponse(batchCheck.maxSize!);
     }
 
     const successful: any[] = [];
@@ -1039,6 +1288,32 @@ export async function handleInviteMember(
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
     }
 
+    // Validate field formats and values
+    const validationErrors: string[] = [];
+    
+    if (!isValidUUID(organizationId)) {
+      validationErrors.push('Invalid organizationId format');
+    }
+    if (!isValidOrganizationType(organizationType)) {
+      validationErrors.push(`Invalid organizationType. Must be one of: ${VALID_ORGANIZATION_TYPES.join(', ')}`);
+    }
+    if (!isValidEmail(email)) {
+      validationErrors.push('Invalid email format');
+    }
+    if (!isValidMemberType(memberType)) {
+      validationErrors.push(`Invalid memberType. Must be one of: educator, student`);
+    }
+    if (licensePoolId && !isValidUUID(licensePoolId)) {
+      validationErrors.push('Invalid licensePoolId format');
+    }
+    if (invitationMessage && invitationMessage.length > 1000) {
+      validationErrors.push('Invitation message must be 1000 characters or less');
+    }
+
+    if (validationErrors.length > 0) {
+      return validationErrorResponse(validationErrors);
+    }
+
     // Check if invitation already exists
     const { data: existing } = await supabase
       .from('organization_invitations')
@@ -1093,6 +1368,7 @@ export async function handleInviteMember(
 /**
  * POST /org-invitations/bulk
  * Bulk invite members to the organization
+ * Rate limited: 5 requests per minute, max 50 invitations per batch
  */
 export async function handleBulkInviteMembers(
   request: Request,
@@ -1101,6 +1377,12 @@ export async function handleBulkInviteMembers(
   userId: string
 ): Promise<Response> {
   try {
+    // Check rate limit
+    const rateCheck = checkRateLimit(userId, 'bulkInviteMembers');
+    if (!rateCheck.allowed) {
+      return rateLimitResponse(rateCheck.retryAfter!);
+    }
+
     const body = await request.json() as {
       invitations: Array<{
         organizationId: string;
@@ -1116,6 +1398,12 @@ export async function handleBulkInviteMembers(
 
     if (!invitations || !Array.isArray(invitations) || invitations.length === 0) {
       return new Response(JSON.stringify({ error: 'Invalid invitations array' }), { status: 400 });
+    }
+
+    // Validate batch size
+    const batchCheck = validateBatchSize('bulkInviteMembers', invitations.length);
+    if (!batchCheck.valid) {
+      return batchSizeResponse(batchCheck.maxSize!);
     }
 
     const successful: any[] = [];
@@ -1479,5 +1767,337 @@ export async function handleGetInvitationStats(
   } catch (error) {
     console.error('Error fetching invitation stats:', error);
     return new Response(JSON.stringify({ error: 'Failed to fetch invitation stats' }), { status: 500 });
+  }
+}
+
+
+// ============================================================================
+// Additional License Management Endpoints
+// ============================================================================
+
+/**
+ * PUT /license-pools/:id/allocation
+ * Update seat allocation for a license pool
+ */
+export async function handleUpdatePoolAllocation(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string,
+  poolId: string
+): Promise<Response> {
+  try {
+    const body = await request.json() as { newAllocation: number };
+    const { newAllocation } = body;
+
+    if (!newAllocation || newAllocation < 1) {
+      return new Response(JSON.stringify({ error: 'Invalid allocation amount' }), { status: 400 });
+    }
+
+    // Get current pool
+    const { data: pool, error: poolError } = await supabase
+      .from('license_pools')
+      .select('*, organization_subscriptions(total_seats, assigned_seats)')
+      .eq('id', poolId)
+      .single();
+
+    if (poolError || !pool) {
+      return new Response(JSON.stringify({ error: 'Pool not found' }), { status: 404 });
+    }
+
+    // Validate new allocation doesn't exceed assigned seats
+    if (newAllocation < pool.assigned_seats) {
+      return new Response(
+        JSON.stringify({ error: `Cannot reduce allocation below assigned seats (${pool.assigned_seats})` }),
+        { status: 400 }
+      );
+    }
+
+    // Validate total allocation across all pools doesn't exceed subscription seats
+    const { data: allPools } = await supabase
+      .from('license_pools')
+      .select('allocated_seats')
+      .eq('organization_subscription_id', pool.organization_subscription_id)
+      .neq('id', poolId);
+
+    const otherPoolsAllocation = (allPools || []).reduce((sum: number, p: any) => sum + p.allocated_seats, 0);
+    const totalAllocation = otherPoolsAllocation + newAllocation;
+    const subscriptionSeats = pool.organization_subscriptions?.total_seats || 0;
+
+    if (totalAllocation > subscriptionSeats) {
+      return new Response(
+        JSON.stringify({ 
+          error: `Total allocation (${totalAllocation}) exceeds subscription seats (${subscriptionSeats})` 
+        }),
+        { status: 400 }
+      );
+    }
+
+    // Update pool allocation
+    const { data: updated, error: updateError } = await supabase
+      .from('license_pools')
+      .update({
+        allocated_seats: newAllocation,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', poolId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Error updating pool allocation:', updateError);
+      return new Response(JSON.stringify({ error: 'Failed to update pool allocation' }), { status: 500 });
+    }
+
+    return new Response(JSON.stringify({ success: true, pool: updated }), { status: 200 });
+  } catch (error) {
+    console.error('Error updating pool allocation:', error);
+    return new Response(JSON.stringify({ error: 'Failed to update pool allocation' }), { status: 500 });
+  }
+}
+
+/**
+ * POST /license-assignments/transfer
+ * Transfer a license from one user to another
+ */
+export async function handleTransferLicense(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Response> {
+  try {
+    const body = await request.json() as { 
+      fromUserId: string; 
+      toUserId: string; 
+      organizationSubscriptionId: string;
+      reason?: string;
+    };
+    const { fromUserId, toUserId, organizationSubscriptionId, reason } = body;
+
+    // Validate required fields
+    if (!fromUserId || !toUserId || !organizationSubscriptionId) {
+      return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
+    }
+
+    // Validate UUID formats
+    const validationErrors: string[] = [];
+    if (!isValidUUID(fromUserId)) validationErrors.push('Invalid fromUserId format');
+    if (!isValidUUID(toUserId)) validationErrors.push('Invalid toUserId format');
+    if (!isValidUUID(organizationSubscriptionId)) validationErrors.push('Invalid organizationSubscriptionId format');
+    if (validationErrors.length > 0) {
+      return validationErrorResponse(validationErrors);
+    }
+
+    if (fromUserId === toUserId) {
+      return new Response(JSON.stringify({ error: 'Cannot transfer license to the same user' }), { status: 400 });
+    }
+
+    // Get current assignment
+    const { data: currentAssignment, error: fetchError } = await supabase
+      .from('license_assignments')
+      .select('*')
+      .eq('user_id', fromUserId)
+      .eq('organization_subscription_id', organizationSubscriptionId)
+      .eq('status', 'active')
+      .single();
+
+    if (fetchError || !currentAssignment) {
+      return new Response(JSON.stringify({ error: 'Active license assignment not found for source user' }), { status: 404 });
+    }
+
+    // Check if target user already has an active assignment
+    const { data: existingAssignment } = await supabase
+      .from('license_assignments')
+      .select('id')
+      .eq('user_id', toUserId)
+      .eq('organization_subscription_id', organizationSubscriptionId)
+      .eq('status', 'active')
+      .single();
+
+    if (existingAssignment) {
+      return new Response(JSON.stringify({ error: 'Target user already has an active license assignment' }), { status: 400 });
+    }
+
+    // Revoke current assignment
+    const { error: revokeError } = await supabase
+      .from('license_assignments')
+      .update({
+        status: 'revoked',
+        revoked_at: new Date().toISOString(),
+        revoked_by: userId,
+        revocation_reason: reason || 'License transferred to another user',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', currentAssignment.id);
+
+    if (revokeError) {
+      console.error('Error revoking assignment:', revokeError);
+      return new Response(JSON.stringify({ error: 'Failed to revoke current assignment' }), { status: 500 });
+    }
+
+    // Create new assignment for target user
+    const { data: newAssignment, error: createError } = await supabase
+      .from('license_assignments')
+      .insert({
+        license_pool_id: currentAssignment.license_pool_id,
+        organization_subscription_id: organizationSubscriptionId,
+        user_id: toUserId,
+        member_type: currentAssignment.member_type,
+        status: 'active',
+        assigned_by: userId,
+        transferred_from: currentAssignment.id
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      console.error('Error creating new assignment:', createError);
+      // Try to restore the original assignment
+      await supabase
+        .from('license_assignments')
+        .update({ status: 'active', revoked_at: null, revoked_by: null, revocation_reason: null })
+        .eq('id', currentAssignment.id);
+      return new Response(JSON.stringify({ error: 'Failed to create new assignment' }), { status: 500 });
+    }
+
+    // Update the old assignment to point to the new one
+    await supabase
+      .from('license_assignments')
+      .update({ transferred_to: newAssignment.id })
+      .eq('id', currentAssignment.id);
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      transfer: {
+        fromAssignment: currentAssignment.id,
+        toAssignment: newAssignment.id,
+        fromUserId,
+        toUserId
+      },
+      newAssignment
+    }), { status: 200 });
+  } catch (error) {
+    console.error('Error transferring license:', error);
+    return new Response(JSON.stringify({ error: 'Failed to transfer license' }), { status: 500 });
+  }
+}
+
+/**
+ * GET /org-billing/invoice/:id/download
+ * Download invoice as PDF
+ */
+export async function handleDownloadInvoice(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string,
+  invoiceId: string
+): Promise<Response> {
+  try {
+    // Get transaction/invoice details
+    const { data: transaction, error } = await supabase
+      .from('payment_transactions')
+      .select(`
+        *,
+        organization_subscriptions (
+          organization_id,
+          organization_type,
+          total_seats,
+          subscription_plans (
+            name,
+            description
+          )
+        )
+      `)
+      .eq('id', invoiceId)
+      .single();
+
+    if (error || !transaction) {
+      return new Response(JSON.stringify({ error: 'Invoice not found' }), { status: 404 });
+    }
+
+    // Generate invoice data
+    const invoiceData = {
+      invoiceNumber: `INV-${transaction.id.slice(0, 8).toUpperCase()}`,
+      invoiceDate: new Date(transaction.created_at).toLocaleDateString('en-IN'),
+      dueDate: new Date(transaction.created_at).toLocaleDateString('en-IN'),
+      organizationId: transaction.organization_id,
+      organizationType: transaction.organization_type,
+      items: [{
+        description: transaction.organization_subscriptions?.subscription_plans?.name || 'Subscription',
+        quantity: transaction.seat_count || 1,
+        unitPrice: parseFloat(transaction.amount) / (transaction.seat_count || 1),
+        total: parseFloat(transaction.amount)
+      }],
+      subtotal: parseFloat(transaction.amount) / 1.18, // Remove GST
+      taxRate: 18,
+      taxAmount: parseFloat(transaction.amount) - (parseFloat(transaction.amount) / 1.18),
+      total: parseFloat(transaction.amount),
+      paymentStatus: transaction.status,
+      paymentMethod: transaction.payment_method || 'Online',
+      transactionId: transaction.razorpay_payment_id || transaction.id
+    };
+
+    // Return invoice data (PDF generation would be done client-side or via a separate service)
+    return new Response(JSON.stringify({ 
+      success: true, 
+      invoice: invoiceData,
+      downloadUrl: null // Would be a pre-signed URL to a generated PDF
+    }), { 
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+  } catch (error) {
+    console.error('Error downloading invoice:', error);
+    return new Response(JSON.stringify({ error: 'Failed to download invoice' }), { status: 500 });
+  }
+}
+
+/**
+ * POST /license-pools/:id/auto-assignment
+ * Configure auto-assignment rules for a license pool
+ */
+export async function handleConfigureAutoAssignment(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string,
+  poolId: string
+): Promise<Response> {
+  try {
+    const body = await request.json() as { 
+      autoAssignNewMembers: boolean;
+      assignmentCriteria?: Record<string, any>;
+    };
+    const { autoAssignNewMembers, assignmentCriteria } = body;
+
+    if (typeof autoAssignNewMembers !== 'boolean') {
+      return new Response(JSON.stringify({ error: 'autoAssignNewMembers must be a boolean' }), { status: 400 });
+    }
+
+    // Update pool auto-assignment settings
+    const { data: updated, error } = await supabase
+      .from('license_pools')
+      .update({
+        auto_assign_new_members: autoAssignNewMembers,
+        assignment_criteria: assignmentCriteria || {},
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', poolId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error configuring auto-assignment:', error);
+      return new Response(JSON.stringify({ error: 'Failed to configure auto-assignment' }), { status: 500 });
+    }
+
+    return new Response(JSON.stringify({ success: true, pool: updated }), { status: 200 });
+  } catch (error) {
+    console.error('Error configuring auto-assignment:', error);
+    return new Response(JSON.stringify({ error: 'Failed to configure auto-assignment' }), { status: 500 });
   }
 }
