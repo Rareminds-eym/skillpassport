@@ -62,14 +62,27 @@ import {
     handleSendRenewalReminders
 } from './handlers/entitlementLifecycle';
 import {
+    handleAcceptInvitation,
     handleAssignLicense,
     handleBulkAssignLicenses,
+    handleBulkInviteMembers,
     handleCalculateOrgPricing,
+    handleCalculateSeatAdditionCost,
+    handleCancelInvitation,
     handleCreateLicensePool,
+    // Billing handlers
+    handleGetBillingDashboard,
+    handleGetCostProjection,
+    handleGetInvitations,
+    handleGetInvitationStats,
+    handleGetInvoiceHistory,
     handleGetLicensePools,
     handleGetOrgSubscriptions,
     handleGetUserAssignments,
+    // Invitation handlers
+    handleInviteMember,
     handlePurchaseOrgSubscription,
+    handleResendInvitation,
     handleUnassignLicense,
     handleUpdateSeatCount
 } from './handlers/organization';
@@ -2257,6 +2270,75 @@ export default {
           }
           break;
         
+        // Organization Billing endpoints
+        case '/org-billing/dashboard':
+          if (request.method === 'GET') {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            return await handleGetBillingDashboard(request, env, auth.supabase, auth.user.id);
+          }
+          break;
+        
+        case '/org-billing/invoices':
+          if (request.method === 'GET') {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            return await handleGetInvoiceHistory(request, env, auth.supabase, auth.user.id);
+          }
+          break;
+        
+        case '/org-billing/cost-projection':
+          if (request.method === 'GET') {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            return await handleGetCostProjection(request, env, auth.supabase, auth.user.id);
+          }
+          break;
+        
+        case '/org-billing/calculate-seat-addition':
+          if (request.method === 'POST') {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            return await handleCalculateSeatAdditionCost(request, env, auth.supabase, auth.user.id);
+          }
+          break;
+        
+        // Organization Invitation endpoints
+        case '/org-invitations':
+          const authInv = await authenticateUser(request, env);
+          if (!authInv) return jsonResponse({ error: 'Unauthorized' }, 401);
+          
+          if (request.method === 'POST') {
+            return await handleInviteMember(request, env, authInv.supabase, authInv.user.id);
+          } else if (request.method === 'GET') {
+            return await handleGetInvitations(request, env, authInv.supabase, authInv.user.id);
+          }
+          break;
+        
+        case '/org-invitations/bulk':
+          if (request.method === 'POST') {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            return await handleBulkInviteMembers(request, env, auth.supabase, auth.user.id);
+          }
+          break;
+        
+        case '/org-invitations/accept':
+          if (request.method === 'POST') {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            return await handleAcceptInvitation(request, env, auth.supabase, auth.user.id);
+          }
+          break;
+        
+        case '/org-invitations/stats':
+          if (request.method === 'GET') {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            return await handleGetInvitationStats(request, env, auth.supabase, auth.user.id);
+          }
+          break;
+        
         // Entitlement lifecycle endpoints (for cron jobs)
         case '/process-entitlement-lifecycle':
           return await handleProcessEntitlementLifecycle(request, env);
@@ -2316,6 +2398,19 @@ export default {
               'POST /license-assignments/bulk',
               'DELETE /license-assignments/:id',
               'GET  /license-assignments/user/:userId',
+              // Organization Billing endpoints
+              'GET  /org-billing/dashboard',
+              'GET  /org-billing/invoices',
+              'GET  /org-billing/cost-projection',
+              'POST /org-billing/calculate-seat-addition',
+              // Organization Invitation endpoints
+              'POST /org-invitations',
+              'GET  /org-invitations',
+              'POST /org-invitations/bulk',
+              'POST /org-invitations/accept',
+              'GET  /org-invitations/stats',
+              'PUT  /org-invitations/:id/resend',
+              'DELETE /org-invitations/:id',
               // Entitlement Lifecycle endpoints (CRON)
               'POST /process-entitlement-lifecycle',
               'POST /expire-entitlements',
@@ -2492,6 +2587,28 @@ export default {
               // DELETE /license-assignments/:id
               if (request.method === 'DELETE') {
                 return await handleUnassignLicense(request, env, auth.supabase, auth.user.id, parts[2]);
+              }
+            }
+          }
+          
+          // Handle dynamic routes for invitation endpoints
+          if (path.startsWith('/org-invitations/') && !path.includes('/bulk') && !path.includes('/accept') && !path.includes('/stats')) {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            
+            const parts = path.split('/');
+            const invitationId = parts[2];
+            const action = parts[3];
+            
+            if (invitationId && action === 'resend') {
+              // PUT /org-invitations/:id/resend
+              if (request.method === 'PUT') {
+                return await handleResendInvitation(request, env, auth.supabase, auth.user.id, invitationId);
+              }
+            } else if (invitationId && !action) {
+              // DELETE /org-invitations/:id
+              if (request.method === 'DELETE') {
+                return await handleCancelInvitation(request, env, auth.supabase, auth.user.id, invitationId);
               }
             }
           }

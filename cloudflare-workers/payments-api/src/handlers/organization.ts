@@ -646,3 +646,838 @@ export async function handleGetUserAssignments(
     return new Response(JSON.stringify({ error: 'Failed to fetch assignments' }), { status: 500 });
   }
 }
+
+
+// ============================================================================
+// Organization Billing Endpoints
+// ============================================================================
+
+/**
+ * GET /org-billing/dashboard
+ * Get comprehensive billing dashboard for an organization
+ */
+export async function handleGetBillingDashboard(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Response> {
+  try {
+    const url = new URL(request.url);
+    const organizationId = url.searchParams.get('organizationId');
+    const organizationType = url.searchParams.get('organizationType') as 'school' | 'college' | 'university';
+
+    if (!organizationId || !organizationType) {
+      return new Response(JSON.stringify({ error: 'Missing organizationId or organizationType' }), { status: 400 });
+    }
+
+    // 1. Get all active subscriptions
+    const { data: subscriptions, error: subError } = await supabase
+      .from('organization_subscriptions')
+      .select(`
+        *,
+        subscription_plans (
+          id,
+          name,
+          price,
+          billing_cycle
+        )
+      `)
+      .eq('organization_id', organizationId)
+      .eq('organization_type', organizationType)
+      .in('status', ['active', 'grace_period']);
+
+    if (subError) throw subError;
+
+    // 2. Get payment history
+    const { data: payments, error: payError } = await supabase
+      .from('payment_transactions')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (payError) throw payError;
+
+    // 3. Calculate current period
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    // 4. Calculate costs and summaries
+    let subscriptionCosts = 0;
+    let totalActiveSeats = 0;
+    let totalAssignedSeats = 0;
+
+    const subscriptionSummaries = (subscriptions || []).map((sub: any) => {
+      const finalAmount = parseFloat(sub.final_amount);
+      const billingCycle = sub.subscription_plans?.billing_cycle || 'monthly';
+      const monthlyCost = billingCycle === 'annual' ? finalAmount / 12 : finalAmount;
+      
+      subscriptionCosts += monthlyCost;
+      totalActiveSeats += sub.total_seats;
+      totalAssignedSeats += sub.assigned_seats;
+
+      return {
+        subscriptionId: sub.id,
+        planId: sub.subscription_plan_id,
+        planName: sub.subscription_plans?.name || 'Unknown Plan',
+        seatCount: sub.total_seats,
+        assignedSeats: sub.assigned_seats,
+        utilization: sub.total_seats > 0 
+          ? Math.round((sub.assigned_seats / sub.total_seats) * 100) 
+          : 0,
+        monthlyCost,
+        status: sub.status,
+        endDate: sub.end_date
+      };
+    });
+
+    // 5. Get upcoming renewals (within 30 days)
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+    const upcomingRenewals = (subscriptions || [])
+      .filter((sub: any) => {
+        const endDate = new Date(sub.end_date);
+        return endDate <= thirtyDaysFromNow && sub.status === 'active';
+      })
+      .map((sub: any) => ({
+        subscriptionId: sub.id,
+        planName: sub.subscription_plans?.name || 'Unknown Plan',
+        renewalDate: sub.end_date,
+        estimatedCost: parseFloat(sub.final_amount),
+        seatCount: sub.total_seats,
+        autoRenew: sub.auto_renew
+      }));
+
+    // 6. Map payment history
+    const paymentHistory = (payments || []).map((p: any) => ({
+      id: p.id,
+      transactionId: p.razorpay_payment_id || p.id,
+      amount: parseFloat(p.amount),
+      currency: p.currency || 'INR',
+      status: p.status,
+      paymentMethod: p.payment_method || 'unknown',
+      description: p.description || 'Subscription payment',
+      createdAt: p.created_at,
+      invoiceId: p.invoice_id
+    }));
+
+    // 7. Calculate overall utilization
+    const overallUtilization = totalActiveSeats > 0
+      ? Math.round((totalAssignedSeats / totalActiveSeats) * 100)
+      : 0;
+
+    const dashboard = {
+      organizationId,
+      organizationType,
+      currentPeriod: {
+        startDate: periodStart.toISOString(),
+        endDate: periodEnd.toISOString(),
+        totalCost: subscriptionCosts,
+        subscriptionCosts,
+        addonCosts: 0 // TODO: Calculate addon costs
+      },
+      subscriptions: subscriptionSummaries,
+      addons: [],
+      upcomingRenewals,
+      paymentHistory,
+      totalActiveSeats,
+      totalAssignedSeats,
+      overallUtilization
+    };
+
+    return new Response(JSON.stringify({ success: true, dashboard }), { status: 200 });
+  } catch (error) {
+    console.error('Error fetching billing dashboard:', error);
+    return new Response(JSON.stringify({ error: 'Failed to fetch billing dashboard' }), { status: 500 });
+  }
+}
+
+/**
+ * GET /org-billing/invoices
+ * Get invoice history for an organization
+ */
+export async function handleGetInvoiceHistory(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Response> {
+  try {
+    const url = new URL(request.url);
+    const organizationId = url.searchParams.get('organizationId');
+    const limit = parseInt(url.searchParams.get('limit') || '50');
+
+    if (!organizationId) {
+      return new Response(JSON.stringify({ error: 'Missing organizationId' }), { status: 400 });
+    }
+
+    // Get all successful payment transactions for the organization
+    const { data: transactions, error } = await supabase
+      .from('payment_transactions')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('status', 'success')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+
+    // Generate invoice objects for each transaction
+    const invoices = (transactions || []).map((tx: any, index: number) => {
+      const amount = parseFloat(tx.amount);
+      const taxAmount = amount * 0.18 / 1.18;
+      const baseAmount = amount - taxAmount;
+
+      return {
+        id: tx.invoice_id || `inv_${tx.id}`,
+        invoiceNumber: `INV-${new Date(tx.created_at).getFullYear()}-${String(index + 1).padStart(5, '0')}`,
+        organizationId: tx.organization_id,
+        transactionId: tx.id,
+        amount: baseAmount,
+        taxAmount,
+        totalAmount: amount,
+        currency: tx.currency || 'INR',
+        status: 'paid',
+        issueDate: tx.created_at,
+        paidDate: tx.created_at,
+        lineItems: [{
+          description: tx.description || 'Subscription Payment',
+          quantity: tx.seat_count || 1,
+          unitPrice: baseAmount / (tx.seat_count || 1),
+          amount: baseAmount,
+          taxRate: 18,
+          taxAmount
+        }],
+        createdAt: tx.created_at
+      };
+    });
+
+    return new Response(JSON.stringify({ success: true, invoices }), { status: 200 });
+  } catch (error) {
+    console.error('Error fetching invoice history:', error);
+    return new Response(JSON.stringify({ error: 'Failed to fetch invoice history' }), { status: 500 });
+  }
+}
+
+/**
+ * GET /org-billing/cost-projection
+ * Project monthly cost for an organization
+ */
+export async function handleGetCostProjection(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Response> {
+  try {
+    const url = new URL(request.url);
+    const organizationId = url.searchParams.get('organizationId');
+    const organizationType = url.searchParams.get('organizationType') as 'school' | 'college' | 'university';
+
+    if (!organizationId || !organizationType) {
+      return new Response(JSON.stringify({ error: 'Missing organizationId or organizationType' }), { status: 400 });
+    }
+
+    // Get active subscriptions
+    const { data: subscriptions, error: subError } = await supabase
+      .from('organization_subscriptions')
+      .select(`
+        *,
+        subscription_plans (price, billing_cycle)
+      `)
+      .eq('organization_id', organizationId)
+      .eq('organization_type', organizationType)
+      .eq('status', 'active');
+
+    if (subError) throw subError;
+
+    // Calculate subscription costs
+    let subscriptionCost = 0;
+    (subscriptions || []).forEach((sub: any) => {
+      const finalAmount = parseFloat(sub.final_amount);
+      const billingCycle = sub.subscription_plans?.billing_cycle || 'monthly';
+      subscriptionCost += billingCycle === 'annual' ? finalAmount / 12 : finalAmount;
+    });
+
+    const totalBeforeTax = subscriptionCost;
+    const taxes = totalBeforeTax * 0.18;
+    const totalWithTax = totalBeforeTax + taxes;
+
+    const projection = {
+      currentMonthlyCost: totalWithTax,
+      projectedMonthlyCost: totalWithTax,
+      projectedAnnualCost: totalWithTax * 12,
+      breakdown: {
+        subscriptions: subscriptionCost,
+        addons: 0,
+        taxes
+      }
+    };
+
+    return new Response(JSON.stringify({ success: true, projection }), { status: 200 });
+  } catch (error) {
+    console.error('Error projecting cost:', error);
+    return new Response(JSON.stringify({ error: 'Failed to project cost' }), { status: 500 });
+  }
+}
+
+/**
+ * POST /org-billing/calculate-seat-addition
+ * Calculate cost for adding seats to a subscription
+ */
+export async function handleCalculateSeatAdditionCost(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Response> {
+  try {
+    const body = await request.json() as { subscriptionId: string; additionalSeats: number };
+    const { subscriptionId, additionalSeats } = body;
+
+    if (!subscriptionId || !additionalSeats || additionalSeats < 1) {
+      return new Response(JSON.stringify({ error: 'Invalid subscriptionId or additionalSeats' }), { status: 400 });
+    }
+
+    // Get current subscription
+    const { data: subscription, error } = await supabase
+      .from('organization_subscriptions')
+      .select(`
+        *,
+        subscription_plans (price, billing_cycle)
+      `)
+      .eq('id', subscriptionId)
+      .single();
+
+    if (error || !subscription) {
+      return new Response(JSON.stringify({ error: 'Subscription not found' }), { status: 404 });
+    }
+
+    const newTotalSeats = subscription.total_seats + additionalSeats;
+    const pricePerSeat = subscription.subscription_plans?.price || subscription.price_per_seat;
+
+    // Calculate new volume discount
+    const newDiscountPercentage = calculateVolumeDiscount(newTotalSeats);
+    
+    // Calculate costs for additional seats
+    const subtotal = pricePerSeat * additionalSeats;
+    const discountAmount = (subtotal * newDiscountPercentage) / 100;
+    const afterDiscount = subtotal - discountAmount;
+    const taxAmount = afterDiscount * 0.18;
+    const totalCost = afterDiscount + taxAmount;
+
+    // Calculate proration
+    const endDate = new Date(subscription.end_date);
+    const now = new Date();
+    const totalDays = Math.ceil((endDate.getTime() - new Date(subscription.start_date).getTime()) / (1000 * 60 * 60 * 24));
+    const remainingDays = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const proratedCost = (totalCost / totalDays) * remainingDays;
+
+    const calculation = {
+      additionalSeats,
+      pricePerSeat,
+      subtotal,
+      newDiscountPercentage,
+      discountAmount,
+      taxAmount,
+      totalCost,
+      proratedDays: remainingDays,
+      proratedCost: Math.round(proratedCost * 100) / 100
+    };
+
+    return new Response(JSON.stringify({ success: true, calculation }), { status: 200 });
+  } catch (error) {
+    console.error('Error calculating seat addition cost:', error);
+    return new Response(JSON.stringify({ error: 'Failed to calculate cost' }), { status: 500 });
+  }
+}
+
+// ============================================================================
+// Organization Invitation Endpoints
+// ============================================================================
+
+/**
+ * Generate a secure random token
+ */
+function generateSecureToken(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < 64; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+}
+
+/**
+ * POST /org-invitations
+ * Invite a member to the organization
+ */
+export async function handleInviteMember(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Response> {
+  try {
+    const body = await request.json() as {
+      organizationId: string;
+      organizationType: 'school' | 'college' | 'university';
+      email: string;
+      memberType: 'educator' | 'student';
+      autoAssignSubscription: boolean;
+      licensePoolId?: string;
+      invitationMessage?: string;
+    };
+
+    const { organizationId, organizationType, email, memberType, autoAssignSubscription, licensePoolId, invitationMessage } = body;
+
+    // Validate required fields
+    if (!organizationId || !organizationType || !email || !memberType) {
+      return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
+    }
+
+    // Check if invitation already exists
+    const { data: existing } = await supabase
+      .from('organization_invitations')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('email', email.toLowerCase())
+      .eq('status', 'pending')
+      .single();
+
+    if (existing) {
+      return new Response(JSON.stringify({ error: 'An invitation is already pending for this email' }), { status: 400 });
+    }
+
+    // Generate token and expiration
+    const invitationToken = generateSecureToken();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    // Create invitation
+    const { data: invitation, error } = await supabase
+      .from('organization_invitations')
+      .insert({
+        organization_id: organizationId,
+        organization_type: organizationType,
+        email: email.toLowerCase(),
+        member_type: memberType,
+        invited_by: userId,
+        auto_assign_subscription: autoAssignSubscription,
+        target_license_pool_id: licensePoolId,
+        status: 'pending',
+        invitation_token: invitationToken,
+        expires_at: expiresAt.toISOString(),
+        invitation_message: invitationMessage
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating invitation:', error);
+      return new Response(JSON.stringify({ error: 'Failed to create invitation' }), { status: 500 });
+    }
+
+    // TODO: Send invitation email via email service
+
+    return new Response(JSON.stringify({ success: true, invitation }), { status: 201 });
+  } catch (error) {
+    console.error('Error inviting member:', error);
+    return new Response(JSON.stringify({ error: 'Failed to invite member' }), { status: 500 });
+  }
+}
+
+/**
+ * POST /org-invitations/bulk
+ * Bulk invite members to the organization
+ */
+export async function handleBulkInviteMembers(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Response> {
+  try {
+    const body = await request.json() as {
+      invitations: Array<{
+        organizationId: string;
+        organizationType: 'school' | 'college' | 'university';
+        email: string;
+        memberType: 'educator' | 'student';
+        autoAssignSubscription: boolean;
+        licensePoolId?: string;
+      }>;
+    };
+
+    const { invitations } = body;
+
+    if (!invitations || !Array.isArray(invitations) || invitations.length === 0) {
+      return new Response(JSON.stringify({ error: 'Invalid invitations array' }), { status: 400 });
+    }
+
+    const successful: any[] = [];
+    const failed: Array<{ email: string; error: string }> = [];
+
+    for (const inv of invitations) {
+      try {
+        // Check if invitation already exists
+        const { data: existing } = await supabase
+          .from('organization_invitations')
+          .select('id')
+          .eq('organization_id', inv.organizationId)
+          .eq('email', inv.email.toLowerCase())
+          .eq('status', 'pending')
+          .single();
+
+        if (existing) {
+          failed.push({ email: inv.email, error: 'Invitation already pending' });
+          continue;
+        }
+
+        // Generate token and expiration
+        const invitationToken = generateSecureToken();
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
+
+        // Create invitation
+        const { data: invitation, error } = await supabase
+          .from('organization_invitations')
+          .insert({
+            organization_id: inv.organizationId,
+            organization_type: inv.organizationType,
+            email: inv.email.toLowerCase(),
+            member_type: inv.memberType,
+            invited_by: userId,
+            auto_assign_subscription: inv.autoAssignSubscription,
+            target_license_pool_id: inv.licensePoolId,
+            status: 'pending',
+            invitation_token: invitationToken,
+            expires_at: expiresAt.toISOString()
+          })
+          .select()
+          .single();
+
+        if (error) {
+          failed.push({ email: inv.email, error: error.message });
+        } else {
+          successful.push(invitation);
+        }
+      } catch (error) {
+        failed.push({ 
+          email: inv.email, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        });
+      }
+    }
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      successful, 
+      failed,
+      summary: {
+        total: invitations.length,
+        successful: successful.length,
+        failed: failed.length
+      }
+    }), { status: 200 });
+  } catch (error) {
+    console.error('Error bulk inviting members:', error);
+    return new Response(JSON.stringify({ error: 'Failed to bulk invite members' }), { status: 500 });
+  }
+}
+
+/**
+ * GET /org-invitations
+ * Get invitations for an organization
+ */
+export async function handleGetInvitations(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Response> {
+  try {
+    const url = new URL(request.url);
+    const organizationId = url.searchParams.get('organizationId');
+    const status = url.searchParams.get('status');
+    const memberType = url.searchParams.get('memberType');
+    const limit = parseInt(url.searchParams.get('limit') || '50');
+
+    if (!organizationId) {
+      return new Response(JSON.stringify({ error: 'Missing organizationId' }), { status: 400 });
+    }
+
+    let query = supabase
+      .from('organization_invitations')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    if (memberType) {
+      query = query.eq('member_type', memberType);
+    }
+
+    const { data: invitations, error } = await query;
+
+    if (error) {
+      console.error('Error fetching invitations:', error);
+      return new Response(JSON.stringify({ error: 'Failed to fetch invitations' }), { status: 500 });
+    }
+
+    return new Response(JSON.stringify({ success: true, invitations }), { status: 200 });
+  } catch (error) {
+    console.error('Error in handleGetInvitations:', error);
+    return new Response(JSON.stringify({ error: 'Failed to fetch invitations' }), { status: 500 });
+  }
+}
+
+/**
+ * PUT /org-invitations/:id/resend
+ * Resend an invitation
+ */
+export async function handleResendInvitation(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string,
+  invitationId: string
+): Promise<Response> {
+  try {
+    // Get invitation
+    const { data: invitation, error: fetchError } = await supabase
+      .from('organization_invitations')
+      .select('*')
+      .eq('id', invitationId)
+      .single();
+
+    if (fetchError || !invitation) {
+      return new Response(JSON.stringify({ error: 'Invitation not found' }), { status: 404 });
+    }
+
+    if (invitation.status !== 'pending') {
+      return new Response(JSON.stringify({ error: 'Can only resend pending invitations' }), { status: 400 });
+    }
+
+    // Generate new token and extend expiration
+    const newToken = generateSecureToken();
+    const newExpiresAt = new Date();
+    newExpiresAt.setDate(newExpiresAt.getDate() + 7);
+
+    // Update invitation
+    const { error: updateError } = await supabase
+      .from('organization_invitations')
+      .update({
+        invitation_token: newToken,
+        expires_at: newExpiresAt.toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', invitationId);
+
+    if (updateError) {
+      console.error('Error updating invitation:', updateError);
+      return new Response(JSON.stringify({ error: 'Failed to resend invitation' }), { status: 500 });
+    }
+
+    // TODO: Resend email via email service
+
+    return new Response(JSON.stringify({ success: true, message: 'Invitation resent successfully' }), { status: 200 });
+  } catch (error) {
+    console.error('Error resending invitation:', error);
+    return new Response(JSON.stringify({ error: 'Failed to resend invitation' }), { status: 500 });
+  }
+}
+
+/**
+ * DELETE /org-invitations/:id
+ * Cancel an invitation
+ */
+export async function handleCancelInvitation(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string,
+  invitationId: string
+): Promise<Response> {
+  try {
+    const { error } = await supabase
+      .from('organization_invitations')
+      .update({
+        status: 'cancelled',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', invitationId)
+      .eq('status', 'pending');
+
+    if (error) {
+      console.error('Error cancelling invitation:', error);
+      return new Response(JSON.stringify({ error: 'Failed to cancel invitation' }), { status: 500 });
+    }
+
+    return new Response(JSON.stringify({ success: true, message: 'Invitation cancelled successfully' }), { status: 200 });
+  } catch (error) {
+    console.error('Error cancelling invitation:', error);
+    return new Response(JSON.stringify({ error: 'Failed to cancel invitation' }), { status: 500 });
+  }
+}
+
+/**
+ * POST /org-invitations/accept
+ * Accept an invitation (public endpoint)
+ */
+export async function handleAcceptInvitation(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Response> {
+  try {
+    const body = await request.json() as { token: string };
+    const { token } = body;
+
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Missing invitation token' }), { status: 400 });
+    }
+
+    // Find invitation by token
+    const { data: invitation, error: fetchError } = await supabase
+      .from('organization_invitations')
+      .select('*')
+      .eq('invitation_token', token)
+      .eq('status', 'pending')
+      .single();
+
+    if (fetchError || !invitation) {
+      return new Response(JSON.stringify({ error: 'Invalid or expired invitation' }), { status: 404 });
+    }
+
+    // Check if invitation has expired
+    if (new Date(invitation.expires_at) < new Date()) {
+      await supabase
+        .from('organization_invitations')
+        .update({ status: 'expired' })
+        .eq('id', invitation.id);
+      return new Response(JSON.stringify({ error: 'Invitation has expired' }), { status: 400 });
+    }
+
+    // Update invitation status
+    const { error: updateError } = await supabase
+      .from('organization_invitations')
+      .update({
+        status: 'accepted',
+        accepted_at: new Date().toISOString(),
+        accepted_by: userId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', invitation.id);
+
+    if (updateError) {
+      console.error('Error updating invitation:', updateError);
+      return new Response(JSON.stringify({ error: 'Failed to accept invitation' }), { status: 500 });
+    }
+
+    // Auto-assign license if configured
+    let assignedLicense = null;
+    if (invitation.auto_assign_subscription && invitation.target_license_pool_id) {
+      try {
+        // Get pool details
+        const { data: pool } = await supabase
+          .from('license_pools')
+          .select('*')
+          .eq('id', invitation.target_license_pool_id)
+          .single();
+
+        if (pool && pool.available_seats > 0) {
+          const { data: assignment } = await supabase
+            .from('license_assignments')
+            .insert({
+              license_pool_id: invitation.target_license_pool_id,
+              organization_subscription_id: pool.organization_subscription_id,
+              user_id: userId,
+              member_type: invitation.member_type,
+              status: 'active',
+              assigned_by: invitation.invited_by
+            })
+            .select()
+            .single();
+
+          assignedLicense = assignment;
+        }
+      } catch (licenseError) {
+        console.warn('Could not auto-assign license:', licenseError);
+      }
+    }
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      invitation: { ...invitation, status: 'accepted' },
+      assignedLicense
+    }), { status: 200 });
+  } catch (error) {
+    console.error('Error accepting invitation:', error);
+    return new Response(JSON.stringify({ error: 'Failed to accept invitation' }), { status: 500 });
+  }
+}
+
+/**
+ * GET /org-invitations/stats
+ * Get invitation statistics for an organization
+ */
+export async function handleGetInvitationStats(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Response> {
+  try {
+    const url = new URL(request.url);
+    const organizationId = url.searchParams.get('organizationId');
+
+    if (!organizationId) {
+      return new Response(JSON.stringify({ error: 'Missing organizationId' }), { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from('organization_invitations')
+      .select('status')
+      .eq('organization_id', organizationId);
+
+    if (error) throw error;
+
+    const stats = {
+      total: data?.length || 0,
+      pending: 0,
+      accepted: 0,
+      expired: 0,
+      cancelled: 0,
+      acceptanceRate: 0
+    };
+
+    (data || []).forEach((inv: any) => {
+      switch (inv.status) {
+        case 'pending': stats.pending++; break;
+        case 'accepted': stats.accepted++; break;
+        case 'expired': stats.expired++; break;
+        case 'cancelled': stats.cancelled++; break;
+      }
+    });
+
+    // Calculate acceptance rate
+    const completed = stats.accepted + stats.expired + stats.cancelled;
+    stats.acceptanceRate = completed > 0 
+      ? Math.round((stats.accepted / completed) * 100) 
+      : 0;
+
+    return new Response(JSON.stringify({ success: true, stats }), { status: 200 });
+  } catch (error) {
+    console.error('Error fetching invitation stats:', error);
+    return new Response(JSON.stringify({ error: 'Failed to fetch invitation stats' }), { status: 500 });
+  }
+}
