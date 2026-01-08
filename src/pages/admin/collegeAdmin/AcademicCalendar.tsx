@@ -35,6 +35,14 @@ const AcademicCalendar: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "academic_year" | "semester" | "holiday" | "exam_window" | "ia_window">("all");
+  
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
 
   useEffect(() => {
     loadEvents();
@@ -144,16 +152,22 @@ const AcademicCalendar: React.FC = () => {
       return;
     }
 
-    if (!confirm("Are you sure you want to delete this event?")) return;
-
-    try {
-      // Mock implementation - replace with actual Supabase delete
-      setEvents((prev) => prev.filter((e) => e.id !== id));
-      toast.success("Event deleted successfully");
-    } catch (error: any) {
-      console.error("Error deleting event:", error);
-      toast.error("Failed to delete event");
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Event",
+      message: "Are you sure you want to delete this event?",
+      onConfirm: async () => {
+        try {
+          // Mock implementation - replace with actual Supabase delete
+          setEvents((prev) => prev.filter((e) => e.id !== id));
+          toast.success("Event deleted successfully");
+        } catch (error: any) {
+          console.error("Error deleting event:", error);
+          toast.error("Failed to delete event");
+        }
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
   };
 
   const handlePublishEvent = async (id: string) => {
@@ -183,18 +197,24 @@ const AcademicCalendar: React.FC = () => {
   };
 
   const handleUnlockEvent = async (id: string) => {
-    if (!confirm("Are you sure you want to unlock this event? This requires admin override.")) return;
-
-    try {
-      // Mock implementation - replace with actual Supabase update
-      setEvents((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, status: "published" as const } : e))
-      );
-      toast.success("Event unlocked. Modifications allowed.");
-    } catch (error: any) {
-      console.error("Error unlocking event:", error);
-      toast.error("Failed to unlock event");
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Unlock Event",
+      message: "Are you sure you want to unlock this event? This requires admin override.",
+      onConfirm: async () => {
+        try {
+          // Mock implementation - replace with actual Supabase update
+          setEvents((prev) =>
+            prev.map((e) => (e.id === id ? { ...e, status: "published" as const } : e))
+          );
+          toast.success("Event unlocked. Modifications allowed.");
+        } catch (error: any) {
+          console.error("Error unlocking event:", error);
+          toast.error("Failed to unlock event");
+        }
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
   };
 
   const handleSaveEvent = async (data: Partial<CalendarEvent>) => {
@@ -515,6 +535,17 @@ const AcademicCalendar: React.FC = () => {
           event={selectedEvent}
         />
       )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+        />
+      )}
     </div>
   );
 };
@@ -653,3 +684,47 @@ const EventFormModal: React.FC<{
 };
 
 export default AcademicCalendar;
+
+// Confirmation Modal Component
+const ConfirmationModal: React.FC<{
+  isOpen: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ isOpen, title, message, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onCancel} />
+        <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl">
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-full bg-red-100">
+                <TrashIcon className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            </div>
+            <p className="text-gray-600 mb-6">{message}</p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={onCancel}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onConfirm}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
