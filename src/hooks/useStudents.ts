@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { getProgramSectionStudents } from '../services/programService'
 
 // Skill from skills table
 interface Skill {
@@ -393,6 +394,7 @@ interface UseStudentsOptions {
   collegeId?: string | null;
   classIds?: string[]; // Add class IDs for filtering
   educatorType?: 'school' | 'college' | null; // Add educator type
+  userId?: string | null; // Add user ID for college lecturers
 }
 
 export function useStudents(options?: UseStudentsOptions) {
@@ -403,12 +405,27 @@ export function useStudents(options?: UseStudentsOptions) {
   const collegeId = options?.collegeId
   const classIds = options?.classIds
   const educatorType = options?.educatorType
+  const userId = options?.userId
 
   const fetchStudents = async () => {
     setLoading(true)
     setError(null)
     
     try {
+      // For college lecturers, use program-based student fetching
+      if (educatorType === 'college' && userId) {
+        const { data: programStudents, error: programError } = await getProgramSectionStudents(userId)
+        
+        if (programError) {
+          throw new Error(programError)
+        }
+
+        // The programStudents now contains full rich data, so map it directly using mapToUICandidate
+        const mapped = (programStudents || []).map(mapToUICandidate)
+        setData(mapped)
+        return
+      }
+
       // Check if educator has no class assignments (and is not admin)
       if (classIds !== undefined && classIds.length === 0 && (schoolId || collegeId)) {
         // Educator has no class assignments - return empty array
@@ -622,7 +639,7 @@ export function useStudents(options?: UseStudentsOptions) {
       isMounted = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId, collegeId, classIds, educatorType])
+  }, [schoolId, collegeId, classIds, educatorType, userId])
 
   const stats = useMemo(() => ({ count: data.length }), [data])
 
