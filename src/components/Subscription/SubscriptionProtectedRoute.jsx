@@ -139,12 +139,14 @@ const SubscriptionProtectedRoute = ({
       );
     }
 
-    // For cancelled subscriptions
+    // For cancelled subscriptions that still have access (end_date not passed)
+    // This case shouldn't happen since hasAccess would be true, but handle it gracefully
     if (accessReason === ACCESS_REASONS.CANCELLED) {
+      // If we reach here with cancelled status, it means end_date has passed
       return (
         <Navigate 
           to={fallbackUrl} 
-          state={{ ...redirectState, message: 'Your subscription was cancelled. Subscribe again to access.' }}
+          state={{ ...redirectState, message: 'Your subscription has ended. Subscribe again to access.' }}
           replace 
         />
       );

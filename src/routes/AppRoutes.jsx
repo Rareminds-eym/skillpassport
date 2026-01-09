@@ -50,6 +50,17 @@ const AddOns = lazy(() =>
   import("../pages/subscription/AddOns")
 );
 
+// Organization Subscription Pages (wrapper components with data fetching)
+const OrganizationSubscriptionPage = lazy(() =>
+  import("../pages/subscription/OrganizationSubscriptionPage")
+);
+const BulkPurchasePage = lazy(() =>
+  import("../pages/subscription/BulkPurchasePage")
+);
+const MemberSubscriptionPage = lazy(() =>
+  import("../pages/subscription/MemberSubscriptionPage")
+);
+
 // Event Sales (no auth required)
 const EventSales = lazy(() =>
   import("../pages/event/EventSales")
@@ -543,6 +554,9 @@ const AppRoutes = () => {
           <Route path="settings" element={<CollegeSettings />} />
           <Route path="subscription/manage" element={<SubscriptionManage />} />
           <Route path="subscription/add-ons" element={<AddOns />} />
+          <Route path="subscription/organization" element={<OrganizationSubscriptionPage />} />
+          <Route path="subscription/bulk-purchase" element={<BulkPurchasePage />} />
+          <Route path="subscription/member-view" element={<MemberSubscriptionPage />} />
 
           <Route path="" element={<Navigate to="/college-admin/dashboard" replace />} />
         </Route>
@@ -598,6 +612,9 @@ const AppRoutes = () => {
           <Route path="settings" element={<SchoolAdminSettings />} />
           <Route path="subscription/manage" element={<SubscriptionManage />} />
           <Route path="subscription/add-ons" element={<AddOns />} />
+          <Route path="subscription/organization" element={<OrganizationSubscriptionPage />} />
+          <Route path="subscription/bulk-purchase" element={<BulkPurchasePage />} />
+          <Route path="subscription/member-view" element={<MemberSubscriptionPage />} />
           <Route
             path=""
             element={<Navigate to="/school-admin/dashboard" replace />}
@@ -630,6 +647,9 @@ const AppRoutes = () => {
           <Route path="settings" element={<UniversityAdminSettings />} />
           <Route path="subscription/manage" element={<SubscriptionManage />} />
           <Route path="subscription/add-ons" element={<AddOns />} />
+          <Route path="subscription/organization" element={<OrganizationSubscriptionPage />} />
+          <Route path="subscription/bulk-purchase" element={<BulkPurchasePage />} />
+          <Route path="subscription/member-view" element={<MemberSubscriptionPage />} />
           <Route
             path=""
             element={<Navigate to="/university-admin/dashboard" replace />}
