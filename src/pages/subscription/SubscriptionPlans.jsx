@@ -1,4 +1,4 @@
-import { Calendar, Check, ChevronDown, ChevronUp, Clock, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
+import { Building2, Calendar, Check, ChevronDown, ChevronUp, Clock, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -8,6 +8,7 @@ import CollegeSignupModal from '../../components/Subscription/CollegeSignupModal
 import EducatorLoginModal from '../../components/Subscription/EducatorLoginModal';
 import EducatorSignupModal from '../../components/Subscription/EducatorSignupModal';
 import LoginModal from '../../components/Subscription/LoginModal';
+import { OrganizationPurchasePanel } from '../../components/Subscription/Organization';
 import RecruiterLoginModal from '../../components/Subscription/RecruiterLoginModal';
 import RecruiterSignupModal from '../../components/Subscription/RecruiterSignupModal';
 import RecruitmentAdminSignupModal from '../../components/Subscription/RecruitmentAdminSignupModal';
@@ -194,7 +195,7 @@ FeatureComparisonTable.displayName = 'FeatureComparisonTable';
 
 
 // Plan Card Component - Clean solid design
-const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRemaining, allPlans, index }) => {
+const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRemaining, allPlans, index, isOrganizationMode, onOrganizationPurchase }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
   const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
@@ -202,6 +203,15 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
   
   const displayedFeatures = showAllFeatures ? plan.features : plan.features.slice(0, 6);
   const hasMoreFeatures = plan.features.length > 6;
+
+  // Handle organization purchase click
+  const handleClick = useCallback(() => {
+    if (isOrganizationMode && onOrganizationPurchase) {
+      onOrganizationPurchase(plan);
+    } else {
+      onSelect(plan);
+    }
+  }, [isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
 
   return (
     <div
@@ -228,6 +238,15 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
           </span>
         </div>
       )}
+      
+      {/* Organization Mode Badge */}
+      {isOrganizationMode && !isCurrentPlan && (
+        <div className="absolute -top-3 right-4">
+          <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+            <Building2 className="h-3 w-3" /> Bulk
+          </span>
+        </div>
+      )}
 
       <div className="p-6 flex flex-col h-full">
         {/* Header */}
@@ -242,9 +261,27 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
               <div className="flex items-baseline gap-1">
                 <span className="text-4xl font-bold text-gray-900">₹{parseInt(plan.price).toLocaleString()}</span>
                 <span className="text-gray-500">/{plan.duration}</span>
+                {isOrganizationMode && (
+                  <span className="text-sm text-gray-400 ml-1">/seat</span>
+                )}
               </div>
             )}
           </div>
+          
+          {/* Volume Discount Indicator for Organization Mode */}
+          {isOrganizationMode && !isContactSales && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                50+ seats: 10% off
+              </span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                100+: 20% off
+              </span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                500+: 30% off
+              </span>
+            </div>
+          )}
 
           {plan.positioning && (
             <p className="mt-3 text-sm text-gray-500">{plan.positioning}</p>
@@ -327,15 +364,26 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
             </a>
           ) : (
             <button
-              onClick={() => onSelect(plan)}
+              onClick={handleClick}
               className={`w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-                isUpgrade || plan.recommended
+                isOrganizationMode
+                  ? 'bg-purple-600 text-white hover:bg-purple-700'
+                  : isUpgrade || plan.recommended
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
                   : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300'
               }`}
             >
-              {isUpgrade && <TrendingUp className="h-5 w-5" />}
-              {subscriptionData ? (isUpgrade ? 'Upgrade' : isDowngrade ? 'Switch Plan' : 'Select') : 'Get Started'}
+              {isOrganizationMode ? (
+                <>
+                  <Building2 className="h-5 w-5" />
+                  Buy for Organization
+                </>
+              ) : (
+                <>
+                  {isUpgrade && <TrendingUp className="h-5 w-5" />}
+                  {subscriptionData ? (isUpgrade ? 'Upgrade' : isDowngrade ? 'Switch Plan' : 'Select') : 'Get Started'}
+                </>
+              )}
             </button>
           )}
         </div>
@@ -459,11 +507,30 @@ function SubscriptionPlans() {
     [searchParams]
   );
 
+  // Check if user is in organization purchase mode
+  const isOrganizationMode = useMemo(
+    () => searchParams.get('mode') === 'organization',
+    [searchParams]
+  );
+
+  // Determine organization type from entity
+  const organizationType = useMemo(() => {
+    if (entity === 'school') return 'school';
+    if (entity === 'college') return 'college';
+    if (entity === 'university') return 'university';
+    return 'school'; // default
+  }, [entity]);
+
+  // State for organization purchase panel
+  const [showOrgPurchasePanel, setShowOrgPurchasePanel] = useState(false);
+  const [selectedPlanForOrg, setSelectedPlanForOrg] = useState(null);
+  const [isOrgPurchaseLoading, setIsOrgPurchaseLoading] = useState(false);
+
   // Compute whether redirect should occur
-  // Don't redirect if user is in upgrade mode - they want to see plans to upgrade
+  // Don't redirect if user is in upgrade mode or organization mode - they want to see plans
   const shouldRedirect = useMemo(
-    () => isAuthenticated && hasActiveOrPausedSubscription && !isUpgradeMode,
-    [isAuthenticated, hasActiveOrPausedSubscription, isUpgradeMode]
+    () => isAuthenticated && hasActiveOrPausedSubscription && !isUpgradeMode && !isOrganizationMode,
+    [isAuthenticated, hasActiveOrPausedSubscription, isUpgradeMode, isOrganizationMode]
   );
 
   // Show welcome message from signup flow (only once)
@@ -519,6 +586,51 @@ function SubscriptionPlans() {
 
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  }, []);
+
+  // Handler for organization purchase button click
+  const handleOrganizationPurchase = useCallback((plan) => {
+    if (!isAuthenticated) {
+      toast.error('Please log in to purchase organization subscriptions');
+      navigate('/login');
+      return;
+    }
+    setSelectedPlanForOrg(plan);
+    setShowOrgPurchasePanel(true);
+  }, [isAuthenticated, navigate]);
+
+  // Handler for organization purchase confirmation
+  const handleOrgPurchaseConfirm = useCallback(async (config) => {
+    setIsOrgPurchaseLoading(true);
+    try {
+      // Navigate to payment page with organization purchase config
+      navigate('/subscription/payment', {
+        state: {
+          plan: selectedPlanForOrg,
+          studentType,
+          isOrganizationPurchase: true,
+          organizationConfig: {
+            organizationType,
+            seatCount: config.seatCount,
+            memberType: config.memberType,
+            billingCycle: config.billingCycle,
+            pricing: config.pricing,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Organization purchase error:', error);
+      toast.error('Failed to process organization purchase');
+    } finally {
+      setIsOrgPurchaseLoading(false);
+      setShowOrgPurchasePanel(false);
+    }
+  }, [navigate, selectedPlanForOrg, studentType, organizationType]);
+
+  // Handler for canceling organization purchase
+  const handleOrgPurchaseCancel = useCallback(() => {
+    setShowOrgPurchasePanel(false);
+    setSelectedPlanForOrg(null);
   }, []);
 
   if (!isFullyLoaded) {
@@ -673,6 +785,23 @@ function SubscriptionPlans() {
         {/* Tab Content */}
         {activeTab === 'plans' ? (
           <>
+            {/* Organization Mode Banner */}
+            {isOrganizationMode && (
+              <div className="mb-8 bg-purple-50 border border-purple-200 rounded-xl p-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-purple-900">Organization Purchase Mode</h3>
+                    <p className="text-sm text-purple-700">
+                      Purchase subscriptions for your entire {organizationType}. Volume discounts available for 50+ seats.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Plans Grid */}
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {plans.map((plan, index) => (
@@ -685,6 +814,8 @@ function SubscriptionPlans() {
                   onSelect={handlePlanSelection}
                   subscriptionData={isAuthenticated && hasActiveOrPausedSubscription ? subscriptionData : null}
                   daysRemaining={isAuthenticated && hasActiveOrPausedSubscription ? daysRemaining : null}
+                  isOrganizationMode={isOrganizationMode}
+                  onOrganizationPurchase={handleOrganizationPurchase}
                 />
               ))}
             </div>
@@ -739,6 +870,17 @@ function SubscriptionPlans() {
         onLoginSuccess={handleLoginSuccess}
         onSwitchToSignup={() => { setShowLoginModal(false); setShowSignupModal(true); }}
       />
+      
+      {/* Organization Purchase Panel */}
+      {showOrgPurchasePanel && selectedPlanForOrg && (
+        <OrganizationPurchasePanel
+          plan={selectedPlanForOrg}
+          organizationType={organizationType}
+          onPurchase={handleOrgPurchaseConfirm}
+          onCancel={handleOrgPurchaseCancel}
+          isLoading={isOrgPurchaseLoading}
+        />
+      )}
     </div>
   );
 }
