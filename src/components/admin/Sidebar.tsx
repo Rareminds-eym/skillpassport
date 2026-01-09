@@ -1,32 +1,32 @@
-import React, { useState, useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
 import {
-  HomeIcon,
-  BuildingOffice2Icon,
-  UserGroupIcon,
-  AcademicCapIcon,
-  ClipboardDocumentListIcon,
-  ChartBarIcon,
-  BriefcaseIcon,
-  Cog6ToothIcon,
-  ChevronDownIcon,
-  CalendarDaysIcon,
-  BanknotesIcon,
-  WrenchScrewdriverIcon,
-  DocumentChartBarIcon,
-  ChartPieIcon,
-  BellIcon,
-  BookOpenIcon,
-  UserIcon,
-  BuildingLibraryIcon,
-  ClipboardIcon,
-  FolderOpenIcon,
-  FolderIcon,
-  SparklesIcon,
-  ShieldCheckIcon,
+    AcademicCapIcon,
+    BanknotesIcon,
+    BellIcon,
+    BookOpenIcon,
+    BriefcaseIcon,
+    BuildingLibraryIcon,
+    BuildingOffice2Icon,
+    CalendarDaysIcon,
+    ChartBarIcon,
+    ChartPieIcon,
+    ChevronDownIcon,
+    ClipboardDocumentListIcon,
+    ClipboardIcon,
+    Cog6ToothIcon,
+    DocumentChartBarIcon,
+    FolderIcon,
+    FolderOpenIcon,
+    HomeIcon,
+    ShieldCheckIcon,
+    SparklesIcon,
+    UserGroupIcon,
+    UserIcon,
+    WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
-import { useAuth } from "../../context/AuthContext";
 import { TrophyIcon } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -43,7 +43,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
     const allGroups = [
-      "students", "teachers", "academics", "communication", "finance", "skills", // school_admin
+      "students", "teachers", "academics", "communication", "finance", "skills", "subscription", // school_admin
       "colleges", "courses", "faculty", "placements", "analytics", // university_admin
       "department", "student", "examinations", "operations", "administration" // college_admin
     ];
@@ -218,6 +218,27 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             },
           ],
         },
+        {
+          title: "Subscription",
+          key: "subscription",
+          items: [
+            {
+              name: "Manage Subscription",
+              path: "/school-admin/subscription/manage",
+              icon: BanknotesIcon,
+            },
+            {
+              name: "Organization Licenses",
+              path: "/school-admin/subscription/organization",
+              icon: UserGroupIcon,
+            },
+            {
+              name: "Add-ons",
+              path: "/school-admin/subscription/add-ons",
+              icon: SparklesIcon,
+            },
+          ],
+        },
       ];
     }
 
@@ -387,6 +408,27 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               name: "Training Updates",
               path: "/university-admin/communication/training",
               icon: ClipboardDocumentListIcon,
+            },
+          ],
+        },
+        {
+          title: "Subscription",
+          key: "subscription",
+          items: [
+            {
+              name: "Manage Subscription",
+              path: "/university-admin/subscription/manage",
+              icon: BanknotesIcon,
+            },
+            {
+              name: "Organization Licenses",
+              path: "/university-admin/subscription/organization",
+              icon: UserGroupIcon,
+            },
+            {
+              name: "Add-ons",
+              path: "/university-admin/subscription/add-ons",
+              icon: SparklesIcon,
             },
           ],
         },
@@ -581,6 +623,27 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             name: "Reports & Analytics",
             path: "/college-admin/reports",
             icon: ChartPieIcon,
+          },
+        ],
+      },
+      {
+        title: "Subscription",
+        key: "subscription",
+        items: [
+          {
+            name: "Manage Subscription",
+            path: "/college-admin/subscription/manage",
+            icon: BanknotesIcon,
+          },
+          {
+            name: "Organization Licenses",
+            path: "/college-admin/subscription/organization",
+            icon: UserGroupIcon,
+          },
+          {
+            name: "Add-ons",
+            path: "/college-admin/subscription/add-ons",
+            icon: SparklesIcon,
           },
         ],
       },

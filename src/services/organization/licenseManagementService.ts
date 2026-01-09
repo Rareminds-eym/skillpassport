@@ -482,11 +482,12 @@ export class LicenseManagementService {
       const assignments: LicenseAssignment[] = [];
 
       // Process each pool
-      for (const pool of pools) {
+      for (const _pool of pools) {
         // Get eligible members based on criteria
         // This would need to be implemented based on your user schema
         // For now, returning empty array
         // TODO: Implement member matching logic based on assignment_criteria
+        void _pool; // Acknowledge unused variable - implementation pending
       }
 
       return assignments;

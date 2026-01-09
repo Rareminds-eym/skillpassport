@@ -1873,11 +1873,12 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
   const gracePeriodDate = new Date(now);
   gracePeriodDate.setDate(gracePeriodDate.getDate() - GRACE_PERIOD_DAYS);
 
+  // Include 'cancelled' status - users retain access until end_date
   const { data: subscription, error } = await supabase
     .from('subscriptions')
     .select('*')
     .eq('user_id', user.id)
-    .in('status', ['active', 'paused'])
+    .in('status', ['active', 'paused', 'cancelled'])
     .gte('subscription_end_date', gracePeriodDate.toISOString())
     .order('subscription_end_date', { ascending: false })
     .limit(1)
@@ -1936,7 +1937,23 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
     return jsonResponse(response);
   }
 
-  // Case 2: Active and not expired
+  // Case 2: Cancelled subscription - allow access until end_date with warning
+  if (subscription.status === 'cancelled' && endDate > now) {
+    const response: SubscriptionAccessResponse = {
+      success: true,
+      hasAccess: true,
+      accessReason: 'cancelled',
+      subscription,
+      showWarning: true,
+      warningType: 'expiring_soon',
+      warningMessage: `Your subscription was cancelled. Access ends in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}.`,
+      daysUntilExpiry,
+      expiresAt: subscription.subscription_end_date,
+    };
+    return jsonResponse(response);
+  }
+
+  // Case 3: Active and not expired
   if (endDate > now) {
     const showExpiringWarning = daysUntilExpiry <= 7;
     
@@ -1956,7 +1973,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
     return jsonResponse(response);
   }
 
-  // Case 3: Expired but within grace period
+  // Case 4: Expired but within grace period
   if (daysUntilExpiry >= -GRACE_PERIOD_DAYS) {
     const daysIntoGrace = Math.abs(daysUntilExpiry);
     const daysLeftInGrace = GRACE_PERIOD_DAYS - daysIntoGrace;
@@ -1975,7 +1992,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
     return jsonResponse(response);
   }
 
-  // Case 4: Expired beyond grace period
+  // Case 5: Expired beyond grace period
   const response: SubscriptionAccessResponse = {
     success: true,
     hasAccess: false,

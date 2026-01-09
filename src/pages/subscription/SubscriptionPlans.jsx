@@ -1,4 +1,4 @@
-import { Calendar, Check, ChevronDown, ChevronUp, Clock, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
+import { Building2, Calendar, Check, ChevronDown, ChevronUp, Clock, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -8,6 +8,7 @@ import CollegeSignupModal from '../../components/Subscription/CollegeSignupModal
 import EducatorLoginModal from '../../components/Subscription/EducatorLoginModal';
 import EducatorSignupModal from '../../components/Subscription/EducatorSignupModal';
 import LoginModal from '../../components/Subscription/LoginModal';
+import { OrganizationPurchasePanel } from '../../components/Subscription/Organization';
 import RecruiterLoginModal from '../../components/Subscription/RecruiterLoginModal';
 import RecruiterSignupModal from '../../components/Subscription/RecruiterSignupModal';
 import RecruitmentAdminSignupModal from '../../components/Subscription/RecruitmentAdminSignupModal';
