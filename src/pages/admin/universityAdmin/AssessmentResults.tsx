@@ -1,20 +1,20 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  ClipboardDocumentListIcon,
-  EyeIcon,
-  ChevronDownIcon,
-  Squares2X2Icon,
-  TableCellsIcon,
-  FunnelIcon,
-  AcademicCapIcon,
-  ChartBarIcon,
-  XMarkIcon,
-  UserIcon,
-  SparklesIcon,
+    AcademicCapIcon,
+    ChartBarIcon,
+    ChevronDownIcon,
+    ClipboardDocumentListIcon,
+    EyeIcon,
+    FunnelIcon,
+    SparklesIcon,
+    Squares2X2Icon,
+    TableCellsIcon,
+    UserIcon,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '../../../lib/supabaseClient';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import SearchBar from '../../../components/common/SearchBar';
+import { supabase } from '../../../lib/supabaseClient';
 
 // Types
 interface AssessmentResult {
@@ -527,9 +527,11 @@ const UniversityAdminAssessmentResults: React.FC = () => {
           .select('user_id, name, email, college_id')
           .in('user_id', studentIds);
 
+        // Fetch colleges from organizations table
         const { data: collegesData } = await supabase
-          .from('colleges')
-          .select('id, name');
+          .from('organizations')
+          .select('id, name')
+          .eq('organization_type', 'college');
 
         const studentMap = new Map(studentsData?.map(s => [s.user_id, s]) || []);
         const collegeMap = new Map(collegesData?.map(c => [c.id, c.name]) || []);
@@ -560,12 +562,13 @@ const UniversityAdminAssessmentResults: React.FC = () => {
     }
   };
 
-  // Fetch colleges for filter
+  // Fetch colleges for filter from organizations table
   const fetchColleges = async () => {
     try {
       const { data, error } = await supabase
-        .from('colleges')
+        .from('organizations')
         .select('id, name')
+        .eq('organization_type', 'college')
         .order('name');
       
       if (!error && data) {

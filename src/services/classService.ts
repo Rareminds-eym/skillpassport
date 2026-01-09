@@ -238,7 +238,7 @@ const fetchSchoolEducatorClasses = async (schoolId?: string, educatorId?: string
       .from("school_educators")
       .select("id")
       .eq("id", educatorId)
-      .single()
+      .maybeSingle()
 
     if (educatorCheckError || !educatorCheck) {
       console.error("Invalid school educator ID:", educatorId)
@@ -327,7 +327,7 @@ const fetchCollegeEducatorClasses = async (collegeId?: string, educatorId?: stri
       .from("college_lecturers")
       .select("id")
       .eq("id", educatorId)
-      .single()
+      .maybeSingle()
 
     if (educatorCheckError || !educatorCheck) {
       console.error("Invalid college educator ID:", educatorId)
@@ -561,7 +561,7 @@ const getSchoolClassById = async (classId: string): Promise<ServiceResponse<Educ
     `)
     .eq("id", classId)
     .eq("school_educator_class_assignments.is_primary", true)
-    .single()
+    .maybeSingle()
 
   if (error) {
     return { data: null, error: error.message || "School class not found" }
@@ -606,7 +606,7 @@ const getCollegeClassById = async (classId: string): Promise<ServiceResponse<Edu
     `)
     .eq("id", classId)
     .eq("college_faculty_class_assignments.is_class_teacher", true)
-    .single()
+    .maybeSingle()
 
   if (error) {
     return { data: null, error: error.message || "College class not found" }
@@ -959,7 +959,7 @@ const updateSchoolClass = async (classId: string, payload: CreateClassPayload, s
     })
     .eq("id", classId)
     .select("*")
-    .single()
+    .maybeSingle()
 
   if (error) {
     return { data: null, error: error.message || "Unable to update school class" }
@@ -1004,7 +1004,7 @@ const updateCollegeClass = async (classId: string, payload: CreateClassPayload, 
     })
     .eq("id", classId)
     .select("*")
-    .single()
+    .maybeSingle()
 
   if (error) {
     return { data: null, error: error.message || "Unable to update college class" }

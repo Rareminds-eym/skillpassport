@@ -232,12 +232,13 @@ function validateRow(row: Record<string, any>, rowNumber: number): ValidationErr
 }
 
 /**
- * Get school ID from school code
+ * Get school ID from school code (uses organizations table)
  */
 async function getSchoolIdFromCode(schoolCode: string): Promise<{ schoolId: string | null; error?: string }> {
   const { data, error } = await supabase
-    .from('schools')
+    .from('organizations')
     .select('id')
+    .eq('organization_type', 'school')
     .eq('code', schoolCode)
     .maybeSingle()
 
@@ -400,15 +401,15 @@ export async function processCSVData(
       data.school_id = schoolId
     }
 
-    // Validate school_id exists if provided
+    // Validate school_id exists if provided (check organizations table)
     if (schoolId) {
-      const { data: schoolExists, error: schoolError } = await supabase
-        .from('schools')
+      const { data: orgExists, error: orgError } = await supabase
+        .from('organizations')
         .select('id')
         .eq('id', schoolId)
         .maybeSingle()
 
-      if (schoolError || !schoolExists) {
+      if (orgError || !orgExists) {
         validatedRows.push({
           rowNumber,
           data,
@@ -536,7 +537,7 @@ export async function processCSVData(
 /**
  * Import validated students
  */
-import userApiService from './userApiService';
+import userApiService from './userApiService'
 
 /**
  * Import validated students

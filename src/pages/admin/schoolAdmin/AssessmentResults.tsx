@@ -1,20 +1,20 @@
-import React, { useState, useEffect, useMemo } from 'react';
 import {
-  ClipboardDocumentListIcon,
-  EyeIcon,
-  ChevronDownIcon,
-  Squares2X2Icon,
-  TableCellsIcon,
-  FunnelIcon,
-  AcademicCapIcon,
-  ChartBarIcon,
-  XMarkIcon,
-  SparklesIcon,
+    AcademicCapIcon,
+    ChartBarIcon,
+    ChevronDownIcon,
+    ClipboardDocumentListIcon,
+    EyeIcon,
+    FunnelIcon,
+    SparklesIcon,
+    Squares2X2Icon,
+    TableCellsIcon,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '../../../lib/supabaseClient';
+import React, { useEffect, useMemo, useState } from 'react';
 import SearchBar from '../../../components/common/SearchBar';
-import { useAuth } from '../../../context/AuthContext';
 import AssessmentReportDrawer from '../../../components/shared/AssessmentReportDrawer';
+import { useAuth } from '../../../context/AuthContext';
+import { supabase } from '../../../lib/supabaseClient';
 
 // Types
 interface AssessmentResult {
@@ -336,24 +336,25 @@ const SchoolAdminAssessmentResults: React.FC = () => {
         return;
       }
 
-      // Find school by matching email (case-insensitive)
-      const { data: school, error: schoolError } = await supabase
-        .from('schools')
+      // Find school by matching email in organizations table (case-insensitive)
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
         .select('id, name, email')
+        .eq('organization_type', 'school')
         .ilike('email', userEmail)
-        .single();
+        .maybeSingle();
 
-      if (schoolError || !school?.id) {
-        console.error('Error fetching school:', schoolError, 'for email:', userEmail);
+      if (orgError || !org?.id) {
+        console.error('Error fetching organization:', orgError, 'for email:', userEmail);
         setError('No school associated with your account');
         setLoading(false);
         return;
       }
 
-      const schoolId = school.id;
+      const schoolId = org.id;
       
-      // Set school name from the already fetched school data
-      setSchoolName(school.name);
+      // Set school name from the already fetched organization data
+      setSchoolName(org.name);
 
       // Get students from this school
       const { data: studentsData, error: studentsError } = await supabase

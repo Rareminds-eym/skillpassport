@@ -1,7 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import MessageService from '../services/messageService';
 import { supabase } from '../lib/supabaseClient';
+import MessageService from '../services/messageService';
 
 /**
  * Hook for managing student-college_admin conversations
@@ -26,7 +26,7 @@ export const useStudentCollegeAdminConversations = (studentId, enabled = true) =
         .from('students')
         .select('college_id, university_college_id')
         .eq('user_id', studentId)
-        .single();
+        .maybeSingle();
       
       if (studentError || (!studentData?.college_id && !studentData?.university_college_id)) {
         console.error('Error fetching student college:', studentError);
@@ -283,7 +283,7 @@ export const useCreateStudentCollegeAdminConversation = () => {
         .from('students')
         .select('college_id, university_college_id')
         .eq('user_id', studentId)
-        .single();
+        .maybeSingle();
       
       if (studentError || (!studentData?.college_id && !studentData?.university_college_id)) {
         throw new Error('Could not find student college');

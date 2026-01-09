@@ -568,21 +568,18 @@ export class MemberInvitationService {
   }
 
   /**
-   * Get organization name
+   * Get organization name from unified organizations table
    */
   private async getOrganizationName(
     organizationId: string,
     organizationType: 'school' | 'college' | 'university'
   ): Promise<string> {
     try {
-      const tableName = organizationType === 'school' ? 'schools' 
-        : organizationType === 'college' ? 'colleges' 
-        : 'universities';
-
       const { data, error } = await supabase
-        .from(tableName)
+        .from('organizations')
         .select('name')
         .eq('id', organizationId)
+        .eq('organization_type', organizationType)
         .single();
 
       if (error) throw error;

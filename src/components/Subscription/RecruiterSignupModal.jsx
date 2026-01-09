@@ -2,7 +2,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, Briefcase, CheckCircle, Eye, EyeOff, Info, Lock, Mail, Phone, User, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabaseClient';
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 import { getModalContent } from '../../utils/getEntityContent';
 import DatePicker from './shared/DatePicker';
@@ -278,70 +277,35 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
     setLoading(true);
 
     try {
-      // Step 1: Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName,
-            user_role: 'recruiter'
-          }
-        }
-      });
-
-      if (authError) {
-        throw new Error(authError.message);
-      }
-
-      if (!authData.user) {
-        throw new Error('Failed to create user account');
-      }
-
-      const userId = authData.user.id;
-
-      // Step 2: Create user record in users table
+      // Use the worker API for signup with proper rollback support
+      const USER_API_URL = import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
+      
       const nameParts = formData.fullName.trim().split(' ');
       const firstName = capitalizeFirstLetter(nameParts[0] || '');
       const lastName = capitalizeFirstLetter(nameParts.slice(1).join(' ') || '');
       
-      const { error: userError } = await supabase
-        .from('users')
-        .insert({
-          id: userId,
+      const response = await fetch(`${USER_API_URL}/signup/recruiter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           email: formData.email,
-          firstName: firstName,
-          lastName: lastName,
-          role: 'recruiter',
-          isActive: true,
-          dob: formData.dateOfBirth || null
-        });
-
-      if (userError) {
-        console.error('Error creating user record:', userError);
-        // Continue anyway as auth user was created
-      }
-
-      // Step 3: Create recruiter record (first_name/last_name stored in users table only)
-      const fullName = `${firstName} ${lastName}`.trim();
-      const { error: recruiterError } = await supabase
-        .from('recruiters')
-        .insert({
-          user_id: userId,
-          name: fullName,
-          email: formData.email,
+          password: formData.password,
+          name: formData.fullName,
+          firstName,
+          lastName,
           phone: formData.phone,
-          company_id: formData.companyId,
-          verificationstatus: 'pending',
-          isactive: true,
-          approval_status: 'pending',
-          account_status: 'active'
-        });
+          companyId: formData.companyId,
+          dateOfBirth: formData.dateOfBirth || undefined,
+        }),
+      });
 
-      if (recruiterError) {
-        console.error('Error creating recruiter record:', recruiterError);
-        throw new Error('Failed to create recruiter profile');
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create account');
       }
+
+      const userId = result.data.userId;
 
       // Store user data temporarily for payment flow
       const userData = {

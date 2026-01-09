@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Search, Building2, MessageCircle } from 'lucide-react';
+import { Building2, MessageCircle, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
 const NewCollegeAdminConversationModal = ({ isOpen, onClose, studentId, onConversationCreated }) => {
@@ -61,15 +61,15 @@ const NewCollegeAdminConversationModal = ({ isOpen, onClose, studentId, onConver
       if (studentData?.colleges) {
         setCollege(studentData.colleges);
       } else if (collegeId) {
-        // Fetch college details separately if not joined
-        const { data: collegeData, error: collegeError } = await supabase
-          .from('colleges')
+        // Fetch college details separately from organizations table if not joined
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
           .select('id, name, address, phone, email')
           .eq('id', collegeId)
           .single();
         
-        if (collegeError) throw collegeError;
-        setCollege(collegeData);
+        if (orgError) throw orgError;
+        setCollege(orgData);
       } else {
         console.error('Student has no associated college');
       }

@@ -599,16 +599,16 @@ const SystemConfigModal = ({
     setSubmitting(true);
     try {
       const { error } = await supabase
-        .from("schools")
+        .from("organizations")
         .update({
           name: formData.schoolName,
-          code: formData.schoolCode,
           address: formData.address,
           phone: formData.phone,
           email: formData.email,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", schoolId);
+        .eq("id", schoolId)
+        .eq("organization_type", "school");
 
       if (error) {
         console.error("Error updating school:", error);
@@ -1767,24 +1767,24 @@ const Settings = () => {
 
       setCurrentSchoolId(educator.school_id);
 
-      // Fetch school details
-      const { data: school, error: schoolError } = await supabase
-        .from("schools")
+      // Fetch school details from organizations table
+      const { data: org, error: orgError } = await supabase
+        .from("organizations")
         .select("*")
         .eq("id", educator.school_id)
         .single();
 
-      if (schoolError || !school) {
-        console.error("Error fetching school:", schoolError);
+      if (orgError || !org) {
+        console.error("Error fetching organization:", orgError);
         return;
       }
 
       setSystemConfig({
-        schoolName: school.name || "",
-        schoolCode: school.code || "",
-        address: school.address || "",
-        phone: school.phone || "",
-        email: school.email || "",
+        schoolName: org.name || "",
+        schoolCode: org.code || "",
+        address: org.address || "",
+        phone: org.phone || "",
+        email: org.email || "",
         sessionTimeout: 30,
         maxLoginAttempts: 3,
         passwordExpiryDays: 90,

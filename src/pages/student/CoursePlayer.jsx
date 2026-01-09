@@ -797,7 +797,7 @@ const CoursePlayer = () => {
         .from('courses')
         .select('*')
         .eq('course_id', courseId)
-        .single();
+        .maybeSingle();
 
       if (courseError) throw courseError;
 

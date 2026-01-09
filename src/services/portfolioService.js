@@ -28,33 +28,33 @@ export const getStudentPortfolioByEmail = async (email) => {
       .from('students')
       .select(`
         *,
-        schools:school_id (
+        school:organizations!students_school_id_fkey (
           id,
           name,
           code,
           city,
           state,
-          board,
-          principal_name
+          organization_type
         ),
-        universities:universityId (
+        university:organizations!students_universityid_fkey (
           id,
           name,
           code,
           state,
-          district,
-          website
+          city,
+          website,
+          organization_type
         ),
         university_colleges:university_college_id (
           id,
           name,
           code,
-          dean_name,
-          universities:university_id (
+          university:organizations!university_colleges_university_id_fkey (
             id,
             name,
             state,
-            district
+            city,
+            organization_type
           )
         )
       `)

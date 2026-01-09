@@ -33,7 +33,7 @@ const Analytics = () => {
         .from('students')
         .select('id')
         .eq('email', userEmail)
-        .single();
+        .maybeSingle();
 
       if (studentError) {
         console.error('❌ Analytics: Error fetching student:', studentError);

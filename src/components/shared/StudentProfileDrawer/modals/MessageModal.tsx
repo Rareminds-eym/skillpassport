@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
 import {
-  XMarkIcon,
-  PhoneIcon,
-  EnvelopeIcon,
-  ChatBubbleLeftRightIcon,
+    ChatBubbleLeftRightIcon,
+    DevicePhoneMobileIcon,
+    EnvelopeIcon,
+    PhoneIcon,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
-import { DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
-import { Student } from '../types';
+import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { supabase } from '../../../../lib/supabaseClient';
 import MessageService from '../../../../services/messageService';
-import toast from 'react-hot-toast';
+import { Student } from '../types';
 
 interface MessageModalProps {
   isOpen: boolean;
@@ -94,14 +94,15 @@ const MessageModal: React.FC<MessageModalProps> = ({
         if (educatorData?.school_id) {
           schoolId = educatorData.school_id;
         } else {
-          const { data: schoolData } = await supabase
-            .from('schools')
+          const { data: orgData } = await supabase
+            .from('organizations')
             .select('id')
-            .eq('created_by', user.id)
-            .single();
+            .eq('organization_type', 'school')
+            .eq('admin_id', user.id)
+            .maybeSingle();
 
-          if (schoolData?.id) {
-            schoolId = schoolData.id;
+          if (orgData?.id) {
+            schoolId = orgData.id;
           }
         }
 
@@ -144,14 +145,15 @@ const MessageModal: React.FC<MessageModalProps> = ({
         if (lecturerData?.collegeId) {
           collegeId = lecturerData.collegeId;
         } else {
-          const { data: ownerData } = await supabase
-            .from('colleges')
+          const { data: orgData } = await supabase
+            .from('organizations')
             .select('id')
-            .eq('created_by', user.id)
-            .single();
+            .eq('organization_type', 'college')
+            .eq('admin_id', user.id)
+            .maybeSingle();
 
-          if (ownerData?.id) {
-            collegeId = ownerData.id;
+          if (orgData?.id) {
+            collegeId = orgData.id;
           }
         }
 

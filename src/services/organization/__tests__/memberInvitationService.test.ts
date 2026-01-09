@@ -411,8 +411,8 @@ describe('MemberInvitationService', () => {
             eq: vi.fn().mockResolvedValue({ error: null })
           } as any;
         }
-        if (table === 'schools') {
-          // Get organization name
+        if (table === 'organizations') {
+          // Get organization name from unified organizations table
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
@@ -502,7 +502,8 @@ describe('MemberInvitationService', () => {
             update: vi.fn().mockReturnThis()
           } as any;
         }
-        if (table === 'schools') {
+        if (table === 'organizations') {
+          // Get organization name from unified organizations table
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),

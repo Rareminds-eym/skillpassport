@@ -3,6 +3,8 @@
  * - College Admin signup
  * - College Educator signup
  * - College Student signup
+ * 
+ * Uses unified 'organizations' table with organization_type='college'
  */
 
 import {
@@ -17,6 +19,7 @@ import { checkEmailExists, deleteAuthUser, getSupabaseAdmin } from '../utils/sup
 
 /**
  * Handle college admin signup with college creation
+ * Creates organization record in unified 'organizations' table
  */
 export async function handleCollegeAdminSignup(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
@@ -46,9 +49,11 @@ export async function handleCollegeAdminSignup(request: Request, env: Env): Prom
       return jsonResponse({ error: 'An account with this email already exists' }, 400);
     }
 
+    // Check if college code is unique in organizations table
     const { data: existingCollege } = await supabaseAdmin
-      .from('colleges')
+      .from('organizations')
       .select('id')
+      .eq('organization_type', 'college')
       .eq('code', body.collegeCode)
       .maybeSingle();
 
@@ -90,9 +95,10 @@ export async function handleCollegeAdminSignup(request: Request, env: Env): Prom
       });
 
       const { data: college, error: collegeError } = await supabaseAdmin
-        .from('colleges')
+        .from('organizations')
         .insert({
           name: body.collegeName,
+          organization_type: 'college',
           code: body.collegeCode,
           email: body.email.toLowerCase(),
           phone: body.phone,
@@ -102,16 +108,19 @@ export async function handleCollegeAdminSignup(request: Request, env: Env): Prom
           state: body.state,
           country: body.country || 'India',
           pincode: body.pincode,
-          establishedYear: body.establishedYear,
-          collegeType: body.collegeType,
-          affiliation: body.affiliation,
-          accreditation: body.accreditation,
-          deanName: body.deanName,
-          deanEmail: body.deanEmail || body.email,
-          deanPhone: body.deanPhone || body.phone,
-          accountStatus: 'pending',
-          approvalStatus: 'pending',
-          created_by: userId,
+          admin_id: userId,
+          account_status: 'pending',
+          approval_status: 'pending',
+          is_active: true,
+          metadata: {
+            established_year: body.establishedYear,
+            college_type: body.collegeType,
+            affiliation: body.affiliation,
+            accreditation: body.accreditation,
+            dean_name: body.deanName,
+            dean_email: body.deanEmail || body.email,
+            dean_phone: body.deanPhone || body.phone,
+          },
         })
         .select()
         .single();
@@ -159,6 +168,7 @@ export async function handleCollegeAdminSignup(request: Request, env: Env): Prom
 
 /**
  * Handle college educator signup
+ * Verifies college exists in organizations table
  */
 export async function handleCollegeEducatorSignup(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
@@ -185,10 +195,12 @@ export async function handleCollegeEducatorSignup(request: Request, env: Env): P
       return jsonResponse({ error: 'An account with this email already exists' }, 400);
     }
 
+    // Verify college exists in organizations table
     const { data: college, error: collegeError } = await supabaseAdmin
-      .from('colleges')
+      .from('organizations')
       .select('id, name')
       .eq('id', body.collegeId)
+      .eq('organization_type', 'college')
       .single();
 
     if (collegeError || !college) {
@@ -313,6 +325,7 @@ export async function handleCollegeEducatorSignup(request: Request, env: Env): P
 
 /**
  * Handle college student signup
+ * Verifies college exists in organizations table
  */
 export async function handleCollegeStudentSignup(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
@@ -336,10 +349,12 @@ export async function handleCollegeStudentSignup(request: Request, env: Env): Pr
       return jsonResponse({ error: 'An account with this email already exists' }, 400);
     }
 
+    // Verify college exists in organizations table
     const { data: college, error: collegeError } = await supabaseAdmin
-      .from('colleges')
+      .from('organizations')
       .select('id, name')
       .eq('id', body.collegeId)
+      .eq('organization_type', 'college')
       .single();
 
     if (collegeError || !college) {

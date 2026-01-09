@@ -1,5 +1,7 @@
 import { supabase } from '../../lib/supabaseClient';
-import type { User, BulkImportResult, ApiResponse } from '../../types/college';
+// @ts-ignore - userApiService is a .js file
+import type { ApiResponse, BulkImportResult, User } from '../../types/college';
+import userApiService from '../userApiService';
 
 /**
  * User Management Service
@@ -8,7 +10,7 @@ import type { User, BulkImportResult, ApiResponse } from '../../types/college';
 
 export const userManagementService = {
   /**
-   * Create a new user
+   * Create a new user using Worker API with proper rollback
    * Property 1: User uniqueness enforcement
    * Creates user via Edge Function: auth.users → users → college_lecturers
    */
@@ -37,47 +39,145 @@ export const userManagementService = {
         };
       }
 
-      // Get current session token
+      // Check for duplicate email in users table
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', userData.email)
+        .maybeSingle();
+
+      if (existingUser) {
+        return {
+          success: false,
+          error: {
+            code: 'DUPLICATE_ENTRY',
+            message: 'A user with this email already exists',
+            field: 'email',
+          },
+        };
+      }
+
+      // Get auth token for worker API
       const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
+      if (!session?.access_token) {
         return {
           success: false,
           error: {
-            code: 'NO_SESSION',
-            message: 'You must be logged in to create users',
+            code: 'AUTH_ERROR',
+            message: 'Not authenticated. Please log in again.',
           },
         };
       }
 
-      // Call Edge Function to create user
-      const { data, error } = await supabase.functions.invoke('create-college-user', {
-        body: { userData },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+      // Get college ID from current user context
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      let collegeId = null;
 
-      if (error) {
-        console.error('❌ Edge function error:', error);
-        throw new Error(error.message || 'Failed to create user');
+      if (currentUser?.id || currentUser?.email) {
+        const { data: collegeData } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('organization_type', 'college')
+          .or(`admin_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
+          .maybeSingle();
+
+        collegeId = collegeData?.id;
       }
 
-      if (!data.success) {
-        console.error('❌ User creation failed:', data.error);
-        return {
-          success: false,
-          error: {
-            code: data.error.code || 'CREATE_ERROR',
-            message: data.error.message || 'Failed to create user',
-          },
+      if (!collegeId) {
+        console.warn('No college ID found, using first available college');
+        const { data: firstCollege } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('organization_type', 'college')
+          .limit(1)
+          .maybeSingle();
+        
+        collegeId = firstCollege?.id;
+      }
+
+      // Determine role for worker API
+      const isStaff = userData.roles.some(role => 
+        ['College Admin', 'HoD', 'Faculty', 'Exam Cell', 'Finance Admin', 'Placement Officer', 'Lecturer'].includes(role)
+      );
+
+      if (isStaff) {
+        // Use createCollegeStaff worker endpoint
+        const nameParts = userData.name.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        const staffResult = await userApiService.createCollegeStaff({
+          email: userData.email,
+          firstName,
+          lastName,
+          collegeId: collegeId,
+          employeeId: userData.employee_id,
+          department: userData.department_id,
+          role: userData.roles[0]?.toLowerCase().replace(' ', '_') || 'lecturer',
+        }, session.access_token);
+
+        if (!staffResult.success) {
+          return {
+            success: false,
+            error: {
+              code: 'CREATE_ERROR',
+              message: staffResult.error || 'Failed to create staff member',
+            },
+          };
+        }
+
+        const createdUser: User = {
+          id: staffResult.data.userId,
+          name: userData.name,
+          email: userData.email,
+          roles: userData.roles,
+          employee_id: userData.employee_id,
+          department_id: userData.department_id,
+          status: userData.status || 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         };
+
+        console.log('✅ Staff user created successfully:', createdUser);
+        return { success: true, data: createdUser };
+      } else {
+        // For non-staff users, use unified signup
+        const nameParts = userData.name.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        const result = await userApiService.unifiedSignup({
+          email: userData.email,
+          password: Math.random().toString(36).slice(-8) + 'Temp@123',
+          firstName,
+          lastName,
+          role: 'college_student',
+        });
+
+        if (!result.success) {
+          return {
+            success: false,
+            error: {
+              code: 'CREATE_ERROR',
+              message: result.error || 'Failed to create user',
+            },
+          };
+        }
+
+        const createdUser: User = {
+          id: result.data.userId,
+          name: userData.name,
+          email: userData.email,
+          roles: userData.roles,
+          status: userData.status || 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        console.log('✅ User created successfully:', createdUser);
+        return { success: true, data: createdUser };
       }
-
-      console.log('✅ User created successfully:', data.data);
-      console.log('📧 Temporary password:', data.data.metadata?.temporary_password);
-
-      return { success: true, data: data.data };
     } catch (error: any) {
       console.error('❌ Error creating user:', error);
       return {
@@ -261,9 +361,10 @@ export const userManagementService = {
         .from('college_lecturers')
         .select('email')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (fetchError) throw fetchError;
+      if (!lecturer) throw new Error('User not found');
 
       if (!lecturer?.email) {
         throw new Error('User email not found');

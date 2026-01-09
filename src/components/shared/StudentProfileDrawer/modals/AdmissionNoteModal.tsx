@@ -1,9 +1,9 @@
+import { ChatBubbleLeftRightIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import React, { useState } from 'react';
-import { XMarkIcon, ChatBubbleLeftRightIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
-import { Student } from '../types';
+import toast from 'react-hot-toast';
 import { supabase } from '../../../../lib/supabaseClient';
 import MessageService from '../../../../services/messageService';
-import toast from 'react-hot-toast';
+import { Student } from '../types';
 
 interface AdmissionNoteModalProps {
   isOpen: boolean;
@@ -72,15 +72,16 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
       if (lecturerData?.collegeId) {
         collegeId = lecturerData.collegeId;
       } else {
-        // Fallback: check if user is college owner
-        const { data: ownerData } = await supabase
-          .from('colleges')
+        // Fallback: check if user is college owner in organizations table
+        const { data: orgData } = await supabase
+          .from('organizations')
           .select('id')
-          .eq('created_by', user.id)
-          .single();
+          .eq('organization_type', 'college')
+          .eq('admin_id', user.id)
+          .maybeSingle();
         
-        if (ownerData?.id) {
-          collegeId = ownerData.id;
+        if (orgData?.id) {
+          collegeId = orgData.id;
         }
       }
 

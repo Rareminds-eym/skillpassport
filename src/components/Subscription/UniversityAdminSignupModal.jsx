@@ -1,9 +1,12 @@
 import { AlertCircle, Building, Calendar, CheckCircle, ChevronDown, Eye, EyeOff, Mail, Phone, User, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import { signUpWithRole } from '../../services/authService';
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 import { checkUniversityCollegeCode, createUniversityCollege, getUniversities } from '../../services/universityService';
+
+function capitalizeFirstLetter(str) {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
 
 function UniversityAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onSwitchToLogin }) {
     const [formData, setFormData] = useState({
@@ -212,42 +215,28 @@ function UniversityAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSuc
         setError('');
 
         try {
-            // 1. Create Auth User
-            const authResult = await signUpWithRole(formData.email, formData.password, {
-                role: 'admin',
-                name: formData.deanName,
-                phone: formData.deanPhone
-            });
-
-            if (!authResult.success) {
-                const errorMessage = authResult.message || 
-                  (typeof authResult.error === 'string' && !authResult.error.includes('_') ? authResult.error : null) || 
-                  'Signup failed';
-                throw new Error(errorMessage);
-            }
-
-            const userId = authResult.user.id;
-
-            // 2. Create User Record (inline - no external dependency)
+            // Parse name into firstName and lastName
             const nameParts = formData.deanName.trim().split(' ');
             const firstName = capitalizeFirstLetter(nameParts[0] || '');
             const lastName = capitalizeFirstLetter(nameParts.slice(1).join(' ') || '');
-            
-            const { error: userError } = await supabase.from('users').insert({
-                id: userId,
-                email: formData.email.toLowerCase(),
-                firstName: firstName,
-                lastName: lastName,
+
+            // 1. Create Auth User and User Record via Worker API (with rollback)
+            const result = await unifiedSignup({
+                email: formData.email,
+                password: formData.password,
+                firstName,
+                lastName,
                 role: 'university_admin',
-                isActive: true,
-                metadata: { source: 'university_admin_signup' }
+                phone: formData.deanPhone || null,
             });
 
-            if (userError) {
-                throw new Error(userError.message || 'Failed to create user record');
+            if (!result.success) {
+                throw new Error(result.error || 'Signup failed');
             }
 
-            // 3. Create University College Record
+            const userId = result.data.userId;
+
+            // 2. Create University College Record
             const collegeData = {
                 university_id: formData.universityId,
                 name: formData.collegeName,

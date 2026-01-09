@@ -646,58 +646,28 @@ describe('OrganizationBillingService', () => {
   });
 
   describe('getBillingContacts', () => {
-    it('should return billing contacts from school', async () => {
-      const mockSchool = {
-        admin_email: 'admin@school.com',
-        admin_name: 'John Admin',
+    it('should return billing contacts from organizations table', async () => {
+      const mockOrganization = {
+        email: 'admin@school.com',
+        name: 'Test School',
         phone: '+1234567890'
       };
 
       vi.mocked(supabase.from).mockImplementation(() => ({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockSchool, error: null })
+        single: vi.fn().mockResolvedValue({ data: mockOrganization, error: null })
       } as any));
 
       const result = await service.getBillingContacts('org-123');
 
       expect(result).toHaveLength(1);
       expect(result[0].email).toBe('admin@school.com');
-      expect(result[0].name).toBe('John Admin');
+      expect(result[0].name).toBe('Test School');
       expect(result[0].isPrimary).toBe(true);
     });
 
-    it('should fallback to colleges table if school not found', async () => {
-      const mockCollege = {
-        admin_email: 'admin@college.edu',
-        admin_name: 'Jane Admin',
-        phone: '+0987654321'
-      };
-
-      let callCount = 0;
-      vi.mocked(supabase.from).mockImplementation((table: string) => {
-        callCount++;
-        if (table === 'schools') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
-          } as any;
-        }
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockCollege, error: null })
-        } as any;
-      });
-
-      const result = await service.getBillingContacts('org-123');
-
-      expect(result).toHaveLength(1);
-      expect(result[0].email).toBe('admin@college.edu');
-    });
-
-    it('should return empty array when no contacts found', async () => {
+    it('should return empty array when organization not found', async () => {
       vi.mocked(supabase.from).mockImplementation(() => ({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),

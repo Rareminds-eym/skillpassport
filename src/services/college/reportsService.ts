@@ -99,45 +99,50 @@ const getCollegeIdForCurrentUser = async (): Promise<string | null> => {
 
     if (user) {
       // Get user role from users table (same as useStudents)
-      const { data: userRecord } = await supabase.from('users').select('role').eq('id', user.id).single();
+      const { data: userRecord } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
 
       const userRole = userRecord?.role || null;
       console.log('👤 [Reports] User role from database:', userRole);
 
-      // Check for college admin
+      // Check for college admin (using unified organizations table)
       if (userRole === 'college_admin' && user.email) {
-        // Find college by matching deanEmail (case-insensitive) - same as useStudents
+        // Find college by matching admin_id or email in organizations table
         const { data: college, error: collegeError } = await supabase
-          .from('colleges')
-          .select('id, name, deanEmail')
-          .ilike('deanEmail', user.email)
+          .from('organizations')
+          .select('id, name, email')
+          .eq('organization_type', 'college')
+          .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
           .single();
 
-        console.log('🏫 [Reports] College by deanEmail lookup:', college, 'error:', collegeError);
+        console.log('🏫 [Reports] College lookup from organizations:', college, 'error:', collegeError);
 
         if (college?.id) {
-          console.log('✅ [Reports] Found college by deanEmail:', college.id, college.name);
+          console.log('✅ [Reports] Found college:', college.id, college.name);
           return college.id;
         } else {
           // Debug: fetch all colleges to see what's available
-          const { data: allColleges } = await supabase.from('colleges').select('id, name, deanEmail');
+          const { data: allColleges } = await supabase
+            .from('organizations')
+            .select('id, name, email, admin_id')
+            .eq('organization_type', 'college');
           console.log('📋 [Reports] All colleges in database:', allColleges);
         }
       }
 
-      // Also try created_by as fallback
+      // Also try admin_id as fallback
       if (user.id) {
-        const { data: collegeByCreator, error: creatorError } = await supabase
-          .from('colleges')
+        const { data: collegeByAdmin, error: adminError } = await supabase
+          .from('organizations')
           .select('id, name')
-          .eq('created_by', user.id)
+          .eq('organization_type', 'college')
+          .eq('admin_id', user.id)
           .single();
 
-        console.log('🏫 [Reports] College by created_by lookup:', collegeByCreator, 'error:', creatorError);
+        console.log('🏫 [Reports] College by admin_id lookup:', collegeByAdmin, 'error:', adminError);
 
-        if (collegeByCreator?.id) {
-          console.log('✅ [Reports] Found college by created_by:', collegeByCreator.id);
-          return collegeByCreator.id;
+        if (collegeByAdmin?.id) {
+          console.log('✅ [Reports] Found college by admin_id:', collegeByAdmin.id);
+          return collegeByAdmin.id;
         }
       }
     }

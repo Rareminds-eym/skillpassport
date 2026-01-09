@@ -1,23 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
+import { motion } from 'framer-motion';
 import {
-  Users,
-  TrendingUp,
-  Award,
-  Clock,
-  ChevronLeft,
-  Search,
-  Download,
-  CheckCircle,
-  XCircle,
-  Activity
+    Activity,
+    Award,
+    ChevronLeft,
+    Clock,
+    Download,
+    Search,
+    TrendingUp,
+    Users
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { supabase } from '../../lib/supabaseClient';
 import { courseEnrollmentService } from '../../services/courseEnrollmentService';
-import { motion } from 'framer-motion';
 
 const CourseAnalytics = () => {
   const { courseId } = useParams();
@@ -44,7 +42,7 @@ const CourseAnalytics = () => {
         .from('courses')
         .select('*')
         .eq('course_id', courseId)
-        .single();
+        .maybeSingle();
 
       if (courseError) throw courseError;
       setCourse(courseData);

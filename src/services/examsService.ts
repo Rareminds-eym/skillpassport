@@ -178,7 +178,7 @@ class ExamsService {
         .eq('school_id', schoolId)
         .eq('grade', grade)
         .eq('section', section)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error getting class for single section:', error);

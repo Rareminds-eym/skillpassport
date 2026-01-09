@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
 import {
-  DocumentChartBarIcon,
-  AcademicCapIcon,
-  CalendarIcon,
-  UserGroupIcon,
-  ChartBarIcon,
-  ArrowDownTrayIcon,
-  PrinterIcon,
+    AcademicCapIcon,
+    ArrowDownTrayIcon,
+    CalendarIcon,
+    ChartBarIcon,
+    DocumentChartBarIcon,
+    PrinterIcon,
+    UserGroupIcon,
 } from '@heroicons/react/24/outline';
-import { studentReportService, attendanceService } from '../../../services/studentManagementService';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
+import { attendanceService, studentReportService } from '../../../services/studentManagementService';
 
 interface StudentReportData {
   id: string;
@@ -71,14 +71,15 @@ const StudentReports: React.FC = () => {
           if (educator?.school_id) {
             currentSchoolId = educator.school_id;
           } else {
-            // Check schools table by email
-            const { data: school } = await supabase
-              .from('schools')
+            // Check organizations table by email
+            const { data: org } = await supabase
+              .from('organizations')
               .select('id')
+              .eq('organization_type', 'school')
               .eq('email', user.email)
-              .single();
+              .maybeSingle();
 
-            currentSchoolId = school?.id || null;
+            currentSchoolId = org?.id || null;
           }
         }
       }

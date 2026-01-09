@@ -19,7 +19,6 @@ import { useSubscription } from '../../hooks/Subscription/useSubscription';
 import useAuth from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabaseClient';
 import { initiateRazorpayPayment } from '../../services/Subscriptions/razorpayService';
-import { isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
 /**
  * Get the subscription manage path based on user role
@@ -263,13 +262,18 @@ function PaymentCompletion() {
         }
 
         // Verify user exists in public.users table
+        // Use maybeSingle() to avoid 406 error when user doesn't exist
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('id, firstName, lastName, phone, email')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
 
-        if (userError || !userData) {
+        if (userError) {
+          console.error('Error fetching user from database:', userError);
+        }
+
+        if (!userData) {
           console.warn('⚠️ User not found in database, may need to complete registration');
           // User has auth account but no database record - this is a partial signup
           // Try to get details from auth metadata

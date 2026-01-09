@@ -1,35 +1,32 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import { 
-  MagnifyingGlassIcon,
-  PaperAirplaneIcon,
-  EllipsisVerticalIcon,
-  PhoneIcon,
-  VideoCameraIcon,
-  PaperClipIcon,
-  FaceSmileIcon,
-  ArchiveBoxIcon,
-  ChevronRightIcon,
-  ArrowUturnLeftIcon,
-  ChevronLeftIcon,
-  TrashIcon,
-  UserGroupIcon,
-  ChatBubbleLeftRightIcon,
-  XMarkIcon,
-  ShieldCheckIcon
+import {
+    ArchiveBoxIcon,
+    ChatBubbleLeftRightIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    EllipsisVerticalIcon,
+    FaceSmileIcon,
+    MagnifyingGlassIcon,
+    PaperAirplaneIcon,
+    PaperClipIcon,
+    PhoneIcon,
+    ShieldCheckIcon,
+    VideoCameraIcon,
+    XMarkIcon
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import MessageService, { Conversation } from '../../services/messageService';
-import { useEducatorAdminMessages } from '../../hooks/useEducatorAdminMessages.js';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
+import { useLocation } from 'react-router-dom';
+import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useEducatorAdminMessages } from '../../hooks/useEducatorAdminMessages.js';
+import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
-import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
-import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
+import MessageService, { Conversation } from '../../services/messageService';
 
 const AdminCommunication = () => {
   const location = useLocation();
@@ -62,7 +59,7 @@ const AdminCommunication = () => {
         .from('school_educators')
         .select('id, school_id, first_name, last_name, email, schools(id, name)')
         .eq('user_id', educatorId)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       return data;
@@ -440,7 +437,7 @@ const AdminCommunication = () => {
         .select('user_id')
         .eq('school_id', currentChat.schoolId)
         .eq('role', 'school_admin')
-        .single();
+        .maybeSingle();
       
       if (adminError || !schoolAdmin) {
         toast.error('Could not find school admin');
