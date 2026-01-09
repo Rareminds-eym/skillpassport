@@ -6,6 +6,18 @@
 import { supabase } from '../lib/supabaseClient';
 
 /**
+ * Map grade levels to their database equivalents
+ * Some UI grade levels share the same database sections
+ */
+const mapGradeLevelToDatabase = (gradeLevel) => {
+  const mapping = {
+    'higher_secondary': 'highschool', // Grades 11-12 use high school sections
+    // Add more mappings as needed
+  };
+  return mapping[gradeLevel] || gradeLevel;
+};
+
+/**
  * Fetch all assessment sections
  * @param {string} gradeLevel - Grade level filter: 'middle', 'highschool', 'higher_secondary', or 'after12'
  */
@@ -15,9 +27,10 @@ export const fetchSections = async (gradeLevel = null) => {
     .select('*')
     .eq('is_active', true);
 
-  // Filter by grade level if provided
+  // Filter by grade level if provided (with mapping)
   if (gradeLevel) {
-    query = query.eq('grade_level', gradeLevel);
+    const dbGradeLevel = mapGradeLevelToDatabase(gradeLevel);
+    query = query.eq('grade_level', dbGradeLevel);
   }
 
   const { data, error } = await query.order('order_number');

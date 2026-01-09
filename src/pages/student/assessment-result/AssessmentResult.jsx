@@ -53,6 +53,9 @@ import { calculateCourseMatchScores } from './utils/courseMatchingEngine';
 // Import stream matching engine for after 10th students
 import { calculateStreamRecommendations } from './utils/streamMatchingEngine';
 
+// Import centralized utilities from assessment feature
+import { normalizeCourseRecommendations } from '../../../features/assessment';
+
 /**
  * Gemini-Style Career Path Connector
  * Animated gradient paths connecting career cards (inspired by Aceternity UI)
@@ -664,15 +667,28 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
 
     // Calculate enhanced course recommendations with accurate match scores
     const enhancedCourseRecommendations = useMemo(() => {
-        if (!results?.courseRecommendations) return [];
+        // Use centralized utility to normalize course recommendations
+        // This handles both platformCourses (new) and courseRecommendations (legacy) field names
+        const normalizedCourses = normalizeCourseRecommendations(results);
+        if (normalizedCourses.length === 0) return [];
+        
+        // Transform to format expected by calculateCourseMatchScores
+        const transformedCourses = normalizedCourses.map(course => ({
+            courseId: course.courseId,
+            courseName: course.title || course.courseName,
+            category: course.category || 'General',
+            matchScore: course.matchScore || course.relevanceScore || 70,
+            reasons: course.matchReasons || course.reasons || [],
+            ...course
+        }));
         
         // Use the powerful matching engine to calculate accurate scores
         return calculateCourseMatchScores(
-            results.courseRecommendations,
-            results.riasec?.scores || {},
+            transformedCourses,
+            results?.riasec?.scores || {},
             studentAcademicData
         );
-    }, [results?.courseRecommendations, results?.riasec?.scores, studentAcademicData]);
+    }, [results, studentAcademicData]);
 
     // Calculate stream recommendations for after 10th students using academic data
     const enhancedStreamRecommendation = useMemo(() => {

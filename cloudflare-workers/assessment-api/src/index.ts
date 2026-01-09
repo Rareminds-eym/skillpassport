@@ -123,10 +123,7 @@ function repairAndParseJSON(text: string): any {
 
 // List of models to try in order (using reliable free models)
 const FREE_MODELS = [
-  'xiaomi/mimo-v2-flash:free',             // Xiaomi's free model - fast and reliable
-  'google/gemini-2.0-flash-exp:free',      // Google's free model
-  'meta-llama/llama-3.1-8b-instruct:free', // Meta's free model
-  'google/gemini-flash-1.5-8b:free'        // Gemini free tier
+  'xiaomi/mimo-v2-flash:free'  // Xiaomi's free model - fast and reliable
 ];
 
 // Helper function to call OpenRouter with retry and model fallback

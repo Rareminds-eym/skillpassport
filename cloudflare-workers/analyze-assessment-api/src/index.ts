@@ -270,18 +270,40 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
   "careerFit": {
     "clusters": [
       {
-        "title": "<Cluster Name>",
+        "title": "<Career Cluster 1 - REQUIRED>",
         "fit": "High",
         "matchScore": 85,
-        "evidence": {"interest": "<evidence>", "aptitude": "<evidence>", "personality": "<evidence>"},
-        "roles": {"entry": ["<role>"], "mid": ["<role>"]},
-        "domains": ["<domain>"]
+        "description": "<2-3 sentences explaining WHY this fits based on assessment - REQUIRED>",
+        "evidence": {"interest": "<RIASEC evidence - REQUIRED>", "aptitude": "<aptitude evidence - REQUIRED>", "personality": "<personality evidence - REQUIRED>"},
+        "roles": {"entry": ["<entry role 1>", "<entry role 2>"], "mid": ["<mid role 1>", "<mid role 2>"]},
+        "domains": ["<domain 1>", "<domain 2>"],
+        "whyItFits": "<Specific connection to student's profile - REQUIRED>"
+      },
+      {
+        "title": "<Career Cluster 2 - REQUIRED>",
+        "fit": "Medium",
+        "matchScore": 75,
+        "description": "<2-3 sentences explaining fit - REQUIRED>",
+        "evidence": {"interest": "<RIASEC evidence - REQUIRED>", "aptitude": "<aptitude evidence - REQUIRED>", "personality": "<personality evidence - REQUIRED>"},
+        "roles": {"entry": ["<entry role 1>", "<entry role 2>"], "mid": ["<mid role 1>", "<mid role 2>"]},
+        "domains": ["<domain 1>", "<domain 2>"],
+        "whyItFits": "<Connection to student's profile - REQUIRED>"
+      },
+      {
+        "title": "<Career Cluster 3 - REQUIRED>",
+        "fit": "Explore",
+        "matchScore": 65,
+        "description": "<2-3 sentences explaining potential - REQUIRED>",
+        "evidence": {"interest": "<RIASEC evidence - REQUIRED>", "aptitude": "<aptitude evidence - REQUIRED>", "personality": "<personality evidence - REQUIRED>"},
+        "roles": {"entry": ["<entry role 1>", "<entry role 2>"], "mid": ["<mid role 1>", "<mid role 2>"]},
+        "domains": ["<domain 1>", "<domain 2>"],
+        "whyItFits": "<Why worth exploring - REQUIRED>"
       }
     ],
     "specificOptions": {
-      "highFit": [{"name": "<role>", "salary": {"min": 4, "max": 12}}],
-      "mediumFit": [{"name": "<role>", "salary": {"min": 3, "max": 8}}],
-      "exploreLater": [{"name": "<role>", "salary": {"min": 3, "max": 7}}]
+      "highFit": [{"name": "<role 1>", "salary": {"min": 4, "max": 12}}, {"name": "<role 2>", "salary": {"min": 4, "max": 10}}, {"name": "<role 3>", "salary": {"min": 3, "max": 8}}],
+      "mediumFit": [{"name": "<role 1>", "salary": {"min": 3, "max": 8}}, {"name": "<role 2>", "salary": {"min": 3, "max": 7}}],
+      "exploreLater": [{"name": "<role 1>", "salary": {"min": 3, "max": 7}}, {"name": "<role 2>", "salary": {"min": 2, "max": 6}}]
     }
   },
   "skillGap": {
@@ -325,12 +347,18 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
   "overallSummary": "<4-5 sentences>"
 }
 
-CRITICAL: 
-- ALL arrays must have at least 2 items
-- ALL career clusters must have roles.entry, roles.mid, and domains filled
-- For after10 students, streamRecommendation is MANDATORY
-- Use EXACT scoring formulas provided
-- Be DETERMINISTIC - same input = same output`;
+CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL:
+1. EXACTLY 3 CAREER CLUSTERS ARE MANDATORY - You MUST provide 3 different career clusters:
+   - Cluster 1: High fit (matchScore 80-95%)
+   - Cluster 2: Medium fit (matchScore 70-85%)
+   - Cluster 3: Explore fit (matchScore 60-75%)
+2. Each cluster MUST have: title, fit, matchScore, description, evidence (all 3 fields), roles (entry + mid), domains, whyItFits
+3. ALL arrays must have at least 2 items - NO empty arrays
+4. ALL career clusters must have roles.entry, roles.mid, and domains filled with real job titles
+5. For after10 students, streamRecommendation is MANDATORY with a specific stream choice
+6. Use EXACT scoring formulas provided - Be DETERMINISTIC (same input = same output)
+7. Provide SPECIFIC, ACTIONABLE career guidance based on the student's actual scores
+8. DO NOT truncate the response - complete ALL fields`;
 };
 
 /**
@@ -402,14 +430,14 @@ async function handleAnalyzeAssessment(request: Request, env: Env): Promise<Resp
         messages: [
           {
             role: 'system',
-            content: 'You are an expert career counselor and psychometric analyst. Provide detailed, deterministic career analysis. CRITICAL: Always return complete, valid JSON. Never truncate. Ensure all arrays and objects are properly closed.'
+            content: 'You are an expert career counselor and psychometric analyst. Provide detailed, deterministic career analysis. CRITICAL REQUIREMENTS: 1) Always return complete, valid JSON - never truncate. 2) You MUST provide EXACTLY 3 career clusters (High fit, Medium fit, Explore fit) - this is MANDATORY. 3) Ensure all arrays and objects are properly closed. 4) Each cluster must have description, evidence, roles, domains, and whyItFits fields filled.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.1,
+        temperature: 0.3,
         max_tokens: 8000
       })
     });
@@ -419,10 +447,7 @@ async function handleAnalyzeAssessment(request: Request, env: Env): Promise<Resp
 
   // Try models in order (using valid free models that work)
   const models = [
-    'xiaomi/mimo-v2-flash:free',             // Xiaomi's free model - fast and reliable
-    'google/gemini-2.0-flash-exp:free',      // Google's free model
-    'meta-llama/llama-3.1-8b-instruct:free', // Meta's free model
-    'google/gemini-flash-1.5-8b:free'        // Gemini free tier
+    'xiaomi/mimo-v2-flash:free'  // Xiaomi's free model - fast and reliable
   ];
   
   try {
