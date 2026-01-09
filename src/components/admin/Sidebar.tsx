@@ -484,6 +484,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             icon: BookOpenIcon,
           },
           {
+            name: "Programs",
+            path: "/college-admin/academics/programs",
+            icon: AcademicCapIcon,
+          },
+          {
             name: "Program & Sections",
             path: "/college-admin/academics/program-sections",
             icon: UserGroupIcon,

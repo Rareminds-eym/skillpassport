@@ -316,6 +316,9 @@ const AcademicCoverageTracker = lazy(() =>
 const ProgramSectionManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/ProgramSectionManagement")
 );
+const ProgramManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/ProgramManagement")
+);
 const CollegeLibrary = lazy(() =>
   import("../pages/admin/collegeAdmin/Library")
 );
@@ -505,6 +508,7 @@ const AppRoutes = () => {
           <Route path="academics/curriculum" element={<CollegeCurriculumBuilder />} />
           <Route path="academics/lesson-plans" element={<LessonPlanManagement />} />
           <Route path="academics/coverage-tracker" element={<AcademicCoverageTracker />} />
+          <Route path="academics/programs" element={<ProgramManagement />} />
           <Route path="academics/program-sections" element={<ProgramSectionManagement />} />
           <Route path="academics/calendar" element={<AcademicCalendar />} />
 
