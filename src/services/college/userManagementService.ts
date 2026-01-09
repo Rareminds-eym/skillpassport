@@ -1,5 +1,7 @@
 import { supabase } from '../../lib/supabaseClient';
+// @ts-ignore - userApiService is a .js file
 import type { ApiResponse, BulkImportResult, User } from '../../types/college';
+import userApiService from '../userApiService';
 
 /**
  * User Management Service
@@ -8,7 +10,7 @@ import type { ApiResponse, BulkImportResult, User } from '../../types/college';
 
 export const userManagementService = {
   /**
-   * Create a new user
+   * Create a new user using Worker API with proper rollback
    * Property 1: User uniqueness enforcement
    */
   async createUser(userData: Partial<User>): Promise<ApiResponse<User>> {
@@ -54,168 +56,127 @@ export const userManagementService = {
         };
       }
 
-      // Check for duplicate email in students table
-      const { data: existingStudent } = await supabase
-        .from('students')
-        .select('id')
-        .eq('email', userData.email)
-        .maybeSingle();
-
-      if (existingStudent) {
+      // Get auth token for worker API
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
         return {
           success: false,
           error: {
-            code: 'DUPLICATE_ENTRY',
-            message: 'A student with this email already exists',
-            field: 'email',
+            code: 'AUTH_ERROR',
+            message: 'Not authenticated. Please log in again.',
           },
         };
       }
 
-      // Check for duplicate email in college_lecturers metadata
-      const { data: existingLecturer } = await supabase
-        .from('college_lecturers')
-        .select('id')
-        .eq('metadata->>email', userData.email)
-        .maybeSingle();
+      // Get college ID from current user context
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      let collegeId = null;
 
-      if (existingLecturer) {
-        return {
-          success: false,
-          error: {
-            code: 'DUPLICATE_ENTRY',
-            message: 'A lecturer with this email already exists',
-            field: 'email',
-          },
-        };
+      if (currentUser?.id || currentUser?.email) {
+        const { data: collegeData } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('organization_type', 'college')
+          .or(`admin_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
+          .maybeSingle();
+
+        collegeId = collegeData?.id;
       }
 
-      // Step 1: Create user in auth.users (Supabase Auth)
-      const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
-      
-      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-        email: userData.email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: {
-          full_name: userData.name,
-          name: userData.name,
-          roles: userData.roles,
-        },
-      });
-
-      if (authError) {
-        console.error('Auth user creation error:', authError);
-        throw new Error(`Failed to create auth user: ${authError.message}`);
+      if (!collegeId) {
+        console.warn('No college ID found, using first available college');
+        const { data: firstCollege } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('organization_type', 'college')
+          .limit(1)
+          .single();
+        
+        collegeId = firstCollege?.id;
       }
 
-      if (!authUser.user) {
-        throw new Error('No user returned from auth creation');
-      }
-
-      const userId = authUser.user.id;
-
-      // Step 2: Create user in public.users table
-      const { data: publicUser, error: publicUserError } = await supabase
-        .from('users')
-        .insert([{
-          id: userId,
-          email: userData.email,
-          full_name: userData.name,
-          name: userData.name,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }])
-        .select()
-        .single();
-
-      if (publicUserError) {
-        console.error('Public user creation error:', publicUserError);
-        // Rollback: delete auth user
-        await supabase.auth.admin.deleteUser(userId);
-        throw new Error(`Failed to create user record: ${publicUserError.message}`);
-      }
-
-      // Step 3: Create role-specific record
+      // Determine role for worker API
       const isStaff = userData.roles.some(role => 
         ['College Admin', 'HoD', 'Faculty', 'Exam Cell', 'Finance Admin', 'Placement Officer', 'Lecturer'].includes(role)
       );
 
       if (isStaff) {
-        // Create in college_lecturers table
-        // Get college ID from current user context (using unified organizations table)
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        let collegeId = null;
+        // Use createCollegeStaff worker endpoint
+        const nameParts = userData.name.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
 
-        if (currentUser?.id || currentUser?.email) {
-          const { data: collegeData } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', 'college')
-            .or(`admin_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
-            .maybeSingle();
+        const staffResult = await userApiService.createCollegeStaff({
+          email: userData.email,
+          firstName,
+          lastName,
+          collegeId: collegeId,
+          employeeId: userData.employee_id,
+          department: userData.department_id,
+          role: userData.roles[0]?.toLowerCase().replace(' ', '_') || 'lecturer',
+        }, session.access_token);
 
-          collegeId = collegeData?.id;
-        }
-
-        if (!collegeId) {
-          console.warn('No college ID found, using first available college');
-          const { data: firstCollege } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', 'college')
-            .limit(1)
-            .single();
-          
-          collegeId = firstCollege?.id;
-        }
-
-        const { error: lecturerError } = await supabase
-          .from('college_lecturers')
-          .insert([{
-            userId: userId,
-            user_id: userId,
-            collegeId: collegeId,
-            employeeId: userData.employee_id || null,
-            department: userData.department_id || null,
-            accountStatus: userData.status || 'active',
-            metadata: {
-              first_name: userData.name.split(' ')[0],
-              last_name: userData.name.split(' ').slice(1).join(' '),
-              email: userData.email,
-              role: userData.roles[0].toLowerCase().replace(' ', '_'),
-              temporary_password: tempPassword,
-              password_created_at: new Date().toISOString(),
-              created_by: currentUser?.email,
+        if (!staffResult.success) {
+          return {
+            success: false,
+            error: {
+              code: 'CREATE_ERROR',
+              message: staffResult.error || 'Failed to create staff member',
             },
-          }]);
-
-        if (lecturerError) {
-          console.error('Lecturer creation error:', lecturerError);
-          // Rollback
-          await supabase.auth.admin.deleteUser(userId);
-          await supabase.from('users').delete().eq('id', userId);
-          throw new Error(`Failed to create lecturer record: ${lecturerError.message}`);
+          };
         }
+
+        const createdUser: User = {
+          id: staffResult.data.userId,
+          name: userData.name,
+          email: userData.email,
+          roles: userData.roles,
+          employee_id: userData.employee_id,
+          department_id: userData.department_id,
+          status: userData.status || 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        console.log('✅ Staff user created successfully:', createdUser);
+        return { success: true, data: createdUser };
+      } else {
+        // For non-staff users, use unified signup
+        const nameParts = userData.name.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        const result = await userApiService.unifiedSignup({
+          email: userData.email,
+          password: Math.random().toString(36).slice(-8) + 'Temp@123',
+          firstName,
+          lastName,
+          role: 'college_student',
+        });
+
+        if (!result.success) {
+          return {
+            success: false,
+            error: {
+              code: 'CREATE_ERROR',
+              message: result.error || 'Failed to create user',
+            },
+          };
+        }
+
+        const createdUser: User = {
+          id: result.data.userId,
+          name: userData.name,
+          email: userData.email,
+          roles: userData.roles,
+          status: userData.status || 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        console.log('✅ User created successfully:', createdUser);
+        return { success: true, data: createdUser };
       }
-
-      // Return the created user
-      const createdUser: User = {
-        id: userId,
-        name: userData.name,
-        email: userData.email,
-        roles: userData.roles,
-        employee_id: userData.employee_id,
-        student_id: userData.student_id,
-        department_id: userData.department_id,
-        status: userData.status || 'active',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      console.log('✅ User created successfully:', createdUser);
-
-      return { success: true, data: createdUser };
     } catch (error: any) {
       console.error('❌ Error creating user:', error);
       return {

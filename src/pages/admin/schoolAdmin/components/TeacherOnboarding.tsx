@@ -4,6 +4,8 @@ import RoleDebugger from "../../../../components/debug/RoleDebugger";
 import { useUserRole } from "../../../../hooks/useUserRole";
 import { supabase } from "../../../../lib/supabaseClient";
 import storageService from "../../../../services/storageService";
+// @ts-ignore - userApiService is a .js file
+import { createTeacher } from "../../../../services/userApiService";
 import { validateDocument } from "../../../../utils/teacherValidation";
 
 interface SubjectExpertise {
@@ -326,29 +328,26 @@ const TeacherOnboardingPage: React.FC = () => {
       }
 
       // Use Worker API to create teacher with proper rollback
+      // Note: Worker expects data wrapped in a 'teacher' object
       const teacherResult = await createTeacher({
-        email: formData.email,
-        firstName: formData.first_name,
-        lastName: formData.last_name,
-        phone: formData.phone_number,
-        schoolId: schoolId,
-        designation: formData.designation,
-        department: formData.department,
-        qualification: formData.qualification,
-        specialization: formData.specialization,
-        experienceYears: formData.experience_years,
-        role: formData.role,
-        subjects: subjects,
-        status: status,
+        teacher: {
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          email: formData.email,
+          phone_number: formData.phone_number,
+          qualification: formData.qualification,
+          role: formData.role,
+          subject_expertise: subjects.map(s => s.name),
+        }
       }, session.access_token);
 
       if (!teacherResult.success) {
         throw new Error(teacherResult.error || "Failed to create teacher");
       }
 
-      const userId = teacherResult.data.userId;
+      const userId = teacherResult.data.authUserId;
       const teacherId = teacherResult.data.teacherId;
-      const tempPassword = teacherResult.data.tempPassword;
+      const tempPassword = teacherResult.data.password;
 
       console.log("Created teacher via Worker API:", { userId, teacherId });
 

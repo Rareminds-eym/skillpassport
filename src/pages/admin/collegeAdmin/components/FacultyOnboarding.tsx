@@ -325,31 +325,40 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
         throw new Error("Not authenticated. Please log in again.");
       }
 
+      // Map role to display format for worker API
+      const roleDisplayMap: Record<string, string> = {
+        'college_admin': 'College Admin',
+        'dean': 'Dean',
+        'hod': 'HoD',
+        'professor': 'Faculty',
+        'assistant_professor': 'Faculty',
+        'lecturer': 'Lecturer',
+      };
+
       // Use Worker API to create faculty with proper rollback
+      // Note: Worker expects data wrapped in a 'staff' object
       const staffResult = await userApiService.createCollegeStaff({
-        email: formData.email,
-        firstName: formData.first_name,
-        lastName: formData.last_name,
-        phone: formData.phone,
+        staff: {
+          name: `${formData.first_name} ${formData.last_name}`.trim(),
+          email: formData.email,
+          employee_id: formData.employee_id,
+          roles: [roleDisplayMap[formData.role] || 'Faculty'],
+          department_id: formData.department,
+          phone: formData.phone,
+          qualification: formData.qualification,
+          specialization: formData.specialization,
+          experience_years: formData.experience_years,
+        },
         collegeId: collegeId,
-        employeeId: formData.employee_id,
-        department: formData.department,
-        specialization: formData.specialization,
-        qualification: formData.qualification,
-        experienceYears: formData.experience_years,
-        dateOfJoining: formData.date_of_joining || new Date().toISOString().split('T')[0],
-        role: formData.role,
-        dateOfBirth: formData.date_of_birth,
-        address: formData.address,
       }, session.access_token);
 
       if (!staffResult.success) {
         throw new Error(staffResult.error || "Failed to create faculty member");
       }
 
-      const userId = staffResult.data.userId;
+      const userId = staffResult.data.authUserId;
       const facultyId = staffResult.data.staffId;
-      const tempPassword = staffResult.data.tempPassword;
+      const tempPassword = staffResult.data.password;
 
       console.log("Created faculty via Worker API:", { userId, facultyId });
 

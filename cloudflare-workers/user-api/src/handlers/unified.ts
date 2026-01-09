@@ -116,6 +116,8 @@ export async function handleUnifiedSignup(request: Request, env: Env): Promise<R
 
     try {
       // 2. Create public.users record
+      // Note: organizationId is explicitly set to null - users are not associated with an org during signup
+      // Admin users will create/join an organization via OrganizationSetup after signup
       const { error: userError } = await supabaseAdmin.from('users').insert({
         id: userId,
         email,
@@ -124,6 +126,7 @@ export async function handleUnifiedSignup(request: Request, env: Env): Promise<R
         role: body.role,
         isActive: true,
         phone: body.phone || null,
+        organizationId: null, // Explicitly null - will be set when user creates/joins an organization
         metadata: {
           fullName,
           dateOfBirth: body.dateOfBirth,
@@ -183,6 +186,8 @@ export async function handleUnifiedSignup(request: Request, env: Env): Promise<R
 
 /**
  * Create role-specific record based on user role
+ * Note: Educator records are NOT created during self-signup because they require a school_id
+ * Educators will have their records created when they join an organization or are onboarded by an admin
  */
 async function createRoleSpecificRecord(
   supabaseAdmin: ReturnType<typeof getSupabaseAdmin>,
@@ -214,35 +219,15 @@ async function createRoleSpecificRecord(
       break;
     }
 
-    case 'school_educator': {
-      const { error } = await supabaseAdmin.from('school_educators').insert({
-        user_id: userId,
-        first_name: firstName,
-        last_name: lastName,
-        email,
-        phone_number: phone,
-        account_status: 'active',
-        verification_status: 'pending',
-        onboarding_status: 'pending',
-        metadata: { source: 'unified_signup' },
-      });
-      if (error) {
-        throw new Error(`Failed to create school educator record: ${error.message}`);
-      }
+    // Educator records require school_id/college_id which is not available during self-signup
+    // These records will be created when:
+    // 1. Admin onboards the educator via TeacherOnboarding/FacultyOnboarding
+    // 2. Educator joins an organization via OrganizationSetup
+    case 'school_educator':
+    case 'college_educator':
+      // No record created - will be created when educator joins an organization
+      console.log(`Educator signup: ${role} - record will be created when joining organization`);
       break;
-    }
-
-    case 'college_educator': {
-      const { error } = await supabaseAdmin.from('college_lecturers').insert({
-        user_id: userId,
-        userId: userId,
-        accountStatus: 'active',
-      });
-      if (error) {
-        throw new Error(`Failed to create college educator record: ${error.message}`);
-      }
-      break;
-    }
 
     case 'recruiter': {
       const { error } = await supabaseAdmin.from('recruiters').insert({
