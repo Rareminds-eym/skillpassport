@@ -3,6 +3,7 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import Loader from "../components/Loader";
 import ScrollToTop from "../components/ScrollToTop";
 import SubscriptionProtectedRoute from "../components/Subscription/SubscriptionProtectedRoute";
+import OrganizationGuard from "../components/organization/OrganizationGuard";
 
 import AdminLayout from "../layouts/AdminLayout";
 import EducatorLayout from "../layouts/EducatorLayout";
@@ -489,7 +490,9 @@ const AppRoutes = () => {
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=college_admin"
             >
-              <AdminLayout />
+              <OrganizationGuard organizationType="college">
+                <AdminLayout />
+              </OrganizationGuard>
             </SubscriptionProtectedRoute>
           }
         >
@@ -568,7 +571,9 @@ const AppRoutes = () => {
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=school_admin"
             >
-              <AdminLayout />
+              <OrganizationGuard organizationType="school">
+                <AdminLayout />
+              </OrganizationGuard>
             </SubscriptionProtectedRoute>
           }
         >
@@ -628,7 +633,9 @@ const AppRoutes = () => {
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=university_admin"
             >
-              <AdminLayout />
+              <OrganizationGuard organizationType="university">
+                <AdminLayout />
+              </OrganizationGuard>
             </SubscriptionProtectedRoute>
           }
         >

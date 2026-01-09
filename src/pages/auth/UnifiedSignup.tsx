@@ -343,9 +343,10 @@ const UnifiedSignup = () => {
     if (!state.lastName.trim()) { setState(prev => ({ ...prev, error: 'Please enter your last name' })); return false; }
     if (!state.dateOfBirth) { setState(prev => ({ ...prev, error: 'Please enter your date of birth' })); return false; }
     if (!state.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email)) { setState(prev => ({ ...prev, error: 'Please enter a valid email' })); return false; }
-    if (!state.phone || state.phone.length < 7 || state.phone.length > 15) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number' })); return false; }
-    // Skip OTP verification in development mode
-    if (!skipOtpVerification && !state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number with OTP' })); return false; }
+    // Phone number is optional, but if provided, validate format
+    if (state.phone && (state.phone.length < 7 || state.phone.length > 15)) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
+    // OTP verification is optional - only validate if OTP was sent but not verified
+    if (state.otpSent && !state.otpVerified && !skipOtpVerification) { setState(prev => ({ ...prev, error: 'Please complete phone verification or clear the OTP field' })); return false; }
     if (!state.password || state.password.length < 8) { setState(prev => ({ ...prev, error: 'Password must be at least 8 characters' })); return false; }
     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(state.password)) { setState(prev => ({ ...prev, error: 'Password must contain uppercase, lowercase, and number' })); return false; }
     if (state.password !== state.confirmPassword) { setState(prev => ({ ...prev, error: 'Passwords do not match' })); return false; }
@@ -622,7 +623,7 @@ const UnifiedSignup = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Mobile Number <span className="text-red-500">*</span>
+                    Mobile Number <span className="text-gray-400 text-xs">(Optional)</span>
                     {skipOtpVerification && <span className="ml-2 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">(OTP skipped in dev)</span>}
                   </label>
                   <div className={`flex items-center border rounded-xl bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all ${state.otpVerified ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
@@ -669,10 +670,10 @@ const UnifiedSignup = () => {
                       {state.otpVerified && <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />}
                     </div>
                   </div>
-                  {/* Show OTP button only if not skipping verification and not already verified */}
-                  {!skipOtpVerification && !state.otpVerified && (
-                    <button type="button" onClick={handleSendOtp} disabled={state.sendingOtp || state.phone.length < 7} className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50">
-                      {state.sendingOtp ? 'Sending code...' : state.otpSent ? 'Resend Verification Code' : 'Send Verification Code'}
+                  {/* Show OTP button only if phone is entered, not skipping verification, and not already verified */}
+                  {!skipOtpVerification && !state.otpVerified && state.phone.length >= 7 && (
+                    <button type="button" onClick={handleSendOtp} disabled={state.sendingOtp} className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50">
+                      {state.sendingOtp ? 'Sending code...' : state.otpSent ? 'Resend Verification Code' : 'Verify Phone (Optional)'}
                     </button>
                   )}
                   {state.otpVerified && <p className="mt-2 text-xs font-medium text-green-600 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Verified</p>}
@@ -688,6 +689,13 @@ const UnifiedSignup = () => {
                         {state.verifyingOtp ? '...' : 'Verify'}
                       </button>
                     </div>
+                    <button 
+                      type="button" 
+                      onClick={() => setState(prev => ({ ...prev, otpSent: false, otp: '' }))} 
+                      className="mt-2 text-sm text-gray-500 hover:text-gray-700"
+                    >
+                      Skip verification
+                    </button>
                   </div>
                 )}
 
