@@ -1,25 +1,29 @@
-import React, { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import {
-  BellIcon,
-  UserCircleIcon,
-  ArrowRightOnRectangleIcon,
-  Cog6ToothIcon,
-  PencilIcon,
-  DocumentDuplicateIcon,
-  CheckIcon,
-  BookmarkIcon,
-  Bars3Icon,
-  XMarkIcon,
-  HomeIcon,
   AcademicCapIcon,
+  ArrowRightOnRectangleIcon,
+  Bars3Icon,
+  BellIcon,
+  BookmarkIcon,
   BookOpenIcon,
   BriefcaseIcon,
-  RocketLaunchIcon,
-  SparklesIcon,
+  CheckIcon,
   ClipboardDocumentListIcon,
+  Cog6ToothIcon,
+  DocumentDuplicateIcon,
   EnvelopeIcon,
+  HomeIcon,
+  PencilIcon,
+  RocketLaunchIcon,
+  UserCircleIcon,
+  XMarkIcon
 } from "@heroicons/react/24/outline";
+import React, { useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../../context/AuthContext";
+import { useNotifications } from "../../../hooks/useNotifications";
+import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
+import DigitalPortfolioSideDrawer from "./DigitalPortfolioSideDrawer";
+import NotificationPanel from "./NotificationPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,14 +31,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { useAuth } from "../../../context/AuthContext";
-import { useNotifications } from "../../../hooks/useNotifications";
-import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
-import NotificationPanel from "./NotificationPanel";
 
 const Header = ({ activeTab, setActiveTab }) => {
   const [scrolled, setScrolled] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [sideDrawerOpen, setSideDrawerOpen] = useState(false);
+  const location = useLocation();
+
+  // Check if current route is a digital portfolio route
+  const isDigitalPortfolioRoute = location.pathname.startsWith('/student/digital-portfolio');
 
   // Add scrollbar-hide and navbar hover styles
   React.useEffect(() => {
@@ -58,28 +63,28 @@ const Header = ({ activeTab, setActiveTab }) => {
     return () => document.head.removeChild(style);
   }, []);
 
-  // Handle scroll to hide/show header
-  React.useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
+  // Handle scroll to hide/show header - DISABLED: Keep header always visible
+  // React.useEffect(() => {
+  //   const handleScroll = () => {
+  //     const currentScrollY = window.scrollY;
 
-      if (currentScrollY < 10) {
-        // At the top, always show
-        setScrolled(false);
-      } else if (currentScrollY > lastScrollY) {
-        // Scrolling down
-        setScrolled(true);
-      } else {
-        // Scrolling up
-        setScrolled(false);
-      }
+  //     if (currentScrollY < 10) {
+  //       // At the top, always show
+  //       setScrolled(false);
+  //     } else if (currentScrollY > lastScrollY) {
+  //       // Scrolling down
+  //       setScrolled(true);
+  //     } else {
+  //       // Scrolling up
+  //       setScrolled(false);
+  //     }
 
-      setLastScrollY(currentScrollY);
-    };
+  //     setLastScrollY(currentScrollY);
+  //   };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
+  //   window.addEventListener('scroll', handleScroll, { passive: true });
+  //   return () => window.removeEventListener('scroll', handleScroll);
+  // }, [lastScrollY, isDigitalPortfolioRoute]);
 
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -87,14 +92,33 @@ const Header = ({ activeTab, setActiveTab }) => {
   const [copied, setCopied] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const { logout, user } = useAuth();
+  const notificationRef = React.useRef(null);
+
+  // Close notifications when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Notification Panel
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotifications]);
 
   // Fetch real-time notifications
   const userEmail = user?.email || localStorage.getItem("userEmail");
   const { unreadCount } = useNotifications(userEmail);
-  
+
   // Fetch student data to check school/college association
   const { studentData } = useStudentDataByEmail(userEmail);
-  
+
   // Check if student is part of a school or college
   const isPartOfSchoolOrCollege = studentData?.school_id || studentData?.university_college_id;
 
@@ -118,7 +142,7 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: "courses", label: "Courses", icon: BookOpenIcon },
     { id: "digital-portfolio", label: "Digital Portfolio", icon: BriefcaseIcon },
     { id: "opportunities", label: "Opportunities", icon: RocketLaunchIcon },
-    { id: "career-ai", label: "Career AI"},
+    { id: "career-ai", label: "Career AI" },
     // Only show "My Class" if student is part of a school or college
     ...(isPartOfSchoolOrCollege ? [{ id: "assignments", label: "My Class", icon: ClipboardDocumentListIcon }] : []),
     // {id: "clubs", label: "Co-Curriculars"},
@@ -126,10 +150,36 @@ const Header = ({ activeTab, setActiveTab }) => {
     // Analytics removed - now integrated in Dashboard with tabs
   ];
 
+  // Handle tab click - navigate to appropriate route
+  const handleTabClick = (tab) => {
+    setActiveTab(tab.id);
+    if (tab.id === "share") {
+      setShowShareModal(true);
+    } else if (tab.id === "skills") {
+      navigate("/student/my-skills");
+    } else if (tab.id === "training") {
+      navigate("/student/my-learning");
+    } else if (tab.id === "experience") {
+      navigate("/student/my-experience");
+    } else if (tab.id === "courses") {
+      navigate("/student/courses");
+    } else if (tab.id === "digital-portfolio") {
+      navigate("/student/digital-portfolio");
+    } else if (tab.id === "opportunities") {
+      navigate("/student/opportunities");
+    } else if (tab.id === "applications") {
+      navigate("/student/applications");
+    } else if (tab.id === "assignments") {
+      navigate("/student/my-class");
+    } else if (tab.id === "career-ai") {
+      navigate("/student/career-ai");
+    } else if (tab.id === "messages") {
+      navigate("/student/messages");
+    }
+  };
+
   return (
-    <header className={`bg-white border-b border-gray-200 shadow-sm py-2 px-1 sm:px-2 lg:px-4 sticky top-0 z-[100] transition-transform duration-300 ease-in-out ${
-      scrolled ? 'header-hidden' : 'header-visible'
-    }`}>
+    <header className="bg-white border-b border-gray-200 shadow-sm py-2 px-1 sm:px-2 lg:px-4 sticky top-0 z-[100]">
       <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
         {/* Logo and Title */}
         <div className="flex items-center flex-shrink-0">
@@ -150,11 +200,10 @@ const Header = ({ activeTab, setActiveTab }) => {
                 localStorage.removeItem("dashboardActiveNav");
                 navigate("/student/dashboard");
               }}
-              className={`group flex items-center py-2 px-1.5 lg:px-2 xl:px-2 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
-                activeTab === "dashboard"
-                  ? "bg-primary-50 text-primary-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
+              className={`group flex items-center py-2 px-1.5 lg:px-2 xl:px-2 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${activeTab === "dashboard"
+                ? "bg-primary-50 text-primary-700"
+                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
             >
               <HomeIcon className="h-4 w-4 mr-2 flex-shrink-0" />
               <span className="hidden xl:inline">Dashboard</span>
@@ -163,40 +212,11 @@ const Header = ({ activeTab, setActiveTab }) => {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  if (tab.id === "share") {
-                    setShowShareModal(true);
-                  } else if (tab.id === "skills") {
-                    navigate("/student/my-skills");
-                  } else if (tab.id === "training") {
-                    navigate("/student/my-learning");
-                  } else if (tab.id === "experience") {
-                    navigate("/student/my-experience");
-                  } else if (tab.id === "courses") {
-                    navigate("/student/courses");
-                  } else if (tab.id === "digital-portfolio") {
-                    navigate("/student/digital-portfolio");
-                  } else if (tab.id === "opportunities") {
-                    navigate("/student/opportunities");
-                  } else if (tab.id === "applications") {
-                    navigate("/student/applications");
-                  } else if (tab.id === "assignments") {
-                    navigate("/student/my-class");
-                  // }
-                  // else if (tab.id === "clubs") {
-                  //   navigate("/student/clubs");
-                  } else if (tab.id === "career-ai") {
-                    navigate("/student/career-ai");
-                  } else if (tab.id === "messages") {
-                    navigate("/student/messages");
-                  }
-                }}
-                className={`group flex items-center py-2 px-1.5 lg:px-2 xl:px-2 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? "bg-primary-50 text-primary-700"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
+                onClick={() => handleTabClick(tab)}
+                className={`group flex items-center py-2 px-1.5 lg:px-2 xl:px-2 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${activeTab === tab.id || (tab.id === "digital-portfolio" && isDigitalPortfolioRoute)
+                  ? "bg-primary-50 text-primary-700"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
               >
                 {tab.icon && <tab.icon className="h-4 w-4 mr-2 flex-shrink-0" />}
                 <span className="hidden xl:inline">{tab.label}</span>
@@ -216,11 +236,10 @@ const Header = ({ activeTab, setActiveTab }) => {
                 localStorage.removeItem("dashboardActiveNav");
                 navigate("/student/dashboard");
               }}
-              className={`group flex items-center py-2 px-1 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                activeTab === "dashboard"
-                  ? "bg-primary-50 text-primary-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
+              className={`group flex items-center py-2 px-1 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap flex-shrink-0 ${activeTab === "dashboard"
+                ? "bg-primary-50 text-primary-700"
+                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
             >
               <HomeIcon className="h-4 w-4 mr-2 flex-shrink-0" />
               D
@@ -228,39 +247,11 @@ const Header = ({ activeTab, setActiveTab }) => {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  if (tab.id === "share") {
-                    setShowShareModal(true);
-                  } else if (tab.id === "skills") {
-                    navigate("/student/my-skills");
-                  } else if (tab.id === "training") {
-                    navigate("/student/my-learning");
-                  } else if (tab.id === "experience") {
-                    navigate("/student/my-experience");
-                  } else if (tab.id === "courses") {
-                    navigate("/student/courses");
-                  } else if (tab.id === "digital-portfolio") {
-                    navigate("/student/digital-portfolio");
-                  } else if (tab.id === "opportunities") {
-                    navigate("/student/opportunities");
-                  } else if (tab.id === "applications") {
-                    navigate("/student/applications");
-                  } else if (tab.id === "assignments") {
-                    navigate("/student/my-class");
-                  // } else if (tab.id === "clubs") {
-                  //   navigate("/student/clubs");
-                  } else if (tab.id === "career-ai") {
-                    navigate("/student/career-ai");
-                  } else if (tab.id === "messages") {
-                    navigate("/student/messages");
-                  }
-                }}
-                className={`group flex items-center py-2 px-1 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                  activeTab === tab.id
-                    ? "bg-primary-50 text-primary-700"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
+                onClick={() => handleTabClick(tab)}
+                className={`group flex items-center py-2 px-1 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap flex-shrink-0 ${activeTab === tab.id || (tab.id === "digital-portfolio" && isDigitalPortfolioRoute)
+                  ? "bg-primary-50 text-primary-700"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
               >
                 {tab.icon && <tab.icon className="h-4 w-4 mr-2 flex-shrink-0" />}
                 {tab.label.split(' ').map(word => word.charAt(0)).join('')}
@@ -275,7 +266,10 @@ const Header = ({ activeTab, setActiveTab }) => {
           <div className="flex lg:hidden items-center">
             <button
               className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              onClick={() => setMobileMenuOpen((open) => !open)}
+              onClick={() => {
+                setMobileMenuOpen((open) => !open)
+                setShowNotifications(false)
+              }}
               aria-label="Open menu"
             >
               {mobileMenuOpen ? (
@@ -287,9 +281,12 @@ const Header = ({ activeTab, setActiveTab }) => {
           </div>
 
           {/* Notifications */}
-          <div className="relative">
+          <div ref={notificationRef} className="relative">
             <button
-              onClick={() => setShowNotifications((s) => !s)}
+              onClick={() => {
+                setShowNotifications((s) => !s)
+                setMobileMenuOpen(false)
+              }}
               className="relative p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
             >
               <BellIcon className="h-6 w-6" />
@@ -374,11 +371,10 @@ const Header = ({ activeTab, setActiveTab }) => {
                 navigate("/student/dashboard");
                 setMobileMenuOpen(false);
               }}
-              className={`w-full text-left py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
-                activeTab === "dashboard"
-                  ? "bg-primary-50 text-primary-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
+              className={`w-full text-left py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === "dashboard"
+                ? "bg-primary-50 text-primary-700"
+                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
             >
               <div className="flex items-center">
                 <HomeIcon className="h-5 w-5 flex-shrink-0" />
@@ -389,37 +385,13 @@ const Header = ({ activeTab, setActiveTab }) => {
               <button
                 key={tab.id}
                 onClick={() => {
-                  setActiveTab(tab.id);
-                  if (tab.id === "share") {
-                    setShowShareModal(true);
-                  } else if (tab.id === "skills") {
-                    navigate("/student/my-skills");
-                  } else if (tab.id === "training") {
-                    navigate("/student/my-learning");
-                  } else if (tab.id === "experience") {
-                    navigate("/student/my-experience");
-                  } else if (tab.id === "courses") {
-                    navigate("/student/courses");
-                  } else if (tab.id === "digital-portfolio") {
-                    navigate("/student/digital-portfolio");
-                  } else if (tab.id === "opportunities") {
-                    navigate("/student/opportunities");
-                  } else if (tab.id === "applications") {
-                    navigate("/student/applications");
-                  } else if (tab.id === "assignments") {
-                    navigate("/student/my-class");
-                  // } else if (tab.id === "clubs") {
-                  //   navigate("/student/clubs");
-                  } else if (tab.id === "messages") {
-                    navigate("/student/messages");
-                  }
+                  handleTabClick(tab);
                   setMobileMenuOpen(false);
                 }}
-                className={`w-full text-left py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  activeTab === tab.id
-                    ? "bg-primary-50 text-primary-700"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
+                className={`w-full text-left py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === tab.id || (tab.id === "digital-portfolio" && isDigitalPortfolioRoute)
+                  ? "bg-primary-50 text-primary-700"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
               >
                 <div className="flex items-center">
                   {tab.icon && <tab.icon className="h-5 w-5 flex-shrink-0" />}
@@ -602,6 +574,15 @@ const Header = ({ activeTab, setActiveTab }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Digital Portfolio Side Drawer - Only shown on digital portfolio routes */}
+      {isDigitalPortfolioRoute && (
+        <DigitalPortfolioSideDrawer
+          isOpen={sideDrawerOpen}
+          onClose={() => setSideDrawerOpen(false)}
+          onOpen={() => setSideDrawerOpen(true)}
+        />
       )}
     </header>
   );

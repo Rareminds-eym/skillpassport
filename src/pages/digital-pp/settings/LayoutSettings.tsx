@@ -1,9 +1,8 @@
+import { BarChart3, Bot, FileText, Layout, Map, Palette, Save, Sparkles, Zap } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Layout, Save, Eye, Sparkles, Palette, Zap, Bot, BarChart3, FileText, Map } from 'lucide-react';
 import { usePortfolio } from '../../../context/PortfolioContext';
-import ThemeToggle from '../../../components/digital-pp/ThemeToggle';
-import type { PortfolioLayout, DisplayPreferences } from '../../../types/student';
+import type { DisplayPreferences, PortfolioLayout } from '../../../types/student';
 
 const LayoutSettings: React.FC = () => {
   const { settings, updateSettings, resetToRoleDefaults, viewerRole } = usePortfolio();
@@ -138,46 +137,6 @@ const LayoutSettings: React.FC = () => {
           <span>Layout saved successfully!</span>
         </div>
       )}
-
-      {/* Header */}
-      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                type="button"
-                onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
-                className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 mr-2" />
-                Back
-              </button>
-              <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Portfolio Layout</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <ThemeToggle />
-              <button
-                onClick={handlePreview}
-                className="flex items-center px-6 py-2 bg-gradient-to-r from-gray-600 to-slate-700 dark:from-gray-500 dark:to-slate-600 text-white rounded-lg hover:shadow-lg transition-all"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                Preview
-              </button>
-              <button
-                onClick={handleSaveSettings}
-                className="flex items-center px-6 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-lg hover:shadow-lg transition-all relative overflow-hidden group"
-              >
-                <span className="relative z-10 flex items-center">
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Changes
-                </span>
-                <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto p-8">

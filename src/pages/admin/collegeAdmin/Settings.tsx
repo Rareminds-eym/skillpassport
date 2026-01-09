@@ -1,25 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from "react";
 import {
-  CalendarDaysIcon,
-  AcademicCapIcon,
-  ClipboardDocumentListIcon,
-  ChartBarIcon,
-  ClockIcon,
-  UserGroupIcon,
-  XMarkIcon,
-  CheckIcon,
-  PlusCircleIcon,
-  TrashIcon,
-  PencilSquareIcon,
-  ExclamationTriangleIcon,
-  ArrowPathIcon,
-  LockClosedIcon,
-  EyeIcon,
-  EyeSlashIcon,
-  ShieldCheckIcon,
+    AcademicCapIcon,
+    ArrowPathIcon,
+    CalendarDaysIcon,
+    ChartBarIcon,
+    CheckIcon,
+    ClipboardDocumentListIcon,
+    ClockIcon,
+    CreditCardIcon,
+    LockClosedIcon,
+    PencilSquareIcon,
+    PlusCircleIcon,
+    ShieldCheckIcon,
+    TrashIcon,
+    UserGroupIcon,
+    XMarkIcon
 } from "@heroicons/react/24/outline";
-import { supabase } from "@/lib/supabaseClient";
+import { useEffect, useState } from "react";
+import { SubscriptionSettingsSection } from "../../../components/Subscription/SubscriptionSettingsSection";
 
 /* ==============================
    TYPES & INTERFACES
@@ -2703,7 +2701,7 @@ const SubjectModal = ({
    ============================== */
 const Settings = () => {
   const [activeTab, setActiveTab] = useState<
-    "academic" | "subjects" | "assessments" | "grading" | "attendance" | "roles"
+    "academic" | "subjects" | "assessments" | "grading" | "attendance" | "roles" | "subscription"
   >("academic");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -2909,6 +2907,7 @@ const Settings = () => {
     { id: "grading", label: "Grading System", icon: ChartBarIcon },
     { id: "attendance", label: "Attendance Policy", icon: ClockIcon },
     { id: "roles", label: "Roles & Permissions", icon: UserGroupIcon },
+    { id: "subscription", label: "Subscription", icon: CreditCardIcon },
   ];
 
   if (loading) {
@@ -3827,6 +3826,13 @@ const Settings = () => {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* E7. Subscription Settings */}
+        {activeTab === "subscription" && (
+          <div className="p-4 sm:p-6 lg:p-8">
+            <SubscriptionSettingsSection />
           </div>
         )}
         </div>

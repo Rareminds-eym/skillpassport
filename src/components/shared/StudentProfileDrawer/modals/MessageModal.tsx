@@ -15,7 +15,7 @@ interface MessageModalProps {
   isOpen: boolean;
   onClose: () => void;
   student: Student;
-  userRole?: 'school_admin' | 'college_admin' | 'educator';
+  userRole?: 'school_admin' | 'college_admin' | 'university_admin' | 'educator';
 }
 
 const MessageModal: React.FC<MessageModalProps> = ({

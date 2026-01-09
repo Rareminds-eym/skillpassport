@@ -5,21 +5,66 @@ import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQu
 import { isActiveOrPaused, isManageable } from '../../utils/subscriptionHelpers';
 
 /**
+ * Get the subscription manage path based on user role
+ */
+function getManagePath(userRole) {
+  const manageRoutes = {
+    super_admin: '/admin/subscription/manage',
+    rm_admin: '/admin/subscription/manage',
+    admin: '/admin/subscription/manage',
+    school_admin: '/school-admin/subscription/manage',
+    college_admin: '/college-admin/subscription/manage',
+    university_admin: '/university-admin/subscription/manage',
+    educator: '/educator/subscription/manage',
+    school_educator: '/educator/subscription/manage',
+    college_educator: '/educator/subscription/manage',
+    recruiter: '/recruitment/subscription/manage',
+    student: '/student/subscription/manage',
+    school_student: '/student/subscription/manage',
+    college_student: '/student/subscription/manage',
+  };
+  return manageRoutes[userRole] || '/student/subscription/manage';
+}
+
+/**
+ * Get the user type for subscription plans based on current URL path
+ * This is more reliable than using the role from auth context
+ */
+function getUserTypeFromPath(pathname) {
+  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/recruitment')) return 'recruiter';
+  if (pathname.startsWith('/educator')) return 'educator';
+  if (pathname.startsWith('/college-admin')) return 'college_admin';
+  if (pathname.startsWith('/school-admin')) return 'school_admin';
+  if (pathname.startsWith('/university-admin')) return 'university_admin';
+  if (pathname.startsWith('/admin')) return 'admin';
+  return 'student'; // fallback
+}
+
+/**
  * Centralized Subscription Route Guard
  * Handles all subscription-related routing logic in one place for smooth transitions
  */
 const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, role } = useAuth();
   const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
   const [redirecting, setRedirecting] = useState(false);
+  const managePath = useMemo(() => getManagePath(role), [role]);
 
-  // Memoize active subscription check
-  const hasActiveSubscription = useMemo(
-    () => user && subscriptionData && isActiveOrPaused(subscriptionData.status),
-    [user, subscriptionData]
-  );
+  // Memoize active subscription check (including cancelled but not expired)
+  const hasActiveSubscription = useMemo(() => {
+    if (!user || !subscriptionData) return false;
+    const status = subscriptionData.status;
+    // Active or paused subscriptions
+    if (isActiveOrPaused(status)) return true;
+    // Cancelled subscriptions that haven't expired yet
+    if (status === 'cancelled' && subscriptionData.endDate) {
+      return new Date(subscriptionData.endDate) > new Date();
+    }
+    return false;
+  }, [user, subscriptionData]);
 
   // Check if user has any manageable subscription (active or paused)
   const hasManageableSubscription = useMemo(
@@ -51,7 +96,7 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
         // Payment page - redirect if user has active subscription
         if (hasActiveSubscription) {
           setRedirecting(true);
-          navigate('/subscription/manage', { replace: true });
+          navigate(managePath, { replace: true });
         }
         break;
 
@@ -59,15 +104,20 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
         // Manage page - requires authentication and manageable subscription
         // Allow active, paused, or recently cancelled subscriptions
         if (!user) {
+          // Build plans URL with user type from current path (more reliable than role)
+          const userType = getUserTypeFromPath(location.pathname);
+          const plansUrlNoUser = `/subscription/plans?type=${userType}`;
           setRedirecting(true);
-          navigate(addQueryParams('/subscription/plans'), { 
+          navigate(addQueryParams(plansUrlNoUser), { 
             replace: true,
             state: { from: location.pathname }
           });
         } else if (!hasManageableSubscription) {
-          // No subscription or expired subscription - redirect to plans
+          // No subscription or expired subscription - redirect to plans with user type from path
+          const userType = getUserTypeFromPath(location.pathname);
+          const plansUrl = `/subscription/plans?type=${userType}`;
           setRedirecting(true);
-          navigate(addQueryParams('/subscription/plans'), { 
+          navigate(addQueryParams(plansUrl), { 
             replace: true,
             state: { from: location.pathname, message: 'no-subscription' }
           });

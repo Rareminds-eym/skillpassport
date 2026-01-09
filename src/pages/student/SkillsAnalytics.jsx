@@ -1,4 +1,3 @@
-import React from 'react';
 import SkillsDashboard from '../../components/Students/components/SkillsDashboard';
 
 /**

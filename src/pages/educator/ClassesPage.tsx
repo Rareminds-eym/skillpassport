@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     ArrowPathIcon,
     CalendarDaysIcon,
@@ -28,6 +27,7 @@ import Pagination from "../../components/educator/Pagination"
 import { useAuth } from "../../context/AuthContext"
 import { supabase } from "../../lib/supabaseClient"
 import { createClass, EducatorClass, updateClass } from "../../services/classService"
+import ProgramSectionsPage from "./ProgramSectionsPage"
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen)
@@ -404,14 +404,18 @@ const AddEditClassModal = ({
   onSaved,
   editingClass,
   educatorSchool,
-  educatorInfo
+  educatorCollege,
+  educatorInfo,
+  educatorType
 }: {
   isOpen: boolean
   onClose: () => void
   onSaved: (savedClass: EducatorClass) => void
   editingClass?: EducatorClass | null
   educatorSchool: { id: string; name: string } | null
+  educatorCollege: { id: string; name: string } | null
   educatorInfo: { id: string; name: string; email: string } | null
+  educatorType: 'school' | 'college' | null
 }) => {
   const [name, setName] = useState("")
   const [grade, setGrade] = useState("")
@@ -449,6 +453,17 @@ const AddEditClassModal = ({
   if (!isOpen) return null
 
   const handleSubmit = async () => {
+    // Debug logging
+    console.log('🔍 Modal Submit Debug:', {
+      educatorInfo,
+      educatorSchool,
+      educatorCollege,
+      educatorType,
+      hasEducatorInfo: !!educatorInfo,
+      hasInstitution: !!(educatorSchool || educatorCollege),
+      hasEducatorType: !!educatorType
+    })
+
     // Validate required fields
     if (!name.trim() || !grade.trim() || !section.trim() || !academicYear.trim() || !maxStudents.trim()) {
       setError("Fill in all required fields")
@@ -456,8 +471,18 @@ const AddEditClassModal = ({
     }
 
     // Validate educator info is available
-    if (!educatorInfo || !educatorSchool) {
-      setError("Educator or school information not available")
+    if (!educatorInfo) {
+      setError("Educator information not available")
+      return
+    }
+
+    if (!educatorSchool && !educatorCollege) {
+      setError("Institution information not available")
+      return
+    }
+
+    if (!educatorType) {
+      setError("Educator type not determined")
       return
     }
 
@@ -482,10 +507,12 @@ const AddEditClassModal = ({
           .split(",")
           .map((value) => value.trim())
           .filter(Boolean),
-        schoolId: educatorSchool.id,
+        schoolId: educatorSchool?.id,
+        collegeId: educatorCollege?.id,
         educatorId: educatorInfo.id,
         educatorName: educatorInfo.name,
-        educatorEmail: educatorInfo.email
+        educatorEmail: educatorInfo.email,
+        educatorType: educatorType
       }
 
       let result
@@ -680,8 +707,8 @@ const ClassesPage = () => {
   // Get auth context
   const { user, isAuthenticated } = useAuth()
   
-  // Get educator's school information
-  const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool()
+  // Get educator's school/college information
+  const { school: educatorSchool, college: educatorCollege, educatorType, loading: schoolLoading } = useEducatorSchool()
   
   // Get educator ID securely
   const { educatorId, loading: educatorIdLoading, error: educatorIdError } = useEducatorId()
@@ -693,28 +720,50 @@ const ClassesPage = () => {
     const fetchEducatorInfo = async () => {
       if (!user || !educatorId) return
       
+      console.log('🔍 Fetching educator info:', { user: user.email, educatorId, educatorType })
+      
       try {
-        // Use educatorId from the hook and get additional info
-        const { data: educatorData } = await supabase
-          .from('school_educators')
-          .select('id, first_name, last_name, email')
-          .eq('id', educatorId)
-          .single()
+        // Check if school or college educator
+        if (educatorType === 'school') {
+          const { data: educatorData } = await supabase
+            .from('school_educators')
+            .select('id, first_name, last_name, email')
+            .eq('id', educatorId)
+            .single()
 
-        if (educatorData) {
-          setEducatorInfo({
-            id: educatorData.id,
-            name: `${educatorData.first_name || ''} ${educatorData.last_name || ''}`.trim() || educatorData.email,
-            email: educatorData.email
-          })
+          if (educatorData) {
+            const info = {
+              id: educatorData.id,
+              name: `${educatorData.first_name || ''} ${educatorData.last_name || ''}`.trim() || educatorData.email,
+              email: educatorData.email
+            }
+            console.log('✅ School educator info loaded:', info)
+            setEducatorInfo(info)
+          }
+        } else if (educatorType === 'college') {
+          const { data: educatorData } = await supabase
+            .from('college_lecturers')
+            .select('id, first_name, last_name, email')
+            .eq('id', educatorId)
+            .single()
+
+          if (educatorData) {
+            const info = {
+              id: educatorData.id,
+              name: `${educatorData.first_name || ''} ${educatorData.last_name || ''}`.trim() || educatorData.email,
+              email: educatorData.email
+            }
+            console.log('✅ College educator info loaded:', info)
+            setEducatorInfo(info)
+          }
         }
       } catch (err) {
-        console.error('Error fetching educator info:', err)
+        console.error('❌ Error fetching educator info:', err)
       }
     }
 
     fetchEducatorInfo()
-  }, [user, educatorId])
+  }, [user, educatorId, educatorType])
 
   // Security check: Ensure user is authenticated and has educator role
   useEffect(() => {
@@ -723,7 +772,7 @@ const ClassesPage = () => {
       return
     }
     
-    if (user?.role !== 'educator' && user?.role !== 'school_educator') {
+    if (user?.role !== 'educator' && user?.role !== 'school_educator' && user?.role !== 'college_educator') {
       console.error('Unauthorized access attempt to educator classes page')
       navigate('/auth/login')
       return
@@ -733,7 +782,9 @@ const ClassesPage = () => {
   // Fetch classes - only for this specific educator
   const { classes, loading, error, stats, upsertClass } = useClasses({ 
     schoolId: educatorSchool?.id,
-    educatorId: educatorId
+    collegeId: educatorCollege?.id,
+    educatorId: educatorId,
+    educatorType: educatorType
   })
   
   const [viewMode, setViewMode] = useState("grid")
@@ -941,6 +992,11 @@ const ClassesPage = () => {
   // Only show actual errors, not "Educator record not found" which is expected for new educators
   const hasError = error && error !== 'Educator record not found'
   const isEmpty = !isLoading && paginatedClasses.length === 0 && !hasError && !searchQuery && totalFilters === 0
+
+  // For college educators, show program sections page instead
+  if (educatorType === 'college') {
+    return <ProgramSectionsPage />
+  }
 
   return (
     <div className="flex  overflow-y-auto mb-4 flex-col h-screen">
@@ -1349,7 +1405,9 @@ const ClassesPage = () => {
         }}
         editingClass={editingClass}
         educatorSchool={educatorSchool}
+        educatorCollege={educatorCollege}
         educatorInfo={educatorInfo}
+        educatorType={educatorType}
       />
 
       <ManageStudentsModal
@@ -1357,6 +1415,8 @@ const ClassesPage = () => {
         onClose={() => setManageStudentsClass(null)}
         classItem={manageStudentsClass}
         schoolId={educatorSchool?.id}
+        collegeId={educatorCollege?.id}
+        educatorType={educatorType as 'school' | 'college'}
         onStudentsUpdated={(updated) => {
           upsertClass(updated)
           setManageStudentsClass(updated)

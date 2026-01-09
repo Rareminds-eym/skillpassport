@@ -1,19 +1,9 @@
+import { ArrowLeft, CheckCircle, Clock, FileText, Target, Zap } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Target, Clock, FileText, Zap, CheckCircle, ArrowLeft } from 'lucide-react';
-import { checkAssessmentStatus } from '../../services/externalAssessmentService';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../../components/Students/components/ui/alert-dialog';
+import { checkAssessmentStatus } from '../../services/externalAssessmentService';
 
 /**
  * Assessment Start Page

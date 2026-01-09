@@ -1,32 +1,23 @@
-
-import React, { useState, useEffect, useRef } from 'react';
 import {
-  BellIcon,
-  LockClosedIcon,
-  UserIcon,
-  CogIcon,
-  EnvelopeIcon,
-  ShieldCheckIcon,
-  ArrowPathIcon,
-  CheckCircleIcon,
-  ExclamationTriangleIcon,
-  ChevronRightIcon,
-  PhotoIcon,
-  EyeIcon,
-  ArrowDownTrayIcon,
-  ClockIcon,
-  GlobeAltIcon,
-  BuildingOfficeIcon,
-  AcademicCapIcon,
-  BriefcaseIcon,
-  LinkIcon,
-  DocumentTextIcon,
-  PlusCircleIcon,
+    ArrowDownTrayIcon,
+    ArrowPathIcon,
+    BellIcon,
+    CheckCircleIcon,
+    ChevronRightIcon,
+    ClockIcon,
+    CogIcon,
+    CreditCardIcon,
+    EnvelopeIcon,
+    ExclamationTriangleIcon,
+    EyeIcon,
+    GlobeAltIcon,
+    LockClosedIcon,
+    PhotoIcon,
+    ShieldCheckIcon,
+    UserIcon
 } from '@heroicons/react/24/outline';
-import { useAuth } from "../../context/AuthContext";
-import { supabase } from "../../lib/supabaseClient";
-import { uploadFile, validateFile, getDocumentUrl } from "../../services/fileUploadService";
-import storageService from "../../services/storageService";
+import React, { useState } from 'react';
+import { SubscriptionSettingsSection } from '../../components/Subscription/SubscriptionSettingsSection';
 
 interface SettingsState {
   fullName: string;
@@ -902,6 +893,7 @@ const Settings: React.FC = () => {
     { id: 'teaching', label: 'Teaching', icon: CogIcon },
     { id: 'security', label: 'Security', icon: LockClosedIcon },
     { id: 'privacy', label: 'Privacy', icon: ShieldCheckIcon },
+    { id: 'subscription', label: 'Subscription', icon: CreditCardIcon },
   ];
 
   const getInitials = (name: string) => {
@@ -2074,6 +2066,11 @@ const Settings: React.FC = () => {
                 </div>
               </SettingsSection>
             </div>
+          )}
+
+          {/* Subscription Settings */}
+          {activeTab === 'subscription' && (
+            <SubscriptionSettingsSection />
           )}
 
           {/* Security Settings */}

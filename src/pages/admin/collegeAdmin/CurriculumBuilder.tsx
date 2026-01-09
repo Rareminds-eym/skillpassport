@@ -1,10 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import { FeatureGate } from '../../../components/Subscription/FeatureGate';
+import ConfirmationModal from '../../../components/ui/ConfirmationModal';
 
 // Import the college-adapted curriculum builder UI
 import CollegeCurriculumBuilderUI from '../../../components/admin/collegeAdmin/CollegeCurriculumBuilderUI';
+import { curriculumService, type CurriculumUnit, type CurriculumOutcome } from '../../../services/college/curriculumService';
 
-const CollegeCurriculumBuilder: React.FC = () => {
+/**
+ * CollegeCurriculumBuilder - Curriculum management for college admins
+ * 
+ * Wrapped with FeatureGate for curriculum_builder add-on access control
+ */
+const CollegeCurriculumBuilderContent: React.FC = () => {
   // Local state for college-specific selections
   const [selectedCourse, setSelectedCourse] = useState(''); // Course/Subject
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -13,320 +22,762 @@ const CollegeCurriculumBuilder: React.FC = () => {
   const [selectedAcademicYear, setSelectedAcademicYear] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Notification state
-  const [notification, setNotification] = useState<{
-    type: 'success' | 'error';
-    message: string;
-  } | null>(null);
-  
   // Configuration data from database
-  const [courses, setCourses] = useState<string[]>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
-  const [programs, setPrograms] = useState<string[]>([]);
-  const [semesters, setSemesters] = useState<string[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [semesters, setSemesters] = useState<number[]>([]);
   const [academicYears, setAcademicYears] = useState<string[]>([]);
+  const [assessmentTypes, setAssessmentTypes] = useState<any[]>([]);
+
+  // Current curriculum data
+  const [curriculumId, setCurriculumId] = useState<string | null>(null);
+  const [units, setUnits] = useState<CurriculumUnit[]>([]);
+  const [learningOutcomes, setLearningOutcomes] = useState<CurriculumOutcome[]>([]);
+  const [status, setStatus] = useState<"draft" | "approved" | "published">("draft");
+  
+  // UI state
+  const [loading, setLoading] = useState(false);
+  
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'deleteUnit' | 'deleteOutcome' | 'approve' | 'publish';
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    itemId?: string;
+  }>({
+    isOpen: false,
+    type: 'deleteUnit',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   // Load configuration data on mount
   useEffect(() => {
     loadConfigurationData();
   }, []);
 
+  // Load programs when department changes
+  useEffect(() => {
+    if (selectedDepartment) {
+      loadPrograms(selectedDepartment);
+    } else {
+      setPrograms([]);
+      setSelectedProgram(''); // Reset program selection
+    }
+  }, [selectedDepartment]);
+
+  // Load semesters when program changes
+  useEffect(() => {
+    if (selectedProgram) {
+      loadSemesters(selectedProgram);
+    } else {
+      setSemesters([]);
+      setSelectedSemester(''); // Reset semester selection
+    }
+  }, [selectedProgram]);
+
+  // Load courses when program and semester change
+  useEffect(() => {
+    if (selectedProgram && selectedSemester) {
+      loadCourses(selectedProgram, parseInt(selectedSemester));
+    } else {
+      setCourses([]);
+      setSelectedCourse(''); // Reset course selection
+    }
+  }, [selectedProgram, selectedSemester]);
+
+  // Load curriculum when context is complete (but don't auto-create)
+  useEffect(() => {
+    if (selectedDepartment && selectedProgram && selectedSemester && selectedAcademicYear && selectedCourse) {
+      loadExistingCurriculum();
+    } else {
+      // Clear curriculum data when context is incomplete
+      setCurriculumId(null);
+      setUnits([]);
+      setLearningOutcomes([]);
+      setStatus("draft");
+    }
+  }, [selectedDepartment, selectedProgram, selectedSemester, selectedAcademicYear, selectedCourse]);
+
   const loadConfigurationData = async () => {
     try {
-      // Load college-specific configuration data
-      let coursesData: string[] = [];
-      let departmentsData: string[] = [];
-      let programsData: string[] = [];
-      let semestersData: string[] = [];
-      let yearsData: string[] = [];
+      setLoading(true);
 
-      try {
-        // For now, use hardcoded data - can be replaced with API calls later
-        coursesData = [
-          "Computer Science Fundamentals",
-          "Data Structures and Algorithms", 
-          "Database Management Systems",
-          "Software Engineering",
-          "Web Development",
-          "Machine Learning",
-          "Artificial Intelligence",
-          "Computer Networks",
-          "Operating Systems",
-          "Mathematics for CS",
-          "Statistics and Probability",
-          "Digital Electronics"
-        ];
-      } catch (err) {
-        console.error('Error loading courses:', err);
+      // Load departments
+      const deptResult = await curriculumService.getDepartments();
+      if (deptResult.success) {
+        setDepartments(deptResult.data || []);
+      } else {
+        toast.error('Failed to load departments');
       }
 
-      try {
-        departmentsData = [
-          "Computer Science",
-          "Information Technology", 
-          "Electronics and Communication",
-          "Mechanical Engineering",
-          "Civil Engineering",
-          "Electrical Engineering",
-          "Mathematics",
-          "Physics",
-          "Chemistry"
-        ];
-      } catch (err) {
-        console.error('Error loading departments:', err);
+      // Load assessment types
+      const assessmentResult = await curriculumService.getAssessmentTypes();
+      if (assessmentResult.success) {
+        setAssessmentTypes(assessmentResult.data || []);
+      } else {
+        toast.error('Failed to load assessment types');
       }
 
-      try {
-        programsData = [
-          "B.Tech",
-          "B.E.",
-          "M.Tech", 
-          "M.E.",
-          "B.Sc",
-          "M.Sc",
-          "BCA",
-          "MCA",
-          "MBA"
-        ];
-      } catch (err) {
-        console.error('Error loading programs:', err);
-      }
-
-      try {
-        semestersData = ["1", "2", "3", "4", "5", "6", "7", "8"];
-      } catch (err) {
-        console.error('Error loading semesters:', err);
-      }
-
-      try {
-        yearsData = [
-          "2024-2025",
-          "2025-2026", 
-          "2026-2027"
-        ];
-      } catch (err) {
-        console.error('Error loading academic years:', err);
-      }
+      // Load academic years
+      const years = curriculumService.getAcademicYears();
+      setAcademicYears(years);
       
-      setCourses(coursesData);
-      setDepartments(departmentsData);
-      setPrograms(programsData);
-      setSemesters(semestersData);
-      setAcademicYears(yearsData);
-      
-      // Auto-select current academic year if available
-      try {
-        const currentYear = "2024-2025"; // Can be fetched from API
-        if (currentYear && yearsData.includes(currentYear)) {
-          setSelectedAcademicYear(currentYear);
+      // Auto-select current academic year
+      const currentYear = years.find(year => {
+        const startYear = parseInt(year.split('-')[0]);
+        const now = new Date();
+        const currentYearNum = now.getFullYear();
+        const currentMonth = now.getMonth() + 1; // 0-based to 1-based
+        
+        // Academic year typically starts in July/August
+        if (currentMonth >= 7) {
+          return startYear === currentYearNum;
+        } else {
+          return startYear === currentYearNum - 1;
         }
-      } catch (err) {
-        console.error('Error loading current academic year:', err);
+      });
+      
+      if (currentYear) {
+        setSelectedAcademicYear(currentYear);
       }
 
-      // Show warning if no data was loaded
-      if (coursesData.length === 0 || departmentsData.length === 0 || programsData.length === 0) {
-        console.warn('Some configuration data is missing:', {
-          courses: coursesData.length,
-          departments: departmentsData.length,
-          programs: programsData.length,
-        });
-      }
     } catch (error: any) {
       console.error('Error loading configuration:', error);
-      alert('Failed to load configuration data. Please check the console for details.');
+      toast.error('Failed to load configuration data');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Local state for curriculum data (no database connection)
-  const [curriculumId] = useState<string | null>(null);
-  const [units, setUnits] = useState<any[]>([]);
-  const [learningOutcomes, setLearningOutcomes] = useState<any[]>([]);
-  const [status, setStatus] = useState<"draft" | "pending_approval" | "approved" | "rejected">("draft");
-  const [rejectionReason] = useState<string | undefined>();
-  const [loading] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-
-  // Local handlers (no database connection)
-  const handleAddUnit = async (unit: any) => {
-    setSaveStatus("saving");
-    
-    // Simulate async operation
-    setTimeout(() => {
-      if (unit.id && units.find(u => u.id === unit.id)) {
-        // Update existing
-        setUnits(prev => prev.map(u => u.id === unit.id ? unit : u));
+  const loadPrograms = async (departmentId: string) => {
+    try {
+      const result = await curriculumService.getPrograms(departmentId);
+      if (result.success) {
+        setPrograms(result.data || []);
       } else {
-        // Create new
-        const newUnit = { ...unit, id: Date.now().toString(), order: units.length + 1 };
-        setUnits(prev => [...prev, newUnit]);
+        toast.error('Failed to load programs');
+        setPrograms([]);
       }
-      
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-      
-      setNotification({ type: 'success', message: 'Unit saved successfully!' });
-      setTimeout(() => setNotification(null), 3000);
-    }, 500);
+    } catch (error) {
+      console.error('Error loading programs:', error);
+      toast.error('Failed to load programs');
+      setPrograms([]);
+    }
+  };
+
+  const loadSemesters = async (programId: string) => {
+    try {
+      const result = await curriculumService.getSemesters(programId);
+      if (result.success) {
+        setSemesters(result.data || []);
+      } else {
+        toast.error('Failed to load semesters');
+        setSemesters([]);
+      }
+    } catch (error) {
+      console.error('Error loading semesters:', error);
+      toast.error('Failed to load semesters');
+      setSemesters([]);
+    }
+  };
+
+  const loadCourses = async (programId: string, semester: number) => {
+    try {
+      const result = await curriculumService.getCourses(programId, semester);
+      if (result.success) {
+        setCourses(result.data || []);
+      } else {
+        toast.error('Failed to load courses');
+        setCourses([]);
+      }
+    } catch (error) {
+      console.error('Error loading courses:', error);
+      toast.error('Failed to load courses');
+      setCourses([]);
+    }
+  };
+
+  const loadExistingCurriculum = async () => {
+    if (!selectedDepartment || !selectedProgram || !selectedSemester || !selectedAcademicYear || !selectedCourse) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Get the selected course details
+      const selectedCourseData = courses.find(c => c.id === selectedCourse);
+      if (!selectedCourseData) {
+        // Course not found, clear curriculum data
+        setCurriculumId(null);
+        setUnits([]);
+        setLearningOutcomes([]);
+        setStatus("draft");
+        return;
+      }
+
+      // Try to find existing curriculum
+      const result = await curriculumService.getCurriculums({
+        department_id: selectedDepartment,
+        program_id: selectedProgram,
+        semester: parseInt(selectedSemester),
+        academic_year: selectedAcademicYear,
+        course_id: selectedCourse,
+      });
+
+      if (result.success && result.data && result.data.length > 0) {
+        // Load existing curriculum
+        const existingCurriculum = result.data[0]; // Should be only one match
+        const detailResult = await curriculumService.getCurriculumById(existingCurriculum.id);
+        if (detailResult.success && detailResult.data) {
+          setCurriculumId(detailResult.data.id);
+          setUnits(detailResult.data.units);
+          setLearningOutcomes(detailResult.data.outcomes);
+          setStatus(detailResult.data.status);
+          toast.success('Existing curriculum loaded');
+        }
+      } else {
+        // No existing curriculum found - clear state but don't create yet
+        setCurriculumId(null);
+        setUnits([]);
+        setLearningOutcomes([]);
+        setStatus("draft");
+      }
+    } catch (error: any) {
+      console.error('Error loading curriculum:', error);
+      toast.error('Failed to load curriculum');
+      // Clear state on error
+      setCurriculumId(null);
+      setUnits([]);
+      setLearningOutcomes([]);
+      setStatus("draft");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createNewCurriculum = async (courseId: string) => {
+    try {
+      const result = await curriculumService.createCurriculum({
+        department_id: selectedDepartment,
+        program_id: selectedProgram,
+        course_id: courseId,
+        academic_year: selectedAcademicYear,
+      });
+
+      if (result.success && result.data) {
+        setCurriculumId(result.data.id);
+        setUnits([]);
+        setLearningOutcomes([]);
+        setStatus(result.data.status);
+        toast.success('New curriculum created');
+        return result.data.id;
+      } else {
+        toast.error(result.error?.message || 'Failed to create curriculum');
+        return null;
+      }
+    } catch (error: any) {
+      console.error('Error creating curriculum:', error);
+      toast.error('Failed to create curriculum');
+      return null;
+    }
+  };
+
+  // Create curriculum when user tries to add content (if not exists)
+  const ensureCurriculumExists = async (): Promise<string | null> => {
+    if (curriculumId) {
+      return curriculumId; // Already exists
+    }
+
+    if (!selectedDepartment || !selectedProgram || !selectedSemester || !selectedAcademicYear || !selectedCourse) {
+      toast.error('Please select all context fields first');
+      return null;
+    }
+
+    // Get the selected course details
+    const selectedCourseData = courses.find(c => c.id === selectedCourse);
+    if (!selectedCourseData) {
+      toast.error('Selected course not found');
+      return null;
+    }
+
+    // Create new curriculum
+    return await createNewCurriculum(selectedCourse);
+  };
+
+  // Unit handlers
+  const handleAddUnit = async (unit: any) => {
+    // Ensure curriculum exists before adding unit
+    const currentCurriculumId = await ensureCurriculumExists();
+    if (!currentCurriculumId) {
+      return;
+    }
+
+    try {
+      if (unit.id && units.find(u => u.id === unit.id)) {
+        // Update existing unit
+        const result = await curriculumService.updateUnit(unit.id, {
+          name: unit.name,
+          code: unit.code,
+          description: unit.description,
+          credits: unit.credits,
+          estimated_duration: unit.estimatedDuration,
+          duration_unit: unit.durationUnit,
+        });
+
+        if (result.success && result.data) {
+          setUnits(prev => prev.map(u => u.id === unit.id ? result.data! : u));
+          // If curriculum was approved or published and is being edited, set to draft for re-approval
+          if (status === "approved" || status === "published") {
+            setStatus("draft");
+            toast("Curriculum moved to draft status. Please get approval before publishing again.", {
+              icon: "ℹ️",
+              duration: 4000,
+            });
+          } else {
+            toast.success('Unit updated successfully');
+          }
+        } else {
+          toast.error(result.error?.message || 'Failed to update unit');
+        }
+      } else {
+        // Create new unit
+        const result = await curriculumService.addUnit({
+          curriculum_id: currentCurriculumId,
+          name: unit.name,
+          code: unit.code,
+          description: unit.description,
+          credits: unit.credits,
+          estimated_duration: unit.estimatedDuration,
+          duration_unit: unit.durationUnit,
+        });
+
+        if (result.success && result.data) {
+          setUnits(prev => [...prev, result.data!]);
+          // If curriculum was approved or published and is being edited, set to draft for re-approval
+          if (status === "approved" || status === "published") {
+            setStatus("draft");
+            toast("Curriculum moved to draft status. Please get approval before publishing again.", {
+              icon: "ℹ️",
+              duration: 4000,
+            });
+          } else {
+            toast.success('Unit added successfully');
+          }
+        } else {
+          toast.error(result.error?.message || 'Failed to add unit');
+        }
+      }
+    } catch (error: any) {
+      console.error('Error saving unit:', error);
+      toast.error('Failed to save unit');
+    }
   };
 
   const handleDeleteUnit = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this unit?')) return;
+    const unit = units.find(u => u.id === id);
+    const unitName = unit?.name || 'this unit';
+    const outcomeCount = learningOutcomes.filter(lo => lo.unit_id === id).length;
     
-    setSaveStatus("saving");
-    
-    // Simulate async operation
-    setTimeout(() => {
-      setUnits(prev => prev.filter(u => u.id !== id));
-      setLearningOutcomes(prev => prev.filter(lo => lo.unitId !== id));
-      
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-      
-      setNotification({ type: 'success', message: 'Unit deleted successfully!' });
-      setTimeout(() => setNotification(null), 3000);
-    }, 300);
+    setConfirmModal({
+      isOpen: true,
+      type: 'deleteUnit',
+      title: 'Delete Unit',
+      message: `Are you sure you want to delete "${unitName}"?${outcomeCount > 0 ? ` This will also delete ${outcomeCount} associated learning outcome(s).` : ''}`,
+      onConfirm: () => confirmDeleteUnit(id),
+      itemId: id,
+    });
+  };
+
+  const confirmDeleteUnit = async (id: string) => {
+    try {
+      const result = await curriculumService.deleteUnit(id);
+      if (result.success) {
+        setUnits(prev => prev.filter(u => u.id !== id));
+        setLearningOutcomes(prev => prev.filter(lo => lo.unit_id !== id));
+        
+        // If curriculum was approved or published, move to draft for re-approval
+        if (status === "approved" || status === "published") {
+          setStatus("draft");
+          toast("Unit deleted. Curriculum moved to draft status - please get approval before publishing again.", {
+            icon: "ℹ️",
+            duration: 4000,
+          });
+        } else {
+          toast.success('Unit deleted successfully');
+        }
+      } else {
+        toast.error(result.error?.message || 'Failed to delete unit');
+      }
+    } catch (error: any) {
+      console.error('Error deleting unit:', error);
+      toast.error('Failed to delete unit');
+    }
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
   };
 
   const handleAddOutcome = async (outcome: any) => {
-    setSaveStatus("saving");
-    
-    // Simulate async operation
-    setTimeout(() => {
+    // Ensure curriculum exists before adding outcome
+    const currentCurriculumId = await ensureCurriculumExists();
+    if (!currentCurriculumId) {
+      return;
+    }
+
+    try {
       if (outcome.id && learningOutcomes.find(lo => lo.id === outcome.id)) {
-        // Update existing
-        setLearningOutcomes(prev => prev.map(lo => lo.id === outcome.id ? outcome : lo));
+        // Update existing outcome
+        const result = await curriculumService.updateOutcome(outcome.id, {
+          unit_id: outcome.unitId,
+          outcome_text: outcome.outcome,
+          bloom_level: outcome.bloomLevel,
+          assessment_mappings: outcome.assessmentMappings,
+        });
+
+        if (result.success && result.data) {
+          setLearningOutcomes(prev => prev.map(lo => lo.id === outcome.id ? result.data! : lo));
+          // If curriculum was approved or published and is being edited, set to draft for re-approval
+          if (status === "approved" || status === "published") {
+            setStatus("draft");
+            toast("Curriculum moved to draft status. Please get approval before publishing again.", {
+              icon: "ℹ️",
+              duration: 4000,
+            });
+          } else {
+            toast.success('Learning outcome updated successfully');
+          }
+        } else {
+          toast.error(result.error?.message || 'Failed to update outcome');
+        }
       } else {
-        // Create new
-        const newOutcome = { ...outcome, id: Date.now().toString() };
-        setLearningOutcomes(prev => [...prev, newOutcome]);
+        // Create new outcome
+        const result = await curriculumService.addOutcome({
+          curriculum_id: currentCurriculumId,
+          unit_id: outcome.unitId,
+          outcome_text: outcome.outcome,
+          bloom_level: outcome.bloomLevel,
+          assessment_mappings: outcome.assessmentMappings,
+        });
+
+        if (result.success && result.data) {
+          setLearningOutcomes(prev => [...prev, result.data!]);
+          // If curriculum was approved or published and is being edited, set to draft for re-approval
+          if (status === "approved" || status === "published") {
+            setStatus("draft");
+            toast("Curriculum moved to draft status. Please get approval before publishing again.", {
+              icon: "ℹ️",
+              duration: 4000,
+            });
+          } else {
+            toast.success('Learning outcome added successfully');
+          }
+        } else {
+          toast.error(result.error?.message || 'Failed to add outcome');
+        }
       }
-      
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-      
-      setNotification({ type: 'success', message: 'Learning outcome saved successfully!' });
-      setTimeout(() => setNotification(null), 3000);
-    }, 500);
+    } catch (error: any) {
+      console.error('Error saving outcome:', error);
+      toast.error('Failed to save outcome');
+    }
   };
 
   const handleDeleteOutcome = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this outcome?')) return;
+    const outcome = learningOutcomes.find(lo => lo.id === id);
+    const outcomeText = outcome?.outcome_text?.substring(0, 50) || 'this learning outcome';
     
-    setSaveStatus("saving");
-    
-    // Simulate async operation
-    setTimeout(() => {
-      setLearningOutcomes(prev => prev.filter(lo => lo.id !== id));
-      
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-      
-      setNotification({ type: 'success', message: 'Learning outcome deleted successfully!' });
-      setTimeout(() => setNotification(null), 3000);
-    }, 300);
+    setConfirmModal({
+      isOpen: true,
+      type: 'deleteOutcome',
+      title: 'Delete Learning Outcome',
+      message: `Are you sure you want to delete "${outcomeText}${outcome?.outcome_text && outcome.outcome_text.length > 50 ? '...' : ''}"?`,
+      onConfirm: () => confirmDeleteOutcome(id),
+      itemId: id,
+    });
   };
 
-  const handleSubmitForApproval = async () => {
-    // Simulate role check (no database)
-    const isCollegeAdmin = false; // For demo purposes, assume regular faculty
-    
-    const confirmMessage = isCollegeAdmin
-      ? "Are you sure you want to approve and publish this curriculum?"
-      : "Are you sure you want to submit this curriculum for Academic Head approval?";
+  const confirmDeleteOutcome = async (id: string) => {
+    try {
+      const result = await curriculumService.deleteOutcome(id);
+      if (result.success) {
+        setLearningOutcomes(prev => prev.filter(lo => lo.id !== id));
+        
+        // If curriculum was approved or published, move to draft for re-approval
+        if (status === "approved" || status === "published") {
+          setStatus("draft");
+          toast("Learning outcome deleted. Curriculum moved to draft status - please get approval before publishing again.", {
+            icon: "ℹ️",
+            duration: 4000,
+          });
+        } else {
+          toast.success('Learning outcome deleted successfully');
+        }
+      } else {
+        toast.error(result.error?.message || 'Failed to delete outcome');
+      }
+    } catch (error: any) {
+      console.error('Error deleting outcome:', error);
+      toast.error('Failed to delete outcome');
+    }
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+  };
 
-    if (!window.confirm(confirmMessage)) return;
+  const handleSaveDraft = async () => {
+    if (!curriculumId) {
+      toast.error('No curriculum to save');
+      return;
+    }
     
-    setSaveStatus("saving");
+    // Check if there's actually content to save
+    if (units.length === 0 && learningOutcomes.length === 0) {
+      toast.error('Add units and learning outcomes before saving');
+      return;
+    }
     
-    // Simulate async operation
-    setTimeout(() => {
-      setStatus(isCollegeAdmin ? "approved" : "pending_approval");
-      
-      const message = isCollegeAdmin
-        ? 'Curriculum approved and published successfully!'
-        : 'Curriculum submitted for approval! The Academic Head will review it.';
-      
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-      
-      setNotification({ type: 'success', message });
-      setTimeout(() => setNotification(null), 5000);
-    }, 800);
+    try {
+      // Data is already saved when units/outcomes are added, so this is just a confirmation
+      toast.success('Draft saved successfully - all changes are automatically saved');
+    } catch (error: any) {
+      console.error('Error saving draft:', error);
+      toast.error('Failed to save draft');
+    }
   };
 
   const handleApprove = async () => {
-    if (!window.confirm('Approve this curriculum?')) return;
+    if (!curriculumId) return;
     
-    setSaveStatus("saving");
-    
-    // Simulate async operation
-    setTimeout(() => {
-      setStatus("approved");
-      
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-      
-      setNotification({ type: 'success', message: 'Curriculum approved successfully!' });
-      setTimeout(() => setNotification(null), 5000);
-    }, 500);
+    setConfirmModal({
+      isOpen: true,
+      type: 'approve',
+      title: 'Approve Curriculum',
+      message: 'Are you sure you want to approve this curriculum? Once approved, it will be ready for publishing.',
+      onConfirm: () => confirmApprove(),
+    });
   };
 
-  const handleReject = async () => {
-    const reason = prompt('Please provide a reason for rejection:');
-    if (!reason) return;
+  const confirmApprove = async () => {
+    if (!curriculumId) return;
     
-    setSaveStatus("saving");
-    
-    // Simulate async operation
-    setTimeout(() => {
-      setStatus("rejected");
-      
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-      
-      setNotification({ type: 'success', message: 'Curriculum rejected. Faculty will be notified.' });
-      setTimeout(() => setNotification(null), 5000);
-    }, 500);
+    try {
+      const result = await curriculumService.approveCurriculum(curriculumId);
+      if (result.success) {
+        setStatus("approved");
+        toast.success('Curriculum approved successfully!');
+      } else {
+        toast.error(result.error?.message || 'Failed to approve curriculum');
+      }
+    } catch (error: any) {
+      console.error('Error approving curriculum:', error);
+      toast.error('Failed to approve curriculum');
+    }
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
   };
 
-  // Pass all props to the college-adapted component
+  const handlePublish = async () => {
+    if (!curriculumId) {
+      toast.error('No curriculum to publish');
+      return;
+    }
+
+    setConfirmModal({
+      isOpen: true,
+      type: 'publish',
+      title: 'Publish Curriculum',
+      message: 'Are you sure you want to publish this curriculum? It will be immediately available to students and faculty.',
+      onConfirm: () => confirmPublish(),
+    });
+  };
+
+  const confirmPublish = async () => {
+    if (!curriculumId) return;
+    
+    try {
+      const result = await curriculumService.publishCurriculum(curriculumId);
+      if (result.success) {
+        setStatus("published");
+        toast.success('Curriculum published successfully! It is now active and available to students and faculty.');
+      } else {
+        toast.error(result.error?.message || 'Failed to publish curriculum');
+      }
+    } catch (error: any) {
+      console.error('Error publishing curriculum:', error);
+      toast.error('Failed to publish curriculum');
+    }
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const handleClone = async (sourceId: string, targetData: any) => {
+    try {
+      const result = await curriculumService.cloneCurriculum(sourceId, targetData);
+      if (result.success) {
+        toast.success('Curriculum cloned successfully! You can now edit the new curriculum.');
+        // Optionally redirect to the new curriculum or reload current data
+        if (result.data) {
+          // If the cloned curriculum is for the same context, reload it
+          const isSameContext = 
+            targetData.academic_year === selectedAcademicYear &&
+            (!targetData.department_id || targetData.department_id === selectedDepartment) &&
+            (!targetData.program_id || targetData.program_id === selectedProgram) &&
+            (!targetData.semester || targetData.semester.toString() === selectedSemester);
+          
+          if (isSameContext) {
+            // Reload the current curriculum data
+            loadExistingCurriculum();
+          }
+        }
+      } else {
+        toast.error(result.error?.message || 'Failed to clone curriculum');
+      }
+    } catch (error: any) {
+      console.error('Error cloning curriculum:', error);
+      toast.error('Failed to clone curriculum');
+    }
+  };
+
+  const handleExport = async (format: 'csv' | 'pdf' = 'csv') => {
+    if (!curriculumId) {
+      toast.error('No curriculum to export. Please add some units first.');
+      return;
+    }
+    
+    try {
+      if (format === 'pdf') {
+        // Use the same PDF export service as school curriculum builder
+        // Validate that we have data to export
+        if (!selectedCourse || !selectedDepartment || !selectedProgram || !selectedSemester || !selectedAcademicYear) {
+          toast.error('Please select all context fields before exporting.');
+          return;
+        }
+
+        if (transformedUnits.length === 0) {
+          toast.error('No units to export. Please add units first.');
+          return;
+        }
+
+        // Show loading toast
+        const loadingToast = toast.loading('Generating PDF file...');
+
+        // Get department and program names
+        const deptInfo = departments.find(d => d.id === selectedDepartment);
+        const programInfo = programs.find(p => p.id === selectedProgram);
+        const courseInfo = courseOptions.find(c => c.value === selectedCourse);
+
+        // Prepare export data in the same format as school curriculum builder
+        const exportData = {
+          subject: courseInfo?.label || selectedCourse,
+          class: `${programInfo?.name || selectedProgram} - Semester ${selectedSemester}`,
+          academicYear: selectedAcademicYear,
+          chapters: transformedUnits.map(unit => ({
+            id: unit.id,
+            name: unit.name,
+            code: unit.code,
+            description: unit.description,
+            order: unit.order,
+            estimatedDuration: unit.estimatedDuration,
+            durationUnit: unit.durationUnit,
+          })),
+          learningOutcomes: transformedOutcomes.map(outcome => ({
+            id: outcome.id,
+            chapterId: outcome.unitId, // Map unitId to chapterId for compatibility
+            outcome: outcome.outcome,
+            bloomLevel: outcome.bloomLevel,
+            assessmentMappings: outcome.assessmentMappings,
+          })),
+          status: status,
+          collegeName: deptInfo?.name || 'College Department', // Changed from schoolName to collegeName
+        };
+
+        // Use the same export service as school curriculum builder
+        const { exportCurriculum } = await import('@/services/curriculumExportService');
+        exportCurriculum('pdf', exportData);
+
+        // Dismiss loading and show success
+        toast.dismiss(loadingToast);
+        toast.success('Curriculum exported successfully as PDF!', {
+          duration: 4000,
+          icon: '📥',
+        });
+        return;
+      }
+
+      // Handle CSV export using the service
+      const result = await curriculumService.exportCurriculum(curriculumId, format);
+      if (result.success && result.data) {
+        if (format === 'csv' && result.data.format === 'csv') {
+          // Handle CSV export
+          const csvContent = result.data.content.map((row: any[]) => 
+            row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')
+          ).join('\n');
+
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `curriculum-${selectedCourse}-${selectedAcademicYear}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast.success('Curriculum exported as CSV successfully!');
+        } else {
+          // Handle JSON export (fallback)
+          const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `curriculum-${selectedCourse}-${selectedAcademicYear}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast.success('Curriculum exported successfully!');
+        }
+      } else {
+        toast.error(result.error?.message || 'Failed to export curriculum');
+      }
+    } catch (error: any) {
+      console.error('Error exporting curriculum:', error);
+      toast.error('Failed to export curriculum');
+    }
+  };
+
+  // Generate course options from database
+  const courseOptions = courses.map(course => ({
+    id: course.id,
+    value: course.id,
+    label: `${course.course_code} - ${course.course_name}`,
+    code: course.course_code,
+    name: course.course_name,
+    credits: course.credits,
+    type: course.type,
+  }));
+
+  // Transform units for UI (add order property)
+  const transformedUnits = units.map(unit => ({
+    id: unit.id,
+    name: unit.name,
+    code: unit.code,
+    description: unit.description,
+    order: unit.order_index,
+    estimatedDuration: unit.estimated_duration,
+    durationUnit: unit.duration_unit as 'hours' | 'weeks' | undefined,
+    credits: unit.credits ? Number(unit.credits) : undefined,
+  }));
+
+  // Transform outcomes for UI
+  const transformedOutcomes = learningOutcomes.map(outcome => ({
+    id: outcome.id,
+    unitId: outcome.unit_id,
+    outcome: outcome.outcome_text,
+    bloomLevel: outcome.bloom_level,
+    assessmentMappings: outcome.assessment_mappings,
+  }));
+
   return (
     <>
-      {/* Notification Banner */}
-      {notification && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2">
-          <div
-            className={`rounded-lg border px-6 py-4 shadow-lg ${
-              notification.type === 'success'
-                ? 'bg-green-50 border-green-200 text-green-800'
-                : 'bg-red-50 border-red-200 text-red-800'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              {notification.type === 'success' ? (
-                <svg className="h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <svg className="h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              )}
-              <p className="text-sm font-medium">{notification.message}</p>
-              <button
-                onClick={() => setNotification(null)}
-                className="ml-4 text-current opacity-70 hover:opacity-100"
-              >
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      
       <CollegeCurriculumBuilderUI
         // College-specific selections
         selectedCourse={selectedCourse}
@@ -340,34 +791,59 @@ const CollegeCurriculumBuilder: React.FC = () => {
         selectedAcademicYear={selectedAcademicYear}
         setSelectedAcademicYear={setSelectedAcademicYear}
         // Configuration data
-        courses={courses}
-        departments={departments}
-        programs={programs}
-        semesters={semesters}
+        courses={courseOptions}
+        departments={departments.map(d => ({ id: d.id, name: d.name }))}
+        programs={programs.map(p => ({ id: p.id, name: p.name }))}
+        semesters={semesters.map(s => s.toString())}
         academicYears={academicYears}
-        // Local data (no database connection)
+        // Current data
         curriculumId={curriculumId}
-        units={units}
-        learningOutcomes={learningOutcomes}
-        assessmentTypes={undefined} // Will use default college assessment types
+        units={transformedUnits}
+        learningOutcomes={transformedOutcomes}
+        assessmentTypes={assessmentTypes.map(at => ({ id: at.id, name: at.name, description: at.description }))}
         status={status}
-        rejectionReason={rejectionReason}
         loading={loading}
-        saveStatus={saveStatus}
         // Search
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        // Handlers (adapted for college terminology)
+        // Handlers
         onAddUnit={handleAddUnit}
         onDeleteUnit={handleDeleteUnit}
         onAddOutcome={handleAddOutcome}
         onDeleteOutcome={handleDeleteOutcome}
-        onSubmitForApproval={handleSubmitForApproval}
+        onSaveDraft={handleSaveDraft}
         onApprove={handleApprove}
-        onReject={handleReject}
+        onPublish={handlePublish}
+        onClone={handleClone}
+        onExport={handleExport}
+      />
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type === 'deleteUnit' || confirmModal.type === 'deleteOutcome' ? 'danger' : 'warning'}
+        confirmText={
+          confirmModal.type === 'deleteUnit' ? 'Delete Unit' :
+          confirmModal.type === 'deleteOutcome' ? 'Delete Outcome' :
+          confirmModal.type === 'approve' ? 'Approve' :
+          confirmModal.type === 'publish' ? 'Publish' : 'Confirm'
+        }
+        cancelText="Cancel"
       />
     </>
   );
 };
+
+/**
+ * Wrapped CollegeCurriculumBuilder with FeatureGate for curriculum_builder add-on
+ */
+const CollegeCurriculumBuilder: React.FC = () => (
+  <FeatureGate featureKey="curriculum_builder" showUpgradePrompt={true}>
+    <CollegeCurriculumBuilderContent />
+  </FeatureGate>
+);
 
 export default CollegeCurriculumBuilder;

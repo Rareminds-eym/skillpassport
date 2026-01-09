@@ -1,14 +1,33 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  baseURL: 'https://openrouter.ai/api/v1',
-  dangerouslyAllowBrowser: true,
-  defaultHeaders: {
-    'HTTP-Referer': window.location.origin,
-    'X-Title': 'Career Path Generator',
-  },
-});
+// Lazy initialization of OpenAI client to avoid errors when API key is not set
+let openaiInstance: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!openaiInstance) {
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY || import.meta.env.VITE_OPENROUTER_API_KEY;
+    if (!apiKey) {
+      throw new Error('OpenAI/OpenRouter API key is not configured. Please add VITE_OPENAI_API_KEY or VITE_OPENROUTER_API_KEY to your .env file.');
+    }
+    openaiInstance = new OpenAI({
+      apiKey,
+      baseURL: 'https://openrouter.ai/api/v1',
+      dangerouslyAllowBrowser: true,
+      defaultHeaders: {
+        'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : '',
+        'X-Title': 'Career Path Generator',
+      },
+    });
+  }
+  return openaiInstance;
+}
+
+// For backward compatibility, create a getter
+const openai = {
+  get chat() {
+    return getOpenAIClient().chat;
+  }
+};
 
 export interface StudentProfile {
   id: string;
@@ -189,10 +208,8 @@ function parseCareerPathResponse(content: string): CareerPathResponse {
 
 export async function generateCareerPath(student: StudentProfile): Promise<CareerPathResponse> {
   try {
-    // Validate API key
-    if (!import.meta.env.VITE_OPENAI_API_KEY) {
-      throw new Error('API key is not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
-    }
+    // Get OpenAI client (will throw if API key not configured)
+    const client = getOpenAIClient();
 
     const profileContext = buildStudentProfileContext(student);
     
@@ -230,7 +247,7 @@ Be specific with Indian job market context if the college is in India. Include r
 Ensure all arrays are properly formatted and the JSON is valid.`;
 
     console.log('Calling OpenRouter API...');
-    const completion = await openai.chat.completions.create({
+    const completion = await client.chat.completions.create({
       model: 'openai/gpt-4o-mini',
       messages: [
         {
@@ -397,11 +414,8 @@ export async function generateRoleResponsibilities(
   }
 
   try {
-    // Validate API key
-    if (!import.meta.env.VITE_OPENAI_API_KEY) {
-      console.warn('API key not configured, using fallback responsibilities');
-      return getFallbackResponsibilities(roleName);
-    }
+    // Get OpenAI client (will throw if API key not configured)
+    const client = getOpenAIClient();
 
     const prompt = `Generate exactly 3 key job responsibilities for a ${roleName} role in the ${clusterTitle} career cluster.
 
@@ -414,7 +428,7 @@ Requirements:
 Return ONLY a JSON array of 3 strings, nothing else. Example format:
 ["Design and implement...", "Collaborate with...", "Analyze and optimize..."]`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await client.chat.completions.create({
       model: 'openai/gpt-4o-mini',
       messages: [
         {
@@ -446,6 +460,7 @@ Return ONLY a JSON array of 3 strings, nothing else. Example format:
 export async function generateCareerPathStreaming(
   student: StudentProfile
 ): Promise<AsyncGenerator<string, void, unknown>> {
+  const client = getOpenAIClient();
   const profileContext = buildStudentProfileContext(student);
   
   const userPrompt = `Based on the following student profile, generate a comprehensive career development path. Consider their skills, interests, background, and market demands.
@@ -465,7 +480,7 @@ Generate a detailed JSON response with:
 
 Ensure all arrays are properly formatted and the JSON is valid.`;
 
-  const stream = await openai.chat.completions.create({
+  const stream = await client.chat.completions.create({
     model: 'openai/gpt-4o-mini',
     messages: [
       {
@@ -582,11 +597,8 @@ export async function generateIndustryDemand(
   }
 
   try {
-    // Validate API key
-    if (!import.meta.env.VITE_OPENAI_API_KEY) {
-      console.warn('API key not configured, using fallback industry demand');
-      return getFallbackIndustryDemand(roleName);
-    }
+    // Get OpenAI client (will throw if API key not configured)
+    const client = getOpenAIClient();
 
     const prompt = `Analyze the current job market demand for a ${roleName} role in the ${clusterTitle} career cluster.
 
@@ -606,7 +618,7 @@ Guidelines:
 Return ONLY a JSON object with these exact keys:
 {"description": "...", "demandLevel": "...", "demandPercentage": ...}`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await client.chat.completions.create({
       model: 'openai/gpt-4o-mini',
       messages: [
         {
@@ -984,10 +996,8 @@ export async function generateRoleOverview(
   }
 
   try {
-    if (!import.meta.env.VITE_OPENAI_API_KEY) {
-      console.warn('API key not configured, using fallback role overview');
-      return getFallbackRoleOverview(roleName);
-    }
+    // Get OpenAI client (will throw if API key not configured)
+    const client = getOpenAIClient();
 
     const prompt = `For a ${roleName} role in the ${clusterTitle} career cluster, provide:
 
@@ -1051,7 +1061,7 @@ Return ONLY this JSON:
   ]
 }`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await client.chat.completions.create({
       model: 'openai/gpt-4o-mini',
       messages: [
         {

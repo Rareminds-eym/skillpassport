@@ -1,34 +1,78 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Check, 
-  Shield, 
-  Clock, 
-  Calendar, 
-  CreditCard,
-  TrendingUp,
-  AlertCircle,
-  RefreshCw,
-  X as XIcon,
-  ChevronRight,
-  Circle,
-  Download,
-  ChevronDown,
-  ChevronUp,
-  Receipt,
-  BarChart3,
-  HelpCircle,
-  Mail,
-  ArrowLeft,
-  LayoutDashboard
+import {
+    AlertCircle,
+    ArrowLeft,
+    BarChart3,
+    Calendar,
+    Check,
+    ChevronDown,
+    ChevronRight,
+    ChevronUp,
+    Circle,
+    Clock,
+    CreditCard,
+    Download,
+    HelpCircle,
+    LayoutDashboard,
+    Mail,
+    Receipt,
+    RefreshCw,
+    Shield,
+    Sparkles,
+    TrendingUp,
+    X as XIcon
 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { SubscriptionDashboard } from '../../components/Subscription/SubscriptionDashboard';
+import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
+import { supabase } from '../../lib/supabaseClient';
 import { getUserSubscriptions } from '../../services/Subscriptions/subscriptionService';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '../../services/paymentsApiService';
-import { supabase } from '../../lib/supabaseClient';
-import { getSubscriptionStatusChecks, calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil } from '../../utils/subscriptionHelpers';
-import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
+import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from '../../utils/subscriptionHelpers';
+
+/**
+ * Get the settings path based on current URL path (more reliable than role)
+ */
+function getSettingsPathFromUrl(pathname) {
+  if (pathname.startsWith('/student')) return '/student/settings';
+  if (pathname.startsWith('/recruitment')) return '/recruitment/settings';
+  if (pathname.startsWith('/educator')) return '/educator/settings';
+  if (pathname.startsWith('/college-admin')) return '/college-admin/settings';
+  if (pathname.startsWith('/school-admin')) return '/school-admin/settings';
+  if (pathname.startsWith('/university-admin')) return '/university-admin/settings';
+  if (pathname.startsWith('/admin')) return '/admin/settings';
+  return '/student/settings'; // fallback
+}
+
+/**
+ * Get the dashboard path based on current URL path
+ */
+function getDashboardPathFromUrl(pathname) {
+  if (pathname.startsWith('/student')) return '/student/dashboard';
+  if (pathname.startsWith('/recruitment')) return '/recruitment/overview';
+  if (pathname.startsWith('/educator')) return '/educator/dashboard';
+  if (pathname.startsWith('/college-admin')) return '/college-admin/dashboard';
+  if (pathname.startsWith('/school-admin')) return '/school-admin/dashboard';
+  if (pathname.startsWith('/university-admin')) return '/university-admin/dashboard';
+  if (pathname.startsWith('/admin')) return '/admin/dashboard';
+  return '/student/dashboard'; // fallback
+}
+
+/**
+ * Get the user type for subscription plans based on current URL path (more reliable than role)
+ */
+function getUserTypeFromUrl(pathname) {
+  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/recruitment')) return 'recruiter';
+  if (pathname.startsWith('/educator')) return 'educator';
+  if (pathname.startsWith('/college-admin')) return 'college_admin';
+  if (pathname.startsWith('/school-admin')) return 'school_admin';
+  if (pathname.startsWith('/university-admin')) return 'university_admin';
+  if (pathname.startsWith('/admin')) return 'admin';
+  return 'student'; // fallback
+}
 
 // Fallback plans only used if API fails - these match database structure
 const FALLBACK_PLANS = [
@@ -92,8 +136,18 @@ const FALLBACK_PLANS = [
 
 function MySubscription() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { user, role, loading: authLoading } = useAuth();
   const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
+  
+  // Get settings, dashboard paths, and user type from current URL (more reliable than role)
+  const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
+  const dashboardPath = useMemo(() => getDashboardPathFromUrl(location.pathname), [location.pathname]);
+  const userType = useMemo(() => getUserTypeFromUrl(location.pathname), [location.pathname]);
+  
+  // Tab state - 'subscription' or 'addons'
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'subscription');
   
   // Fetch plans from Cloudflare Worker API (limited to 4 features initially)
   const { 
@@ -156,7 +210,8 @@ function MySubscription() {
   const formatDate = useCallback((dateString) => formatDateUtil(dateString), []);
 
   const handleUpgradePlan = () => {
-    navigate('/subscription/plans?mode=upgrade');
+    // Use userType from URL path (more reliable than role from auth)
+    navigate(`/subscription/plans?type=${userType}&mode=upgrade`);
   };
 
   const handleRenewSubscription = () => {
@@ -325,35 +380,9 @@ function MySubscription() {
     navigate('/support?topic=billing');
   };
 
-  // Get role-specific dashboard URL
-  const getDashboardUrl = useCallback(() => {
-    const userRole = user?.user_metadata?.role || user?.raw_user_meta_data?.role || role;
-    
-    const dashboardRoutes = {
-      // Admin roles
-      super_admin: '/admin/dashboard',
-      rm_admin: '/admin/dashboard',
-      rm_manager: '/admin/dashboard',
-      admin: '/admin/dashboard',
-      company_admin: '/admin/dashboard',
-      // Institution admin roles
-      school_admin: '/school-admin/dashboard',
-      college_admin: '/college-admin/dashboard',
-      university_admin: '/university-admin/dashboard',
-      // Educator roles
-      educator: '/educator/dashboard',
-      school_educator: '/educator/dashboard',
-      college_educator: '/educator/dashboard',
-      // Recruiter role
-      recruiter: '/recruitment/overview',
-      // Student roles
-      student: '/student/dashboard',
-      school_student: '/student/dashboard',
-      college_student: '/student/dashboard',
-    };
-    
-    return dashboardRoutes[userRole] || '/student/dashboard';
-  }, [user, role]);
+  // Use URL-based paths (already computed from location.pathname)
+  const getDashboardUrl = useCallback(() => dashboardPath, [dashboardPath]);
+  const getSettingsUrl = useCallback(() => settingsPath, [settingsPath]);
 
   // Fetch billing history from database (with caching)
   const fetchBillingHistory = useCallback(async (force = false) => {
@@ -543,11 +572,11 @@ function MySubscription() {
         <div className="bg-white border-b border-neutral-200">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate(getSettingsUrl())}
               className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors group"
             >
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-              Back to Home
+              Back to Settings
             </button>
           </div>
         </div>
@@ -562,7 +591,10 @@ function MySubscription() {
               You don't have an active subscription yet. Choose a plan to get started.
             </p>
             <button
-              onClick={() => navigate('/subscription/plans')}
+              onClick={() => {
+                // Use userType from URL path (already computed at top of component)
+                navigate(`/subscription/plans?type=${userType}`);
+              }}
               className="w-full bg-neutral-900 text-white py-2.5 px-6 rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors"
             >
               View Plans
@@ -578,13 +610,13 @@ function MySubscription() {
       {/* Header */}
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Back to Home Button */}
+          {/* Back to Settings Button */}
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(getSettingsUrl())}
             className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 mb-4 transition-colors group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            Back to Home
+            Back to Settings
           </button>
           
           <div className="flex items-start justify-between">
@@ -616,10 +648,41 @@ function MySubscription() {
               <Shield className="w-5 h-5 text-neutral-700" />
             </div>
           </div>
+
+          {/* Tab Navigation */}
+          <div className="mt-6 flex gap-1 bg-neutral-100 rounded-lg p-1 w-fit">
+            <button
+              onClick={() => setActiveTab('subscription')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                activeTab === 'subscription'
+                  ? 'bg-white text-neutral-900 shadow-sm'
+                  : 'text-neutral-600 hover:text-neutral-900'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              Subscription
+            </button>
+            <button
+              onClick={() => setActiveTab('addons')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                activeTab === 'addons'
+                  ? 'bg-white text-neutral-900 shadow-sm'
+                  : 'text-neutral-600 hover:text-neutral-900'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              Add-Ons
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Add-Ons Tab Content */}
+        {activeTab === 'addons' ? (
+          <SubscriptionDashboard />
+        ) : (
+          <>
         {/* Alert Banner */}
         {(isExpiringSoon || isExpired || isPaused) && (
           <div className={`mb-6 p-4 rounded-lg border flex items-start gap-3 ${
@@ -1133,6 +1196,8 @@ function MySubscription() {
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* Cancel Confirmation Modal */}

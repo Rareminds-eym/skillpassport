@@ -4,6 +4,7 @@ export interface TimetableSlot {
   id?: string;
   educator_id: string;
   teacher_id: string;
+  class_id?: string;
   day_of_week: number;
   period_number: number;
   start_time: string;
@@ -11,6 +12,7 @@ export interface TimetableSlot {
   class_name: string;
   subject_name: string;
   room_number: string;
+  teacher_name?: string;
 }
 
 export interface ValidationConflict {
@@ -29,7 +31,8 @@ export const validateMaxPeriodsPerDay = (
   day: number
 ): ValidationConflict | null => {
   const daySlots = slots.filter(
-    s => s.teacher_id === teacherId && s.day_of_week === day
+    // Fix: Check both educator_id and teacher_id for compatibility
+    s => (s.teacher_id === teacherId || s.educator_id === teacherId) && s.day_of_week === day
   );
   
   if (daySlots.length > 6) {
@@ -53,7 +56,8 @@ export const validateMaxConsecutivePeriods = (
   day: number
 ): ValidationConflict | null => {
   const daySlots = slots
-    .filter(s => s.teacher_id === teacherId && s.day_of_week === day)
+    // Fix: Check both educator_id and teacher_id for compatibility
+    .filter(s => (s.teacher_id === teacherId || s.educator_id === teacherId) && s.day_of_week === day)
     .sort((a, b) => a.period_number - b.period_number);
   
   let maxConsecutive = 1;
@@ -89,7 +93,8 @@ export const validateTeacherAvailability = (
 ): ValidationConflict | null => {
   const conflict = slots.find(
     s => s.id !== newSlot.id &&
-         s.educator_id === newSlot.educator_id &&
+         // Fix: Check both educator_id and teacher_id for compatibility
+         (s.educator_id === newSlot.educator_id || s.teacher_id === newSlot.teacher_id) &&
          s.day_of_week === newSlot.day_of_week &&
          s.period_number === newSlot.period_number
   );
@@ -149,10 +154,22 @@ export const validateTimetableSlot = (
   // Add the new slot to check all rules
   const slotsWithNew = [...otherSlots, newSlot];
   
+  // Get the teacher ID (prefer educator_id, fallback to teacher_id)
+  const teacherId = newSlot.educator_id || newSlot.teacher_id;
+  
+  if (!teacherId) {
+    conflicts.push({
+      type: 'teacher_double_booking',
+      message: 'Teacher ID is missing',
+      severity: 'error'
+    });
+    return conflicts;
+  }
+  
   // Rule 1: Max 6 periods per day
   const maxPeriodsConflict = validateMaxPeriodsPerDay(
     slotsWithNew,
-    newSlot.teacher_id,
+    teacherId,
     newSlot.day_of_week
   );
   if (maxPeriodsConflict) conflicts.push(maxPeriodsConflict);
@@ -160,7 +177,7 @@ export const validateTimetableSlot = (
   // Rule 2: Max 3 consecutive periods
   const consecutiveConflict = validateMaxConsecutivePeriods(
     slotsWithNew,
-    newSlot.teacher_id,
+    teacherId,
     newSlot.day_of_week
   );
   if (consecutiveConflict) conflicts.push(consecutiveConflict);

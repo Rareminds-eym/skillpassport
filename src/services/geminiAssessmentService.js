@@ -53,6 +53,8 @@ const callOpenRouterAssessment = async (assessmentData) => {
   }
 
   console.log('✅ Assessment analysis successful via OpenRouter backend');
+  console.log('📊 AI Response keys:', Object.keys(result.data));
+  console.log('📊 streamRecommendation in response:', result.data.streamRecommendation);
   return result.data;
 };
 
@@ -254,8 +256,8 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
         'knowledge': 'middle_learning_preferences'
       };
       return middleSchoolMap[baseSection] || baseSection;
-    } else if (gradeLevel === 'highschool') {
-      // High school section mappings (matches database section names)
+    } else if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
+      // High school and higher secondary section mappings (matches database section names)
       const highSchoolMap = {
         'riasec': 'hs_interest_explorer',
         'bigfive': 'hs_strengths_character',
@@ -561,6 +563,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
 
   return {
     stream,
+    gradeLevel,
     riasecAnswers,
     aptitudeAnswers,
     aptitudeScores,
@@ -570,7 +573,9 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     knowledgeAnswers,
     totalKnowledgeQuestions: streamQuestions.length,
     totalAptitudeQuestions,
-    sectionTimings: timingData
+    sectionTimings: timingData,
+    // Include adaptive aptitude results if available (for high school students)
+    adaptiveAptitudeResults: answers.adaptive_aptitude_results || null
   };
 };
 
@@ -839,10 +844,10 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 };
 
 /**
- * Build intermediate prompt for high school (grades 9-12)
+ * Build intermediate prompt for high school (grades 9-10) and higher secondary (grades 11-12)
  */
 const buildHighSchoolPrompt = (assessmentData, answersHash) => {
-  return `You are a career counselor for high school students (grades 9-12). Analyze this student's career exploration assessment and provide guidance appropriate for their age and academic level.
+  return `You are a career counselor for high school and higher secondary students (grades 9-12). Analyze this student's career exploration assessment and provide guidance appropriate for their age and academic level.
 
 ## CRITICAL: This must be DETERMINISTIC - same input = same output always
 Session ID: ${answersHash}
@@ -890,6 +895,26 @@ High school aptitude is based on self-assessment ratings (1-4 scale) for ease an
 - Use these ratings to identify top cognitive strengths for the aptitudeStrengths field
 - For the "scores" field in the response, convert ratings to a percentage format
 
+${assessmentData.adaptiveAptitudeResults ? `
+## ADAPTIVE APTITUDE TEST RESULTS (AI-Powered Assessment):
+This student completed an adaptive aptitude test that dynamically adjusted difficulty based on their performance.
+${JSON.stringify(assessmentData.adaptiveAptitudeResults, null, 2)}
+
+**ADAPTIVE APTITUDE INTERPRETATION:**
+- aptitudeLevel (1-5): Final assessed aptitude level (1=Basic, 2=Developing, 3=Proficient, 4=Advanced, 5=Expert)
+- confidenceTag: How confident we are in this assessment (high/medium/low)
+- tier: Performance tier classification
+- overallAccuracy: Percentage of questions answered correctly
+- accuracyBySubtag: Breakdown by reasoning type (numerical, logical, verbal, spatial, data interpretation, pattern recognition)
+- pathClassification: How their difficulty path evolved (ascending=improving, stable=consistent, descending=struggling)
+
+**USE THIS DATA TO:**
+1. Enhance aptitude scores with objective test performance
+2. Identify specific cognitive strengths from accuracyBySubtag
+3. Provide more accurate career recommendations based on demonstrated (not self-reported) abilities
+4. Note if there's a gap between self-assessment and actual performance
+` : ''}
+
 ## Career Pathways Responses:
 ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 
@@ -909,9 +934,11 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
       "Numerical": {"averageRating": 0, "total": 0, "percentage": 0},
       "Abstract": {"averageRating": 0, "total": 0, "percentage": 0}
     },
-    "topStrengths": ["2-3 cognitive strengths based on highest ratings (e.g., 'Strong analytical reasoning shown by high numerical task ratings')"],
+    "topStrengths": ["2-3 cognitive strengths based on highest ratings AND adaptive test performance"],
     "overallScore": 0,
-    "cognitiveProfile": "How they think, learn, and solve problems based on their self-assessed task preferences"
+    "cognitiveProfile": "How they think, learn, and solve problems based on self-assessment AND adaptive test results",
+    "adaptiveLevel": 0,
+    "adaptiveConfidence": "high/medium/low"
   },
   "bigFive": {
     "O": 3.5, "C": 3.2, "E": 3.8, "A": 4.0, "N": 2.5,
@@ -1183,8 +1210,8 @@ const buildAnalysisPrompt = (assessmentData, gradeLevel = 'after12') => {
     return buildMiddleSchoolPrompt(assessmentData, answersHash);
   }
 
-  // For high school (grades 9-12), use intermediate prompt
-  if (gradeLevel === 'highschool') {
+  // For high school (grades 9-10) and higher secondary (grades 11-12), use intermediate prompt
+  if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
     return buildHighSchoolPrompt(assessmentData, answersHash);
   }
 

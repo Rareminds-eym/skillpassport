@@ -30,13 +30,18 @@ export class AppliedJobsService {
       }
 
       // Get student details for pipeline
+      // Note: studentId is the auth user_id, which maps to students.user_id
       const { data: student } = await supabase
         .from('students')
-        .select('profile')
-        .eq('id', studentId)
+        .select('name, email, contact_number')
+        .eq('user_id', studentId)
         .single();
 
-      const profile = student?.profile || {};
+      const profile = {
+        name: student?.name || '',
+        email: student?.email || '',
+        contact_number: student?.contact_number || ''
+      };
 
       // Insert application
       const { data, error } = await supabase

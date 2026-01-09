@@ -303,7 +303,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
         classesData
       ] = await Promise.all([
         examsService.getAssessments(schoolId, collegeId),
-        examsService.getAssessmentTypes(),
+        examsService.getAssessmentTypes(schoolId),
         examsService.getSubjects(),
         examsService.getEducators(schoolId),
         examsService.getExamRooms(schoolId, collegeId),

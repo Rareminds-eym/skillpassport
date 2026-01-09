@@ -29,11 +29,16 @@ const TrainingRecommendations = ({ recommendations }) => {
     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 border-2 border-dashed border-blue-300 shadow-sm">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center shadow-md p-1.5">
+        <div 
+          className="w-14 h-14 rounded-lg  flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
+          style={{
+            boxShadow: '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)'
+          }}
+        >
           <img
-            src="/assets/HomePage/RMLogo.webp"
-            alt="RM Logo"
-            className="w-full h-full object-contain"
+            src="/assets/HomePage/Ai Logo.png"
+            alt="AI Logo"
+            className="w-12 h-12 object-contain"
           />
         </div>
         <div>

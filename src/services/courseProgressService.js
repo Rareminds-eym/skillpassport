@@ -450,6 +450,9 @@ export const courseProgressService = {
         .single();
 
       if (error) throw error;
+
+      // Embedding regeneration handled by database trigger on student_quiz_progress
+
       return { success: true, data, score: scorePercentage, passed };
     } catch (error) {
       console.error('Error submitting quiz:', error);

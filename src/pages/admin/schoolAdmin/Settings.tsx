@@ -1,30 +1,31 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from "react";
-import {
-  Cog6ToothIcon,
-  UserGroupIcon,
-  ShieldCheckIcon,
-  BellIcon,
-  AcademicCapIcon,
-  BuildingOfficeIcon,
-  ClockIcon,
-  DocumentTextIcon,
-  CalendarDaysIcon,
-  XMarkIcon,
-  CheckIcon,
-  PlusCircleIcon,
-  TrashIcon,
-  PencilSquareIcon,
-  ExclamationTriangleIcon,
-  ArrowPathIcon,
-  LockClosedIcon,
-  UserPlusIcon,
-  EyeIcon,
-  EyeSlashIcon,
-  ArrowDownTrayIcon,
-} from "@heroicons/react/24/outline";
-import SearchBar from "../../../components/common/SearchBar";
 import { supabase } from "@/lib/supabaseClient";
+import {
+    AcademicCapIcon,
+    ArrowDownTrayIcon,
+    ArrowPathIcon,
+    BellIcon,
+    BuildingOfficeIcon,
+    CalendarDaysIcon,
+    CheckIcon,
+    ClockIcon,
+    Cog6ToothIcon,
+    CreditCardIcon,
+    DocumentTextIcon,
+    ExclamationTriangleIcon,
+    EyeIcon,
+    EyeSlashIcon,
+    LockClosedIcon,
+    PencilSquareIcon,
+    PlusCircleIcon,
+    ShieldCheckIcon,
+    TrashIcon,
+    UserGroupIcon,
+    XMarkIcon
+} from "@heroicons/react/24/outline";
+import { useEffect, useState } from "react";
+import SearchBar from "../../../components/common/SearchBar";
+import { SubscriptionSettingsSection } from "../../../components/Subscription/SubscriptionSettingsSection";
 // import { supabase } from "../../../supabaseClient";
 
 /* ==============================
@@ -1632,7 +1633,7 @@ const SubjectConfigModal = ({
    ============================== */
 const Settings = () => {
   const [activeTab, setActiveTab] = useState<
-    "users" | "roles" | "classes" | "academic" | "system" | "audit"
+    "users" | "roles" | "classes" | "academic" | "system" | "audit" | "subscription"
   >("users");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "suspended">("all");
@@ -2869,6 +2870,7 @@ const Settings = () => {
     { id: "academic" as const, label: "Academic Year", icon: CalendarDaysIcon },
     { id: "system" as const, label: "System Config", icon: Cog6ToothIcon },
     { id: "audit" as const, label: "Audit Logs", icon: DocumentTextIcon },
+    { id: "subscription" as const, label: "Subscription", icon: CreditCardIcon },
   ];
 
   const stats = [
@@ -3763,6 +3765,10 @@ const Settings = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === "subscription" && (
+          <SubscriptionSettingsSection />
         )}
       </div>
 

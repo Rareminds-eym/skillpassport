@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Sparkles, Save, Send, AlertTriangle, Edit2, Trash2 } from "lucide-react";
+import { Sparkles, Save, Send, AlertTriangle, Edit2, Trash2, Search, Filter, Grid3X3, List } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
 import { validateTimetableSlot, getAllTimetableConflicts, ValidationConflict } from "../../../../utils/timetableValidation";
 
@@ -52,6 +52,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
   const [conflicts, setConflicts] = useState<Map<string, ValidationConflict[]>>(new Map());
   const [showConflicts, setShowConflicts] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showTeacherClassModal, setShowTeacherClassModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingSlot, setEditingSlot] = useState<TimetableSlot | null>(null);
   const [selectedCell, setSelectedCell] = useState<{ day: number; period: number } | null>(null);
@@ -74,6 +75,18 @@ const TimetableBuilderEnhanced: React.FC = () => {
   const [filterDay, setFilterDay] = useState<string>("");
   const [filterSubject, setFilterSubject] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
+  
+  // Search and view states
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(9);
+  
+  // Tab state
+  const [activeTab, setActiveTab] = useState<"slots-filters" | "teacher-load">("slots-filters");
 
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const periods = Array.from({ length: 10 }, (_, i) => i + 1);
@@ -320,14 +333,16 @@ const loadAllSlots = async () => {
       console.log("Raw slots data:", data);
       const slotsWithNames = data.map((slot: any) => ({
         ...slot,
-        teacher_id: slot.educator_id,
+        // Fix: Ensure both teacher_id and educator_id are properly mapped
+        teacher_id: slot.educator_id, // For validation functions
+        educator_id: slot.educator_id, // For component logic
         teacher_name: slot.school_educators ? `${slot.school_educators.first_name} ${slot.school_educators.last_name}` : "",
         class_name: slot.school_classes ? slot.school_classes.name : ""
       }));
       console.log("Processed slots:", slotsWithNames);
       setAllSlots(slotsWithNames);
       
-      // Validate all slots and detect conflicts
+      // Fix: Validate all slots with proper field mapping
       const conflictMap = getAllTimetableConflicts(slotsWithNames);
       setConflicts(conflictMap);
     }
@@ -352,11 +367,12 @@ const loadAllSlots = async () => {
   const handleDrop = async (day: number, period: number) => {
     if (!draggedSlot) return;
 
-    // Create updated slot
+    // Create updated slot with proper field mapping
     const updatedSlot = {
       ...draggedSlot,
       day_of_week: day,
       period_number: period,
+      teacher_id: draggedSlot.educator_id, // Fix: Ensure teacher_id is set for validation
     };
 
     // Validate before updating
@@ -473,21 +489,37 @@ const loadAllSlots = async () => {
     const existingSlot = getSlotForCell(day, period);
     if (existingSlot) return; // Don't open modal if slot exists
     
-    // Check if teacher and class are selected
+    // Open teacher/class selection modal first
+    setSelectedCell({ day, period });
+    // Reset the slot data
+    setNewSlot({
+      teacher_id: "",
+      class_id: "",
+      subject_name: "",
+      room_number: "",
+    });
+    setShowTeacherClassModal(true);
+  };
+
+  const handleTeacherClassSelection = () => {
     if (!newSlot.teacher_id || !newSlot.class_id) {
-      alert("Please select a Teacher and Class from the dropdowns above first.");
+      alert("Please select both Teacher and Class");
       return;
     }
+    
     // Get room number from selected class
     const selectedClass = classes.find(c => c.id === newSlot.class_id);
     const defaultRoom = selectedClass?.room_no || "";
-    setSelectedCell({ day, period });
-    // Keep teacher_id and class_id, set default room and reset subject
+    
+    // Set default room and reset subject
     setNewSlot({
       ...newSlot,
       subject_name: "",
       room_number: defaultRoom,
     });
+    
+    // Close teacher/class modal and open subject/room modal
+    setShowTeacherClassModal(false);
     setShowAddModal(true);
   };
 
@@ -496,30 +528,70 @@ const loadAllSlots = async () => {
       alert("Please fill all required fields");
       return;
     }
-    // Get the selected class's default room
-  const selectedClass = classes.find(c => c.id === newSlot.class_id);
-  const classDefaultRoom = selectedClass?.room_no;
-
-  // Validate room number if class has a default room
-  if (classDefaultRoom && newSlot.room_number && newSlot.room_number !== classDefaultRoom) {
-    const confirmDifferentRoom = confirm(
-      `Warning: The selected room "${newSlot.room_number}" is different from the class's default room "${classDefaultRoom}".\n\nDo you want to continue anyway?`
-    );
     
-    if (!confirmDifferentRoom) {
+    // Get the selected class's default room
+    const selectedClass = classes.find(c => c.id === newSlot.class_id);
+    const classDefaultRoom = selectedClass?.room_no;
+
+    // Validate room number if class has a default room
+    if (classDefaultRoom && newSlot.room_number && newSlot.room_number !== classDefaultRoom) {
+      const confirmDifferentRoom = confirm(
+        `Warning: The selected room "${newSlot.room_number}" is different from the class's default room "${classDefaultRoom}".\n\nDo you want to continue anyway?`
+      );
+      
+      if (!confirmDifferentRoom) {
+        return;
+      }
+    }
+
+    // Check if room number is provided when class has default room
+    if (classDefaultRoom && !newSlot.room_number) {
+      alert(`Please select a room number. The default room for this class is: ${classDefaultRoom}`);
       return;
     }
-  }
 
-  // Check if room number is provided when class has default room
-  if (classDefaultRoom && !newSlot.room_number) {
-    alert(`Please select a room number. The default room for this class is: ${classDefaultRoom}`);
-    return;
-  }
+    // Create slot object for validation with proper field mapping
+    const [startTime, endTime] = timeSlots[selectedCell.period - 1].split("-");
+    const slotToValidate = {
+      educator_id: newSlot.teacher_id,
+      teacher_id: newSlot.teacher_id, // Fix: Ensure teacher_id is set for validation
+      class_id: newSlot.class_id,
+      day_of_week: selectedCell.day,
+      period_number: selectedCell.period,
+      start_time: startTime,
+      end_time: endTime,
+      subject_name: newSlot.subject_name,
+      room_number: newSlot.room_number || `R${selectedCell.period}`,
+      class_name: classes.find(c => c.id === newSlot.class_id)?.name || "",
+    };
+
+    // Validate before adding
+    const validationConflicts = validateTimetableSlot(allSlots, slotToValidate);
+    const hasErrors = validationConflicts.some(c => c.severity === 'error');
+
+    if (hasErrors) {
+      const errorMessages = validationConflicts
+        .filter(c => c.severity === 'error')
+        .map(c => c.message)
+        .join('\n');
+      
+      alert(`Cannot add slot:\n${errorMessages}`);
+      return;
+    }
+
+    // Show warnings if any
+    const warnings = validationConflicts.filter(c => c.severity === 'warning');
+    if (warnings.length > 0) {
+      const warningMessages = warnings.map(c => c.message).join('\n');
+      const confirmWithWarnings = confirm(`Warning:\n${warningMessages}\n\nDo you want to continue anyway?`);
+      
+      if (!confirmWithWarnings) {
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      const [startTime, endTime] = timeSlots[selectedCell.period - 1].split("-");
-      
       const { error } = await supabase
         .from("timetable_slots")
         .insert({
@@ -587,6 +659,46 @@ const loadAllSlots = async () => {
       return;
     }
 
+    // Create slot object for validation with proper field mapping
+    const slotToValidate = {
+      id: editingSlot.id,
+      educator_id: editSlot.teacher_id,
+      teacher_id: editSlot.teacher_id, // Fix: Ensure teacher_id is set for validation
+      class_id: editSlot.class_id,
+      day_of_week: editingSlot.day_of_week,
+      period_number: editingSlot.period_number,
+      start_time: editingSlot.start_time,
+      end_time: editingSlot.end_time,
+      subject_name: editSlot.subject_name,
+      room_number: editSlot.room_number || `R${editingSlot.period_number}`,
+      class_name: classes.find(c => c.id === editSlot.class_id)?.name || "",
+    };
+
+    // Validate before updating
+    const validationConflicts = validateTimetableSlot(allSlots, slotToValidate);
+    const hasErrors = validationConflicts.some(c => c.severity === 'error');
+
+    if (hasErrors) {
+      const errorMessages = validationConflicts
+        .filter(c => c.severity === 'error')
+        .map(c => c.message)
+        .join('\n');
+      
+      alert(`Cannot update slot:\n${errorMessages}`);
+      return;
+    }
+
+    // Show warnings if any
+    const warnings = validationConflicts.filter(c => c.severity === 'warning');
+    if (warnings.length > 0) {
+      const warningMessages = warnings.map(c => c.message).join('\n');
+      const confirmWithWarnings = confirm(`Warning:\n${warningMessages}\n\nDo you want to continue anyway?`);
+      
+      if (!confirmWithWarnings) {
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const { error } = await supabase
@@ -614,6 +726,23 @@ const loadAllSlots = async () => {
   // Filter logic
   const getFilteredSlots = () => {
     return allSlots.filter(slot => {
+      // Search functionality
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const searchableText = [
+          slot.teacher_name || '',
+          slot.class_name || '',
+          slot.subject_name || '',
+          slot.room_number || '',
+          days[slot.day_of_week - 1] || '',
+          `period ${slot.period_number}`,
+          `${slot.start_time} - ${slot.end_time}`
+        ].join(' ').toLowerCase();
+        
+        if (!searchableText.includes(query)) return false;
+      }
+      
+      // Existing filters
       if (filterTeacher && slot.educator_id !== filterTeacher) return false;
       if (filterClass && slot.class_id !== filterClass) return false;
       if (filterDay && slot.day_of_week !== parseInt(filterDay)) return false;
@@ -631,10 +760,28 @@ const loadAllSlots = async () => {
     });
   };
 
+  // Pagination logic
+  const getPaginatedSlots = () => {
+    const filteredSlots = getFilteredSlots();
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredSlots.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = () => {
+    const filteredSlots = getFilteredSlots();
+    return Math.ceil(filteredSlots.length / itemsPerPage);
+  };
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterTeacher, filterClass, filterDay, filterSubject, filterStatus]);
+
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 rounded-2xl p-6 border border-indigo-100">
+      {/* <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 rounded-2xl p-6 border border-indigo-100"> */}
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
@@ -654,7 +801,41 @@ const loadAllSlots = async () => {
             </span>
           </div>
         </div>
-      </div>
+      {/* </div> */}
+      {allSlots.length > 0 && (
+                  <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+                      <div className="text-2xl font-bold text-indigo-900">{getFilteredSlots().length}</div>
+                      <div className="text-sm text-indigo-700">
+                        {getFilteredSlots().length === allSlots.length ? 'Total Slots' : `Filtered (${allSlots.length} total)`}
+                      </div>
+                    </div>
+                    <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                      <div className="text-2xl font-bold text-green-900">
+                        {getFilteredSlots().filter(s => !conflicts.has(s.id || '')).length}
+                      </div>
+                      <div className="text-sm text-green-700">Valid Slots</div>
+                    </div>
+                    <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                      <div className="text-2xl font-bold text-yellow-900">
+                        {getFilteredSlots().filter(s => {
+                          const slotConflicts = s.id ? conflicts.get(s.id) || [] : [];
+                          return slotConflicts.some(c => c.severity === 'warning' && !slotConflicts.some(c2 => c2.severity === 'error'));
+                        }).length}
+                      </div>
+                      <div className="text-sm text-yellow-700">Warnings</div>
+                    </div>
+                    <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                      <div className="text-2xl font-bold text-red-900">
+                        {getFilteredSlots().filter(s => {
+                          const slotConflicts = s.id ? conflicts.get(s.id) || [] : [];
+                          return slotConflicts.some(c => c.severity === 'error');
+                        }).length}
+                      </div>
+                      <div className="text-sm text-red-700">Errors</div>
+                    </div>
+                  </div>
+                )}
 
       {/* Conflicts Alert */}
       {conflicts.size > 0 && showConflicts && (
@@ -728,471 +909,710 @@ const loadAllSlots = async () => {
           Publish
         </button>
       </div>
-         {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <h3 className="font-semibold text-gray-900 mb-3">Filters</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Teacher</label>
-            <select
-              value={filterTeacher}
-              onChange={(e) => setFilterTeacher(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">All Teachers</option>
-              {teachers.map((teacher) => (
-                <option key={teacher.id} value={teacher.id}>
-                  {teacher.first_name} {teacher.last_name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Class</label>
-            <select
-              value={filterClass}
-              onChange={(e) => setFilterClass(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">All Classes</option>
-              {classes.map((cls) => (
-                <option key={cls.id} value={cls.id}>
-                  {cls.grade}{cls.section ? `-${cls.section}` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Day</label>
-            <select
-              value={filterDay}
-              onChange={(e) => setFilterDay(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">All Days</option>
-              {days.map((day, idx) => (
-                <option key={day} value={idx + 1}>
-                  {day}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Subject</label>
-            <select
-              value={filterSubject}
-              onChange={(e) => setFilterSubject(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">All Subjects</option>
-              {subjects.map((subject) => (
-                <option key={subject.id} value={subject.name}>
-                  {subject.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">All Status</option>
-              <option value="ok">✓ OK</option>
-              <option value="warning">⚠ Warning</option>
-              <option value="error">✕ Error</option>
-            </select>
-          </div>
-        </div>
-        {(filterTeacher || filterClass || filterDay || filterSubject || filterStatus) && (
+
+      {/* Tab Navigation */}
+      
+        <div className="flex border-b border-gray-200">
           <button
-            onClick={() => {
-              setFilterTeacher("");
-              setFilterClass("");
-              setFilterDay("");
-              setFilterSubject("");
-              setFilterStatus("");
-            }}
-            className="mt-3 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+            onClick={() => setActiveTab("teacher-load")}
+            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+              activeTab === "teacher-load"
+                ? "bg-indigo-50 text-indigo-700 border-b-2 border-indigo-500"
+                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+            }`}
           >
-            Clear All Filters
+          Add Slots
           </button>
-        )}
-      </div>
-      {/* Teacher Load and Class Selection - Dropdowns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Teacher Load - Dropdown */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-900 mb-3">Teacher Load</h3>
-          <select
-            value={newSlot.teacher_id}
-            onChange={(e) => setNewSlot({ ...newSlot, teacher_id: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 mb-3"
+          <button
+            onClick={() => setActiveTab("slots-filters")}
+            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+              activeTab === "slots-filters"
+                ? "bg-indigo-50 text-indigo-700 border-b-2 border-indigo-500"
+                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+            }`}
           >
-            <option value="">-- Select Teacher --</option>
-            {teachers.map((teacher) => {
-              const load = getTeacherLoad(teacher.id);
-              return (
-                <option key={teacher.id} value={teacher.id}>
-                  {teacher.first_name} {teacher.last_name} ({load}/30 periods)
-                </option>
-              );
-            })}
-          </select>
-          {newSlot.teacher_id && (
-            <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-              <p className="text-sm font-medium text-indigo-900">
-                Selected: {teachers.find(t => t.id === newSlot.teacher_id)?.first_name} {teachers.find(t => t.id === newSlot.teacher_id)?.last_name}
-              </p>
-              <div className="mt-2 flex items-center gap-2">
-                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full transition-all ${
-                      (getTeacherLoad(newSlot.teacher_id) / 30) * 100 > 100 ? "bg-red-500" :
-                      (getTeacherLoad(newSlot.teacher_id) / 30) * 100 > 80 ? "bg-yellow-500" :
-                      "bg-green-500"
-                    }`}
-                    style={{ width: `${Math.min((getTeacherLoad(newSlot.teacher_id) / 30) * 100, 100)}%` }}
-                  />
+            Timetable Slots
+          </button>
+          
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-6">
+          {activeTab === "slots-filters" && (
+            <div className="space-y-6">
+              {/* Timetable Slots Details Grid */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-gray-900">Timetable Slots Details</h3>
                 </div>
-                <span className="text-xs font-medium text-gray-600">
-                  {getTeacherLoad(newSlot.teacher_id)}/30
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
 
-        {/* Classes in School - Dropdown */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-900 mb-3">Classes in School</h3>
-          <select
-            value={newSlot.class_id}
-            onChange={(e) => setNewSlot({ ...newSlot, class_id: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 mb-3"
-          >
-            <option value="">-- Select Class --</option>
-            {classes.map((cls) => (
-              <option key={cls.id} value={cls.id}>
-                {cls.grade}{cls.section ? `-${cls.section}` : ''} ({cls.name})
-              </option>
-            ))}
-          </select>
-          {newSlot.class_id && (
-            <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-              <p className="text-sm font-medium text-green-900">
-                Selected: {classes.find(c => c.id === newSlot.class_id)?.grade}
-                {classes.find(c => c.id === newSlot.class_id)?.section ? `-${classes.find(c => c.id === newSlot.class_id)?.section}` : ''}
-              </p>
-              <p className="text-xs text-green-600">{classes.find(c => c.id === newSlot.class_id)?.name}</p>
-            </div>
-          )}
-        </div>
-      </div>
+                {/* Search Bar and Controls */}
+                <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                    {/* Search Bar */}
+                    <div className="flex-1 relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-4 w-4 text-gray-400" />
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Search slots..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                      />
+                    </div>
 
-      {/* Selection Info */}
-      {newSlot.teacher_id && newSlot.class_id && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-          <p className="text-sm text-indigo-800">
-            <span className="font-medium">Ready to add slots:</span> Click "+ Add Slot" in the grid below to assign{' '}
-            <span className="font-semibold">{teachers.find(t => t.id === newSlot.teacher_id)?.first_name} {teachers.find(t => t.id === newSlot.teacher_id)?.last_name}</span> to{' '}
-            <span className="font-semibold">{classes.find(c => c.id === newSlot.class_id)?.grade}{classes.find(c => c.id === newSlot.class_id)?.section ? `-${classes.find(c => c.id === newSlot.class_id)?.section}` : ''}</span>
-          </p>
-        </div>
-      )}
+                    {/* Controls */}
+                    <div className="flex items-center gap-2">
+                      {/* Filters Toggle */}
+                      <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                          showFilters
+                            ? "bg-indigo-100 text-indigo-700"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        <Filter className="h-4 w-4" />
+                        Filters
+                      </button>
 
-      {/* Timetable Grid */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900 sticky left-0 bg-gray-50 z-10">
-                Period / Day
-              </th>
-              {days.map((day) => (
-                <th key={day} className="border border-gray-200 px-4 py-3 text-center text-sm font-semibold text-gray-900 min-w-[150px]">
-                  {day}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {periods.map((period) => (
-              <tr key={period}>
-                <td className="border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
-                  <div>
-                    <div>Period {period}</div>
-                    <div className="text-xs text-gray-500">{timeSlots[period - 1]}</div>
+                      {/* View Toggle */}
+                      <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                        <button
+                          onClick={() => setViewMode("list")}
+                          className={`p-1.5 rounded-md transition-colors ${
+                            viewMode === "list"
+                              ? "bg-white text-indigo-600 shadow-sm"
+                              : "text-gray-500 hover:text-gray-700"
+                          }`}
+                          title="List view"
+                        >
+                          <List className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setViewMode("grid")}
+                          className={`p-1.5 rounded-md transition-colors ${
+                            viewMode === "grid"
+                              ? "bg-white text-indigo-600 shadow-sm"
+                              : "text-gray-500 hover:text-gray-700"
+                          }`}
+                          title="Grid view"
+                        >
+                          <Grid3X3 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </td>
-                {days.map((day, dayIndex) => {
-                  const slot = getSlotForCell(dayIndex + 1, period);
-                  const isFree = !slot;
-                  
-                  // Apply filters to determine if slot should be visible
-                  const isFiltered = slot && !getFilteredSlots().some(s => s.id === slot.id);
-                  
-                  return (
-                    <td
-                      key={`${day}-${period}`}
-                      className={`border border-gray-200 px-2 py-2 text-sm ${
-                        isFree ? "bg-green-50 cursor-pointer hover:bg-green-100" : 
-                        isFiltered ? "bg-gray-100" : "bg-white"
-                      }`}
-                      onDragOver={handleDragOver}
-                      onDrop={() => handleDrop(dayIndex + 1, period)}
-                      onClick={() => isFree && handleCellClick(dayIndex + 1, period)}
-                    >
-                      {slot ? (
-                        isFiltered ? (
-                          <div className="p-2 text-center text-xs text-gray-400 italic">
-                            Filtered
-                          </div>
-                        ) : (
-                          (() => {
+
+                  {/* Collapsible Filters */}
+                  {showFilters && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Teacher</label>
+                          <select
+                            value={filterTeacher}
+                            onChange={(e) => setFilterTeacher(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">All Teachers</option>
+                            {teachers.map((teacher) => (
+                              <option key={teacher.id} value={teacher.id}>
+                                {teacher.first_name} {teacher.last_name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Class</label>
+                          <select
+                            value={filterClass}
+                            onChange={(e) => setFilterClass(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">All Classes</option>
+                            {classes.map((cls) => (
+                              <option key={cls.id} value={cls.id}>
+                                {cls.grade}{cls.section ? `-${cls.section}` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Day</label>
+                          <select
+                            value={filterDay}
+                            onChange={(e) => setFilterDay(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">All Days</option>
+                            {days.map((day, idx) => (
+                              <option key={day} value={idx + 1}>
+                                {day}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+                          <select
+                            value={filterSubject}
+                            onChange={(e) => setFilterSubject(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">All Subjects</option>
+                            {subjects.map((subject) => (
+                              <option key={subject.id} value={subject.name}>
+                                {subject.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                          <select
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">All Status</option>
+                            <option value="ok">✓ OK</option>
+                            <option value="warning">⚠ Warning</option>
+                            <option value="error">✕ Error</option>
+                          </select>
+                        </div>
+                      </div>
+                      {(filterTeacher || filterClass || filterDay || filterSubject || filterStatus) && (
+                        <button
+                          onClick={() => {
+                            setFilterTeacher("");
+                            setFilterClass("");
+                            setFilterDay("");
+                            setFilterSubject("");
+                            setFilterStatus("");
+                          }}
+                          className="mt-3 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                        >
+                          Clear All Filters
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {allSlots.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No slots added yet. Switch to "Teacher Load & Add Slots" tab to start building your timetable.
+                  </div>
+                ) : (
+                  <>
+                    {viewMode === "list" ? (
+                      /* List View */
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="bg-gray-50">
+                              <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Day</th>
+                              <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Period</th>
+                              <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Time</th>
+                              <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Teacher</th>
+                              <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Class</th>
+                              <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Subject</th>
+                              <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Room</th>
+                              <th className="border border-gray-200 px-4 py-3 text-center text-sm font-semibold text-gray-900">Status</th>
+                              <th className="border border-gray-200 px-4 py-3 text-center text-sm font-semibold text-gray-900">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {getPaginatedSlots()
+                              .sort((a, b) => {
+                                if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
+                                return a.period_number - b.period_number;
+                              })
+                              .map((slot) => {
+                                const slotConflicts = slot.id ? conflicts.get(slot.id) || [] : [];
+                                const hasConflict = slotConflicts.length > 0;
+                                const hasError = slotConflicts.some(c => c.severity === 'error');
+                                
+                                return (
+                                  <tr 
+                                    key={slot.id} 
+                                    className={`hover:bg-gray-50 ${
+                                      hasError ? 'bg-red-50' : hasConflict ? 'bg-yellow-50' : ''
+                                    }`}
+                                  >
+                                    <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
+                                      {days[slot.day_of_week - 1]}
+                                    </td>
+                                    <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
+                                      Period {slot.period_number}
+                                    </td>
+                                    <td className="border border-gray-200 px-4 py-3 text-sm text-gray-600">
+                                      {slot.start_time} - {slot.end_time}
+                                    </td>
+                                    <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
+                                      {slot.teacher_name}
+                                    </td>
+                                    <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
+                                      {slot.class_name}
+                                    </td>
+                                    <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
+                                      {slot.subject_name}
+                                    </td>
+                                    <td className="border border-gray-200 px-4 py-3 text-sm text-gray-600">
+                                      {slot.room_number}
+                                    </td>
+                                    <td className="border border-gray-200 px-4 py-3 text-center">
+                                      {hasError ? (
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">
+                                          <AlertTriangle className="h-3 w-3" />
+                                          Error
+                                        </span>
+                                      ) : hasConflict ? (
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
+                                          <AlertTriangle className="h-3 w-3" />
+                                          Warning
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                          ✓ OK
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="border border-gray-200 px-4 py-3 text-center">
+                                      <div className="flex items-center justify-center gap-2">
+                                        <button
+                                          onClick={() => handleEditSlot(slot)}
+                                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                          title="Edit slot"
+                                        >
+                                          <Edit2 className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                          onClick={() => slot.id && handleDeleteSlot(slot.id)}
+                                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                          title="Delete slot"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      /* Grid View */
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {getPaginatedSlots()
+                          .sort((a, b) => {
+                            if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
+                            return a.period_number - b.period_number;
+                          })
+                          .map((slot) => {
                             const slotConflicts = slot.id ? conflicts.get(slot.id) || [] : [];
                             const hasConflict = slotConflicts.length > 0;
                             const hasError = slotConflicts.some(c => c.severity === 'error');
                             
                             return (
                               <div
-                                draggable
-                                onDragStart={() => handleDragStart(slot)}
-                                className={`p-2 border rounded cursor-move transition relative group ${
+                                key={slot.id}
+                                className={`bg-white rounded-lg border-2 p-4 hover:shadow-md transition-shadow ${
                                   hasError
-                                    ? "bg-red-100 border-red-500 hover:bg-red-200"
+                                    ? "border-red-300 bg-red-50"
                                     : hasConflict
-                                    ? "bg-yellow-100 border-yellow-500 hover:bg-yellow-200"
-                                    : "bg-indigo-100 border-indigo-300 hover:bg-indigo-200"
+                                    ? "border-yellow-300 bg-yellow-50"
+                                    : "border-gray-200 hover:border-indigo-300"
                                 }`}
-                                title={hasConflict ? slotConflicts.map(c => c.message).join('\n') : ''}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditSlot(slot);
-                                }}
                               >
-                                {slot.id && (
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="font-semibold text-gray-900">
+                                        {days[slot.day_of_week - 1]}
+                                      </span>
+                                      <span className="text-sm text-gray-500">
+                                        Period {slot.period_number}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {slot.start_time} - {slot.end_time}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {hasError ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">
+                                        <AlertTriangle className="h-3 w-3" />
+                                        Error
+                                      </span>
+                                    ) : hasConflict ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
+                                        <AlertTriangle className="h-3 w-3" />
+                                        Warning
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                        ✓ OK
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2 mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-gray-500">Teacher:</span>
+                                    <span className="text-sm text-gray-900">{slot.teacher_name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-gray-500">Class:</span>
+                                    <span className="text-sm text-gray-900">{slot.class_name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-gray-500">Subject:</span>
+                                    <span className="text-sm text-gray-900">{slot.subject_name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-gray-500">Room:</span>
+                                    <span className="text-sm text-gray-600">{slot.room_number}</span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-200">
                                   <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteSlot(slot.id!);
-                                    }}
-                                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs hover:bg-red-600 transition z-10"
+                                    onClick={() => handleEditSlot(slot)}
+                                    className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                    title="Edit slot"
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => slot.id && handleDeleteSlot(slot.id)}
+                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                     title="Delete slot"
                                   >
-                                    ×
+                                    <Trash2 className="h-4 w-4" />
                                   </button>
-                                )}
-                                {hasError && (
-                                  <div className="flex items-center gap-1 mb-1">
-                                    <AlertTriangle className="h-3 w-3 text-red-600" />
-                                    <span className="text-xs text-red-600 font-bold">Conflict!</span>
-                                  </div>
-                                )}
-                                <div className={`font-medium text-xs truncate ${
-                                  hasError ? "text-red-900" : hasConflict ? "text-yellow-900" : "text-indigo-900"
-                                }`}>
-                                  {slot.teacher_name}
-                                </div>
-                                <div className={`text-xs truncate ${
-                                  hasError ? "text-red-700" : hasConflict ? "text-yellow-700" : "text-indigo-700"
-                                }`}>
-                                  {slot.subject_name}
-                                </div>
-                                <div className={`text-xs ${
-                                  hasError ? "text-red-600" : hasConflict ? "text-yellow-600" : "text-indigo-600"
-                                }`}>
-                                  {slot.class_name} • {slot.room_number}
                                 </div>
                               </div>
                             );
-                          })()
-                        )
-                      ) : (
-                        <div className="p-2 text-center text-xs text-green-600 font-medium hover:text-green-700">
-                          + Add Slot
-                        </div>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                          })}
+                      </div>
+                    )}
 
-      {/* Timetable Slots Details Grid */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Timetable Slots Details</h3>
-        
-        {allSlots.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            No slots added yet. Click "+ Add Slot" in the grid above to start building your timetable.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Day</th>
-                  <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Period</th>
-                  <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Time</th>
-                  <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Teacher</th>
-                  <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Class</th>
-                  <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Subject</th>
-                  <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Room</th>
-                  <th className="border border-gray-200 px-4 py-3 text-center text-sm font-semibold text-gray-900">Status</th>
-                  <th className="border border-gray-200 px-4 py-3 text-center text-sm font-semibold text-gray-900">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {getFilteredSlots()
-                  .sort((a, b) => {
-                    if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
-                    return a.period_number - b.period_number;
-                  })
-                  .map((slot) => {
-                    const slotConflicts = slot.id ? conflicts.get(slot.id) || [] : [];
-                    const hasConflict = slotConflicts.length > 0;
-                    const hasError = slotConflicts.some(c => c.severity === 'error');
-                    
-                    return (
-                      <tr 
-                        key={slot.id} 
-                        className={`hover:bg-gray-50 ${
-                          hasError ? 'bg-red-50' : hasConflict ? 'bg-yellow-50' : ''
-                        }`}
-                      >
-                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
-                          {days[slot.day_of_week - 1]}
-                        </td>
-                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
-                          Period {slot.period_number}
-                        </td>
-                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-600">
-                          {slot.start_time} - {slot.end_time}
-                        </td>
-                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
-                          {slot.teacher_name}
-                        </td>
-                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
-                          {slot.class_name}
-                        </td>
-                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
-                          {slot.subject_name}
-                        </td>
-                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-600">
-                          {slot.room_number}
-                        </td>
-                        <td className="border border-gray-200 px-4 py-3 text-center">
-                          {hasError ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">
-                              <AlertTriangle className="h-3 w-3" />
-                              Error
-                            </span>
-                          ) : hasConflict ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
-                              <AlertTriangle className="h-3 w-3" />
-                              Warning
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                              ✓ OK
-                            </span>
-                          )}
-                        </td>
-                        <td className="border border-gray-200 px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEditSlot(slot)}
-                              className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                              title="Edit slot"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => slot.id && handleDeleteSlot(slot.id)}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete slot"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                    {/* Pagination Controls */}
+                    {getFilteredSlots().length > itemsPerPage && (
+                      <div className="mt-6 flex items-center justify-between">
+                        <div className="text-sm text-gray-700">
+                          Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, getFilteredSlots().length)} of {getFilteredSlots().length} slots
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                            disabled={currentPage === 1}
+                            className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Previous
+                          </button>
+                          
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: getTotalPages() }, (_, i) => i + 1).map((page) => {
+                              // Show first page, last page, current page, and pages around current page
+                              const showPage = page === 1 || 
+                                             page === getTotalPages() || 
+                                             Math.abs(page - currentPage) <= 1;
+                              
+                              if (!showPage && page === 2 && currentPage > 4) {
+                                return <span key={page} className="px-2 text-gray-400">...</span>;
+                              }
+                              if (!showPage && page === getTotalPages() - 1 && currentPage < getTotalPages() - 3) {
+                                return <span key={page} className="px-2 text-gray-400">...</span>;
+                              }
+                              if (!showPage) return null;
+                              
+                              return (
+                                <button
+                                  key={page}
+                                  onClick={() => setCurrentPage(page)}
+                                  className={`px-3 py-2 text-sm font-medium rounded-lg ${
+                                    currentPage === page
+                                      ? "bg-indigo-600 text-white"
+                                      : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+                                  }`}
+                                >
+                                  {page}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          
+                          <button
+                            onClick={() => setCurrentPage(Math.min(getTotalPages(), currentPage + 1))}
+                            disabled={currentPage === getTotalPages()}
+                            className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Summary Stats */}
+                
+              </div>
+            </div>
+          )}
+
+          {activeTab === "teacher-load" && (
+            <div className="space-y-6">
+              {/* Timetable Grid */}
+              <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900 sticky left-0 bg-gray-100 z-10">
+                        Period / Day
+                      </th>
+                      {days.map((day) => (
+                        <th key={day} className="border border-gray-200 px-4 py-3 text-center text-sm font-semibold text-gray-900 min-w-[150px]">
+                          {day}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {periods.map((period) => (
+                      <tr key={period}>
+                        <td className="border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
+                          <div>
+                            <div>Period {period}</div>
+                            <div className="text-xs text-gray-500">{timeSlots[period - 1]}</div>
                           </div>
                         </td>
+                        {days.map((day, dayIndex) => {
+                          const slot = getSlotForCell(dayIndex + 1, period);
+                          const isFree = !slot;
+                          
+                          // Apply filters to determine if slot should be visible
+                          const isFiltered = slot && !getFilteredSlots().some(s => s.id === slot.id);
+                          
+                          return (
+                            <td
+                              key={`${day}-${period}`}
+                              className={`border border-gray-200 px-2 py-2 text-sm ${
+                                isFree ? "bg-green-50 cursor-pointer hover:bg-green-100" : 
+                                isFiltered ? "bg-gray-100" : "bg-white"
+                              }`}
+                              onDragOver={handleDragOver}
+                              onDrop={() => handleDrop(dayIndex + 1, period)}
+                              onClick={() => isFree && handleCellClick(dayIndex + 1, period)}
+                            >
+                              {slot ? (
+                                isFiltered ? (
+                                  <div className="p-2 text-center text-xs text-gray-400 italic">
+                                    Filtered
+                                  </div>
+                                ) : (
+                                  (() => {
+                                    const slotConflicts = slot.id ? conflicts.get(slot.id) || [] : [];
+                                    const hasConflict = slotConflicts.length > 0;
+                                    const hasError = slotConflicts.some(c => c.severity === 'error');
+                                    
+                                    return (
+                                      <div
+                                        draggable
+                                        onDragStart={() => handleDragStart(slot)}
+                                        className={`p-2 border rounded cursor-move transition relative group ${
+                                          hasError
+                                            ? "bg-red-100 border-red-500 hover:bg-red-200"
+                                            : hasConflict
+                                            ? "bg-yellow-100 border-yellow-500 hover:bg-yellow-200"
+                                            : "bg-indigo-100 border-indigo-300 hover:bg-indigo-200"
+                                        }`}
+                                        title={hasConflict ? slotConflicts.map(c => c.message).join('\n') : ''}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleEditSlot(slot);
+                                        }}
+                                      >
+                                        {slot.id && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteSlot(slot.id!);
+                                            }}
+                                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs hover:bg-red-600 transition z-10"
+                                            title="Delete slot"
+                                          >
+                                            ×
+                                          </button>
+                                        )}
+                                        {hasError && (
+                                          <div className="flex items-center gap-1 mb-1">
+                                            <AlertTriangle className="h-3 w-3 text-red-600" />
+                                            <span className="text-xs text-red-600 font-bold">Conflict!</span>
+                                          </div>
+                                        )}
+                                        <div className={`font-medium text-xs truncate ${
+                                          hasError ? "text-red-900" : hasConflict ? "text-yellow-900" : "text-indigo-900"
+                                        }`}>
+                                          {slot.teacher_name}
+                                        </div>
+                                        <div className={`text-xs truncate ${
+                                          hasError ? "text-red-700" : hasConflict ? "text-yellow-700" : "text-indigo-700"
+                                        }`}>
+                                          {slot.subject_name}
+                                        </div>
+                                        <div className={`text-xs ${
+                                          hasError ? "text-red-600" : hasConflict ? "text-yellow-600" : "text-indigo-600"
+                                        }`}>
+                                          {slot.class_name} • {slot.room_number}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()
+                                )
+                              ) : (
+                                <div className="p-2 text-center text-xs text-green-600 font-medium hover:text-green-700">
+                                  + Add Slot
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
                       </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      
+      
+
+      {/* Teacher/Class Selection Modal - Step 1 */}
+      {showTeacherClassModal && selectedCell && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              Select Teacher & Class - {days[selectedCell.day - 1]} Period {selectedCell.period}
+            </h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Time: {timeSlots[selectedCell.period - 1]}
+            </p>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Teacher Load - Dropdown */}
+              <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-4 text-lg">Teacher Load</h3>
+                <select
+                  value={newSlot.teacher_id}
+                  onChange={(e) => setNewSlot({ ...newSlot, teacher_id: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 mb-4"
+                  autoFocus
+                >
+                  <option value="">-- Select Teacher --</option>
+                  {teachers.map((teacher) => {
+                    const load = getTeacherLoad(teacher.id);
+                    return (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.first_name} {teacher.last_name} ({load}/30 periods)
+                      </option>
                     );
                   })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </select>
+                {newSlot.teacher_id && (
+                  <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                    <p className="text-sm font-medium text-indigo-900 mb-2">
+                      Selected: {teachers.find(t => t.id === newSlot.teacher_id)?.first_name} {teachers.find(t => t.id === newSlot.teacher_id)?.last_name}
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all ${
+                            (getTeacherLoad(newSlot.teacher_id) / 30) * 100 > 100 ? "bg-red-500" :
+                            (getTeacherLoad(newSlot.teacher_id) / 30) * 100 > 80 ? "bg-yellow-500" :
+                            "bg-green-500"
+                          }`}
+                          style={{ width: `${Math.min((getTeacherLoad(newSlot.teacher_id) / 30) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-gray-600">
+                        {getTeacherLoad(newSlot.teacher_id)}/30
+                      </span>
+                    </div>
+                    <div className="mt-2 text-xs text-indigo-600">
+                      Load: {Math.round((getTeacherLoad(newSlot.teacher_id) / 30) * 100)}%
+                    </div>
+                  </div>
+                )}
+              </div>
 
-        {/* Summary Stats */}
-        {allSlots.length > 0 && (
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
-              <div className="text-2xl font-bold text-indigo-900">{getFilteredSlots().length}</div>
-              <div className="text-sm text-indigo-700">
-                {getFilteredSlots().length === allSlots.length ? 'Total Slots' : `Filtered (${allSlots.length} total)`}
+              {/* Classes in School - Dropdown */}
+              <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-4 text-lg">Classes in School</h3>
+                <select
+                  value={newSlot.class_id}
+                  onChange={(e) => setNewSlot({ ...newSlot, class_id: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 mb-4"
+                >
+                  <option value="">-- Select Class --</option>
+                  {classes.map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.grade}{cls.section ? `-${cls.section}` : ''} ({cls.name})
+                    </option>
+                  ))}
+                </select>
+                {newSlot.class_id && (
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <p className="text-sm font-medium text-green-900 mb-1">
+                      Selected: {classes.find(c => c.id === newSlot.class_id)?.grade}
+                      {classes.find(c => c.id === newSlot.class_id)?.section ? `-${classes.find(c => c.id === newSlot.class_id)?.section}` : ''}
+                    </p>
+                    <p className="text-xs text-green-600">{classes.find(c => c.id === newSlot.class_id)?.name}</p>
+                    {classes.find(c => c.id === newSlot.class_id)?.room_no && (
+                      <p className="text-xs text-green-600 mt-1">
+                        Default Room: {classes.find(c => c.id === newSlot.class_id)?.room_no}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-              <div className="text-2xl font-bold text-green-900">
-                {getFilteredSlots().filter(s => !conflicts.has(s.id || '')).length}
-              </div>
-              <div className="text-sm text-green-700">Valid Slots</div>
-            </div>
-            <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-              <div className="text-2xl font-bold text-yellow-900">
-                {getFilteredSlots().filter(s => {
-                  const slotConflicts = s.id ? conflicts.get(s.id) || [] : [];
-                  return slotConflicts.some(c => c.severity === 'warning' && !slotConflicts.some(c2 => c2.severity === 'error'));
-                }).length}
-              </div>
-              <div className="text-sm text-yellow-700">Warnings</div>
-            </div>
-            <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-              <div className="text-2xl font-bold text-red-900">
-                {getFilteredSlots().filter(s => {
-                  const slotConflicts = s.id ? conflicts.get(s.id) || [] : [];
-                  return slotConflicts.some(c => c.severity === 'error');
-                }).length}
-              </div>
-              <div className="text-sm text-red-700">Errors</div>
-            </div>
-          </div>
-        )}
-      </div>
 
-      {/* Legend */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <h3 className="font-semibold text-gray-900 mb-3">Legend</h3>
-        <div className="flex flex-wrap gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-green-50 border border-green-200 rounded"></div>
-            <span className="text-sm text-gray-600">Free Period (Click to add)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-indigo-100 border border-indigo-300 rounded"></div>
-            <span className="text-sm text-gray-600">Assigned Period (Drag to move)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-green-500 rounded"></div>
-            <span className="text-sm text-gray-600">Load: 0-80%</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-            <span className="text-sm text-gray-600">Load: 80-100%</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-red-500 rounded"></div>
-            <span className="text-sm text-gray-600">Load: &gt;100%</span>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowTeacherClassModal(false);
+                  setSelectedCell(null);
+                  setNewSlot({
+                    teacher_id: "",
+                    class_id: "",
+                    subject_name: "",
+                    room_number: "",
+                  });
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTeacherClassSelection}
+                disabled={!newSlot.teacher_id || !newSlot.class_id}
+                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 transition"
+              >
+                Next: Select Subject & Room
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Edit Slot Modal */}
       {showEditModal && editingSlot && (
@@ -1332,12 +1752,12 @@ const loadAllSlots = async () => {
         </div>
       )}
 
-      {/* Add Slot Modal - Only Subject and Room */}
+      {/* Add Slot Modal - Step 2: Subject and Room */}
       {showAddModal && selectedCell && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <h3 className="text-xl font-bold text-gray-900 mb-2">
-              Add Slot - {days[selectedCell.day - 1]} Period {selectedCell.period}
+              Select Subject & Room - {days[selectedCell.day - 1]} Period {selectedCell.period}
             </h3>
             <p className="text-sm text-gray-600 mb-4">
               Time: {timeSlots[selectedCell.period - 1]}
@@ -1436,9 +1856,25 @@ const loadAllSlots = async () => {
               <button
                 onClick={() => {
                   setShowAddModal(false);
-                  setSelectedCell(null);
+                  setShowTeacherClassModal(true);
                 }}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              >
+                Back
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setShowTeacherClassModal(false);
+                  setSelectedCell(null);
+                  setNewSlot({
+                    teacher_id: "",
+                    class_id: "",
+                    subject_name: "",
+                    room_number: "",
+                  });
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
               >
                 Cancel
               </button>

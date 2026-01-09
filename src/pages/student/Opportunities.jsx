@@ -1,54 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  Search,
-  ChevronDown,
-  Grid3x3,
-  List,
-  MapPin,
-  Clock,
-  X,
-  Briefcase,
-  FileText,
-  Sparkles,
-  RefreshCw,
-  TrendingUp,
-  Target,
-  Building2,
-  Eye,
-  CheckCircle2,
-  XCircle,
-  Calendar,
-  Users,
-  AlertCircle,
-  Video,
-  Award,
-  Bell,
-  MessageSquare,
-  ArrowRight,
-  Filter
-} from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useAuth } from '../../context/AuthContext';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useOpportunities } from '../../hooks/useOpportunities';
-import { useAIRecommendations } from '../../hooks/useAIRecommendations';
-import AppliedJobsService from '../../services/appliedJobsService';
-import SavedJobsService from '../../services/savedJobsService';
-import SearchHistoryService from '../../services/searchHistoryService';
+import {
+    AlertCircle,
+    Award,
+    Bell,
+    Briefcase,
+    Building2,
+    Calendar,
+    CheckCircle2,
+    Clock,
+    Eye,
+    FileText,
+    Filter,
+    Grid3x3,
+    List,
+    MapPin,
+    MessageSquare,
+    RefreshCw,
+    Search,
+    Sparkles,
+    Target,
+    TrendingUp,
+    Users,
+    Video,
+    X,
+    XCircle
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import AdvancedFilters from '../../components/Students/components/AdvancedFilters';
 import OpportunityCard from '../../components/Students/components/OpportunityCard';
 import OpportunityListItem from '../../components/Students/components/OpportunityListItem';
 import OpportunityPreview from '../../components/Students/components/OpportunityPreview';
-import AdvancedFilters from '../../components/Students/components/AdvancedFilters';
 import RecommendedJobs from '../../components/Students/components/RecommendedJobs';
 import Pagination from '../../components/educator/Pagination';
+import { useAuth } from '../../context/AuthContext';
+import { useOpportunities } from '../../hooks/useOpportunities';
+import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import AppliedJobsService from '../../services/appliedJobsService';
+import SavedJobsService from '../../services/savedJobsService';
 
 // Import Applications component content
-import StudentPipelineService from '../../services/studentPipelineService';
-import MessageService from '../../services/messageService';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
-import { supabase } from '../../lib/supabaseClient';
+import MessageService from '../../services/messageService';
+import StudentPipelineService from '../../services/studentPipelineService';
 
 const Opportunities = () => {
   const navigate = useNavigate();
@@ -94,22 +89,98 @@ const Opportunities = () => {
   const [showPipelineStatus, setShowPipelineStatus] = useState({});
   const [messagingApplicationId, setMessagingApplicationId] = useState(null);
 
-  // Fetch opportunities with loader timing
+  // Memoize student type to prevent unnecessary recalculations
+  const studentType = React.useMemo(() => {
+    const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
+    const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
+    return { isSchoolStudent, isUniversityStudent };
+  }, [studentData?.school_id, studentData?.school_class_id, studentData?.university_college_id, studentData?.universityId]);
+
+  // Build server-side filters (excluding skills which needs client-side filtering)
+  const serverFilters = React.useMemo(() => {
+    const filters = {};
+    
+    // Employment type filter - for school students, force internship only
+    if (studentType.isSchoolStudent) {
+      filters.employmentType = ['internship'];
+    } else if (advancedFilters.employmentType.length > 0) {
+      filters.employmentType = advancedFilters.employmentType;
+    }
+    
+    if (advancedFilters.experienceLevel.length > 0) {
+      filters.experienceLevel = advancedFilters.experienceLevel;
+    }
+    if (advancedFilters.mode.length > 0) {
+      filters.mode = advancedFilters.mode;
+    }
+    if (advancedFilters.department.length > 0) {
+      filters.department = advancedFilters.department;
+    }
+    if (advancedFilters.salaryMin) {
+      filters.salaryMin = advancedFilters.salaryMin;
+    }
+    if (advancedFilters.salaryMax) {
+      filters.salaryMax = advancedFilters.salaryMax;
+    }
+    if (advancedFilters.postedWithin) {
+      filters.postedWithin = advancedFilters.postedWithin;
+    }
+    
+    return filters;
+  }, [advancedFilters, studentType.isSchoolStudent]);
+
+  // Fetch opportunities with server-side pagination
   const [isLoading, setIsLoading] = useState(true);
-  const { opportunities, loading: dataLoading, error } = useOpportunities({
+  const { 
+    opportunities, 
+    loading: dataLoading, 
+    error,
+    totalCount,
+    totalPages 
+  } = useOpportunities({
     fetchOnMount: true,
     activeOnly: true,
-    searchTerm: debouncedSearch
+    searchTerm: debouncedSearch,
+    page: currentPage,
+    pageSize: opportunitiesPerPage,
+    sortBy: sortBy,
+    filters: serverFilters,
+    serverSidePagination: true
   });
+
+  // Client-side filter for skills (JSONB array filtering not supported well in Supabase)
+  const filteredOpportunities = React.useMemo(() => {
+    if (advancedFilters.skills.length === 0) {
+      return opportunities;
+    }
+    
+    return opportunities.filter(opp => {
+      const oppSkills = opp.required_skills || opp.skills_required || [];
+      return advancedFilters.skills.some(skill =>
+        oppSkills.some(oppSkill => 
+          oppSkill.toLowerCase().includes(skill.toLowerCase())
+        )
+      );
+    });
+  }, [opportunities, advancedFilters.skills]);
 
   // Debounce search term
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
+      // Reset to page 1 when search changes
+      if (searchTerm !== debouncedSearch) {
+        setCurrentPage(1);
+      }
     }, 500);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  // Reset to page 1 when filters or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [advancedFilters, sortBy]);
 
   // Pre-select opportunity from navigation state (from Dashboard)
   useEffect(() => {
@@ -127,23 +198,11 @@ const Opportunities = () => {
     }
   }, [location.state, opportunities, navigate, location.pathname]);
 
-  // Ensure loader displays for at least 5 seconds
+  // Set loading to false when data is ready (removed artificial 5-second delay)
   useEffect(() => {
-    const startTime = Date.now();
-
-    const checkLoading = async () => {
-      if (!dataLoading) {
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, 5000 - elapsedTime);
-
-        if (remainingTime > 0) {
-          await new Promise(resolve => setTimeout(resolve, remainingTime));
-        }
-        setIsLoading(false);
-      }
-    };
-
-    checkLoading();
+    if (!dataLoading) {
+      setIsLoading(false);
+    }
   }, [dataLoading]);
 
   useMessageNotifications({
@@ -173,111 +232,70 @@ const Opportunities = () => {
     loadJobsData();
   }, [studentId]);
 
-  // Fetch applications with pipeline status
+  // Fetch applications with pipeline status - memoized to prevent duplicate fetches
+  const fetchApplicationsData = React.useCallback(async () => {
+    if (!studentId) return;
+
+    try {
+      const applicationsData = await StudentPipelineService.getStudentApplicationsWithPipeline(
+        studentId,
+        userEmail
+      );
+
+      const transformedApplications = applicationsData.map(app => ({
+        id: app.id,
+        studentId: app.student_id,
+        jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
+        company: app.opportunity?.company_name || 'N/A',
+        location: app.opportunity?.location || 'N/A',
+        salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
+          ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
+          : 'Not specified',
+        appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        status: app.application_status,
+        logo: app.opportunity?.company_logo,
+        type: app.opportunity?.employment_type || 'N/A',
+        level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
+        lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
+        opportunityId: app.opportunity_id,
+        recruiterId: app.opportunity?.recruiter_id || app.pipeline_recruiter_id || app.pipeline_status?.assigned_to || null,
+        pipelineStatus: app.pipeline_status,
+        hasPipelineStatus: app.has_pipeline_status,
+        pipelineStage: app.pipeline_stage,
+        pipelineStageChangedAt: app.pipeline_stage_changed_at,
+        rejectionReason: app.rejection_reason,
+        nextAction: app.next_action,
+        nextActionDate: app.next_action_date,
+        interviews: app.interviews || []
+      }));
+
+      setApplications(transformedApplications);
+      setFilteredApplications(transformedApplications);
+    } catch (err) {
+      console.error('Error fetching applications:', err);
+    }
+  }, [studentId, userEmail]);
+
+  // Fetch applications when tab changes to my-applications
   useEffect(() => {
-    const fetchApplications = async () => {
-      if (!studentId || activeTab !== 'my-applications') return;
+    if (activeTab === 'my-applications') {
+      fetchApplicationsData();
+    }
+  }, [activeTab, fetchApplicationsData]);
 
-      try {
-        const applicationsData = await StudentPipelineService.getStudentApplicationsWithPipeline(
-          studentId,
-          userEmail
-        );
-
-        const transformedApplications = applicationsData.map(app => ({
-          id: app.id,
-          studentId: app.student_id,
-          jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
-          company: app.opportunity?.company_name || 'N/A',
-          location: app.opportunity?.location || 'N/A',
-          salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
-            ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
-            : 'Not specified',
-          appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-          status: app.application_status,
-          logo: app.opportunity?.company_logo,
-          type: app.opportunity?.employment_type || 'N/A',
-          level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
-          lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
-          opportunityId: app.opportunity_id,
-          recruiterId: app.opportunity?.recruiter_id || app.pipeline_recruiter_id || app.pipeline_status?.assigned_to || null,
-          pipelineStatus: app.pipeline_status,
-          hasPipelineStatus: app.has_pipeline_status,
-          pipelineStage: app.pipeline_stage,
-          pipelineStageChangedAt: app.pipeline_stage_changed_at,
-          rejectionReason: app.rejection_reason,
-          nextAction: app.next_action,
-          nextActionDate: app.next_action_date,
-          interviews: app.interviews || []
-        }));
-
-        setApplications(transformedApplications);
-        setFilteredApplications(transformedApplications);
-      } catch (err) {
-        console.error('Error fetching applications:', err);
-      }
-    };
-
-    fetchApplications();
-  }, [studentId, userEmail, activeTab]);
-
-  // Subscribe to real-time pipeline updates
+  // Subscribe to real-time pipeline updates - reuse fetchApplicationsData
   useEffect(() => {
     if (!studentId || activeTab !== 'my-applications') return;
 
     const channel = StudentPipelineService.subscribeToPipelineUpdates(
       studentId,
-      (payload) => {
-        // Refresh applications when pipeline updates
-        const fetchApplications = async () => {
-          try {
-            const applicationsData = await StudentPipelineService.getStudentApplicationsWithPipeline(
-              studentId,
-              userEmail
-            );
-
-            const transformedApplications = applicationsData.map(app => ({
-              id: app.id,
-              studentId: app.student_id,
-              jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
-              company: app.opportunity?.company_name || 'N/A',
-              location: app.opportunity?.location || 'N/A',
-              salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
-                ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
-                : 'Not specified',
-              appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-              status: app.application_status,
-              logo: app.opportunity?.company_logo,
-              type: app.opportunity?.employment_type || 'N/A',
-              level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
-              lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
-              opportunityId: app.opportunity_id,
-              recruiterId: app.opportunity?.recruiter_id || app.pipeline_recruiter_id || app.pipeline_status?.assigned_to || null,
-              pipelineStatus: app.pipeline_status,
-              hasPipelineStatus: app.has_pipeline_status,
-              pipelineStage: app.pipeline_stage,
-              pipelineStageChangedAt: app.pipeline_stage_changed_at,
-              rejectionReason: app.rejection_reason,
-              nextAction: app.next_action,
-              nextActionDate: app.next_action_date,
-              interviews: app.interviews || []
-            }));
-
-            setApplications(transformedApplications);
-            setFilteredApplications(transformedApplications);
-          } catch (err) {
-            console.error('Error refreshing applications:', err);
-          }
-        };
-
-        fetchApplications();
-      }
+      () => fetchApplicationsData() // Reuse the memoized function
     );
 
     return () => {
       StudentPipelineService.unsubscribeFromPipelineUpdates(channel);
     };
-  }, [studentId, userEmail, activeTab]);
+  }, [studentId, activeTab, fetchApplicationsData]);
 
   const formatLastUpdate = (dateString) => {
     if (!dateString) return 'Recently';
@@ -309,107 +327,12 @@ const Opportunities = () => {
     setFilteredApplications(filtered);
   }, [searchQuery, statusFilter, applications]);
 
+  // Memoize student type to prevent unnecessary recalculations - MOVED UP
+  // const studentType is now defined earlier in the component
+
   // Filter and sort opportunities for My Jobs tab with advanced filters
-  const filteredAndSortedOpportunities = React.useMemo(() => {
-    let filtered = opportunities.filter(opp => {
-      // Search is now handled at DB level via useOpportunities hook
-      // No need for client-side search filtering anymore
-
-      // Grade-based filtering (same logic as Dashboard)
-      const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
-      const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
-
-      // Apply filtering based on student type
-      if (isSchoolStudent) {
-        // School students: Show ONLY internships
-        const isInternship = opp.employment_type && opp.employment_type.toLowerCase() === 'internship';
-        if (!isInternship) return false;
-      } else if (isUniversityStudent) {
-        // College/University students: Show ALL opportunities (no filtering)
-        // They see everything - internships, full-time, part-time, contracts, etc.
-      }
-
-      // Employment Type filter
-      if (advancedFilters.employmentType.length > 0) {
-        if (!advancedFilters.employmentType.includes(opp.employment_type)) {
-          return false;
-        }
-      }
-
-      // Experience Level filter
-      if (advancedFilters.experienceLevel.length > 0) {
-        if (!advancedFilters.experienceLevel.includes(opp.experience_level)) {
-          return false;
-        }
-      }
-
-      // Mode filter (Remote/Onsite/Hybrid)
-      if (advancedFilters.mode.length > 0) {
-        if (!advancedFilters.mode.includes(opp.mode)) {
-          return false;
-        }
-      }
-
-      // Salary filter
-      if (advancedFilters.salaryMin && opp.salary_range_min) {
-        if (opp.salary_range_min < parseInt(advancedFilters.salaryMin)) {
-          return false;
-        }
-      }
-      if (advancedFilters.salaryMax && opp.salary_range_max) {
-        if (opp.salary_range_max > parseInt(advancedFilters.salaryMax)) {
-          return false;
-        }
-      }
-
-      // Skills filter
-      if (advancedFilters.skills.length > 0) {
-        const oppSkills = opp.required_skills || [];
-        const hasMatchingSkill = advancedFilters.skills.some(skill =>
-          oppSkills.some(oppSkill => 
-            oppSkill.toLowerCase().includes(skill.toLowerCase())
-          )
-        );
-        if (!hasMatchingSkill) return false;
-      }
-
-      // Department filter
-      if (advancedFilters.department.length > 0) {
-        if (!advancedFilters.department.includes(opp.department)) {
-          return false;
-        }
-      }
-
-      // Posted Within filter
-      if (advancedFilters.postedWithin) {
-        const postedDate = new Date(opp.posted_date || opp.created_at);
-        const now = new Date();
-        const daysDiff = Math.floor((now - postedDate) / (1000 * 60 * 60 * 24));
-        
-        const withinDays = parseInt(advancedFilters.postedWithin);
-        if (daysDiff > withinDays) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-
-    // Debug logging for opportunity filtering
-    const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
-    const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
-    
-    // Sort filtered results
-    return filtered.sort((a, b) => {
-      if (sortBy === 'newest') {
-        return new Date(b.posted_date || b.created_at) - new Date(a.posted_date || a.created_at);
-      }
-      if (sortBy === 'oldest') {
-        return new Date(a.posted_date || a.created_at) - new Date(b.posted_date || b.created_at);
-      }
-      return 0;
-    });
-  }, [opportunities, sortBy, advancedFilters, studentData]);
+  // NOTE: Most filtering is now done server-side. Only skills filtering remains client-side.
+  const filteredAndSortedOpportunities = filteredOpportunities;
 
   const handleToggleSave = async (opportunity) => {
     if (!studentId) {
@@ -591,8 +514,7 @@ const Opportunities = () => {
               <>
                 {/* AI Recommended Jobs */}
                 <RecommendedJobs
-                  studentProfile={{ ...studentData, profile: studentData }}
-                  opportunities={opportunities}
+                  studentProfile={{ ...studentData, id: studentId, profile: studentData }}
                   onSelectJob={setSelectedOpportunity}
                   appliedJobs={appliedJobs}
                   savedJobs={savedJobs}
@@ -624,6 +546,9 @@ const Opportunities = () => {
                   setCurrentPage={setCurrentPage}
                   opportunitiesPerPage={opportunitiesPerPage}
                   studentData={studentData}
+                  totalCount={totalCount}
+                  totalPages={totalPages}
+                  isServerPaginated={true}
                 />
               </>
             )}
@@ -685,18 +610,18 @@ const MyJobsContent = ({
   cached,
   fallback,
   trackView,
-  studentData
+  studentData,
+  totalCount = 0,
+  totalPages: serverTotalPages = 1,
+  isServerPaginated = false
 }) => {
-  const totalPages = Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage));
-  const paginatedOpportunities = React.useMemo(() => {
+  // Use server-side pagination values when available
+  const totalPages = isServerPaginated ? serverTotalPages : Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage));
+  const displayedOpportunities = isServerPaginated ? opportunities : (() => {
     const startIndex = (currentPage - 1) * opportunitiesPerPage;
     return opportunities.slice(startIndex, startIndex + opportunitiesPerPage);
-  }, [opportunities, currentPage, opportunitiesPerPage]);
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearch, advancedFilters, sortBy, setCurrentPage]);
+  })();
+  const displayCount = isServerPaginated ? totalCount : opportunities.length;
 
   return (
     <>
@@ -887,11 +812,11 @@ const MyJobsContent = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <p className="text-sm font-semibold text-slate-900">
-              Showing {opportunities.length} Jobs Results
+              Showing {displayCount} Jobs Results
             </p>
-            {opportunities.length > 0 && (
+            {displayCount > 0 && (
               <span className="text-xs text-slate-500">
-                (Page {currentPage} of {Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage))})
+                (Page {currentPage} of {totalPages})
               </span>
             )}
           </div>
@@ -938,7 +863,7 @@ const MyJobsContent = ({
                 <>
                   {viewMode === 'grid' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {paginatedOpportunities.map((opp) => (
+                      {displayedOpportunities.map((opp) => (
                         <OpportunityCard
                           key={opp.id}
                           opportunity={opp}
@@ -952,7 +877,7 @@ const MyJobsContent = ({
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {paginatedOpportunities.map((opp) => (
+                      {displayedOpportunities.map((opp) => (
                         <OpportunityListItem
                           key={opp.id}
                           opportunity={opp}
@@ -989,13 +914,13 @@ const MyJobsContent = ({
           </div>
 
           {/* Pagination */}
-          {opportunities.length > 0 && totalPages > 1 && (
+          {displayCount > 0 && totalPages > 1 && (
             <div className="mt-8">
               <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm">
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  totalItems={opportunities.length}
+                  totalItems={displayCount}
                   itemsPerPage={opportunitiesPerPage}
                   onPageChange={setCurrentPage}
                 />

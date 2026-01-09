@@ -361,6 +361,8 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
         );
       }
 
+      // Embedding regeneration handled by database triggers on trainings/certificates/skills tables
+
       onSuccess?.();
       onClose();
       resetForm();

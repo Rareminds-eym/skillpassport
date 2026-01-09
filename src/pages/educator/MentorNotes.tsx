@@ -1464,23 +1464,24 @@
 // };
 
 // export default MentorNotes;
-import { useEffect, useState, useRef } from "react";
+import {
+    Calendar,
+    ChevronLeft,
+    ChevronRight,
+    Edit3,
+    Eye,
+    MessageCircle,
+    Trash2,
+    User,
+    X,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { FeatureGate } from "../../components/Subscription/FeatureGate";
+import { useEducatorSchool } from "../../hooks/useEducatorSchool";
 import { supabase } from "../../lib/supabaseClient";
 import {
-  User,
-  Calendar,
-  Edit3,
-  MessageCircle,
-  Eye,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  X,
-} from "lucide-react";
-import {
-  saveMentorNote,
+    saveMentorNote,
 } from "../../services/educator/mentorNotes";
-import { useEducatorSchool } from "../../hooks/useEducatorSchool";
 
 interface Student {
   id: string;
@@ -1501,7 +1502,7 @@ interface MentorNote {
   students: { name: string } | { name: string }[];
 }
 
-const MentorNotes = () => {
+const MentorNotesContent = () => {
   // Get educator's school information with class assignments
   const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
@@ -2496,6 +2497,15 @@ const MentorNotes = () => {
     </div>
   );
 };
+
+/**
+ * Wrapped MentorNotes with FeatureGate for mentor_notes add-on
+ */
+const MentorNotes = () => (
+  <FeatureGate featureKey="mentor_notes" showUpgradePrompt={true}>
+    <MentorNotesContent />
+  </FeatureGate>
+);
 
 export default MentorNotes;
  // load mentor + lists

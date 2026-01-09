@@ -3,7 +3,9 @@ import { EducatorClass, fetchEducatorClasses } from "../services/classService"
 
 interface UseClassesOptions {
   schoolId?: string | null;
+  collegeId?: string | null;
   educatorId?: string | null;
+  educatorType?: 'school' | 'college' | null;
 }
 
 export function useClasses(options?: UseClassesOptions) {
@@ -11,20 +13,27 @@ export function useClasses(options?: UseClassesOptions) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const schoolId = options?.schoolId
+  const collegeId = options?.collegeId
   const educatorId = options?.educatorId
+  const educatorType = options?.educatorType
 
   const loadClasses = async () => {
     setLoading(true)
     
-    // Security: Ensure educatorId is provided for educator role
-    if (options?.educatorId === undefined) {
-      setError("Educator ID is required")
+    // Security: Ensure educatorId and educatorType are provided for educator role
+    if (options?.educatorId === undefined || options?.educatorType === undefined) {
+      setError("Educator ID and type are required")
       setClasses([])
       setLoading(false)
       return
     }
     
-    const { data, error: serviceError } = await fetchEducatorClasses(schoolId || undefined, educatorId || undefined)
+    const { data, error: serviceError } = await fetchEducatorClasses(
+      schoolId || undefined, 
+      collegeId || undefined,
+      educatorId || undefined,
+      educatorType || undefined
+    )
     if (serviceError || !data) {
       setError(serviceError || "Failed to load classes")
       setClasses([])
@@ -41,15 +50,15 @@ export function useClasses(options?: UseClassesOptions) {
       if (!isMounted) return
       
       // Security: Don't load classes without proper educator identification
-      if (options?.educatorId === undefined) {
+      if (options?.educatorId === undefined || options?.educatorType === undefined) {
         setError("Educator authentication required")
         setClasses([])
         setLoading(false)
         return
       }
       
-      // Wait for schoolId if options are provided
-      if (options !== undefined && schoolId === undefined) {
+      // Wait for schoolId or collegeId if options are provided
+      if (options !== undefined && (educatorType === 'school' ? schoolId === undefined : collegeId === undefined)) {
         return
       }
       
@@ -60,7 +69,7 @@ export function useClasses(options?: UseClassesOptions) {
       isMounted = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId, educatorId])
+  }, [schoolId, collegeId, educatorId, educatorType])
 
   const upsertClass = useCallback((updated: EducatorClass) => {
     setClasses((prev) => {
@@ -72,7 +81,7 @@ export function useClasses(options?: UseClassesOptions) {
 
   const refresh = useCallback(() => {
     loadClasses()
-  }, [schoolId, educatorId])
+  }, [schoolId, collegeId, educatorId, educatorType])
 
   const stats = useMemo(() => {
     const total = classes.length

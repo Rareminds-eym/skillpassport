@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, UserPlus, Calendar, 
-  Upload, BarChart3 
+  Upload, BarChart3, CalendarOff, RefreshCw
 } from 'lucide-react';
 import FacultyList from './FacultyList';
 import FacultyOnboarding from './FacultyOnboarding';
-import FacultyTimetable from './FacultyTimetable';
+import CalendarTimetable from './CalendarTimetable';
 import FacultyPerformanceAnalytics from './FacultyPerformanceAnalytics';
 import FacultyBulkImport from './FacultyBulkImport';
+import FacultyLeaveManagement from '../FacultyLeaveManagement';
+import SwapRequestsManagement from './SwapRequestsManagement';
 import { getFacultyStatistics } from '../../../../services/facultyService';
 import { useAuth } from '../../../../context/AuthContext';
 import { supabase } from '../../../../lib/supabaseClient';
 
 const FacultyManagementDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'list' | 'onboarding' | 'timetable' | 'analytics' | 'import'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'onboarding' | 'timetable' | 'analytics' | 'leave' | 'import' | 'swaps'>('list');
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [collegeId, setCollegeId] = useState<string | null>(null);
@@ -112,7 +114,9 @@ const FacultyManagementDashboard: React.FC = () => {
     { id: 'list', label: 'Faculty', icon: Users, description: 'View and manage all faculty' },
     { id: 'onboarding', label: 'Onboarding', icon: UserPlus, description: 'Add new faculty members' },
     { id: 'timetable', label: 'Timetable', icon: Calendar, description: 'Manage class schedules' },
+    { id: 'swaps', label: 'Swap Requests', icon: RefreshCw, description: 'Manage class swap requests' },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, description: 'Faculty performance metrics' },
+    { id: 'leave', label: 'Leave', icon: CalendarOff, description: 'Leave & substitution' },
     { id: 'import', label: 'Bulk Import', icon: Upload, description: 'Import multiple faculty' },
   ];
 
@@ -156,7 +160,7 @@ const FacultyManagementDashboard: React.FC = () => {
 
       {/* Navigation Tabs */}
       <div className="bg-white rounded-xl border border-gray-200 p-2">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -186,8 +190,10 @@ const FacultyManagementDashboard: React.FC = () => {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
         {activeTab === 'list' && <FacultyList collegeId={collegeId} />}
         {activeTab === 'onboarding' && <FacultyOnboarding collegeId={collegeId} />}
-        {activeTab === 'timetable' && <FacultyTimetable collegeId={collegeId} />}
+        {activeTab === 'timetable' && <CalendarTimetable collegeId={collegeId} />}
+        {activeTab === 'swaps' && <SwapRequestsManagement collegeId={collegeId} />}
         {activeTab === 'analytics' && <FacultyPerformanceAnalytics collegeId={collegeId} />}
+        {activeTab === 'leave' && <FacultyLeaveManagement collegeId={collegeId} />}
         {activeTab === 'import' && <FacultyBulkImport collegeId={collegeId} />}
       </div>
     </div>

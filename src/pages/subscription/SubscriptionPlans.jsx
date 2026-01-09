@@ -1,7 +1,8 @@
-import { Calendar, Check, ChevronDown, ChevronUp, Clock, Shield, TrendingUp, X } from 'lucide-react';
+import { Calendar, Check, ChevronDown, ChevronUp, Clock, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import AddOnMarketplace from '../../components/Subscription/AddOnMarketplace';
 import CollegeLoginModal from '../../components/Subscription/CollegeLoginModal';
 import CollegeSignupModal from '../../components/Subscription/CollegeSignupModal';
 import EducatorLoginModal from '../../components/Subscription/EducatorLoginModal';
@@ -17,11 +18,68 @@ import UniversityAdminLoginModal from '../../components/Subscription/UniversityA
 import UniversityAdminSignupModal from '../../components/Subscription/UniversityAdminSignupModal';
 import UniversityStudentLoginModal from '../../components/Subscription/UniversityStudentLoginModal';
 import UniversityStudentSignupModal from '../../components/Subscription/UniversityStudentSignupModal';
+import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
-import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
-import { getEntityContent, setDatabasePlans, parseStudentType } from '../../utils/getEntityContent';
+import { getEntityContent, parseStudentType, setDatabasePlans } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
+
+/**
+ * Get the subscription manage path based on user role
+ */
+function getManagePath(userRole) {
+  const manageRoutes = {
+    super_admin: '/admin/subscription/manage',
+    rm_admin: '/admin/subscription/manage',
+    admin: '/admin/subscription/manage',
+    school_admin: '/school-admin/subscription/manage',
+    college_admin: '/college-admin/subscription/manage',
+    university_admin: '/university-admin/subscription/manage',
+    educator: '/educator/subscription/manage',
+    school_educator: '/educator/subscription/manage',
+    college_educator: '/educator/subscription/manage',
+    recruiter: '/recruitment/subscription/manage',
+    student: '/student/subscription/manage',
+    school_student: '/student/subscription/manage',
+    college_student: '/student/subscription/manage',
+  };
+  return manageRoutes[userRole] || '/student/subscription/manage';
+}
+
+/**
+ * Get the subscription manage path based on URL type parameter (more reliable)
+ */
+function getManagePathFromType(type) {
+  if (!type) return '/student/subscription/manage';
+  
+  const typeToPath = {
+    // Student types
+    'student': '/student/subscription/manage',
+    'school_student': '/student/subscription/manage',
+    'school-student': '/student/subscription/manage',
+    'college_student': '/student/subscription/manage',
+    'college-student': '/student/subscription/manage',
+    // Educator types
+    'educator': '/educator/subscription/manage',
+    'school_educator': '/educator/subscription/manage',
+    'school-educator': '/educator/subscription/manage',
+    'college_educator': '/educator/subscription/manage',
+    'college-educator': '/educator/subscription/manage',
+    // Admin types
+    'school_admin': '/school-admin/subscription/manage',
+    'school-admin': '/school-admin/subscription/manage',
+    'college_admin': '/college-admin/subscription/manage',
+    'college-admin': '/college-admin/subscription/manage',
+    'university_admin': '/university-admin/subscription/manage',
+    'university-admin': '/university-admin/subscription/manage',
+    // Recruiter
+    'recruiter': '/recruitment/subscription/manage',
+    // Generic admin
+    'admin': '/admin/subscription/manage',
+  };
+  
+  return typeToPath[type] || '/student/subscription/manage';
+}
 
 // Feature comparison data
 const FEATURE_COMPARISON = {
@@ -295,10 +353,34 @@ function SubscriptionPlans() {
   const [planToSelect, setPlanToSelect] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { type } = useParams();
+  const { type: pathType } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Get type from path params OR query params (for redirects from protected routes)
+  const type = pathType || searchParams.get('type');
+  
+  // Tab state - 'plans' or 'addons'
+  const activeTab = searchParams.get('tab') || 'plans';
+  const setActiveTab = useCallback((tab) => {
+    setSearchParams(prev => {
+      prev.set('tab', tab);
+      return prev;
+    });
+  }, [setSearchParams]);
   
   // Use new authentication hook
-  const { isAuthenticated, user, loading: authLoading } = useAuth();
+  const { isAuthenticated, user, loading: authLoading, role: userRole } = useAuth();
+  
+  // Get the manage path based on URL type parameter (more reliable than userRole)
+  // Falls back to userRole if type is not available
+  const managePath = useMemo(() => {
+    // First try to get path from URL type parameter
+    if (type) {
+      return getManagePathFromType(type);
+    }
+    // Fall back to userRole from auth
+    return getManagePath(userRole);
+  }, [type, userRole]);
   
   // Parse entity and role from type
   const { entity, role: pageRole } = useMemo(() => parseStudentType(type || 'student'), [type]);
@@ -371,10 +453,17 @@ function SubscriptionPlans() {
     [subscriptionData, plans]
   );
 
+  // Check if user is in upgrade mode (should not redirect to manage page)
+  const isUpgradeMode = useMemo(
+    () => searchParams.get('mode') === 'upgrade',
+    [searchParams]
+  );
+
   // Compute whether redirect should occur
+  // Don't redirect if user is in upgrade mode - they want to see plans to upgrade
   const shouldRedirect = useMemo(
-    () => isAuthenticated && hasActiveOrPausedSubscription,
-    [isAuthenticated, hasActiveOrPausedSubscription]
+    () => isAuthenticated && hasActiveOrPausedSubscription && !isUpgradeMode,
+    [isAuthenticated, hasActiveOrPausedSubscription, isUpgradeMode]
   );
 
   // Show welcome message from signup flow (only once)
@@ -394,13 +483,13 @@ function SubscriptionPlans() {
 
   useEffect(() => {
     if (isFullyLoaded && shouldRedirect) {
-      navigate(`/subscription/manage${location.search}`, { replace: true });
+      navigate(`${managePath}${location.search}`, { replace: true });
     }
-  }, [isFullyLoaded, shouldRedirect, navigate, location.search]);
+  }, [isFullyLoaded, shouldRedirect, navigate, location.search, managePath]);
 
   const handlePlanSelection = useCallback((plan) => {
     if (subscriptionData && subscriptionData.plan === plan.id) {
-      navigate('/subscription/manage');
+      navigate(managePath);
       return;
     }
     if (!isAuthenticated) {
@@ -410,7 +499,7 @@ function SubscriptionPlans() {
     } else {
       navigate('/subscription/payment', { state: { plan, studentType, isUpgrade: !!subscriptionData } });
     }
-  }, [isAuthenticated, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription]);
+  }, [isAuthenticated, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription, managePath]);
 
   const handleSignupSuccess = useCallback(() => {
     setShowSignupModal(false);
@@ -543,7 +632,7 @@ function SubscriptionPlans() {
         )}
 
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">
             {isAuthenticated && hasActiveOrPausedSubscription ? 'Manage Your Plan' : title}
           </h1>
@@ -552,34 +641,76 @@ function SubscriptionPlans() {
           </p>
         </div>
 
-        {/* Plans Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {plans.map((plan, index) => (
-            <PlanCard
-              key={plan.id}
-              plan={plan}
-              index={index}
-              allPlans={plans}
-              isCurrentPlan={isAuthenticated && hasActiveOrPausedSubscription && subscriptionData?.plan === plan.id}
-              onSelect={handlePlanSelection}
-              subscriptionData={isAuthenticated && hasActiveOrPausedSubscription ? subscriptionData : null}
-              daysRemaining={isAuthenticated && hasActiveOrPausedSubscription ? daysRemaining : null}
-            />
-          ))}
+        {/* Tab Navigation */}
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab('plans')}
+              className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                activeTab === 'plans'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              Subscription Plans
+            </button>
+            <button
+              onClick={() => setActiveTab('addons')}
+              className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                activeTab === 'addons'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              Add-Ons
+              <span className="ml-1 px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded">New</span>
+            </button>
+          </div>
         </div>
 
-        {/* Trust Indicators */}
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-gray-500 text-sm">
-          {['Secure Payments', '24/7 Support', 'Cancel Anytime'].map((item) => (
-            <div key={item} className="flex items-center gap-2">
-              <Check className="h-4 w-4 text-blue-600" />
-              <span>{item}</span>
+        {/* Tab Content */}
+        {activeTab === 'plans' ? (
+          <>
+            {/* Plans Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {plans.map((plan, index) => (
+                <PlanCard
+                  key={plan.id}
+                  plan={plan}
+                  index={index}
+                  allPlans={plans}
+                  isCurrentPlan={isAuthenticated && hasActiveOrPausedSubscription && subscriptionData?.plan === plan.id}
+                  onSelect={handlePlanSelection}
+                  subscriptionData={isAuthenticated && hasActiveOrPausedSubscription ? subscriptionData : null}
+                  daysRemaining={isAuthenticated && hasActiveOrPausedSubscription ? daysRemaining : null}
+                />
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Feature Comparison */}
-        <FeatureComparisonTable plans={plans} />
+            {/* Trust Indicators */}
+            <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-gray-500 text-sm">
+              {['Secure Payments', '24/7 Support', 'Cancel Anytime'].map((item) => (
+                <div key={item} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-blue-600" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Feature Comparison */}
+            <FeatureComparisonTable plans={plans} />
+          </>
+        ) : (
+          /* Add-Ons Marketplace - compact mode without duplicate header */
+          <AddOnMarketplace 
+            role={pageRole} 
+            showBundles={true}
+            showHeader={false}
+            compact={true}
+          />
+        )}
 
         {/* Contact Section */}
         <div className="mt-16 text-center bg-white rounded-xl border border-gray-200 p-8">

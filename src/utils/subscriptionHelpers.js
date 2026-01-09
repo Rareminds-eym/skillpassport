@@ -11,6 +11,20 @@
 export const isActiveOrPaused = (status) => status === 'active' || status === 'paused';
 
 /**
+ * Check if subscription has valid access (active, paused, or cancelled but not expired)
+ * @param {string} status - Subscription status
+ * @param {string} endDate - Subscription end date
+ * @returns {boolean}
+ */
+export const hasValidAccess = (status, endDate) => {
+  if (status === 'active' || status === 'paused') return true;
+  if (status === 'cancelled' && endDate) {
+    return new Date(endDate) >= new Date();
+  }
+  return false;
+};
+
+/**
  * Check if subscription is in a manageable state
  * @param {string} status - Subscription status
  * @returns {boolean}

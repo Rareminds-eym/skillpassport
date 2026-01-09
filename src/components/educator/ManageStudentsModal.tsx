@@ -16,12 +16,14 @@ interface Props {
   classItem: EducatorClass | null
   onStudentsUpdated: (updatedClass: EducatorClass) => void
   schoolId?: string | null
+  collegeId?: string | null
+  educatorType?: 'school' | 'college'
 }
 
 type AddMode = "select" | "csv"
 type CSVStudent = { name: string; email: string; progress?: number }
 
-const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onStudentsUpdated, schoolId }) => {
+const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onStudentsUpdated, schoolId, collegeId, educatorType = 'school' }) => {
   const [loading, setLoading] = useState(false)
   const [loadingDirectory, setLoadingDirectory] = useState(false)
   const [directory, setDirectory] = useState<StudentDirectoryEntry[]>([])
@@ -38,17 +40,17 @@ const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onSt
     setCsvStudents([])
     setCsvError("")
     setDirectorySearch("")
-    if (!directory.length && schoolId) {
+    if (!directory.length && (schoolId || collegeId)) {
       loadDirectory()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, schoolId])
+  }, [isOpen, schoolId, collegeId])
 
   const loadDirectory = async () => {
-    if (!schoolId) return
+    if (!schoolId && !collegeId) return
     
     setLoadingDirectory(true)
-    const { data, error } = await fetchStudentDirectory(schoolId)
+    const { data, error } = await fetchStudentDirectory(schoolId || undefined, collegeId || undefined)
     if (error || !data) {
       toast.error(error || "Unable to load students")
     } else {
@@ -158,7 +160,8 @@ const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onSt
             name: entry.name,
             email: entry.email,
             progress: entry.defaultProgress
-          }
+          },
+          educatorType
         })
         if (error || !data) {
           toast.error(error || "Unable to add students")
@@ -190,7 +193,8 @@ const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onSt
             name: student.name,
             email: student.email,
             progress: student.progress
-          }
+          },
+          educatorType
         })
         if (error || !data) {
           toast.error(error || "Unable to add students")
@@ -216,7 +220,7 @@ const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onSt
   const handleRemoveStudent = async (studentId: string, name: string) => {
     if (loading) return
     setLoading(true)
-    const { data, error } = await removeStudentFromClass(classItem.id, studentId)
+    const { data, error } = await removeStudentFromClass(classItem.id, studentId, educatorType)
     setLoading(false)
     if (error || !data) {
       toast.error(error || "Unable to remove student")

@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 
 export interface UserPresence {
   userId: string;
-  userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin';
+  userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin';
   userName: string;
   status: 'online' | 'away' | 'busy';
   lastSeen: string;
@@ -31,7 +31,7 @@ export interface TypingIndicator {
 export interface OnlineUser {
   userId: string;
   userName: string;
-  userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin';
+  userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin';
   status: 'online' | 'away' | 'busy';
   joinedAt: string;
 }

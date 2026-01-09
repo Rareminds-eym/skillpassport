@@ -1,8 +1,7 @@
+import { motion } from 'framer-motion';
+import { ArrowRight, BookOpen, CheckCircle, Sparkles, User } from 'lucide-react';
 import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowRight, Sparkles, CheckCircle, User, BookOpen } from 'lucide-react';
-import Navbar from '../../components/digital-pp/ui/navbar/Navbar';
 import { BackgroundRippleEffect } from '../../components/digital-pp/ui/background-ripple-effect';
 import { usePortfolio } from '../../context/PortfolioContext';
 
@@ -19,7 +18,6 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
-      <Navbar />
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-6 min-h-[90vh] flex items-center justify-center overflow-hidden">
@@ -85,7 +83,7 @@ const HomePage: React.FC = () => {
               whileTap={{ scale: 0.95 }}
             >
               <Link
-                to="/portfolio"
+                to="/student/digital-portfolio/portfolio"
                 className="inline-flex items-center px-10 py-5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full font-semibold text-lg shadow-2xl hover:shadow-purple-500/50 transition-all group relative overflow-hidden"
               >
                 <span className="relative z-10 flex items-center">
@@ -232,7 +230,7 @@ const HomePage: React.FC = () => {
                   className="flex justify-center"
                 >
                   <Link
-                    to="/portfolio"
+                    to="/student/digital-portfolio/portfolio"
                     className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
                   >
                     <span className="relative z-10 flex items-center">
@@ -350,7 +348,7 @@ const HomePage: React.FC = () => {
                   className="flex justify-center"
                 >
                   <Link
-                    to="/passport"
+                    to="/student/digital-portfolio/passport"
                     className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
                   >
                     <span className="relative z-10 flex items-center">

@@ -35,7 +35,7 @@ export function clearPlansCache() {
 
 /**
  * Parse student type to extract entity and role
- * @param {string} studentType - e.g., "college-student", "admin", "university-educator", "recruitment-admin"
+ * @param {string} studentType - e.g., "college-student", "admin", "university-educator", "recruitment-admin", "school_admin", "school_student"
  * @returns {object} { entity, role }
  */
 export function parseStudentType(studentType) {
@@ -49,12 +49,34 @@ export function parseStudentType(studentType) {
     if (studentType === 'university') return { entity: 'university', role: 'student' };
     if (studentType === 'educator') return { entity: 'school', role: 'educator' };
     if (studentType === 'admin') return { entity: 'school', role: 'admin' };
+    if (studentType === 'recruiter') return { entity: 'recruitment', role: 'recruiter' };
 
-    // Handle entity-specific types
+    // Handle underscore-separated types (from protected route redirects and database roles)
+    // Admin types: school_admin, college_admin, university_admin
+    if (studentType === 'school_admin') return { entity: 'school', role: 'admin' };
+    if (studentType === 'college_admin') return { entity: 'college', role: 'admin' };
+    if (studentType === 'university_admin') return { entity: 'university', role: 'admin' };
+    
+    // Student types: school_student, college_student
+    if (studentType === 'school_student') return { entity: 'school', role: 'student' };
+    if (studentType === 'college_student') return { entity: 'college', role: 'student' };
+    
+    // Educator types: school_educator, college_educator, university_educator
+    if (studentType === 'school_educator') return { entity: 'school', role: 'educator' };
+    if (studentType === 'college_educator') return { entity: 'college', role: 'educator' };
+    if (studentType === 'university_educator') return { entity: 'university', role: 'educator' };
+
+    // Handle entity-specific types with hyphen (e.g., school-admin, college-student)
     if (studentType.includes('-')) {
         const parts = studentType.split('-');
         if (parts.length === 2) {
-            return { entity: parts[0], role: parts[1] };
+            const [entity, role] = parts;
+            // For admin roles, combine entity_role format to match database target_roles
+            // e.g., school-admin -> school_admin, college-admin -> college_admin
+            if (role === 'admin') {
+                return { entity, role: `${entity}_admin` };
+            }
+            return { entity, role };
         }
     }
 

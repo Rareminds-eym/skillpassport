@@ -267,7 +267,7 @@ export const strengthsRatingScale = [
 ];
 
 // ============================================================================
-// Set B: Grades 9–12 (High School)
+// Set B: Grades 9–10 (High School) and Grades 11-12 (Higher Secondary)
 // ============================================================================
 
 // Section 1: Interest Explorer (RIASEC-style, more detailed)

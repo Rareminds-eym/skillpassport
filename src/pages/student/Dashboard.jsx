@@ -31,6 +31,7 @@ import {
     TrendingUp,
     Users2
 } from "lucide-react";
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { motion } from "motion/react";
 import React, { useEffect, useMemo, useState } from "react";
 import { Toaster } from "react-hot-toast";
@@ -640,9 +641,14 @@ const StudentDashboard = () => {
               </span>
             </CardTitle>
             <div className="flex items-center gap-2">
-              <Badge className="bg-gradient-to-r from-blue-100 to-indigo-100 text-white p-1 rounded-full shadow-sm">
-                <Star className="w-6 h-6 fill-[#FBBF24]" />
-              </Badge>
+              <div className="w-10 h-10">
+                <DotLottieReact
+                  src="https://lottie.host/d2e9c81b-68e5-4817-8cdb-232a1a4d96d1/IrCaxvOj5s.lottie"
+                  loop
+                  autoplay
+                  style={{ width: '100%', height: '100%' }}
+                />
+              </div>
               {/* DEV ONLY: Menu with Clear Assessment option */}
               {import.meta.env.DEV && hasAssessment && (
                 <DropdownMenu>
@@ -1339,8 +1345,13 @@ const StudentDashboard = () => {
           {!hasAssessment && !recommendationsLoading && !showAllTraining && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-dashed border-blue-300 mb-4 shadow-sm">
               <div className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-md">
-                  <Sparkles className="w-6 h-6 text-white" />
+                <div 
+                  className="w-16 h-16 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
+                  style={{
+                    boxShadow: '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)'
+                  }}
+                >
+                  <img src="/assets/HomePage/Ai Logo.png" alt="AI" className="w-16 h-16 object-contain" />
                 </div>
                 <div className="flex-1">
                   <h4 className="text-base font-bold text-gray-900 mb-2">
