@@ -45,7 +45,7 @@ const MyTimetable: React.FC = () => {
         .from("school_educators")
         .select("id, user_id")
         .eq("user_id", userData.user.id)
-        .single();
+        .maybeSingle();
 
       if (educatorError || !educatorData) {
         console.error("Educator lookup error:", educatorError);
@@ -107,7 +107,7 @@ const MyTimetable: React.FC = () => {
         .from("school_educators")
         .select("id")
         .eq("email", userData?.user?.email)
-        .single();
+        .maybeSingle();
 
       if (!teacherData) return;
 
@@ -116,7 +116,7 @@ const MyTimetable: React.FC = () => {
         .from("timetables")
         .select("id")
         .eq("status", "published")
-        .single();
+        .maybeSingle();
 
       if (!timetableData) return;
 

@@ -26,7 +26,7 @@ export const useCollegeAdminConversations = (collegeAdminId, enabled = true) => 
         .from('college_lecturers')
         .select('collegeId, college_id')
         .or(`user_id.eq.${collegeAdminId},userId.eq.${collegeAdminId}`)
-        .single();
+        .maybeSingle();
       
       if (collegeError || (!collegeData?.collegeId && !collegeData?.college_id)) {
         // Fallback: check if user is college owner in organizations table
@@ -35,7 +35,7 @@ export const useCollegeAdminConversations = (collegeAdminId, enabled = true) => 
           .select('id')
           .eq('organization_type', 'college')
           .eq('admin_id', collegeAdminId)
-          .single();
+          .maybeSingle();
         
         if (ownerError || !ownerData?.id) {
           console.error('Error fetching college admin college:', collegeError);

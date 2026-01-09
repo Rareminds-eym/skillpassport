@@ -87,10 +87,14 @@ export async function getOrganizationById(
       .from('organizations')
       .select('*')
       .eq('id', organizationId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       return { id: null, name: null, error: error.message };
+    }
+
+    if (!data) {
+      return { id: null, name: null, error: 'Organization not found' };
     }
 
     return { id: data.id, name: data.name, error: null, data };

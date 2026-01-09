@@ -82,7 +82,7 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
                     .from('school_educators')
                     .select('school_id')
                     .eq('user_id', user.id)
-                    .single();
+                    .maybeSingle();
 
                 if (educator?.school_id) {
                     schoolId = educator.school_id;
@@ -350,7 +350,7 @@ export async function enrollStudent(clubId: string, studentEmail: string): Promi
             .select('*')
             .eq('club_id', clubId)
             .eq('student_email', studentEmail)
-            .single();
+            .maybeSingle();
 
         if (checkError && checkError.code !== 'PGRST116') {
             // PGRST116 means no rows found, which is fine

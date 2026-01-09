@@ -86,7 +86,7 @@ export async function getCurrentEducatorId(): Promise<string | null> {
       .from("school_educators")
       .select("id")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     return educator?.id || null;
   } catch (error) {
@@ -142,7 +142,7 @@ export async function getLessonPlan(id: string): Promise<{ data: LessonPlan | nu
       .from("lesson_plans")
       .select("*")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
     return { data, error };
   } catch (error) {
@@ -169,7 +169,7 @@ export async function createLessonPlan(
       .from("curriculum_chapters")
       .select("estimated_duration, duration_unit")
       .eq("id", formData.chapterId)
-      .single();
+      .maybeSingle();
 
     const duration = chapter?.estimated_duration || 60; // Default to 60 minutes
 
@@ -223,7 +223,7 @@ export async function updateLessonPlan(
       .from("curriculum_chapters")
       .select("estimated_duration, duration_unit")
       .eq("id", formData.chapterId)
-      .single();
+      .maybeSingle();
 
     const duration = chapter?.estimated_duration || 60;
 

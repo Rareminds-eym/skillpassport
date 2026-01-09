@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { BookOpen, Plus, Eye, Edit, Trash2, CheckCircle, Clock, XCircle, AlertCircle } from "lucide-react";
-import { supabase } from "../../lib/supabaseClient";
+import { AlertCircle, BookOpen, CheckCircle, Clock, Edit, Eye, Plus, Trash2, XCircle } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabaseClient";
 
 interface LessonPlan {
   id: string;
@@ -36,7 +36,7 @@ const LessonPlansList: React.FC = () => {
         .from("school_educators")
         .select("id")
         .eq("email", userEmail)
-        .single();
+        .maybeSingle();
 
       if (!teacherData) {
         throw new Error("Teacher not found");

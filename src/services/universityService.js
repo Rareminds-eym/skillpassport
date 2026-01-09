@@ -41,7 +41,7 @@ export const getUniversityById = async (universityId) => {
             .select('*')
             .eq('id', universityId)
             .eq('organization_type', 'university')
-            .single();
+            .maybeSingle();
 
         if (error) {
             console.error('❌ Error fetching university:', error);

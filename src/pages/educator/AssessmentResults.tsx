@@ -340,7 +340,7 @@ const EducatorAssessmentResults: React.FC = () => {
           .from('organizations')
           .select('name')
           .eq('id', schoolId)
-          .single();
+          .maybeSingle();
         
         schoolName = orgData?.name || '';
       } else {
@@ -389,7 +389,7 @@ const EducatorAssessmentResults: React.FC = () => {
                 .from('organizations')
                 .select('name')
                 .eq('id', schoolId)
-                .single();
+                .maybeSingle();
               
               setSchoolName(orgData?.name || '');
               setLoading(false);
@@ -402,7 +402,7 @@ const EducatorAssessmentResults: React.FC = () => {
             .from('organizations')
             .select('name')
             .eq('id', schoolId)
-            .single();
+            .maybeSingle();
           
           schoolName = orgData?.name || '';
         } else {

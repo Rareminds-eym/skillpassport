@@ -99,7 +99,7 @@ const getCollegeIdForCurrentUser = async (): Promise<string | null> => {
 
     if (user) {
       // Get user role from users table (same as useStudents)
-      const { data: userRecord } = await supabase.from('users').select('role').eq('id', user.id).single();
+      const { data: userRecord } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
 
       const userRole = userRecord?.role || null;
       console.log('👤 [Reports] User role from database:', userRole);

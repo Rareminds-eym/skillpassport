@@ -90,7 +90,7 @@ export const userManagementService = {
           .select('id')
           .eq('organization_type', 'college')
           .limit(1)
-          .single();
+          .maybeSingle();
         
         collegeId = firstCollege?.id;
       }
@@ -326,9 +326,10 @@ export const userManagementService = {
         .from('users')
         .select('email')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (fetchError) throw fetchError;
+      if (!user) throw new Error('User not found');
 
       // Send password reset email
       const { error } = await supabase.auth.resetPasswordForEmail(user.email);

@@ -85,7 +85,7 @@ export async function getOrganizationById(
       .from('organizations')
       .select('*')
       .eq('id', organizationId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('[OrganizationService] Error fetching organization by ID:', error);

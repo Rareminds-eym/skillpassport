@@ -80,7 +80,7 @@ export const useAssessmentResults = () => {
                         school_classes(grade)
                     `)
                     .eq('user_id', user.id)
-                    .single();
+                    .maybeSingle();
 
                 // If the query with relationships fails, try without relationships
                 if (fetchError) {
@@ -89,7 +89,7 @@ export const useAssessmentResults = () => {
                         .from('students')
                         .select('*')
                         .eq('user_id', user.id)
-                        .single();
+                        .maybeSingle();
                     
                     studentData = simpleQuery.data;
                     fetchError = simpleQuery.error;
@@ -101,7 +101,7 @@ export const useAssessmentResults = () => {
                                 .from('organizations')
                                 .select('name')
                                 .eq('id', studentData.college_id)
-                                .single();
+                                .maybeSingle();
                             if (orgData) {
                                 studentData.colleges = { name: orgData.name };
                             }
@@ -111,7 +111,7 @@ export const useAssessmentResults = () => {
                                 .from('organizations')
                                 .select('name')
                                 .eq('id', studentData.school_id)
-                                .single();
+                                .maybeSingle();
                             if (orgData) {
                                 studentData.schools = { name: orgData.name };
                             }
@@ -121,7 +121,7 @@ export const useAssessmentResults = () => {
                                 .from('school_classes')
                                 .select('grade')
                                 .eq('id', studentData.school_class_id)
-                                .single();
+                                .maybeSingle();
                             if (classData) {
                                 studentData.school_classes = { grade: classData.grade };
                             }
@@ -518,7 +518,7 @@ export const useAssessmentResults = () => {
                                             .from('personal_assessment_results')
                                             .select('id')
                                             .eq('attempt_id', inProgressAttempt.id)
-                                            .single();
+                                            .maybeSingle();
                                         
                                         await saveRecommendations(
                                             user.id,

@@ -114,7 +114,7 @@ const fetchCourseWithSkills = async (courseId) => {
     .from('courses')
     .select('course_id, title, description, target_outcomes, status')
     .eq('course_id', courseId)
-    .single();
+    .maybeSingle();
 
   if (courseError || !course) {
     console.error(`Failed to fetch course ${courseId}:`, courseError?.message);
@@ -301,7 +301,7 @@ export const hasEmbedding = async (courseId) => {
     .from('courses')
     .select('embedding')
     .eq('course_id', courseId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return false;

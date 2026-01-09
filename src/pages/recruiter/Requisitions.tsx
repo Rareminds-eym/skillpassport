@@ -1,33 +1,29 @@
-import React, { useState, useEffect } from 'react';
 import {
-  PlusIcon,
-  MagnifyingGlassIcon,
-  EllipsisVerticalIcon,
-  PencilIcon,
-  TrashIcon,
-  EyeIcon,
-  UsersIcon,
-  BriefcaseIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  DocumentTextIcon,
-  MapPinIcon,
-  CurrencyDollarIcon,
-  CalendarIcon,
-  ArrowsUpDownIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
-  UserGroupIcon,
-  ClipboardDocumentListIcon
+    ArrowsUpDownIcon,
+    BriefcaseIcon,
+    CalendarIcon,
+    CheckCircleIcon,
+    ChevronDownIcon,
+    ChevronUpIcon,
+    ClockIcon,
+    CurrencyDollarIcon,
+    DocumentTextIcon,
+    EllipsisVerticalIcon,
+    EyeIcon,
+    MagnifyingGlassIcon,
+    MapPinIcon,
+    PencilIcon,
+    PlusIcon,
+    TrashIcon,
+    UsersIcon,
+    XCircleIcon
 } from '@heroicons/react/24/outline';
 import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
-import { supabase } from '../../lib/supabaseClient';
+import React, { useEffect, useState } from 'react';
 import AdvancedRequisitionFilters from '../../components/Recruiter/components/AdvancedRequisitionFilters';
-import { RequisitionFilters } from '../../types/recruiter';
 import { useAuth } from '../../context/AuthContext';
-import TalentPool from './TalentPool';
-import ApplicantsList from './ApplicantsList';
+import { supabase } from '../../lib/supabaseClient';
+import { RequisitionFilters } from '../../types/recruiter';
 
 interface Opportunity {
   id: string;
@@ -147,7 +143,7 @@ useEffect(() => {
         .from('recruiters')
         .select('id')
         .eq('email', user.email)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error loading current recruiter:', error);

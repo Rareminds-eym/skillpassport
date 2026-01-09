@@ -227,13 +227,15 @@ export async function getConversation(conversationId: string): Promise<Conversat
     .from('tutor_conversations')
     .select('id, title, course_id, lesson_id, created_at, updated_at, messages')
     .eq('id', conversationId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     if (error.code === 'PGRST116') return null; // Not found
     console.error('Error fetching conversation:', error);
     throw error;
   }
+
+  if (!data) return null;
 
   return {
     id: data.id,

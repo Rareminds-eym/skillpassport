@@ -404,7 +404,7 @@ export function useStudents(options: UseStudentsOptions = {}) {
               .from('users')
               .select('role')
               .eq('id', user.id)
-              .single();
+              .maybeSingle();
             
             userRole = userRecord?.role || null;
             console.log('👤 User role from database:', userRole);
@@ -417,7 +417,7 @@ export function useStudents(options: UseStudentsOptions = {}) {
                 .select('id, name, email')
                 .eq('organization_type', 'college')
                 .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
-                .single();
+                .maybeSingle();
               
               if (college?.id) {
                 collegeId = college.id;
@@ -439,7 +439,7 @@ export function useStudents(options: UseStudentsOptions = {}) {
                 .from('school_educators')
                 .select('school_id')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
               
               if (educator?.school_id) {
                 schoolId = educator.school_id;
@@ -451,7 +451,7 @@ export function useStudents(options: UseStudentsOptions = {}) {
                   .select('id')
                   .eq('organization_type', 'school')
                   .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
-                  .single();
+                  .maybeSingle();
                 
                 schoolId = school?.id || null;
                 if (schoolId) {
@@ -468,7 +468,7 @@ export function useStudents(options: UseStudentsOptions = {}) {
             .from('users')
             .select('organizationId')
             .eq('id', userId)
-            .single();
+            .maybeSingle();
           
           if (dbUser?.organizationId) {
             universityId = dbUser.organizationId;

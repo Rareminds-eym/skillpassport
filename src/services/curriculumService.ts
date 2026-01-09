@@ -310,7 +310,7 @@ export const getCurrentEducatorSchoolId = async (): Promise<string | null> => {
       .from('users')
       .select('role')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     if (userData?.role === 'school_admin') {
       const { data: orgData, error: orgError } = await supabase

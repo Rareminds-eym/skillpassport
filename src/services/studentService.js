@@ -250,7 +250,7 @@ export const getStudentByUserId = async (userId) => {
       .from('students')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('❌ Error fetching student:', error);

@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
+import userApiService from './userApiService';
+
+const { unifiedSignup } = userApiService;
 
 export interface UserProfile {
   id: string;
@@ -81,6 +84,20 @@ export interface UserActivity {
   created_at: string;
 }
 
+export interface User {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role: string;
+  isActive: boolean;
+  organizationId?: string | null;
+  phone?: string | null;
+  metadata?: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface CreateUserData {
   email: string;
   password: string;
@@ -144,12 +161,12 @@ class UserManagementService {
   /**
    * Get a single user by ID
    */
-  async getUser(userId: string): Promise<User> {
+  async getUser(userId: string): Promise<User | null> {
     const { data, error } = await supabase
       .from('users')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return data;

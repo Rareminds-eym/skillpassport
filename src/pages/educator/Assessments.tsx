@@ -1,37 +1,37 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import GradingModal from '@/components/educator/GradingModal';
 import {
-    PlusIcon,
-    MagnifyingGlassIcon,
-    XMarkIcon,
+    ArrowPathIcon,
     CalendarIcon,
-    UsersIcon,
-    ClipboardDocumentListIcon,
-    EyeIcon,
-    PencilIcon,
-    TrashIcon,
     CheckCircleIcon,
+    ClipboardDocumentListIcon,
     ClockIcon,
     DocumentArrowUpIcon,
     EllipsisVerticalIcon,
-    ArrowPathIcon
+    EyeIcon,
+    MagnifyingGlassIcon,
+    PencilIcon,
+    PlusIcon,
+    TrashIcon,
+    UsersIcon,
+    XMarkIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
+import React, { useEffect, useMemo, useState } from 'react';
+import AssignmentFileUpload from '../../components/educator/AssignmentFileUpload';
+import StudentSelectionModal from '../../components/educator/StudentSelectionModal';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import NotificationModal from '../../components/ui/NotificationModal';
+import { useAuth } from '../../context/AuthContext';
+import { useEducatorSchool } from '../../hooks/useEducatorSchool';
+import { supabase } from '../../lib/supabaseClient';
 import {
-    createAssignmentsForClasses,
-    getAssignmentsByEducator,
-    deleteAssignment,
     assignToStudents,
+    createAssignmentsForClasses,
+    deleteAssignment,
+    getAssignmentsByEducator,
     getAssignmentStatistics,
     getInstructionFiles
 } from '../../services/educator/assignmentsService';
-import { supabase } from '../../lib/supabaseClient';
-import { useAuth } from '../../context/AuthContext';
-import StudentSelectionModal from '../../components/educator/StudentSelectionModal';
-import GradingModal from '@/components/educator/GradingModal';
-import AssignmentFileUpload from '../../components/educator/AssignmentFileUpload';
-import { useEducatorSchool } from '../../hooks/useEducatorSchool';
-import ConfirmationModal from '../../components/ui/ConfirmationModal';
-import NotificationModal from '../../components/ui/NotificationModal';
 
 // Configuration
 const SKILL_AREAS = ['Creativity', 'Collaboration', 'Critical Thinking', 'Leadership', 'Communication', 'Problem Solving'];
@@ -292,7 +292,7 @@ const Assessments = () => {
                             .from('school_educators')
                             .select('id')
                             .eq('user_id', user.id)
-                            .single();
+                            .maybeSingle();
 
                         if (educatorData && !educatorError) {
                             educatorId = educatorData.id;
@@ -324,7 +324,7 @@ const Assessments = () => {
                     .from('school_educators')
                     .select('school_id')
                     .eq('id', educatorId)
-                    .single();
+                    .maybeSingle();
 
                 if (!educatorFetchError && educatorData?.school_id) {
                     // Fetch all classes from the educator's school

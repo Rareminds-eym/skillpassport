@@ -167,7 +167,7 @@ const Profile = () => {
           .select('*')
           .ilike('email', email)
           .limit(1)
-          .single();
+          .maybeSingle();
           
         if (altError) {
           console.log('❌ Alternative query error:', altError.message);

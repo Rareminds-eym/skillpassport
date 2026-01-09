@@ -1,11 +1,10 @@
 import { supabase } from '@/lib/supabaseClient';
-import { 
-  UserRole, 
-  Permission, 
-  hasPermission, 
-  getRolePermissions,
-  hasAnyPermission,
-  hasAllPermissions 
+import {
+    Permission,
+    UserRole,
+    getRolePermissions,
+    hasAnyPermission,
+    hasPermission
 } from '@/types/Permissions';
 
 export interface PermissionCheck {
@@ -25,7 +24,7 @@ export const permissionService = {
       .from('school_educators')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (educator) {
       return educator.role as UserRole;
@@ -36,7 +35,7 @@ export const permissionService = {
       .from('parents')
       .select('id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (parent) {
       return 'parent';
@@ -247,7 +246,7 @@ export const permissionService = {
       .from('parents')
       .select('id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!parent) {
       return { allowed: false, reason: 'Parent record not found' };
@@ -259,7 +258,7 @@ export const permissionService = {
       .select('id')
       .eq('id', studentId)
       .eq('parent_id', parent.id)
-      .single();
+      .maybeSingle();
 
     if (student) {
       return { allowed: true };
