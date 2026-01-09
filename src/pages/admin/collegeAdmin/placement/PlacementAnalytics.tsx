@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Download,
   Filter,
@@ -10,284 +10,123 @@ import {
   FileText,
   Calendar,
   MapPin,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import toast from 'react-hot-toast';
-
-interface PlacementRecord {
-  id: string;
-  student_name: string;
-  student_id: string;
-  company_name: string;
-  job_title: string;
-  department: string;
-  employment_type: 'Full-time' | 'Internship';
-  salary_offered: number;
-  placement_date: string;
-  status: 'placed' | 'offer_received' | 'joined';
-  location: string;
-}
-
-interface DepartmentAnalytics {
-  department: string;
-  total_students: number;
-  placed_students: number;
-  placement_rate: number;
-  avg_ctc: number;
-  median_ctc: number;
-  highest_ctc: number;
-  total_offers: number;
-  internships: number;
-  full_time: number;
-}
+import { 
+  placementAnalyticsService, 
+  PlacementRecord, 
+  DepartmentAnalytics,
+  PlacementStats 
+} from '../../../../services/placementAnalyticsService';
 
 const PlacementAnalytics: React.FC = () => {
   const [selectedAnalyticsDepartment, setSelectedAnalyticsDepartment] = useState("");
   const [selectedAnalyticsYear, setSelectedAnalyticsYear] = useState("2024");
   const [selectedAnalyticsType, setSelectedAnalyticsType] = useState("all");
   const [showAnalyticsFilter, setShowAnalyticsFilter] = useState(false);
+  
+  // State for real data
+  const [placementRecords, setPlacementRecords] = useState<PlacementRecord[]>([]);
+  const [departmentAnalytics, setDepartmentAnalytics] = useState<DepartmentAnalytics[]>([]);
+  const [placementStats, setPlacementStats] = useState<PlacementStats>({
+    totalPlacements: 0,
+    totalApplications: 0,
+    avgCTC: 0,
+    medianCTC: 0,
+    highestCTC: 0,
+    totalInternships: 0,
+    totalFullTime: 0,
+    placementRate: 0
+  });
+  const [ctcDistribution, setCTCDistribution] = useState({
+    above10L: { count: 0, percentage: 0 },
+    between5L10L: { count: 0, percentage: 0 },
+    below5L: { count: 0, percentage: 0 },
+    internships: { count: 0, percentage: 0 }
+  });
+  const [recentPlacements, setRecentPlacements] = useState<PlacementRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Sample placement records data
-  const placementRecords: PlacementRecord[] = [
-    {
-      id: "1",
-      student_name: "Rahul Sharma",
-      student_id: "CS2021001",
-      company_name: "TechCorp Solutions",
-      job_title: "Software Engineer",
-      department: "Computer Science",
-      employment_type: "Full-time",
-      salary_offered: 1200000,
-      placement_date: "2024-03-15",
-      status: "joined",
-      location: "Bangalore"
-    },
-    {
-      id: "2",
-      student_name: "Priya Patel",
-      student_id: "CS2021002",
-      company_name: "HealthPlus Medical",
-      job_title: "Data Analyst",
-      department: "Computer Science",
-      employment_type: "Full-time",
-      salary_offered: 900000,
-      placement_date: "2024-03-10",
-      status: "placed",
-      location: "Mumbai"
-    },
-    {
-      id: "3",
-      student_name: "Amit Kumar",
-      student_id: "ME2021001",
-      company_name: "ManufacturePro Industries",
-      job_title: "Mechanical Engineer",
-      department: "Mechanical Engineering",
-      employment_type: "Full-time",
-      salary_offered: 800000,
-      placement_date: "2024-02-28",
-      status: "joined",
-      location: "Chennai"
-    },
-    {
-      id: "4",
-      student_name: "Sneha Reddy",
-      student_id: "EC2021001",
-      company_name: "TechCorp Solutions",
-      job_title: "Electronics Engineer",
-      department: "Electronics",
-      employment_type: "Full-time",
-      salary_offered: 1000000,
-      placement_date: "2024-03-05",
-      status: "placed",
-      location: "Hyderabad"
-    },
-    {
-      id: "5",
-      student_name: "Vikram Singh",
-      student_id: "CS2022001",
-      company_name: "EduTech Learning",
-      job_title: "Software Intern",
-      department: "Computer Science",
-      employment_type: "Internship",
-      salary_offered: 300000,
-      placement_date: "2024-01-15",
-      status: "joined",
-      location: "Pune"
-    },
-    {
-      id: "6",
-      student_name: "Anita Verma",
-      student_id: "MBA2021001",
-      company_name: "FinanceFirst Bank",
-      job_title: "Financial Analyst",
-      department: "Management",
-      employment_type: "Full-time",
-      salary_offered: 1100000,
-      placement_date: "2024-02-20",
-      status: "placed",
-      location: "Delhi"
-    },
-    {
-      id: "7",
-      student_name: "Ravi Gupta",
-      student_id: "ME2022001",
-      company_name: "ManufacturePro Industries",
-      job_title: "Production Intern",
-      department: "Mechanical Engineering",
-      employment_type: "Internship",
-      salary_offered: 250000,
-      placement_date: "2024-01-20",
-      status: "joined",
-      location: "Chennai"
-    },
-    {
-      id: "8",
-      student_name: "Kavya Nair",
-      student_id: "EC2022001",
-      company_name: "TechCorp Solutions",
-      job_title: "Hardware Intern",
-      department: "Electronics",
-      employment_type: "Internship",
-      salary_offered: 280000,
-      placement_date: "2024-01-25",
-      status: "joined",
-      location: "Bangalore"
-    }
-  ];
+  // Load data from database
+  const loadData = async (showRefreshLoader = false) => {
+    try {
+      if (showRefreshLoader) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
-  // Calculate department analytics
-  const calculateDepartmentAnalytics = (): DepartmentAnalytics[] => {
-    const departments = ["Computer Science", "Mechanical Engineering", "Electronics", "Management"];
-    
-    return departments.map(dept => {
-      const deptPlacements = placementRecords.filter(p => p.department === dept);
-      const fullTimePlacements = deptPlacements.filter(p => p.employment_type === "Full-time");
-      const internships = deptPlacements.filter(p => p.employment_type === "Internship");
-      
-      const totalStudents = dept === "Computer Science" ? 120 : 
-                           dept === "Mechanical Engineering" ? 100 :
-                           dept === "Electronics" ? 80 : 60;
-      
-      // Average CTC calculation
-      const avgCtc = fullTimePlacements.length > 0 
-        ? fullTimePlacements.reduce((sum, p) => sum + p.salary_offered, 0) / fullTimePlacements.length 
-        : 0;
-      
-      // Median CTC calculation
-      const deptSalaries = fullTimePlacements.map(p => p.salary_offered).sort((a, b) => a - b);
-      const medianCtc = deptSalaries.length > 0 
-        ? deptSalaries.length % 2 === 0
-          ? (deptSalaries[deptSalaries.length / 2 - 1] + deptSalaries[deptSalaries.length / 2]) / 2
-          : deptSalaries[Math.floor(deptSalaries.length / 2)]
-        : 0;
-      
-      const highestCtc = fullTimePlacements.length > 0 
-        ? Math.max(...fullTimePlacements.map(p => p.salary_offered)) 
-        : 0;
-      
-      return {
-        department: dept,
-        total_students: totalStudents,
-        placed_students: deptPlacements.length,
-        placement_rate: (deptPlacements.length / totalStudents) * 100,
-        avg_ctc: avgCtc,
-        median_ctc: medianCtc,
-        highest_ctc: highestCtc,
-        total_offers: deptPlacements.length,
-        internships: internships.length,
-        full_time: fullTimePlacements.length,
+      const filters = {
+        department: selectedAnalyticsDepartment || undefined,
+        year: selectedAnalyticsYear,
+        employmentType: selectedAnalyticsType
       };
-    });
+
+      // Load all data in parallel
+      const [
+        records,
+        analytics,
+        stats,
+        distribution,
+        recent
+      ] = await Promise.all([
+        placementAnalyticsService.getPlacementRecords(filters),
+        placementAnalyticsService.getDepartmentAnalytics(filters),
+        placementAnalyticsService.getPlacementStats(filters),
+        placementAnalyticsService.getCTCDistribution(filters),
+        placementAnalyticsService.getRecentPlacements(5)
+      ]);
+
+      setPlacementRecords(records);
+      setDepartmentAnalytics(analytics);
+      setPlacementStats(stats);
+      setCTCDistribution(distribution);
+      setRecentPlacements(recent);
+
+    } catch (error) {
+      console.error('Error loading placement data:', error);
+      toast.error('Failed to load placement data');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const departmentAnalytics = calculateDepartmentAnalytics();
+  // Load data on component mount and when filters change
+  useEffect(() => {
+    loadData();
+  }, [selectedAnalyticsDepartment, selectedAnalyticsYear, selectedAnalyticsType]);
 
   // Filter analytics data
   const filteredAnalytics = departmentAnalytics.filter(dept => {
     return !selectedAnalyticsDepartment || dept.department === selectedAnalyticsDepartment;
   });
 
-  // Calculate overall metrics
-  const totalPlacements = placementRecords.length;
-  const totalInternships = placementRecords.filter(p => p.employment_type === "Internship").length;
-  const totalFullTime = placementRecords.filter(p => p.employment_type === "Full-time").length;
+  // Calculate overall metrics from real data
+  const totalPlacements = placementStats.totalPlacements;
+  const totalInternships = placementStats.totalInternships;
+  const totalFullTime = placementStats.totalFullTime;
   const internshipToJobRatio = totalFullTime > 0 ? (totalInternships / totalFullTime).toFixed(2) : "0";
   
-  // Enhanced CTC calculations
-  const fullTimeSalaries = placementRecords
-    .filter(p => p.employment_type === "Full-time")
-    .map(p => p.salary_offered)
-    .sort((a, b) => a - b);
-  
-  const overallAvgCtc = fullTimeSalaries.length > 0 
-    ? fullTimeSalaries.reduce((sum, salary) => sum + salary, 0) / fullTimeSalaries.length 
-    : 0;
-  
-  // Median CTC calculation
-  const overallMedianCtc = fullTimeSalaries.length > 0 
-    ? fullTimeSalaries.length % 2 === 0
-      ? (fullTimeSalaries[fullTimeSalaries.length / 2 - 1] + fullTimeSalaries[fullTimeSalaries.length / 2]) / 2
-      : fullTimeSalaries[Math.floor(fullTimeSalaries.length / 2)]
-    : 0;
-
-  const overallHighestCtc = fullTimeSalaries.length > 0 ? Math.max(...fullTimeSalaries) : 0;
+  // CTC values from real data
+  const overallAvgCtc = placementStats.avgCTC;
+  const overallMedianCtc = placementStats.medianCTC;
+  const overallHighestCtc = placementStats.highestCTC;
 
   // Enhanced Export functionality
-  const handleExportReport = () => {
+  const handleExportReport = async () => {
     try {
-      // Department Analytics CSV
-      const departmentCsvData = [
-        ["Department Analytics Report"],
-        ["Generated on:", new Date().toLocaleDateString()],
-        [],
-        ["Department", "Total Students", "Placed Students", "Placement Rate (%)", "Avg CTC (₹)", "Median CTC (₹)", "Highest CTC (₹)", "Full-time", "Internships"],
-        ...filteredAnalytics.map(dept => [
-          dept.department,
-          dept.total_students,
-          dept.placed_students,
-          dept.placement_rate.toFixed(1),
-          dept.avg_ctc,
-          dept.median_ctc,
-          dept.highest_ctc,
-          dept.full_time,
-          dept.internships
-        ]),
-        [],
-        ["OVERALL SUMMARY"],
-        ["Total Placements", totalPlacements],
-        ["Overall Avg CTC (₹)", overallAvgCtc.toFixed(0)],
-        ["Overall Median CTC (₹)", overallMedianCtc.toFixed(0)],
-        ["Highest CTC (₹)", overallHighestCtc.toFixed(0)],
-        ["Internship:Job Ratio", `${internshipToJobRatio}:1`],
-      ];
+      const filters = {
+        department: selectedAnalyticsDepartment || undefined,
+        year: selectedAnalyticsYear,
+        employmentType: selectedAnalyticsType
+      };
 
-      // Recent Placements CSV
-      const recentPlacementsCsvData = [
-        [],
-        ["Recent Placements Report"],
-        [],
-        ["Student Name", "Student ID", "Company", "Job Title", "Department", "Employment Type", "CTC (₹)", "Location", "Placement Date", "Status"],
-        ...placementRecords.map(record => [
-          record.student_name,
-          record.student_id,
-          record.company_name,
-          record.job_title,
-          record.department,
-          record.employment_type,
-          record.salary_offered,
-          record.location,
-          record.placement_date,
-          record.status
-        ])
-      ];
-
-      // Combine both reports
-      const combinedCsvData = [...departmentCsvData, ...recentPlacementsCsvData];
+      const csvContent = await placementAnalyticsService.exportPlacementData(filters);
       
-      // Convert to CSV string
-      const csvContent = combinedCsvData.map(row => 
-        row.map(cell => `"${cell}"`).join(",")
-      ).join("\n");
-
       // Create and download file
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement("a");
@@ -306,14 +145,14 @@ const PlacementAnalytics: React.FC = () => {
     }
   };
 
-  const handleExportRecentPlacements = () => {
+  const handleExportRecentPlacements = async () => {
     try {
       const csvData = [
         ["Recent Placements Report"],
         ["Generated on:", new Date().toLocaleDateString()],
         [],
         ["Student Name", "Student ID", "Company", "Job Title", "Department", "Employment Type", "CTC (₹)", "Location", "Placement Date", "Status"],
-        ...placementRecords.map(record => [
+        ...recentPlacements.map(record => [
           record.student_name,
           record.student_id,
           record.company_name,
@@ -355,11 +194,36 @@ const PlacementAnalytics: React.FC = () => {
     setShowAnalyticsFilter(false);
   };
 
+  const handleRefresh = () => {
+    loadData(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            <span className="text-gray-600">Loading placement analytics...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-gray-900">Placement Analytics</h2>
         <div className="flex gap-2">
+          <button 
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
           <button 
             onClick={() => setShowAnalyticsFilter(true)}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
@@ -542,36 +406,36 @@ const PlacementAnalytics: React.FC = () => {
             <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
               <div>
                 <div className="text-sm font-medium text-green-800">Above ₹10L</div>
-                <div className="text-xs text-green-600">3 students</div>
+                <div className="text-xs text-green-600">{ctcDistribution.above10L.count} students</div>
               </div>
-              <div className="text-lg font-bold text-green-800">37.5%</div>
+              <div className="text-lg font-bold text-green-800">{ctcDistribution.above10L.percentage.toFixed(1)}%</div>
             </div>
             
             {/* 5L - 10L */}
             <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
               <div>
                 <div className="text-sm font-medium text-blue-800">₹5L - ₹10L</div>
-                <div className="text-xs text-blue-600">2 students</div>
+                <div className="text-xs text-blue-600">{ctcDistribution.between5L10L.count} students</div>
               </div>
-              <div className="text-lg font-bold text-blue-800">25%</div>
+              <div className="text-lg font-bold text-blue-800">{ctcDistribution.between5L10L.percentage.toFixed(1)}%</div>
             </div>
             
             {/* Below 5L */}
             <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
               <div>
                 <div className="text-sm font-medium text-orange-800">Below ₹5L</div>
-                <div className="text-xs text-orange-600">0 students</div>
+                <div className="text-xs text-orange-600">{ctcDistribution.below5L.count} students</div>
               </div>
-              <div className="text-lg font-bold text-orange-800">0%</div>
+              <div className="text-lg font-bold text-orange-800">{ctcDistribution.below5L.percentage.toFixed(1)}%</div>
             </div>
             
             {/* Internships */}
             <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
               <div>
                 <div className="text-sm font-medium text-purple-800">Internships</div>
-                <div className="text-xs text-purple-600">3 students</div>
+                <div className="text-xs text-purple-600">{ctcDistribution.internships.count} students</div>
               </div>
-              <div className="text-lg font-bold text-purple-800">37.5%</div>
+              <div className="text-lg font-bold text-purple-800">{ctcDistribution.internships.percentage.toFixed(1)}%</div>
             </div>
           </div>
         </div>
@@ -590,54 +454,61 @@ const PlacementAnalytics: React.FC = () => {
           </div>
           
           <div className="space-y-3 max-h-80 overflow-y-auto">
-            {placementRecords.slice(0, 5).map((placement) => (
-              <div key={placement.id} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="text-sm font-medium text-gray-900">{placement.student_name}</div>
-                    <span className={`px-2 py-0.5 text-xs rounded-full ${
-                      placement.employment_type === 'Full-time' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-purple-100 text-purple-800'
-                    }`}>
-                      {placement.employment_type}
-                    </span>
+            {recentPlacements.length > 0 ? (
+              recentPlacements.slice(0, 5).map((placement) => (
+                <div key={placement.id} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="text-sm font-medium text-gray-900">{placement.student_name}</div>
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${
+                        placement.employment_type === 'Full-time' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-purple-100 text-purple-800'
+                      }`}>
+                        {placement.employment_type}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600 mb-1">{placement.student_id} • {placement.department}</div>
+                    <div className="text-sm text-gray-800 font-medium">{placement.company_name}</div>
+                    <div className="text-xs text-gray-600">{placement.job_title}</div>
+                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <DollarSign className="h-3 w-3" />
+                        ₹{placement.salary_offered > 0 ? (placement.salary_offered / 100000).toFixed(1) : '0'}L
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {placement.location}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(placement.placement_date).toLocaleDateString()}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-600 mb-1">{placement.student_id} • {placement.department}</div>
-                  <div className="text-sm text-gray-800 font-medium">{placement.company_name}</div>
-                  <div className="text-xs text-gray-600">{placement.job_title}</div>
-                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <DollarSign className="h-3 w-3" />
-                      ₹{(placement.salary_offered / 100000).toFixed(1)}L
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      {placement.location}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(placement.placement_date).toLocaleDateString()}
-                    </div>
+                  <div className={`px-2 py-1 text-xs rounded-full ${
+                    placement.status === 'accepted' 
+                      ? 'bg-green-100 text-green-800' 
+                      : placement.status === 'offer_received'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {placement.status.replace('_', ' ')}
                   </div>
                 </div>
-                <div className={`px-2 py-1 text-xs rounded-full ${
-                  placement.status === 'joined' 
-                    ? 'bg-green-100 text-green-800' 
-                    : placement.status === 'placed'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {placement.status.replace('_', ' ')}
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                <p>No recent placements found</p>
               </div>
-            ))}
+            )}
           </div>
           
-          {placementRecords.length > 5 && (
+          {recentPlacements.length > 5 && (
             <div className="mt-3 text-center">
               <button className="text-sm text-blue-600 hover:text-blue-800">
-                View all {placementRecords.length} placements →
+                View all {recentPlacements.length} placements →
               </button>
             </div>
           )}
@@ -659,10 +530,11 @@ const PlacementAnalytics: React.FC = () => {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">All Departments</option>
-                  <option value="Computer Science">Computer Science</option>
-                  <option value="Mechanical Engineering">Mechanical Engineering</option>
-                  <option value="Electronics">Electronics</option>
-                  <option value="Management">Management</option>
+                  {departmentAnalytics.map(dept => (
+                    <option key={dept.department} value={dept.department}>
+                      {dept.department}
+                    </option>
+                  ))}
                 </select>
               </div>
 
