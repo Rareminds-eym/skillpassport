@@ -67,13 +67,16 @@ export const useEvents = (collegeId: string | null) => {
 
 
   const deleteEvent = async (id: string) => {
-    if (!confirm("Delete this event?")) return;
     try {
       const { error } = await supabase.from("college_events").delete().eq("id", id);
       if (error) throw error;
       setEvents((prev) => prev.filter((e) => e.id !== id));
       toast.success("Event deleted");
-    } catch { toast.error("Failed to delete"); }
+      return true;
+    } catch { 
+      toast.error("Failed to delete"); 
+      return false;
+    }
   };
 
   const publishEvent = async (id: string) => {
@@ -86,13 +89,16 @@ export const useEvents = (collegeId: string | null) => {
   };
 
   const cancelEvent = async (id: string) => {
-    if (!confirm("Cancel this event?")) return;
     try {
       const { error } = await supabase.from("college_events").update({ status: "cancelled" }).eq("id", id);
       if (error) throw error;
       setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, status: "cancelled" as const } : e)));
       toast.success("Cancelled");
-    } catch { toast.error("Failed"); }
+      return true;
+    } catch { 
+      toast.error("Failed"); 
+      return false;
+    }
   };
 
   // Drag and drop

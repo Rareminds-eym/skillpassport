@@ -13,6 +13,7 @@ import { CalendarTab } from "./components/CalendarTab";
 import { RegistrationsTab } from "./components/RegistrationsTab";
 import { AnalyticsTab } from "./components/AnalyticsTab";
 import { EventFormModal } from "./components/EventFormModal";
+import { ConfirmModal } from "./components/ConfirmModal";
 
 const tabs = [
   { id: "events", label: "Event Scheduling", icon: CalendarIcon },
@@ -29,6 +30,20 @@ const EventManagement: React.FC = () => {
   const [quickAddDate, setQuickAddDate] = useState<Date | null>(null);
   const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<CollegeEvent | null>(null);
   const [selectedEventForReg, setSelectedEventForReg] = useState<CollegeEvent | null>(null);
+
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant?: "danger" | "warning" | "info";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
 
   // Fetch college ID
   useEffect(() => {
@@ -77,6 +92,37 @@ const EventManagement: React.FC = () => {
     registrationsHook.loadRegistrations(event.id);
   };
 
+  // Confirmation handlers
+  const handleDeleteEvent = (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Event",
+      message: "Are you sure you want to delete this event? This action cannot be undone.",
+      variant: "danger",
+      onConfirm: () => eventsHook.deleteEvent(id),
+    });
+  };
+
+  const handleCancelEvent = (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Cancel Event",
+      message: "Are you sure you want to cancel this event? Registered students will be notified.",
+      variant: "warning",
+      onConfirm: () => eventsHook.cancelEvent(id),
+    });
+  };
+
+  const handleRemoveRegistration = (regId: string, eventId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Remove Registration",
+      message: "Are you sure you want to remove this student's registration?",
+      variant: "warning",
+      onConfirm: () => registrationsHook.removeRegistration(regId, eventId),
+    });
+  };
+
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
@@ -111,9 +157,9 @@ const EventManagement: React.FC = () => {
           onRefresh={eventsHook.loadEvents}
           onCreate={handleCreateEvent}
           onEdit={handleEditEvent}
-          onDelete={eventsHook.deleteEvent}
+          onDelete={handleDeleteEvent}
           onPublish={eventsHook.publishEvent}
-          onCancel={eventsHook.cancelEvent}
+          onCancel={handleCancelEvent}
         />
       )}
 
@@ -156,7 +202,7 @@ const EventManagement: React.FC = () => {
           eventRegCounts={eventsHook.eventRegCounts}
           onSelectEvent={handleSelectEventForReg}
           onAddRegistration={registrationsHook.addRegistration}
-          onRemoveRegistration={registrationsHook.removeRegistration}
+          onRemoveRegistration={handleRemoveRegistration}
           onMarkAttendance={registrationsHook.markAttendance}
           onExportCSV={registrationsHook.exportAttendeesCSV}
         />
@@ -173,6 +219,16 @@ const EventManagement: React.FC = () => {
         onSave={handleSaveEvent}
         event={selectedEvent}
         quickAddDate={quickAddDate}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
       />
     </div>
   );
