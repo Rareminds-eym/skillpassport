@@ -7,11 +7,11 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
+import { useNavigate } from "react-router-dom";
 import KPIDashboard from "../../../components/admin/KPIDashboard";
 import NotificationBell from "../../../components/admin/schoolAdmin/NotificationBell";
 import { useAuth } from "../../../context/AuthContext";
 import { supabase } from "../../../lib/supabaseClient";
-import { useNavigate } from "react-router-dom";
 
 interface CourseStats {
   category: string;
@@ -75,19 +75,20 @@ const SchoolDashboard: React.FC = () => {
           return;
         }
 
-        // Try to get school_id from schools table using email
+        // Try to get school_id from organizations table using admin_id or email
         const userEmail = user.email || localStorage.getItem('userEmail');
         if (userEmail) {
           const { data: schoolData, error: schoolError } = await supabase
-            .from('schools')
+            .from('organizations')
             .select('id')
-            .eq('email', userEmail)
+            .eq('organization_type', 'school')
+            .or(`admin_id.eq.${user.id},email.eq.${userEmail}`)
             .maybeSingle();
 
           if (schoolError) {
-            console.error('Error fetching school_id from schools:', schoolError);
+            console.error('Error fetching school_id from organizations:', schoolError);
           } else if (schoolData?.id) {
-            console.log('School ID from schools table:', schoolData.id);
+            console.log('School ID from organizations table:', schoolData.id);
             setSchoolId(schoolData.id);
             return;
           }

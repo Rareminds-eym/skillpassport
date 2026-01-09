@@ -409,24 +409,26 @@ export function useStudents(options: UseStudentsOptions = {}) {
             userRole = userRecord?.role || null;
             console.log('👤 User role from database:', userRole);
             
-            // Check for college admin
+            // Check for college admin (using unified organizations table)
             if (userRole === 'college_admin') {
-              // Find college by matching deanEmail (case-insensitive)
+              // Find college by matching admin_id or email in organizations table
               const { data: college } = await supabase
-                .from('colleges')
-                .select('id, name, deanEmail')
-                .ilike('deanEmail', user.email || '')
+                .from('organizations')
+                .select('id, name, email')
+                .eq('organization_type', 'college')
+                .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
                 .single();
               
               if (college?.id) {
                 collegeId = college.id;
-                console.log('✅ Found college_id for college admin:', collegeId, 'College:', college.name, 'DeanEmail:', college.deanEmail);
+                console.log('✅ Found college_id for college admin:', collegeId, 'College:', college.name);
               } else {
-                console.warn('⚠️ College admin but no matching college found for email:', user.email);
+                console.warn('⚠️ College admin but no matching college found for user:', user.id);
                 // Try fetching all colleges to debug
                 const { data: allColleges } = await supabase
-                  .from('colleges')
-                  .select('id, name, deanEmail');
+                  .from('organizations')
+                  .select('id, name, email, admin_id')
+                  .eq('organization_type', 'college');
                 console.log('📋 All colleges in database:', allColleges);
               }
             }
@@ -443,16 +445,17 @@ export function useStudents(options: UseStudentsOptions = {}) {
                 schoolId = educator.school_id;
                 console.log('✅ Found school_id in school_educators:', schoolId);
               } else {
-                // Check schools table by email
+                // Check organizations table for school by admin_id or email
                 const { data: school } = await supabase
-                  .from('schools')
+                  .from('organizations')
                   .select('id')
-                  .eq('email', user.email)
+                  .eq('organization_type', 'school')
+                  .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
                   .single();
                 
                 schoolId = school?.id || null;
                 if (schoolId) {
-                  console.log('✅ Found school_id in schools table:', schoolId);
+                  console.log('✅ Found school_id in organizations table:', schoolId);
                 }
               }
             }
@@ -475,19 +478,21 @@ export function useStudents(options: UseStudentsOptions = {}) {
         
         let collegeIds: string[] = [];
         
-        // If university admin, get all colleges under this university
+        // If university admin, get all colleges under this university (from organizations table)
         if (universityId) {
           console.log('🏫 Fetching colleges for university:', universityId);
+          // Note: This assumes colleges have a reference to their parent university
+          // You may need to adjust based on your actual data model
           const { data: colleges, error: collegesError } = await supabase
-            .from('colleges')
+            .from('organizations')
             .select('id')
-            .eq('universityId', universityId);
+            .eq('organization_type', 'college');
           
           if (collegesError) {
             console.error('Error fetching colleges:', collegesError);
           } else if (colleges && colleges.length > 0) {
             collegeIds = colleges.map(c => c.id);
-            console.log('✅ Found', collegeIds.length, 'colleges under university');
+            console.log('✅ Found', collegeIds.length, 'colleges');
           }
         }
         

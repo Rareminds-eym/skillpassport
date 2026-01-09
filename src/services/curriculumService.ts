@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 
-export { supabase};
+export { supabase };
 
 export interface AssessmentType {
   id: string;
@@ -313,18 +313,19 @@ export const getCurrentEducatorSchoolId = async (): Promise<string | null> => {
       .single();
 
     if (userData?.role === 'school_admin') {
-      const { data: schoolData, error: schoolError } = await supabase
-        .from('schools')
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
         .select('id, name')
-        .eq('created_by', user.id)
+        .eq('organization_type', 'school')
+        .eq('admin_id', user.id)
         .maybeSingle();
 
-      if (schoolError) {
-        console.error('Error fetching school for admin:', schoolError);
+      if (orgError) {
+        console.error('Error fetching organization for admin:', orgError);
       }
 
-      if (schoolData) {
-        return schoolData.id;
+      if (orgData) {
+        return orgData.id;
       }
     }
 

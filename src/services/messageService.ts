@@ -858,12 +858,13 @@ export class MessageService {
               .update({ college_admin_unread_count: 0 })
               .eq('id', conversationId);
           } else {
-            // Check if user is college owner
+            // Check if user is college owner in organizations table
             const { data: collegeOwner, error: ownerError } = await supabase
-              .from('colleges')
-              .select('created_by')
+              .from('organizations')
+              .select('admin_id')
               .eq('id', conversation.college_id)
-              .eq('created_by', userId)
+              .eq('organization_type', 'college')
+              .eq('admin_id', userId)
               .single();
             
             if (!ownerError && collegeOwner) {

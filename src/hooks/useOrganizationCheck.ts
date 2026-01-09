@@ -8,7 +8,7 @@ export type OrganizationType = 'school' | 'college' | 'university';
 interface Organization {
   id: string;
   name: string;
-  logo_url?: string;
+  organization_type: OrganizationType;
   address?: string;
   city?: string;
   state?: string;
@@ -16,6 +16,7 @@ interface Organization {
   phone?: string;
   email?: string;
   website?: string;
+  logo_url?: string;
 }
 
 interface UseOrganizationCheckResult {
@@ -39,14 +40,6 @@ export function useOrganizationCheck(organizationType: OrganizationType): UseOrg
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const getTableName = useCallback((): string => {
-    switch (organizationType) {
-      case 'school': return 'schools';
-      case 'college': return 'colleges';
-      case 'university': return 'universities';
-    }
-  }, [organizationType]);
-
   const fetchOrganization = useCallback(async () => {
     if (!user?.id) {
       setLoading(false);
@@ -58,13 +51,12 @@ export function useOrganizationCheck(organizationType: OrganizationType): UseOrg
     setError(null);
 
     try {
-      const tableName = getTableName();
-      
-      // First, try to find organization by admin_id
+      // Find organization by admin_id and organization_type in the unified organizations table
       const { data, error: fetchError } = await supabase
-        .from(tableName)
-        .select('id, name, logo_url, address, city, state, country, phone, email, website')
+        .from('organizations')
+        .select('id, name, organization_type, address, city, state, country, phone, email, website, logo_url')
         .eq('admin_id', user.id)
+        .eq('organization_type', organizationType)
         .maybeSingle();
 
       if (fetchError) {
@@ -73,7 +65,7 @@ export function useOrganizationCheck(organizationType: OrganizationType): UseOrg
         setOrganization(null);
       } else if (data) {
         console.log(`[useOrganizationCheck] Found ${organizationType}:`, data.name);
-        setOrganization(data);
+        setOrganization(data as Organization);
       } else {
         // No organization found - this is expected for new admins
         console.log(`[useOrganizationCheck] No ${organizationType} found for user`);
@@ -86,7 +78,7 @@ export function useOrganizationCheck(organizationType: OrganizationType): UseOrg
     } finally {
       setLoading(false);
     }
-  }, [user?.id, organizationType, getTableName]);
+  }, [user?.id, organizationType]);
 
   useEffect(() => {
     fetchOrganization();

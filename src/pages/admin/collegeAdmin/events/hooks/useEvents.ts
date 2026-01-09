@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { supabase } from "../../../../../lib/supabaseClient";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { supabase } from "../../../../../lib/supabaseClient";
 import { CollegeEvent } from "../types";
 
 export const useEvents = (collegeId: string | null) => {
@@ -43,11 +43,11 @@ export const useEvents = (collegeId: string | null) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Get college_id from colleges table if not already set
+      // Get college_id from organizations table if not already set
       let eventCollegeId = collegeId;
       if (!eventCollegeId && user) {
-        const { data: college } = await supabase.from("colleges").select("id").eq("created_by", user.id).single();
-        if (college?.id) eventCollegeId = college.id;
+        const { data: org } = await supabase.from("organizations").select("id").eq("organization_type", "college").or(`admin_id.eq.${user.id},email.eq.${user.email}`).maybeSingle();
+        if (org?.id) eventCollegeId = org.id;
       }
       
       if (existingEvent) {

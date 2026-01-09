@@ -1,17 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Users, UserPlus, Calendar, 
-  Upload, BarChart3, CalendarOff
+import {
+    BarChart3,
+    Calendar,
+    CalendarOff,
+    Upload,
+    UserPlus,
+    Users
 } from 'lucide-react';
-import FacultyList from './FacultyList';
-import FacultyOnboarding from './FacultyOnboarding';
-import CalendarTimetable from './CalendarTimetable';
-import FacultyPerformanceAnalytics from './FacultyPerformanceAnalytics';
-import FacultyBulkImport from './FacultyBulkImport';
-import FacultyLeaveManagement from '../FacultyLeaveManagement';
-import { getFacultyStatistics } from '../../../../services/facultyService';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { supabase } from '../../../../lib/supabaseClient';
+import { getFacultyStatistics } from '../../../../services/facultyService';
+import FacultyLeaveManagement from '../FacultyLeaveManagement';
+import CalendarTimetable from './CalendarTimetable';
+import FacultyBulkImport from './FacultyBulkImport';
+import FacultyList from './FacultyList';
+import FacultyOnboarding from './FacultyOnboarding';
+import FacultyPerformanceAnalytics from './FacultyPerformanceAnalytics';
 
 const FacultyManagementDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -53,34 +57,36 @@ const FacultyManagementDashboard: React.FC = () => {
         return;
       }
 
-      // If not found in college_lecturers, check if user is a college admin in colleges table
-      console.log('Not found in college_lecturers, checking colleges table...');
-      const { data: collegeData, error: collegeError } = await supabase
-        .from('colleges')
+      // If not found in college_lecturers, check if user is a college admin in organizations table
+      console.log('Not found in college_lecturers, checking organizations table...');
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
         .select('id')
+        .eq('organization_type', 'college')
         .eq('email', user.email)
         .maybeSingle();
 
-      if (collegeError) {
-        console.error('Error fetching from colleges:', collegeError);
+      if (orgError) {
+        console.error('Error fetching from organizations:', orgError);
       }
 
-      if (collegeData?.id) {
-        console.log('Found college_id from colleges table:', collegeData.id);
-        setCollegeId(collegeData.id);
+      if (orgData?.id) {
+        console.log('Found college_id from organizations table:', orgData.id);
+        setCollegeId(orgData.id);
         return;
       }
 
-      // Also try admin_email field
-      const { data: collegeByAdmin } = await supabase
-        .from('colleges')
+      // Also try admin_id field
+      const { data: orgByAdmin } = await supabase
+        .from('organizations')
         .select('id')
-        .eq('admin_email', user.email)
+        .eq('organization_type', 'college')
+        .eq('admin_id', user.id)
         .maybeSingle();
 
-      if (collegeByAdmin?.id) {
-        console.log('Found college_id from admin_email:', collegeByAdmin.id);
-        setCollegeId(collegeByAdmin.id);
+      if (orgByAdmin?.id) {
+        console.log('Found college_id from admin_id:', orgByAdmin.id);
+        setCollegeId(orgByAdmin.id);
         return;
       }
 

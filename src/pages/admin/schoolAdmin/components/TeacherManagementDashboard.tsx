@@ -1,17 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Users, UserPlus, Calendar, FileText, TrendingUp, 
-  Download, Upload, Search, Filter, BarChart3 
+import {
+    BarChart3,
+    Calendar,
+    Upload,
+    UserPlus,
+    Users
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../../../context/AuthContext';
+import { useUserRole } from '../../../../hooks/useUserRole';
+import { supabase } from '../../../../lib/supabaseClient';
+import { getTeacherStatistics } from '../../../../services/teacherService';
+import TeacherBulkImport from './TeacherBulkImport';
 import TeacherList from './TeacherList';
 import TeacherOnboarding from './TeacherOnboarding';
-import TimetableBuilderEnhanced from './TimetableBuilderEnhanced';
 import TeacherPerformanceAnalytics from './TeacherPerformanceAnalytics';
-import TeacherBulkImport from './TeacherBulkImport';
-import { getTeacherStatistics } from '../../../../services/teacherService';
-import { useUserRole } from '../../../../hooks/useUserRole';
-import { useAuth } from '../../../../context/AuthContext';
-import { supabase } from '../../../../lib/supabaseClient';
+import TimetableBuilderEnhanced from './TimetableBuilderEnhanced';
 
 const TeacherManagementDashboard: React.FC = () => {
   const { role, canAddTeacher } = useUserRole();
@@ -56,34 +59,22 @@ const TeacherManagementDashboard: React.FC = () => {
         return;
       }
 
-      // If not found in school_educators, check if user is a school admin in schools table
-      console.log('Not found in school_educators, checking schools table...');
+      // If not found in school_educators, check organizations table
+      console.log('Not found in school_educators, checking organizations table...');
       const { data: schoolData, error: schoolError } = await supabase
-        .from('schools')
+        .from('organizations')
         .select('id')
-        .eq('email', user.email)
+        .eq('organization_type', 'school')
+        .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
         .maybeSingle();
 
       if (schoolError) {
-        console.error('Error fetching from schools:', schoolError);
+        console.error('Error fetching from organizations:', schoolError);
       }
 
       if (schoolData?.id) {
-        console.log('Found school_id from schools table:', schoolData.id);
+        console.log('Found school_id from organizations table:', schoolData.id);
         setSchoolId(schoolData.id);
-        return;
-      }
-
-      // Also try principal_email field
-      const { data: schoolByPrincipal, error: principalError } = await supabase
-        .from('schools')
-        .select('id')
-        .eq('principal_email', user.email)
-        .maybeSingle();
-
-      if (schoolByPrincipal?.id) {
-        console.log('Found school_id from principal_email:', schoolByPrincipal.id);
-        setSchoolId(schoolByPrincipal.id);
         return;
       }
 

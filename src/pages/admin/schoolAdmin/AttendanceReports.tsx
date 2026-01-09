@@ -1,32 +1,31 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useMemo, useEffect } from "react";
 import {
-  CalendarIcon,
-  ClockIcon,
-  UserGroupIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ExclamationCircleIcon,
-  ChevronDownIcon,
-  FunnelIcon,
-  ArrowDownTrayIcon,
-  ChartBarIcon,
-  BellAlertIcon,
-  DocumentChartBarIcon,
-  UserIcon,
-  AcademicCapIcon,
-  TableCellsIcon,
-  XMarkIcon,
-  PrinterIcon,
-  DocumentTextIcon,
-  ClipboardDocumentListIcon,
-  ShieldCheckIcon,
+    AcademicCapIcon,
+    ArrowDownTrayIcon,
+    BellAlertIcon,
+    CalendarIcon,
+    ChartBarIcon,
+    CheckCircleIcon,
+    ChevronDownIcon,
+    ClipboardDocumentListIcon,
+    ClockIcon,
+    DocumentChartBarIcon,
+    DocumentTextIcon,
+    ExclamationCircleIcon,
+    FunnelIcon,
+    PrinterIcon,
+    ShieldCheckIcon,
+    TableCellsIcon,
+    UserGroupIcon,
+    UserIcon,
+    XCircleIcon,
+    XMarkIcon,
 } from "@heroicons/react/24/outline";
-import SearchBar from "../../../components/common/SearchBar";
-import Pagination from "../../../components/admin/Pagination";
-import KPICard from "../../../components/admin/KPICard";
+import React, { useEffect, useMemo, useState } from "react";
 import ReactApexChart from "react-apexcharts";
-import { attendanceService } from "../../../services/studentManagementService";
+import KPICard from "../../../components/admin/KPICard";
+import Pagination from "../../../components/admin/Pagination";
+import SearchBar from "../../../components/common/SearchBar";
 import { supabase } from "../../../lib/supabaseClient";
 
 // ==================== TYPES ====================
@@ -226,11 +225,12 @@ const AttendanceReports: React.FC = () => {
             if (educator?.school_id) {
               currentSchoolId = educator.school_id;
             } else {
-              // Check schools table by email
+              // Check organizations table by admin_id or email
               const { data: school } = await supabase
-                .from('schools')
+                .from('organizations')
                 .select('id')
-                .eq('email', user.email)
+                .eq('organization_type', 'school')
+                .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
                 .single();
 
               currentSchoolId = school?.id || null;

@@ -1,18 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
 import {
-  ClipboardDocumentListIcon,
-  EyeIcon,
-  ChevronDownIcon,
-  Squares2X2Icon,
-  TableCellsIcon,
-  FunnelIcon,
-  AcademicCapIcon,
-  SparklesIcon,
+    ChevronDownIcon,
+    ClipboardDocumentListIcon,
+    EyeIcon,
+    FunnelIcon,
+    SparklesIcon,
+    Squares2X2Icon,
+    TableCellsIcon
 } from '@heroicons/react/24/outline';
-import { supabase } from '../../lib/supabaseClient';
+import React, { useEffect, useMemo, useState } from 'react';
 import SearchBar from '../../components/common/SearchBar';
-import { useAuth } from '../../context/AuthContext';
 import AssessmentReportDrawer from '../../components/shared/AssessmentReportDrawer';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
 
 // Types
 interface AssessmentResult {
@@ -336,14 +335,14 @@ const EducatorAssessmentResults: React.FC = () => {
           }
         }
 
-        // Get school name
-        const { data: schoolData } = await supabase
-          .from('schools')
+        // Get school name from organizations table
+        const { data: orgData } = await supabase
+          .from('organizations')
           .select('name')
           .eq('id', schoolId)
           .single();
         
-        schoolName = schoolData?.name || '';
+        schoolName = orgData?.name || '';
       } else {
         // Check if they are a college lecturer
         const { data: collegeLecturerData, error: collegeLecturerError } = await supabase
@@ -385,27 +384,27 @@ const EducatorAssessmentResults: React.FC = () => {
               setResults([]);
               setSchoolName('');
               
-              // Get college name for display
-              const { data: collegeData } = await supabase
-                .from('colleges')
+              // Get college name for display from organizations table
+              const { data: orgData } = await supabase
+                .from('organizations')
                 .select('name')
                 .eq('id', schoolId)
                 .single();
               
-              setSchoolName(collegeData?.name || '');
+              setSchoolName(orgData?.name || '');
               setLoading(false);
               return;
             }
           }
 
-          // Get college name
-          const { data: collegeData } = await supabase
-            .from('colleges')
+          // Get college name from organizations table
+          const { data: orgData } = await supabase
+            .from('organizations')
             .select('name')
             .eq('id', schoolId)
             .single();
           
-          schoolName = collegeData?.name || '';
+          schoolName = orgData?.name || '';
         } else {
           console.error('No educator found for user:', { userId, userEmail });
           setError('No school or college associated with your account. Please contact your administrator.');

@@ -1,19 +1,19 @@
+import {
+    AcademicCapIcon,
+    BuildingOfficeIcon,
+    CalendarIcon,
+    CheckCircleIcon,
+    EnvelopeIcon,
+    MapPinIcon,
+    PencilIcon,
+    PhoneIcon,
+    UserCircleIcon,
+    XCircleIcon,
+} from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  UserCircleIcon,
-  PencilIcon,
-  EnvelopeIcon,
-  PhoneIcon,
-  MapPinIcon,
-  AcademicCapIcon,
-  CalendarIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  BuildingOfficeIcon,
-} from '@heroicons/react/24/outline';
-import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
 
 interface EducatorProfile {
   id: string;
@@ -266,19 +266,19 @@ const Profile = () => {
       schoolName = educatorData.schools.name;
       console.log('✅ School name from join:', schoolName);
     } else if (educatorData?.school_id) {
-      // Fetch school name separately
+      // Fetch school name separately from organizations table
       console.log('🏫 Fetching school name for ID:', educatorData.school_id);
-      const { data: school, error: schoolError } = await supabase
-        .from('schools')
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
         .select('name')
         .eq('id', educatorData.school_id)
         .maybeSingle();
       
-      if (schoolError) {
-        console.log('❌ School fetch error:', schoolError.message);
+      if (orgError) {
+        console.log('❌ Organization fetch error:', orgError.message);
       } else {
-        schoolName = school?.name || '';
-        console.log('✅ School name fetched:', schoolName);
+        schoolName = org?.name || '';
+        console.log('✅ School name fetched from organizations:', schoolName);
       }
     }
 

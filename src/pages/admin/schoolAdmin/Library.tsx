@@ -1,15 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
-import { 
-  BookOpenIcon, 
-  MagnifyingGlassIcon, 
-  UsersIcon, 
-  CheckCircleIcon,
-  XMarkIcon,
-  PlusIcon
+import {
+    BookOpenIcon,
+    CheckCircleIcon,
+    MagnifyingGlassIcon,
+    PlusIcon,
+    UsersIcon,
+    XMarkIcon
 } from '@heroicons/react/24/outline';
+import { useEffect, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useStudents } from '../../../hooks/useAdminStudents';
 import { supabase } from '../../../lib/supabaseClient';
-import toast from 'react-hot-toast';
 
 interface Book {
   id: string;
@@ -123,7 +123,7 @@ export default function LibraryModule() {
     pageSize: 10
   });
 
-  // Get current school ID
+  // Get current school ID from organizations table
   useEffect(() => {
     const getCurrentSchoolId = async () => {
       try {
@@ -140,7 +140,7 @@ export default function LibraryModule() {
         // Then try Supabase auth
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // Check school_educators table
+          // Check school_educators table first
           const { data: educator } = await supabase
             .from('school_educators')
             .select('school_id')
@@ -150,15 +150,16 @@ export default function LibraryModule() {
           if (educator?.school_id) {
             setSchoolId(educator.school_id);
           } else {
-            // Check schools table by email
-            const { data: school } = await supabase
-              .from('schools')
+            // Check organizations table for school admin
+            const { data: org } = await supabase
+              .from('organizations')
               .select('id')
-              .eq('email', user.email)
-              .single();
+              .eq('organization_type', 'school')
+              .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
+              .maybeSingle();
             
-            if (school?.id) {
-              setSchoolId(school.id);
+            if (org?.id) {
+              setSchoolId(org.id);
             }
           }
         }

@@ -1,100 +1,238 @@
-# Organization Setup Flow - Implementation Summary
+# Organization Setup Flow
 
 ## Overview
 
-This implementation ensures that admin users (school_admin, college_admin, university_admin) must create their organization before accessing their dashboard. This provides an industrial-grade onboarding experience.
+This document describes the organization setup flow for admin users (school_admin, college_admin, university_admin). When an admin user logs in for the first time, they are required to create their organization before accessing their dashboard.
 
-## Flow
+## Architecture
 
-1. Admin signs up with a role (school_admin, college_admin, university_admin)
-2. Admin logs in and is redirected to their dashboard route
-3. **OrganizationGuard** checks if the admin has an organization linked
-4. If no organization exists → Show **OrganizationSetup** form
-5. Once organization is created → Show the dashboard
+### Unified Organizations Table
 
-## Files Created
+All organization data is stored in a single `organizations` table with the following key columns:
 
-### 1. `src/pages/organization/OrganizationSetup.tsx`
-- Full-featured organization creation form
-- Validates required fields (name, city, state)
-- Checks for duplicate organization names
-- Creates organization in the appropriate table (schools/colleges/universities)
-- Links organization to admin via `admin_id`
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| name | varchar | Organization name |
+| organization_type | varchar | 'school', 'college', or 'university' |
+| code | varchar | Unique code for the organization (e.g., school code, college code) |
+| admin_id | uuid | References the admin user who owns this organization |
+| email | text | Organization contact email |
+| phone | text | Organization phone number |
+| address | text | Street address |
+| city | varchar | City |
+| state | text | State |
+| country | varchar | Country |
+| pincode | varchar | Postal/ZIP code |
+| website | text | Organization website |
+| logo_url | text | URL to organization logo |
+| established_year | integer | Year the organization was established |
+| metadata | jsonb | Additional organization-specific data (principal info, dean info, etc.) |
+| approval_status | varchar | 'pending', 'approved', 'rejected' |
+| account_status | varchar | 'active', 'inactive', 'suspended' |
+| is_active | boolean | Whether the organization is active |
 
-### 2. `src/hooks/useOrganizationCheck.ts`
-- Custom hook to check if admin has an organization
-- Returns: `{ organization, loading, error, hasOrganization, refetch }`
-- Queries the appropriate table based on organization type
+### Legacy Tables (Deprecated)
 
-### 3. `src/components/organization/OrganizationGuard.tsx`
-- Wrapper component that enforces organization creation
-- Shows loading state while checking
-- Shows OrganizationSetup if no organization exists
-- Renders children (dashboard) once organization exists
+The following tables are **DEPRECATED** and kept only for foreign key compatibility:
+- `schools` - Use `organizations` with `organization_type='school'`
+- `colleges` - Use `organizations` with `organization_type='college'`
+- `universities` - Use `organizations` with `organization_type='university'`
 
-## Routes Updated
+**Do NOT use these tables for new queries. All new code should use the `organizations` table.**
 
-The following routes in `src/routes/AppRoutes.jsx` now include OrganizationGuard:
+### Key Components
+
+1. **OrganizationGuard** (`src/components/organization/OrganizationGuard.tsx`)
+   - Wrapper component that checks if admin has an organization
+   - Shows OrganizationSetup form if no organization exists
+   - Renders dashboard (children) once organization is created
+
+2. **OrganizationSetup** (`src/pages/organization/OrganizationSetup.tsx`)
+   - Full-featured form for creating organizations
+   - Validates required fields (name, city, state)
+   - Creates organization in the `organizations` table
+
+3. **useOrganizationCheck** (`src/hooks/useOrganizationCheck.ts`)
+   - Hook to check if admin has an organization
+   - Queries `organizations` table by `admin_id` and `organization_type`
+
+4. **organizationService** (`src/services/organizationService.ts`)
+   - Centralized service for all organization queries
+   - Provides functions: `getOrganizationByAdminId`, `getOrganizationById`, `getOrganizations`, `getSchools`, `getColleges`, `getUniversities`, `createOrganization`, `updateOrganization`, `deleteOrganization`
+
+5. **useOrganization** (`src/hooks/useOrganization.ts`)
+   - React hooks for components to use
+   - Provides: `useCurrentOrganization`, `useOrganizationById`, `useOrganizations`, `useSchools`, `useColleges`, `useUniversities`
+
+## Flow Diagram
+
+```
+Admin Login
+    │
+    ▼
+OrganizationGuard
+    │
+    ├── Check organizations table
+    │   (admin_id = user.id AND organization_type = role_type)
+    │
+    ├── Organization exists? ──Yes──► Render Dashboard
+    │
+    └── No organization ──► Show OrganizationSetup Form
+                                │
+                                ▼
+                          User fills form
+                                │
+                                ▼
+                          Create organization
+                          in organizations table
+                                │
+                                ▼
+                          Redirect to Dashboard
+```
+
+## Route Integration
+
+The OrganizationGuard is integrated into AppRoutes.jsx for all admin routes:
 
 ```jsx
 // College Admin
-<SubscriptionProtectedRoute ...>
-  <OrganizationGuard organizationType="college">
-    <AdminLayout />
-  </OrganizationGuard>
-</SubscriptionProtectedRoute>
+<Route path="/college-admin/*" element={
+  <SubscriptionProtectedRoute allowedRoles={["college_admin"]}>
+    <OrganizationGuard organizationType="college">
+      <AdminLayout />
+    </OrganizationGuard>
+  </SubscriptionProtectedRoute>
+}>
 
 // School Admin
-<SubscriptionProtectedRoute ...>
-  <OrganizationGuard organizationType="school">
-    <AdminLayout />
-  </OrganizationGuard>
-</SubscriptionProtectedRoute>
+<Route path="/school-admin/*" element={
+  <SubscriptionProtectedRoute allowedRoles={["school_admin"]}>
+    <OrganizationGuard organizationType="school">
+      <AdminLayout />
+    </OrganizationGuard>
+  </SubscriptionProtectedRoute>
+}>
 
 // University Admin
-<SubscriptionProtectedRoute ...>
-  <OrganizationGuard organizationType="university">
-    <AdminLayout />
-  </OrganizationGuard>
-</SubscriptionProtectedRoute>
+<Route path="/university-admin/*" element={
+  <SubscriptionProtectedRoute allowedRoles={["university_admin"]}>
+    <OrganizationGuard organizationType="university">
+      <AdminLayout />
+    </OrganizationGuard>
+  </SubscriptionProtectedRoute>
+}>
 ```
 
-## Database Tables Used
+## Database Migration
 
-- `schools` - for school_admin
-- `colleges` - for college_admin  
-- `universities` - for university_admin
+The following migration was applied to set up the organizations table:
 
-Each table has an `admin_id` column that links to the admin user.
+1. **add_organization_admin_columns** - Added columns: `organization_type`, `admin_id`, `address`, `city`, `country`, `logo_url`
+2. **add_organizations_rls_policies** - Added RLS policies for CRUD operations
+3. **migrate_existing_orgs_to_organizations_table** - Migrated existing data from `schools`, `colleges`, `universities` tables
 
-## Form Fields
+## Services Updated
 
-| Field | Required | Validation |
-|-------|----------|------------|
-| Name | Yes | Min 3 chars, max 200 chars, unique |
-| City | Yes | Required |
-| State | Yes | Required |
-| Address | No | - |
-| Country | No | Defaults to "India" |
-| Email | No | Valid email format |
-| Phone | No | Valid phone format |
-| Website | No | Valid URL format |
+The following services have been updated to use the unified `organizations` table:
 
-## User Experience
+### Core Services
+- `src/services/adminAuthService.js` - Admin authentication now queries organizations table
+- `src/services/collegeService.js` - College CRUD operations use organizations table
+- `src/services/universityService.js` - University CRUD operations use organizations table
+- `src/services/schoolService.js` - School CRUD operations use organizations table
+- `src/services/studentService.js` - `getAllColleges()` and `getAllSchools()` use organizations table
+- `src/services/organizationService.ts` - Centralized organization service
+- `src/services/messageService.ts` - Message service uses organizations table
+- `src/services/libraryService.ts` - Library service uses organizations table
+- `src/services/clubsService.ts` - Clubs service uses organizations table
+- `src/services/competitionsService.ts` - Competitions service uses organizations table
+- `src/services/schoolLibraryService.ts` - School library service uses organizations table
+- `src/services/curriculumService.ts` - Curriculum service uses organizations table
+- `src/services/csvImportService.ts` - CSV import service uses organizations table
+- `src/services/analyticsService.ts` - Analytics service uses organizations table
+- `src/services/organization/organizationBillingService.ts` - Billing service uses organizations table
+- `src/services/college/reportsService.ts` - Reports service uses organizations table
+- `src/services/college/userManagementService.ts` - User management uses organizations table
 
-1. **Loading State**: Shows spinner while checking organization status
-2. **Setup Form**: Clean, professional form with validation
-3. **Creating State**: Shows progress indicator during creation
-4. **Success State**: Shows success message before redirecting
-5. **Error State**: Shows error with retry option
+### Hooks
+- `src/hooks/useAdminStudents.ts` - Admin student queries use organizations table
+- `src/hooks/useOrganization.ts` - Organization hooks
+- `src/hooks/useOrganizationCheck.ts` - Organization check hook
+- `src/hooks/useCollegeAdminMessages.js` - College admin messages use organizations table
 
-## Testing
+### Utils
+- `src/utils/educationSearch.js` - Search functions use organizations table
+- `src/utils/organizationHelper.ts` - Organization helper utilities
 
-To test this feature:
+### School Admin Pages
+- `src/pages/admin/schoolAdmin/Dashboard.tsx`
+- `src/pages/admin/schoolAdmin/Settings.tsx`
+- `src/pages/admin/schoolAdmin/AttendanceReports.tsx`
+- `src/pages/admin/schoolAdmin/Reports.tsx`
+- `src/pages/admin/schoolAdmin/ClassManagement.tsx`
+- `src/pages/admin/schoolAdmin/Library.tsx`
+- `src/pages/admin/schoolAdmin/SkillCurricular.tsx`
+- `src/pages/admin/schoolAdmin/SkillBadges.tsx`
+- `src/pages/admin/schoolAdmin/StudentReports.tsx`
+- `src/pages/admin/schoolAdmin/AssessmentResults.tsx`
+- `src/pages/admin/schoolAdmin/CurriculumBuilder.tsx`
+- `src/pages/admin/schoolAdmin/finance/index.tsx`
+- `src/pages/admin/schoolAdmin/components/TimetableBuilderEnhanced.tsx`
+- `src/pages/admin/schoolAdmin/components/TimetableAllocation.tsx`
+- `src/pages/admin/schoolAdmin/components/TeacherList.tsx`
+- `src/pages/admin/schoolAdmin/components/TeacherManagementDashboard.tsx`
+- `src/pages/admin/schoolAdmin/components/TeacherOnboarding.tsx`
 
-1. Create a new admin user (school_admin, college_admin, or university_admin)
-2. Log in with the new admin credentials
-3. You should see the Organization Setup form
-4. Fill in the required fields and submit
-5. After successful creation, you'll be redirected to the dashboard
-6. On subsequent logins, you'll go directly to the dashboard
+### College Admin Pages
+- `src/pages/admin/collegeAdmin/Departmentmanagement.tsx`
+- `src/pages/admin/collegeAdmin/ReportsAnalytics.tsx`
+- `src/pages/admin/collegeAdmin/AssessmentResults.tsx`
+- `src/pages/admin/collegeAdmin/DigitalPortfolio.tsx`
+- `src/pages/admin/collegeAdmin/Library.tsx`
+- `src/pages/admin/collegeAdmin/StudentCollegeAdminCommunication.tsx`
+- `src/pages/admin/collegeAdmin/finance/index.tsx`
+- `src/pages/admin/collegeAdmin/finance/hooks/useDepartmentBudgets.ts`
+- `src/pages/admin/collegeAdmin/finance/hooks/useFeeStructures.ts`
+- `src/pages/admin/collegeAdmin/finance/hooks/useFeeTracking.ts`
+- `src/pages/admin/collegeAdmin/events/index.tsx`
+
+### University Admin Pages
+- `src/pages/admin/universityAdmin/AssessmentResults.tsx`
+- `src/pages/admin/universityAdmin/CollegeRegistration.tsx`
+- `src/pages/admin/universityAdmin/Courses.tsx`
+- `src/pages/admin/universityAdmin/DigitalPortfolio.tsx`
+
+### Educator Pages
+- `src/pages/educator/Profile.tsx`
+- `src/pages/educator/EducatorManagement.tsx`
+
+### Student Pages
+- `src/pages/student/Messages.jsx`
+
+## Usage
+
+### For New Admin Users
+
+1. Admin signs up and gets assigned a role (school_admin, college_admin, university_admin)
+2. On first login, OrganizationGuard detects no organization exists
+3. OrganizationSetup form is displayed
+4. Admin fills in organization details and submits
+5. Organization is created in `organizations` table with `admin_id` set to user's ID
+6. Admin is redirected to their dashboard
+
+### For Existing Admin Users
+
+1. Admin logs in
+2. OrganizationGuard checks `organizations` table for matching `admin_id` and `organization_type`
+3. If organization exists, dashboard is rendered immediately
+4. If no organization (legacy user), setup form is shown
+
+## Important Notes
+
+- The `organizations` table is the **single source of truth** for all organization data
+- Legacy tables (`schools`, `colleges`, `universities`) are **DEPRECATED** and kept only for foreign key compatibility
+- All new code should use `organizationService.ts` or `useOrganization.ts` hooks
+- The `admin_id` column links the organization to its admin user
+- The `organization_type` column distinguishes between school, college, and university
+- The `metadata` JSONB column stores type-specific data (principal info for schools, dean info for colleges, etc.)

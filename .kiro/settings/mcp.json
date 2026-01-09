@@ -8,8 +8,7 @@
       "disabled": false,
       "autoApprove": [
         "execute_sql",
-        "apply_migration",
-        "get_edge_function"
+        "apply_migration"
       ]
     }
   }

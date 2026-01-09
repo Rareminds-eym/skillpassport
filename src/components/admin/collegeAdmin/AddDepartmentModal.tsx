@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { XMarkIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
-import { departmentService } from '../../../services/college/departmentService';
 import { useAuth } from '@/context/AuthContext';
+import { ChevronDownIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import React, { useEffect, useState } from "react";
 import { supabase } from '../../../lib/supabaseClient';
+import { departmentService } from '../../../services/college/departmentService';
 
 interface Faculty {
   id: string;
@@ -54,23 +54,13 @@ const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({
     if (isOpen && user?.id) {
       const fetchCollegeId = async () => {
         const { data, error } = await supabase
-          .from('colleges')
+          .from('organizations')
           .select('id')
-          .eq('created_by', user.id)
-          .single();
+          .eq('organization_type', 'college')
+          .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
+          .maybeSingle();
         
-        if (error) {
-          // Try by email if created_by fails
-          const { data: collegeByEmail, error: emailError } = await supabase
-            .from('colleges')
-            .select('id')
-            .eq('deanEmail', user.email)
-            .single();
-          
-          if (!emailError && collegeByEmail) {
-            setCollegeId(collegeByEmail.id);
-          }
-        } else if (data) {
+        if (!error && data) {
           setCollegeId(data.id);
         }
       };

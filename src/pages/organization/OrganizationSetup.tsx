@@ -51,14 +51,6 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
   });
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof OrganizationFormData, string>>>({});
 
-  const getTableName = (): string => {
-    switch (organizationType) {
-      case 'school': return 'schools';
-      case 'college': return 'colleges';
-      case 'university': return 'universities';
-    }
-  };
-
   const getOrganizationLabel = (): string => {
     switch (organizationType) {
       case 'school': return 'School';
@@ -167,13 +159,12 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
     setError(null);
 
     try {
-      const tableName = getTableName();
-      
-      // Check if organization with same name already exists
+      // Check if organization with same name and type already exists
       const { data: existingOrg, error: checkError } = await supabase
-        .from(tableName)
+        .from('organizations')
         .select('id')
         .ilike('name', formData.name.trim())
+        .eq('organization_type', organizationType)
         .maybeSingle();
 
       if (checkError) {
@@ -186,11 +177,12 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
         return;
       }
 
-      // Create the organization
+      // Create the organization in the unified organizations table
       const { data: newOrg, error: createError } = await supabase
-        .from(tableName)
+        .from('organizations')
         .insert({
           name: formData.name.trim(),
+          organization_type: organizationType,
           address: formData.address.trim() || null,
           city: formData.city.trim() || null,
           state: formData.state.trim() || null,

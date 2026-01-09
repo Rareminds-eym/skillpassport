@@ -1,48 +1,43 @@
-import React, { useState, useEffect } from "react";
 import {
-  AcademicCapIcon,
-  BriefcaseIcon,
-  TrophyIcon,
-  PlusIcon,
-  DocumentDuplicateIcon,
-  ShareIcon,
-  CheckIcon,
-  GlobeAltIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  ChevronDownIcon,
-  MapPinIcon,
-   XMarkIcon,
+    AcademicCapIcon,
+    BriefcaseIcon,
+    CheckCircleIcon,
+    CheckIcon,
+    ChevronDownIcon,
+    ClockIcon,
+    DocumentDuplicateIcon,
+    GlobeAltIcon,
+    MapPinIcon,
+    PlusIcon,
+    ShareIcon,
+    TrophyIcon,
+    XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { Card, CardContent } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Progress } from "./ui/progress";
-import { Button } from "./ui/button";
-import { QRCodeSVG } from "qrcode.react";
-import { studentData } from "../data/mockData";
-import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
 import {
-  calculateEmployabilityScore,
-  getDefaultEmployabilityScore,
-} from "../../../utils/employabilityCalculator";
-import EmployabilityDebugger from "./EmployabilityDebugger";
-import EmployabilityScoreCard from "./EmployabilityScoreCard";
-import { generateBadges } from "../../../services/badgeService";
-import DigitalBadges from "./DigitalBadges";
-import { supabase } from "../../../lib/supabaseClient";
-import { FloatingDock } from "./ui/floating-dock";
-import {
-  IconBrandGithub,
-  IconBrandLinkedin,
-  IconBrandTwitter,
-  IconBrandInstagram,
-  IconBrandFacebook,
-  IconWorld,
-  IconBrandYoutube,
+    IconBrandFacebook,
+    IconBrandGithub,
+    IconBrandInstagram,
+    IconBrandLinkedin,
+    IconBrandTwitter,
+    IconBrandYoutube,
+    IconWorld,
 } from "@tabler/icons-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { FileText, Rocket, Sprout, Star, Wrench } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import React, { useEffect, useState } from "react";
+import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
+import { supabase } from "../../../lib/supabaseClient";
+import { generateBadges } from "../../../services/badgeService";
+import {
+    calculateEmployabilityScore,
+    getDefaultEmployabilityScore,
+} from "../../../utils/employabilityCalculator";
 import { capitalizeName } from "../../../utils/helpers";
-import { Rocket, Star, Sprout, Wrench, FileText } from "lucide-react";
+import EmployabilityScoreCard from "./EmployabilityScoreCard";
+import { Badge } from "./ui/badge";
+import { Card, CardContent } from "./ui/card";
+import { FloatingDock } from "./ui/floating-dock";
 
 // Helper to get level display with icon
 const getLevelDisplay = (level, label) => {
@@ -338,7 +333,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
       if (realStudentData.school_id && !realStudentData.schools?.name) {
         try {
           const { data, error } = await supabase
-            .from('schools')
+            .from('organizations')
             .select('name, city, state')
             .eq('id', realStudentData.school_id)
             .single();

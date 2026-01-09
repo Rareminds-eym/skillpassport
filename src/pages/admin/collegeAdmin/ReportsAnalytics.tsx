@@ -1,27 +1,27 @@
-import React, { useState, useEffect } from "react";
-import ReactApexChart from "react-apexcharts";
-import {
-  BarChart3,
-  TrendingUp,
-  Users,
-  FileText,
-  Download,
-  Filter,
-  Calendar,
-  DollarSign,
-  Award,
-  Target,
-  ChevronDown,
-  Table,
-  PieChart,
-  Activity,
-  Briefcase,
-  TrendingDown,
-  Loader2,
-} from "lucide-react";
-import { ApexOptions } from "apexcharts";
-import { reportsService } from "@/services/college/reportsService";
 import { useAuth } from "@/hooks/useAuth";
+import { reportsService } from "@/services/college/reportsService";
+import { ApexOptions } from "apexcharts";
+import {
+    Activity,
+    Award,
+    BarChart3,
+    Briefcase,
+    Calendar,
+    ChevronDown,
+    DollarSign,
+    Download,
+    FileText,
+    Filter,
+    Loader2,
+    PieChart,
+    Table,
+    Target,
+    TrendingDown,
+    TrendingUp,
+    Users,
+} from "lucide-react";
+import React, { useEffect, useState } from "react";
+import ReactApexChart from "react-apexcharts";
 
 interface FilterState {
   dateRange: string;
@@ -124,29 +124,16 @@ const ReportsAnalytics: React.FC = () => {
         if (user?.id) {
           const { supabase } = await import('@/lib/supabaseClient');
           
-          // Try by deanEmail first (case-insensitive)
-          if (user.email) {
-            const { data: collegeByEmail } = await supabase
-              .from('colleges')
-              .select('id')
-              .ilike('deanEmail', user.email)
-              .single();
-            
-            if (collegeByEmail?.id) {
-              setCollegeId(collegeByEmail.id);
-              return;
-            }
-          }
-
-          // Fallback to created_by
-          const { data } = await supabase
-            .from('colleges')
+          // Query organizations table for college
+          const { data: org } = await supabase
+            .from('organizations')
             .select('id')
-            .eq('created_by', user.id)
-            .single();
+            .eq('organization_type', 'college')
+            .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
+            .maybeSingle();
           
-          if (data?.id) {
-            setCollegeId(data.id);
+          if (org?.id) {
+            setCollegeId(org.id);
           }
         }
       } catch (error) {

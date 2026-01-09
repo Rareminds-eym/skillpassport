@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabaseClient';
-import type { User, BulkImportResult, ApiResponse } from '../../types/college';
+import type { ApiResponse, BulkImportResult, User } from '../../types/college';
 
 /**
  * User Management Service
@@ -143,15 +143,16 @@ export const userManagementService = {
 
       if (isStaff) {
         // Create in college_lecturers table
-        // Get college ID from current user context
+        // Get college ID from current user context (using unified organizations table)
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         let collegeId = null;
 
-        if (currentUser?.email) {
+        if (currentUser?.id || currentUser?.email) {
           const { data: collegeData } = await supabase
-            .from('colleges')
+            .from('organizations')
             .select('id')
-            .or(`email.eq.${currentUser.email},admin_email.eq.${currentUser.email}`)
+            .eq('organization_type', 'college')
+            .or(`admin_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
             .maybeSingle();
 
           collegeId = collegeData?.id;
@@ -160,8 +161,9 @@ export const userManagementService = {
         if (!collegeId) {
           console.warn('No college ID found, using first available college');
           const { data: firstCollege } = await supabase
-            .from('colleges')
+            .from('organizations')
             .select('id')
+            .eq('organization_type', 'college')
             .limit(1)
             .single();
           

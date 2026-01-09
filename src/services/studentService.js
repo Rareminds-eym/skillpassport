@@ -319,14 +319,15 @@ export const updateStudentProfile = async (userId, updates) => {
 };
 
 /**
- * Get all colleges for selection dropdown
+ * Get all colleges for selection dropdown from organizations table
  * @returns {Promise<{ success: boolean, data: Array | null, error: string | null }>}
  */
 export const getAllColleges = async () => {
   try {
     const { data, error } = await supabase
-      .from('colleges')
+      .from('organizations')
       .select('id, name, city, state')
+      .eq('organization_type', 'college')
       .order('name');
 
     if (error) {
@@ -354,14 +355,15 @@ export const getAllColleges = async () => {
 };
 
 /**
- * Get all schools for selection dropdown
+ * Get all schools for selection dropdown from organizations table
  * @returns {Promise<{ success: boolean, data: Array | null, error: string | null }>}
  */
 export const getAllSchools = async () => {
   try {
     const { data, error } = await supabase
-      .from('schools')
+      .from('organizations')
       .select('id, name, city, state')
+      .eq('organization_type', 'school')
       .order('name');
 
     if (error) {

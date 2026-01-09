@@ -88,16 +88,17 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
                     schoolId = educator.school_id;
                     console.log('✅ Found school_id in school_educators:', schoolId);
                 } else {
-                    // Check schools table by email
-                    const { data: school } = await supabase
-                        .from('schools')
+                    // Check organizations table by email
+                    const { data: org } = await supabase
+                        .from('organizations')
                         .select('id')
+                        .eq('organization_type', 'school')
                         .eq('email', user.email)
-                        .single();
+                        .maybeSingle();
                     
-                    schoolId = school?.id || null;
+                    schoolId = org?.id || null;
                     if (schoolId) {
-                        console.log('✅ Found school_id in schools table:', schoolId);
+                        console.log('✅ Found school_id in organizations table:', schoolId);
                     }
                 }
             }
@@ -127,15 +128,16 @@ async function getCurrentUserInfo(): Promise<{ type: 'educator' | 'admin', id: s
             return { type: 'educator', id: educatorData.id };
         }
 
-        // Check if admin
-        const { data: schoolData } = await supabase
-            .from('schools')
+        // Check if admin in organizations table
+        const { data: orgData } = await supabase
+            .from('organizations')
             .select('id')
-            .eq('principal_email', userEmail)
+            .eq('organization_type', 'school')
+            .eq('email', userEmail)
             .maybeSingle();
 
-        if (schoolData?.id) {
-            return { type: 'admin', id: schoolData.id };
+        if (orgData?.id) {
+            return { type: 'admin', id: orgData.id };
         }
 
         return null;

@@ -672,36 +672,21 @@ export class OrganizationBillingService {
   async getBillingContacts(organizationId: string): Promise<BillingContact[]> {
     try {
       // For now, return from organization metadata
-      // In production, this would be a separate billing_contacts table
+      // Get billing contact from unified organizations table
       const { data, error } = await supabase
-        .from('schools')
-        .select('admin_email, admin_name, phone')
+        .from('organizations')
+        .select('email, phone, name')
         .eq('id', organizationId)
         .single();
 
       if (error) {
-        // Try colleges table
-        const { data: collegeData, error: collegeError } = await supabase
-          .from('colleges')
-          .select('admin_email, admin_name, phone')
-          .eq('id', organizationId)
-          .single();
-
-        if (collegeError) {
-          return [];
-        }
-
-        return collegeData ? [{
-          name: collegeData.admin_name || 'Admin',
-          email: collegeData.admin_email || '',
-          phone: collegeData.phone,
-          isPrimary: true
-        }] : [];
+        console.error('Error fetching organization for billing:', error);
+        return [];
       }
 
       return data ? [{
-        name: data.admin_name || 'Admin',
-        email: data.admin_email || '',
+        name: data.name || 'Admin',
+        email: data.email || '',
         phone: data.phone,
         isPrimary: true
       }] : [];

@@ -1,38 +1,38 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { departmentService, DepartmentWithStats, Faculty } from '@/services/college/departmentService';
-import { supabase } from '../../../lib/supabaseClient';
 import {
-  FunnelIcon,
-  TableCellsIcon,
-  Squares2X2Icon,
-  EyeIcon,
-  XMarkIcon,
-  BuildingOffice2Icon,
-  UserGroupIcon,
-  PlusCircleIcon,
-  TrashIcon,
-  ChevronDownIcon,
-  EnvelopeIcon,
-  AcademicCapIcon,
-  BookOpenIcon,
-  EllipsisVerticalIcon,
-  PencilSquareIcon,
-  UserIcon,
-  ChevronUpIcon,
+    AcademicCapIcon,
+    BookOpenIcon,
+    BuildingOffice2Icon,
+    ChevronDownIcon,
+    ChevronUpIcon,
+    EllipsisVerticalIcon,
+    EnvelopeIcon,
+    EyeIcon,
+    FunnelIcon,
+    PencilSquareIcon,
+    PlusCircleIcon,
+    Squares2X2Icon,
+    TableCellsIcon,
+    TrashIcon,
+    UserGroupIcon,
+    UserIcon,
+    XMarkIcon,
 } from "@heroicons/react/24/outline";
-import SearchBar from "../../../components/common/SearchBar";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useMemo, useState } from "react";
+import { toast } from 'react-hot-toast';
 import Pagination from "../../../components/admin/Pagination";
+import SearchBar from "../../../components/common/SearchBar";
+import { supabase } from '../../../lib/supabaseClient';
 
 // Import modal components
+import AddDepartmentModal from "../../../components/admin/collegeAdmin/AddDepartmentModal";
+import DepartmentDetailsDrawer from "../../../components/admin/collegeAdmin/DepartmentDetailsDrawer";
+import EditDepartmentModal from "../../../components/admin/collegeAdmin/EditDepartmentModal";
 import FacultyAssignmentModal from "../../../components/admin/collegeAdmin/FacultyAssignmentModal";
 import HODAssignmentModal from "../../../components/admin/collegeAdmin/HODAssignmentModal";
-import AddDepartmentModal from "../../../components/admin/collegeAdmin/AddDepartmentModal";
-import EditDepartmentModal from "../../../components/admin/collegeAdmin/EditDepartmentModal";
-import DepartmentDetailsDrawer from "../../../components/admin/collegeAdmin/DepartmentDetailsDrawer";
 import ConfirmationModal from "../../../components/ui/ConfirmationModal";
 
 // Types
@@ -160,36 +160,24 @@ const DepartmentManagement: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
-  // Fetch college ID from colleges table using created_by
+  // Fetch college ID from organizations table using admin_id
   const { data: collegeData, error: collegeError } = useQuery({
     queryKey: ['userCollege', user?.id],
     queryFn: async () => {
       console.log('Fetching college for user:', user?.id);
       const { data, error } = await supabase
-        .from('colleges')
+        .from('organizations')
         .select('id, name')
-        .eq('created_by', user?.id)
-        .single();
+        .eq('organization_type', 'college')
+        .or(`admin_id.eq.${user?.id},email.eq.${user?.email}`)
+        .maybeSingle();
       
       if (error) {
-        console.error('Error fetching college:', error);
-        // If query fails, try to get from deanEmail match
-        const { data: collegeByEmail, error: emailError } = await supabase
-          .from('colleges')
-          .select('id, name')
-          .eq('deanEmail', user?.email)
-          .single();
-        
-        if (emailError) {
-          console.error('Error fetching college by email:', emailError);
-          throw emailError;
-        }
-        
-        console.log('College data fetched by email:', collegeByEmail);
-        return collegeByEmail;
+        console.error('Error fetching college from organizations:', error);
+        throw error;
       }
       
-      console.log('College data fetched:', data);
+      console.log('College data fetched from organizations:', data);
       return data;
     },
     enabled: !!user?.id,

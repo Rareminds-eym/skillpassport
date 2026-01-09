@@ -1,10 +1,10 @@
+import { AlertCircle, CheckCircle, FileText, Shield, Upload, X } from "lucide-react";
 import React, { useState } from "react";
-import { Upload, FileText, CheckCircle, AlertCircle, X, Shield } from "lucide-react";
-import { supabase } from "../../../../lib/supabaseClient";
-import { validateDocument } from "../../../../utils/teacherValidation";
-import { useUserRole } from "../../../../hooks/useUserRole";
 import RoleDebugger from "../../../../components/debug/RoleDebugger";
+import { useUserRole } from "../../../../hooks/useUserRole";
+import { supabase } from "../../../../lib/supabaseClient";
 import storageService from "../../../../services/storageService";
+import { validateDocument } from "../../../../utils/teacherValidation";
 
 interface SubjectExpertise {
   name: string;
@@ -288,30 +288,20 @@ const TeacherOnboardingPage: React.FC = () => {
 
       let schoolId = educatorData?.school_id;
 
-      // If not found in school_educators, check schools table
+      // If not found in school_educators, check organizations table
       if (!schoolId) {
-        console.log("Not found in school_educators, checking schools table...");
+        console.log("Not found in school_educators, checking organizations table...");
+        const { data: { user } } = await supabase.auth.getUser();
         const { data: schoolData } = await supabase
-          .from("schools")
+          .from("organizations")
           .select("id")
-          .eq("email", userEmail)
+          .eq("organization_type", "school")
+          .or(`admin_id.eq.${user?.id},email.eq.${userEmail}`)
           .maybeSingle();
 
         if (schoolData?.id) {
           schoolId = schoolData.id;
-          console.log("Found school_id from schools table:", schoolId);
-        } else {
-          // Also try principal_email
-          const { data: schoolByPrincipal } = await supabase
-            .from("schools")
-            .select("id")
-            .eq("principal_email", userEmail)
-            .maybeSingle();
-
-          if (schoolByPrincipal?.id) {
-            schoolId = schoolByPrincipal.id;
-            console.log("Found school_id from principal_email:", schoolId);
-          }
+          console.log("Found school_id from organizations table:", schoolId);
         }
       }
 

@@ -1,43 +1,41 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
-import {
-  Search,
-  Send,
-  MoreVertical,
-  Phone,
-  Video,
-  Paperclip,
-  Smile,
-  Check,
-  CheckCheck,
-  Circle,
-  Loader2,
-  Trash2,
-  Users,
-  GraduationCap,
-  Building2,
-  ChevronDown
-} from 'lucide-react';
-import { useStudentConversations, useStudentMessages } from '../../hooks/useStudentMessages';
-import { useStudentEducatorConversations, useStudentEducatorMessages } from '../../hooks/useStudentEducatorMessages';
-import { useStudentAdminConversations, useStudentAdminMessages, useCreateStudentAdminConversation } from '../../hooks/useStudentAdminMessages';
-import { useStudentCollegeAdminConversations, useStudentCollegeAdminMessages, useCreateStudentCollegeAdminConversation } from '../../hooks/useStudentCollegeAdminMessages';
-import MessageService from '../../services/messageService';
-import { supabase } from '../../lib/supabaseClient';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '../../context/AuthContext';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
-import { useRealtimePresence } from '../../hooks/useRealtimePresence';
-import { useTypingIndicator } from '../../hooks/useTypingIndicator';
-import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
+import {
+    Building2,
+    Check,
+    CheckCheck,
+    ChevronDown,
+    GraduationCap,
+    Loader2,
+    MoreVertical,
+    Paperclip,
+    Phone,
+    Search,
+    Send,
+    Smile,
+    Trash2,
+    Users,
+    Video
+} from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
 import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
-import NewEducatorConversationModal from '../../components/messaging/NewEducatorConversationModal';
 import NewAdminConversationModal from '../../components/messaging/NewAdminConversationModal';
 import NewCollegeAdminConversationModal from '../../components/messaging/NewCollegeAdminConversationModal';
+import NewEducatorConversationModal from '../../components/messaging/NewEducatorConversationModal';
+import { useAuth } from '../../context/AuthContext';
+import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
+import { useRealtimePresence } from '../../hooks/useRealtimePresence';
+import { useCreateStudentAdminConversation, useStudentAdminConversations, useStudentAdminMessages } from '../../hooks/useStudentAdminMessages';
+import { useCreateStudentCollegeAdminConversation, useStudentCollegeAdminConversations, useStudentCollegeAdminMessages } from '../../hooks/useStudentCollegeAdminMessages';
+import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentEducatorConversations, useStudentEducatorMessages } from '../../hooks/useStudentEducatorMessages';
+import { useStudentConversations, useStudentMessages } from '../../hooks/useStudentMessages';
+import { useTypingIndicator } from '../../hooks/useTypingIndicator';
+import { supabase } from '../../lib/supabaseClient';
+import MessageService from '../../services/messageService';
 
 const Messages = () => {
   const queryClient = useQueryClient();
@@ -812,15 +810,16 @@ const Messages = () => {
           if (collegeAdmin) {
             adminUserId = collegeAdmin.user_id || collegeAdmin.userId;
           } else {
-            // Fallback: check if user is college owner
+            // Fallback: check if user is college owner in organizations table
             const { data: ownerData } = await supabase
-              .from('colleges')
-              .select('created_by')
+              .from('organizations')
+              .select('admin_id')
               .eq('id', currentChat.collegeId)
+              .eq('organization_type', 'college')
               .single();
 
             if (ownerData) {
-              adminUserId = ownerData.created_by;
+              adminUserId = ownerData.admin_id;
             }
           }
 
@@ -1810,15 +1809,16 @@ const Messages = () => {
               if (collegeAdmin) {
                 adminUserId = collegeAdmin.user_id || collegeAdmin.userId;
               } else {
-                // Fallback: check if user is college owner
+                // Fallback: check if user is college owner in organizations table
                 const { data: ownerData } = await supabase
-                  .from('colleges')
-                  .select('created_by')
+                  .from('organizations')
+                  .select('admin_id')
                   .eq('id', collegeId)
+                  .eq('organization_type', 'college')
                   .single();
 
                 if (ownerData) {
-                  adminUserId = ownerData.created_by;
+                  adminUserId = ownerData.admin_id;
                 }
               }
 

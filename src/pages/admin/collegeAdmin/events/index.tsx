@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { CalendarIcon, ClipboardDocumentListIcon, ChartBarIcon } from "@heroicons/react/24/outline";
+import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../../../../lib/supabaseClient";
-import { CollegeEvent } from "./types";
-import { useEvents } from "./hooks/useEvents";
-import { useCalendar } from "./hooks/useCalendar";
-import { useRegistrations } from "./hooks/useRegistrations";
-import { useEventAnalytics } from "./hooks/useEventAnalytics";
-import { TodayEventsWidget } from "./components/TodayEventsWidget";
+import { AnalyticsTab } from "./components/AnalyticsTab";
+import { CalendarTab } from "./components/CalendarTab";
+import { EventFormModal } from "./components/EventFormModal";
 import { EventStatsCards } from "./components/EventStatsCards";
 import { EventsTab } from "./components/EventsTab";
-import { CalendarTab } from "./components/CalendarTab";
 import { RegistrationsTab } from "./components/RegistrationsTab";
-import { AnalyticsTab } from "./components/AnalyticsTab";
-import { EventFormModal } from "./components/EventFormModal";
+import { TodayEventsWidget } from "./components/TodayEventsWidget";
+import { useCalendar } from "./hooks/useCalendar";
+import { useEventAnalytics } from "./hooks/useEventAnalytics";
+import { useEvents } from "./hooks/useEvents";
+import { useRegistrations } from "./hooks/useRegistrations";
+import { CollegeEvent } from "./types";
 
 const tabs = [
   { id: "events", label: "Event Scheduling", icon: CalendarIcon },
@@ -30,15 +30,15 @@ const EventManagement: React.FC = () => {
   const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<CollegeEvent | null>(null);
   const [selectedEventForReg, setSelectedEventForReg] = useState<CollegeEvent | null>(null);
 
-  // Fetch college ID
+  // Fetch college ID from organizations table
   useEffect(() => {
     const fetchCollegeId = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // First check colleges table (admin who created the college)
-          const { data: college } = await supabase.from("colleges").select("id").eq("created_by", user.id).single();
-          if (college?.id) { setCollegeId(college.id); return; }
+          // First check organizations table for college admin
+          const { data: org } = await supabase.from("organizations").select("id").eq("organization_type", "college").or(`admin_id.eq.${user.id},email.eq.${user.email}`).maybeSingle();
+          if (org?.id) { setCollegeId(org.id); return; }
           // Check college_lecturers table
           const { data: lecturer } = await supabase.from("college_lecturers").select("collegeId").or(`userId.eq.${user.id},user_id.eq.${user.id}`).single();
           if (lecturer?.collegeId) { setCollegeId(lecturer.collegeId); return; }

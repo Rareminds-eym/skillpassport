@@ -107,15 +107,16 @@ class SchoolLibraryService {
       return educator.school_id;
     }
     
-    // Check schools table by email
-    const { data: school } = await supabase
-      .from('schools')
+    // Check organizations table by email
+    const { data: org } = await supabase
+      .from('organizations')
       .select('id')
+      .eq('organization_type', 'school')
       .eq('email', user.email)
-      .single();
+      .maybeSingle();
     
-    if (school?.id) {
-      return school.id;
+    if (org?.id) {
+      return org.id;
     }
     
     throw new Error('No school found for user');
