@@ -46,22 +46,24 @@ export const getStudentByEmail = async (email) => {
       .from('students')
       .select(`
         *,
-        schools:school_id (
+        school:organizations!students_school_id_fkey (
           id,
           name,
           code,
           city,
-          state
+          state,
+          organization_type
         ),
         university_colleges:university_college_id (
           id,
           name,
           code,
-          universities:university_id (
+          university:organizations!university_colleges_university_id_fkey (
             id,
             name,
-            district,
-            state
+            city,
+            state,
+            organization_type
           )
         ),
         skill_passports (
@@ -391,7 +393,7 @@ const formattedExperience = tableExperience
       // School/University College linkage
       school_id: data.school_id,
       university_college_id: data.university_college_id,
-      school: data.schools || null,
+      school: data.school || null,
       universityCollege: data.university_colleges || null,
 
       // School Information Fields
@@ -501,22 +503,24 @@ export const getStudentById = async (studentId) => {
       .from('students')
       .select(`
         *,
-        schools:school_id (
+        school:organizations!students_school_id_fkey (
           id,
           name,
           code,
           city,
-          state
+          state,
+          organization_type
         ),
         university_colleges:university_college_id (
           id,
           name,
           code,
-          universities:university_id (
+          university:organizations!university_colleges_university_id_fkey (
             id,
             name,
-            district,
-            state
+            city,
+            state,
+            organization_type
           )
         ),
         skill_passports (
@@ -848,7 +852,7 @@ export const getStudentById = async (studentId) => {
       // School/University College linkage
       school_id: data.school_id,
       university_college_id: data.university_college_id,
-      school: data.schools || null,
+      school: data.school || null,
       universityCollege: data.university_colleges || null,
 
       // School Information Fields

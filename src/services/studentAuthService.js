@@ -1,15 +1,15 @@
 import { supabase } from '../lib/supabaseClient';
 import {
-  AUTH_ERROR_CODES,
-  validateCredentials,
-  validateEmail,
-  mapSupabaseError,
-  handleAuthError,
-  logAuthEvent,
-  withRetry,
-  withTimeout,
-  buildErrorResponse,
-  generateCorrelationId,
+    AUTH_ERROR_CODES,
+    buildErrorResponse,
+    generateCorrelationId,
+    handleAuthError,
+    logAuthEvent,
+    mapSupabaseError,
+    validateCredentials,
+    validateEmail,
+    withRetry,
+    withTimeout,
 } from '../utils/authErrorHandler';
 
 /**
@@ -161,11 +161,12 @@ export const loginStudent = async (email, password) => {
             school_id,
             university_college_id,
             profile,
-            schools:school_id (
+            school:organizations!students_school_id_fkey (
               id,
               name,
               code,
-              approval_status
+              approval_status,
+              organization_type
             ),
             university_colleges:university_college_id (
               id,
@@ -508,10 +509,11 @@ export const getCurrentStudent = async () => {
         .from('students')
         .select(`
           *,
-          schools:school_id (
+          school:organizations!students_school_id_fkey (
             id,
             name,
-            code
+            code,
+            organization_type
           )
         `)
         .eq('user_id', user.id)
@@ -586,10 +588,11 @@ export const getStudentByEmail = async (email) => {
         .from('students')
         .select(`
           *,
-          schools:school_id (
+          school:organizations!students_school_id_fkey (
             id,
             name,
-            code
+            code,
+            organization_type
           )
         `)
         .eq('email', emailValidation.sanitized)

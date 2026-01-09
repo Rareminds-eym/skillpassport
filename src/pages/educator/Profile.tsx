@@ -149,8 +149,9 @@ const Profile = () => {
         .from('school_educators')
         .select(`
           *,
-          schools:school_id (
-            name
+          school:organizations!school_educators_school_id_fkey (
+            name,
+            organization_type
           )
         `)
         .eq('email', email)

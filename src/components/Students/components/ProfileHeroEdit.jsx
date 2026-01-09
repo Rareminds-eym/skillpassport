@@ -358,10 +358,11 @@ const ProfileHeroEdit = ({ onEditClick }) => {
             .from('university_colleges')
             .select(`
               name,
-              universities:university_id (
+              university:organizations!university_colleges_university_id_fkey (
                 name,
-                district,
-                state
+                city,
+                state,
+                organization_type
               )
             `)
             .eq('id', realStudentData.university_college_id)
@@ -369,15 +370,15 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
           if (data && !error) {
             const collegeName = data.name;
-            const universityName = data.universities?.name;
+            const universityName = data.university?.name;
             setFetchedInstitutionName(
               universityName ? `${collegeName} - ${universityName}` : collegeName
             );
-            // Set location if district or state exists
-            const district = data.universities?.district;
-            const state = data.universities?.state;
-            if (district || state) {
-              const locationParts = [district, state].filter(Boolean);
+            // Set location if city or state exists
+            const city = data.university?.city;
+            const state = data.university?.state;
+            if (city || state) {
+              const locationParts = [city, state].filter(Boolean);
               setFetchedInstitutionLocation(locationParts.join(', '));
             }
           }

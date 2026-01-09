@@ -248,3 +248,69 @@ The following services have been updated to use the unified `organizations` tabl
 - The `admin_id` column links the organization to its admin user
 - The `organization_type` column distinguishes between school, college, and university
 - The `metadata` JSONB column stores type-specific data (principal info for schools, dean info for colleges, etc.)
+
+
+## PostgREST Join Syntax Reference
+
+When querying tables that have foreign keys to the `organizations` table, use the foreign key constraint name to specify the relationship:
+
+```javascript
+// For students table - joining to organizations via school_id:
+.from('students')
+.select(`
+  *,
+  school:organizations!students_school_id_fkey (
+    id,
+    name,
+    code,
+    city,
+    state,
+    organization_type
+  ),
+  university_colleges:university_college_id (
+    id,
+    name,
+    code,
+    university:organizations!university_colleges_university_id_fkey (
+      id,
+      name,
+      city,
+      state,
+      organization_type
+    )
+  )
+`)
+
+// For school_educators table - joining to organizations via school_id:
+.from('school_educators')
+.select(`
+  *,
+  school:organizations!school_educators_school_id_fkey (
+    name,
+    organization_type
+  )
+`)
+
+// For university_colleges table - joining to organizations via university_id:
+.from('university_colleges')
+.select(`
+  name,
+  university:organizations!university_colleges_university_id_fkey (
+    name,
+    city,
+    state,
+    organization_type
+  )
+`)
+```
+
+### Key Foreign Key Constraints
+
+| Table | Column | Constraint Name | Foreign Table |
+|-------|--------|-----------------|---------------|
+| students | school_id | students_school_id_fkey | organizations |
+| students | college_id | students_college_id_fkey | organizations |
+| students | universityId | students_universityid_fkey | organizations |
+| students | university_college_id | students_university_college_id_fkey | university_colleges |
+| school_educators | school_id | school_educators_school_id_fkey | organizations |
+| university_colleges | university_id | university_colleges_university_id_fkey | organizations |
