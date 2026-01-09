@@ -20,7 +20,7 @@ import toast from 'react-hot-toast';
 import { opportunitiesService } from '@/services/opportunitiesService';
 import type { Opportunity } from '@/services/opportunitiesService';
 import { applicationTrackingService } from '@/services/applicationTrackingService';
-import type { ApplicationTrackingData, ApplicationFilters, ApplicationStats } from '@/services/applicationTrackingService';
+import type { ApplicationTrackingData, ApplicationStats } from '@/services/applicationTrackingService';
 
 const ApplicationTracking: React.FC = () => {
   const [applicationSearchTerm, setApplicationSearchTerm] = useState("");
@@ -59,8 +59,6 @@ const ApplicationTracking: React.FC = () => {
     rejected: 0,
     withdrawn: 0
   });
-  const [companies, setCompanies] = useState<Array<{id: string, name: string}>>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
   const [isLoadingApplications, setIsLoadingApplications] = useState(false);
   const [applicationError, setApplicationError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -107,17 +105,13 @@ const ApplicationTracking: React.FC = () => {
       setApplicationError(null);
 
       // Load applications, stats, companies, and departments in parallel
-      const [applicationsData, statsData, companiesData, departmentsData] = await Promise.all([
+      const [applicationsData, statsData] = await Promise.all([
         applicationTrackingService.getAllApplications(),
-        applicationTrackingService.getApplicationStats(),
-        applicationTrackingService.getCompaniesWithApplications(),
-        applicationTrackingService.getDepartmentsWithApplications()
+        applicationTrackingService.getApplicationStats()
       ]);
 
       setApplications(applicationsData);
       setApplicationStats(statsData);
-      setCompanies(companiesData);
-      setDepartments(departmentsData);
 
     } catch (error) {
       console.error('Error loading applications:', error);
@@ -280,36 +274,6 @@ const ApplicationTracking: React.FC = () => {
     document.body.removeChild(link);
     
     toast.success("Applications exported successfully");
-  };
-
-  const exportJobDetails = () => {
-    // Create JSON content with job details and application summary
-    const exportData = {
-      job_details: selectedJobDetails,
-      application_summary: {
-        total_applications: filteredApplications.length,
-        eligible: filteredApplications.filter(s => s.status === 'eligible').length,
-        applied: filteredApplications.filter(s => s.status === 'applied').length,
-        shortlisted: filteredApplications.filter(s => s.status === 'shortlisted').length,
-        selected: filteredApplications.filter(s => s.status === 'selected').length,
-        rejected: filteredApplications.filter(s => s.status === 'rejected').length
-      },
-      export_timestamp: new Date().toISOString()
-    };
-
-    // Create and download JSON file
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${selectedJobDetails.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_job_details.json`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    toast.success("Job details exported successfully");
   };
 
   const clearApplicationFilters = () => {

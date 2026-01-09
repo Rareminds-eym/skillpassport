@@ -24,6 +24,7 @@ import {
   FolderIcon,
   SparklesIcon,
   ShieldCheckIcon,
+  CreditCardIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../../context/AuthContext";
 import { TrophyIcon } from "lucide-react";
@@ -328,6 +329,27 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           ],
         },
         {
+          title: "Examination Management",
+          key: "examinations",
+          items: [
+            {
+              name: "Examination Scheduling",
+              path: "/university-admin/examinations",
+              icon: ClipboardDocumentListIcon,
+            },
+            {
+              name: "Grade Calculation",
+              path: "/university-admin/examinations/grades",
+              icon: ChartPieIcon,
+            },
+            {
+              name: "Results Publishing",
+              path: "/university-admin/examinations/results",
+              icon: DocumentChartBarIcon,
+            },
+          ],
+        },
+        {
           title: "Placement & Industry Linkages",
           key: "placements",
           items: [
@@ -350,6 +372,27 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               name: "MoUs & Partnerships",
               path: "/university-admin/placements/mous",
               icon: BuildingOffice2Icon,
+            },
+          ],
+        },
+        {
+          title: "Finance & Fees",
+          key: "finance",
+          items: [
+            {
+              name: "Fee Structures",
+              path: "/university-admin/finance",
+              icon: BanknotesIcon,
+            },
+            {
+              name: "Payment Tracking",
+              path: "/university-admin/finance/payments",
+              icon: CreditCardIcon,
+            },
+            {
+              name: "Financial Reports",
+              path: "/university-admin/finance/reports",
+              icon: DocumentChartBarIcon,
             },
           ],
         },

@@ -1,8 +1,8 @@
 import React from "react";
-import PlacementManagement from "./placement";
+import PlacementManagementComponent from "./placement";
 
-const PlacementManagementWrapper: React.FC = () => {
-  return <PlacementManagement />;
+const PlacementManagement: React.FC = () => {
+  return <PlacementManagementComponent />;
 };
 
-export default PlacementManagementWrapper;
+export default PlacementManagement;

@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import toast from 'react-hot-toast';
 import { opportunitiesService } from '@/services/opportunitiesService';
-import type { Opportunity, OpportunityFilters } from '@/services/opportunitiesService';
+import type { Opportunity } from '@/services/opportunitiesService';
 
 
 const JobPostings: React.FC = () => {

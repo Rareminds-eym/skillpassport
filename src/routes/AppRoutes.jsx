@@ -270,6 +270,24 @@ const UniversityAdminAssessmentResults = lazy(() =>
 const UniversityAdminSettings = lazy(() =>
   import("../pages/admin/universityAdmin/Settings")
 );
+const UniversityExaminationManagement = lazy(() =>
+  import("../pages/admin/universityAdmin/ExaminationManagement")
+);
+const UniversityGradeCalculation = lazy(() =>
+  import("../pages/admin/universityAdmin/GradeCalculation")
+);
+const UniversityResultsPublishing = lazy(() =>
+  import("../pages/admin/universityAdmin/ResultsPublishing")
+);
+const UniversityFinance = lazy(() =>
+  import("../pages/admin/universityAdmin/Finance")
+);
+const UniversityPaymentTracking = lazy(() =>
+  import("../pages/admin/universityAdmin/PaymentTracking")
+);
+const UniversityFinancialReports = lazy(() =>
+  import("../pages/admin/universityAdmin/FinancialReports")
+);
 
 const AttendanceTracking = lazy(() =>
   import("../pages/admin/collegeAdmin/Attendancetracking")
@@ -627,6 +645,12 @@ const AppRoutes = () => {
           <Route path="placements/readiness" element={<PlacementReadiness />} />
           <Route path="analytics/obe-tracking" element={<OutcomeBasedEducation />} />
           <Route path="ai-counselling" element={<AICounselling />} />
+          <Route path="examinations" element={<UniversityExaminationManagement />} />
+          <Route path="examinations/grades" element={<UniversityGradeCalculation />} />
+          <Route path="examinations/results" element={<UniversityResultsPublishing />} />
+          <Route path="finance" element={<UniversityFinance />} />
+          <Route path="finance/payments" element={<UniversityPaymentTracking />} />
+          <Route path="finance/reports" element={<UniversityFinancialReports />} />
           <Route path="settings" element={<UniversityAdminSettings />} />
           <Route path="subscription/manage" element={<SubscriptionManage />} />
           <Route path="subscription/add-ons" element={<AddOns />} />
