@@ -224,10 +224,10 @@ export const lessonPlanService = {
         program_id: programId,
         course_id: courseId,
         academic_year: academicYear,
-        status: 'published OR draft'
+        status: 'published OR approved OR draft'
       });
 
-      // First find the curriculum - try published first, then draft
+      // First find the curriculum - try published first, then approved, then draft
       let { data: curriculum, error: curriculumError } = await supabase
         .from('college_curriculums')
         .select('id, status, created_at')
@@ -238,9 +238,26 @@ export const lessonPlanService = {
         .eq('status', 'published')
         .single();
 
-      // If no published curriculum found, try draft
+      // If no published curriculum found, try approved
       if (curriculumError || !curriculum) {
-        console.log('📝 No published curriculum found, trying draft...');
+        console.log('📝 No published curriculum found, trying approved...');
+        const { data: approvedCurriculum, error: approvedError } = await supabase
+          .from('college_curriculums')
+          .select('id, status, created_at')
+          .eq('college_id', collegeId)
+          .eq('program_id', programId)
+          .eq('course_id', courseId)
+          .eq('academic_year', academicYear)
+          .eq('status', 'approved')
+          .single();
+        
+        curriculum = approvedCurriculum;
+        curriculumError = approvedError;
+      }
+
+      // If no approved curriculum found, try draft
+      if (curriculumError || !curriculum) {
+        console.log('📝 No approved curriculum found, trying draft...');
         const { data: draftCurriculum, error: draftError } = await supabase
           .from('college_curriculums')
           .select('id, status, created_at')
