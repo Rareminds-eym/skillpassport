@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import OpportunitiesService from '../services/opportunitiesService';
+import { opportunitiesService } from '../services/opportunitiesService';
 
 /**
  * Custom hook for managing opportunities data with server-side pagination
@@ -48,9 +48,9 @@ export const useOpportunities = (options = {}) => {
   });
 
   /**
-   * Fetch opportunities with server-side pagination
+   * Fetch all opportunities (main method using our service)
    */
-  const fetchPaginatedOpportunities = useCallback(async (currentFilters) => {
+  const fetchAllOpportunities = useCallback(async () => {
     // Prevent duplicate fetches
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
@@ -59,23 +59,21 @@ export const useOpportunities = (options = {}) => {
     setError(null);
 
     try {
-      const result = await OpportunitiesService.getPaginatedOpportunities({
-        page,
-        pageSize,
-        searchTerm,
-        filters: currentFilters,
-        sortBy
-      });
+      // Build filters object
+      const opportunityFilters = {
+        ...filters,
+        is_active: activeOnly,
+        search: searchTerm && searchTerm.trim() ? searchTerm : undefined
+      };
 
-      const formattedOpportunities = result.data.map(opp => 
-        OpportunitiesService.formatOpportunityForDisplay(opp)
-      );
+      // Fetch opportunities with filters
+      const data = await opportunitiesService.getAllOpportunities(opportunityFilters);
 
-      setOpportunities(formattedOpportunities);
-      setTotalCount(result.totalCount);
-      setTotalPages(result.totalPages);
+      setOpportunities(data);
+      setTotalCount(data.length);
+      setTotalPages(Math.ceil(data.length / pageSize));
     } catch (err) {
-      console.error('❌ Error fetching paginated opportunities:', err);
+      console.error('❌ Error fetching opportunities:', err);
       setError(err.message || 'Failed to fetch opportunities');
       setOpportunities([]);
       setTotalCount(0);
@@ -84,49 +82,14 @@ export const useOpportunities = (options = {}) => {
       setLoading(false);
       isFetchingRef.current = false;
     }
-  }, [page, pageSize, searchTerm, sortBy]);
+  }, [filters, activeOnly, searchTerm, pageSize]);
 
   /**
-   * Fetch all opportunities (legacy method for non-paginated use)
-   */
-  const fetchAllOpportunities = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      let data;
-      if (searchTerm && searchTerm.trim()) {
-        data = await OpportunitiesService.searchOpportunities(searchTerm);
-      } else {
-        data = await OpportunitiesService.getAllOpportunities();
-      }
-
-      const formattedOpportunities = data.map(opp => 
-        OpportunitiesService.formatOpportunityForDisplay(opp)
-      );
-
-      setOpportunities(formattedOpportunities);
-      setTotalCount(formattedOpportunities.length);
-      setTotalPages(Math.ceil(formattedOpportunities.length / pageSize));
-    } catch (err) {
-      console.error('❌ Error fetching opportunities:', err);
-      setError(err.message || 'Failed to fetch opportunities');
-      setOpportunities([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [searchTerm, pageSize]);
-
-  /**
-   * Main fetch function that routes to appropriate method
+   * Main fetch function
    */
   const fetchOpportunities = useCallback(() => {
-    if (serverSidePagination) {
-      fetchPaginatedOpportunities(filters);
-    } else {
-      fetchAllOpportunities();
-    }
-  }, [serverSidePagination, fetchPaginatedOpportunities, fetchAllOpportunities, filters]);
+    fetchAllOpportunities();
+  }, [fetchAllOpportunities]);
 
   /**
    * Refresh opportunities data
@@ -134,6 +97,61 @@ export const useOpportunities = (options = {}) => {
   const refreshOpportunities = useCallback(() => {
     fetchOpportunities();
   }, [fetchOpportunities]);
+
+  /**
+   * Filter opportunities by employment type
+   */
+  const filterByEmploymentType = useCallback(async (employmentType) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await opportunitiesService.getAllOpportunities({
+        ...filters,
+        employment_type: employmentType,
+        is_active: activeOnly
+      });
+
+      setOpportunities(data);
+      setTotalCount(data.length);
+      setTotalPages(Math.ceil(data.length / pageSize));
+    } catch (err) {
+      console.error('Error filtering opportunities:', err);
+      setError(err.message || 'Failed to filter opportunities');
+    } finally {
+      setLoading(false);
+    }
+  }, [filters, activeOnly, pageSize]);
+
+  /**
+   * Search opportunities by title or company
+   */
+  const searchOpportunities = useCallback(async (searchTerm) => {
+    if (!searchTerm.trim()) {
+      fetchOpportunities();
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await opportunitiesService.getAllOpportunities({
+        ...filters,
+        search: searchTerm,
+        is_active: activeOnly
+      });
+
+      setOpportunities(data);
+      setTotalCount(data.length);
+      setTotalPages(Math.ceil(data.length / pageSize));
+    } catch (err) {
+      console.error('Error searching opportunities:', err);
+      setError(err.message || 'Failed to search opportunities');
+    } finally {
+      setLoading(false);
+    }
+  }, [filters, activeOnly, pageSize, fetchOpportunities]);
 
   // Initial fetch on mount
   useEffect(() => {
@@ -159,14 +177,9 @@ export const useOpportunities = (options = {}) => {
     if (hasChanges) {
       // Update previous values
       prevValuesRef.current = { searchTerm, filtersKey, page, sortBy };
-      
-      if (serverSidePagination) {
-        fetchPaginatedOpportunities(filters);
-      } else {
-        fetchAllOpportunities();
-      }
+      fetchAllOpportunities();
     }
-  }, [searchTerm, filtersKey, page, sortBy, serverSidePagination, fetchPaginatedOpportunities, fetchAllOpportunities, filters]);
+  }, [searchTerm, filtersKey, page, sortBy, fetchAllOpportunities]);
 
   return {
     opportunities,
@@ -175,7 +188,9 @@ export const useOpportunities = (options = {}) => {
     totalCount,
     totalPages,
     fetchOpportunities,
-    refreshOpportunities
+    refreshOpportunities,
+    filterByEmploymentType,
+    searchOpportunities
   };
 };
 
