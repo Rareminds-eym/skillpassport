@@ -31,7 +31,7 @@
 // COMPREHENSIVE COURSE KNOWLEDGE BASE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const COURSE_KNOWLEDGE_BASE = {
+export const COURSE_KNOWLEDGE_BASE = {
   bsc: {
     name: "B.Sc (Physics/Chemistry/Biology/Maths)",
     stream: "science",
@@ -153,6 +153,25 @@ const COURSE_KNOWLEDGE_BASE = {
     futureRelevance: 0.80
   }
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DEGREE PROGRAMS LIST FOR AFTER 12TH STUDENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+// This array is used to generate degree program recommendations for after12 students
+// instead of platform training courses. Each entry maps to COURSE_KNOWLEDGE_BASE.
+
+export const DEGREE_PROGRAMS = [
+  { courseId: 'engineering', courseName: 'B.Tech / Engineering', category: 'Science', description: 'Design, build, and innovate with cutting-edge technology' },
+  { courseId: 'bca', courseName: 'BCA (Computer Applications)', category: 'Science', description: 'Master software development and IT solutions' },
+  { courseId: 'bsc', courseName: 'B.Sc (Physics/Chemistry/Biology/Maths)', category: 'Science', description: 'Explore scientific research and analytical thinking' },
+  { courseId: 'medical', courseName: 'MBBS / Medical Sciences', category: 'Science', description: 'Heal and care for patients in healthcare' },
+  { courseId: 'bba', courseName: 'BBA General', category: 'Commerce', description: 'Lead businesses and manage organizations' },
+  { courseId: 'dm', courseName: 'BBA Digital Marketing', category: 'Commerce', description: 'Drive brand growth through digital strategies' },
+  { courseId: 'finance', courseName: 'BBA Finance / Banking', category: 'Commerce', description: 'Manage investments and financial planning' },
+  { courseId: 'bcom', courseName: 'B.Com (Commerce)', category: 'Commerce', description: 'Excel in accounting, taxation, and commerce' },
+  { courseId: 'ba', courseName: 'BA (English/History/Political Science)', category: 'Arts', description: 'Explore humanities, writing, and social sciences' },
+  { courseId: 'law', courseName: 'LLB / Law', category: 'Arts', description: 'Advocate for justice and legal expertise' },
+];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LAYER 1: INTEREST DNA ANALYZER (Deep RIASEC Analysis)

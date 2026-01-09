@@ -48,7 +48,7 @@ import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } 
 import { useAssessmentResults } from './hooks/useAssessmentResults';
 
 // Import course matching engine
-import { calculateCourseMatchScores } from './utils/courseMatchingEngine';
+import { calculateCourseMatchScores, DEGREE_PROGRAMS } from './utils/courseMatchingEngine';
 
 // Import stream matching engine for after 10th students
 import { calculateStreamRecommendations } from './utils/streamMatchingEngine';
@@ -667,6 +667,18 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
 
     // Calculate enhanced course recommendations with accurate match scores
     const enhancedCourseRecommendations = useMemo(() => {
+        // For after12 students, use DEGREE_PROGRAMS (B.Tech, BBA, etc.) instead of platform courses
+        // This ensures students see proper degree program recommendations, not training courses
+        if (gradeLevel === 'after12') {
+            // Use degree programs from knowledge base for proper scoring
+            return calculateCourseMatchScores(
+                DEGREE_PROGRAMS,
+                results?.riasec?.scores || {},
+                studentAcademicData
+            );
+        }
+        
+        // For other grade levels (middle, highschool), use AI-returned platform courses
         // Use centralized utility to normalize course recommendations
         // This handles both platformCourses (new) and courseRecommendations (legacy) field names
         const normalizedCourses = normalizeCourseRecommendations(results);
@@ -688,7 +700,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
             results?.riasec?.scores || {},
             studentAcademicData
         );
-    }, [results, studentAcademicData]);
+    }, [gradeLevel, results, studentAcademicData]);
 
     // Calculate stream recommendations for after 10th students using academic data
     const enhancedStreamRecommendation = useMemo(() => {
@@ -1245,6 +1257,15 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                         })()
                                     )}
 
+                                    {/* Fallback for After 10th when no stream data */}
+                                    {gradeLevel === 'after10' && !(enhancedStreamRecommendation?.recommendedStream || streamRecommendation?.recommendedStream) && (
+                                        <div className="bg-slate-50 rounded-xl p-8 text-center border border-slate-200">
+                                            <GraduationCap className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                                            <h3 className="text-lg font-semibold text-slate-700 mb-2">Stream Recommendation Loading...</h3>
+                                            <p className="text-slate-500 text-sm">Your personalized 11th/12th stream recommendation is being calculated based on your assessment results.</p>
+                                        </div>
+                                    )}
+
                                     {/* After 12th: Course Recommendations */}
                                     {gradeLevel === 'after12' && enhancedCourseRecommendations && enhancedCourseRecommendations.length > 0 && (
                                         <div>
@@ -1349,6 +1370,15 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                             </div>
                                         </div>
                                     )}
+
+                                    {/* Fallback for After 12th when no course data */}
+                                    {gradeLevel === 'after12' && (!enhancedCourseRecommendations || enhancedCourseRecommendations.length === 0) && (
+                                        <div className="bg-slate-50 rounded-xl p-8 text-center border border-slate-200">
+                                            <GraduationCap className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                                            <h3 className="text-lg font-semibold text-slate-700 mb-2">Program Recommendations Loading...</h3>
+                                            <p className="text-slate-500 text-sm">Your personalized degree program recommendations are being calculated based on your assessment results.</p>
+                                        </div>
+                                    )}
                                 </>
                             )}
 
@@ -1372,6 +1402,15 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                             onCardClick={handleTrackClick}
                                         />
                                     ))}
+                                </div>
+                            )}
+
+                            {/* Fallback for Career tab when no career data */}
+                            {activeRecommendationTab === 'career' && (!careerFit || !careerFit.clusters || careerFit.clusters.length === 0) && (
+                                <div className="bg-slate-50 rounded-xl p-8 text-center border border-slate-200">
+                                    <Briefcase className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                                    <h3 className="text-lg font-semibold text-slate-700 mb-2">Career Recommendations Loading...</h3>
+                                    <p className="text-slate-500 text-sm">Your personalized career recommendations are being calculated based on your assessment results.</p>
                                 </div>
                             )}
 

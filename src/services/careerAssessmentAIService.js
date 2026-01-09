@@ -858,7 +858,9 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
 
   console.log('🎯 Generating fresh knowledge questions for:', effectiveStreamInfo.name, '(stream:', effectiveStreamId, ')');
 
-  const apiUrl = import.meta.env.VITE_EXTERNAL_API_KEY || 'https://assessment-api.dark-mode-d021.workers.dev';
+  // Use unified question generation API
+  const apiUrl = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
+    'https://question-generation-api.dark-mode-d021.workers.dev';
   const maxRetries = 3;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -924,7 +926,9 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
 
   console.log('🎯 Generating aptitude questions for stream:', streamId, 'gradeLevel:', gradeLevel);
 
-  const apiUrl = import.meta.env.VITE_EXTERNAL_API_KEY || 'https://assessment-api.dark-mode-d021.workers.dev';
+  // Use unified question generation API
+  const apiUrl = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
+    'https://question-generation-api.dark-mode-d021.workers.dev';
   const maxRetries = 3;
   const questionsPerCategory = Math.ceil(questionCount / APTITUDE_CATEGORIES.length); // 10 per category for 50 total
   
