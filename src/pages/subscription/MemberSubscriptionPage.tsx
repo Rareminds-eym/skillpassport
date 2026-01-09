@@ -43,7 +43,7 @@ const AVAILABLE_ADDONS = [
 
 function MemberSubscriptionPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   
   // Check if user has organization subscription
   const hasOrganizationSubscription = useMemo(() => {
@@ -106,7 +106,7 @@ function MemberSubscriptionPage() {
     }
   }, [navigate]);
   
-  const handleManageAddOn = useCallback((addOnId: string) => {
+  const handleManageAddOn = useCallback((_addOnId: string) => {
     toast.success('Opening add-on management...');
   }, []);
   
@@ -118,6 +118,24 @@ function MemberSubscriptionPage() {
   const handleDismissWarning = useCallback(() => {
     // In production, save dismissal preference
   }, []);
+  
+  // Check if user is authenticated
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+          <h3 className="text-lg font-semibold text-amber-800 mb-2">Authentication Required</h3>
+          <p className="text-amber-600 mb-4">Please log in to view your subscription.</p>
+          <button
+            onClick={() => navigate('/login')}
+            className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
+          >
+            Log In
+          </button>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="p-6 max-w-4xl mx-auto">

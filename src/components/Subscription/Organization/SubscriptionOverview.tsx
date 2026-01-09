@@ -26,6 +26,7 @@ interface SubscriptionOverviewProps {
   onManage: (subscriptionId: string) => void;
   onRenew: (subscriptionId: string) => void;
   onViewDetails: (subscriptionId: string) => void;
+  onBrowsePlans: () => void;
   isLoading?: boolean;
 }
 
@@ -50,6 +51,7 @@ function SubscriptionOverview({
   onManage,
   onRenew,
   onViewDetails,
+  onBrowsePlans,
   isLoading = false,
 }: SubscriptionOverviewProps) {
   const activeSubscriptions = useMemo(
@@ -91,7 +93,10 @@ function SubscriptionOverview({
         <p className="text-gray-500 mb-4">
           Purchase a subscription to start managing licenses for your organization.
         </p>
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
+        <button 
+          onClick={onBrowsePlans}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+        >
           Browse Plans
         </button>
       </div>

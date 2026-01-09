@@ -73,6 +73,7 @@ interface OrganizationSubscriptionDashboardProps {
   onManageSubscription: (subscriptionId: string) => void;
   onRenewSubscription: (subscriptionId: string) => void;
   onViewSubscriptionDetails: (subscriptionId: string) => void;
+  onBrowsePlans: () => void;
   onCreatePool: () => void;
   onEditPool: (poolId: string) => void;
   onDeletePool: (poolId: string) => void;
@@ -95,6 +96,7 @@ function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashbo
     onManageSubscription,
     onRenewSubscription,
     onViewSubscriptionDetails,
+    onBrowsePlans,
     onCreatePool,
     onEditPool,
     onDeletePool,
@@ -133,6 +135,7 @@ function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashbo
             onManage={onManageSubscription}
             onRenew={onRenewSubscription}
             onViewDetails={onViewSubscriptionDetails}
+            onBrowsePlans={onBrowsePlans}
             isLoading={isLoading}
           />
         );

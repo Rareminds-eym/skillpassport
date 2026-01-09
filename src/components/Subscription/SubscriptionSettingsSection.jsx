@@ -3,22 +3,26 @@
  * 
  * A reusable subscription management section for settings pages.
  * Shows current subscription status and links to manage subscription/add-ons.
+ * For admin users, also shows organization subscription management options.
  * 
  * @requirement Task - Add subscription management to all user settings pages
  */
 
 import {
-    AlertCircle,
-    Calendar,
-    CheckCircle,
-    ChevronRight,
-    CreditCard,
-    Shield,
-    Sparkles
+  AlertCircle,
+  Building2,
+  Calendar,
+  CheckCircle,
+  ChevronRight,
+  CreditCard,
+  Shield,
+  Sparkles,
+  Users
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
+import useAuth from '../../hooks/useAuth';
 
 /**
  * Get the base path for subscription routes based on current location
@@ -41,9 +45,14 @@ export function SubscriptionSettingsSection({ className = '' }) {
   const location = useLocation();
   const { subscriptionData, loading } = useSubscriptionQuery();
   const { activeEntitlements = [], totalAddOnCost = { monthly: 0, annual: 0 } } = useSubscriptionContext() || {};
+  useAuth(); // Hook called for potential future use
 
   // Get the base path for subscription routes
   const basePath = getSubscriptionBasePath(location.pathname);
+  
+  // Check if user is on an organization admin page based on the URL path
+  // This is more reliable than checking role since the user is already on the admin dashboard
+  const isOrgAdmin = ['/school-admin', '/college-admin', '/university-admin'].includes(basePath);
 
   if (loading) {
     return (
@@ -53,6 +62,49 @@ export function SubscriptionSettingsSection({ className = '' }) {
           <div className="h-4 w-64 bg-gray-200 rounded"></div>
           <div className="h-20 bg-gray-100 rounded-lg"></div>
         </div>
+        
+        {/* Show organization section even while loading for admins */}
+        {isOrgAdmin && (
+          <div className="pt-4 mt-4 border-t border-gray-200">
+            <div className="flex items-center gap-2 mb-3">
+              <Building2 className="w-5 h-5 text-purple-600" />
+              <h4 className="font-semibold text-gray-900">Organization Subscriptions</h4>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Manage bulk subscriptions for your organization's members
+            </p>
+            
+            <div className="space-y-2">
+              <button
+                onClick={() => navigate(`${basePath}/subscription/organization`)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-purple-600" />
+                  <div className="text-left">
+                    <span className="font-medium text-purple-900 block">Organization Licenses</span>
+                    <span className="text-xs text-purple-600">Manage seats, pools & assignments</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-purple-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
+              <button
+                onClick={() => navigate(`${basePath}/subscription/bulk-purchase`)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <CreditCard className="w-5 h-5 text-gray-600" />
+                  <div className="text-left">
+                    <span className="font-medium text-gray-900 block">Bulk Purchase</span>
+                    <span className="text-xs text-gray-500">Buy subscriptions for members</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -197,6 +249,49 @@ export function SubscriptionSettingsSection({ className = '' }) {
             </button>
           )}
         </div>
+
+        {/* Organization Subscription Management - Admin Only */}
+        {isOrgAdmin && (
+          <div className="pt-4 mt-4 border-t border-gray-200">
+            <div className="flex items-center gap-2 mb-3">
+              <Building2 className="w-5 h-5 text-purple-600" />
+              <h4 className="font-semibold text-gray-900">Organization Subscriptions</h4>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Manage bulk subscriptions for your organization's members
+            </p>
+            
+            <div className="space-y-2">
+              <button
+                onClick={() => navigate(`${basePath}/subscription/organization`)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-purple-600" />
+                  <div className="text-left">
+                    <span className="font-medium text-purple-900 block">Organization Licenses</span>
+                    <span className="text-xs text-purple-600">Manage seats, pools & assignments</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-purple-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
+              <button
+                onClick={() => navigate(`${basePath}/subscription/bulk-purchase`)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <CreditCard className="w-5 h-5 text-gray-600" />
+                  <div className="text-left">
+                    <span className="font-medium text-gray-900 block">Bulk Purchase</span>
+                    <span className="text-xs text-gray-500">Buy subscriptions for members</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

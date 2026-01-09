@@ -43,7 +43,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
     const allGroups = [
-      "students", "teachers", "academics", "communication", "finance", "skills", "subscription", // school_admin
+      "students", "teachers", "academics", "communication", "finance", "skills", // school_admin
       "colleges", "courses", "faculty", "placements", "analytics", // university_admin
       "department", "student", "examinations", "operations", "administration" // college_admin
     ];
@@ -218,27 +218,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             },
           ],
         },
-        {
-          title: "Subscription",
-          key: "subscription",
-          items: [
-            {
-              name: "Manage Subscription",
-              path: "/school-admin/subscription/manage",
-              icon: BanknotesIcon,
-            },
-            {
-              name: "Organization Licenses",
-              path: "/school-admin/subscription/organization",
-              icon: UserGroupIcon,
-            },
-            {
-              name: "Add-ons",
-              path: "/school-admin/subscription/add-ons",
-              icon: SparklesIcon,
-            },
-          ],
-        },
       ];
     }
 
@@ -408,27 +387,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               name: "Training Updates",
               path: "/university-admin/communication/training",
               icon: ClipboardDocumentListIcon,
-            },
-          ],
-        },
-        {
-          title: "Subscription",
-          key: "subscription",
-          items: [
-            {
-              name: "Manage Subscription",
-              path: "/university-admin/subscription/manage",
-              icon: BanknotesIcon,
-            },
-            {
-              name: "Organization Licenses",
-              path: "/university-admin/subscription/organization",
-              icon: UserGroupIcon,
-            },
-            {
-              name: "Add-ons",
-              path: "/university-admin/subscription/add-ons",
-              icon: SparklesIcon,
             },
           ],
         },
@@ -623,27 +581,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             name: "Reports & Analytics",
             path: "/college-admin/reports",
             icon: ChartPieIcon,
-          },
-        ],
-      },
-      {
-        title: "Subscription",
-        key: "subscription",
-        items: [
-          {
-            name: "Manage Subscription",
-            path: "/college-admin/subscription/manage",
-            icon: BanknotesIcon,
-          },
-          {
-            name: "Organization Licenses",
-            path: "/college-admin/subscription/organization",
-            icon: UserGroupIcon,
-          },
-          {
-            name: "Add-ons",
-            path: "/college-admin/subscription/add-ons",
-            icon: SparklesIcon,
           },
         ],
       },
