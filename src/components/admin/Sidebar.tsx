@@ -405,6 +405,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             icon: UserGroupIcon,
           },
           {
+            name: "Enrolled Students",
+            path: "/college-admin/students/enrolled",
+            icon: AcademicCapIcon,
+          },
+          {
             name: "Attendance",
             path: "/college-admin/students/attendance",
             icon: ClipboardDocumentListIcon,
@@ -455,11 +460,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             path: "/college-admin/departments/educators",
             icon: UserGroupIcon,
           },
-          {
-            name: "Course Mapping",
-            path: "/college-admin/departments/mapping",
-            icon: WrenchScrewdriverIcon,
-          },
         ],
       },
       {
@@ -468,25 +468,28 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
         items: [
           {
             name: "Courses",
-            path: "/college-admin/academics/courses",
-            icon: AcademicCapIcon,
-          },
-          /* OLD: browse-courses - commented out, using courses instead
-          {
-            name: "Courses",
             path: "/college-admin/academics/browse-courses",
             icon: AcademicCapIcon,
           },
-          */
           {
-            name: "Curriculum Builder",
-            path: "/college-admin/academics/curriculum",
-            icon: BookOpenIcon,
+            name: "Programs",
+            path: "/college-admin/academics/programs",
+            icon: AcademicCapIcon,
           },
           {
             name: "Program & Sections",
             path: "/college-admin/academics/program-sections",
             icon: UserGroupIcon,
+          },
+          {
+            name: "Course Mapping",
+            path: "/college-admin/departments/mapping",
+            icon: WrenchScrewdriverIcon,
+          },
+          {
+            name: "Curriculum Builder",
+            path: "/college-admin/academics/curriculum",
+            icon: BookOpenIcon,
           },
           {
             name: "Lesson Plans",

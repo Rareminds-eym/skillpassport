@@ -323,14 +323,6 @@ const ApplicationTracking: React.FC = () => {
         <h2 className="text-xl font-bold text-gray-900">Application Tracking</h2>
         <div className="flex gap-2">
           <button 
-            onClick={loadApplications}
-            disabled={isLoadingApplications}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoadingApplications ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-          <button 
             onClick={viewJobDetails}
             className="flex items-center gap-2 px-4 py-2 border border-blue-300 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition"
           >

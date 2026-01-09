@@ -309,6 +309,9 @@ const LessonPlanManagement = lazy(() =>
 const MentorAllocation = lazy(() =>
   import("../pages/admin/collegeAdmin/MentorAllocation")
 );
+const EnrolledStudents = lazy(() =>
+  import("../pages/admin/collegeAdmin/EnrolledStudents")
+);
 const TranscriptGeneration = lazy(() =>
   import("../pages/admin/collegeAdmin/TranscriptGeneration")
 );
@@ -326,6 +329,9 @@ const AcademicCoverageTracker = lazy(() =>
 );
 const ProgramSectionManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/ProgramSectionManagement")
+);
+const ProgramManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/ProgramManagement")
 );
 const CollegeLibrary = lazy(() =>
   import("../pages/admin/collegeAdmin/Library")
@@ -503,6 +509,7 @@ const AppRoutes = () => {
 
           {/* Student Lifecycle Management */}
           <Route path="students/data-management" element={<StudentDataAdmission />} />
+          <Route path="students/enrolled" element={<EnrolledStudents />} />
           <Route path="students/attendance" element={<AttendanceTracking />} />
           <Route path="students/performance" element={<PerformanceMonitoring />} />
           <Route path="students/assessment-results" element={<CollegeAdminAssessmentResults />} />
@@ -513,9 +520,11 @@ const AppRoutes = () => {
           {/* Academic Management */}
           <Route path="academics/courses" element={<CollegeAdminCourses />} />
           <Route path="academics/browse-courses" element={<CollegeAdminBrowseCourses />} />
+          <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
           <Route path="academics/curriculum" element={<CollegeCurriculumBuilder />} />
           <Route path="academics/lesson-plans" element={<LessonPlanManagement />} />
           <Route path="academics/coverage-tracker" element={<AcademicCoverageTracker />} />
+          <Route path="academics/programs" element={<ProgramManagement />} />
           <Route path="academics/program-sections" element={<ProgramSectionManagement />} />
           <Route path="academics/calendar" element={<AcademicCalendar />} />
 

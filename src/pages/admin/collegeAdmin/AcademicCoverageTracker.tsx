@@ -8,7 +8,6 @@ import {
   ExclamationTriangleIcon,
   AcademicCapIcon,
   CalendarIcon,
-  ArrowPathIcon,
   FunnelIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
@@ -176,13 +175,6 @@ const AcademicCoverageTracker: React.FC = () => {
               Monitor curriculum completion and learning outcome progress
             </p>
           </div>
-          <button
-            onClick={loadCoverageData}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-          >
-            <ArrowPathIcon className="h-4 w-4" />
-            Refresh
-          </button>
         </div>
       </div>
 
