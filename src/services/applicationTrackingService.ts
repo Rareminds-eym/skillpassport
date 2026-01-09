@@ -128,12 +128,19 @@ class ApplicationTrackingService {
       // Fetch students data - applied_jobs.student_id references students.id
       const { data: students, error: studentsError } = await supabase
         .from('students')
-        .select('id, user_id, name, email, contact_number, university, branch_field, course_name, college_school_name, district_name, currentCgpa, expectedGraduationDate, approval_status, profile, college_id')
+        .select('id, user_id, name, email, contact_number, university, branch_field, course_name, college_school_name, district_name, currentCgpa, expectedGraduationDate, approval_status, college_id')
         .in('id', studentIds);
 
       if (studentsError) {
         console.error('Error fetching students:', studentsError);
       }
+
+      console.log('Students fetch result:', {
+        requested: studentIds.length,
+        received: students?.length || 0,
+        error: studentsError,
+        sampleStudent: students?.[0]
+      });
 
       // Fetch opportunities data
       const { data: opportunities, error: opportunitiesError } = await supabase
@@ -169,6 +176,14 @@ class ApplicationTrackingService {
         return acc;
       }, {} as Record<string, any>);
 
+      console.log('ApplicationTracking Debug:', {
+        totalApplications: appliedJobs.length,
+        totalStudents: students?.length || 0,
+        studentMapSize: Object.keys(studentMap).length,
+        sampleStudent: students?.[0],
+        sampleApplication: appliedJobs[0]
+      });
+
       const opportunityMap = (opportunities || []).reduce((acc, opp) => {
         acc[opp.id] = opp;
         return acc;
@@ -185,25 +200,50 @@ class ApplicationTrackingService {
         const opportunity = opportunityMap[job.opportunity_id];
         const company = opportunity ? companyMap[opportunity.company_name] : null;
 
+        // Debug log for first few records
+        if (appliedJobs.indexOf(job) < 3) {
+          console.log('Mapping application:', {
+            applicationId: job.id,
+            studentId: job.student_id,
+            foundStudent: !!student,
+            studentName: student?.name,
+            studentEmail: student?.email
+          });
+        }
+
         return {
           ...job,
           student: student ? {
             id: student.id,
             user_id: student.user_id,
-            name: student.name || student.profile?.name || 'Unknown',
-            email: student.email || student.profile?.email || '',
-            contact_number: student.contact_number || student.profile?.contact_number,
-            university: student.university || student.profile?.university,
-            branch_field: student.branch_field || student.profile?.branch_field,
-            course_name: student.course_name || student.profile?.course,
-            college_school_name: student.college_school_name || student.profile?.college_school_name,
-            district_name: student.district_name || student.profile?.district_name,
-            currentCgpa: student.currentCgpa || student.profile?.cgpa,
-            expectedGraduationDate: student.expectedGraduationDate || student.profile?.year_of_passing,
+            name: student.name || 'Unknown Student',
+            email: student.email || 'No email',
+            contact_number: student.contact_number || student.contactNumber || '',
+            university: student.university || '',
+            branch_field: student.branch_field || '',
+            course_name: student.course_name || '',
+            college_school_name: student.college_school_name || '',
+            district_name: student.district_name || '',
+            currentCgpa: student.currentCgpa || null,
+            expectedGraduationDate: student.expectedGraduationDate || '',
             approval_status: student.approval_status,
-            profile: student.profile,
             college_id: student.college_id
-          } : null,
+          } : {
+            id: job.student_id,
+            user_id: '',
+            name: 'Unknown Student',
+            email: 'No email',
+            contact_number: '',
+            university: '',
+            branch_field: '',
+            course_name: '',
+            college_school_name: '',
+            district_name: '',
+            currentCgpa: null,
+            expectedGraduationDate: '',
+            approval_status: '',
+            college_id: ''
+          },
           opportunity,
           company
         };
