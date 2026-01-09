@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import OpportunitiesService from '../services/opportunitiesService';
+import { opportunitiesService } from '../services/opportunitiesService';
 
 /**
  * Custom hook for managing opportunities data
@@ -32,22 +32,17 @@ export const useOpportunities = (options = {}) => {
     setError(null);
 
     try {
-      // Fetch opportunities with search term if provided
-      let data;
-      if (searchTerm && searchTerm.trim()) {
-        // Use search method when search term is provided
-        data = await OpportunitiesService.searchOpportunities(searchTerm);
-      } else {
-        // Fetch all opportunities when no search term
-        data = await OpportunitiesService.getAllOpportunities();
-      }
+      // Build filters object
+      const opportunityFilters = {
+        ...filters,
+        is_active: activeOnly,
+        search: searchTerm && searchTerm.trim() ? searchTerm : undefined
+      };
 
-      // Format opportunities for display
-      const formattedOpportunities = data.map(opp => 
-        OpportunitiesService.formatOpportunityForDisplay(opp)
-      );
+      // Fetch opportunities with filters
+      const data = await opportunitiesService.getAllOpportunities(opportunityFilters);
 
-      setOpportunities(formattedOpportunities);
+      setOpportunities(data);
     } catch (err) {
       console.error('❌ Error fetching opportunities:', err);
       setError(err.message || 'Failed to fetch opportunities');
@@ -74,16 +69,13 @@ export const useOpportunities = (options = {}) => {
     setError(null);
 
     try {
-      const data = await OpportunitiesService.getFilteredOpportunities({
+      const data = await opportunitiesService.getAllOpportunities({
         ...filters,
-        employment_type: employmentType
+        employment_type: employmentType,
+        is_active: activeOnly
       });
 
-      const formattedOpportunities = data.map(opp => 
-        OpportunitiesService.formatOpportunityForDisplay(opp)
-      );
-
-      setOpportunities(formattedOpportunities);
+      setOpportunities(data);
     } catch (err) {
       console.error('Error filtering opportunities:', err);
       setError(err.message || 'Failed to filter opportunities');
@@ -105,19 +97,13 @@ export const useOpportunities = (options = {}) => {
     setError(null);
 
     try {
-      const allOpportunities = await OpportunitiesService.getAllOpportunities();
-      
-      const filteredOpportunities = allOpportunities.filter(opp => 
-        opp.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        opp.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        opp.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const data = await opportunitiesService.getAllOpportunities({
+        ...filters,
+        search: searchTerm,
+        is_active: activeOnly
+      });
 
-      const formattedOpportunities = filteredOpportunities.map(opp => 
-        OpportunitiesService.formatOpportunityForDisplay(opp)
-      );
-
-      setOpportunities(formattedOpportunities);
+      setOpportunities(data);
     } catch (err) {
       console.error('Error searching opportunities:', err);
       setError(err.message || 'Failed to search opportunities');

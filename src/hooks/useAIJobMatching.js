@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { matchJobsWithAI } from '../services/aiJobMatchingService';
-import { OpportunitiesService } from '../services/opportunitiesService';
+import { opportunitiesService } from '../services/opportunitiesService';
 
 /**
  * Custom hook for AI-powered job matching
@@ -37,7 +37,7 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         });
 
         // Fetch all active opportunities
-        const opportunities = await OpportunitiesService.getAllOpportunities();
+        const opportunities = await opportunitiesService.getAllOpportunities();
 
         // Filter only active opportunities
         const activeOpportunities = opportunities.filter(opp => {
@@ -102,7 +102,7 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
       setLoading(true);
       setError(null);
 
-      const opportunities = await OpportunitiesService.getAllOpportunities();
+      const opportunities = await opportunitiesService.getAllOpportunities();
       const activeOpportunities = opportunities.filter(opp => 
         opp.is_active !== false && 
         opp.status !== 'draft' &&

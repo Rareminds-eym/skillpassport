@@ -20,16 +20,48 @@
  * - GET  /subscription-plan    - Get single plan by code
  * - GET  /subscription-features - Get features comparison
  * 
+ * ADD-ON ENDPOINTS:
+ * - GET  /addon-catalog        - Get available add-ons and bundles
+ * - GET  /user-entitlements    - Get user's active entitlements
+ * - POST /create-addon-order   - Create Razorpay order for add-on purchase
+ * - POST /verify-addon-payment - Verify payment AND create entitlement atomically
+ * - POST /create-bundle-order  - Create Razorpay order for bundle purchase
+ * - POST /verify-bundle-payment - Verify payment AND create bundle entitlements
+ * - POST /cancel-addon         - Cancel an add-on subscription
+ * - GET  /check-addon-access   - Check if user has access to a feature
+ * 
+ * ENTITLEMENT LIFECYCLE ENDPOINTS (CRON):
+ * - POST /process-entitlement-lifecycle - Main cron handler (runs all lifecycle tasks)
+ * - POST /expire-entitlements    - Mark expired entitlements as 'expired'
+ * - POST /send-renewal-reminders - Send reminder emails (7, 3, 1 days before expiry)
+ * - POST /process-auto-renewals  - Process auto-renewals for expiring entitlements
+ * 
  * ADMIN/CRON ENDPOINTS:
  * - POST /expire-subscriptions - Auto-expire old subscriptions (cron)
  * - GET  /health               - Health check with config status
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 // Import modular handlers
-import { handleGetSubscriptionPlans, handleGetSubscriptionPlan, handleGetSubscriptionFeatures } from './handlers/plans';
+import {
+    handleCancelAddon,
+    handleCheckAddonAccess,
+    handleCreateAddonOrder,
+    handleCreateBundleOrder,
+    handleGetAddonCatalog,
+    handleGetUserEntitlements,
+    handleVerifyAddonPayment,
+    handleVerifyBundlePayment
+} from './handlers/addons';
+import {
+    handleExpireEntitlements,
+    handleProcessAutoRenewals,
+    handleProcessEntitlementLifecycle,
+    handleSendRenewalReminders
+} from './handlers/entitlementLifecycle';
+import { handleGetSubscriptionFeatures, handleGetSubscriptionPlan, handleGetSubscriptionPlans } from './handlers/plans';
 
 // Re-export Env type for use in other modules
 export interface Env {
@@ -729,24 +761,30 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
   }
 
   // ==================== LAYER 2: CHECK EXISTING SUBSCRIPTION ====================
-  // CRITICAL: Check for active subscription BEFORE creating order
-  // This prevents users from paying when they already have an active subscription
+  // CRITICAL: Check for active or cancelled (but not expired) subscription BEFORE creating order
+  // This prevents users from paying when they already have valid subscription access
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
   
+  // Check for active subscriptions
   const { data: existingSubscription, error: subCheckError } = await supabaseAdmin
     .from('subscriptions')
     .select('id, plan_type, status, subscription_end_date')
     .eq('user_id', user.id)
-    .eq('status', 'active')
+    .in('status', ['active', 'cancelled'])
+    .gte('subscription_end_date', new Date().toISOString())
     .maybeSingle();
 
   if (existingSubscription) {
-    // User already has an active subscription - block order creation
-    console.log(`[CREATE-ORDER] Blocked: User ${user.id} already has active ${existingSubscription.plan_type} subscription`);
+    // User already has a valid subscription (active or cancelled but not expired)
+    const message = existingSubscription.status === 'cancelled'
+      ? `You have a cancelled subscription that is still active until ${new Date(existingSubscription.subscription_end_date).toLocaleDateString()}`
+      : 'You already have an active subscription';
+    
+    console.log(`[CREATE-ORDER] Blocked: User ${user.id} already has ${existingSubscription.status} ${existingSubscription.plan_type} subscription`);
     
     return jsonResponse({
-      error: 'You already have an active subscription',
+      error: message,
       code: 'SUBSCRIPTION_EXISTS',
       existing_subscription: {
         id: existingSubscription.id,
@@ -754,7 +792,9 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
         status: existingSubscription.status,
         end_date: existingSubscription.subscription_end_date,
       },
-      suggestion: 'Please manage your existing subscription from your account settings, or wait for it to expire before purchasing a new plan.'
+      suggestion: existingSubscription.status === 'cancelled'
+        ? 'Your subscription access continues until the end date. You can purchase a new plan after it expires.'
+        : 'Please manage your existing subscription from your account settings, or wait for it to expire before purchasing a new plan.'
     }, 409); // 409 Conflict
   }
 
@@ -2132,6 +2172,34 @@ export default {
         case '/subscription-features':
           return await handleGetSubscriptionFeatures(request, env);
         
+        // Add-On endpoints
+        case '/addon-catalog':
+          return await handleGetAddonCatalog(request, env);
+        case '/user-entitlements':
+          return await handleGetUserEntitlements(request, env);
+        case '/create-addon-order':
+          return await handleCreateAddonOrder(request, env);
+        case '/verify-addon-payment':
+          return await handleVerifyAddonPayment(request, env);
+        case '/create-bundle-order':
+          return await handleCreateBundleOrder(request, env);
+        case '/verify-bundle-payment':
+          return await handleVerifyBundlePayment(request, env);
+        case '/cancel-addon':
+          return await handleCancelAddon(request, env);
+        case '/check-addon-access':
+          return await handleCheckAddonAccess(request, env);
+        
+        // Entitlement lifecycle endpoints (for cron jobs)
+        case '/process-entitlement-lifecycle':
+          return await handleProcessEntitlementLifecycle(request, env);
+        case '/expire-entitlements':
+          return await handleExpireEntitlements(request, env);
+        case '/send-renewal-reminders':
+          return await handleSendRenewalReminders(request, env);
+        case '/process-auto-renewals':
+          return await handleProcessAutoRenewals(request, env);
+        
         // Health check
         case '/health':
           const configStatus = {
@@ -2161,6 +2229,21 @@ export default {
               'GET  /subscription-plans',
               'GET  /subscription-plan',
               'GET  /subscription-features',
+              // Add-On endpoints
+              'GET  /addon-catalog',
+              'GET  /user-entitlements',
+              'POST /create-addon-order',
+              'POST /verify-addon-payment',
+              'POST /create-bundle-order',
+              'POST /verify-bundle-payment',
+              'POST /cancel-addon',
+              'GET  /check-addon-access',
+              // Entitlement Lifecycle endpoints (CRON)
+              'POST /process-entitlement-lifecycle',
+              'POST /expire-entitlements',
+              'POST /send-renewal-reminders',
+              'POST /process-auto-renewals',
+              // Utility endpoints
               'GET  /health',
               'GET  /debug-storage',
             ],
@@ -2312,6 +2395,25 @@ export default {
     } catch (error) {
       console.error('Worker error:', error);
       return jsonResponse({ error: (error as Error).message || 'Internal server error' }, 500);
+    }
+  },
+
+  // Scheduled handler for cron triggers
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    console.log('[CRON] Scheduled event triggered at:', new Date().toISOString());
+    
+    try {
+      // Create a mock request for the lifecycle handler
+      const request = new Request('https://payments-api/process-entitlement-lifecycle', {
+        method: 'POST',
+      });
+      
+      const response = await handleProcessEntitlementLifecycle(request, env);
+      const result = await response.json();
+      
+      console.log('[CRON] Entitlement lifecycle processing result:', JSON.stringify(result));
+    } catch (error) {
+      console.error('[CRON] Error in scheduled handler:', error);
     }
   },
 };

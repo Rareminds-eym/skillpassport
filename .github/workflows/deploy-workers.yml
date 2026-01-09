@@ -46,7 +46,7 @@ jobs:
         id: set-matrix
         run: |
           ALL_WORKERS='["assessment-api","career-api","course-api","email-api","embedding-api","fetch-certificate","otp-api","payments-api","storage-api","streak-api","user-api"]'
-
+          
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             if [ "${{ github.event.inputs.worker }}" == "all" ]; then
               echo "matrix={\"worker\":$ALL_WORKERS}" >> $GITHUB_OUTPUT
@@ -56,7 +56,7 @@ jobs:
           else
             # Detect changed workers from git diff
             CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | grep '^cloudflare-workers/' | cut -d'/' -f2 | sort -u | grep -v '^README' || echo "")
-
+            
             if [ -z "$CHANGED" ]; then
               echo "No worker changes detected, deploying all"
               echo "matrix={\"worker\":$ALL_WORKERS}" >> $GITHUB_OUTPUT
@@ -73,7 +73,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
-
+    
     steps:
       - uses: actions/checkout@v4
 
@@ -115,12 +115,12 @@ jobs:
         run: |
           # Common secrets for all workers
           if [ -n "${{ secrets.VITE_SUPABASE_URL }}" ]; then
-            echo "${{ secrets.VITE_SUPABASE_URL }}" | wrangler secret put VITE_SUPABASE_URL 2>/dev/null || true   
+            echo "${{ secrets.VITE_SUPABASE_URL }}" | wrangler secret put VITE_SUPABASE_URL 2>/dev/null || true
           fi
           if [ -n "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
             echo "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" | wrangler secret put SUPABASE_SERVICE_ROLE_KEY 2>/dev/null || true
           fi
-
+          
           # Worker-specific secrets
           case "${{ matrix.worker }}" in
             "embedding-api")
@@ -135,7 +135,7 @@ jobs:
               ;;
             "payments-api")
               if [ -n "${{ secrets.RAZORPAY_KEY_ID }}" ]; then
-                echo "${{ secrets.RAZORPAY_KEY_ID }}" | wrangler secret put RAZORPAY_KEY_ID 2>/dev/null || true   
+                echo "${{ secrets.RAZORPAY_KEY_ID }}" | wrangler secret put RAZORPAY_KEY_ID 2>/dev/null || true
               fi
               if [ -n "${{ secrets.RAZORPAY_KEY_SECRET }}" ]; then
                 echo "${{ secrets.RAZORPAY_KEY_SECRET }}" | wrangler secret put RAZORPAY_KEY_SECRET 2>/dev/null || true
@@ -146,18 +146,18 @@ jobs:
               ;;
             "storage-api")
               if [ -n "${{ secrets.R2_ACCESS_KEY_ID }}" ]; then
-                echo "${{ secrets.R2_ACCESS_KEY_ID }}" | wrangler secret put R2_ACCESS_KEY_ID 2>/dev/null || true 
+                echo "${{ secrets.R2_ACCESS_KEY_ID }}" | wrangler secret put R2_ACCESS_KEY_ID 2>/dev/null || true
               fi
               if [ -n "${{ secrets.R2_SECRET_ACCESS_KEY }}" ]; then
                 echo "${{ secrets.R2_SECRET_ACCESS_KEY }}" | wrangler secret put R2_SECRET_ACCESS_KEY 2>/dev/null || true
               fi
               if [ -n "${{ secrets.R2_BUCKET_NAME }}" ]; then
-                echo "${{ secrets.R2_BUCKET_NAME }}" | wrangler secret put R2_BUCKET_NAME 2>/dev/null || true     
+                echo "${{ secrets.R2_BUCKET_NAME }}" | wrangler secret put R2_BUCKET_NAME 2>/dev/null || true
               fi
               ;;
             "email-api")
               if [ -n "${{ secrets.RESEND_API_KEY }}" ]; then
-                echo "${{ secrets.RESEND_API_KEY }}" | wrangler secret put RESEND_API_KEY 2>/dev/null || true     
+                echo "${{ secrets.RESEND_API_KEY }}" | wrangler secret put RESEND_API_KEY 2>/dev/null || true
               fi
               ;;
             "otp-api")
@@ -191,14 +191,14 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Worker | URL |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-----|" >> $GITHUB_STEP_SUMMARY
-          echo "| assessment-api | https://assessment-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY   
+          echo "| assessment-api | https://assessment-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
           echo "| career-api | https://career-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
           echo "| course-api | https://course-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
           echo "| email-api | https://email-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
-          echo "| embedding-api | https://embedding-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY     
+          echo "| embedding-api | https://embedding-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
           echo "| fetch-certificate | https://fetch-certificate.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
           echo "| otp-api | https://otp-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
-          echo "| payments-api | https://payments-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY       
+          echo "| payments-api | https://payments-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
           echo "| storage-api | https://storage-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
           echo "| streak-api | https://streak-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
           echo "| user-api | https://user-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
