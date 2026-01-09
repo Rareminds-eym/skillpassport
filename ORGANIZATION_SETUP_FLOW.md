@@ -32,14 +32,14 @@ All organization data is stored in a single `organizations` table with the follo
 | account_status | varchar | 'active', 'inactive', 'suspended' |
 | is_active | boolean | Whether the organization is active |
 
-### Legacy Tables (Deprecated)
+### Legacy Tables (REMOVED)
 
-The following tables are **DEPRECATED** and kept only for foreign key compatibility:
-- `schools` - Use `organizations` with `organization_type='school'`
-- `colleges` - Use `organizations` with `organization_type='college'`
-- `universities` - Use `organizations` with `organization_type='university'`
+The following tables have been **REMOVED** from the database:
+- `schools` - Migrated to `organizations` with `organization_type='school'`
+- `colleges` - Migrated to `organizations` with `organization_type='college'`
+- `universities` - Migrated to `organizations` with `organization_type='university'`
 
-**Do NOT use these tables for new queries. All new code should use the `organizations` table.**
+All data has been migrated to the unified `organizations` table. All foreign keys now point to `organizations`.
 
 ### Key Components
 
@@ -126,11 +126,23 @@ The OrganizationGuard is integrated into AppRoutes.jsx for all admin routes:
 
 ## Database Migration
 
-The following migration was applied to set up the organizations table:
+The following migrations were applied to set up the unified organizations table:
 
 1. **add_organization_admin_columns** - Added columns: `organization_type`, `admin_id`, `address`, `city`, `country`, `logo_url`
 2. **add_organizations_rls_policies** - Added RLS policies for CRUD operations
-3. **migrate_existing_orgs_to_organizations_table** - Migrated existing data from `schools`, `colleges`, `universities` tables
+3. **migrate_existing_orgs_to_organizations_table** - Migrated existing data from legacy tables
+4. **add_organizations_extended_columns** - Added columns: `code`, `pincode`, `established_year`, `metadata`
+5. **drop_legacy_tables** - Dropped `schools`, `colleges`, `universities` tables
+6. **update_foreign_keys** - Updated 68 foreign keys to point to `organizations` table
+7. **update_database_functions** - Updated 8 functions to use `organizations` table:
+   - `generate_teacher_id`
+   - `get_lecturer_details`
+   - `get_student_academic_summary`
+   - `get_student_details`
+   - `notify_project_approval`
+   - `notify_project_approval_unified`
+   - `set_experience_approval_authority`
+   - `set_project_approval_authority`
 
 ## Services Updated
 
