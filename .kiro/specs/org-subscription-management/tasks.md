@@ -400,15 +400,20 @@ All testing tasks completed:
   - [x] 30.4 Verify all features work in staging (SKIPPED)
   - [x] 30.5 Conduct smoke tests (SKIPPED)
 
-- [x] 30.6 Frontend Wiring Verification (Added)
+- [x] 30.6 Frontend Wiring Verification (Added) ✅
   - [x] Created wrapper page components for organization subscription routes:
     - `OrganizationSubscriptionPage.tsx` - Provides data and handlers to dashboard
     - `BulkPurchasePage.tsx` - Provides context to bulk purchase wizard
     - `MemberSubscriptionPage.tsx` - Provides data to member subscription view
   - [x] Updated `AppRoutes.jsx` to use wrapper pages instead of raw components
-  - [x] Added sidebar navigation links for all admin roles (school, college, university)
   - [x] Verified all TypeScript/diagnostic issues resolved
   - [x] Connected `useOrganizationSubscription` hook to page components
+  - [x] Added `useAuth.d.ts` type declaration file
+  - [x] Fixed missing imports in `SubscriptionSettingsSection.jsx` (Building2, Users, useAuth)
+  - [x] Subscription moved from sidebar to Settings page for admin users
+  - [x] Fixed role detection to use basePath instead of user.role (more reliable)
+  - [x] Organization Subscriptions section shows for school-admin, college-admin, university-admin paths
+  - [x] Removed debug console.log statements
 
 - [ ] 31. Pilot launch with selected organizations
   - [ ] 31.1 Select 2-3 pilot organizations

@@ -42,7 +42,11 @@ const AVAILABLE_PLANS = [
 function BulkPurchasePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  
+  // Get mode from search params (e.g., ?mode=add-seats&subscriptionId=xxx)
+  const mode = searchParams.get('mode');
+  const existingSubscriptionId = searchParams.get('subscriptionId');
   
   // Determine organization context
   const organizationType = useMemo(() => {
@@ -74,6 +78,8 @@ function BulkPurchasePage() {
         state: {
           plan: AVAILABLE_PLANS.find(p => p.id === purchaseData.planId),
           isOrganizationPurchase: true,
+          mode: mode || 'new',
+          existingSubscriptionId,
           organizationConfig: {
             organizationType: purchaseData.organizationType,
             seatCount: purchaseData.seatCount,
@@ -94,11 +100,29 @@ function BulkPurchasePage() {
       console.error('Purchase error:', error);
       toast.error('Failed to process purchase. Please try again.');
     }
-  }, [navigate]);
+  }, [navigate, mode, existingSubscriptionId]);
   
   const handleCancel = useCallback(() => {
     navigate(`${basePath}/subscription/organization`);
   }, [navigate, basePath]);
+  
+  // Check if user is authenticated
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center max-w-md">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Authentication Required</h3>
+          <p className="text-gray-600 mb-4">Please log in to purchase organization subscriptions.</p>
+          <button
+            onClick={() => navigate('/login')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Log In
+          </button>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <BulkPurchaseWizard
