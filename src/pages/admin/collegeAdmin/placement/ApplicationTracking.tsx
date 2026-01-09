@@ -512,9 +512,9 @@ const ApplicationTracking: React.FC = () => {
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{application.student?.name || 'Unknown'}</div>
-                          <div className="text-sm text-gray-500">{application.student?.email || 'N/A'}</div>
-                          <div className="text-sm text-gray-500">{application.student?.id || application.student_id}</div>
+                          <div className="text-sm font-medium text-gray-900">{application.student?.name || 'Unknown Student'}</div>
+                          <div className="text-sm text-gray-500">{application.student?.email || 'No email available'}</div>
+                          <div className="text-sm text-gray-500">{application.student?.contact_number || 'No contact'}</div>
                         </div>
                       </div>
                     </td>
