@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { Upload, FileText, CheckCircle, AlertCircle, X, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle, FileText, Loader2, Upload, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../../../../lib/supabaseClient";
 import { uploadFile, uploadMultipleFiles, validateFile } from "../../../../services/fileUploadService";
+// @ts-ignore - userApiService is a .js file
+import userApiService from "../../../../services/userApiService";
 // @ts-ignore - AuthContext is a .jsx file
 import { useAuth } from "../../../../context/AuthContext";
 
@@ -317,144 +319,91 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
       const idProofUrl = uploadStatus.id_proof.url;
       const experienceUrls = uploadStatus.experience_letters.urls;
 
-      // Generate a temporary password
-      const tempPassword = Math.random().toString(36).slice(-8) + "Temp@123";
-      
-      // Step 1: Create Supabase Auth user
-      let userId: string;
-      
-      // Store current session to restore later
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      
-      // Try admin API first, but expect it to fail in most cases
-      try {
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: formData.email,
-          password: tempPassword,
-          email_confirm: true,
-          user_metadata: {
-            first_name: formData.first_name,
-            last_name: formData.last_name,
-            role: 'college_educator',
-            college_id: collegeId,
-          }
-        });
+      // Get auth token for worker API
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Not authenticated. Please log in again.");
+      }
 
-        if (authError) throw authError;
-        
-        if (!authData.user) {
-          throw new Error("Failed to create auth user");
-        }
-        
-        userId = authData.user.id;
-        
-      } catch (adminError) {
-        // Regular signup approach (this will auto-sign-in the new user temporarily)
-        const { data: signupData, error: signupError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: tempPassword,
-          options: {
-            data: {
-              first_name: formData.first_name,
-              last_name: formData.last_name,
-              role: 'college_educator',
-              college_id: collegeId,
-            }
-          }
-        });
+      // Use Worker API to create faculty with proper rollback
+      const staffResult = await userApiService.createCollegeStaff({
+        email: formData.email,
+        firstName: formData.first_name,
+        lastName: formData.last_name,
+        phone: formData.phone,
+        collegeId: collegeId,
+        employeeId: formData.employee_id,
+        department: formData.department,
+        specialization: formData.specialization,
+        qualification: formData.qualification,
+        experienceYears: formData.experience_years,
+        dateOfJoining: formData.date_of_joining || new Date().toISOString().split('T')[0],
+        role: formData.role,
+        dateOfBirth: formData.date_of_birth,
+        address: formData.address,
+      }, session.access_token);
 
-        if (signupError) {
-          throw new Error(`Failed to create auth user: ${signupError.message}`);
-        }
+      if (!staffResult.success) {
+        throw new Error(staffResult.error || "Failed to create faculty member");
+      }
 
-        if (!signupData.user) {
-          throw new Error("Failed to create auth user");
-        }
+      const userId = staffResult.data.userId;
+      const facultyId = staffResult.data.staffId;
+      const tempPassword = staffResult.data.tempPassword;
 
-        userId = signupData.user.id;
-        
-        // Immediately restore the original admin session
-        if (currentSession) {
-          await supabase.auth.setSession({
-            access_token: currentSession.access_token,
-            refresh_token: currentSession.refresh_token
-          });
-          
-          // Small delay to ensure session is properly restored
-          await new Promise(resolve => setTimeout(resolve, 200));
+      console.log("Created faculty via Worker API:", { userId, facultyId });
+
+      // Step 2: Upload documents if any exist and update the faculty record
+      let uploadedDegreeUrl: string | null = degreeUrl || null;
+      let uploadedIdProofUrl: string | null = idProofUrl || null;
+      let uploadedExperienceUrls: string[] = (experienceUrls || []).filter((url): url is string => url !== undefined);
+
+      if (documents.degree_certificate && !uploadedDegreeUrl) {
+        try {
+          const result = await uploadFile(documents.degree_certificate, `faculty/${facultyId}/degree`);
+          uploadedDegreeUrl = result.url || null;
+        } catch (err) {
+          console.warn('Failed to upload degree certificate:', err);
         }
       }
 
-      // Step 2: Create user record in users table
-      const { error: userError } = await supabase
-        .from("users")
-        .insert({
-          id: userId,
-          email: formData.email,
-          role: 'college_educator',
-        })
-        .select()
-        .single();
-
-      if (userError) {
-        throw new Error(`Failed to create user record: ${userError.message}`);
+      if (documents.id_proof && !uploadedIdProofUrl) {
+        try {
+          const result = await uploadFile(documents.id_proof, `faculty/${facultyId}/id_proof`);
+          uploadedIdProofUrl = result.url || null;
+        } catch (err) {
+          console.warn('Failed to upload ID proof:', err);
+        }
       }
 
-      // Step 3: Create faculty record in college_lecturers table
-      const { data: faculty, error: facultyError } = await supabase
+      if (documents.experience_letters.length > 0 && uploadedExperienceUrls.length === 0) {
+        try {
+          const results = await uploadMultipleFiles(documents.experience_letters, `faculty/${facultyId}/experience`);
+          uploadedExperienceUrls = results.map(r => r.url).filter((url): url is string => url !== undefined);
+        } catch (err) {
+          console.warn('Failed to upload experience letters:', err);
+        }
+      }
+
+      // Step 3: Update faculty record with document URLs and additional fields
+      const { error: updateError } = await supabase
         .from("college_lecturers")
-        .insert({
-          user_id: userId,
-          "collegeId": collegeId,
-          "employeeId": formData.employee_id, // Use manually entered employee ID
-          department: formData.department,
-          specialization: formData.specialization || null,
-          qualification: formData.qualification || null,
-          "experienceYears": formData.experience_years || 0,
-          "dateOfJoining": formData.date_of_joining || new Date().toISOString().split('T')[0],
-          "accountStatus": "active",
-          // New separate columns
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          email: formData.email,
-          phone: formData.phone || null,
-          date_of_birth: formData.date_of_birth || null,
-          address: formData.address || null,
-          designation: formData.role,
+        .update({
           subject_expertise: subjects,
-          degree_certificate_url: degreeUrl,
-          id_proof_url: idProofUrl,
-          experience_letters_url: experienceUrls.length > 0 ? experienceUrls : [],
-          temporary_password: tempPassword,
-          password_created_at: new Date().toISOString(),
-          created_by: user?.id,
-          verification_status: "pending",
-          // Keep minimal metadata for backward compatibility
-          metadata: {
-            source: "admin_onboarding"
-          }
+          degree_certificate_url: uploadedDegreeUrl,
+          id_proof_url: uploadedIdProofUrl,
+          experience_letters_url: uploadedExperienceUrls.length > 0 ? uploadedExperienceUrls : [],
         })
-        .select()
-        .single();
+        .eq('id', facultyId);
 
-      if (facultyError) {
-        // Rollback: delete user record
-        await supabase.from("users").delete().eq("id", userId);
-        throw new Error(`Failed to create faculty record: ${facultyError.message}`);
+      if (updateError) {
+        console.warn('Failed to update faculty record with documents:', updateError);
       }
 
       setMessage({
         type: "success",
-        text: `Faculty member onboarded successfully! Employee ID: ${faculty.employeeId}. Login credentials sent to ${formData.email}. Temporary password: ${tempPassword}`,
+        text: `Faculty member onboarded successfully! Login credentials sent to ${formData.email}. Temporary password: ${tempPassword}`,
       });
-
-      // Ensure we're still logged in as admin after the process
-      if (currentSession) {
-        await supabase.auth.setSession({
-          access_token: currentSession.access_token,
-          refresh_token: currentSession.refresh_token
-        });
-      }
 
       // Reset form
       setFormData({ 

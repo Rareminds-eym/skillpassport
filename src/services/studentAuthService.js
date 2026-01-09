@@ -285,7 +285,7 @@ export const loginStudent = async (email, password) => {
 // ============================================================================
 
 /**
- * Sign up a new student
+ * Sign up a new student using Worker API with proper rollback
  * @param {object} studentData - Student registration data
  * @returns {Promise<{success: boolean, student: object|null, user: object|null, error: string|null}>}
  */
@@ -333,35 +333,37 @@ export const signupStudent = async (studentData) => {
       };
     }
 
-    logAuthEvent('info', 'Student signup attempt', { correlationId });
+    logAuthEvent('info', 'Student signup attempt via Worker API', { correlationId });
 
-    // Step 1: Create auth user
-    let authData;
+    // Parse name into firstName and lastName
+    const nameParts = (name || '').trim().split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    // Determine role based on institution type
+    const role = university_college_id ? 'college_student' : 'school_student';
+
+    // Use Worker API for signup with proper rollback
+    let result;
     try {
-      const { data, error } = await withTimeout(
-        supabase.auth.signUp({
-          email: validation.email,
-          password,
-          options: {
-            data: {
-              name: name || '',
-              role: 'student',
-            },
-          },
-        }),
-        AUTH_TIMEOUT_MS
-      );
+      result = await unifiedSignup({
+        email: validation.email,
+        password,
+        firstName,
+        lastName,
+        role,
+        phone: additionalData.phone || additionalData.contact_number || null,
+        dateOfBirth: additionalData.dateOfBirth || additionalData.date_of_birth || null,
+        country: additionalData.country || null,
+        state: additionalData.state || null,
+        city: additionalData.city || null,
+        preferredLanguage: additionalData.preferredLanguage || additionalData.preferred_language || null,
+        referralCode: additionalData.referralCode || additionalData.referral_code || null,
+      });
+    } catch (apiError) {
+      logAuthEvent('error', 'Student signup API failed', { correlationId, error: apiError.message });
 
-      if (error) {
-        throw error;
-      }
-
-      authData = data;
-    } catch (authError) {
-      const errorCode = mapSupabaseError(authError);
-      logAuthEvent('error', 'Student signup auth failed', { correlationId, errorCode });
-
-      if (authError.message?.includes('already registered')) {
+      if (apiError.message?.includes('already registered')) {
         return {
           success: false,
           student: null,
@@ -372,92 +374,66 @@ export const signupStudent = async (studentData) => {
         };
       }
 
-      const response = handleAuthError(authError, { correlationId, operation: 'studentSignup' });
       return {
         success: false,
         student: null,
         user: null,
-        error: response.error,
-        errorCode: response.errorCode,
-        correlationId,
-      };
-    }
-
-    if (!authData.user) {
-      logAuthEvent('error', 'Student signup returned no user', { correlationId });
-      return {
-        success: false,
-        student: null,
-        user: null,
-        error: 'Unable to create account. Please try again.',
+        error: apiError.message || 'Unable to create account. Please try again.',
         errorCode: AUTH_ERROR_CODES.UNEXPECTED_ERROR,
         correlationId,
       };
     }
 
-    // Step 2: Create student record in students table
-    const studentRecord = {
-      user_id: authData.user.id,
-      email: validation.email,
-      name: name || '',
-      school_id: school_id || null,
-      university_college_id: university_college_id || null,
-      approval_status: 'pending',
-      profile: {
-        name: name || '',
-        ...additionalData,
-      },
-      ...additionalData,
-    };
-
-    let newStudent;
-    try {
-      const { data, error } = await withTimeout(
-        supabase
-          .from('students')
-          .insert([studentRecord])
-          .select()
-          .single(),
-        AUTH_TIMEOUT_MS
-      );
-
-      if (error) {
-        throw error;
-      }
-
-      newStudent = data;
-    } catch (dbError) {
-      logAuthEvent('error', 'Student record creation failed', { 
-        correlationId, 
-        errorCode: mapSupabaseError(dbError),
-      });
-
-      // Cleanup: attempt to delete auth user (best effort)
-      try {
-        await supabase.auth.admin?.deleteUser(authData.user.id);
-      } catch {
-        logAuthEvent('warn', 'Failed to cleanup auth user after student record creation failure', { correlationId });
-      }
-
+    if (!result.success || !result.data?.userId) {
+      logAuthEvent('error', 'Student signup returned no user', { correlationId });
       return {
         success: false,
         student: null,
         user: null,
-        error: 'Unable to complete registration. Please try again.',
-        errorCode: AUTH_ERROR_CODES.DATABASE_ERROR,
+        error: result.error || 'Unable to create account. Please try again.',
+        errorCode: AUTH_ERROR_CODES.UNEXPECTED_ERROR,
         correlationId,
       };
     }
 
+    const userId = result.data.userId;
+
+    // Update student record with institution-specific fields
+    const updateData = {
+      school_id: school_id || null,
+      university_college_id: university_college_id || null,
+      profile: {
+        name: name || '',
+        ...additionalData,
+      },
+    };
+
+    // Add any additional fields from additionalData
+    if (additionalData.gender) updateData.gender = additionalData.gender;
+    if (additionalData.enrollmentNumber) updateData.enrollmentNumber = additionalData.enrollmentNumber;
+    if (additionalData.course_name) updateData.course_name = additionalData.course_name;
+
+    const { data: updatedStudent, error: updateError } = await supabase
+      .from('students')
+      .update(updateData)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (updateError) {
+      logAuthEvent('warn', 'Student record update failed', { correlationId, error: updateError.message });
+      // Don't fail the signup, just log the warning
+    }
+
     logAuthEvent('info', 'Student signup successful', { 
       correlationId, 
-      studentId: newStudent.id,
+      studentId: updatedStudent?.id || userId,
     });
 
     return {
       success: true,
-      student: newStudent,
-      user: authData.user,
+      student: updatedStudent || { user_id: userId, email: validation.email, name },
+      user: { id: userId, email: result.data.email },
       error: null,
       message: 'Account created successfully. Please wait for approval from your institution.',
     };

@@ -156,19 +156,45 @@ class UserManagementService {
   }
 
   /**
-   * Create a new user
+   * Create a new user using Worker API with proper rollback
    */
   async createUser(userData: CreateUserData): Promise<User> {
-    // Create auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // Parse name into firstName and lastName if not provided
+    const firstName = userData.firstName || '';
+    const lastName = userData.lastName || '';
+
+    // Map role to worker API expected format
+    const roleMapping: Record<string, string> = {
+      'student': 'school_student',
+      'school_student': 'school_student',
+      'college_student': 'college_student',
+      'educator': 'school_educator',
+      'school_educator': 'school_educator',
+      'college_educator': 'college_educator',
+      'recruiter': 'recruiter',
+      'admin': 'school_admin',
+      'school_admin': 'school_admin',
+      'college_admin': 'college_admin',
+      'university_admin': 'university_admin',
+    };
+
+    const mappedRole = roleMapping[userData.role] || 'school_student';
+
+    // Use Worker API for signup with proper rollback
+    const result = await unifiedSignup({
       email: userData.email,
       password: userData.password,
+      firstName,
+      lastName,
+      role: mappedRole as any,
+      phone: (userData.metadata as any)?.phone || null,
     });
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error('Failed to create user');
+    if (!result.success || !result.data?.userId) {
+      throw new Error(result.error || 'Failed to create user');
+    }
 
-    // Update user profile
+    // Update user profile with additional metadata
     const { data: user, error: updateError } = await supabase
       .from('users')
       .update({
@@ -177,14 +203,14 @@ class UserManagementService {
         role: userData.role,
         metadata: userData.metadata,
       })
-      .eq('id', authData.user.id)
+      .eq('id', result.data.userId)
       .select()
       .single();
 
     if (updateError) throw updateError;
 
     // Log activity
-    await this.logActivity(authData.user.id, 'user_created', 'User account created');
+    await this.logActivity(result.data.userId, 'user_created', 'User account created');
 
     return user;
   }

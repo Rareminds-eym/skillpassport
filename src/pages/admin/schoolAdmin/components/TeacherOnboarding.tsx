@@ -319,119 +319,40 @@ const TeacherOnboardingPage: React.FC = () => {
       else if (action === "approve") status = "active";
       else if (action === "reject") status = "inactive";
 
-      // Step 1: Create Supabase Auth user
-      // Generate a temporary password
-      const tempPassword = Math.random().toString(36).slice(-8) + "Temp@123";
-      
-      console.log("Creating auth user for:", formData.email);
-      
-      // Note: This will send a confirmation email to the teacher
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      // Get auth token for worker API
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Not authenticated. Please log in again.");
+      }
+
+      // Use Worker API to create teacher with proper rollback
+      const teacherResult = await createTeacher({
         email: formData.email,
-        password: tempPassword,
-        email_confirm: true, // Auto-confirm email
-        user_metadata: {
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          role: 'educator',
-          school_id: schoolId,
-        }
-      });
+        firstName: formData.first_name,
+        lastName: formData.last_name,
+        phone: formData.phone_number,
+        schoolId: schoolId,
+        designation: formData.designation,
+        department: formData.department,
+        qualification: formData.qualification,
+        specialization: formData.specialization,
+        experienceYears: formData.experience_years,
+        role: formData.role,
+        subjects: subjects,
+        status: status,
+      }, session.access_token);
 
-      if (authError) {
-        // If admin API is not available, try regular signup
-        console.warn("Admin API not available, trying regular signup:", authError);
-        
-        const { data: signupData, error: signupError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: tempPassword,
-          options: {
-            data: {
-              first_name: formData.first_name,
-              last_name: formData.last_name,
-              role: 'educator',
-              school_id: schoolId,
-            }
-          }
-        });
-
-        if (signupError) {
-          throw new Error(`Failed to create auth user: ${signupError.message}`);
-        }
-
-        if (!signupData.user) {
-          throw new Error("Failed to create auth user");
-        }
-
-        // Use the signup user
-        var userId = signupData.user.id;
-      } else {
-        if (!authData.user) {
-          throw new Error("Failed to create auth user");
-        }
-        var userId = authData.user.id;
+      if (!teacherResult.success) {
+        throw new Error(teacherResult.error || "Failed to create teacher");
       }
 
-      console.log("Created auth user:", userId);
+      const userId = teacherResult.data.userId;
+      const teacherId = teacherResult.data.teacherId;
+      const tempPassword = teacherResult.data.tempPassword;
 
-      // Step 2: Create user record in users table
-      const { data: userRecord, error: userError } = await supabase
-        .from("users")
-        .insert({
-          id: userId,
-          email: formData.email,
-          role: 'school_educator',
-        })
-        .select()
-        .single();
+      console.log("Created teacher via Worker API:", { userId, teacherId });
 
-      if (userError) {
-        console.error("Failed to create user record:", userError);
-        // Note: Auth user already created, cannot easily rollback
-        throw new Error(`Failed to create user record: ${userError.message}`);
-      }
-
-      console.log("Created user record:", userRecord);
-
-      // Step 3: Create educator record in school_educators table (without document URLs initially)
-      const { data: teacher, error: teacherError } = await supabase
-        .from("school_educators")
-        .insert({
-          user_id: userId,
-          school_id: schoolId,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          email: formData.email,
-          phone_number: formData.phone_number || null,
-          dob: null, // formData doesn't have date_of_birth field
-          address: null, // formData doesn't have address field
-          qualification: formData.qualification || null,
-          role: formData.role,
-          degree_certificate_url: null, // Will be updated after upload
-          id_proof_url: null, // Will be updated after upload
-          experience_letters_url: null, // Will be updated after upload
-          subject_expertise: subjects,
-          onboarding_status: status,
-          metadata: {
-            temporary_password: tempPassword,
-            password_created_at: new Date().toISOString(),
-            created_by: userEmail,
-          }
-        })
-        .select()
-        .single();
-
-      if (teacherError) {
-        // Rollback: delete user record
-        await supabase.from("users").delete().eq("id", userId);
-        console.error("Failed to create educator record:", teacherError);
-        throw new Error(`Failed to create educator record: ${teacherError.message}`);
-      }
-
-      const teacherId = teacher.id || teacher.user_id;
-      console.log("✅ Teacher created with ID:", teacherId);
-
-      // Step 4: Upload documents if any exist
+      // Step 2: Upload documents if any exist
       let documentUrls: {
         degreeUrl: string | null;
         idProofUrl: string | null;
@@ -455,7 +376,7 @@ const TeacherOnboardingPage: React.FC = () => {
         }
       }
 
-      // Step 5: Update teacher record with document URLs (if any were uploaded)
+      // Step 3: Update teacher record with document URLs (if any were uploaded)
       if (documentUrls.degreeUrl || documentUrls.idProofUrl || documentUrls.experienceUrls.length > 0) {
         try {
           const { error: updateError } = await supabase
@@ -480,8 +401,8 @@ const TeacherOnboardingPage: React.FC = () => {
 
       const documentCount = (documentUrls.degreeUrl ? 1 : 0) + (documentUrls.idProofUrl ? 1 : 0) + documentUrls.experienceUrls.length;
       const successMsg = documentCount > 0 
-        ? `Teacher ${action === "draft" ? "saved as draft" : action === "approve" ? "approved" : action === "reject" ? "rejected" : "onboarded"} successfully with ${documentCount} document${documentCount > 1 ? 's' : ''}! Teacher ID: ${teacher.teacher_id || "N/A"}. Login credentials sent to ${formData.email}. Temporary password: ${tempPassword}`
-        : `Teacher ${action === "draft" ? "saved as draft" : action === "approve" ? "approved" : action === "reject" ? "rejected" : "onboarded"} successfully! Teacher ID: ${teacher.teacher_id || "N/A"}. Login credentials sent to ${formData.email}. Temporary password: ${tempPassword}`;
+        ? `Teacher ${action === "draft" ? "saved as draft" : action === "approve" ? "approved" : action === "reject" ? "rejected" : "onboarded"} successfully with ${documentCount} document${documentCount > 1 ? 's' : ''}! Login credentials sent to ${formData.email}. Temporary password: ${tempPassword}`
+        : `Teacher ${action === "draft" ? "saved as draft" : action === "approve" ? "approved" : action === "reject" ? "rejected" : "onboarded"} successfully! Login credentials sent to ${formData.email}. Temporary password: ${tempPassword}`;
 
       setMessage({
         type: "success",
