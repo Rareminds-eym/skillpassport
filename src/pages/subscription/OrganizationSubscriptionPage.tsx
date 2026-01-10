@@ -5,12 +5,32 @@
  * Fetches organization subscription data and connects to services.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import OrganizationSubscriptionDashboard from '../../components/Subscription/Organization/OrganizationSubscriptionDashboard';
 import { useOrganizationSubscription } from '../../hooks/Subscription/useOrganizationSubscription';
 import useAuth from '../../hooks/useAuth';
+import { supabase } from '../../lib/supabaseClient';
+
+interface OrganizationDetails {
+  id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  website?: string;
+  logoUrl?: string;
+  organizationType?: string;
+  establishedYear?: number;
+  code?: string;
+  verificationStatus?: string;
+  accountStatus?: string;
+}
 
 function OrganizationSubscriptionPage() {
   const navigate = useNavigate();
@@ -33,8 +53,81 @@ function OrganizationSubscriptionPage() {
     return '/college-admin';
   }, [organizationType]);
   
-  const organizationId = user?.school_id || user?.college_id || user?.university_id || '';
+  // Get organization ID - check user object first, then localStorage
+  const organizationId = useMemo(() => {
+    // First check user object
+    if (user?.school_id) return user.school_id;
+    if (user?.college_id) return user.college_id;
+    if (user?.university_id) return user.university_id;
+    if (user?.schoolId) return user.schoolId;
+    if (user?.collegeId) return user.collegeId;
+    if (user?.universityId) return user.universityId;
+    
+    // Fallback to localStorage for school admins
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        if (userData.schoolId) return userData.schoolId;
+        if (userData.collegeId) return userData.collegeId;
+        if (userData.universityId) return userData.universityId;
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    
+    return '';
+  }, [user]);
+  
   const organizationName = user?.school_name || user?.college_name || user?.university_name || 'Your Organization';
+  
+  // State for organization details
+  const [organizationDetails, setOrganizationDetails] = useState<OrganizationDetails | null>(null);
+  
+  // Fetch organization details from database
+  useEffect(() => {
+    const fetchOrganizationDetails = async () => {
+      if (!organizationId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('id', organizationId)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error fetching organization details:', error);
+          return;
+        }
+        
+        if (data) {
+          setOrganizationDetails({
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            address: data.address,
+            city: data.city,
+            state: data.state,
+            country: data.country,
+            pincode: data.pincode,
+            website: data.website,
+            logoUrl: data.logo_url,
+            organizationType: data.organization_type,
+            establishedYear: data.established_year,
+            code: data.code,
+            verificationStatus: data.verification_status,
+            accountStatus: data.account_status,
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching organization details:', err);
+      }
+    };
+    
+    fetchOrganizationDetails();
+  }, [organizationId]);
   
   // Fetch subscription data
   const {
@@ -180,6 +273,7 @@ function OrganizationSubscriptionPage() {
       <OrganizationSubscriptionDashboard
         organizationName={organizationName}
         organizationType={organizationType}
+        organizationDetails={organizationDetails || undefined}
         subscriptions={dashboardSubscriptions}
         licensePools={dashboardPools}
         members={members}

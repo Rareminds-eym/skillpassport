@@ -1,11 +1,11 @@
 /**
  * SubscriptionOverview Component
  * 
- * Displays active organization subscriptions with seat utilization metrics,
+ * Displays organization details and active subscriptions with seat utilization metrics,
  * quick action buttons, and expiration warnings.
  */
 
-import { AlertTriangle, Calendar, ChevronRight, Clock, Plus, RefreshCw, Settings, Users } from 'lucide-react';
+import { AlertTriangle, Building2, Calendar, ChevronRight, Clock, Globe, Mail, MapPin, Phone, Plus, RefreshCw, Settings, Users } from 'lucide-react';
 import { memo, useMemo } from 'react';
 
 interface Subscription {
@@ -20,8 +20,28 @@ interface Subscription {
   targetMemberType: 'educator' | 'student' | 'both';
 }
 
+interface OrganizationDetails {
+  id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  website?: string;
+  logoUrl?: string;
+  organizationType?: string;
+  establishedYear?: number;
+  code?: string;
+  verificationStatus?: string;
+  accountStatus?: string;
+}
+
 interface SubscriptionOverviewProps {
   subscriptions: Subscription[];
+  organizationDetails?: OrganizationDetails;
   onAddSeats: (subscriptionId: string) => void;
   onManage: (subscriptionId: string) => void;
   onRenew: (subscriptionId: string) => void;
@@ -47,6 +67,7 @@ function formatDate(dateString: string): string {
 
 function SubscriptionOverview({
   subscriptions,
+  organizationDetails,
   onAddSeats,
   onManage,
   onRenew,
@@ -71,6 +92,12 @@ function SubscriptionOverview({
 
   const utilizationPercentage = totalSeats > 0 ? Math.round((assignedSeats / totalSeats) * 100) : 0;
 
+  // Format organization type for display
+  const formatOrgType = (type?: string) => {
+    if (!type) return 'Organization';
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  };
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -83,201 +110,313 @@ function SubscriptionOverview({
     );
   }
 
-  if (activeSubscriptions.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Users className="w-8 h-8 text-gray-400" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Active Subscriptions</h3>
-        <p className="text-gray-500 mb-4">
-          Purchase a subscription to start managing licenses for your organization.
-        </p>
-        <button 
-          onClick={onBrowsePlans}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-        >
-          Browse Plans
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      {/* Summary Card */}
-      <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Subscription Overview</h2>
-          <span className="px-3 py-1 bg-white/20 rounded-full text-sm">
-            {activeSubscriptions.length} Active Plan{activeSubscriptions.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-3 gap-6">
-          <div>
-            <div className="text-3xl font-bold">{totalSeats}</div>
-            <div className="text-blue-100 text-sm">Total Seats</div>
-          </div>
-          <div>
-            <div className="text-3xl font-bold">{assignedSeats}</div>
-            <div className="text-blue-100 text-sm">Assigned</div>
-          </div>
-          <div>
-            <div className="text-3xl font-bold">{totalSeats - assignedSeats}</div>
-            <div className="text-blue-100 text-sm">Available</div>
-          </div>
-        </div>
-
-        {/* Utilization Bar */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-sm mb-1">
-            <span className="text-blue-100">Seat Utilization</span>
-            <span className="font-medium">{utilizationPercentage}%</span>
-          </div>
-          <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all ${
-                utilizationPercentage >= 90
-                  ? 'bg-red-400'
-                  : utilizationPercentage >= 70
-                  ? 'bg-yellow-400'
-                  : 'bg-green-400'
-              }`}
-              style={{ width: `${utilizationPercentage}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Subscription Cards */}
-      <div className="space-y-4">
-        {activeSubscriptions.map((subscription) => {
-          const daysRemaining = calculateDaysRemaining(subscription.endDate);
-          const utilization = Math.round(
-            (subscription.assignedSeats / subscription.totalSeats) * 100
-          );
-          const isExpiringSoon = daysRemaining <= 30;
-          const isGracePeriod = subscription.status === 'grace_period';
-
-          return (
-            <div
-              key={subscription.id}
-              className="bg-white rounded-xl border border-gray-200 overflow-hidden"
-            >
-              {/* Warning Banner */}
-              {(isExpiringSoon || isGracePeriod) && (
-                <div
-                  className={`px-4 py-2 flex items-center gap-2 text-sm ${
-                    isGracePeriod
-                      ? 'bg-red-50 text-red-700'
-                      : 'bg-amber-50 text-amber-700'
-                  }`}
-                >
-                  <AlertTriangle className="w-4 h-4" />
-                  {isGracePeriod
-                    ? 'Subscription expired - in grace period'
-                    : `Expires in ${daysRemaining} days`}
-                </div>
-              )}
-
-              <div className="p-5">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{subscription.planName}</h3>
-                    <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {formatDate(subscription.startDate)} - {formatDate(subscription.endDate)}
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          subscription.targetMemberType === 'both'
-                            ? 'bg-purple-100 text-purple-700'
-                            : subscription.targetMemberType === 'educator'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-green-100 text-green-700'
-                        }`}
-                      >
-                        {subscription.targetMemberType === 'both'
-                          ? 'All Members'
-                          : subscription.targetMemberType === 'educator'
-                          ? 'Educators'
-                          : 'Students'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => onViewDetails(subscription.id)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                    aria-label="View details"
-                  >
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </button>
-                </div>
-
-                {/* Seat Progress */}
-                <div className="mb-4">
-                  <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="text-gray-600">
-                      {subscription.assignedSeats} / {subscription.totalSeats} seats used
-                    </span>
-                    <span className="font-medium text-gray-900">{utilization}%</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        utilization >= 90
-                          ? 'bg-red-500'
-                          : utilization >= 70
-                          ? 'bg-amber-500'
-                          : 'bg-blue-500'
-                      }`}
-                      style={{ width: `${utilization}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => onAddSeats(subscription.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Seats
-                  </button>
-                  <button
-                    onClick={() => onManage(subscription.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <Settings className="w-4 h-4" />
-                    Manage
-                  </button>
-                  {(isExpiringSoon || isGracePeriod) && (
-                    <button
-                      onClick={() => onRenew(subscription.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors ml-auto"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      Renew Now
-                    </button>
-                  )}
-                </div>
-
-                {/* Auto-renew indicator */}
-                {subscription.autoRenew && !isExpiringSoon && (
-                  <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-500">
-                    <Clock className="w-3.5 h-3.5" />
-                    Auto-renews on {formatDate(subscription.endDate)}
+      {/* Organization Details Card */}
+      {organizationDetails && (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-start gap-4">
+              {/* Logo */}
+              <div className="flex-shrink-0">
+                {organizationDetails.logoUrl ? (
+                  <img 
+                    src={organizationDetails.logoUrl} 
+                    alt={organizationDetails.name || 'Organization'} 
+                    className="w-20 h-20 rounded-xl object-cover border border-gray-200"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                    <Building2 className="w-10 h-10 text-white" />
                   </div>
                 )}
               </div>
+
+              {/* Organization Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-1">
+                  <h2 className="text-xl font-bold text-gray-900 truncate">
+                    {organizationDetails.name || 'Your Organization'}
+                  </h2>
+                  {organizationDetails.verificationStatus === 'verified' && (
+                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                      Verified
+                    </span>
+                  )}
+                  {organizationDetails.accountStatus && (
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                      organizationDetails.accountStatus === 'active' 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {organizationDetails.accountStatus.charAt(0).toUpperCase() + organizationDetails.accountStatus.slice(1)}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                  <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded font-medium">
+                    {formatOrgType(organizationDetails.organizationType)}
+                  </span>
+                  {organizationDetails.code && (
+                    <span className="text-gray-400">•</span>
+                  )}
+                  {organizationDetails.code && (
+                    <span className="font-mono text-gray-600">Code: {organizationDetails.code}</span>
+                  )}
+                  {organizationDetails.establishedYear && (
+                    <>
+                      <span className="text-gray-400">•</span>
+                      <span>Est. {organizationDetails.establishedYear}</span>
+                    </>
+                  )}
+                </div>
+
+                {/* Contact Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {organizationDetails.email && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <a href={`mailto:${organizationDetails.email}`} className="hover:text-blue-600 truncate">
+                        {organizationDetails.email}
+                      </a>
+                    </div>
+                  )}
+                  {organizationDetails.phone && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Phone className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <a href={`tel:${organizationDetails.phone}`} className="hover:text-blue-600">
+                        {organizationDetails.phone}
+                      </a>
+                    </div>
+                  )}
+                  {organizationDetails.website && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Globe className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <a 
+                        href={organizationDetails.website.startsWith('http') ? organizationDetails.website : `https://${organizationDetails.website}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="hover:text-blue-600 truncate"
+                      >
+                        {organizationDetails.website.replace(/^https?:\/\//, '')}
+                      </a>
+                    </div>
+                  )}
+                  {(organizationDetails.address || organizationDetails.city || organizationDetails.state) && (
+                    <div className="flex items-start gap-2 text-sm text-gray-600">
+                      <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                      <span className="truncate">
+                        {[
+                          organizationDetails.address,
+                          organizationDetails.city,
+                          organizationDetails.state,
+                          organizationDetails.pincode,
+                          organizationDetails.country
+                        ].filter(Boolean).join(', ')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          );
-        })}
-      </div>
+          </div>
+        </div>
+      )}
+
+      {activeSubscriptions.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Users className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Active Subscriptions</h3>
+          <p className="text-gray-500 mb-4">
+            Purchase a subscription to start managing licenses for your organization.
+          </p>
+          <button 
+            onClick={onBrowsePlans}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
+            Browse Plans
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Summary Card */}
+          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Subscription Summary</h2>
+              <span className="px-3 py-1 bg-white/20 rounded-full text-sm">
+                {activeSubscriptions.length} Active Plan{activeSubscriptions.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-6">
+              <div>
+                <div className="text-3xl font-bold">{totalSeats}</div>
+                <div className="text-blue-100 text-sm">Total Seats</div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold">{assignedSeats}</div>
+                <div className="text-blue-100 text-sm">Assigned</div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold">{totalSeats - assignedSeats}</div>
+                <div className="text-blue-100 text-sm">Available</div>
+              </div>
+            </div>
+
+            {/* Utilization Bar */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-sm mb-1">
+                <span className="text-blue-100">Seat Utilization</span>
+                <span className="font-medium">{utilizationPercentage}%</span>
+              </div>
+              <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    utilizationPercentage >= 90
+                      ? 'bg-red-400'
+                      : utilizationPercentage >= 70
+                      ? 'bg-yellow-400'
+                      : 'bg-green-400'
+                  }`}
+                  style={{ width: `${utilizationPercentage}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Subscription Cards */}
+          <div className="space-y-4">
+            {activeSubscriptions.map((subscription) => {
+              const daysRemaining = calculateDaysRemaining(subscription.endDate);
+              const utilization = Math.round(
+                (subscription.assignedSeats / subscription.totalSeats) * 100
+              );
+              const isExpiringSoon = daysRemaining <= 30;
+              const isGracePeriod = subscription.status === 'grace_period';
+
+              return (
+                <div
+                  key={subscription.id}
+                  className="bg-white rounded-xl border border-gray-200 overflow-hidden"
+                >
+                  {/* Warning Banner */}
+                  {(isExpiringSoon || isGracePeriod) && (
+                    <div
+                      className={`px-4 py-2 flex items-center gap-2 text-sm ${
+                        isGracePeriod
+                          ? 'bg-red-50 text-red-700'
+                          : 'bg-amber-50 text-amber-700'
+                      }`}
+                    >
+                      <AlertTriangle className="w-4 h-4" />
+                      {isGracePeriod
+                        ? 'Subscription expired - in grace period'
+                        : `Expires in ${daysRemaining} days`}
+                    </div>
+                  )}
+
+                  <div className="p-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{subscription.planName}</h3>
+                        <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-4 h-4" />
+                            {formatDate(subscription.startDate)} - {formatDate(subscription.endDate)}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-medium ${
+                              subscription.targetMemberType === 'both'
+                                ? 'bg-purple-100 text-purple-700'
+                                : subscription.targetMemberType === 'educator'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-green-100 text-green-700'
+                            }`}
+                          >
+                            {subscription.targetMemberType === 'both'
+                              ? 'All Members'
+                              : subscription.targetMemberType === 'educator'
+                              ? 'Educators'
+                              : 'Students'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => onViewDetails(subscription.id)}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        aria-label="View details"
+                      >
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                      </button>
+                    </div>
+
+                    {/* Seat Progress */}
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span className="text-gray-600">
+                          {subscription.assignedSeats} / {subscription.totalSeats} seats used
+                        </span>
+                        <span className="font-medium text-gray-900">{utilization}%</span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            utilization >= 90
+                              ? 'bg-red-500'
+                              : utilization >= 70
+                              ? 'bg-amber-500'
+                              : 'bg-blue-500'
+                          }`}
+                          style={{ width: `${utilization}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => onAddSeats(subscription.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Seats
+                      </button>
+                      <button
+                        onClick={() => onManage(subscription.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <Settings className="w-4 h-4" />
+                        Manage
+                      </button>
+                      {(isExpiringSoon || isGracePeriod) && (
+                        <button
+                          onClick={() => onRenew(subscription.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors ml-auto"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                          Renew Now
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Auto-renew indicator */}
+                    {subscription.autoRenew && !isExpiringSoon && (
+                      <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-500">
+                        <Clock className="w-3.5 h-3.5" />
+                        Auto-renews on {formatDate(subscription.endDate)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }

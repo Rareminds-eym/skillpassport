@@ -1367,17 +1367,30 @@ export class MessageService {
       const conversationId = data[0].conversation_id;
       
       // Fetch the full conversation details
+      // Note: colleges table doesn't exist - fetch college name from organizations separately
       const { data: conversation, error: fetchError } = await supabase
         .from('conversations')
         .select(`
           *,
-          student:students(id, name, email),
-          college:colleges(id, name)
+          student:students(id, name, email, college_id)
         `)
         .eq('id', conversationId)
         .single();
 
       if (fetchError) throw fetchError;
+      
+      // Fetch college name from organizations table if student has college_id
+      if (conversation?.student?.college_id) {
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('id, name')
+          .eq('id', conversation.student.college_id)
+          .maybeSingle();
+        
+        if (orgData) {
+          (conversation as any).college = orgData;
+        }
+      }
       
       return conversation;
     } catch (error) {

@@ -62,9 +62,29 @@ interface Member {
   poolName?: string;
 }
 
+interface OrganizationDetails {
+  id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  website?: string;
+  logoUrl?: string;
+  organizationType?: string;
+  establishedYear?: number;
+  code?: string;
+  verificationStatus?: string;
+  accountStatus?: string;
+}
+
 interface OrganizationSubscriptionDashboardProps {
   organizationName: string;
   organizationType: 'school' | 'college' | 'university';
+  organizationDetails?: OrganizationDetails;
   subscriptions: Subscription[];
   licensePools: LicensePool[];
   members: Member[];
@@ -88,6 +108,7 @@ interface OrganizationSubscriptionDashboardProps {
 function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashboardProps) {
   const {
     organizationName,
+    organizationDetails,
     subscriptions,
     licensePools,
     members,
@@ -131,6 +152,7 @@ function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashbo
         return (
           <SubscriptionOverview
             subscriptions={subscriptions}
+            organizationDetails={organizationDetails}
             onAddSeats={onAddSeats}
             onManage={onManageSubscription}
             onRenew={onRenewSubscription}
