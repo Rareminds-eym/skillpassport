@@ -1,26 +1,10 @@
-import { ArrowUpRight, ChevronDown } from 'lucide-react';
-import { useEffect } from 'react';
+import { ArrowUpRight, ChevronDown, X } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Hero = () => {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const link = document.createElement('link');
-    link.href = 'https://assets.calendly.com/assets/external/widget.css';
-    link.rel = 'stylesheet';
-    document.head.appendChild(link);
-
-    const script = document.createElement('script');
-    script.src = 'https://assets.calendly.com/assets/external/widget.js';
-    script.async = true;
-    document.body.appendChild(script);
-
-    return () => {
-      if (link.parentNode) link.parentNode.removeChild(link);
-      if (script.parentNode) script.parentNode.removeChild(script);
-    };
-  }, []);
+  const [showBookingModal, setShowBookingModal] = useState(false);
 
   const scrollToNextSection = () => {
     const nextSection = document.querySelector('#next-section');
@@ -31,12 +15,8 @@ const Hero = () => {
     }
   };
 
-  const openCalendly = () => {
-    if (window.Calendly) {
-      window.Calendly.initPopupWidget({ url: 'https://calendly.com/d/cxdd-5y9-vr5' });
-    } else {
-      window.open('https://calendly.com/d/cxdd-5y9-vr5', '_blank');
-    }
+  const openBooking = () => {
+    setShowBookingModal(true);
   };
 
   return (
@@ -77,13 +57,13 @@ const Hero = () => {
               {/* Book a Demo */}
               <div className="flex items-center gap-2 group">
                 <button
-                  onClick={openCalendly}
+                  onClick={openBooking}
                   className="h-9 sm:h-14 px-4 sm:px-8 rounded-full bg-[#e63b2e] text-white text-xs sm:text-base font-bold uppercase tracking-wide shadow-[0_6px_20px_rgba(230,59,46,0.4)] hover:brightness-110 transition-all whitespace-nowrap"
                 >
                   BOOK A DEMO
                 </button>
                 {/* <button
-                  onClick={openCalendly}
+                  onClick={openBooking}
                   aria-label="Open demo"
                   className="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-[#e63b2e] text-white shadow-[0_6px_20px_rgba(230,59,46,0.4)] flex items-center justify-center hover:brightness-110 transition-all group-hover:-translate-x-1"
                 >
@@ -122,6 +102,29 @@ const Hero = () => {
           <ChevronDown className="w-6 h-6 sm:w-7 sm:h-7 text-black" strokeWidth={2.5} />
         </button>
       </div>
+
+      {/* Zoho Bookings Modal */}
+      {showBookingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="relative bg-white rounded-lg w-[95vw] max-w-4xl h-[85vh] shadow-2xl">
+            <button
+              onClick={() => setShowBookingModal(false)}
+              className="absolute -top-3 -right-3 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-gray-100 transition-all"
+              aria-label="Close booking modal"
+            >
+              <X className="w-5 h-5 text-gray-700" />
+            </button>
+            <iframe
+              width="100%"
+              height="100%"
+              src="https://subashini-rareminds37.zohobookings.in/portal-embed#/rareminds"
+              frameBorder="0"
+              allowFullScreen
+              className="rounded-lg"
+            />
+          </div>
+        </div>
+      )}
     </section>
   );
 };

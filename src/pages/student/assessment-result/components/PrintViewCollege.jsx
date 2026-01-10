@@ -4,14 +4,13 @@
  * Requirements: 1.3, 2.3 - Comprehensive assessment with employability metrics
  */
 
-import React from 'react';
 import CoverPage from './CoverPage';
-import PrintHeader from './PrintHeader';
 import { printStyles } from './shared/styles';
 import { safeRender, safeJoin, getSafeStudentInfo, getScoreStyle, riasecDescriptions, defaultRiasecNames, defaultTraitNames } from './shared/utils';
 import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
-import Watermarks, { PrintFooter, DataPrivacyNotice, ReportDisclaimer } from './shared/Watermarks';
+import PrintPage from './shared/PrintPage';
+import Watermarks, { DataPrivacyNotice, ReportDisclaimer } from './shared/Watermarks';
 
 /**
  * PrintViewCollege Component
@@ -59,69 +58,108 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames }) => 
       {/* Watermarks */}
       <Watermarks />
 
-      {/* Fixed Footer */}
-      <PrintFooter />
+      {/* Paginated Content - Each PrintPage has its own header/footer */}
+      <div className="print-pages">
+        {/* Page 1: Profile Snapshot & Interest Profile */}
+        <PrintPage pageNumber={1}>
+          <DataPrivacyNotice />
+          <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
+          <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
+        </PrintPage>
 
-      {/* Continuous Content */}
+        {/* Page 2: Cognitive Abilities */}
+        <PrintPage pageNumber={2}>
+          {aptitude && (
+            <CognitiveAbilitiesSection aptitude={aptitude} />
+          )}
+        </PrintPage>
+
+        {/* Page 3: Big Five Personality */}
+        <PrintPage pageNumber={3}>
+          {bigFive && (
+            <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
+          )}
+        </PrintPage>
+
+        {/* Page 4: Work Values & Knowledge Assessment */}
+        <PrintPage pageNumber={4}>
+          {workValues && (
+            <WorkValuesSection workValues={workValues} />
+          )}
+          {knowledge && (
+            <KnowledgeAssessmentSection knowledge={knowledge} />
+          )}
+        </PrintPage>
+
+        {/* Page 5: Employability Score */}
+        <PrintPage pageNumber={5}>
+          {employability && (
+            <EmployabilityScoreSection employability={employability} />
+          )}
+        </PrintPage>
+
+        {/* Page 6: Career Fit Analysis */}
+        <PrintPage pageNumber={6}>
+          {careerFit && (
+            <CareerFitAnalysisSection careerFit={careerFit} />
+          )}
+        </PrintPage>
+
+        {/* Page 7: Skill Gap & Development Plan */}
+        <PrintPage pageNumber={7}>
+          {skillGap && (
+            <SkillGapDevelopmentSection skillGap={skillGap} />
+          )}
+        </PrintPage>
+
+        {/* Page 8: Detailed Career Roadmap */}
+        <PrintPage pageNumber={8}>
+          {roadmap && (
+            <DetailedCareerRoadmapSection roadmap={roadmap} />
+          )}
+        </PrintPage>
+
+        {/* Page 9: Final Recommendations */}
+        <PrintPage pageNumber={9}>
+          {overallSummary && (
+            <FinalRecommendationsSection overallSummary={overallSummary} />
+          )}
+          <ReportDisclaimer />
+        </PrintPage>
+      </div>
+
+      {/* Screen-only continuous content (hidden in print) */}
       <div className="print-content" style={{ position: 'relative', zIndex: 1, paddingBottom: '70px' }}>
-        {/* Decorative Print Header */}
-        <PrintHeader />
-
-        {/* Data Privacy Notice */}
         <DataPrivacyNotice />
-
-        {/* Section 1: Student Profile Snapshot */}
         <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
-
-        {/* Interest Profile Section */}
         <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
-
-        {/* Section 2: Cognitive Abilities */}
         {aptitude && (
           <CognitiveAbilitiesSection aptitude={aptitude} />
         )}
-
-        {/* Section 3: Big Five Personality */}
         {bigFive && (
           <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
         )}
-
-        {/* Section 4: Work Values */}
         {workValues && (
           <WorkValuesSection workValues={workValues} />
         )}
-
-        {/* Section 5: Knowledge Assessment */}
         {knowledge && (
           <KnowledgeAssessmentSection knowledge={knowledge} />
         )}
-
-        {/* Section 6: Employability Score */}
         {employability && (
           <EmployabilityScoreSection employability={employability} />
         )}
-
-        {/* Section 7: Career Fit Analysis */}
         {careerFit && (
           <CareerFitAnalysisSection careerFit={careerFit} />
         )}
-
-        {/* Section 8: Skill Gap & Development Plan */}
         {skillGap && (
           <SkillGapDevelopmentSection skillGap={skillGap} />
         )}
-
-        {/* Section 9: Detailed Career Roadmap */}
         {roadmap && (
           <DetailedCareerRoadmapSection roadmap={roadmap} />
         )}
-
-        {/* Final Recommendations */}
         {overallSummary && (
           <FinalRecommendationsSection overallSummary={overallSummary} />
         )}
-
-        {/* Report Disclaimer */}
         <ReportDisclaimer />
       </div>
     </div>

@@ -16,11 +16,10 @@ import {
 } from './shared/utils';
 import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
+import PrintPage from './shared/PrintPage';
 import Watermarks, {
   DataPrivacyNotice,
   ReportDisclaimer,
-  RepeatingHeader,
-  RepeatingFooter,
 } from './shared/Watermarks';
 
 /**
@@ -69,54 +68,78 @@ const PrintViewHigherSecondary = ({ results, studentInfo, riasecNames, traitName
       {/* Watermarks */}
       <Watermarks />
 
-      {/* Fixed Footer */}
-      <PrintFooter />
+      {/* Paginated Content - Each PrintPage has its own header/footer */}
+      <div className="print-pages">
+        {/* Page 1: Profile Snapshot & Interest Profile */}
+        <PrintPage pageNumber={1}>
+          <DataPrivacyNotice />
+          <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
+          <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
+        </PrintPage>
 
-      {/* Continuous Content */}
+        {/* Page 2: Cognitive Abilities */}
+        <PrintPage pageNumber={2}>
+          {aptitude && (
+            <CognitiveAbilitiesSection aptitude={aptitude} />
+          )}
+        </PrintPage>
+
+        {/* Page 3: Big Five Personality & Work Values */}
+        <PrintPage pageNumber={3}>
+          {bigFive && (
+            <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
+          )}
+          {workValues && (
+            <WorkValuesSection workValues={workValues} />
+          )}
+        </PrintPage>
+
+        {/* Page 4: Career Fit Analysis */}
+        <PrintPage pageNumber={4}>
+          {careerFit && (
+            <CareerFitAnalysisSection careerFit={careerFit} />
+          )}
+        </PrintPage>
+
+        {/* Page 5: Skill Gap & Development Plan */}
+        <PrintPage pageNumber={5}>
+          {skillGap && (
+            <SkillGapDevelopmentSection skillGap={skillGap} />
+          )}
+        </PrintPage>
+
+        {/* Page 6: Development Roadmap */}
+        <PrintPage pageNumber={6}>
+          {roadmap && (
+            <DevelopmentRoadmapSection roadmap={roadmap} />
+          )}
+          <ReportDisclaimer />
+        </PrintPage>
+      </div>
+
+      {/* Screen-only continuous content (hidden in print) */}
       <div className="print-content" style={{ position: 'relative', zIndex: 1, paddingBottom: '70px' }}>
-        {/* Decorative Print Header */}
-        <PrintHeader />
-
-        {/* Data Privacy Notice */}
         <DataPrivacyNotice />
-
-        {/* Section 1: Student Profile Snapshot */}
         <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
-
-        {/* Interest Profile Section */}
         <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
-
-        {/* Section 2: Cognitive Abilities */}
         {aptitude && (
           <CognitiveAbilitiesSection aptitude={aptitude} />
         )}
-
-        {/* Section 3: Big Five Personality */}
         {bigFive && (
           <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
         )}
-
-        {/* Section 4: Work Values */}
         {workValues && (
           <WorkValuesSection workValues={workValues} />
         )}
-
-        {/* Section 5: Career Fit Analysis */}
         {careerFit && (
           <CareerFitAnalysisSection careerFit={careerFit} />
         )}
-
-        {/* Section 6: Skill Gap & Development Plan */}
         {skillGap && (
           <SkillGapDevelopmentSection skillGap={skillGap} />
         )}
-
-        {/* Section 7: Development Roadmap */}
         {roadmap && (
           <DevelopmentRoadmapSection roadmap={roadmap} />
         )}
-
-        {/* Report Disclaimer */}
         <ReportDisclaimer />
       </div>
     </div>
