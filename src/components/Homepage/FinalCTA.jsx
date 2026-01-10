@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FiArrowRight } from "react-icons/fi";
+import { FiArrowRight, FiX } from "react-icons/fi";
 
 const GradientBars = () => {
   const [numBars] = useState(15);
@@ -60,19 +60,9 @@ const GradientBars = () => {
 };
 
 const FinalCTA = () => {
+  const [showBookingModal, setShowBookingModal] = useState(false);
+
   useEffect(() => {
-    // Load Calendly CSS
-    const link = document.createElement('link');
-    link.href = 'https://assets.calendly.com/assets/external/widget.css';
-    link.rel = 'stylesheet';
-    document.head.appendChild(link);
-
-    // Load Calendly widget script
-    const script = document.createElement('script');
-    script.src = 'https://assets.calendly.com/assets/external/widget.js';
-    script.async = true;
-    document.body.appendChild(script);
-
     // Add styles for responsive background images
     const style = document.createElement('style');
     style.textContent = `
@@ -88,19 +78,12 @@ const FinalCTA = () => {
     document.head.appendChild(style);
 
     return () => {
-      if (link.parentNode) link.parentNode.removeChild(link);
-      if (script.parentNode) script.parentNode.removeChild(script);
       if (style.parentNode) style.parentNode.removeChild(style);
     };
   }, []);
 
-  const openCalendly = () => {
-    const url = 'https://calendly.com/d/cxdd-5y9-vr5';
-    if (window.Calendly) {
-      window.Calendly.initPopupWidget({ url });
-    } else {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
+  const openBooking = () => {
+    setShowBookingModal(true);
   };
 
   return (
@@ -127,7 +110,7 @@ const FinalCTA = () => {
         <div className="mt-6 flex flex-wrap items-center justify-center gap-10 lg:gap-80">
           {/* Primary Button - Book a Corporate Demo */}
           <button
-            onClick={openCalendly}
+            onClick={openBooking}
             className="group flex items-center justify-center gap-2 h-9 sm:h-14 px-4 sm:px-8 rounded-full bg-[#e63b2e] text-white text-xs sm:text-base font-bold uppercase tracking-wide shadow-[0_6px_20px_rgba(230,59,46,0.4)] hover:brightness-110 transition-all"
             aria-label="Book a Corporate Demo"
           > 
@@ -143,8 +126,32 @@ const FinalCTA = () => {
           </button>
         </div>
       </div>
+
+      {/* Zoho Bookings Modal */}
+      {showBookingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="relative bg-white rounded-lg w-[95vw] max-w-4xl h-[85vh] shadow-2xl">
+            <button
+              onClick={() => setShowBookingModal(false)}
+              className="absolute -top-3 -right-3 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-gray-100 transition-all"
+              aria-label="Close booking modal"
+            >
+              <FiX className="w-5 h-5 text-gray-700" />
+            </button>
+            <iframe
+              width="100%"
+              height="100%"
+              src="https://subashini-rareminds37.zohobookings.in/portal-embed#/rareminds"
+              frameBorder="0"
+              allowFullScreen
+              className="rounded-lg"
+            />
+          </div>
+        </div>
+      )}
     </section>
   );
 };
 
 export default FinalCTA;
+//
