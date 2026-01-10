@@ -333,8 +333,12 @@ const UnifiedSignup = () => {
     }
   };
 
-  // Check if OTP verification should be skipped (for localhost/development)
-  const skipOtpVerification = import.meta.env.VITE_SKIP_OTP_VERIFICATION === 'true';
+  // Check if OTP verification should be skipped (for localhost/development and production)
+  const skipOtpVerification = 
+    import.meta.env.VITE_SKIP_OTP_VERIFICATION === 'true' || 
+    window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1' ||
+    window.location.origin === 'https://skillpassport.pages.dev';
 
   // Validate Step 1 fields
   const validateStep1 = (): boolean => {
@@ -575,14 +579,13 @@ const UnifiedSignup = () => {
                     Mobile Number <span className="text-gray-400 text-xs">(Optional)</span>
                     {skipOtpVerification && <span className="ml-2 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">(OTP skipped in dev)</span>}
                   </label>
-                  <div className={`flex items-center border rounded-xl bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all ${state.otpVerified ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
+                  <div className="flex items-center border rounded-xl bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all border-gray-200">
                     {/* Custom Country Code Dropdown */}
                     <div className="relative" ref={countryCodeRef}>
                       <button
                         type="button"
-                        onClick={() => !state.otpVerified && setCountryCodeDropdownOpen(!countryCodeDropdownOpen)}
-                        disabled={state.otpVerified}
-                        className="flex items-center gap-2 h-full pl-4 pr-3 py-3 bg-transparent text-sm font-medium text-gray-700 outline-none cursor-pointer hover:bg-gray-100 rounded-l-xl transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                        onClick={() => setCountryCodeDropdownOpen(!countryCodeDropdownOpen)}
+                        className="flex items-center gap-2 h-full pl-4 pr-3 py-3 bg-transparent text-sm font-medium text-gray-700 outline-none cursor-pointer hover:bg-gray-100 rounded-l-xl transition-colors"
                       >
                         <span className="text-xl">{selectedCountry.flag}</span>
                         <span className="text-gray-700">{selectedCountry.dialCode}</span>
@@ -615,8 +618,7 @@ const UnifiedSignup = () => {
                     <div className="h-6 w-px bg-gray-300"></div>
 
                     <div className="relative flex-1">
-                      <input type="tel" name="phone" value={state.phone} onChange={handleInputChange} placeholder="Phone number" disabled={state.otpVerified} className="block w-full px-3 py-3 bg-transparent border-none outline-none text-gray-900 placeholder-gray-400" />
-                      {state.otpVerified && <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />}
+                      <input type="tel" name="phone" value={state.phone} onChange={handleInputChange} placeholder="Phone number" className="block w-full px-3 py-3 bg-transparent border-none outline-none text-gray-900 placeholder-gray-400" />
                     </div>
                   </div>
                   {/* Show OTP button only if phone is entered, not skipping verification, and not already verified */}
