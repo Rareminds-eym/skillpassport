@@ -35,7 +35,7 @@ export class AppliedJobsService {
         .from('students')
         .select('name, email, contact_number')
         .eq('user_id', studentId)
-        .single();
+        .maybeSingle();
 
       const profile = {
         name: student?.name || '',

@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { IndianRupee, AlertCircle, FileText, TrendingUp } from "lucide-react";
+import { AlertCircle, FileText, IndianRupee, TrendingUp } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../../../../lib/supabaseClient";
-import { FeeStructure, StudentFeeSummary } from "./types";
-import { useFeeStructures } from "./hooks/useFeeStructures";
-import { useFeeTracking } from "./hooks/useFeeTracking";
-import { FeeStructureTab } from "./components/FeeStructureTab";
 import { FeeStructureFormModal } from "./components/FeeStructureFormModal";
+import { FeeStructureTab } from "./components/FeeStructureTab";
 import { FeeTrackingTab } from "./components/FeeTrackingTab";
 import { PaymentFormModal } from "./components/PaymentFormModal";
 import { StudentLedgerModal } from "./components/StudentLedgerModal";
+import { useFeeStructures } from "./hooks/useFeeStructures";
+import { useFeeTracking } from "./hooks/useFeeTracking";
+import { FeeStructure, StudentFeeSummary } from "./types";
 
 const tabs = [
   { id: "structure", label: "Fee Structure Setup" },
@@ -55,32 +55,21 @@ const SchoolFinanceModule: React.FC = () => {
         if (user) {
           console.log('🔍 Checking Supabase auth user:', user.email);
           
-          // Check for school admin by matching adminEmail
-          const { data: school } = await supabase
-            .from('schools')
-            .select('id, name, adminEmail')
-            .ilike('adminEmail', user.email || '')
-            .single();
+          // Check for school admin by matching email in organizations table
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('id, name, email')
+            .eq('organization_type', 'school')
+            .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
+            .maybeSingle();
           
-          if (school?.id) {
-            console.log('✅ Found school_id for school admin:', school.id, 'School:', school.name);
-            setSchoolId(school.id);
+          if (org?.id) {
+            console.log('✅ Found school_id for school admin:', org.id, 'School:', org.name);
+            setSchoolId(org.id);
             return;
           }
           
-          // Fallback methods
-          const { data: createdSchool } = await supabase
-            .from("schools")
-            .select("id")
-            .eq("created_by", user.id)
-            .single();
-          
-          if (createdSchool?.id) { 
-            console.log('✅ Found school via created_by:', createdSchool.id);
-            setSchoolId(createdSchool.id); 
-            return; 
-          }
-          
+          // Fallback: check user metadata
           if (user.user_metadata?.school_id) {
             console.log('✅ Found school in user metadata:', user.user_metadata.school_id);
             setSchoolId(user.user_metadata.school_id);

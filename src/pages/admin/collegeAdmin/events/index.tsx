@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from "react";
-import { CalendarIcon, ClipboardDocumentListIcon, ChartBarIcon } from "@heroicons/react/24/outline";
+import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../../../../lib/supabaseClient";
-import { CollegeEvent } from "./types";
-import { useEvents } from "./hooks/useEvents";
-import { useCalendar } from "./hooks/useCalendar";
-import { useRegistrations } from "./hooks/useRegistrations";
-import { useEventAnalytics } from "./hooks/useEventAnalytics";
-import { TodayEventsWidget } from "./components/TodayEventsWidget";
+import { AnalyticsTab } from "./components/AnalyticsTab";
+import { CalendarTab } from "./components/CalendarTab";
+import { ConfirmModal } from "./components/ConfirmModal";
+import { EventFormModal } from "./components/EventFormModal";
 import { EventStatsCards } from "./components/EventStatsCards";
 import { EventsTab } from "./components/EventsTab";
-import { CalendarTab } from "./components/CalendarTab";
 import { RegistrationsTab } from "./components/RegistrationsTab";
-import { AnalyticsTab } from "./components/AnalyticsTab";
-import { EventFormModal } from "./components/EventFormModal";
+import { TodayEventsWidget } from "./components/TodayEventsWidget";
+import { useCalendar } from "./hooks/useCalendar";
+import { useEventAnalytics } from "./hooks/useEventAnalytics";
+import { useEvents } from "./hooks/useEvents";
+import { useRegistrations } from "./hooks/useRegistrations";
+import { CollegeEvent } from "./types";
 
 const tabs = [
   { id: "events", label: "Event Scheduling", icon: CalendarIcon },
@@ -30,15 +31,29 @@ const EventManagement: React.FC = () => {
   const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<CollegeEvent | null>(null);
   const [selectedEventForReg, setSelectedEventForReg] = useState<CollegeEvent | null>(null);
 
-  // Fetch college ID
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant?: "danger" | "warning" | "info";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
+
+  // Fetch college ID from organizations table
   useEffect(() => {
     const fetchCollegeId = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // First check colleges table (admin who created the college)
-          const { data: college } = await supabase.from("colleges").select("id").eq("created_by", user.id).single();
-          if (college?.id) { setCollegeId(college.id); return; }
+          // First check organizations table for college admin
+          const { data: org } = await supabase.from("organizations").select("id").eq("organization_type", "college").or(`admin_id.eq.${user.id},email.eq.${user.email}`).maybeSingle();
+          if (org?.id) { setCollegeId(org.id); return; }
           // Check college_lecturers table
           const { data: lecturer } = await supabase.from("college_lecturers").select("collegeId").or(`userId.eq.${user.id},user_id.eq.${user.id}`).single();
           if (lecturer?.collegeId) { setCollegeId(lecturer.collegeId); return; }
@@ -77,6 +92,37 @@ const EventManagement: React.FC = () => {
     registrationsHook.loadRegistrations(event.id);
   };
 
+  // Confirmation handlers
+  const handleDeleteEvent = (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Event",
+      message: "Are you sure you want to delete this event? This action cannot be undone.",
+      variant: "danger",
+      onConfirm: () => eventsHook.deleteEvent(id),
+    });
+  };
+
+  const handleCancelEvent = (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Cancel Event",
+      message: "Are you sure you want to cancel this event? Registered students will be notified.",
+      variant: "warning",
+      onConfirm: () => eventsHook.cancelEvent(id),
+    });
+  };
+
+  const handleRemoveRegistration = (regId: string, eventId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Remove Registration",
+      message: "Are you sure you want to remove this student's registration?",
+      variant: "warning",
+      onConfirm: () => registrationsHook.removeRegistration(regId, eventId),
+    });
+  };
+
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
@@ -111,9 +157,9 @@ const EventManagement: React.FC = () => {
           onRefresh={eventsHook.loadEvents}
           onCreate={handleCreateEvent}
           onEdit={handleEditEvent}
-          onDelete={eventsHook.deleteEvent}
+          onDelete={handleDeleteEvent}
           onPublish={eventsHook.publishEvent}
-          onCancel={eventsHook.cancelEvent}
+          onCancel={handleCancelEvent}
         />
       )}
 
@@ -156,7 +202,7 @@ const EventManagement: React.FC = () => {
           eventRegCounts={eventsHook.eventRegCounts}
           onSelectEvent={handleSelectEventForReg}
           onAddRegistration={registrationsHook.addRegistration}
-          onRemoveRegistration={registrationsHook.removeRegistration}
+          onRemoveRegistration={handleRemoveRegistration}
           onMarkAttendance={registrationsHook.markAttendance}
           onExportCSV={registrationsHook.exportAttendeesCSV}
         />
@@ -173,6 +219,16 @@ const EventManagement: React.FC = () => {
         onSave={handleSaveEvent}
         event={selectedEvent}
         quickAddDate={quickAddDate}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
       />
     </div>
   );

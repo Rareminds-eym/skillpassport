@@ -25,6 +25,40 @@ const getAuthHeaders = (token) => {
 // ==================== SIGNUP ENDPOINTS (No Auth Required) ====================
 
 /**
+ * Unified signup for all user types
+ * This is the recommended method for new signups as it handles rollback properly
+ * @param {Object} data - Signup data
+ * @param {string} data.email - User email
+ * @param {string} data.password - User password
+ * @param {string} data.firstName - First name
+ * @param {string} data.lastName - Last name
+ * @param {string} data.role - User role (school_student, college_student, school_educator, college_educator, recruiter, school_admin, college_admin, university_admin)
+ * @param {string} [data.phone] - Phone number
+ * @param {string} [data.dateOfBirth] - Date of birth
+ * @param {string} [data.country] - Country
+ * @param {string} [data.state] - State
+ * @param {string} [data.city] - City
+ * @param {string} [data.preferredLanguage] - Preferred language
+ * @param {string} [data.referralCode] - Referral code
+ * @returns {Promise<Object>} Signup result with userId
+ */
+export async function unifiedSignup(data) {
+  const response = await fetch(`${getBaseUrl()}/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  const result = await response.json();
+  
+  if (!response.ok || !result.success) {
+    throw new Error(result.error || 'Failed to create account');
+  }
+
+  return result;
+}
+
+/**
  * Sign up a new school admin with school
  * @param {Object} data - School admin signup data
  * @returns {Promise<Object>} Signup result
@@ -664,6 +698,8 @@ export async function createCollegeStaff(staffData, token) {
 }
 
 export default {
+  // Unified Signup (recommended)
+  unifiedSignup,
   // School Signup (no auth)
   signupSchoolAdmin,
   signupEducator,

@@ -86,14 +86,28 @@ class LibraryService {
     const collegeId = user.user_metadata?.college_id;
     if (collegeId) return collegeId;
     
-    // Fallback: get from colleges table or use first available college
-    const { data: colleges } = await supabase
-      .from('colleges')
+    // Fallback: get from organizations table (college type) by admin_id
+    const { data: college } = await supabase
+      .from('organizations')
       .select('id')
+      .eq('organization_type', 'college')
+      .eq('admin_id', user.id)
+      .maybeSingle();
+    
+    if (college?.id) {
+      return college.id;
+    }
+    
+    // Last fallback: get first available college
+    const { data: colleges } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('organization_type', 'college')
       .limit(1);
     
     if (colleges && colleges.length > 0) {
-      return colleges[0].id; }
+      return colleges[0].id;
+    }
     
     throw new Error('No college found for user');
   }

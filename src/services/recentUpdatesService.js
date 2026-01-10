@@ -14,7 +14,7 @@ export const recentUpdatesService = {
         .from('students')
         .select('id')
         .eq('email', email)
-        .single();
+        .maybeSingle();
 
       if (studentError) {
         throw new Error(`Failed to find student: ${studentError.message}`);
@@ -29,7 +29,7 @@ export const recentUpdatesService = {
         .from('recent_updates')
         .select('*')
         .eq('student_id', studentData.id)
-        .single();
+        .maybeSingle();
 
       if (updatesError && updatesError.code !== 'PGRST116') { // PGRST116 = no rows found
         throw new Error(`Failed to fetch recent updates: ${updatesError.message}`);
@@ -56,7 +56,7 @@ export const recentUpdatesService = {
         .from('students')
         .select('id')
         .eq('email', email)
-        .single();
+        .maybeSingle();
 
       if (studentError) {
         throw new Error(`Failed to find student: ${studentError.message}`);
@@ -71,7 +71,7 @@ export const recentUpdatesService = {
         .from('recent_updates')
         .select('updates')
         .eq('student_id', studentData.id)
-        .single();
+        .maybeSingle();
 
       let currentUpdates = [];
       if (existingData && existingData.updates && existingData.updates.updates) {
@@ -115,7 +115,7 @@ export const recentUpdatesService = {
         .from('students')
         .select('id')
         .eq('email', email)
-        .single();
+        .maybeSingle();
 
       if (studentError) {
         throw new Error(`Failed to find student: ${studentError.message}`);

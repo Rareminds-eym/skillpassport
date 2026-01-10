@@ -1,37 +1,37 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useMemo, useEffect } from "react";
-import {
-  CalendarIcon,
-  ClockIcon,
-  UserGroupIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ExclamationCircleIcon,
-  ChevronDownIcon,
-  FunnelIcon,
-  TableCellsIcon,
-  Squares2X2Icon,
-  ArrowDownTrayIcon,
-  ChartBarIcon,
-  BellAlertIcon,
-  PlusCircleIcon,
-  XMarkIcon,
-  ClipboardDocumentListIcon,
-  ChartPieIcon,
-  BookOpenIcon,
-  ClipboardDocumentCheckIcon,
-  SparklesIcon,
-  ShieldCheckIcon,
-} from "@heroicons/react/24/outline";
-import SearchBar from "../../../components/common/SearchBar";
-import Pagination from "../../../components/admin/Pagination";
-import KPICard from "../../../components/admin/KPICard";
-import ReactApexChart from "react-apexcharts";
 import AddAttendanceSessionModal from "@/components/admin/modals/AddAttendanceSessionModal";
-import StudentHistoryModal from "@/components/admin/modals/StudentHistoryModal";
 import AttendanceDetailsModal from "@/components/admin/modals/AttendanceDetailsModal";
-import { AttendanceRecord, AttendanceSession, Student, SubjectGroup } from "@/types/Attendance";
+import StudentHistoryModal from "@/components/admin/modals/StudentHistoryModal";
 import { supabase } from "@/lib/supabaseClient";
+import { AttendanceRecord, AttendanceSession, Student, SubjectGroup } from "@/types/Attendance";
+import {
+    ArrowDownTrayIcon,
+    BellAlertIcon,
+    BookOpenIcon,
+    CalendarIcon,
+    ChartBarIcon,
+    ChartPieIcon,
+    CheckCircleIcon,
+    ChevronDownIcon,
+    ClipboardDocumentCheckIcon,
+    ClipboardDocumentListIcon,
+    ClockIcon,
+    ExclamationCircleIcon,
+    FunnelIcon,
+    PlusCircleIcon,
+    ShieldCheckIcon,
+    SparklesIcon,
+    Squares2X2Icon,
+    TableCellsIcon,
+    UserGroupIcon,
+    XCircleIcon,
+    XMarkIcon,
+} from "@heroicons/react/24/outline";
+import React, { useEffect, useMemo, useState } from "react";
+import ReactApexChart from "react-apexcharts";
+import KPICard from "../../../components/admin/KPICard";
+import Pagination from "../../../components/admin/Pagination";
+import SearchBar from "../../../components/common/SearchBar";
 
 
 
@@ -1015,11 +1015,12 @@ const AttendanceTracking: React.FC = () => {
         collegeId = userProfile?.college_id;
       }
 
-      // If still no college_id, try to get the first college (fallback)
+      // If still no college_id, try to get the first college from organizations (fallback)
       if (!collegeId) {
         const { data: colleges } = await supabase
-          .from('colleges')
+          .from('organizations')
           .select('id')
+          .eq('organization_type', 'college')
           .limit(1);
         
         collegeId = colleges?.[0]?.id;

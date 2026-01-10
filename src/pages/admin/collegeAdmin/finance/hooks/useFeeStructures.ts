@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { supabase } from "../../../../../lib/supabaseClient";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { supabase } from "../../../../../lib/supabaseClient";
 import { FeeStructure } from "../types";
 
 export const useFeeStructures = (collegeId: string | null) => {
@@ -43,12 +43,13 @@ export const useFeeStructures = (collegeId: string | null) => {
       // Get college_id if not set
       let feeCollegeId = collegeId;
       if (!feeCollegeId && user) {
-        const { data: college } = await supabase
-          .from("colleges")
+        const { data: org } = await supabase
+          .from("organizations")
           .select("id")
-          .eq("created_by", user.id)
-          .single();
-        if (college?.id) feeCollegeId = college.id;
+          .eq("organization_type", "college")
+          .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
+          .maybeSingle();
+        if (org?.id) feeCollegeId = org.id;
       }
 
       // Calculate total from fee_heads

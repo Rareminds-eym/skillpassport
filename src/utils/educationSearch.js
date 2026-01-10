@@ -1,11 +1,12 @@
 import { supabase } from '@/lib/supabaseClient';
 
-// Search universities only
+// Search universities only (using unified organizations table)
 export const searchUniversities = async (searchTerm) => {
   try {
     const { data, error } = await supabase
-      .from('universities')
-      .select('name, state, district')
+      .from('organizations')
+      .select('name, state, city')
+      .eq('organization_type', 'university')
       .ilike('name', `%${searchTerm}%`)
       .limit(10);
 
@@ -22,12 +23,13 @@ export const searchUniversities = async (searchTerm) => {
   }
 };
 
-// Search colleges only
+// Search colleges only (using unified organizations table)
 export const searchColleges = async (searchTerm) => {
   try {
     const { data, error } = await supabase
-      .from('colleges')
+      .from('organizations')
       .select('name, city, state')
+      .eq('organization_type', 'college')
       .ilike('name', `%${searchTerm}%`)
       .limit(10);
 
@@ -44,12 +46,13 @@ export const searchColleges = async (searchTerm) => {
   }
 };
 
-// Search schools only
+// Search schools only (using unified organizations table)
 export const searchSchools = async (searchTerm) => {
   try {
     const { data, error } = await supabase
-      .from('schools')
+      .from('organizations')
       .select('name, city, state')
+      .eq('organization_type', 'school')
       .ilike('name', `%${searchTerm}%`)
       .limit(10);
 

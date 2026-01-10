@@ -3,9 +3,8 @@ import { AlertCircle, GraduationCap, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
-import { signUpWithRole } from '../../services/authService';
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
-import { completeStudentRegistration, getAllColleges, getAllSchools } from '../../services/studentService';
+import { getAllColleges, getAllSchools } from '../../services/studentService';
 import { getModalContent, parseStudentType } from '../../utils/getEntityContent';
 import SignupFormFields from './shared/SignupFormFields';
 import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from './shared/signupValidation';
@@ -204,40 +203,44 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
       const lastName = capitalizeFirstLetter(formData.lastName);
       const fullName = `${firstName} ${lastName}`.trim();
       
-      const authResult = await signUpWithRole(formData.email, formData.password, {
-        role: 'student',
-        name: fullName,
-        phone: formData.phone,
-        studentType: studentType
-      });
-
-      if (!authResult.success) {
-        setErrors({ submit: authResult.message || 'Registration failed. Please try again.' });
-        setLoading(false);
-        return;
-      }
-
-      const userId = authResult.user.id;
-
-      const registrationResult = await completeStudentRegistration(userId, {
-        fullName: fullName,
-        firstName: firstName,
-        lastName: lastName,
+      // Determine role based on student type
+      const { entity } = parseStudentType(studentType);
+      const role = entity === 'college' ? 'college_student' : 'school_student';
+      
+      // Use Worker API for signup with proper rollback
+      const result = await unifiedSignup({
         email: formData.email,
-        phone: formData.phone,
-        studentType: studentType,
-        schoolId: formData.schoolId || null,
-        collegeId: formData.collegeId || null,
+        password: formData.password,
+        firstName,
+        lastName,
+        role,
+        phone: formData.phone || null,
+        dateOfBirth: formData.dateOfBirth || null,
         country: formData.country,
         state: formData.state,
         city: formData.city,
         preferredLanguage: formData.preferredLanguage,
         referralCode: formData.referralCode || null,
-        dateOfBirth: formData.dateOfBirth || null
       });
 
-      if (!registrationResult.success) {
-        console.error('Failed to create student records:', registrationResult.error);
+      if (!result.success) {
+        setErrors({ submit: result.error || 'Registration failed. Please try again.' });
+        setLoading(false);
+        return;
+      }
+
+      const userId = result.data.userId;
+
+      // Update student record with additional fields (school/college ID)
+      if (formData.schoolId || formData.collegeId) {
+        const updateData = {};
+        if (formData.schoolId) updateData.school_id = formData.schoolId;
+        if (formData.collegeId) updateData.college_id = formData.collegeId;
+        
+        await supabase
+          .from('students')
+          .update(updateData)
+          .eq('user_id', userId);
       }
 
       const userData = {
@@ -255,14 +258,11 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
         state: formData.state,
         city: formData.city,
         isNewUser: true,
-        studentRecord: registrationResult.data?.student || null,
         isPendingPayment: true,
         createdAt: new Date().toISOString(),
       };
 
-      if (registrationResult.success) {
-        localStorage.setItem('pendingUser', JSON.stringify(userData));
-      }
+      localStorage.setItem('pendingUser', JSON.stringify(userData));
 
       if (onSignupSuccess) {
         onSignupSuccess(userData);

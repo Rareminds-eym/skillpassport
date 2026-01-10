@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { examsService, Assessment, ExamTimetable, MarkEntry, Student, SchoolEducator, ExamRoom, CurriculumSubject, AssessmentType, SchoolClass } from '../services/examsService';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { Assessment, AssessmentType, CurriculumSubject, ExamRoom, examsService, ExamTimetable, MarkEntry, SchoolClass, SchoolEducator, Student } from '../services/examsService';
 
 // Transform database types to UI types
 export interface UIExam {
@@ -334,7 +334,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
               .from('school_educators')
               .select('id')
               .eq('user_id', inv.invigilator_id)
-              .single();
+              .maybeSingle();
             
             return {
               ...inv,
@@ -412,7 +412,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
         .from('school_educators')
         .select('id')
         .eq('user_id', currentUserId)
-        .single();
+        .maybeSingle();
 
       if (educatorError || !educatorData) {
         throw new Error('Teacher record not found in school_educators table');
@@ -675,7 +675,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
         .from('school_educators')
         .select('user_id')
         .eq('id', assignment.teacherId)
-        .single();
+        .maybeSingle();
 
       if (educatorError || !educatorData?.user_id) {
         throw new Error('Could not find user ID for the selected teacher');

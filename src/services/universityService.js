@@ -2,18 +2,19 @@ import { supabase } from '../lib/supabaseClient';
 
 /**
  * University Service
- * Handles university-related database operations
+ * Handles university-related database operations using the unified organizations table
  */
 
 /**
- * Get all universities for dropdown selection
+ * Get all universities for dropdown selection from organizations table
  * @returns {Promise<{ success: boolean, data: Array | null, error: string | null }>}
  */
 export const getUniversities = async () => {
     try {
         const { data, error } = await supabase
-            .from('universities')
-            .select('id, name, code')
+            .from('organizations')
+            .select('id, name')
+            .eq('organization_type', 'university')
             .order('name', { ascending: true });
 
         if (error) {
@@ -29,17 +30,18 @@ export const getUniversities = async () => {
 };
 
 /**
- * Get university by ID
+ * Get university by ID from organizations table
  * @param {string} universityId - University UUID
  * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
  */
 export const getUniversityById = async (universityId) => {
     try {
         const { data, error } = await supabase
-            .from('universities')
+            .from('organizations')
             .select('*')
             .eq('id', universityId)
-            .single();
+            .eq('organization_type', 'university')
+            .maybeSingle();
 
         if (error) {
             console.error('❌ Error fetching university:', error);
@@ -49,6 +51,85 @@ export const getUniversityById = async (universityId) => {
         return { success: true, data, error: null };
     } catch (error) {
         console.error('❌ Unexpected error fetching university:', error);
+        return { success: false, data: null, error: error.message };
+    }
+};
+
+/**
+ * Get university by owner (admin_id) from organizations table
+ * @param {string} userId - User ID of the owner
+ * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
+ */
+export const getUniversityByOwner = async (userId) => {
+    try {
+        const { data, error } = await supabase
+            .from('organizations')
+            .select('*')
+            .eq('organization_type', 'university')
+            .eq('admin_id', userId)
+            .maybeSingle();
+
+        if (error) {
+            console.error('Error fetching university by owner:', error);
+            return { success: false, data: null, error: error.message };
+        }
+
+        return { success: true, data, error: null };
+    } catch (error) {
+        console.error('Unexpected error fetching university by owner:', error);
+        return { success: false, data: null, error: error.message };
+    }
+};
+
+/**
+ * Create a new university in the organizations table
+ * @param {Object} universityData - University data to insert
+ * @param {string} userId - User ID of the admin
+ * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
+ */
+export const createUniversity = async (universityData, userId = null) => {
+    try {
+        let uid = userId;
+
+        if (!uid) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                uid = user.id;
+            }
+        }
+
+        if (!uid) {
+            throw new Error('User not authenticated');
+        }
+
+        const orgData = {
+            name: universityData.name,
+            organization_type: 'university',
+            admin_id: uid,
+            email: universityData.email,
+            phone: universityData.phone,
+            state: universityData.state,
+            website: universityData.website,
+            description: universityData.description,
+            approval_status: 'approved',
+            account_status: 'active',
+            is_active: true,
+        };
+
+        const { data, error } = await supabase
+            .from('organizations')
+            .insert([orgData])
+            .select()
+            .single();
+
+        if (error) {
+            console.error('❌ Error creating university:', error);
+            return { success: false, data: null, error: error.message };
+        }
+
+        return { success: true, data, error: null };
+    } catch (error) {
+        console.error('❌ Unexpected error creating university:', error);
         return { success: false, data: null, error: error.message };
     }
 };
@@ -135,10 +216,9 @@ export const getUniversityCollegeByOwner = async (userId) => {
             .from('university_colleges')
             .select(`
                 *,
-                universities (
+                universities:organizations!university_id (
                     id,
-                    name,
-                    code
+                    name
                 )
             `)
             .eq('created_by', userId)
@@ -183,14 +263,16 @@ export const getCollegesByUniversity = async (universityId) => {
 };
 
 /**
- * Get all active universities for student registration dropdown
+ * Get all active universities for student registration dropdown from organizations table
  * @returns {Promise<{ success: boolean, data: Array | null, error: string | null }>}
  */
 export const getActiveUniversities = async () => {
     try {
         const { data, error } = await supabase
-            .from('universities')
-            .select('id, name, code')
+            .from('organizations')
+            .select('id, name')
+            .eq('organization_type', 'university')
+            .eq('is_active', true)
             .order('name', { ascending: true });
 
         if (error) {
@@ -204,3 +286,4 @@ export const getActiveUniversities = async () => {
         return { success: false, data: null, error: error.message };
     }
 };
+

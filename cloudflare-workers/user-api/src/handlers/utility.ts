@@ -3,24 +3,27 @@
  * - Get schools/colleges/universities/companies lists
  * - Check code uniqueness
  * - Check email availability
+ * 
+ * Uses unified 'organizations' table for schools, colleges, universities
  */
 
-import { Env, CheckCodeRequest, CheckEmailRequest } from '../types';
+import { CheckCodeRequest, CheckEmailRequest, Env } from '../types';
 import { jsonResponse, validateEmail } from '../utils/helpers';
-import { getSupabaseAdmin, checkEmailExists } from '../utils/supabase';
+import { checkEmailExists, getSupabaseAdmin } from '../utils/supabase';
 
 // ==================== GET LISTS ====================
 
 /**
- * Get all schools for dropdown
+ * Get all schools for dropdown from organizations table
  */
 export async function handleGetSchools(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
 
   try {
     const { data: schools, error } = await supabaseAdmin
-      .from('schools')
+      .from('organizations')
       .select('id, name, city, state, country, code')
+      .eq('organization_type', 'school')
       .order('name', { ascending: true });
 
     if (error) {
@@ -36,15 +39,16 @@ export async function handleGetSchools(request: Request, env: Env): Promise<Resp
 }
 
 /**
- * Get all colleges for dropdown
+ * Get all colleges for dropdown from organizations table
  */
 export async function handleGetColleges(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
 
   try {
     const { data: colleges, error } = await supabaseAdmin
-      .from('colleges')
+      .from('organizations')
       .select('id, name, city, state, country, code')
+      .eq('organization_type', 'college')
       .order('name', { ascending: true });
 
     if (error) {
@@ -60,15 +64,16 @@ export async function handleGetColleges(request: Request, env: Env): Promise<Res
 }
 
 /**
- * Get all universities for dropdown
+ * Get all universities for dropdown from organizations table
  */
 export async function handleGetUniversities(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
 
   try {
     const { data: universities, error } = await supabaseAdmin
-      .from('universities')
-      .select('id, name, district, state, code')
+      .from('organizations')
+      .select('id, name, city, state, code')
+      .eq('organization_type', 'university')
       .order('name', { ascending: true });
 
     if (error) {
@@ -110,7 +115,7 @@ export async function handleGetCompanies(request: Request, env: Env): Promise<Re
 // ==================== CHECK CODE UNIQUENESS ====================
 
 /**
- * Check if school code is unique
+ * Check if school code is unique in organizations table
  */
 export async function handleCheckSchoolCode(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
@@ -123,8 +128,9 @@ export async function handleCheckSchoolCode(request: Request, env: Env): Promise
     }
 
     const { data: existingSchool } = await supabaseAdmin
-      .from('schools')
+      .from('organizations')
       .select('id')
+      .eq('organization_type', 'school')
       .eq('code', body.code)
       .maybeSingle();
 
@@ -140,7 +146,7 @@ export async function handleCheckSchoolCode(request: Request, env: Env): Promise
 }
 
 /**
- * Check if college code is unique
+ * Check if college code is unique in organizations table
  */
 export async function handleCheckCollegeCode(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
@@ -153,8 +159,9 @@ export async function handleCheckCollegeCode(request: Request, env: Env): Promis
     }
 
     const { data: existingCollege } = await supabaseAdmin
-      .from('colleges')
+      .from('organizations')
       .select('id')
+      .eq('organization_type', 'college')
       .eq('code', body.code)
       .maybeSingle();
 
@@ -170,7 +177,7 @@ export async function handleCheckCollegeCode(request: Request, env: Env): Promis
 }
 
 /**
- * Check if university code is unique
+ * Check if university code is unique in organizations table
  */
 export async function handleCheckUniversityCode(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
@@ -183,8 +190,9 @@ export async function handleCheckUniversityCode(request: Request, env: Env): Pro
     }
 
     const { data: existingUniversity } = await supabaseAdmin
-      .from('universities')
+      .from('organizations')
       .select('id')
+      .eq('organization_type', 'university')
       .eq('code', body.code)
       .maybeSingle();
 

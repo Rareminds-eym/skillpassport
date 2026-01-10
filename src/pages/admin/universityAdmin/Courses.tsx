@@ -1,24 +1,24 @@
-import React, { useState, useMemo, useEffect } from 'react';
 import {
-  PlusIcon,
-  BookOpenIcon,
-  UsersIcon,
-  CheckCircleIcon,
-  AcademicCapIcon,
-  BuildingOffice2Icon
+    AcademicCapIcon,
+    BookOpenIcon,
+    BuildingOffice2Icon,
+    CheckCircleIcon,
+    PlusIcon,
+    UsersIcon
 } from '@heroicons/react/24/outline';
+import React, { useEffect, useMemo, useState } from 'react';
 
+import { CLASSES, SKILL_CATEGORIES } from '../../../data/educator/mockCourses';
 import { Course } from '../../../types/educator/course';
-import { SKILL_CATEGORIES, CLASSES } from '../../../data/educator/mockCourses';
 
 import CourseCard from '../../../components/educator/courses/CourseCard';
+import CourseDetailDrawer from '../../../components/educator/courses/CourseDetailDrawer';
 import CourseFilters from '../../../components/educator/courses/CourseFilters';
 import CreateCourseModal from '../../../components/educator/courses/CreateCourseModal';
-import CourseDetailDrawer from '../../../components/educator/courses/CourseDetailDrawer';
 
-import { supabase } from '../../../lib/supabaseClient';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../context/AuthContext';
+import { supabase } from '../../../lib/supabaseClient';
 
 const UniversityAdminCourses: React.FC = () => {
   // @ts-ignore - AuthContext is a .jsx file
@@ -160,12 +160,13 @@ const UniversityAdminCourses: React.FC = () => {
     }
   };
 
-  // Fetch colleges for filter
+  // Fetch colleges for filter from organizations table
   const fetchColleges = async () => {
     try {
       const { data, error } = await supabase
-        .from('colleges')
+        .from('organizations')
         .select('id, name')
+        .eq('organization_type', 'college')
         .order('name');
       
       if (!error && data) {

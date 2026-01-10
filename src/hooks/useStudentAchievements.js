@@ -34,7 +34,7 @@ export const useStudentAchievements = (studentId, email) => {
           .from('students')
           .select('id')
           .eq('email', email)
-          .single();
+          .maybeSingle();
         actualStudentId = studentData?.id;
       }
 

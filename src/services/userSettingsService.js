@@ -151,7 +151,7 @@ export const getNotificationPreferencesByEmail = async (email) => {
       .from('students')
       .select('user_id')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
     if (studentError || !student?.user_id) {
       console.warn('Student not found for email:', email);
@@ -187,7 +187,7 @@ export const getPrivacySettingsByEmail = async (email) => {
       .from('students')
       .select('user_id')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
     if (studentError || !student?.user_id) {
       console.warn('Student not found for email:', email);

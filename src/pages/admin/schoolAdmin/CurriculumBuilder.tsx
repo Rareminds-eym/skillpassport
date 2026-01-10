@@ -1,30 +1,28 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useMemo, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import {
-  BookOpenIcon,
-  PlusCircleIcon,
-  XMarkIcon,
-  ChevronDownIcon,
-  CheckCircleIcon,
-  ArrowPathIcon,
-  InformationCircleIcon,
-  AcademicCapIcon,
-  CheckIcon,
-  TrashIcon,
-  PencilSquareIcon,
-  DocumentCheckIcon,
-  ClockIcon,
-  ExclamationTriangleIcon,
-  RocketLaunchIcon,
-  ArchiveBoxIcon,
-  DocumentDuplicateIcon,
-  ArrowUpIcon,
-  ArrowDownTrayIcon,
-} from "@heroicons/react/24/outline";
-import SearchBar from "../../../components/common/SearchBar";
 import { exportCurriculum } from "@/services/curriculumExportService";
+import {
+    AcademicCapIcon,
+    ArchiveBoxIcon,
+    ArrowDownTrayIcon,
+    ArrowPathIcon,
+    ArrowUpIcon,
+    BookOpenIcon,
+    CheckCircleIcon,
+    CheckIcon,
+    ClockIcon,
+    DocumentCheckIcon,
+    DocumentDuplicateIcon,
+    ExclamationTriangleIcon,
+    InformationCircleIcon,
+    PencilSquareIcon,
+    PlusCircleIcon,
+    TrashIcon,
+    XMarkIcon
+} from "@heroicons/react/24/outline";
+import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import SearchBar from "../../../components/common/SearchBar";
 
 /* ==============================
    TYPES & INTERFACES
@@ -2156,17 +2154,17 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
       // Show loading toast
       const loadingToast = toast.loading(`Generating ${format.toUpperCase()} file...`);
 
-      // Fetch school name if available
+      // Fetch school name if available from organizations table
       let schoolName = '';
       if (educatorData?.school_id) {
-        const { data: schoolData } = await supabase
-          .from('schools')
+        const { data: orgData } = await supabase
+          .from('organizations')
           .select('name')
           .eq('id', educatorData.school_id)
           .single();
         
-        if (schoolData) {
-          schoolName = schoolData.name;
+        if (orgData) {
+          schoolName = orgData.name;
         }
       }
 

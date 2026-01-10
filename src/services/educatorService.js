@@ -19,7 +19,7 @@ export const getCurrentEducator = async () => {
       .from('school_educators')
       .select('id, user_id, school_id, employee_id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching educator:', error);

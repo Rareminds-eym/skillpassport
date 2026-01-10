@@ -11,6 +11,7 @@ import { useUsers } from "../../../hooks/college/useUsers";
 import { departmentService } from "../../../services/college";
 import { supabase } from "../../../lib/supabaseClient";
 import UserFormModal from "./components/UserFormModal";
+import { ConfirmModal } from "../../../components/shared/ConfirmModal";
 import type { User } from "../../../types/college";
 
 const UserManagement: React.FC = () => {
@@ -21,12 +22,74 @@ const UserManagement: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant?: "danger" | "warning" | "info";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
 
   const { users, loading, error, createUser, updateUser, deactivateUser, resetPassword } = useUsers({
     search: searchTerm,
     role: roleFilter,
     status: statusFilter || undefined,
   });
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, roleFilter, statusFilter]);
+
+  // Calculate pagination
+  const totalUsers = users.length;
+  const totalPages = Math.ceil(totalUsers / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedUsers = users.slice(startIndex, endIndex);
+
+  // Generate page numbers for pagination UI
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push('...');
+        pages.push(currentPage - 1);
+        pages.push(currentPage);
+        pages.push(currentPage + 1);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
 
   useEffect(() => {
     // Fetch departments for the form
@@ -119,26 +182,41 @@ const UserManagement: React.FC = () => {
   };
 
   const handleDeactivateUser = async (userId: string) => {
-    if (confirm('Are you sure you want to deactivate this user?')) {
-      const result = await deactivateUser(userId);
-      if (result.success) {
-        alert('User deactivated successfully');
-      } else {
-        alert(result.error);
-      }
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Deactivate User",
+      message: "Are you sure you want to deactivate this user? They will no longer be able to access the system.",
+      variant: "danger",
+      onConfirm: async () => {
+        const result = await deactivateUser(userId);
+        if (result.success) {
+          setSuccessMessage('User deactivated successfully');
+          setTimeout(() => setSuccessMessage(null), 5000);
+        } else {
+          setSuccessMessage(`Error: ${result.error}`);
+          setTimeout(() => setSuccessMessage(null), 5000);
+        }
+      },
+    });
   };
 
   const handleResetPassword = async (userId: string) => {
-    if (confirm('Generate a new temporary password for this user?')) {
-      const result = await resetPassword(userId);
-      if (result.success) {
-        setSuccessMessage('Password reset successfully! Check the console for the new temporary password.');
-        setTimeout(() => setSuccessMessage(null), 5000);
-      } else {
-        alert(result.error);
-      }
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Reset Password",
+      message: "Generate a new temporary password for this user? The new password will be displayed after confirmation.",
+      variant: "warning",
+      onConfirm: async () => {
+        const result = await resetPassword(userId);
+        if (result.success) {
+          setSuccessMessage('Password reset successfully! Check the console for the new temporary password.');
+          setTimeout(() => setSuccessMessage(null), 5000);
+        } else {
+          setSuccessMessage(`Error: ${result.error}`);
+          setTimeout(() => setSuccessMessage(null), 5000);
+        }
+      },
+    });
   };
 
   return (
@@ -200,9 +278,14 @@ const UserManagement: React.FC = () => {
 
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Users ({users.length})
-          </h2>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Users ({totalUsers})
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Showing {startIndex + 1}-{Math.min(endIndex, totalUsers)} of {totalUsers}
+            </p>
+          </div>
           <div className="flex gap-2">
             <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
               <ArrowUpTrayIcon className="h-5 w-5" />
@@ -218,7 +301,7 @@ const UserManagement: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="relative">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
@@ -254,6 +337,20 @@ const UserManagement: React.FC = () => {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
+
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="10">10 per page</option>
+            <option value="25">25 per page</option>
+            <option value="50">50 per page</option>
+            <option value="100">100 per page</option>
+          </select>
         </div>
 
         {loading ? (
@@ -271,98 +368,165 @@ const UserManagement: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                    Name
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                    Email
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                    Roles
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                    ID
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">
-                      {user.name || 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {user.email || 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      <div className="flex flex-wrap gap-1">
-                        {(user.roles || []).map((role, idx) => (
-                          <span
-                            key={`${role}-${idx}`}
-                            className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium"
-                          >
-                            {role}
-                          </span>
-                        ))}
-                        {(!user.roles || user.roles.length === 0) && (
-                          <span className="text-gray-400 italic text-xs">No roles</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {user.employee_id || user.student_id || '-'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          user.status === "active"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {user.status || 'active'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => handleEditUser(user)}
-                          className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"
-                          title="Edit user"
-                        >
-                          <PencilSquareIcon className="h-5 w-5" />
-                        </button>
-                        <button 
-                          onClick={() => handleResetPassword(user.id)}
-                          className="p-1 text-purple-600 hover:bg-purple-50 rounded transition"
-                          title="Reset password"
-                        >
-                          <KeyIcon className="h-5 w-5" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeactivateUser(user.id)}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded transition"
-                          title="Deactivate user"
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                      Name
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                      Email
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                      Roles
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                      ID
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {paginatedUsers.map((user) => (
+                    <tr key={user.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        {user.name || 'N/A'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {user.email || 'N/A'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        <div className="flex flex-wrap gap-1">
+                          {(user.roles || []).map((role, idx) => (
+                            <span
+                              key={`${role}-${idx}`}
+                              className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium"
+                            >
+                              {role}
+                            </span>
+                          ))}
+                          {(!user.roles || user.roles.length === 0) && (
+                            <span className="text-gray-400 italic text-xs">No roles</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {user.employee_id || user.student_id || '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            user.status === "active"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {user.status || 'active'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => handleEditUser(user)}
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"
+                            title="Edit user"
+                          >
+                            <PencilSquareIcon className="h-5 w-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleResetPassword(user.id)}
+                            className="p-1 text-purple-600 hover:bg-purple-50 rounded transition"
+                            title="Reset password"
+                          >
+                            <KeyIcon className="h-5 w-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeactivateUser(user.id)}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded transition"
+                            title="Deactivate user"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <span>
+                    Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                    <span className="font-medium">{Math.min(endIndex, totalUsers)}</span> of{' '}
+                    <span className="font-medium">{totalUsers}</span> results
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    First
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    Previous
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {getPageNumbers().map((page, idx) => (
+                      page === '...' ? (
+                        <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">...</span>
+                      ) : (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page as number)}
+                          className={`px-3 py-1.5 text-sm rounded-lg transition ${
+                            currentPage === page
+                              ? 'bg-blue-600 text-white font-medium'
+                              : 'border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      )
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    Next
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    Last
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -372,6 +536,15 @@ const UserManagement: React.FC = () => {
         onSubmit={handleSubmitUser}
         user={selectedUser}
         departments={departments}
+      />
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
       />
     </div>
   );

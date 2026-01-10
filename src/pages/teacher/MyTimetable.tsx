@@ -1,30 +1,29 @@
-import React, { useState, useEffect, useMemo } from "react";
 import {
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  Coffee,
-  Download,
-  MapPin,
-  Sun,
-  Users,
-  Filter,
-  Building2,
-  Award,
-  BookOpen,
-  RefreshCw,
-  Bell,
+    Award,
+    BookOpen,
+    Building2,
+    Calendar,
+    ChevronLeft,
+    ChevronRight,
+    Coffee,
+    Download,
+    Filter,
+    MapPin,
+    RefreshCw,
+    Sun,
+    Users
 } from "lucide-react";
-import { supabase } from "../../lib/supabaseClient";
+import React, { useEffect, useMemo, useState } from "react";
 import SwapRequestModal from "../../components/teacher/SwapRequestModal";
-import SwapRequestsDashboard from "./SwapRequestsDashboard";
-import { 
-  getAvailableSlotsForSwap, 
-  createSwapRequest, 
-  getPendingSwapCount,
-  getSwapRequests,
+import { supabase } from "../../lib/supabaseClient";
+import {
+    createSwapRequest,
+    getAvailableSlotsForSwap,
+    getPendingSwapCount,
+    getSwapRequests,
 } from "../../services/classSwapService";
-import type { SlotInfo, CreateSwapRequestPayload, ClassSwapRequest } from "../../types/classSwap";
+import type { ClassSwapRequest, CreateSwapRequestPayload, SlotInfo } from "../../types/classSwap";
+import SwapRequestsDashboard from "./SwapRequestsDashboard";
 
 // Types
 interface DepartmentInfo {
@@ -257,7 +256,7 @@ const MyTimetable: React.FC = () => {
         .from("school_educators")
         .select("id, first_name, last_name, school_id")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
       if (!educatorError && educatorData) {
         setEducatorId(educatorData.id);

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 name = "adaptive-aptitude-api"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
@@ -10,3 +11,17 @@ ENVIRONMENT = "production"
 # - VITE_SUPABASE_ANON_KEY
 # - SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY (Required for caching questions - bypasses RLS for INSERT operations)
 # - OPENROUTER_API_KEY
+=======
+name = "adaptive-aptitude-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+ENVIRONMENT = "production"
+
+# Secrets to be set via `wrangler secret put`:
+# - VITE_SUPABASE_URL
+# - VITE_SUPABASE_ANON_KEY
+# - SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY (Required for caching questions - bypasses RLS for INSERT operations)
+# - OPENROUTER_API_KEY
+>>>>>>> 552c175f422149f82fb54da6c1eceacad93db59e

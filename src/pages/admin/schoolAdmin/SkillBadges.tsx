@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
-import { Trophy, X, Medal, Award, Loader2, AlertCircle, FileText, Download, Eye, Search, Filter, Grid3X3, List, Calendar, Users, Activity } from 'lucide-react';
-import { supabase } from '../../../lib/supabaseClient';
 import jsPDF from 'jspdf';
+import { AlertCircle, Award, Download, Eye, FileText, Grid3X3, List, Loader2, Medal, Search, Trophy, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import KPICard from '../../../components/admin/KPICard';
+import { supabase } from '../../../lib/supabaseClient';
 
 const CompetitionResults = () => {
   const [activeTab, setActiveTab] = useState('results'); // 'results' or 'certificates'
@@ -97,18 +97,19 @@ const CompetitionResults = () => {
             userRole = 'educator';
             console.log('✅ Found school_id in school_educators:', schoolId, 'educator_id:', educatorId);
           } else {
-            // Check schools table by email
-            const { data: school } = await supabase
-              .from('schools')
+            // Check organizations table by email
+            const { data: org } = await supabase
+              .from('organizations')
               .select('id, email')
+              .eq('organization_type', 'school')
               .eq('email', user.email)
-              .single();
+              .maybeSingle();
             
-            if (school?.id) {
-              schoolId = school.id;
-              userId = school.id;
+            if (org?.id) {
+              schoolId = org.id;
+              userId = org.id;
               userRole = 'school_admin';
-              console.log('✅ Found school_id in schools table:', schoolId);
+              console.log('✅ Found school_id in organizations table:', schoolId);
             }
           }
         }

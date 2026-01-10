@@ -3,6 +3,8 @@
  * - University Admin signup
  * - University Educator signup
  * - University Student signup
+ * 
+ * Uses unified 'organizations' table with organization_type='university'
  */
 
 import {
@@ -17,6 +19,7 @@ import { checkEmailExists, deleteAuthUser, getSupabaseAdmin } from '../utils/sup
 
 /**
  * Handle university admin signup
+ * Creates organization record in unified 'organizations' table
  */
 export async function handleUniversityAdminSignup(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
@@ -43,9 +46,11 @@ export async function handleUniversityAdminSignup(request: Request, env: Env): P
       return jsonResponse({ error: 'An account with this email already exists' }, 400);
     }
 
+    // Check if university code is unique in organizations table
     const { data: existingUniversity } = await supabaseAdmin
-      .from('universities')
+      .from('organizations')
       .select('id')
+      .eq('organization_type', 'university')
       .eq('code', body.universityCode)
       .maybeSingle();
 
@@ -87,9 +92,10 @@ export async function handleUniversityAdminSignup(request: Request, env: Env): P
       });
 
       const { data: university, error: universityError } = await supabaseAdmin
-        .from('universities')
+        .from('organizations')
         .insert({
           name: body.universityName,
+          organization_type: 'university',
           code: body.universityCode,
           email: body.email.toLowerCase(),
           phone: body.phone,
@@ -97,16 +103,19 @@ export async function handleUniversityAdminSignup(request: Request, env: Env): P
           address: body.address,
           city: body.city,
           state: body.state,
-          district: body.district,
           country: body.country || 'India',
           pincode: body.pincode,
-          university_type: body.universityType,
-          vc_name: body.vcName,
-          vc_email: body.vcEmail || body.email,
-          vc_phone: body.vcPhone || body.phone,
+          admin_id: userId,
           account_status: 'pending',
           approval_status: 'pending',
-          created_by: userId,
+          is_active: true,
+          metadata: {
+            district: body.district,
+            university_type: body.universityType,
+            vc_name: body.vcName,
+            vc_email: body.vcEmail || body.email,
+            vc_phone: body.vcPhone || body.phone,
+          },
         })
         .select()
         .single();
@@ -154,6 +163,7 @@ export async function handleUniversityAdminSignup(request: Request, env: Env): P
 
 /**
  * Handle university educator signup
+ * Verifies university exists in organizations table
  */
 export async function handleUniversityEducatorSignup(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
@@ -180,10 +190,12 @@ export async function handleUniversityEducatorSignup(request: Request, env: Env)
       return jsonResponse({ error: 'An account with this email already exists' }, 400);
     }
 
+    // Verify university exists in organizations table
     const { data: university, error: universityError } = await supabaseAdmin
-      .from('universities')
+      .from('organizations')
       .select('id, name')
       .eq('id', body.universityId)
+      .eq('organization_type', 'university')
       .single();
 
     if (universityError || !university) {
@@ -290,6 +302,7 @@ export async function handleUniversityEducatorSignup(request: Request, env: Env)
 
 /**
  * Handle university student signup
+ * Verifies university exists in organizations table
  */
 export async function handleUniversityStudentSignup(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
@@ -313,10 +326,12 @@ export async function handleUniversityStudentSignup(request: Request, env: Env):
       return jsonResponse({ error: 'An account with this email already exists' }, 400);
     }
 
+    // Verify university exists in organizations table
     const { data: university, error: universityError } = await supabaseAdmin
-      .from('universities')
+      .from('organizations')
       .select('id, name')
       .eq('id', body.universityId)
+      .eq('organization_type', 'university')
       .single();
 
     if (universityError || !university) {

@@ -65,16 +65,17 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
             return educatorData.school_id;
         }
 
-        // Try schools table (for admins) - check both email and principal_email
-        const { data: schoolData } = await supabase
-            .from('schools')
+        // Try organizations table (for admins)
+        const { data: orgData } = await supabase
+            .from('organizations')
             .select('id')
-            .or(`email.eq.${userEmail},principal_email.eq.${userEmail}`)
+            .eq('organization_type', 'school')
+            .eq('email', userEmail)
             .maybeSingle();
 
-        if (schoolData?.id) {
-            console.log('✅ [CompetitionsService] Found school ID from schools table:', schoolData.id);
-            return schoolData.id;
+        if (orgData?.id) {
+            console.log('✅ [CompetitionsService] Found school ID from organizations table:', orgData.id);
+            return orgData.id;
         }
 
         console.log('❌ [CompetitionsService] No school ID found for user:', userEmail);
@@ -102,15 +103,16 @@ async function getCurrentUserInfo(): Promise<{ type: 'educator' | 'admin', id: s
             return { type: 'educator', id: educatorData.id };
         }
 
-        // Check if admin - check both email and principal_email
-        const { data: schoolData } = await supabase
-            .from('schools')
+        // Check if admin in organizations table
+        const { data: orgData } = await supabase
+            .from('organizations')
             .select('id')
-            .or(`email.eq.${userEmail},principal_email.eq.${userEmail}`)
+            .eq('organization_type', 'school')
+            .eq('email', userEmail)
             .maybeSingle();
 
-        if (schoolData?.id) {
-            return { type: 'admin', id: schoolData.id };
+        if (orgData?.id) {
+            return { type: 'admin', id: orgData.id };
         }
 
         return null;

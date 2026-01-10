@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
 import {
-  XMarkIcon,
-  ChatBubbleLeftRightIcon,
-  DocumentTextIcon,
+    ChatBubbleLeftRightIcon,
+    DocumentTextIcon,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
-import { Student } from '../types';
+import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { supabase } from '../../../../lib/supabaseClient';
 import MessageService from '../../../../services/messageService';
-import toast from 'react-hot-toast';
+import { Student } from '../types';
 
 interface SchoolAdmissionNoteModalProps {
   isOpen: boolean;
@@ -80,17 +80,18 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
       if (educatorData?.school_id) {
         schoolId = educatorData.school_id;
       } else {
-        // Fallback: check if user is school owner/admin in schools table
-        const { data: schoolData, error: schoolError } = await supabase
-          .from('schools')
+        // Fallback: check if user is school owner/admin in organizations table
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
           .select('id')
-          .eq('created_by', user.id)
-          .single();
+          .eq('organization_type', 'school')
+          .eq('admin_id', user.id)
+          .maybeSingle();
 
-        console.log('📊 School owner data:', schoolData, 'Error:', schoolError);
+        console.log('📊 Organization owner data:', orgData, 'Error:', orgError);
 
-        if (schoolData?.id) {
-          schoolId = schoolData.id;
+        if (orgData?.id) {
+          schoolId = orgData.id;
         }
       }
 

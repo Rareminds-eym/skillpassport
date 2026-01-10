@@ -3,7 +3,6 @@ import { AlertCircle, Building2, CheckCircle2, Eye, EyeOff, Gift, Globe, Languag
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { capitalizeFirstLetter } from '../../../../../components/Subscription/shared/signupValidation';
-import { supabase } from '../../../../../lib/supabaseClient';
 
 // Languages list
 const LANGUAGES = [
@@ -375,86 +374,48 @@ const SignupAdmin = () => {
     try {
       const firstName = capitalizeFirstLetter(formData.adminFirstName);
       const lastName = capitalizeFirstLetter(formData.adminLastName);
-      const adminFullName = `${firstName} ${lastName}`.trim();
       
-      // 1. Create user account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.adminEmail,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: adminFullName,
-            first_name: firstName,
-            last_name: lastName,
-            role: 'recruitment_admin'
-          }
-        }
-      });
-
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Failed to create user account');
-
-      // 2. Create user record in public.users table
+      // Use the worker API for signup with proper rollback support
+      const USER_API_URL = import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
       
-      const { error: userError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
+      const response = await fetch(`${USER_API_URL}/signup/recruiter-admin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           email: formData.adminEmail,
-          firstName: firstName,
-          lastName: lastName,
-          role: 'rm_admin',
-          metadata: {
-            phone: formData.adminPhone,
-            isAdmin: true,
-            fullName: adminFullName
-          }
-        });
-
-      if (userError) throw userError;
-
-      // 3. Create company record
-      const { data: companyData, error: companyError } = await supabase
-        .from('companies')
-        .insert({
-          name: formData.name,
-          code: formData.code,
+          password: formData.password,
+          companyName: formData.name,
+          companyCode: formData.code,
           industry: formData.industry,
           companySize: formData.companySize,
+          phone: formData.phone,
+          website: formData.website || undefined,
           hqAddress: formData.hqAddress,
           hqCity: formData.hqCity,
           hqState: formData.hqState,
           hqCountry: formData.hqCountry,
-          hqPincode: formData.hqPincode || null,
-          phone: formData.phone,
-          email: formData.email,
-          website: formData.website || null,
-          establishedYear: formData.establishedYear ? parseInt(formData.establishedYear) : null,
+          hqPincode: formData.hqPincode || undefined,
+          establishedYear: formData.establishedYear ? parseInt(formData.establishedYear) : undefined,
           contactPersonName: formData.contactPersonName,
           contactPersonDesignation: formData.contactPersonDesignation,
           contactPersonEmail: formData.contactPersonEmail,
           contactPersonPhone: formData.contactPersonPhone,
-          accountStatus: 'pending',
-          approvalStatus: 'pending',
-          created_by: authData.user.id,
-          metadata: {
-            adminFirstName: firstName,
-            adminLastName: lastName,
-            adminName: adminFullName,
-            adminEmail: formData.adminEmail,
-            adminPhone: formData.adminPhone,
-            registrationDate: new Date().toISOString()
-          }
-        })
-        .select()
-        .single();
+          dateOfBirth: formData.dateOfBirth || undefined,
+        }),
+      });
 
-      if (companyError) throw companyError;
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create workspace');
+      }
+
+      const companyCode = result.data.companyCode;
 
       // Success!
       if (returnToPayment && plan) {
         // If coming from subscription page, redirect to payment
-        alert(`Workspace created successfully! Your Workspace ID is: ${companyData.code}\n\nProceeding to payment...`);
+        alert(`Workspace created successfully! Your Workspace ID is: ${companyCode}\n\nProceeding to payment...`);
         navigate('/subscription/payment', { 
           state: { 
             plan, 
@@ -464,7 +425,7 @@ const SignupAdmin = () => {
         });
       } else {
         // Otherwise, show success message and go to login
-        alert(`Workspace created successfully! Your Workspace ID is: ${companyData.code}\n\nYour account is pending approval. We'll notify you once it's activated.`);
+        alert(`Workspace created successfully! Your Workspace ID is: ${companyCode}\n\nYour account is pending approval. We'll notify you once it's activated.`);
         navigate('/login/recruiter');
       }
       

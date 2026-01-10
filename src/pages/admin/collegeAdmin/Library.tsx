@@ -262,11 +262,11 @@
 //     </div>
 //   );
 // }
-import React, { useState, useEffect, useRef } from "react";
-import {MagnifyingGlassIcon,BookOpenIcon,UsersIcon} from "@heroicons/react/24/outline";
-import { libraryService, LibraryBook, LibraryBookIssue, LibraryStats, OverdueBook, LibrarySetting } from "../../../services/libraryService";
-import { supabase } from "../../../lib/supabaseClient";
+import { BookOpenIcon, MagnifyingGlassIcon, UsersIcon } from "@heroicons/react/24/outline";
+import { useEffect, useRef, useState } from "react";
 import toast from 'react-hot-toast';
+import { supabase } from "../../../lib/supabaseClient";
+import { LibraryBook, LibraryBookIssue, libraryService, LibrarySetting, LibraryStats, OverdueBook } from "../../../services/libraryService";
 
 export default function LibraryModule() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -566,18 +566,19 @@ export default function LibraryModule() {
           
           // Check for college admin
           if (userRole === 'college_admin') {
-            // Find college by matching deanEmail (case-insensitive)
-            const { data: college } = await supabase
-              .from('colleges')
-              .select('id, name, deanEmail')
-              .ilike('deanEmail', user.email || '')
-              .single();
+            // Find college by matching email in organizations table (case-insensitive)
+            const { data: org } = await supabase
+              .from('organizations')
+              .select('id, name, email')
+              .eq('organization_type', 'college')
+              .ilike('email', user.email || '')
+              .maybeSingle();
             
-            if (college?.id) {
-              collegeId = college.id;
-              console.log('✅ Found college_id for college admin:', collegeId, 'College:', college.name, 'DeanEmail:', college.deanEmail);
+            if (org?.id) {
+              collegeId = org.id;
+              console.log('✅ Found college_id for college admin:', collegeId, 'College:', org.name, 'Email:', org.email);
             } else {
-              console.warn('⚠️ College admin but no matching college found for email:', user.email);
+              console.warn('⚠️ College admin but no matching organization found for email:', user.email);
             }
           }
           // Check for school admin/educator
@@ -593,16 +594,17 @@ export default function LibraryModule() {
               schoolId = educator.school_id;
               console.log('✅ Found school_id in school_educators:', schoolId);
             } else {
-              // Check schools table by email
-              const { data: school } = await supabase
-                .from('schools')
+              // Check organizations table by email for school
+              const { data: org } = await supabase
+                .from('organizations')
                 .select('id')
+                .eq('organization_type', 'school')
                 .eq('email', user.email)
-                .single();
+                .maybeSingle();
               
-              schoolId = school?.id || null;
+              schoolId = org?.id || null;
               if (schoolId) {
-                console.log('✅ Found school_id in schools table:', schoolId);
+                console.log('✅ Found school_id in organizations table:', schoolId);
               }
             }
           }

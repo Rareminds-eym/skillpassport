@@ -371,7 +371,7 @@ const Settings: React.FC = () => {
           )
         `)
         .eq('email', userEmail)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching educator:', error);

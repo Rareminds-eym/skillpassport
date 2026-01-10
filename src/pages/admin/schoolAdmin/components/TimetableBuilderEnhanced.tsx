@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { Sparkles, Save, Send, AlertTriangle, Edit2, Trash2, Search, Filter, Grid3X3, List } from "lucide-react";
+import { AlertTriangle, Edit2, Filter, Grid3X3, List, Save, Search, Send, Sparkles, Trash2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../../../../lib/supabaseClient";
-import { validateTimetableSlot, getAllTimetableConflicts, ValidationConflict } from "../../../../utils/timetableValidation";
+import { getAllTimetableConflicts, validateTimetableSlot, ValidationConflict } from "../../../../utils/timetableValidation";
 
 interface Teacher {
   id: string;
@@ -123,12 +123,13 @@ const TimetableBuilderEnhanced: React.FC = () => {
         .eq("id", user.id)
         .single();
 
-      // For school_admin: lookup school by created_by
+      // For school_admin: lookup school from organizations table
       if (userData?.role === "school_admin") {
         const { data: schoolData } = await supabase
-          .from("schools")
+          .from("organizations")
           .select("id")
-          .eq("created_by", user.id)
+          .eq("organization_type", "school")
+          .eq("admin_id", user.id)
           .maybeSingle();
 
         if (schoolData?.id) {
