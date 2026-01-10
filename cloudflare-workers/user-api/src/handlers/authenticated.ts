@@ -298,15 +298,15 @@ export async function handleCreateTeacher(request: Request, env: Env): Promise<R
       email: teacher.email.toLowerCase(),
       firstName: teacher.first_name,
       lastName: teacher.last_name,
-      role: 'educator',
+      role: 'school_educator',
       organizationId: schoolId,
       isActive: true,
-      entity_type: 'educator',
       metadata: {
         source: 'school_admin_added',
         schoolId,
         addedBy: user.id,
         teacherRole: teacher.role,
+        entityType: 'educator',
       },
     });
 
@@ -604,18 +604,17 @@ export async function handleCreateCollegeStaff(request: Request, env: Env): Prom
       email: staff.email.toLowerCase(),
       firstName,
       lastName,
-      full_name: staff.name,
-      name: staff.name,
       role: primaryRole,
       organizationId: collegeId,
       isActive: true,
-      entity_type: 'college_staff',
       metadata: {
         source: 'college_admin_added',
         collegeId,
         addedBy: user.id,
         roles: staff.roles,
         password: staffPassword,
+        fullName: staff.name,
+        entityType: 'college_staff',
       },
     });
 

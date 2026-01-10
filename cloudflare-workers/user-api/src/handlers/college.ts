@@ -14,7 +14,7 @@ import {
     Env,
 } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
-import { calculateAge, jsonResponse, splitName, validateEmail } from '../utils/helpers';
+import { calculateAge, capitalizeFirstLetter, jsonResponse, splitName, validateEmail } from '../utils/helpers';
 import { checkEmailExists, deleteAuthUser, getSupabaseAdmin } from '../utils/supabase';
 
 /**
@@ -90,8 +90,7 @@ export async function handleCollegeAdminSignup(request: Request, env: Env): Prom
         organizationId: null,
         isActive: true,
         phone: body.phone || body.deanPhone,
-        dob: body.dateOfBirth || null,
-        metadata: { source: 'college_signup', collegeCode: body.collegeCode },
+        metadata: { source: 'college_signup', collegeCode: body.collegeCode, dateOfBirth: body.dateOfBirth },
       });
 
       const { data: college, error: collegeError } = await supabaseAdmin
@@ -251,8 +250,7 @@ export async function handleCollegeEducatorSignup(request: Request, env: Env): P
         organizationId: body.collegeId,
         isActive: true,
         phone: body.phone,
-        dob: body.dateOfBirth || null,
-        metadata: { source: 'college_educator_signup', collegeId: body.collegeId },
+        metadata: { source: 'college_educator_signup', collegeId: body.collegeId, dateOfBirth: body.dateOfBirth },
       });
 
       // Insert into college_lecturers table with camelCase columns (matching actual schema)
@@ -403,8 +401,7 @@ export async function handleCollegeStudentSignup(request: Request, env: Env): Pr
         organizationId: body.collegeId,
         isActive: true,
         phone: body.phone,
-        dob: body.dateOfBirth || null,
-        metadata: { source: 'college_student_signup', collegeId: body.collegeId },
+        metadata: { source: 'college_student_signup', collegeId: body.collegeId, dateOfBirth: body.dateOfBirth },
       });
 
       const age = calculateAge(body.dateOfBirth || '');
