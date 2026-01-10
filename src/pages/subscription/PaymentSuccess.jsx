@@ -15,6 +15,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
+import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import { downloadReceipt, generateReceiptBase64 } from '../../services/Subscriptions/pdfReceiptGenerator';
 import { getPaymentReceiptUrl, uploadPaymentReceipt } from '../../services/storageApiService';
 import { clearPendingUserData } from '../../utils/authCleanup';
@@ -78,6 +79,7 @@ function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const { user, role } = useAuth();
   const { refreshAccess } = useSubscriptionContext();
+  const { refreshSubscription } = useSubscriptionQuery();
   const managePath = useMemo(() => getManagePath(role), [role]);
 
   const [activationStatus, setActivationStatus] = useState('pending');
@@ -161,8 +163,17 @@ function PaymentSuccess() {
       if (subscription) {
         setActivationStatus('activated');
         setSubscriptionData(subscription);
-        // Refresh global subscription context to update guards
-        refreshAccess();
+        
+        // CRITICAL FIX: Refresh BOTH subscription caches to prevent redirect loop
+        // This ensures SubscriptionPlans.jsx sees the updated subscription immediately
+        Promise.all([
+          refreshAccess(),           // Refresh SubscriptionContext cache
+          refreshSubscription()      // Refresh useSubscriptionQuery cache
+        ]).then(() => {
+          console.log('[PaymentSuccess] Both subscription caches refreshed');
+        }).catch(err => {
+          console.error('[PaymentSuccess] Error refreshing caches:', err);
+        });
         
         const isExistingOrAlreadyProcessed = transactionDetails.already_processed || transactionDetails.is_existing_subscription;
         
@@ -258,7 +269,7 @@ function PaymentSuccess() {
         setEmailStatus('sent');
       }
     }
-  }, [verificationStatus, transactionDetails, activationStatus, user, refreshAccess]);
+  }, [verificationStatus, transactionDetails, activationStatus, user, refreshAccess, refreshSubscription]);
 
   useEffect(() => {
     if (!paymentParams.razorpay_payment_id && verificationStatus !== 'loading') {
@@ -504,7 +515,12 @@ function PaymentSuccess() {
         {/* Actions */}
         <div className="space-y-2.5 pt-2">
           <button
-            onClick={() => navigate(getDashboardUrl())}
+            onClick={() => {
+              // Small delay to ensure cache refresh completes before navigation
+              setTimeout(() => {
+                navigate(getDashboardUrl());
+              }, 100);
+            }}
             className="w-full py-3 bg-[#2663EB] text-white rounded-xl font-semibold hover:bg-[#1D4ED8] transition-colors flex items-center justify-center gap-2"
           >
             Go to Dashboard <ArrowRight className="w-4 h-4" />
