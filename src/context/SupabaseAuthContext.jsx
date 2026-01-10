@@ -176,28 +176,41 @@ export const SupabaseAuthProvider = ({ children }) => {
     }
   };
 
-  // Sign up student
+  // Sign up student - uses worker API for proper rollback
   const signUp = async (email, password, studentData = {}) => {
     try {
+      // Use the worker API for signup with proper rollback support
+      const USER_API_URL = import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
       
-      // Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name: studentData.name || email
-          }
-        }
+      const response = await fetch(`${USER_API_URL}/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
+          firstName: studentData.firstName || studentData.name?.split(' ')[0] || email.split('@')[0],
+          lastName: studentData.lastName || studentData.name?.split(' ').slice(1).join(' ') || '',
+          role: studentData.role || 'school_student',
+          phone: studentData.phone,
+        }),
       });
 
-      if (authError) throw authError;
+      const result = await response.json();
 
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create account');
+      }
 
-      // Note: Student profile will be created automatically via database trigger
-      // The trigger handles creating the students record when auth.users record is inserted
-
-      return { data: authData, error: null };
+      // Return in the same format as supabase.auth.signUp
+      return { 
+        data: { 
+          user: { 
+            id: result.data.userId, 
+            email: result.data.email 
+          } 
+        }, 
+        error: null 
+      };
     } catch (error) {
       console.error('❌ Sign up error:', error);
       return { data: null, error };

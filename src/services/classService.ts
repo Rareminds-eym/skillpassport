@@ -82,38 +82,63 @@ const syncClassAggregates = (classItem: EducatorClass) => {
 }
 
 /**
- * Get class IDs assigned to an educator
+ * Get class IDs assigned to an educator (works for both school and college)
  * @param educatorId - The UUID of the educator
+ * @param educatorType - Type of educator ('school' or 'college')
  * @returns Array of class IDs
  */
-export const getEducatorAssignedClassIds = async (educatorId: string): Promise<string[]> => {
+export const getEducatorAssignedClassIds = async (educatorId: string, educatorType: 'school' | 'college'): Promise<string[]> => {
   try {
-    const { data, error } = await supabase
-      .from("school_educator_class_assignments")
-      .select("class_id")
-      .eq("educator_id", educatorId)
+    if (educatorType === 'school') {
+      const { data, error } = await supabase
+        .from("school_educator_class_assignments")
+        .select("class_id")
+        .eq("educator_id", educatorId)
 
-    if (error) {
-      console.error("Error fetching educator assigned classes:", error)
-      return []
+      if (error) {
+        console.error("Error fetching school educator assigned classes:", error)
+        return []
+      }
+
+      return (data || []).map(ac => ac.class_id)
+    } else {
+      const { data, error } = await supabase
+        .from("college_faculty_class_assignments")
+        .select("class_id")
+        .eq("faculty_id", educatorId)
+
+      if (error) {
+        console.error("Error fetching college educator assigned classes:", error)
+        return []
+      }
+
+      return (data || []).map(ac => ac.class_id)
     }
-
-    return (data || []).map(ac => ac.class_id)
   } catch (err) {
     console.error("Error fetching educator assigned classes:", err)
     return []
   }
 }
 
-const transformDBClassToClass = (dbClass: any): EducatorClass => {
+const transformDBClassToClass = (dbClass: any, educatorType: 'school' | 'college' = 'school'): EducatorClass => {
   const metadata = dbClass.metadata || {}
   
   // Get class teacher info from the joined data
-  const classTeacherName = dbClass.class_teacher_first_name && dbClass.class_teacher_last_name 
-    ? `${dbClass.class_teacher_first_name} ${dbClass.class_teacher_last_name}`.trim()
-    : "TBD"
+  let classTeacherName = "TBD"
+  let classTeacherEmail = "Not assigned"
   
-  const classTeacherEmail = dbClass.class_teacher_email || "Not assigned"
+  if (educatorType === 'school') {
+    classTeacherName = dbClass.class_teacher_first_name && dbClass.class_teacher_last_name 
+      ? `${dbClass.class_teacher_first_name} ${dbClass.class_teacher_last_name}`.trim()
+      : "TBD"
+    classTeacherEmail = dbClass.class_teacher_email || "Not assigned"
+  } else {
+    // For college, get from faculty assignment
+    classTeacherName = dbClass.faculty_first_name && dbClass.faculty_last_name 
+      ? `${dbClass.faculty_first_name} ${dbClass.faculty_last_name}`.trim()
+      : "TBD"
+    classTeacherEmail = dbClass.faculty_email || "Not assigned"
+  }
   
   return {
     id: dbClass.id,
@@ -182,23 +207,41 @@ const calculateStudentProgress = async (studentId: string, classId: string): Pro
   }
 }
 
-export const fetchEducatorClasses = async (schoolId?: string, educatorId?: string): Promise<ServiceResponse<EducatorClass[]>> => {
+export const fetchEducatorClasses = async (
+  schoolId?: string, 
+  collegeId?: string, 
+  educatorId?: string, 
+  educatorType?: 'school' | 'college'
+): Promise<ServiceResponse<EducatorClass[]>> => {
   try {
     // SECURITY: Always require educatorId for educator role to prevent unauthorized access
-    if (!educatorId) {
-      console.warn("fetchEducatorClasses called without educatorId - this should not happen for educators")
+    if (!educatorId || !educatorType) {
+      console.warn("fetchEducatorClasses called without educatorId or educatorType - this should not happen for educators")
       return { data: [], error: null }
     }
 
+    if (educatorType === 'school') {
+      return await fetchSchoolEducatorClasses(schoolId, educatorId)
+    } else {
+      return await fetchCollegeEducatorClasses(collegeId, educatorId)
+    }
+  } catch (err: any) {
+    console.error("Error in fetchEducatorClasses:", err)
+    return { data: null, error: err?.message || "Unable to fetch classes" }
+  }
+}
+
+const fetchSchoolEducatorClasses = async (schoolId?: string, educatorId?: string): Promise<ServiceResponse<EducatorClass[]>> => {
+  try {
     // SECURITY: Verify educator exists and get only their assigned classes
     const { data: educatorCheck, error: educatorCheckError } = await supabase
       .from("school_educators")
       .select("id")
       .eq("id", educatorId)
-      .single()
+      .maybeSingle()
 
     if (educatorCheckError || !educatorCheck) {
-      console.error("Invalid educator ID:", educatorId)
+      console.error("Invalid school educator ID:", educatorId)
       return { data: null, error: "Invalid educator credentials" }
     }
 
@@ -209,7 +252,7 @@ export const fetchEducatorClasses = async (schoolId?: string, educatorId?: strin
       .eq("educator_id", educatorId)
 
     if (assignmentError) {
-      console.error("Error fetching educator assignments:", assignmentError)
+      console.error("Error fetching school educator assignments:", assignmentError)
       return { data: null, error: assignmentError.message }
     }
 
@@ -245,7 +288,7 @@ export const fetchEducatorClasses = async (schoolId?: string, educatorId?: strin
     const { data, error } = await query
 
     if (error) {
-      console.error("Error fetching classes:", error)
+      console.error("Error fetching school classes:", error)
       return { data: null, error: error.message }
     }
 
@@ -261,8 +304,8 @@ export const fetchEducatorClasses = async (schoolId?: string, educatorId?: strin
           class_teacher_email: classTeacher?.email
         }
         
-        const classItem = transformDBClassToClass(enrichedClass)
-        const students = await fetchClassStudents(dbClass.id)
+        const classItem = transformDBClassToClass(enrichedClass, 'school')
+        const students = await fetchClassStudents(dbClass.id, 'school')
         classItem.students = students
         const tasks = await fetchClassTasks(dbClass.id)
         classItem.tasks = tasks
@@ -272,8 +315,97 @@ export const fetchEducatorClasses = async (schoolId?: string, educatorId?: strin
 
     return { data: classesWithStudents, error: null }
   } catch (err: any) {
-    console.error("Error in fetchEducatorClasses:", err)
-    return { data: null, error: err?.message || "Unable to fetch classes" }
+    console.error("Error in fetchSchoolEducatorClasses:", err)
+    return { data: null, error: err?.message || "Unable to fetch school classes" }
+  }
+}
+
+const fetchCollegeEducatorClasses = async (collegeId?: string, educatorId?: string): Promise<ServiceResponse<EducatorClass[]>> => {
+  try {
+    // SECURITY: Verify educator exists and get only their assigned classes
+    const { data: educatorCheck, error: educatorCheckError } = await supabase
+      .from("college_lecturers")
+      .select("id")
+      .eq("id", educatorId)
+      .maybeSingle()
+
+    if (educatorCheckError || !educatorCheck) {
+      console.error("Invalid college educator ID:", educatorId)
+      return { data: null, error: "Invalid educator credentials" }
+    }
+
+    // Get only the classes assigned to this specific educator
+    const { data: assignments, error: assignmentError } = await supabase
+      .from("college_faculty_class_assignments")
+      .select("class_id")
+      .eq("faculty_id", educatorId)
+
+    if (assignmentError) {
+      console.error("Error fetching college educator assignments:", assignmentError)
+      return { data: null, error: assignmentError.message }
+    }
+
+    const classIds = (assignments || []).map(a => a.class_id)
+
+    if (classIds.length === 0) {
+      return { data: [], error: null }
+    }
+
+    // Build query to fetch only assigned classes with faculty info
+    let query = supabase
+      .from("college_classes")
+      .select(`
+        *,
+        faculty:college_faculty_class_assignments(
+          lecturer:college_lecturers(
+            first_name,
+            last_name,
+            email
+          )
+        )
+      `)
+      .in("id", classIds)
+      .eq("college_faculty_class_assignments.is_class_teacher", true)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+
+    // Additional college filter if provided
+    if (collegeId) {
+      query = query.eq("college_id", collegeId)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error("Error fetching college classes:", error)
+      return { data: null, error: error.message }
+    }
+
+    // Process each class with additional data
+    const classesWithStudents = await Promise.all(
+      (data || []).map(async (dbClass) => {
+        // Extract faculty info
+        const faculty = dbClass.faculty?.[0]?.lecturer
+        const enrichedClass = {
+          ...dbClass,
+          faculty_first_name: faculty?.first_name,
+          faculty_last_name: faculty?.last_name,
+          faculty_email: faculty?.email
+        }
+        
+        const classItem = transformDBClassToClass(enrichedClass, 'college')
+        const students = await fetchClassStudents(dbClass.id, 'college')
+        classItem.students = students
+        const tasks = await fetchClassTasks(dbClass.id)
+        classItem.tasks = tasks
+        return syncClassAggregates(classItem)
+      })
+    )
+
+    return { data: classesWithStudents, error: null }
+  } catch (err: any) {
+    console.error("Error in fetchCollegeEducatorClasses:", err)
+    return { data: null, error: err?.message || "Unable to fetch college classes" }
   }
 }
 
@@ -368,12 +500,14 @@ export const fetchClassTasks = async (classId: string): Promise<ClassTask[]> => 
   }
 }
 
-export const fetchClassStudents = async (classId: string): Promise<ClassStudent[]> => {
+export const fetchClassStudents = async (classId: string, educatorType: 'school' | 'college' = 'school'): Promise<ClassStudent[]> => {
   try {
+    const classIdField = educatorType === 'school' ? 'school_class_id' : 'college_class_id'
+    
     const { data, error } = await supabase
       .from("students")
       .select("id, name, email, updated_at, user_id")
-      .eq("school_class_id", classId)
+      .eq(classIdField, classId)
 
     if (error) {
       console.error("Error fetching class students:", error)
@@ -400,67 +534,129 @@ export const fetchClassStudents = async (classId: string): Promise<ClassStudent[
   }
 }
 
-export const getClassById = async (classId: string): Promise<ServiceResponse<EducatorClass>> => {
+export const getClassById = async (classId: string, educatorType: 'school' | 'college' = 'school'): Promise<ServiceResponse<EducatorClass>> => {
   try {
-    const { data, error } = await supabase
-      .from("school_classes")
-      .select(`
-        *,
-        class_teacher:school_educator_class_assignments(
-          educator:school_educators(
-            first_name,
-            last_name,
-            email
-          )
-        )
-      `)
-      .eq("id", classId)
-      .eq("school_educator_class_assignments.is_primary", true)
-      .single()
-
-    if (error) {
-      return { data: null, error: error.message || "Class not found" }
+    if (educatorType === 'school') {
+      return await getSchoolClassById(classId)
+    } else {
+      return await getCollegeClassById(classId)
     }
-
-    if (!data) {
-      return { data: null, error: "Class not found" }
-    }
-
-    // Extract class teacher info
-    const classTeacher = data.class_teacher?.[0]?.educator
-    const enrichedClass = {
-      ...data,
-      class_teacher_first_name: classTeacher?.first_name,
-      class_teacher_last_name: classTeacher?.last_name,
-      class_teacher_email: classTeacher?.email
-    }
-
-    const classItem = transformDBClassToClass(enrichedClass)
-    const students = await fetchClassStudents(classId)
-    classItem.students = students
-    
-    // Fetch tasks from assignments table
-    const tasks = await fetchClassTasks(classId)
-    classItem.tasks = tasks
-    
-    return { data: syncClassAggregates(classItem), error: null }
   } catch (err: any) {
     return { data: null, error: err?.message || "Unable to fetch class" }
   }
 }
 
-export const fetchStudentDirectory = async (schoolId?: string): Promise<ServiceResponse<StudentDirectoryEntry[]>> => {
+const getSchoolClassById = async (classId: string): Promise<ServiceResponse<EducatorClass>> => {
+  const { data, error } = await supabase
+    .from("school_classes")
+    .select(`
+      *,
+      class_teacher:school_educator_class_assignments(
+        educator:school_educators(
+          first_name,
+          last_name,
+          email
+        )
+      )
+    `)
+    .eq("id", classId)
+    .eq("school_educator_class_assignments.is_primary", true)
+    .maybeSingle()
+
+  if (error) {
+    return { data: null, error: error.message || "School class not found" }
+  }
+
+  if (!data) {
+    return { data: null, error: "School class not found" }
+  }
+
+  // Extract class teacher info
+  const classTeacher = data.class_teacher?.[0]?.educator
+  const enrichedClass = {
+    ...data,
+    class_teacher_first_name: classTeacher?.first_name,
+    class_teacher_last_name: classTeacher?.last_name,
+    class_teacher_email: classTeacher?.email
+  }
+
+  const classItem = transformDBClassToClass(enrichedClass, 'school')
+  const students = await fetchClassStudents(classId, 'school')
+  classItem.students = students
+  
+  // Fetch tasks from assignments table
+  const tasks = await fetchClassTasks(classId)
+  classItem.tasks = tasks
+  
+  return { data: syncClassAggregates(classItem), error: null }
+}
+
+const getCollegeClassById = async (classId: string): Promise<ServiceResponse<EducatorClass>> => {
+  const { data, error } = await supabase
+    .from("college_classes")
+    .select(`
+      *,
+      faculty:college_faculty_class_assignments(
+        lecturer:college_lecturers(
+          first_name,
+          last_name,
+          email
+        )
+      )
+    `)
+    .eq("id", classId)
+    .eq("college_faculty_class_assignments.is_class_teacher", true)
+    .maybeSingle()
+
+  if (error) {
+    return { data: null, error: error.message || "College class not found" }
+  }
+
+  if (!data) {
+    return { data: null, error: "College class not found" }
+  }
+
+  // Extract faculty info
+  const faculty = data.faculty?.[0]?.lecturer
+  const enrichedClass = {
+    ...data,
+    faculty_first_name: faculty?.first_name,
+    faculty_last_name: faculty?.last_name,
+    faculty_email: faculty?.email
+  }
+
+  const classItem = transformDBClassToClass(enrichedClass, 'college')
+  const students = await fetchClassStudents(classId, 'college')
+  classItem.students = students
+  
+  // Fetch tasks from assignments table
+  const tasks = await fetchClassTasks(classId)
+  classItem.tasks = tasks
+  
+  return { data: syncClassAggregates(classItem), error: null }
+}
+
+export const fetchStudentDirectory = async (schoolId?: string, collegeId?: string): Promise<ServiceResponse<StudentDirectoryEntry[]>> => {
   try {
     let query = supabase
       .from("students")
-      .select("id, name, email, school_id")
-      .is("school_class_id", null)
+      .select("id, name, email, school_id, college_id")
       .eq("is_deleted", false)
       .limit(100)
 
-    // Filter by school if provided
     if (schoolId) {
-      query = query.eq("school_id", schoolId)
+      // For school: get students without a class assignment
+      query = query
+        .eq("school_id", schoolId)
+        .is("school_class_id", null)
+    } else if (collegeId) {
+      // For college: get students without a class assignment
+      query = query
+        .eq("college_id", collegeId)
+        .is("college_class_id", null)
+    } else {
+      // If neither provided, return empty (for security)
+      return { data: [], error: null }
     }
 
     const { data, error } = await query
@@ -487,9 +683,9 @@ type AddStudentPayload = {
   student: { id?: string; name: string; email: string; progress?: number }
 }
 
-export const addStudentToClass = async ({ classId, student }: AddStudentPayload): Promise<MutateResponse<EducatorClass>> => {
+export const addStudentToClass = async ({ classId, student, educatorType = 'school' }: AddStudentPayload & { educatorType?: 'school' | 'college' }): Promise<MutateResponse<EducatorClass>> => {
   try {
-    const { data: classData, error: classError } = await getClassById(classId)
+    const { data: classData, error: classError } = await getClassById(classId, educatorType)
     if (classError || !classData) {
       return { data: null, error: "Class not found" }
     }
@@ -498,17 +694,31 @@ export const addStudentToClass = async ({ classId, student }: AddStudentPayload)
       return { data: null, error: "Student ID is required" }
     }
 
+    const classIdField = educatorType === 'school' ? 'school_class_id' : 'college_class_id'
+    
+    console.log('🔍 Adding student to class:', {
+      studentId: student.id,
+      classId,
+      classIdField,
+      educatorType,
+      updateData: { [classIdField]: classId }
+    })
+    
     const { error: updateError } = await supabase
       .from("students")
-      .update({ school_class_id: classId })
+      .update({ [classIdField]: classId })
       .eq("id", student.id)
 
     if (updateError) {
+      console.error('❌ Error updating student:', updateError)
       return { data: null, error: updateError.message || "Unable to add student to class" }
     }
+    
+    console.log('✅ Student updated successfully')
 
+    const classTable = educatorType === 'school' ? 'school_classes' : 'college_classes'
     const { error: incrementError } = await supabase
-      .from("school_classes")
+      .from(classTable)
       .update({ 
         current_students: classData.total_students + 1,
         updated_at: new Date().toISOString()
@@ -519,7 +729,7 @@ export const addStudentToClass = async ({ classId, student }: AddStudentPayload)
       console.error("Error incrementing student count:", incrementError)
     }
 
-    const { data: updatedClass, error: fetchError } = await getClassById(classId)
+    const { data: updatedClass, error: fetchError } = await getClassById(classId, educatorType)
     if (fetchError || !updatedClass) {
       return { data: null, error: "Unable to fetch updated class" }
     }
@@ -530,16 +740,17 @@ export const addStudentToClass = async ({ classId, student }: AddStudentPayload)
   }
 }
 
-export const removeStudentFromClass = async (classId: string, studentId: string): Promise<MutateResponse<EducatorClass>> => {
+export const removeStudentFromClass = async (classId: string, studentId: string, educatorType: 'school' | 'college' = 'school'): Promise<MutateResponse<EducatorClass>> => {
   try {
-    const { data: classData, error: classError } = await getClassById(classId)
+    const { data: classData, error: classError } = await getClassById(classId, educatorType)
     if (classError || !classData) {
       return { data: null, error: "Class not found" }
     }
 
+    const classIdField = educatorType === 'school' ? 'school_class_id' : 'college_class_id'
     const { error: updateError } = await supabase
       .from("students")
-      .update({ school_class_id: null })
+      .update({ [classIdField]: null })
       .eq("id", studentId)
 
     if (updateError) {
@@ -547,8 +758,9 @@ export const removeStudentFromClass = async (classId: string, studentId: string)
     }
 
     const newCount = Math.max(0, classData.total_students - 1)
+    const classTable = educatorType === 'school' ? 'school_classes' : 'college_classes'
     const { error: decrementError } = await supabase
-      .from("school_classes")
+      .from(classTable)
       .update({ 
         current_students: newCount,
         updated_at: new Date().toISOString()
@@ -559,7 +771,7 @@ export const removeStudentFromClass = async (classId: string, studentId: string)
       console.error("Error decrementing student count:", decrementError)
     }
 
-    const { data: updatedClass, error: fetchError } = await getClassById(classId)
+    const { data: updatedClass, error: fetchError } = await getClassById(classId, educatorType)
     if (fetchError || !updatedClass) {
       return { data: null, error: "Unable to fetch updated class" }
     }
@@ -583,76 +795,41 @@ type CreateClassPayload = {
   maxStudents: number
   status: ClassStatus
   skillAreas: string[]
-  schoolId: string
+  schoolId?: string
+  collegeId?: string
   educatorId: string
   educatorName: string
   educatorEmail: string
+  educatorType: 'school' | 'college'
 }
 
 export const createClass = async (payload: CreateClassPayload): Promise<MutateResponse<EducatorClass>> => {
   try {
     const skills = Array.from(new Set(payload.skillAreas.map((skill) => skill.trim()).filter(Boolean)))
 
-    const { data, error } = await supabase
-      .from("school_classes")
-      .insert([
-        {
-          school_id: payload.schoolId,
-          name: payload.name,
-          grade: payload.grade,
-          section: payload.section,
-          academic_year: payload.academicYear,
-          max_students: payload.maxStudents,
-          current_students: 0,
-          account_status: "active",
-          metadata: {
-            skillAreas: skills,
-            status: payload.status,
-            educator: payload.educatorName,
-            educatorEmail: payload.educatorEmail,
-            educatorId: payload.educatorId
-          }
-        }
-      ])
-      .select("*")
-      .single()
-
-    if (error) {
-      return { data: null, error: error.message || "Unable to create class" }
-    }
-
-    if (!data) {
-      return { data: null, error: "Unable to create class" }
-    }
-
-    const classItem = transformDBClassToClass(data)
-    classItem.skillAreas = skills
-    classItem.status = payload.status
-    classItem.educator = payload.educatorName
-    classItem.educatorEmail = payload.educatorEmail
-
-    return {
-      data: syncClassAggregates(classItem),
-      error: null
+    if (payload.educatorType === 'school') {
+      return await createSchoolClass(payload, skills)
+    } else {
+      return await createCollegeClass(payload, skills)
     }
   } catch (err: any) {
     return { data: null, error: err?.message || "Unable to create class" }
   }
 }
 
-export const updateClass = async (classId: string, payload: CreateClassPayload): Promise<MutateResponse<EducatorClass>> => {
-  try {
-    const skills = Array.from(new Set(payload.skillAreas.map((skill) => skill.trim()).filter(Boolean)))
-
-    const { data, error } = await supabase
-      .from("school_classes")
-      .update({
+const createSchoolClass = async (payload: CreateClassPayload, skills: string[]): Promise<MutateResponse<EducatorClass>> => {
+  const { data, error } = await supabase
+    .from("school_classes")
+    .insert([
+      {
+        school_id: payload.schoolId,
         name: payload.name,
         grade: payload.grade,
         section: payload.section,
         academic_year: payload.academicYear,
         max_students: payload.maxStudents,
-        updated_at: new Date().toISOString(),
+        current_students: 0,
+        account_status: "active",
         metadata: {
           skillAreas: skills,
           status: payload.status,
@@ -660,34 +837,195 @@ export const updateClass = async (classId: string, payload: CreateClassPayload):
           educatorEmail: payload.educatorEmail,
           educatorId: payload.educatorId
         }
-      })
-      .eq("id", classId)
-      .select("*")
-      .single()
+      }
+    ])
+    .select("*")
+    .single()
 
-    if (error) {
-      return { data: null, error: error.message || "Unable to update class" }
-    }
+  if (error) {
+    return { data: null, error: error.message || "Unable to create school class" }
+  }
 
-    if (!data) {
-      return { data: null, error: "Unable to update class" }
-    }
+  if (!data) {
+    return { data: null, error: "Unable to create school class" }
+  }
 
-    const classItem = transformDBClassToClass(data)
-    classItem.skillAreas = skills
-    classItem.status = payload.status
-    classItem.educator = payload.educatorName
-    classItem.educatorEmail = payload.educatorEmail
+  const classItem = transformDBClassToClass(data, 'school')
+  classItem.skillAreas = skills
+  classItem.status = payload.status
+  classItem.educator = payload.educatorName
+  classItem.educatorEmail = payload.educatorEmail
 
-    const students = await fetchClassStudents(classId)
-    classItem.students = students
+  return {
+    data: syncClassAggregates(classItem),
+    error: null
+  }
+}
 
-    return {
-      data: syncClassAggregates(classItem),
-      error: null
+const createCollegeClass = async (payload: CreateClassPayload, skills: string[]): Promise<MutateResponse<EducatorClass>> => {
+  const { data, error } = await supabase
+    .from("college_classes")
+    .insert([
+      {
+        college_id: payload.collegeId,
+        name: payload.name,
+        grade: payload.grade,
+        section: payload.section,
+        academic_year: payload.academicYear,
+        max_students: payload.maxStudents,
+        current_students: 0,
+        status: "active",
+        metadata: {
+          skillAreas: skills,
+          status: payload.status,
+          educator: payload.educatorName,
+          educatorEmail: payload.educatorEmail,
+          educatorId: payload.educatorId
+        }
+      }
+    ])
+    .select("*")
+    .single()
+
+  if (error) {
+    return { data: null, error: error.message || "Unable to create college class" }
+  }
+
+  if (!data) {
+    return { data: null, error: "Unable to create college class" }
+  }
+
+  // Create the faculty assignment record so the educator can see this class
+  const { error: assignmentError } = await supabase
+    .from("college_faculty_class_assignments")
+    .insert([
+      {
+        college_id: payload.collegeId,
+        faculty_id: payload.educatorId,
+        class_id: data.id,
+        is_class_teacher: true,
+        academic_year: payload.academicYear
+      }
+    ])
+
+  if (assignmentError) {
+    console.error("Warning: Failed to create faculty assignment:", assignmentError)
+    // Don't fail the whole operation, just log the warning
+  }
+
+  const classItem = transformDBClassToClass(data, 'college')
+  classItem.skillAreas = skills
+  classItem.status = payload.status
+  classItem.educator = payload.educatorName
+  classItem.educatorEmail = payload.educatorEmail
+
+  return {
+    data: syncClassAggregates(classItem),
+    error: null
+  }
+}
+
+export const updateClass = async (classId: string, payload: CreateClassPayload): Promise<MutateResponse<EducatorClass>> => {
+  try {
+    const skills = Array.from(new Set(payload.skillAreas.map((skill) => skill.trim()).filter(Boolean)))
+
+    if (payload.educatorType === 'school') {
+      return await updateSchoolClass(classId, payload, skills)
+    } else {
+      return await updateCollegeClass(classId, payload, skills)
     }
   } catch (err: any) {
     return { data: null, error: err?.message || "Unable to update class" }
+  }
+}
+
+const updateSchoolClass = async (classId: string, payload: CreateClassPayload, skills: string[]): Promise<MutateResponse<EducatorClass>> => {
+  const { data, error } = await supabase
+    .from("school_classes")
+    .update({
+      name: payload.name,
+      grade: payload.grade,
+      section: payload.section,
+      academic_year: payload.academicYear,
+      max_students: payload.maxStudents,
+      updated_at: new Date().toISOString(),
+      metadata: {
+        skillAreas: skills,
+        status: payload.status,
+        educator: payload.educatorName,
+        educatorEmail: payload.educatorEmail,
+        educatorId: payload.educatorId
+      }
+    })
+    .eq("id", classId)
+    .select("*")
+    .maybeSingle()
+
+  if (error) {
+    return { data: null, error: error.message || "Unable to update school class" }
+  }
+
+  if (!data) {
+    return { data: null, error: "Unable to update school class" }
+  }
+
+  const classItem = transformDBClassToClass(data, 'school')
+  classItem.skillAreas = skills
+  classItem.status = payload.status
+  classItem.educator = payload.educatorName
+  classItem.educatorEmail = payload.educatorEmail
+
+  const students = await fetchClassStudents(classId, 'school')
+  classItem.students = students
+
+  return {
+    data: syncClassAggregates(classItem),
+    error: null
+  }
+}
+
+const updateCollegeClass = async (classId: string, payload: CreateClassPayload, skills: string[]): Promise<MutateResponse<EducatorClass>> => {
+  const { data, error } = await supabase
+    .from("college_classes")
+    .update({
+      name: payload.name,
+      grade: payload.grade,
+      section: payload.section,
+      academic_year: payload.academicYear,
+      max_students: payload.maxStudents,
+      updated_at: new Date().toISOString(),
+      metadata: {
+        skillAreas: skills,
+        status: payload.status,
+        educator: payload.educatorName,
+        educatorEmail: payload.educatorEmail,
+        educatorId: payload.educatorId
+      }
+    })
+    .eq("id", classId)
+    .select("*")
+    .maybeSingle()
+
+  if (error) {
+    return { data: null, error: error.message || "Unable to update college class" }
+  }
+
+  if (!data) {
+    return { data: null, error: "Unable to update college class" }
+  }
+
+  const classItem = transformDBClassToClass(data, 'college')
+  classItem.skillAreas = skills
+  classItem.status = payload.status
+  classItem.educator = payload.educatorName
+  classItem.educatorEmail = payload.educatorEmail
+
+  const students = await fetchClassStudents(classId, 'college')
+  classItem.students = students
+
+  return {
+    data: syncClassAggregates(classItem),
+    error: null
   }
 }
 

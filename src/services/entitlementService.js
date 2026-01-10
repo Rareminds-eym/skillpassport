@@ -51,6 +51,8 @@ class EntitlementService {
    * 1. User's subscription plan includes the feature (is_included = true), OR
    * 2. User has an active entitlement for that feature_key
    * 
+   * Note: Cancelled subscriptions still grant access until subscription_end_date
+   * 
    * @param {string} userId - The user's UUID
    * @param {string} featureKey - The feature_key to check
    * @returns {Promise<{success: boolean, data?: {hasAccess: boolean, accessSource: 'plan'|'addon'|'bundle'|null}, error?: string}>}
@@ -63,43 +65,74 @@ class EntitlementService {
 
       console.log(`[EntitlementService] Checking access for user ${userId}, feature ${featureKey}`);
 
-      // First, check if user has an active subscription plan that includes this feature
+      // First, check if user has a subscription plan that includes this feature
+      // Include 'cancelled' status - user retains access until subscription_end_date
       const { data: subscription, error: subError } = await supabase
         .from('subscriptions')
-        .select('plan_id, status')
+        .select('plan_id, status, subscription_end_date')
         .eq('user_id', userId)
-        .eq('status', 'active')
-        .single();
+        .in('status', ['active', 'paused', 'cancelled'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       console.log(`[EntitlementService] Subscription query result:`, { subscription, subError });
 
       if (!subError && subscription?.plan_id) {
-        // Check if the plan includes this feature
-        const { data: planFeature, error: featureError } = await supabase
-          .from('subscription_plan_features')
-          .select('is_included')
-          .eq('plan_id', subscription.plan_id)
-          .eq('feature_key', featureKey)
-          .single();
+        // For cancelled subscriptions, check if end date hasn't passed
+        if (subscription.status === 'cancelled') {
+          const endDate = new Date(subscription.subscription_end_date);
+          const now = new Date();
+          if (endDate < now) {
+            console.log(`[EntitlementService] Cancelled subscription has expired, no plan access`);
+            // Don't return yet - check for add-on entitlements below
+          } else {
+            // Cancelled but still within access period
+            const { data: planFeature, error: featureError } = await supabase
+              .from('subscription_plan_features')
+              .select('is_included')
+              .eq('plan_id', subscription.plan_id)
+              .eq('feature_key', featureKey)
+              .single();
 
-        console.log(`[EntitlementService] Plan feature check:`, { planFeature, featureError });
+            console.log(`[EntitlementService] Plan feature check (cancelled):`, { planFeature, featureError });
 
-        if (!featureError && planFeature?.is_included) {
-          console.log(`[EntitlementService] Access granted via plan for ${featureKey}`);
-          return {
-            success: true,
-            data: { hasAccess: true, accessSource: 'plan' }
-          };
+            if (!featureError && planFeature?.is_included) {
+              console.log(`[EntitlementService] Access granted via cancelled plan (until ${subscription.subscription_end_date}) for ${featureKey}`);
+              return {
+                success: true,
+                data: { hasAccess: true, accessSource: 'plan' }
+              };
+            }
+          }
+        } else {
+          // Active or paused subscription
+          const { data: planFeature, error: featureError } = await supabase
+            .from('subscription_plan_features')
+            .select('is_included')
+            .eq('plan_id', subscription.plan_id)
+            .eq('feature_key', featureKey)
+            .single();
+
+          console.log(`[EntitlementService] Plan feature check:`, { planFeature, featureError });
+
+          if (!featureError && planFeature?.is_included) {
+            console.log(`[EntitlementService] Access granted via plan for ${featureKey}`);
+            return {
+              success: true,
+              data: { hasAccess: true, accessSource: 'plan' }
+            };
+          }
         }
       }
 
-      // Check for active add-on entitlement
+      // Check for active add-on entitlement (including cancelled ones that haven't expired)
       const { data: entitlement, error: entError } = await supabase
         .from('user_entitlements')
         .select('id, bundle_id, status, end_date')
         .eq('user_id', userId)
         .eq('feature_key', featureKey)
-        .in('status', ['active', 'grace_period'])
+        .in('status', ['active', 'grace_period', 'cancelled'])
         .gte('end_date', new Date().toISOString())
         .maybeSingle();
 

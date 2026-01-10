@@ -1,21 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Users, UserPlus, Calendar, 
-  Upload, BarChart3, CalendarOff
+import {
+    BarChart3,
+    Calendar,
+    CalendarOff,
+    RefreshCw,
+    Upload,
+    UserPlus,
+    Users
 } from 'lucide-react';
-import FacultyList from './FacultyList';
-import FacultyOnboarding from './FacultyOnboarding';
-import CalendarTimetable from './CalendarTimetable';
-import FacultyPerformanceAnalytics from './FacultyPerformanceAnalytics';
-import FacultyBulkImport from './FacultyBulkImport';
-import FacultyLeaveManagement from '../FacultyLeaveManagement';
-import { getFacultyStatistics } from '../../../../services/facultyService';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { supabase } from '../../../../lib/supabaseClient';
+import { getFacultyStatistics } from '../../../../services/facultyService';
+import FacultyLeaveManagement from '../FacultyLeaveManagement';
+import CalendarTimetable from './CalendarTimetable';
+import FacultyBulkImport from './FacultyBulkImport';
+import FacultyList from './FacultyList';
+import FacultyOnboarding from './FacultyOnboarding';
+import FacultyPerformanceAnalytics from './FacultyPerformanceAnalytics';
+import SwapRequestsManagement from './SwapRequestsManagement';
 
 const FacultyManagementDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'list' | 'onboarding' | 'timetable' | 'analytics' | 'leave' | 'import'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'onboarding' | 'timetable' | 'analytics' | 'leave' | 'import' | 'swaps'>('list');
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [collegeId, setCollegeId] = useState<string | null>(null);
@@ -53,34 +59,36 @@ const FacultyManagementDashboard: React.FC = () => {
         return;
       }
 
-      // If not found in college_lecturers, check if user is a college admin in colleges table
-      console.log('Not found in college_lecturers, checking colleges table...');
-      const { data: collegeData, error: collegeError } = await supabase
-        .from('colleges')
+      // If not found in college_lecturers, check if user is a college admin in organizations table
+      console.log('Not found in college_lecturers, checking organizations table...');
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
         .select('id')
+        .eq('organization_type', 'college')
         .eq('email', user.email)
         .maybeSingle();
 
-      if (collegeError) {
-        console.error('Error fetching from colleges:', collegeError);
+      if (orgError) {
+        console.error('Error fetching from organizations:', orgError);
       }
 
-      if (collegeData?.id) {
-        console.log('Found college_id from colleges table:', collegeData.id);
-        setCollegeId(collegeData.id);
+      if (orgData?.id) {
+        console.log('Found college_id from organizations table:', orgData.id);
+        setCollegeId(orgData.id);
         return;
       }
 
-      // Also try admin_email field
-      const { data: collegeByAdmin } = await supabase
-        .from('colleges')
+      // Also try admin_id field
+      const { data: orgByAdmin } = await supabase
+        .from('organizations')
         .select('id')
-        .eq('admin_email', user.email)
+        .eq('organization_type', 'college')
+        .eq('admin_id', user.id)
         .maybeSingle();
 
-      if (collegeByAdmin?.id) {
-        console.log('Found college_id from admin_email:', collegeByAdmin.id);
-        setCollegeId(collegeByAdmin.id);
+      if (orgByAdmin?.id) {
+        console.log('Found college_id from admin_id:', orgByAdmin.id);
+        setCollegeId(orgByAdmin.id);
         return;
       }
 
@@ -113,6 +121,7 @@ const FacultyManagementDashboard: React.FC = () => {
     { id: 'list', label: 'Faculty', icon: Users, description: 'View and manage all faculty' },
     { id: 'onboarding', label: 'Onboarding', icon: UserPlus, description: 'Add new faculty members' },
     { id: 'timetable', label: 'Timetable', icon: Calendar, description: 'Manage class schedules' },
+    { id: 'swaps', label: 'Swap Requests', icon: RefreshCw, description: 'Manage class swap requests' },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, description: 'Faculty performance metrics' },
     { id: 'leave', label: 'Leave', icon: CalendarOff, description: 'Leave & substitution' },
     { id: 'import', label: 'Bulk Import', icon: Upload, description: 'Import multiple faculty' },
@@ -158,7 +167,7 @@ const FacultyManagementDashboard: React.FC = () => {
 
       {/* Navigation Tabs */}
       <div className="bg-white rounded-xl border border-gray-200 p-2">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -189,6 +198,7 @@ const FacultyManagementDashboard: React.FC = () => {
         {activeTab === 'list' && <FacultyList collegeId={collegeId} />}
         {activeTab === 'onboarding' && <FacultyOnboarding collegeId={collegeId} />}
         {activeTab === 'timetable' && <CalendarTimetable collegeId={collegeId} />}
+        {activeTab === 'swaps' && <SwapRequestsManagement collegeId={collegeId} />}
         {activeTab === 'analytics' && <FacultyPerformanceAnalytics collegeId={collegeId} />}
         {activeTab === 'leave' && <FacultyLeaveManagement collegeId={collegeId} />}
         {activeTab === 'import' && <FacultyBulkImport collegeId={collegeId} />}

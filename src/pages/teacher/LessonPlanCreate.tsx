@@ -1,5 +1,5 @@
+import { AlertCircle, CheckCircle, Plus, Save, Send, X } from "lucide-react";
 import React, { useState } from "react";
-import { BookOpen, Plus, X, Save, Send, AlertCircle, CheckCircle } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 
 interface Activity {
@@ -88,7 +88,7 @@ const LessonPlanCreate: React.FC = () => {
         .from("school_educators")
         .select("id")
         .eq("email", userData?.user?.email)
-        .single();
+        .maybeSingle();
 
       if (!teacherData) {
         throw new Error("Teacher not found");

@@ -1,19 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  FolderIcon,
-  EyeIcon,
-  MagnifyingGlassIcon,
-  Squares2X2Icon,
-  TableCellsIcon,
-  StarIcon,
-  FunnelIcon,
-  ChevronDownIcon,
+    ChevronDownIcon,
+    EyeIcon,
+    FolderIcon,
+    FunnelIcon,
+    Squares2X2Icon,
+    StarIcon,
+    TableCellsIcon
 } from '@heroicons/react/24/outline';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Pagination from '../../../components/admin/Pagination';
+import SearchBar from '../../../components/common/SearchBar';
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabaseClient';
-import SearchBar from '../../../components/common/SearchBar';
-import Pagination from '../../../components/admin/Pagination';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -208,21 +207,22 @@ const CollegeAdminDigitalPortfolio = () => {
       try {
         setLoading(true);
 
-        // Find college by matching deanEmail (case-insensitive) - primary method for college admins
-        const { data: college, error: collegeError } = await supabase
-          .from('colleges')
-          .select('id, name, deanEmail')
-          .ilike('deanEmail', user.email)
-          .single();
+        // Find college by matching email in organizations table (case-insensitive)
+        const { data: org, error: orgError } = await supabase
+          .from('organizations')
+          .select('id, name, email')
+          .eq('organization_type', 'college')
+          .ilike('email', user.email)
+          .maybeSingle();
 
-        if (collegeError || !college?.id) {
-          console.error('Error fetching college:', collegeError, 'for email:', user.email);
+        if (orgError || !org?.id) {
+          console.error('Error fetching organization:', orgError, 'for email:', user.email);
           setLoading(false);
           return;
         }
 
-        const collegeId = college.id;
-        const collegeData = college;
+        const collegeId = org.id;
+        const collegeData = org;
         
         setCollegeInfo(collegeData);
 

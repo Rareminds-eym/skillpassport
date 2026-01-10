@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { supabase } from "../../../../../lib/supabaseClient";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { StudentLedger, FeePayment, StudentFeeSummary, PaymentStatus } from "../types";
+import { supabase } from "../../../../../lib/supabaseClient";
+import { FeePayment, PaymentStatus, StudentFeeSummary, StudentLedger } from "../types";
 
 export const useFeeTracking = () => {
   const [ledgers, setLedgers] = useState<StudentLedger[]>([]);
@@ -36,18 +36,19 @@ export const useFeeTracking = () => {
           .single();
 
         if (userRecord?.role === 'college_admin') {
-          // Find college by matching deanEmail (case-insensitive)
-          const { data: college } = await supabase
-            .from('colleges')
-            .select('id, name, deanEmail')
-            .ilike('deanEmail', user.email || '')
-            .single();
+          // Find college by matching email in organizations table (case-insensitive)
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('id, name, email')
+            .eq('organization_type', 'college')
+            .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
+            .maybeSingle();
 
-          if (college?.id) {
-            console.log('✅ Found college_id for college admin:', college.id, 'College:', college.name);
-            return college.id;
+          if (org?.id) {
+            console.log('✅ Found college_id for college admin:', org.id, 'College:', org.name);
+            return org.id;
           } else {
-            console.warn('⚠️ College admin but no matching college found for email:', user.email);
+            console.warn('⚠️ College admin but no matching organization found for email:', user.email);
           }
         }
       }

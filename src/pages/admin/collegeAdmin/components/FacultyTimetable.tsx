@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { Sparkles, Save, Send, AlertTriangle } from "lucide-react";
+import { Sparkles, Save, Send, AlertTriangle, Building2, Filter } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
+
+interface Department {
+  id: string;
+  name: string;
+  code: string;
+}
 
 interface Faculty {
   id: string;
   employeeId?: string;
   first_name?: string;
   last_name?: string;
+  department_id?: string;
+  is_hod?: boolean;
   // Keep metadata for backward compatibility
   metadata?: {
     first_name?: string;
@@ -19,6 +27,7 @@ interface CollegeClass {
   name: string;
   grade: string;
   section: string;
+  department_id?: string;
 }
 
 interface TimetableSlot {
@@ -40,8 +49,12 @@ interface FacultyTimetableProps {
 }
 
 const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
   const [faculty, setFaculty] = useState<Faculty[]>([]);
+  const [filteredFaculty, setFilteredFaculty] = useState<Faculty[]>([]);
   const [classes, setClasses] = useState<CollegeClass[]>([]);
+  const [filteredClasses, setFilteredClasses] = useState<CollegeClass[]>([]);
   const [timetableId, setTimetableId] = useState<string>("");
   const [allSlots, setAllSlots] = useState<TimetableSlot[]>([]);
   const [draggedSlot, setDraggedSlot] = useState<TimetableSlot | null>(null);
@@ -66,6 +79,7 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
 
   useEffect(() => {
     if (collegeId) {
+      loadDepartments();
       loadFaculty();
       loadClasses();
       loadOrCreateTimetable();
@@ -78,17 +92,68 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
     }
   }, [timetableId]);
 
-  const loadFaculty = async () => {
+  // Filter faculty and classes when department changes
+  useEffect(() => {
+    if (selectedDepartment) {
+      // Filter faculty by department
+      const deptFaculty = faculty.filter(f => f.department_id === selectedDepartment);
+      setFilteredFaculty(deptFaculty);
+      
+      // Filter classes by department
+      const deptClasses = classes.filter(c => c.department_id === selectedDepartment);
+      setFilteredClasses(deptClasses);
+      
+      // Reset selections when department changes
+      setNewSlot(prev => ({ ...prev, faculty_id: "", class_id: "" }));
+    } else {
+      setFilteredFaculty(faculty);
+      setFilteredClasses(classes);
+    }
+  }, [selectedDepartment, faculty, classes]);
+
+  const loadDepartments = async () => {
     if (!collegeId) return;
 
     const { data } = await supabase
+      .from("departments")
+      .select("id, name, code")
+      .eq("college_id", collegeId)
+      .eq("status", "active")
+      .order("name");
+    
+    if (data) setDepartments(data);
+  };
+
+  const loadFaculty = async () => {
+    if (!collegeId) return;
+
+    // Load faculty with their department assignments
+    const { data: lecturers } = await supabase
       .from("college_lecturers")
       .select("id, employeeId, first_name, last_name")
       .eq("collegeId", collegeId)
       .eq("accountStatus", "active")
       .order("first_name");
     
-    if (data) setFaculty(data);
+    if (lecturers) {
+      // Get department assignments for each faculty
+      const { data: assignments } = await supabase
+        .from("department_faculty_assignments")
+        .select("lecturer_id, department_id, is_hod")
+        .eq("is_active", true);
+      
+      const facultyWithDept = lecturers.map(f => {
+        const assignment = assignments?.find(a => a.lecturer_id === f.id);
+        return {
+          ...f,
+          department_id: assignment?.department_id || null,
+          is_hod: assignment?.is_hod || false
+        };
+      });
+      
+      setFaculty(facultyWithDept);
+      setFilteredFaculty(facultyWithDept);
+    }
   };
 
   const loadClasses = async () => {
@@ -96,13 +161,16 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
 
     const { data } = await supabase
       .from("college_classes")
-      .select("id, name, grade, section")
+      .select("id, name, grade, section, department_id")
       .eq("college_id", collegeId)
       .eq("status", "active")
       .order("grade")
       .order("section");
     
-    if (data) setClasses(data);
+    if (data) {
+      setClasses(data);
+      setFilteredClasses(data);
+    }
   };
 
   const loadOrCreateTimetable = async () => {
@@ -311,6 +379,31 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
         </button>
       </div>
 
+      {/* Department Filter */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Building2 className="h-5 w-5 text-indigo-600" />
+          <h3 className="font-semibold text-gray-900 text-sm">Filter by Department</h3>
+        </div>
+        <select
+          value={selectedDepartment}
+          onChange={(e) => setSelectedDepartment(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">All Departments</option>
+          {departments.map((dept) => (
+            <option key={dept.id} value={dept.id}>
+              {dept.name} ({dept.code})
+            </option>
+          ))}
+        </select>
+        {selectedDepartment && (
+          <p className="text-xs text-gray-500 mt-2">
+            Showing {filteredFaculty.length} faculty and {filteredClasses.length} classes
+          </p>
+        )}
+      </div>
+
       {/* Faculty Load and Class Selection */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -321,31 +414,38 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 mb-3"
           >
             <option value="">-- Select Faculty --</option>
-            {faculty.map((f) => {
+            {filteredFaculty.map((f) => {
               const load = getFacultyLoad(f.id);
+              const hodBadge = f.is_hod ? " (HOD)" : "";
               return (
                 <option key={f.id} value={f.id}>
-                  {f.first_name || f.metadata?.first_name || ''} {f.last_name || f.metadata?.last_name || ''} ({load}/30 periods)
+                  {f.first_name || f.metadata?.first_name || ''} {f.last_name || f.metadata?.last_name || ''}{hodBadge} ({load}/30 periods)
                 </option>
               );
             })}
           </select>
+          {filteredFaculty.length === 0 && selectedDepartment && (
+            <p className="text-xs text-amber-600">No faculty assigned to this department</p>
+          )}
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-900 mb-3 text-sm">Classes in College</h3>
+          <h3 className="font-semibold text-gray-900 mb-3 text-sm">Classes in {selectedDepartment ? "Department" : "College"}</h3>
           <select
             value={newSlot.class_id}
             onChange={(e) => setNewSlot({ ...newSlot, class_id: e.target.value })}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 mb-3"
           >
             <option value="">-- Select Class --</option>
-            {classes.map((cls) => (
+            {filteredClasses.map((cls) => (
               <option key={cls.id} value={cls.id}>
                 {cls.grade}{cls.section ? `-${cls.section}` : ''} ({cls.name})
               </option>
             ))}
           </select>
+          {filteredClasses.length === 0 && selectedDepartment && (
+            <p className="text-xs text-amber-600">No classes in this department</p>
+          )}
         </div>
       </div>
 

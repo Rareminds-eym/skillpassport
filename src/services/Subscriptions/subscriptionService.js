@@ -24,6 +24,7 @@ import { checkAuthentication } from '../authService';
 
 /**
  * Get active subscription for authenticated user
+ * Includes cancelled subscriptions that haven't expired yet (user retains access until end date)
  * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
  */
 export const getActiveSubscription = async () => {
@@ -40,12 +41,14 @@ export const getActiveSubscription = async () => {
 
     const userId = authResult.user.id;
 
-    // Query for active or paused subscription
+    // Query for active, paused, or cancelled (but not expired) subscription
+    // For cancelled subscriptions, we still show them if end_date hasn't passed
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*')
       .eq('user_id', userId)
-      .in('status', ['active', 'paused'])
+      .in('status', ['active', 'paused', 'cancelled'])
+      .gte('subscription_end_date', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -59,7 +62,7 @@ export const getActiveSubscription = async () => {
       };
     }
 
-    // If no active subscription, try to get the most recent one
+    // If no active/valid subscription, try to get the most recent one for display purposes
     if (!data) {
       const { data: recentSub, error: recentError } = await supabase
         .from('subscriptions')
@@ -237,6 +240,7 @@ export const getUserPayments = async () => {
 
 /**
  * Check if user has active subscription
+ * Includes cancelled subscriptions that haven't expired (user retains access until end date)
  * @returns {Promise<{ hasSubscription: boolean, subscription: Object | null }>}
  */
 export const checkActiveSubscription = async () => {
@@ -250,11 +254,14 @@ export const checkActiveSubscription = async () => {
       };
     }
 
-    // Check if subscription is active or paused (still valid)
-    const isActive = result.data && ['active', 'paused'].includes(result.data.status);
+    // Check if subscription is active, paused, or cancelled but not expired
+    const isValid = result.data && (
+      ['active', 'paused'].includes(result.data.status) ||
+      (result.data.status === 'cancelled' && new Date(result.data.subscription_end_date) >= new Date())
+    );
 
     return {
-      hasSubscription: isActive,
+      hasSubscription: isValid,
       subscription: result.data
     };
   } catch (error) {

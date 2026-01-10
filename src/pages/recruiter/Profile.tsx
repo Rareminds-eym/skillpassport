@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from "react";
 import {
-  User,
-  Mail,
-  Globe,
-  MapPin,
-  ShieldCheck,
-  CheckCircle,
-  XCircle,
-  Copy,
-  ExternalLink,
-  Calendar,
+    Calendar,
+    CheckCircle,
+    Copy,
+    ExternalLink,
+    Globe,
+    Mail,
+    MapPin,
+    ShieldCheck,
+    User,
+    XCircle,
 } from "lucide-react";
+import React, { useEffect, useState } from "react";
 // import { useAuth } from "../context/AuthContext";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabaseClient";
@@ -62,7 +62,7 @@ const RecruiterProfile: React.FC = () => {
         .from("recruiters")
         .select("*")
         .eq("email", user.email)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("❌ Error fetching recruiter:", error);

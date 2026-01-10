@@ -19,7 +19,28 @@ import { useSubscription } from '../../hooks/Subscription/useSubscription';
 import useAuth from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabaseClient';
 import { initiateRazorpayPayment } from '../../services/Subscriptions/razorpayService';
-import { isActiveOrPaused } from '../../utils/subscriptionHelpers';
+
+/**
+ * Get the subscription manage path based on user role
+ */
+function getManagePath(userRole) {
+  const manageRoutes = {
+    super_admin: '/admin/subscription/manage',
+    rm_admin: '/admin/subscription/manage',
+    admin: '/admin/subscription/manage',
+    school_admin: '/school-admin/subscription/manage',
+    college_admin: '/college-admin/subscription/manage',
+    university_admin: '/university-admin/subscription/manage',
+    educator: '/educator/subscription/manage',
+    school_educator: '/educator/subscription/manage',
+    college_educator: '/educator/subscription/manage',
+    recruiter: '/recruitment/subscription/manage',
+    student: '/student/subscription/manage',
+    school_student: '/student/subscription/manage',
+    college_student: '/student/subscription/manage',
+  };
+  return manageRoutes[userRole] || '/student/subscription/manage';
+}
 
 // Clean Input Component
 const FormInput = memo(
@@ -185,7 +206,8 @@ PaymentMethods.displayName = 'PaymentMethods';
 function PaymentCompletion() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, role } = useAuth();
+  const managePath = useMemo(() => getManagePath(role), [role]);
 
   const { plan, studentType } = useMemo(() => location.state || {}, [location.state]);
 
@@ -240,13 +262,18 @@ function PaymentCompletion() {
         }
 
         // Verify user exists in public.users table
+        // Use maybeSingle() to avoid 406 error when user doesn't exist
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('id, firstName, lastName, phone, email')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
 
-        if (userError || !userData) {
+        if (userError) {
+          console.error('Error fetching user from database:', userError);
+        }
+
+        if (!userData) {
           console.warn('⚠️ User not found in database, may need to complete registration');
           // User has auth account but no database record - this is a partial signup
           // Try to get details from auth metadata
@@ -286,15 +313,21 @@ function PaymentCompletion() {
     validateAndFetchUser();
   }, [authLoading, isAuthenticated, user, navigate, plan, studentType]);
 
-  // Redirect if active subscription
+  // Redirect if active subscription (including cancelled but not expired)
   useEffect(() => {
     if (!subscriptionLoading && subscriptionData) {
-      const isActive = isActiveOrPaused(subscriptionData.status);
-      const hasValidEndDate = subscriptionData.endDate
-        ? new Date(subscriptionData.endDate) > new Date()
-        : true;
-      if (isActive && hasValidEndDate) {
-        navigate('/subscription/manage', { replace: true });
+      const status = subscriptionData.status;
+      const endDate = subscriptionData.endDate ? new Date(subscriptionData.endDate) : null;
+      const now = new Date();
+      
+      // Check if subscription has valid access
+      const hasValidAccess = 
+        status === 'active' || 
+        status === 'paused' ||
+        (status === 'cancelled' && endDate && endDate > now);
+      
+      if (hasValidAccess) {
+        navigate(managePath, { replace: true });
       }
     }
   }, [subscriptionData, subscriptionLoading, navigate]);

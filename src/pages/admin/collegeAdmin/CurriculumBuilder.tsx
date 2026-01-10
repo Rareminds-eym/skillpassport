@@ -116,15 +116,10 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
       }
 
       // Load assessment types
-      console.log('🔄 Loading assessment types...');
       const assessmentResult = await curriculumService.getAssessmentTypes();
-      console.log('📋 Assessment types result:', assessmentResult);
-      
       if (assessmentResult.success) {
         setAssessmentTypes(assessmentResult.data || []);
-        console.log('✅ Assessment types loaded:', assessmentResult.data?.length);
       } else {
-        console.error('❌ Failed to load assessment types:', assessmentResult.error);
         toast.error('Failed to load assessment types');
       }
 

@@ -33,7 +33,7 @@ vi.mock('../../lib/supabaseClient', () => ({
  * Arbitraries for generating test data
  */
 const featureKeyArbitrary = fc.constantFrom(
-  'career_ai', 'educator_ai', 'advanced_assessments', 
+  'career_ai', 'educator_ai', 'video_portfolio', 'ai_job_matching',
   'kpi_dashboard', 'recruiter_ai', 'sso', 'api_webhooks'
 );
 
@@ -342,9 +342,9 @@ describe('Property-Based Tests: Add-On Subscription System', () => {
           (planType) => {
             const planFeatureMapping = {
               basic: [],
-              professional: ['career_ai', 'advanced_assessments'],
-              enterprise: ['career_ai', 'advanced_assessments', 'kpi_dashboard', 'educator_ai'],
-              ecosystem: ['career_ai', 'advanced_assessments', 'kpi_dashboard', 'educator_ai', 'sso', 'api_webhooks']
+              professional: ['career_ai'],
+              enterprise: ['career_ai', 'kpi_dashboard', 'educator_ai'],
+              ecosystem: ['career_ai', 'kpi_dashboard', 'educator_ai', 'sso', 'api_webhooks']
             };
             
             const expectedFeatures = planFeatureMapping[planType];

@@ -1,20 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useMemo } from "react";
 import {
-  CalendarIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  MapPinIcon,
-  ChevronRightIcon,
-  MagnifyingGlassIcon,
-  CheckIcon,
-  XMarkIcon,
-  ArrowPathIcon,
-  ArrowLeftIcon,
-  AcademicCapIcon,
-  UsersIcon,
+    AcademicCapIcon,
+    ArrowLeftIcon,
+    ArrowPathIcon,
+    CalendarIcon,
+    CheckCircleIcon,
+    CheckIcon,
+    ChevronRightIcon,
+    ClockIcon,
+    MagnifyingGlassIcon,
+    MapPinIcon,
+    UsersIcon,
+    XCircleIcon,
+    XMarkIcon,
 } from "@heroicons/react/24/outline";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
 // ==================== TYPES ====================
@@ -111,7 +111,7 @@ const MarkAttendance: React.FC = () => {
           .from("school_educators")
           .select("id, school_id, user_id")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
         if (educator) {
           setEducatorId(educator.id);
@@ -441,7 +441,7 @@ const MarkAttendance: React.FC = () => {
             .eq("day_of_week", dayOfWeek)
             .eq("subject_name", activeSession.slot.subject_name)
             .eq("class_id", activeSession.slot.class_id)
-            .single();
+            .maybeSingle();
             
           if (slotData?.id) {
             slotId = slotData.id;

@@ -20,7 +20,7 @@ export const getAssignmentsByStudentId = async (studentId) => {
       .from('students')
       .select('id, user_id')
       .eq('id', studentId)
-      .single();
+      .maybeSingle();
 
     if (mapError) throw mapError;
 
@@ -216,7 +216,7 @@ export const getAssignmentStats = async (studentId) => {
       .from('students')
       .select('user_id')
       .eq('id', studentId)
-      .single();
+      .maybeSingle();
 
     if (mapError) throw mapError;
 

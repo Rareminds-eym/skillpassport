@@ -3,9 +3,9 @@
  * Uses the current authenticated user from Supabase Auth
  */
 
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { useEffect, useState } from 'react';
 import { useSupabaseAuth } from '../context/SupabaseAuthContext';
+import { supabase } from '../lib/supabaseClient';
 
 export const useAuthenticatedStudent = () => {
   const { user, userProfile, loading: authLoading } = useSupabaseAuth();
@@ -44,7 +44,7 @@ export const useAuthenticatedStudent = () => {
           .from('students')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (dbError) {
           console.error('❌ Error fetching student data:', dbError);
@@ -83,7 +83,7 @@ export const useAuthenticatedStudent = () => {
         .update(updates)
         .eq('user_id', user.id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('❌ Error updating student data:', error);
@@ -111,7 +111,7 @@ export const useAuthenticatedStudent = () => {
         .from('students')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('❌ Error refreshing student data:', error);

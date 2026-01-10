@@ -3,43 +3,40 @@
  */
 
 // School handlers
-export { handleSchoolAdminSignup, handleEducatorSignup, handleStudentSignup } from './school';
+export { handleEducatorSignup, handleSchoolAdminSignup, handleStudentSignup } from './school';
 
 // College handlers
 export {
-  handleCollegeAdminSignup,
-  handleCollegeEducatorSignup,
-  handleCollegeStudentSignup,
+    handleCollegeAdminSignup,
+    handleCollegeEducatorSignup,
+    handleCollegeStudentSignup
 } from './college';
 
 // University handlers
 export {
-  handleUniversityAdminSignup,
-  handleUniversityEducatorSignup,
-  handleUniversityStudentSignup,
+    handleUniversityAdminSignup,
+    handleUniversityEducatorSignup,
+    handleUniversityStudentSignup
 } from './university';
 
 // Recruiter handlers
 export { handleRecruiterAdminSignup, handleRecruiterSignup } from './recruiter';
 
+// Unified signup handler
+export { handleUnifiedSignup } from './unified';
+
 // Utility handlers
 export {
-  handleGetSchools,
-  handleGetColleges,
-  handleGetUniversities,
-  handleGetCompanies,
-  handleCheckSchoolCode,
-  handleCheckCollegeCode,
-  handleCheckUniversityCode,
-  handleCheckCompanyCode,
-  handleCheckEmail,
+    handleCheckCollegeCode, handleCheckCompanyCode,
+    handleCheckEmail, handleCheckSchoolCode, handleCheckUniversityCode, handleGetColleges, handleGetCompanies, handleGetSchools, handleGetUniversities
 } from './utility';
 
 // Authenticated handlers
-export { handleCreateStudent, handleCreateTeacher, handleUpdateStudentDocuments, handleCreateCollegeStaff } from './authenticated';
+export { handleCreateCollegeStaff, handleCreateStudent, handleCreateTeacher, handleUpdateStudentDocuments } from './authenticated';
 
 // Event handlers
 export { handleCreateEventUser, handleSendInterviewReminder } from './events';
 
 // Password handlers
 export { handleResetPassword } from './password';
+

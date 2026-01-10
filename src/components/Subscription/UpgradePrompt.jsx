@@ -13,10 +13,25 @@
  */
 
 import { ArrowRight, ExternalLink, Lock, Sparkles, X, Zap } from 'lucide-react';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
+import { clearFeatureAccessCache } from '../../hooks/useFeatureGate';
+import addOnPaymentService from '../../services/addOnPaymentService';
 import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
+
+/**
+ * Get the base path for subscription routes based on current location
+ */
+function getSubscriptionBasePath(pathname) {
+  if (pathname.startsWith('/student')) return '/student';
+  if (pathname.startsWith('/recruitment')) return '/recruitment';
+  if (pathname.startsWith('/educator')) return '/educator';
+  if (pathname.startsWith('/college-admin')) return '/college-admin';
+  if (pathname.startsWith('/school-admin')) return '/school-admin';
+  if (pathname.startsWith('/university-admin')) return '/university-admin';
+  return ''; // fallback to root
+}
 
 /**
  * UpgradePrompt - Modal prompt for upgrading
@@ -38,15 +53,43 @@ export function UpgradePrompt({
   className = ''
 }) {
   const navigate = useNavigate();
-  const { purchaseAddOn, isPurchasing, refreshAccess, fetchUserEntitlements } = useSubscriptionContext();
+  const location = useLocation();
+  const { purchaseAddOn, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionContext();
   const [billingPeriod, setBillingPeriod] = useState('monthly');
   const [error, setError] = useState(null);
+  
+  const basePath = getSubscriptionBasePath(location.pathname);
+
+  // Check if user already owns this add-on (including cancelled but not expired)
+  const isAlreadyOwned = useMemo(() => {
+    const key = addOn?.feature_key || featureKey;
+    if (!key || !activeEntitlements) return false;
+    const now = new Date();
+    return activeEntitlements.some(ent => 
+      ent.feature_key === key && 
+      (ent.status === 'active' || 
+       ent.status === 'grace_period' ||
+       (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
+    );
+  }, [addOn?.feature_key, featureKey, activeEntitlements]);
 
   if (!isOpen || (!addOn && !featureKey)) return null;
+
+  // If already owned, show a different message
+  if (isAlreadyOwned) {
+    onClose?.();
+    return null;
+  }
 
   const handlePurchase = async () => {
     const key = addOn?.feature_key || featureKey;
     if (!key) return;
+
+    // Double-check ownership before purchase
+    if (isAlreadyOwned) {
+      setError('You already own this add-on.');
+      return;
+    }
 
     try {
       setError(null);
@@ -122,7 +165,7 @@ export function UpgradePrompt({
 
   const handleLearnMore = () => {
     onClose?.();
-    navigate('/subscription/add-ons');
+    navigate(`${basePath}/subscription/add-ons`);
   };
 
   // Render based on variant

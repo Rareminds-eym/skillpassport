@@ -117,7 +117,7 @@ export function useEducatorSchool(): EducatorSchoolData {
           .select(`
             id,
             collegeId,
-            colleges!college_lecturers_collegeId_fkey (
+            colleges!fk_college_lecturers_college (
               id,
               name,
               code,
@@ -129,7 +129,13 @@ export function useEducatorSchool(): EducatorSchoolData {
           .eq('user_id', user.id)
           .maybeSingle();
 
+        console.log('📊 College lecturer query result:', {
+          data: collegeLecturerData,
+          error: collegeLecturerError
+        });
+
         if (collegeLecturerError && collegeLecturerError.code !== 'PGRST116') {
+          console.log('❌ College lecturer error:', collegeLecturerError);
           throw collegeLecturerError;
         }
 
@@ -143,7 +149,21 @@ export function useEducatorSchool(): EducatorSchoolData {
           setSchool(null);
           setEducatorType('college');
           setEducatorRole('lecturer');
-          setAssignedClassIds([]);
+
+          // Fetch assigned college class IDs for this lecturer
+          const { data: collegeClassAssignments, error: collegeClassError } = await supabase
+            .from('college_faculty_class_assignments')
+            .select('class_id')
+            .eq('faculty_id', collegeLecturerData.id);
+
+          if (collegeClassError) {
+            console.warn('Failed to fetch college class assignments:', collegeClassError);
+            setAssignedClassIds([]);
+          } else {
+            const classIds = collegeClassAssignments?.map(assignment => assignment.class_id) || [];
+            setAssignedClassIds(classIds);
+          }
+          
           return;
         }
 

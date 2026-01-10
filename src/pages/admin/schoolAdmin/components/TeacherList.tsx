@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { Search, Eye, CheckCircle, Clock, XCircle, Grid3X3, List, Filter, Users, GraduationCap, UserCheck, UserX, Mail, Phone, MapPin } from "lucide-react";
-import { supabase } from "../../../../lib/supabaseClient";
-import { useAuth } from "../../../../context/AuthContext";
-import DocumentViewerModal from "../../../../components/admin/modals/DocumentViewerModal";
+import { CheckCircle, Clock, Eye, Filter, Grid3X3, List, Mail, Phone, Search, UserCheck, Users, XCircle } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import KPICard from "../../../../components/admin/KPICard";
-import { updateTeacherStatus } from "@/services/teacherService";
+import DocumentViewerModal from "../../../../components/admin/modals/DocumentViewerModal";
+import { useAuth } from "../../../../context/AuthContext";
+import { supabase } from "../../../../lib/supabaseClient";
 
 interface Teacher {
   id: string;
@@ -84,34 +83,22 @@ const TeacherListPage: React.FC = () => {
         return;
       }
 
-      // If not found in school_educators, check if user is a school admin in schools table
-      console.log('Not found in school_educators, checking schools table...');
+      // If not found in school_educators, check organizations table
+      console.log('Not found in school_educators, checking organizations table...');
       const { data: schoolData, error: schoolError } = await supabase
-        .from('schools')
+        .from('organizations')
         .select('id')
-        .eq('email', user.email)
+        .eq('organization_type', 'school')
+        .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
         .maybeSingle();
 
       if (schoolError) {
-        console.error('Error fetching from schools:', schoolError);
+        console.error('Error fetching from organizations:', schoolError);
       }
 
       if (schoolData?.id) {
-        console.log('Found school_id from schools table:', schoolData.id);
+        console.log('Found school_id from organizations table:', schoolData.id);
         setSchoolId(schoolData.id);
-        return;
-      }
-
-      // Also try principal_email field
-      const { data: schoolByPrincipal, error: principalError } = await supabase
-        .from('schools')
-        .select('id')
-        .eq('principal_email', user.email)
-        .maybeSingle();
-
-      if (schoolByPrincipal?.id) {
-        console.log('Found school_id from principal_email:', schoolByPrincipal.id);
-        setSchoolId(schoolByPrincipal.id);
         return;
       }
 

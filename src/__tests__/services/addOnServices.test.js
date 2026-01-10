@@ -154,13 +154,13 @@ describe('AddOnCatalogService', () => {
         monthly_price: 278.4,
         bundle_features: [
           { feature_key: 'career_ai' },
-          { feature_key: 'advanced_assessments' }
+          { feature_key: 'video_portfolio' }
         ]
       };
 
       const mockAddOns = [
         { feature_key: 'career_ai', addon_price_monthly: 199 },
-        { feature_key: 'advanced_assessments', addon_price_monthly: 149 }
+        { feature_key: 'video_portfolio', addon_price_monthly: 149 }
       ];
 
       // First call for bundle

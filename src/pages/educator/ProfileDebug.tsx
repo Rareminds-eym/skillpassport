@@ -40,21 +40,21 @@ const ProfileDebug = () => {
         info.educatorData = educatorData;
         info.educatorError = educatorError;
 
-        // Check schools table
-        const { data: schoolsData, error: schoolsError } = await supabase
-          .from('schools')
+        // Check organizations table
+        const { data: orgsData, error: orgsError } = await supabase
+          .from('organizations')
           .select('*')
           .limit(5);
         
-        info.schoolsData = schoolsData;
-        info.schoolsError = schoolsError;
+        info.schoolsData = orgsData;
+        info.schoolsError = orgsError;
 
         // Test table existence
         const { data: tablesData, error: tablesError } = await supabase
           .from('information_schema.tables')
           .select('table_name')
           .eq('table_schema', 'public')
-          .in('table_name', ['users', 'school_educators', 'schools']);
+          .in('table_name', ['users', 'school_educators', 'organizations']);
         
         info.tablesData = tablesData;
         info.tablesError = tablesError;

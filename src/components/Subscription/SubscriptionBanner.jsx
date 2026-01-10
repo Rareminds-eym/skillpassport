@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   XMarkIcon, 
   ExclamationTriangleIcon, 
@@ -15,6 +15,32 @@ import {
   ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
 import { WARNING_TYPES } from '../../context/SubscriptionContext';
+
+/**
+ * Get the base path for subscription routes based on current location
+ */
+function getSubscriptionBasePath(pathname) {
+  if (pathname.startsWith('/student')) return '/student';
+  if (pathname.startsWith('/recruitment')) return '/recruitment';
+  if (pathname.startsWith('/educator')) return '/educator';
+  if (pathname.startsWith('/college-admin')) return '/college-admin';
+  if (pathname.startsWith('/school-admin')) return '/school-admin';
+  if (pathname.startsWith('/university-admin')) return '/university-admin';
+  return ''; // fallback to root
+}
+
+/**
+ * Get the user type for subscription plans based on current path
+ */
+function getUserTypeFromPath(pathname) {
+  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/recruitment')) return 'recruiter';
+  if (pathname.startsWith('/educator')) return 'educator';
+  if (pathname.startsWith('/college-admin')) return 'college_admin';
+  if (pathname.startsWith('/school-admin')) return 'school_admin';
+  if (pathname.startsWith('/university-admin')) return 'university_admin';
+  return 'student'; // fallback
+}
 
 const bannerStyles = {
   expiring_soon: {
@@ -50,6 +76,9 @@ const SubscriptionBanner = ({
   dismissible = true,
 }) => {
   const [isDismissed, setIsDismissed] = useState(false);
+  const location = useLocation();
+  const basePath = getSubscriptionBasePath(location.pathname);
+  const userType = getUserTypeFromPath(location.pathname);
 
   if (isDismissed) return null;
 
@@ -71,7 +100,7 @@ const SubscriptionBanner = ({
         <div className="flex items-center gap-3">
           {showRenew && (
             <Link
-              to="/subscription/plans"
+              to={`/subscription/plans?type=${userType}`}
               className="text-sm font-semibold text-indigo-600 hover:text-indigo-500 whitespace-nowrap"
             >
               Renew Now →
@@ -80,7 +109,7 @@ const SubscriptionBanner = ({
           
           {type === WARNING_TYPES.PAUSED && (
             <Link
-              to="/subscription/manage"
+              to={`${basePath}/subscription/manage`}
               className="text-sm font-semibold text-indigo-600 hover:text-indigo-500 whitespace-nowrap"
             >
               Resume Subscription →

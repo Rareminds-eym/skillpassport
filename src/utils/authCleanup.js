@@ -83,7 +83,7 @@ export const userExistsInDatabase = async (userId) => {
       .from('users')
       .select('id')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
     
     return !error && !!data;
   } catch (error) {

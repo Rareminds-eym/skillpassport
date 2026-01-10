@@ -133,6 +133,17 @@ export const useSubscriptionQuery = () => {
     [query.data?.status]
   );
 
+  // Check if subscription has valid access (active, paused, or cancelled but not expired)
+  const hasValidSubscriptionAccess = useMemo(() => {
+    if (!query.data) return false;
+    const status = query.data.status;
+    if (status === 'active' || status === 'paused') return true;
+    if (status === 'cancelled' && query.data.endDate) {
+      return new Date(query.data.endDate) >= new Date();
+    }
+    return false;
+  }, [query.data]);
+
   const hasActiveOrPausedSubscription = useMemo(
     () => query.data && isActiveOrPaused(query.data.status),
     [query.data]
@@ -145,6 +156,7 @@ export const useSubscriptionQuery = () => {
     isRefetching: query.isRefetching,
     hasActiveSubscription,
     hasActiveOrPausedSubscription,
+    hasValidSubscriptionAccess,
     prefetchSubscription,
     refreshSubscription,
     clearSubscriptionCache,

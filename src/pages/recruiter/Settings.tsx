@@ -122,7 +122,7 @@ export default function SettingsPage() {
         .from("recruiters")
         .select("*")
         .eq("email", user.email)
-        .single()
+        .maybeSingle()
 
       if (error) {
         console.error("❌ Error fetching recruiter:", error.message)

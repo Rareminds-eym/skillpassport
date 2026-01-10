@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { IndianRupee, AlertCircle, FileText, TrendingUp } from "lucide-react";
+import { AlertCircle, FileText, IndianRupee, TrendingUp } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../../../../lib/supabaseClient";
-import { FeeStructure, StudentFeeSummary } from "./types";
-import { useFeeStructures } from "./hooks/useFeeStructures";
-import { useFeeTracking } from "./hooks/useFeeTracking";
-import { useDepartmentBudgets } from "./hooks/useDepartmentBudgets";
-import { usePrograms } from "./hooks/usePrograms";
-import { FeeStructureTab } from "./components/FeeStructureTab";
-import { FeeStructureFormModal } from "./components/FeeStructureFormModal";
-import { FeeTrackingTab } from "./components/FeeTrackingTab";
 import { DepartmentBudgetsTab } from "./components/DepartmentBudgetsTab";
 import { ExpenditureReportsTab } from "./components/ExpenditureReportsTab";
+import { FeeStructureFormModal } from "./components/FeeStructureFormModal";
+import { FeeStructureTab } from "./components/FeeStructureTab";
+import { FeeTrackingTab } from "./components/FeeTrackingTab";
 import { PaymentFormModal } from "./components/PaymentFormModal";
 import { StudentLedgerModal } from "./components/StudentLedgerModal";
+import { useDepartmentBudgets } from "./hooks/useDepartmentBudgets";
+import { useFeeStructures } from "./hooks/useFeeStructures";
+import { useFeeTracking } from "./hooks/useFeeTracking";
+import { usePrograms } from "./hooks/usePrograms";
+import { FeeStructure, StudentFeeSummary } from "./types";
 
 const tabs = [
   { id: "fees", label: "Fee Structure Setup" },
@@ -59,27 +59,21 @@ const FinanceModule: React.FC = () => {
         if (user) {
           console.log('🔍 Checking Supabase auth user:', user.email);
           
-          // Check for college admin by matching deanEmail
-          const { data: college } = await supabase
-            .from('colleges')
-            .select('id, name, deanEmail')
-            .ilike('deanEmail', user.email || '')
-            .single();
+          // Check for college admin by matching email in organizations table
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('id, name, email')
+            .eq('organization_type', 'college')
+            .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
+            .maybeSingle();
           
-          if (college?.id) {
-            console.log('✅ Found college_id for college admin:', college.id, 'College:', college.name);
-            setCollegeId(college.id);
+          if (org?.id) {
+            console.log('✅ Found college_id for college admin:', org.id, 'College:', org.name);
+            setCollegeId(org.id);
             return;
           }
           
-          // Fallback methods
-          const { data: createdCollege } = await supabase.from("colleges").select("id").eq("created_by", user.id).single();
-          if (createdCollege?.id) { 
-            console.log('✅ Found college via created_by:', createdCollege.id);
-            setCollegeId(createdCollege.id); 
-            return; 
-          }
-          
+          // Fallback: check college_lecturers table
           const { data: lecturer } = await supabase.from("college_lecturers").select("collegeId").or(`userId.eq.${user.id},user_id.eq.${user.id}`).single();
           if (lecturer?.collegeId) { 
             console.log('✅ Found college via lecturer:', lecturer.collegeId);

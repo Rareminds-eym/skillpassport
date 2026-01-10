@@ -1,5 +1,11 @@
 // Timetable Types
 
+export interface Department {
+  id: string;
+  name: string;
+  code: string;
+}
+
 export interface SubjectExpertise {
   name: string;
   proficiency?: string;
@@ -12,6 +18,8 @@ export interface Faculty {
   last_name: string;
   employeeId?: string;
   subject_expertise?: SubjectExpertise[];
+  department_id?: string | null;
+  is_hod?: boolean;
 }
 
 export interface CollegeClass {
@@ -19,6 +27,7 @@ export interface CollegeClass {
   name: string;
   grade: string;
   section: string;
+  department_id?: string | null;
 }
 
 export interface ScheduleSlot {

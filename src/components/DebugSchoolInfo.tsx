@@ -45,15 +45,16 @@ export const DebugSchoolInfo = () => {
           if (educator?.school_id) {
             finalSchoolId = educator.school_id;
           } else {
-            // Check schools
-            const { data: school } = await supabase
-              .from('schools')
+            // Check organizations table
+            const { data: org } = await supabase
+              .from('organizations')
               .select('id, name')
+              .eq('organization_type', 'school')
               .eq('email', user.email)
-              .single();
+              .maybeSingle();
 
-            if (school?.id) {
-              finalSchoolId = school.id;
+            if (org?.id) {
+              finalSchoolId = org.id;
             }
           }
         }
@@ -64,9 +65,9 @@ export const DebugSchoolInfo = () => {
         return;
       }
 
-      // Get school name
-      const { data: school } = await supabase
-        .from('schools')
+      // Get school name from organizations table
+      const { data: org } = await supabase
+        .from('organizations')
         .select('name')
         .eq('id', finalSchoolId)
         .single();
@@ -81,7 +82,7 @@ export const DebugSchoolInfo = () => {
         userEmail,
         authMethod,
         supabaseUserId,
-        schoolName: school?.name,
+        schoolName: org?.name,
         finalSchoolId,
         studentCount: count || 0
       });

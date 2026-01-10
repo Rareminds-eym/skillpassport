@@ -1,52 +1,45 @@
 
-import React, { useState, useMemo, useEffect } from "react";
 import {
-    Search,
-    Users,
     Calendar,
-    Trophy,
-    Plus,
-    X,
-    ChevronDown,
-    FileDown,
-    Edit,
-    Trash2,
-    Filter,
-    Download,
-    UserPlus,
-    Clock,
-    MapPin,
-    User,
-    Star,
-    Award,
-    Activity,
-    TrendingUp,
-    Eye,
-    Settings,
     CheckCircle,
-    AlertCircle,
+    ChevronDown,
+    Clock,
+    Download,
+    Edit,
+    Eye,
+    FileDown,
     Info,
+    MapPin,
+    Plus,
+    Search,
+    Trash2,
+    Trophy,
+    User,
+    UserPlus,
+    Users,
+    X
 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import * as XLSX from 'xlsx';
 import { supabase } from "../../../lib/supabaseClient";
 import * as clubsService from "../../../services/clubsService";
 import * as competitionsService from "../../../services/competitionsService";
-import * as XLSX from 'xlsx';
 
-import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
-// Helper function to get school_id from logged-in user
+// Helper function to get school_id from logged-in user (uses organizations table)
 async function getSchoolId() {
     const userEmail = localStorage.getItem('userEmail');
     if (!userEmail) return null;
     
     const { data } = await supabase
-        .from('schools')
+        .from('organizations')
         .select('id')
+        .eq('organization_type', 'school')
         .eq('email', userEmail)
         .maybeSingle();
     
-    return data?.school_id || null;
+    return data?.id || null;
 }
 
 const categories = [
@@ -430,19 +423,20 @@ export default function ClubsActivitiesPage() {
                     }
                 }
                 
-                // 3. Check schools table (for principal/admin)
+                // 3. Check organizations table (for principal/admin)
                 if (!schoolId) {
-                    const { data: schoolData, error: schoolError } = await supabase
-                        .from('schools')
+                    const { data: orgData, error: orgError } = await supabase
+                        .from('organizations')
                         .select('id')
+                        .eq('organization_type', 'school')
                         .eq('email', userEmail)
                         .maybeSingle();
 
-                    if (schoolError) {
-                        console.error('❌ [SkillCurricular] Error fetching school data:', schoolError);
-                    } else if (schoolData?.id) {
-                        schoolId = schoolData.id;
-                        console.log('✅ [SkillCurricular] Found school_id from schools table:', schoolId);
+                    if (orgError) {
+                        console.error('❌ [SkillCurricular] Error fetching organization data:', orgError);
+                    } else if (orgData?.id) {
+                        schoolId = orgData.id;
+                        console.log('✅ [SkillCurricular] Found school_id from organizations table:', schoolId);
                     }
                 }
 

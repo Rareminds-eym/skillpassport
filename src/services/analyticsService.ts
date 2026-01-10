@@ -423,12 +423,13 @@ export const getTopHiringColleges = async (
       }
     }
 
-    // Step 4: Fetch school names
+    // Step 4: Fetch school names from organizations table
     const schoolMap: Record<string, string> = {};
     if (schoolIds.size > 0) {
       const { data: schools, error: schoolsErr } = await supabase
-        .from('schools')
+        .from('organizations')
         .select('id, name')
+        .eq('organization_type', 'school')
         .in('id', Array.from(schoolIds));
 
       if (!schoolsErr && schools) {

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react'
-import { XMarkIcon, UserPlusIcon, DocumentArrowUpIcon, ArrowDownTrayIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
-import { supabase } from '../../../lib/supabaseClient'
+import { ArrowDownTrayIcon, CheckCircleIcon, DocumentArrowUpIcon, ExclamationTriangleIcon, UserPlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import Papa from 'papaparse'
-import userApiService from '../../../services/userApiService'
+import React, { useEffect, useState } from 'react'
+import { supabase } from '../../../lib/supabaseClient'
 import storageService from '../../../services/storageService'
+import userApiService from '../../../services/userApiService'
 
 interface DocumentUploadProgress {
   file: string
@@ -341,17 +341,18 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         console.warn('Could not parse user data from localStorage')
       }
 
-      // If collegeId not in localStorage but user is college_admin, fetch from database
+      // If collegeId not in localStorage but user is college_admin, fetch from organizations table
       if (!collegeId && userRole === 'college_admin' && userEmail) {
-        console.log('🔍 Fetching collegeId from database for college admin:', userEmail)
-        const { data: college } = await supabase
-          .from('colleges')
+        console.log('🔍 Fetching collegeId from organizations table for college admin:', userEmail)
+        const { data: org } = await supabase
+          .from('organizations')
           .select('id')
-          .ilike('deanEmail', userEmail)
-          .single()
+          .eq('organization_type', 'college')
+          .ilike('email', userEmail)
+          .maybeSingle()
 
-        if (college?.id) {
-          collegeId = college.id
+        if (org?.id) {
+          collegeId = org.id
           console.log('✅ Found collegeId:', collegeId)
         }
       }
@@ -754,17 +755,18 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           console.log('🔍 DEBUG: User role:', userRole)
           console.log('🔍 DEBUG: User email:', userEmail)
 
-          // If collegeId not in localStorage but user is college_admin, fetch from database
+          // If collegeId not in localStorage but user is college_admin, fetch from organizations table
           if (!collegeId && userRole === 'college_admin' && userEmail) {
-            console.log('🔍 DEBUG: Fetching collegeId from database for college admin:', userEmail)
-            const { data: college } = await supabase
-              .from('colleges')
+            console.log('🔍 DEBUG: Fetching collegeId from organizations table for college admin:', userEmail)
+            const { data: org } = await supabase
+              .from('organizations')
               .select('id')
-              .ilike('deanEmail', userEmail)
-              .single()
+              .eq('organization_type', 'college')
+              .ilike('email', userEmail)
+              .maybeSingle()
 
-            if (college?.id) {
-              collegeId = college.id
+            if (org?.id) {
+              collegeId = org.id
               console.log('✅ Found collegeId:', collegeId)
             }
           }
@@ -984,16 +986,17 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               console.warn('Could not parse user data from localStorage')
             }
 
-            // If collegeId not in localStorage but user is college_admin, fetch from database
+            // If collegeId not in localStorage but user is college_admin, fetch from organizations table
             if (!collegeId && userRole === 'college_admin' && userEmail) {
-              const { data: college } = await supabase
-                .from('colleges')
+              const { data: org } = await supabase
+                .from('organizations')
                 .select('id')
-                .ilike('deanEmail', userEmail)
-                .single()
+                .eq('organization_type', 'college')
+                .ilike('email', userEmail)
+                .maybeSingle()
 
-              if (college?.id) {
-                collegeId = college.id
+              if (org?.id) {
+                collegeId = org.id
               }
             }
 

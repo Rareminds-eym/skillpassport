@@ -1,19 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
 import {
-  FunnelIcon,
-  TableCellsIcon,
-  Squares2X2Icon,
-  EyeIcon,
-  ChevronDownIcon,
-  StarIcon,
-  XMarkIcon,
-  PencilSquareIcon,
-  EnvelopeIcon,
-  PhoneIcon,
-  DocumentArrowDownIcon,
+    ChevronDownIcon,
+    EnvelopeIcon,
+    EyeIcon,
+    FunnelIcon,
+    PencilSquareIcon,
+    PhoneIcon,
+    Squares2X2Icon,
+    StarIcon,
+    TableCellsIcon,
+    XMarkIcon
 } from '@heroicons/react/24/outline';
-import SearchBar from '../../../components/common/SearchBar';
+import { useEffect, useMemo, useState } from 'react';
 import Pagination from '../../../components/admin/Pagination';
+import SearchBar from '../../../components/common/SearchBar';
 // @ts-ignore - AuthContext is a .jsx file
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabaseClient';
@@ -504,11 +503,12 @@ const CollegeRegistration = () => {
 
         console.log('Fetching colleges for universityId:', organizationId);
 
-        // Fetch colleges linked to this university
+        // Fetch colleges linked to this university from organizations table
+        // Note: For university-college hierarchy, you may need to add a parent_organization_id column
         const { data, error: fetchError } = await supabase
-          .from('colleges')
+          .from('organizations')
           .select('*')
-          .eq('universityId', organizationId)
+          .eq('organization_type', 'college')
           .order('name', { ascending: true });
 
         if (fetchError) throw fetchError;
@@ -516,20 +516,20 @@ const CollegeRegistration = () => {
         console.log('Colleges found:', data?.length || 0);
         
         // Map database fields to component expected format
-        const mappedColleges = (data || []).map(college => ({
-          id: college.id,
-          name: college.name,
-          code: college.code,
-          location: [college.city, college.state].filter(Boolean).join(', ') || 'N/A',
+        const mappedColleges = (data || []).map(org => ({
+          id: org.id,
+          name: org.name,
+          code: org.code,
+          location: [org.city, org.state].filter(Boolean).join(', ') || 'N/A',
           programs: [], // Can be extended to fetch programs if needed
-          students: college.totalStudents || 0,
-          faculty: college.totalLecturers || 0,
+          students: 0,
+          faculty: 0,
           rating: null,
-          status: college.approvalStatus === 'approved' ? 'registered' : (college.approvalStatus || 'pending'),
-          registration_date: college.createdAt,
-          updated_date: college.updatedAt,
-          contact_email: college.email,
-          contact_phone: college.phone
+          status: org.approval_status === 'approved' ? 'registered' : (org.approval_status || 'pending'),
+          registration_date: org.created_at,
+          updated_date: org.updated_at,
+          contact_email: org.email,
+          contact_phone: org.phone
         }));
 
         setColleges(mappedColleges);

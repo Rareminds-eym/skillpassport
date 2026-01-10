@@ -10,7 +10,7 @@ INSERT INTO trainings (
   duration,
   status,
   completed_modules,
-  total_modules,
+  total_modules,n
   hours_spent,
   approval_status,
   source,

@@ -1,48 +1,43 @@
-import React, { useState, useEffect } from "react";
 import {
-  AcademicCapIcon,
-  BriefcaseIcon,
-  TrophyIcon,
-  PlusIcon,
-  DocumentDuplicateIcon,
-  ShareIcon,
-  CheckIcon,
-  GlobeAltIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  ChevronDownIcon,
-  MapPinIcon,
-   XMarkIcon,
+    AcademicCapIcon,
+    BriefcaseIcon,
+    CheckCircleIcon,
+    CheckIcon,
+    ChevronDownIcon,
+    ClockIcon,
+    DocumentDuplicateIcon,
+    GlobeAltIcon,
+    MapPinIcon,
+    PlusIcon,
+    ShareIcon,
+    TrophyIcon,
+    XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { Card, CardContent } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Progress } from "./ui/progress";
-import { Button } from "./ui/button";
-import { QRCodeSVG } from "qrcode.react";
-import { studentData } from "../data/mockData";
-import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
 import {
-  calculateEmployabilityScore,
-  getDefaultEmployabilityScore,
-} from "../../../utils/employabilityCalculator";
-import EmployabilityDebugger from "./EmployabilityDebugger";
-import EmployabilityScoreCard from "./EmployabilityScoreCard";
-import { generateBadges } from "../../../services/badgeService";
-import DigitalBadges from "./DigitalBadges";
-import { supabase } from "../../../lib/supabaseClient";
-import { FloatingDock } from "./ui/floating-dock";
-import {
-  IconBrandGithub,
-  IconBrandLinkedin,
-  IconBrandTwitter,
-  IconBrandInstagram,
-  IconBrandFacebook,
-  IconWorld,
-  IconBrandYoutube,
+    IconBrandFacebook,
+    IconBrandGithub,
+    IconBrandInstagram,
+    IconBrandLinkedin,
+    IconBrandTwitter,
+    IconBrandYoutube,
+    IconWorld,
 } from "@tabler/icons-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { FileText, Rocket, Sprout, Star, Wrench } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import React, { useEffect, useState } from "react";
+import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
+import { supabase } from "../../../lib/supabaseClient";
+import { generateBadges } from "../../../services/badgeService";
+import {
+    calculateEmployabilityScore,
+    getDefaultEmployabilityScore,
+} from "../../../utils/employabilityCalculator";
 import { capitalizeName } from "../../../utils/helpers";
-import { Rocket, Star, Sprout, Wrench, FileText } from "lucide-react";
+import EmployabilityScoreCard from "./EmployabilityScoreCard";
+import { Badge } from "./ui/badge";
+import { Card, CardContent } from "./ui/card";
+import { FloatingDock } from "./ui/floating-dock";
 
 // Helper to get level display with icon
 const getLevelDisplay = (level, label) => {
@@ -338,7 +333,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
       if (realStudentData.school_id && !realStudentData.schools?.name) {
         try {
           const { data, error } = await supabase
-            .from('schools')
+            .from('organizations')
             .select('name, city, state')
             .eq('id', realStudentData.school_id)
             .single();
@@ -363,10 +358,11 @@ const ProfileHeroEdit = ({ onEditClick }) => {
             .from('university_colleges')
             .select(`
               name,
-              universities:university_id (
+              university:organizations!university_colleges_university_id_fkey (
                 name,
-                district,
-                state
+                city,
+                state,
+                organization_type
               )
             `)
             .eq('id', realStudentData.university_college_id)
@@ -374,15 +370,15 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
           if (data && !error) {
             const collegeName = data.name;
-            const universityName = data.universities?.name;
+            const universityName = data.university?.name;
             setFetchedInstitutionName(
               universityName ? `${collegeName} - ${universityName}` : collegeName
             );
-            // Set location if district or state exists
-            const district = data.universities?.district;
-            const state = data.universities?.state;
-            if (district || state) {
-              const locationParts = [district, state].filter(Boolean);
+            // Set location if city or state exists
+            const city = data.university?.city;
+            const state = data.university?.state;
+            if (city || state) {
+              const locationParts = [city, state].filter(Boolean);
               setFetchedInstitutionLocation(locationParts.join(', '));
             }
           }

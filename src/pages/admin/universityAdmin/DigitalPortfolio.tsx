@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  FolderIcon,
-  EyeIcon,
-  ChevronDownIcon,
-  Squares2X2Icon,
-  TableCellsIcon,
-  StarIcon,
-  FunnelIcon,
-  BuildingOffice2Icon,
+    BuildingOffice2Icon,
+    ChevronDownIcon,
+    EyeIcon,
+    FolderIcon,
+    FunnelIcon,
+    Squares2X2Icon,
+    StarIcon,
+    TableCellsIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '../../../lib/supabaseClient';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import SearchBar from '../../../components/common/SearchBar';
+import { supabase } from '../../../lib/supabaseClient';
 
 // Filter Section Component
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
@@ -289,14 +289,15 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
         }
       }
 
+      // Query organizations table for colleges under this university
       let query = supabase
-        .from('colleges')
+        .from('organizations')
         .select('id, name')
+        .eq('organization_type', 'college')
         .order('name');
 
-      if (universityId) {
-        query = query.eq('universityId', universityId);
-      }
+      // Note: If you need to filter by university, you'll need to add a parent_organization_id column
+      // For now, we'll fetch all colleges
 
       const { data, error } = await query;
       

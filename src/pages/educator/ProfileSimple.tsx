@@ -1,15 +1,15 @@
+import {
+    AcademicCapIcon,
+    BuildingOfficeIcon,
+    CalendarIcon,
+    EnvelopeIcon,
+    MapPinIcon,
+    PencilIcon,
+    PhoneIcon,
+    UserCircleIcon,
+} from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  UserCircleIcon,
-  PencilIcon,
-  EnvelopeIcon,
-  PhoneIcon,
-  MapPinIcon,
-  AcademicCapIcon,
-  CalendarIcon,
-  BuildingOfficeIcon,
-} from '@heroicons/react/24/outline';
 import { supabase } from '../../lib/supabaseClient';
 
 interface EducatorProfile {
@@ -73,8 +73,9 @@ const ProfileSimple = () => {
         .from('school_educators')
         .select(`
           *,
-          schools:school_id (
-            name
+          school:organizations!school_educators_school_id_fkey (
+            name,
+            organization_type
           )
         `)
         .eq('email', email)
