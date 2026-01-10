@@ -33,7 +33,14 @@ function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }) => {
+interface SidebarProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  showMobileMenu: boolean;
+  onMobileMenuClose?: () => void;
+}
+
+const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -45,7 +52,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
     const initialState: Record<string, boolean> = {};
     const allGroups = [
       "students", "teachers", "academics", "communication", "finance", "skills", // school_admin
-      "colleges", "courses", "faculty", "placements", "analytics", // university_admin
+      "colleges", "courses", "faculty", "placements", "analytics", "library", // university_admin
       "department", "student", "examinations", "operations", "administration" // college_admin
     ];
     allGroups.forEach(group => {
@@ -418,6 +425,32 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           ],
         },
         {
+          title: "Library & Student Services",
+          key: "library",
+          items: [
+            {
+              name: "Library Management",
+              path: "/university-admin/library/management",
+              icon: BuildingLibraryIcon,
+            },
+            {
+              name: "Library Clearance",
+              path: "/university-admin/library/clearance",
+              icon: ShieldCheckIcon,
+            },
+            {
+              name: "Student Service Requests",
+              path: "/university-admin/library/service-requests",
+              icon: ClipboardIcon,
+            },
+            {
+              name: "Graduation Integration",
+              path: "/university-admin/library/graduation-integration",
+              icon: AcademicCapIcon,
+            },
+          ],
+        },
+        {
           title: "Communication & Announcements",
           key: "communication",
           items: [
@@ -744,7 +777,23 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             >
               <div className="mt-1 space-y-1 pl-2 border-l border-gray-100">
                 {group.items.map((item) => {
-                  const isActive = location.pathname.startsWith(item.path);
+                  // Exact path matching with proper handling of nested routes
+                  const currentPath = location.pathname;
+                  const itemPath = item.path;
+                  
+                  // Check if this is an exact match or if it's a parent path with no other longer matching paths
+                  const isExactMatch = currentPath === itemPath;
+                  const isParentMatch = currentPath.startsWith(itemPath + '/');
+                  
+                  // Find if there's a more specific path that matches better
+                  const hasMoreSpecificMatch = group.items.some(otherItem => 
+                    otherItem !== item && 
+                    currentPath.startsWith(otherItem.path) && 
+                    otherItem.path.length > itemPath.length
+                  );
+                  
+                  const isActive = isExactMatch || (isParentMatch && !hasMoreSpecificMatch);
+                  
                   return (
                     <button
                       key={item.name}

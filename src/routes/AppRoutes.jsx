@@ -256,6 +256,9 @@ const UniversityAdminDashboard = lazy(() =>
 const CollegeRegistration = lazy(() =>
   import("../pages/admin/universityAdmin/CollegeRegistration")
 );
+const ProgramAllocation = lazy(() =>
+  import("../pages/admin/universityAdmin/ProgramAllocation")
+);
 const StudentEnrollments = lazy(() =>
   import("../pages/admin/universityAdmin/StudentEnrollments")
 );
@@ -267,6 +270,9 @@ const PlacementReadiness = lazy(() =>
 );
 const OutcomeBasedEducation = lazy(() =>
   import("../pages/admin/universityAdmin/OutcomeBasedEducation")
+);
+const DistrictCollegeReports = lazy(() =>
+  import("../pages/admin/universityAdmin/DistrictCollegeReports")
 );
 const AICounselling = lazy(() =>
   import("../pages/admin/universityAdmin/AICounselling")
@@ -292,6 +298,9 @@ const UniversityGradeCalculation = lazy(() =>
 const UniversityResultsPublishing = lazy(() =>
   import("../pages/admin/universityAdmin/ResultsPublishing")
 );
+const UniversityCentralizedResults = lazy(() =>
+  import("../pages/admin/universityAdmin/CentralizedResults")
+);
 const UniversityFinance = lazy(() =>
   import("../pages/admin/universityAdmin/Finance")
 );
@@ -300,6 +309,38 @@ const UniversityPaymentTracking = lazy(() =>
 );
 const UniversityFinancialReports = lazy(() =>
   import("../pages/admin/universityAdmin/FinancialReports")
+);
+const UniversityPerformanceMonitoring = lazy(() =>
+  import("../pages/admin/universityAdmin/PerformanceMonitoring")
+);
+const FacultyEmpanelment = lazy(() =>
+  import("../pages/admin/universityAdmin/FacultyEmpanelment")
+);
+const FacultyFeedbackCertification = lazy(() =>
+  import("../pages/admin/universityAdmin/FeedbackCertification")
+);
+const UniversityStudentCertificates = lazy(() =>
+  import("../pages/admin/universityAdmin/StudentCertificates")
+);
+const UniversityCircularsManagement = lazy(() =>
+  import("../pages/admin/universityAdmin/CircularsManagement")
+);
+const UniversityTrainingUpdates = lazy(() =>
+  import("../pages/admin/universityAdmin/TrainingUpdates")
+);
+
+// Library & Student Services
+const LibraryManagement = lazy(() =>
+  import("../pages/admin/universityAdmin/library/LibraryManagement")
+);
+const LibraryClearance = lazy(() =>
+  import("../pages/admin/universityAdmin/library/LibraryClearance")
+);
+const StudentServiceRequests = lazy(() =>
+  import("../pages/admin/universityAdmin/library/StudentServiceRequests")
+);
+const GraduationIntegration = lazy(() =>
+  import("../pages/admin/universityAdmin/library/GraduationIntegration")
 );
 
 const AttendanceTracking = lazy(() =>
@@ -677,6 +718,7 @@ const AppRoutes = () => {
         >
           <Route path="dashboard" element={<UniversityAdminDashboard />} />
           <Route path="colleges/registration" element={<CollegeRegistration />} />
+          <Route path="colleges/programs" element={<ProgramAllocation />} />
           <Route path="courses" element={<UniversityAdminCourses />} />
           <Route path="browse-courses" element={<UniversityAdminBrowseCourses />} />
           <Route path="students/enrollments" element={<StudentEnrollments />} />
@@ -685,13 +727,25 @@ const AppRoutes = () => {
           <Route path="students/continuous-assessment" element={<ContinuousAssessment />} />
           <Route path="placements/readiness" element={<PlacementReadiness />} />
           <Route path="analytics/obe-tracking" element={<OutcomeBasedEducation />} />
+          <Route path="analytics/reports" element={<DistrictCollegeReports />} />
           <Route path="ai-counselling" element={<AICounselling />} />
           <Route path="examinations" element={<UniversityExaminationManagement />} />
           <Route path="examinations/grades" element={<UniversityGradeCalculation />} />
           <Route path="examinations/results" element={<UniversityResultsPublishing />} />
+          <Route path="students/results" element={<UniversityCentralizedResults />} />
+          <Route path="students/certificates" element={<UniversityStudentCertificates />} />
           <Route path="finance" element={<UniversityFinance />} />
           <Route path="finance/payments" element={<UniversityPaymentTracking />} />
           <Route path="finance/reports" element={<UniversityFinancialReports />} />
+          <Route path="colleges/performance" element={<UniversityPerformanceMonitoring />} />
+          <Route path="faculty/empanelment" element={<FacultyEmpanelment />} />
+          <Route path="faculty/feedback" element={<FacultyFeedbackCertification />} />
+          <Route path="library/management" element={<LibraryManagement />} />
+          <Route path="library/clearance" element={<LibraryClearance />} />
+          <Route path="library/service-requests" element={<StudentServiceRequests />} />
+          <Route path="library/graduation-integration" element={<GraduationIntegration />} />
+          <Route path="communication/circulars" element={<UniversityCircularsManagement />} />
+          <Route path="communication/training" element={<UniversityTrainingUpdates />} />
           <Route path="settings" element={<UniversityAdminSettings />} />
           <Route path="subscription/manage" element={<SubscriptionManage />} />
           <Route path="subscription/add-ons" element={<AddOns />} />
