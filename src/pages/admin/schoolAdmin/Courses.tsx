@@ -109,18 +109,31 @@ const Courses: React.FC = () => {
         setEducatorName(fullName);
         console.log('✅ School Admin name set:', fullName);
 
-        // Get school_id from school_educators table for creating courses
+        // Get school_id from school_educators table for creating courses - use maybeSingle() to avoid 406 error
         const { data: educatorData } = await supabase
           .from('school_educators')
           .select('school_id')
           .eq('user_id', supabaseUserId)
-          .single();
+          .maybeSingle();
 
-        if (educatorData) {
+        if (educatorData?.school_id) {
           setSchoolId(educatorData.school_id);
-          console.log('✅ School ID set:', educatorData.school_id);
+          console.log('✅ School ID set from school_educators:', educatorData.school_id);
         } else {
-          console.warn('⚠️ No school_id found for user, will not be able to create courses');
+          // Fallback: Check organizations table for school admins
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('organization_type', 'school')
+            .or(`admin_id.eq.${supabaseUserId},email.eq.${session.user.email}`)
+            .maybeSingle();
+
+          if (org?.id) {
+            setSchoolId(org.id);
+            console.log('✅ School ID set from organizations:', org.id);
+          } else {
+            console.warn('⚠️ No school_id found for user, will not be able to create courses');
+          }
         }
 
         // Load ALL courses (not filtered by school)

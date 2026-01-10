@@ -137,14 +137,21 @@ const SchoolDashboard: React.FC = () => {
         }
 
         // Fetch enrollments for this school's courses
-        const { data: enrollmentsData, error: enrollmentsError } =
-          await supabase
+        // Note: course_enrollments doesn't have school_id, so we filter by course_ids from the school
+        const courseIds = (coursesData || []).map(c => c.course_id).filter(Boolean);
+        
+        let enrollmentsData: any[] = [];
+        if (courseIds.length > 0) {
+          const { data, error: enrollmentsError } = await supabase
             .from("course_enrollments")
             .select("course_id, student_id, status, progress, enrolled_at")
-            .eq("school_id", schoolId);
+            .in("course_id", courseIds);
 
-        if (enrollmentsError) {
-          console.warn("Error fetching enrollments:", enrollmentsError);
+          if (enrollmentsError) {
+            console.warn("Error fetching enrollments:", enrollmentsError);
+          } else {
+            enrollmentsData = data || [];
+          }
         }
 
         // Group by category for chart

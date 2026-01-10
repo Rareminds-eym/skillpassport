@@ -1753,26 +1753,42 @@ const Settings = () => {
         return;
       }
 
-      // Get school_id from school_educators table
+      // First try to get school_id from school_educators table
       const { data: educator, error: educatorError } = await supabase
         .from("school_educators")
         .select("school_id, role")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle(); // Use maybeSingle() instead of single() to avoid 406 error
 
-      if (educatorError || !educator) {
-        console.error("Error fetching educator:", educatorError);
+      let schoolId = educator?.school_id;
+
+      // If not found in school_educators, try organizations table (for school admins)
+      if (!schoolId) {
+        const { data: org, error: orgError } = await supabase
+          .from("organizations")
+          .select("id")
+          .eq("admin_id", user.id)
+          .eq("organization_type", "school")
+          .maybeSingle();
+
+        if (org?.id) {
+          schoolId = org.id;
+        }
+      }
+
+      if (!schoolId) {
+        console.error("Could not find school for user:", user.id);
         return;
       }
 
-      setCurrentSchoolId(educator.school_id);
+      setCurrentSchoolId(schoolId);
 
       // Fetch school details from organizations table
       const { data: org, error: orgError } = await supabase
         .from("organizations")
         .select("*")
-        .eq("id", educator.school_id)
-        .single();
+        .eq("id", schoolId)
+        .maybeSingle(); // Use maybeSingle() to avoid 406 error
 
       if (orgError || !org) {
         console.error("Error fetching organization:", orgError);
@@ -2063,9 +2079,9 @@ const Settings = () => {
         .from("user_settings")
         .select("privacy_settings")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== "PGRST116") {
+      if (error) {
         console.error("Error fetching role permissions:", error);
         return;
       }
@@ -2105,7 +2121,7 @@ const Settings = () => {
         .from("user_settings")
         .select("id, privacy_settings")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       const updatedPrivacySettings = {
         ...(existing?.privacy_settings || {}),
@@ -2161,9 +2177,9 @@ const Settings = () => {
         .from("user_settings")
         .select("notification_preferences")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== "PGRST116") {
+      if (error) {
         console.error("Error fetching notification settings:", error);
         return;
       }
@@ -2230,7 +2246,7 @@ const Settings = () => {
         .from("user_settings")
         .select("id, notification_preferences")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       const updatedNotificationPreferences = {
         ...(existing?.notification_preferences || {}),

@@ -645,14 +645,14 @@ const ClassManagement = () => {
         return
       }
 
-      // Get user role first
+      // Get user role first - use maybeSingle() to avoid 406 error
       const { data: userData, error: userError } = await supabase
         .from("users")
         .select("role")
         .eq("id", user.id)
-        .single()
+        .maybeSingle()
 
-      if (userError) {
+      if (userError && userError.code !== 'PGRST116') {
         console.error("Error fetching user data:", userError)
         toast.error("Failed to fetch user information")
         return

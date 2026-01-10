@@ -188,7 +188,7 @@ const CurriculumBuilderWrapperContent: React.FC = () => {
 
   const handleSubmitForApproval = async () => {
     try {
-      // Check if user is school_admin to show appropriate message
+      // Check if user is school_admin to show appropriate message - use maybeSingle() to avoid 406 error
       const { data: { user } } = await curriculumService.supabase.auth.getUser();
       let isSchoolAdmin = false;
       
@@ -197,7 +197,7 @@ const CurriculumBuilderWrapperContent: React.FC = () => {
           .from('users')
           .select('role')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
         isSchoolAdmin = userData?.role === 'school_admin';
       }
 

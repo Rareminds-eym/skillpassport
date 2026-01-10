@@ -83,12 +83,12 @@ const CompetitionResults = () => {
           console.log('🔍 Checking Supabase auth user:', user.email);
           userEmail = user.email;
           
-          // Check school_educators table
+          // Check school_educators table - use maybeSingle() to avoid 406 error
           const { data: educator } = await supabase
             .from('school_educators')
             .select('id, school_id, email')
             .eq('user_id', user.id)
-            .single();
+            .maybeSingle();
           
           if (educator?.school_id) {
             schoolId = educator.school_id;
@@ -102,7 +102,7 @@ const CompetitionResults = () => {
               .from('organizations')
               .select('id, email')
               .eq('organization_type', 'school')
-              .eq('email', user.email)
+              .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
               .maybeSingle();
             
             if (org?.id) {
