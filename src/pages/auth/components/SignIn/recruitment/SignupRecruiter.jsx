@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import loginIllustration from "../../../../../assets/images/auth/Recruiter-illustration.png";
 import SignupFormFields from "../../../../../components/Subscription/shared/SignupFormFields";
 import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from "../../../../../components/Subscription/shared/signupValidation";
+import { supabase } from "../../../../../lib/supabaseClient";
 import FeatureCard from "../../ui/FeatureCard";
 
 export default function SignupRecruiter() {
@@ -129,6 +130,21 @@ export default function SignupRecruiter() {
 
       if (!response.ok || !result.success) {
         throw new Error(result.error || 'Failed to create account');
+      }
+
+      // CRITICAL FIX: Auto-login after successful signup
+      // This establishes a Supabase session so the user is authenticated
+      console.log('🔐 Auto-logging in after signup...');
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (signInError) {
+        console.error('⚠️ Auto-login failed:', signInError.message);
+        // Even if auto-login fails, the account was created successfully
+      } else {
+        console.log('✅ Auto-login successful, session established');
       }
 
       alert('Account created successfully! Please check your email to verify your account.');

@@ -3,25 +3,11 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import AddOnMarketplace from '../../components/Subscription/AddOnMarketplace';
-import CollegeLoginModal from '../../components/Subscription/CollegeLoginModal';
-import CollegeSignupModal from '../../components/Subscription/CollegeSignupModal';
-import EducatorLoginModal from '../../components/Subscription/EducatorLoginModal';
-import EducatorSignupModal from '../../components/Subscription/EducatorSignupModal';
-import LoginModal from '../../components/Subscription/LoginModal';
 import { OrganizationPurchasePanel } from '../../components/Subscription/Organization';
-import RecruiterLoginModal from '../../components/Subscription/RecruiterLoginModal';
-import RecruiterSignupModal from '../../components/Subscription/RecruiterSignupModal';
-import RecruitmentAdminSignupModal from '../../components/Subscription/RecruitmentAdminSignupModal';
-import SchoolLoginModal from '../../components/Subscription/SchoolLoginModal';
-import SchoolSignupModal from '../../components/Subscription/SchoolSignupModal';
-import SignupModal from '../../components/Subscription/SignupModal';
-import UniversityAdminLoginModal from '../../components/Subscription/UniversityAdminLoginModal';
-import UniversityAdminSignupModal from '../../components/Subscription/UniversityAdminSignupModal';
-import UniversityStudentLoginModal from '../../components/Subscription/UniversityStudentLoginModal';
-import UniversityStudentSignupModal from '../../components/Subscription/UniversityStudentSignupModal';
 import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
+import { supabase } from '../../lib/supabaseClient';
 import { getEntityContent, parseStudentType, setDatabasePlans } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
@@ -396,9 +382,6 @@ PlanCard.displayName = 'PlanCard';
 
 
 function SubscriptionPlans() {
-  const [showSignupModal, setShowSignupModal] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [planToSelect, setPlanToSelect] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { type: pathType } = useParams();
@@ -467,19 +450,6 @@ function SubscriptionPlans() {
   }, [dbPlans, configPlans, type]);
 
   const studentType = type || 'student';
-
-  const { SignupComponent, LoginComponent } = useMemo(() => {
-    if (pageRole === 'admin') {
-      if (entity === 'school') return { SignupComponent: SchoolSignupModal, LoginComponent: SchoolLoginModal };
-      if (entity === 'college') return { SignupComponent: CollegeSignupModal, LoginComponent: CollegeLoginModal };
-      if (entity === 'recruitment') return { SignupComponent: RecruitmentAdminSignupModal, LoginComponent: RecruiterLoginModal };
-      if (entity === 'university') return { SignupComponent: UniversityAdminSignupModal, LoginComponent: UniversityAdminLoginModal };
-    }
-    if (pageRole === 'educator') return { SignupComponent: EducatorSignupModal, LoginComponent: EducatorLoginModal };
-    if (pageRole === 'recruiter' && entity === 'recruitment') return { SignupComponent: RecruiterSignupModal, LoginComponent: RecruiterLoginModal };
-    if (pageRole === 'student' && entity === 'university') return { SignupComponent: UniversityStudentSignupModal, LoginComponent: UniversityStudentLoginModal };
-    return { SignupComponent: SignupModal, LoginComponent: LoginModal };
-  }, [entity, pageRole]);
   
   const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionQuery();
   const daysRemaining = useMemo(() => calculateDaysRemaining(subscriptionData?.endDate), [subscriptionData?.endDate]);
@@ -555,34 +525,87 @@ function SubscriptionPlans() {
   }, [isFullyLoaded, shouldRedirect, navigate, location.search, managePath]);
 
   const handlePlanSelection = useCallback((plan) => {
+    // If user is currently on their active plan, go to manage page
     if (subscriptionData && subscriptionData.plan === plan.id) {
       navigate(managePath);
       return;
     }
+    
+    // CRITICAL FIX: Check if auth is still loading
+    if (authLoading) {
+      console.log('🔄 Auth still loading, please wait...');
+      return; // Don't redirect while auth is loading
+    }
+    
+    // If not authenticated, redirect to signup
     if (!isAuthenticated) {
-      navigate('/signup');
-    } else if (hasActiveOrPausedSubscription) {
+      console.log('🔐 User not authenticated, redirecting to signup');
+      navigate('/signup', { 
+        state: { 
+          plan, 
+          studentType, 
+          returnTo: '/subscription/payment' 
+        } 
+      });
+      return;
+    }
+    
+    // If user has active/paused subscription, show upgrade mode
+    if (hasActiveOrPausedSubscription) {
       navigate(`/subscription/plans?type=${studentType}&mode=upgrade`);
-    } else {
-      navigate('/subscription/payment', { state: { plan, studentType, isUpgrade: !!subscriptionData } });
+      return;
     }
-  }, [isAuthenticated, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription, managePath]);
-
-  const handleSignupSuccess = useCallback(() => {
-    setShowSignupModal(false);
-    if (planToSelect) {
-      navigate('/subscription/payment', { state: { plan: planToSelect, studentType } });
-      setPlanToSelect(null);
-    }
-  }, [planToSelect, navigate, studentType]);
-
-  const handleLoginSuccess = useCallback(() => {
-    setShowLoginModal(false);
-    if (planToSelect) {
-      navigate('/subscription/payment', { state: { plan: planToSelect, studentType } });
-      setPlanToSelect(null);
-    }
-  }, [planToSelect, navigate, studentType]);
+    
+    // ENHANCED: Validate user exists in database before allowing payment
+    // This prevents the payment page from redirecting back to signup
+    const validateUserAndProceed = async () => {
+      try {
+        // Check if user exists in database
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('id, firstName, lastName, email')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('❌ Error checking user in database:', error);
+          toast.error('Unable to verify account. Please try again.');
+          return;
+        }
+        
+        if (!userData) {
+          console.warn('⚠️ User not found in database, redirecting to complete signup');
+          navigate('/signup', { 
+            state: { 
+              plan, 
+              studentType, 
+              returnTo: '/subscription/payment',
+              message: 'Please complete your account setup to continue with payment.'
+            } 
+          });
+          return;
+        }
+        
+        // User exists in database, proceed to payment
+        console.log('✅ User validated, proceeding to payment');
+        navigate('/subscription/payment', { 
+          state: { 
+            plan, 
+            studentType, 
+            isUpgrade: !!subscriptionData 
+          } 
+        });
+        
+      } catch (err) {
+        console.error('❌ Error validating user:', err);
+        toast.error('Unable to proceed with payment. Please try again.');
+      }
+    };
+    
+    // Execute validation
+    validateUserAndProceed();
+    
+  }, [isAuthenticated, authLoading, user, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription, managePath]);
 
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -852,24 +875,6 @@ function SubscriptionPlans() {
           </a>
         </div>
       </div>
-
-      {/* Modals */}
-      <SignupComponent
-        isOpen={showSignupModal}
-        onClose={() => { setShowSignupModal(false); setPlanToSelect(null); }}
-        selectedPlan={planToSelect}
-        studentType={studentType}
-        onSignupSuccess={handleSignupSuccess}
-        onSwitchToLogin={() => { setShowSignupModal(false); setShowLoginModal(true); }}
-      />
-      <LoginComponent
-        isOpen={showLoginModal}
-        onClose={() => { setShowLoginModal(false); setPlanToSelect(null); }}
-        selectedPlan={planToSelect}
-        studentType={studentType}
-        onLoginSuccess={handleLoginSuccess}
-        onSwitchToSignup={() => { setShowLoginModal(false); setShowSignupModal(true); }}
-      />
       
       {/* Organization Purchase Panel */}
       {showOrgPurchasePanel && selectedPlanForOrg && (

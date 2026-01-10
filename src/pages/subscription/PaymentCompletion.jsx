@@ -229,6 +229,7 @@ function PaymentCompletion() {
 
       // If not authenticated at all, redirect to register
       if (!isAuthenticated || !user) {
+        console.log('❌ User not authenticated, redirecting to signup');
         if (plan) {
           localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, studentType }));
         }
@@ -270,7 +271,7 @@ function PaymentCompletion() {
           .maybeSingle();
 
         if (userError) {
-          console.error('Error fetching user from database:', userError);
+          console.error('❌ Error fetching user from database:', userError);
         }
 
         if (!userData) {
@@ -299,8 +300,10 @@ function PaymentCompletion() {
           phone: userData.phone || '',
         });
 
+        console.log('✅ User validated successfully');
+
       } catch (err) {
-        console.error('Error validating user:', err);
+        console.error('❌ Error validating user:', err);
         // On error, try to use available data
         setUserDetails((prev) => ({
           name: prev.name || '',
