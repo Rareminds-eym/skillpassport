@@ -216,6 +216,7 @@ const CollegeAdminDigitalPortfolio = lazy(() =>
   import("../pages/admin/collegeAdmin/DigitalPortfolio")
 );
 const StudentVerifications = lazy(() => import("../pages/admin/collegeAdmin/Verifications"))
+const StudentSubjectCourses = lazy(() => import("../pages/admin/collegeAdmin/SubjectMaster"))
 const StudentCollegeAdminCommunications = lazy(() => import("../pages/admin/collegeAdmin/StudentCollegeAdminCommunication"))
 const PlacementManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/PlacementManagement")
@@ -304,6 +305,7 @@ const UniversityFinancialReports = lazy(() =>
 const AttendanceTracking = lazy(() =>
   import("../pages/admin/collegeAdmin/Attendancetracking")
 );
+const AttendancePolicies = lazy(() => import("../pages/admin/collegeAdmin/AttendancePolicyMaster"));
 const GraduationEligibility = lazy(() =>
   import("../pages/admin/collegeAdmin/GraduationEligibility")
 );
@@ -336,6 +338,9 @@ const TranscriptGeneration = lazy(() =>
 );
 const AcademicCalendar = lazy(() =>
   import("../pages/admin/collegeAdmin/AcademicCalendar")
+);
+const AssessmentGradingMaster = lazy(() =>
+  import("../pages/admin/collegeAdmin/AssessmentGradingMaster")
 );
 const PerformanceMonitoring = lazy(() =>
   import("../pages/admin/collegeAdmin/PerformanceMonitoring")
@@ -532,6 +537,7 @@ const AppRoutes = () => {
           <Route path="students/data-management" element={<StudentDataAdmission />} />
           <Route path="students/enrolled" element={<EnrolledStudents />} />
           <Route path="students/attendance" element={<AttendanceTracking />} />
+          <Route path="students/attendance-policies" element={<AttendancePolicies />} />
           <Route path="students/performance" element={<PerformanceMonitoring />} />
           <Route path="students/assessment-results" element={<CollegeAdminAssessmentResults />} />
           <Route path="students/graduation" element={<GraduationEligibility />} />
@@ -540,6 +546,7 @@ const AppRoutes = () => {
           <Route path="students/communication" element={<StudentCollegeAdminCommunications />} />
           {/* Academic Management */}
           <Route path="academics/courses" element={<CollegeAdminCourses />} />
+          <Route path="academics/subject-courses" element={<StudentSubjectCourses />} />
           <Route path="academics/browse-courses" element={<CollegeAdminBrowseCourses />} />
           <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
           <Route path="academics/curriculum" element={<CollegeCurriculumBuilder />} />
@@ -547,12 +554,13 @@ const AppRoutes = () => {
           <Route path="academics/coverage-tracker" element={<AcademicCoverageTracker />} />
           <Route path="academics/programs" element={<ProgramManagement />} />
           <Route path="academics/program-sections" element={<ProgramSectionManagement />} />
+          
           <Route path="academics/calendar" element={<AcademicCalendar />} />
 
           {/* Examination Management */}
           <Route path="examinations" element={<ExaminationManagement />} />
           <Route path="examinations/transcripts" element={<TranscriptGeneration />} />
-
+          <Route path="examinations/assessment-grading" element={<AssessmentGradingMaster />} />
           {/* Training & Skill Development */}
           <Route path="skill-development" element={<SkillDevelopment />} />
 

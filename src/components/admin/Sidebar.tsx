@@ -458,6 +458,12 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             icon: ClipboardDocumentListIcon,
           },
           {
+            name: "Attendance Policies",
+            path: "/college-admin/students/attendance-policies",
+            icon: ClipboardDocumentListIcon,
+          },
+          
+          {
             name: "Performance",
             path: "/college-admin/students/performance",
             icon: ChartBarIcon,
@@ -514,6 +520,13 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             path: "/college-admin/academics/browse-courses",
             icon: AcademicCapIcon,
           },
+          */
+
+          {
+            name: "Course Master",
+            path: "/college-admin/academics/subject-courses",
+            icon: AcademicCapIcon,
+          },
           {
             name: "Programs",
             path: "/college-admin/academics/programs",
@@ -559,6 +572,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             name: "Exam Management",
             path: "/college-admin/examinations",
             icon: ClipboardDocumentListIcon,
+          },
+          {
+            name: "Grading & Assessments",
+            path: "/college-admin/examinations/assessment-grading",
+            icon: ChartBarIcon,
           },
           {
             name: "Transcripts",
