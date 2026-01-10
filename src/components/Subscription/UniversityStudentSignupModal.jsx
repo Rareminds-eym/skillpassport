@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 import { getActiveUniversities, getCollegesByUniversity } from '../../services/universityService';
+import { unifiedSignup } from '../../services/userApiService';
 import DatePicker from './shared/DatePicker';
 import SignupFormFields from './shared/SignupFormFields';
 import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from './shared/signupValidation';

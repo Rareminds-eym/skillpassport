@@ -11,6 +11,7 @@ import {
     withRetry,
     withTimeout,
 } from '../utils/authErrorHandler';
+import { unifiedSignup } from './userApiService';
 
 /**
  * Student Authentication Service

@@ -2,6 +2,7 @@ import { AlertCircle, Building, Calendar, CheckCircle, ChevronDown, Eye, EyeOff,
 import { useEffect, useState } from 'react';
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 import { checkUniversityCollegeCode, createUniversityCollege, getUniversities } from '../../services/universityService';
+import { unifiedSignup } from '../../services/userApiService';
 
 function capitalizeFirstLetter(str) {
     if (!str) return '';

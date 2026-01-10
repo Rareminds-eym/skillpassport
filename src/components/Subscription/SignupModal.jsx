@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 import { getAllColleges, getAllSchools } from '../../services/studentService';
+import { unifiedSignup } from '../../services/userApiService';
 import { getModalContent, parseStudentType } from '../../utils/getEntityContent';
 import SignupFormFields from './shared/SignupFormFields';
 import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from './shared/signupValidation';
