@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 // @ts-ignore - AuthContext is a JS file
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
@@ -39,14 +39,33 @@ export function useOrganizationCheck(organizationType: OrganizationType): UseOrg
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasInitialized = useRef(false);
+  const lastUserId = useRef<string | null>(null);
+
+  // Reset initialization when user changes
+  useEffect(() => {
+    if (user?.id !== lastUserId.current) {
+      console.log(`[useOrganizationCheck] User changed, resetting initialization`);
+      hasInitialized.current = false;
+      lastUserId.current = user?.id || null;
+    }
+  }, [user?.id]);
 
   const fetchOrganization = useCallback(async () => {
+    // Prevent multiple fetches
+    if (hasInitialized.current) {
+      console.log(`[useOrganizationCheck] Skipping fetch - already initialized`);
+      return;
+    }
+
     if (!user?.id) {
+      console.log(`[useOrganizationCheck] No user ID, setting loading to false`);
       setLoading(false);
       setError('User not authenticated');
       return;
     }
 
+    console.log(`[useOrganizationCheck] Fetching ${organizationType} for user:`, user.id);
     setLoading(true);
     setError(null);
 
@@ -71,10 +90,12 @@ export function useOrganizationCheck(organizationType: OrganizationType): UseOrg
         console.log(`[useOrganizationCheck] No ${organizationType} found for user`);
         setOrganization(null);
       }
+      hasInitialized.current = true;
     } catch (err) {
       console.error(`[useOrganizationCheck] Unexpected error:`, err);
       setError('An unexpected error occurred');
       setOrganization(null);
+      hasInitialized.current = true;
     } finally {
       setLoading(false);
     }
@@ -84,12 +105,19 @@ export function useOrganizationCheck(organizationType: OrganizationType): UseOrg
     fetchOrganization();
   }, [fetchOrganization]);
 
+  // Refetch function that resets initialization to force a new fetch
+  const refetch = useCallback(async () => {
+    console.log(`[useOrganizationCheck] Refetch called, resetting initialization`);
+    hasInitialized.current = false;
+    await fetchOrganization();
+  }, [fetchOrganization]);
+
   return {
     organization,
     loading,
     error,
     hasOrganization: organization !== null,
-    refetch: fetchOrganization,
+    refetch,
   };
 }
 

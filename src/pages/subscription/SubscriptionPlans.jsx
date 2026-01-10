@@ -15,6 +15,8 @@ import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscripti
  * Get the subscription manage path based on user role
  */
 function getManagePath(userRole) {
+  if (!userRole) return null; // Return null instead of default to prevent wrong redirects
+  
   const manageRoutes = {
     super_admin: '/admin/subscription/manage',
     rm_admin: '/admin/subscription/manage',
@@ -30,14 +32,14 @@ function getManagePath(userRole) {
     school_student: '/student/subscription/manage',
     college_student: '/student/subscription/manage',
   };
-  return manageRoutes[userRole] || '/student/subscription/manage';
+  return manageRoutes[userRole] || null; // Return null instead of default to prevent wrong redirects
 }
 
 /**
  * Get the subscription manage path based on URL type parameter (more reliable)
  */
 function getManagePathFromType(type) {
-  if (!type) return '/student/subscription/manage';
+  if (!type) return null; // Return null instead of default to prevent wrong redirects
   
   const typeToPath = {
     // Student types
@@ -61,11 +63,13 @@ function getManagePathFromType(type) {
     'university-admin': '/university-admin/subscription/manage',
     // Recruiter
     'recruiter': '/recruitment/subscription/manage',
-    // Generic admin
+    // Generic admin (super_admin, rm_admin)
     'admin': '/admin/subscription/manage',
+    'super_admin': '/admin/subscription/manage',
+    'rm_admin': '/admin/subscription/manage',
   };
   
-  return typeToPath[type] || '/student/subscription/manage';
+  return typeToPath[type] || null; // Return null instead of default to prevent wrong redirects
 }
 
 // Feature comparison data
@@ -402,16 +406,46 @@ function SubscriptionPlans() {
   // Use new authentication hook
   const { isAuthenticated, user, loading: authLoading, role: userRole } = useAuth();
   
+  // Debug logging for redirect loop investigation
+  const DEBUG = import.meta.env.DEV || localStorage.getItem('DEBUG_SUBSCRIPTION') === 'true';
+  useEffect(() => {
+    if (DEBUG) {
+      console.log('[SubscriptionPlans] State:', {
+        type,
+        pathType,
+        searchParamType: searchParams.get('type'),
+        userRole,
+        isAuthenticated,
+        authLoading,
+        pathname: location.pathname,
+        search: location.search,
+      });
+    }
+  }, [type, pathType, searchParams, userRole, isAuthenticated, authLoading, location.pathname, location.search, DEBUG]);
+  
   // Get the manage path based on URL type parameter (more reliable than userRole)
   // Falls back to userRole if type is not available
+  // CRITICAL FIX: Ensure we never redirect to wrong path
   const managePath = useMemo(() => {
-    // First try to get path from URL type parameter
+    // First try to get path from URL type parameter (most reliable)
     if (type) {
-      return getManagePathFromType(type);
+      const pathFromType = getManagePathFromType(type);
+      if (DEBUG) console.log('[SubscriptionPlans] managePath from type:', type, '->', pathFromType);
+      return pathFromType;
     }
+    
     // Fall back to userRole from auth
-    return getManagePath(userRole);
-  }, [type, userRole]);
+    if (userRole) {
+      const pathFromRole = getManagePath(userRole);
+      if (DEBUG) console.log('[SubscriptionPlans] managePath from userRole:', userRole, '->', pathFromRole);
+      return pathFromRole;
+    }
+    
+    // SAFETY: If neither type nor userRole is available, don't redirect
+    // This prevents the redirect loop when auth is still loading or role is not set
+    if (DEBUG) console.log('[SubscriptionPlans] managePath: no type or userRole, returning null to prevent redirect');
+    return null;
+  }, [type, userRole, DEBUG]);
   
   // Parse entity and role from type
   const { entity, role: pageRole } = useMemo(() => parseStudentType(type || 'student'), [type]);
@@ -498,9 +532,10 @@ function SubscriptionPlans() {
 
   // Compute whether redirect should occur
   // Don't redirect if user is in upgrade mode or organization mode - they want to see plans
+  // CRITICAL FIX: Also don't redirect if managePath is null (prevents redirect loop)
   const shouldRedirect = useMemo(
-    () => isAuthenticated && hasActiveOrPausedSubscription && !isUpgradeMode && !isOrganizationMode,
-    [isAuthenticated, hasActiveOrPausedSubscription, isUpgradeMode, isOrganizationMode]
+    () => isAuthenticated && hasActiveOrPausedSubscription && !isUpgradeMode && !isOrganizationMode && managePath !== null,
+    [isAuthenticated, hasActiveOrPausedSubscription, isUpgradeMode, isOrganizationMode, managePath]
   );
 
   // Show welcome message from signup flow (only once)
@@ -519,7 +554,11 @@ function SubscriptionPlans() {
   }, [subscriptionError, isAuthenticated]);
 
   useEffect(() => {
-    if (isFullyLoaded && shouldRedirect) {
+    if (isFullyLoaded && shouldRedirect && managePath) {
+      const DEBUG = import.meta.env.DEV || localStorage.getItem('DEBUG_SUBSCRIPTION') === 'true';
+      if (DEBUG) {
+        console.log('[SubscriptionPlans] Redirecting to manage page:', managePath + location.search);
+      }
       navigate(`${managePath}${location.search}`, { replace: true });
     }
   }, [isFullyLoaded, shouldRedirect, navigate, location.search, managePath]);
@@ -527,7 +566,9 @@ function SubscriptionPlans() {
   const handlePlanSelection = useCallback((plan) => {
     // If user is currently on their active plan, go to manage page
     if (subscriptionData && subscriptionData.plan === plan.id) {
-      navigate(managePath);
+      // Use managePath if available, otherwise construct from type or userRole
+      const targetPath = managePath || getManagePathFromType(type) || getManagePath(userRole) || `/subscription/plans?type=${studentType}`;
+      navigate(targetPath);
       return;
     }
     
@@ -605,7 +646,7 @@ function SubscriptionPlans() {
     // Execute validation
     validateUserAndProceed();
     
-  }, [isAuthenticated, authLoading, user, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription, managePath]);
+  }, [isAuthenticated, authLoading, user, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription, managePath, type, userRole]);
 
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });

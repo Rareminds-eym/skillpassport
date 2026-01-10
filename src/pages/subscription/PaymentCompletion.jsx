@@ -22,8 +22,11 @@ import { initiateRazorpayPayment } from '../../services/Subscriptions/razorpaySe
 
 /**
  * Get the subscription manage path based on user role
+ * Returns null if role is unknown to prevent wrong redirects
  */
 function getManagePath(userRole) {
+  if (!userRole) return null; // Return null to prevent wrong redirects
+  
   const manageRoutes = {
     super_admin: '/admin/subscription/manage',
     rm_admin: '/admin/subscription/manage',
@@ -39,7 +42,7 @@ function getManagePath(userRole) {
     school_student: '/student/subscription/manage',
     college_student: '/student/subscription/manage',
   };
-  return manageRoutes[userRole] || '/student/subscription/manage';
+  return manageRoutes[userRole] || null; // Return null for unknown roles
 }
 
 // Clean Input Component
@@ -318,7 +321,7 @@ function PaymentCompletion() {
 
   // Redirect if active subscription (including cancelled but not expired)
   useEffect(() => {
-    if (!subscriptionLoading && subscriptionData) {
+    if (!subscriptionLoading && subscriptionData && managePath) {
       const status = subscriptionData.status;
       const endDate = subscriptionData.endDate ? new Date(subscriptionData.endDate) : null;
       const now = new Date();
@@ -333,7 +336,7 @@ function PaymentCompletion() {
         navigate(managePath, { replace: true });
       }
     }
-  }, [subscriptionData, subscriptionLoading, navigate]);
+  }, [subscriptionData, subscriptionLoading, navigate, managePath]);
 
   // Redirect if no plan
   useEffect(() => {

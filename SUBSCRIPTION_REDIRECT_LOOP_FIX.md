@@ -405,3 +405,170 @@ localStorage.setItem('DEBUG_SUBSCRIPTION', 'true');
 // Toast: "Cache refresh failed, but your subscription is active."
 // Still navigates to dashboard
 ```
+
+
+---
+
+## Task 5: Fix Organization Setup Page Redirect Loop
+
+### Problem
+After signup, `school_admin` users were getting stuck in a redirect loop:
+1. User signs up as `school_admin`
+2. Redirected to `/subscription/plans?type=school_admin`
+3. `SubscriptionPlans.jsx` tries to redirect to manage page
+4. `managePath` calculated incorrectly as `/student/subscription/manage`
+5. `/student/*` route rejects `school_admin` role
+6. Redirected back to `/subscription/plans?type=student`
+7. Loop continues infinitely
+
+### Root Cause
+The `getManagePath` and `getManagePathFromType` functions in `SubscriptionPlans.jsx` were returning `/student/subscription/manage` as a default when:
+- `type` URL parameter was missing or unknown
+- `userRole` from `useAuth()` was `null` or not in the mapping
+- Auth was still loading
+
+### Solution Applied
+
+#### 1. Changed default return values to `null`
+```javascript
+// Before
+function getManagePath(userRole) {
+  const manageRoutes = { ... };
+  return manageRoutes[userRole] || '/student/subscription/manage'; // ❌ Wrong default
+}
+
+// After
+function getManagePath(userRole) {
+  if (!userRole) return null; // ✅ Return null to prevent wrong redirect
+  const manageRoutes = { ... };
+  return manageRoutes[userRole] || null; // ✅ Return null for unknown roles
+}
+```
+
+#### 2. Updated `managePath` calculation
+```javascript
+const managePath = useMemo(() => {
+  if (type) {
+    return getManagePathFromType(type);
+  }
+  if (userRole) {
+    return getManagePath(userRole);
+  }
+  // SAFETY: Return null to prevent redirect when type/role unknown
+  return null;
+}, [type, userRole]);
+```
+
+#### 3. Added safety check to redirect condition
+```javascript
+const shouldRedirect = useMemo(
+  () => isAuthenticated && hasActiveOrPausedSubscription && 
+        !isUpgradeMode && !isOrganizationMode && 
+        managePath !== null, // ✅ Only redirect if we have a valid path
+  [isAuthenticated, hasActiveOrPausedSubscription, isUpgradeMode, isOrganizationMode, managePath]
+);
+```
+
+#### 4. Added safety check to redirect effect
+```javascript
+useEffect(() => {
+  if (isFullyLoaded && shouldRedirect && managePath) { // ✅ Check managePath is truthy
+    navigate(`${managePath}${location.search}`, { replace: true });
+  }
+}, [isFullyLoaded, shouldRedirect, navigate, location.search, managePath]);
+```
+
+#### 5. Fixed `handlePlanSelection` to handle null `managePath`
+```javascript
+if (subscriptionData && subscriptionData.plan === plan.id) {
+  // Use managePath if available, otherwise construct fallback
+  const targetPath = managePath || getManagePathFromType(type) || 
+                     getManagePath(userRole) || `/subscription/plans?type=${studentType}`;
+  navigate(targetPath);
+  return;
+}
+```
+
+#### 6. Added comprehensive debug logging
+```javascript
+const DEBUG = import.meta.env.DEV || localStorage.getItem('DEBUG_SUBSCRIPTION') === 'true';
+useEffect(() => {
+  if (DEBUG) {
+    console.log('[SubscriptionPlans] State:', {
+      type,
+      pathType,
+      searchParamType: searchParams.get('type'),
+      userRole,
+      isAuthenticated,
+      authLoading,
+      pathname: location.pathname,
+      search: location.search,
+    });
+  }
+}, [type, pathType, searchParams, userRole, isAuthenticated, authLoading, location.pathname, location.search, DEBUG]);
+```
+
+### Files Modified
+- `src/pages/subscription/SubscriptionPlans.jsx` - Main fix applied
+
+### Testing
+1. Enable debug logging: `localStorage.setItem('DEBUG_SUBSCRIPTION', 'true')`
+2. Sign up as `school_admin`
+3. Verify redirect to `/subscription/plans?type=school_admin`
+4. Verify no redirect loop occurs
+5. Complete payment
+6. Verify redirect to `/school-admin/dashboard`
+
+
+---
+
+## Complete Fix Summary (All Files)
+
+### Files Fixed
+
+1. **`src/pages/subscription/SubscriptionPlans.jsx`**
+   - Changed `getManagePath()` to return `null` for unknown roles
+   - Changed `getManagePathFromType()` to return `null` for unknown types
+   - Added `managePath !== null` check to `shouldRedirect`
+   - Added safety check in redirect effect
+   - Fixed `handlePlanSelection` to handle null `managePath`
+   - Added debug logging
+
+2. **`src/pages/subscription/PaymentCompletion.jsx`**
+   - Changed `getManagePath()` to return `null` for unknown roles
+   - Added `managePath` check before redirecting
+   - Added `managePath` to useEffect dependency array
+
+3. **`src/pages/subscription/PaymentSuccess.jsx`**
+   - Updated `managePath` calculation to return `null` for non-student unknown roles
+   - Added safety check on "Manage" button (disabled when `managePath` is null)
+
+4. **`src/components/Subscription/SubscriptionRouteGuard.jsx`**
+   - Changed `getManagePath()` to return `null` for unknown roles
+   - Added `managePath` check in payment mode redirect
+   - Added `managePath` to useEffect dependency array
+
+### Files Verified (No Changes Needed)
+
+- `src/components/Subscription/SubscriptionProtectedRoute.jsx` - Uses URL-based `subscriptionFallbackPath` prop
+- `src/pages/subscription/AddOns.jsx` - Uses URL-based `basePath`
+- `src/components/Subscription/SubscriptionStatusWidget.jsx` - Uses URL-based `basePath`
+- `src/components/Subscription/SubscriptionSettingsSection.jsx` - Uses URL-based `basePath`
+- `src/services/Subscriptions/razorpayService.js` - Uses URL-based path detection
+- `src/components/ProtectedRoute.jsx` - Redirects to `/` not subscription plans
+- `src/routes/AppRoutes.jsx` - Has correct `subscriptionFallbackPath` props
+
+### Key Principle
+
+The fix ensures that when `type` URL parameter is missing AND `userRole` is unknown/null:
+- Functions return `null` instead of defaulting to `/student/subscription/manage`
+- Redirect logic checks for `null` and skips redirect if path is unknown
+- This prevents the redirect loop where non-student users get sent to student routes
+
+### Debug Mode
+
+Enable debug logging to troubleshoot:
+```javascript
+localStorage.setItem('DEBUG_SUBSCRIPTION', 'true');
+localStorage.setItem('DEBUG_PAYMENT', 'true');
+```

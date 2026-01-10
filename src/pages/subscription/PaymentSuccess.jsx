@@ -468,10 +468,15 @@ function PaymentSuccess() {
   } = usePaymentVerificationFromURL(searchParams, true);
 
   // Memoized values
-  const managePath = useMemo(() => 
-    MANAGE_ROUTES[getUserRole(user, role)] || '/student/subscription/manage',
-    [user, role]
-  );
+  const managePath = useMemo(() => {
+    const userRole = getUserRole(user, role);
+    // Return null if role is unknown to prevent wrong redirects
+    if (!userRole || userRole === 'student') {
+      // For student, we can safely use the default
+      return MANAGE_ROUTES[userRole] || '/student/subscription/manage';
+    }
+    return MANAGE_ROUTES[userRole] || null;
+  }, [user, role]);
 
   const planDetails = useMemo(() => {
     try {
@@ -809,8 +814,8 @@ function PaymentSuccess() {
           
           <div className="grid grid-cols-2 gap-2.5">
             <button
-              onClick={() => navigate(managePath)}
-              disabled={navigation.isNavigating}
+              onClick={() => managePath && navigate(managePath)}
+              disabled={navigation.isNavigating || !managePath}
               className="py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
             >
               Manage

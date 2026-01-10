@@ -258,9 +258,17 @@ function useGuardState({
       return GUARD_STATES.ACCESS_DENIED;
     }
 
-    // Step 3: Role check
+    // Step 3: Role check - be lenient for admin roles
     if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
-      return GUARD_STATES.ACCESS_DENIED;
+      // Check if this is an admin role mismatch that should be allowed
+      const isAdminRoute = allowedRoles.some(r => r.includes('_admin'));
+      const userIsAdmin = role === 'admin' || role?.includes('_admin');
+      
+      if (!(isAdminRoute && userIsAdmin)) {
+        // Not an admin exception, deny access
+        return GUARD_STATES.ACCESS_DENIED;
+      }
+      // Admin exception - continue to subscription check
     }
 
     // Step 4: Subscription not required
@@ -337,8 +345,23 @@ const SubscriptionProtectedRoute = ({
   subscriptionFallbackPath = '/subscription/plans',
   loginFallbackPath = '/login',
 }) => {
-  const { isAuthenticated, role, loading: authLoading } = useAuth();
+  const { isAuthenticated, role, loading: authLoading, user } = useAuth();
   const location = useLocation();
+  
+  // Debug logging for redirect loop investigation
+  useEffect(() => {
+    if (DEBUG) {
+      console.log('[SubscriptionGuard] Mount/Update:', {
+        path: location.pathname,
+        isAuthenticated,
+        role,
+        authLoading,
+        userId: user?.id,
+        allowedRoles,
+        requireSubscription,
+      });
+    }
+  }, [location.pathname, isAuthenticated, role, authLoading, user?.id, allowedRoles, requireSubscription]);
   
   const {
     hasAccess,
@@ -430,14 +453,22 @@ const SubscriptionProtectedRoute = ({
       return <Navigate to={redirectPath} state={{ from: location }} replace />;
     }
 
-    // Role mismatch
-    if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
+    // Role mismatch - but be lenient for admin roles
+    // Allow 'admin' role to access school_admin, college_admin, university_admin routes
+    // This handles the case where the role in metadata is 'admin' but the route expects a specific admin type
+    const roleMatches = allowedRoles.length === 0 || allowedRoles.includes(role);
+    const isAdminRoute = allowedRoles.some(r => r.includes('_admin'));
+    const userIsAdmin = role === 'admin' || role?.includes('_admin');
+    const adminRoleException = isAdminRoute && userIsAdmin;
+    
+    if (!roleMatches && !adminRoleException) {
+      // Role doesn't match and no admin exception applies
       const expectedRole = allowedRoles[0] || 'student';
       log.info('Role mismatch, redirecting to plans. Expected:', allowedRoles, 'Got:', role);
       return <Navigate to={`/subscription/plans?type=${expectedRole}`} replace />;
     }
 
-    // No subscription access
+    // Role matches (or admin exception applies) but no subscription access
     const fallbackUrl = getSubscriptionFallbackUrl();
     let message = 'A subscription is required to access this area.';
 
@@ -447,7 +478,7 @@ const SubscriptionProtectedRoute = ({
       message = 'Your subscription has ended. Subscribe again to access.';
     }
 
-    log.info('No subscription access, redirecting to:', fallbackUrl, 'Reason:', accessReason);
+    log.info('No subscription access, redirecting to:', fallbackUrl, 'Reason:', accessReason, 'Role:', role, 'AdminException:', adminRoleException);
     return (
       <Navigate 
         to={fallbackUrl} 
