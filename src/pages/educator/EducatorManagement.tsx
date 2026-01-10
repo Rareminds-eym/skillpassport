@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
 import {
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
-  XMarkIcon,
-  CheckIcon,
-  MagnifyingGlassIcon,
+    CheckIcon,
+    MagnifyingGlassIcon,
+    PencilIcon,
+    PlusIcon,
+    TrashIcon,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
 interface SchoolEducator {
@@ -80,8 +80,9 @@ const EducatorManagement = () => {
   const loadSchools = async () => {
     try {
       const { data, error } = await supabase
-        .from('schools')
+        .from('organizations')
         .select('id, name')
+        .eq('organization_type', 'school')
         .limit(100);
 
       if (error) throw error;

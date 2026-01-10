@@ -540,7 +540,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           isOpen={showMessageModal}
           onClose={() => setShowMessageModal(false)}
           student={student}
-          userRole={userRole as 'school_admin' | 'college_admin' | 'educator'}
+          userRole={userRole as 'school_admin' | 'college_admin' | 'university_admin' | 'educator'}
         />
       )}
 

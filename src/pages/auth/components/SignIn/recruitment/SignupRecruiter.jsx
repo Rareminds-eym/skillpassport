@@ -5,7 +5,6 @@ import { Link, useNavigate } from "react-router-dom";
 import loginIllustration from "../../../../../assets/images/auth/Recruiter-illustration.png";
 import SignupFormFields from "../../../../../components/Subscription/shared/SignupFormFields";
 import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from "../../../../../components/Subscription/shared/signupValidation";
-import { supabase } from "../../../../../lib/supabaseClient";
 import FeatureCard from "../../ui/FeatureCard";
 
 export default function SignupRecruiter() {
@@ -107,58 +106,30 @@ export default function SignupRecruiter() {
     try {
       const firstName = capitalizeFirstLetter(formData.firstName);
       const lastName = capitalizeFirstLetter(formData.lastName);
-      const fullName = `${firstName} ${lastName}`.trim();
       
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: fullName,
-            first_name: firstName,
-            last_name: lastName,
-            role: 'recruiter'
-          }
-        }
+      // Use the worker API for signup with proper rollback support
+      const USER_API_URL = import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
+      
+      const response = await fetch(`${USER_API_URL}/signup/recruiter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          name: `${firstName} ${lastName}`.trim(),
+          firstName,
+          lastName,
+          phone: formData.phone,
+          companyId: formData.workspaceId, // workspaceId is the company ID
+          dateOfBirth: formData.dateOfBirth || undefined,
+        }),
       });
 
-      if (authError) throw new Error(authError.message);
-      if (!authData.user) throw new Error('Failed to create user account');
+      const result = await response.json();
 
-      const { error: recruiterError } = await supabase
-        .from('recruiters')
-        .insert({
-          user_id: authData.user.id,
-          name: fullName,
-          email: formData.email,
-          phone: formData.phone,
-          country: formData.country,
-          state: formData.state,
-          city: formData.city,
-          preferred_language: formData.preferredLanguage,
-          referral_code: formData.referralCode || null,
-          verificationstatus: 'pending',
-          isactive: true,
-          approval_status: 'pending',
-          account_status: 'active'
-        });
-
-      if (recruiterError) throw new Error(recruiterError.message);
-
-      // Create user record in public.users table
-      const { error: userError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email: formData.email,
-          firstName: firstName,
-          lastName: lastName,
-          role: 'recruiter',
-          isActive: true,
-          dob: formData.dateOfBirth || null
-        });
-
-      if (userError) console.error('Error creating user record:', userError);
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create account');
+      }
 
       alert('Account created successfully! Please check your email to verify your account.');
       navigate('/login/recruiter');

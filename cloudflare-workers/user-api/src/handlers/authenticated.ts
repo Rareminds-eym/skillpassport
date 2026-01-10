@@ -5,9 +5,9 @@
  * - Create college staff (college admin adds staff)
  */
 
-import { Env, CreateStudentRequest, CreateTeacherRequest, CreateCollegeStaffRequest } from '../types';
-import { jsonResponse, validateEmail, splitName, generatePassword, calculateAge } from '../utils/helpers';
-import { getSupabaseAdmin, authenticateUser, deleteAuthUser } from '../utils/supabase';
+import { CreateCollegeStaffRequest, CreateStudentRequest, CreateTeacherRequest, Env } from '../types';
+import { calculateAge, generatePassword, jsonResponse, splitName, validateEmail } from '../utils/helpers';
+import { authenticateUser, deleteAuthUser } from '../utils/supabase';
 
 /**
  * Handle admin creating a student
@@ -54,10 +54,12 @@ export async function handleCreateStudent(request: Request, env: Env): Promise<R
     institutionType = 'school';
   } else {
     if (userRole === 'college_admin') {
+      // Look up college from organizations table
       const { data: college } = await supabaseAdmin
-        .from('colleges')
+        .from('organizations')
         .select('id')
-        .ilike('deanEmail', userEmail)
+        .eq('organization_type', 'college')
+        .or(`admin_id.eq.${userId},email.ilike.${userEmail}`)
         .maybeSingle();
       if (college?.id) {
         collegeId = college.id;
@@ -237,10 +239,12 @@ export async function handleCreateTeacher(request: Request, env: Env): Promise<R
   }
 
   if (!schoolId) {
+    // Look up school from organizations table
     const { data: schoolData } = await supabaseAdmin
-      .from('schools')
+      .from('organizations')
       .select('id')
-      .or(`email.eq.${user.email},principal_email.eq.${user.email}`)
+      .eq('organization_type', 'school')
+      .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
       .maybeSingle();
     schoolId = schoolData?.id || null;
   }
@@ -473,31 +477,18 @@ export async function handleCreateCollegeStaff(request: Request, env: Env): Prom
     }
   }
 
-  // Try to find college by deanEmail
+  // Try to find college from organizations table
   if (!collegeId) {
-    const { data: collegeByDean } = await supabaseAdmin
-      .from('colleges')
+    const { data: collegeData } = await supabaseAdmin
+      .from('organizations')
       .select('id')
-      .ilike('deanEmail', user.email || '')
+      .eq('organization_type', 'college')
+      .or(`admin_id.eq.${user.id},email.ilike.${user.email || ''}`)
       .maybeSingle();
 
-    if (collegeByDean?.id) {
-      collegeId = collegeByDean.id;
-      console.log('Found collegeId from colleges.deanEmail:', collegeId);
-    }
-  }
-
-  // Try to find college by email
-  if (!collegeId) {
-    const { data: collegeByEmail } = await supabaseAdmin
-      .from('colleges')
-      .select('id')
-      .ilike('email', user.email || '')
-      .maybeSingle();
-
-    if (collegeByEmail?.id) {
-      collegeId = collegeByEmail.id;
-      console.log('Found collegeId from colleges.email:', collegeId);
+    if (collegeData?.id) {
+      collegeId = collegeData.id;
+      console.log('Found collegeId from organizations table:', collegeId);
     }
   }
 

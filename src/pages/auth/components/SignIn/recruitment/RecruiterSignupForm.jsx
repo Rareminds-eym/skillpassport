@@ -1,7 +1,6 @@
 import { Eye, EyeOff } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../../../../../lib/supabaseClient';
 
 const RecruiterSignupForm = ({ onSuccess, onSwitchToLogin }) => {
   const navigate = useNavigate();
@@ -178,45 +177,31 @@ const RecruiterSignupForm = ({ onSuccess, onSwitchToLogin }) => {
     setIsSubmitting(true);
     
     try {
-      // 1. Verify workspace exists (you'll need to implement this based on your workspace table)
-      // For now, we'll skip this check
+      // Use the worker API for signup with proper rollback support
+      const USER_API_URL = import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
       
-      // 2. Create user account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName,
-            role: 'recruiter'
-          }
-        }
+      const nameParts = formData.fullName.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      const response = await fetch(`${USER_API_URL}/signup/recruiter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          name: formData.fullName,
+          firstName,
+          lastName,
+          phone: formData.phone,
+          companyId: formData.workspaceId, // workspaceId is the company ID
+        }),
       });
 
-      if (authError) {
-        throw new Error(authError.message);
-      }
+      const result = await response.json();
 
-      if (!authData.user) {
-        throw new Error('Failed to create user account');
-      }
-
-      // 3. Create recruiter record
-      const { error: recruiterError } = await supabase
-        .from('recruiters')
-        .insert({
-          user_id: authData.user.id,
-          name: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          verificationstatus: 'pending',
-          isactive: true,
-          approval_status: 'pending',
-          account_status: 'active'
-        });
-
-      if (recruiterError) {
-        throw new Error(recruiterError.message);
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create account');
       }
 
       if (onSuccess) {

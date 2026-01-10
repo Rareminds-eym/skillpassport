@@ -1,15 +1,15 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  UserCircleIcon,
-  PencilIcon,
-  EnvelopeIcon,
-  PhoneIcon,
-  MapPinIcon,
-  AcademicCapIcon,
-  CalendarIcon,
-  BuildingOfficeIcon,
+    AcademicCapIcon,
+    BuildingOfficeIcon,
+    CalendarIcon,
+    EnvelopeIcon,
+    MapPinIcon,
+    PencilIcon,
+    PhoneIcon,
+    UserCircleIcon,
 } from '@heroicons/react/24/outline';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { getDocumentUrl } from '../../services/fileUploadService';
 
@@ -126,8 +126,9 @@ const ProfileFixed = () => {
         .from('school_educators')
         .select(`
           *,
-          schools:school_id (
-            name
+          school:organizations!school_educators_school_id_fkey (
+            name,
+            organization_type
           )
         `)
         .eq('email', email)

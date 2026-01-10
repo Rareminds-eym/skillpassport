@@ -14,6 +14,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { extractPaymentParams, logFailedTransaction } from '../../services/Subscriptions/paymentVerificationService';
+import useAuth from '../../hooks/useAuth';
 
 // Issue Card Component
 const IssueCard = ({ icon: Icon, title, description, index }) => (
@@ -31,6 +32,7 @@ const IssueCard = ({ icon: Icon, title, description, index }) => (
 function PaymentFailure() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { role } = useAuth();
   const [retryAttempts, setRetryAttempts] = useState(0);
   const [showSupportModal, setShowSupportModal] = useState(false);
 
@@ -106,7 +108,9 @@ function PaymentFailure() {
         }
       });
     } else {
-      navigate('/subscription/plans');
+      // Include user role type for proper plan display
+      const userType = role || planDetails?.studentType || 'student';
+      navigate(`/subscription/plans?type=${userType}`);
     }
   };
 
@@ -170,7 +174,10 @@ function PaymentFailure() {
             {/* Alternative Actions */}
             <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={() => navigate('/subscription/plans')}
+                onClick={() => {
+                  const userType = role || planDetails?.studentType || 'student';
+                  navigate(`/subscription/plans?type=${userType}`);
+                }}
                 className="py-3 px-4 border-2 border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-2"
               >
                 <ArrowLeft className="w-5 h-5" />

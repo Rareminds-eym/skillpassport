@@ -1,23 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useState } from "react"
 import {
-  FunnelIcon,
-  TableCellsIcon,
-  Squares2X2Icon,
-  EyeIcon,
-  ChevronDownIcon,
-  XMarkIcon,
-  UserGroupIcon,
-  ArrowPathIcon,
-  PlusCircleIcon,
-  EnvelopeIcon,
-  ClockIcon,
-  PencilIcon,
-  AcademicCapIcon,
-  MagnifyingGlassIcon
+    AcademicCapIcon,
+    ArrowPathIcon,
+    ChevronDownIcon,
+    ClockIcon,
+    EnvelopeIcon,
+    EyeIcon,
+    FunnelIcon,
+    MagnifyingGlassIcon,
+    PencilIcon,
+    PlusCircleIcon,
+    Squares2X2Icon,
+    TableCellsIcon,
+    UserGroupIcon,
+    XMarkIcon
 } from "@heroicons/react/24/outline"
-import { supabase } from "../../../lib/supabaseClient"
+import { useEffect, useMemo, useState } from "react"
 import toast from "react-hot-toast"
+import { supabase } from "../../../lib/supabaseClient"
 
 interface SchoolClass {
   id: string
@@ -660,12 +660,13 @@ const ClassManagement = () => {
 
       console.log("User role:", userData?.role)
 
-      // For school_admin: lookup school by created_by
+      // For school_admin: lookup school from organizations table
       if (userData?.role === "school_admin") {
         const { data: schoolData, error: schoolError } = await supabase
-          .from("schools")
+          .from("organizations")
           .select("id")
-          .eq("created_by", user.id)
+          .eq("organization_type", "school")
+          .eq("admin_id", user.id)
           .maybeSingle()
 
         if (schoolError && schoolError.code !== 'PGRST116') {
@@ -673,7 +674,7 @@ const ClassManagement = () => {
         }
 
         if (schoolData?.id) {
-          console.log("Found school ID from schools.created_by:", schoolData.id)
+          console.log("Found school ID from organizations:", schoolData.id)
           setSchoolId(schoolData.id)
           return
         }
@@ -1423,7 +1424,7 @@ const ClassManagement = () => {
 }
 
 // Import modal components
-import { ManageStudentsModal as ManageStudentsModalComponent, AssignEducatorModal as AssignEducatorModalComponent } from "../../../components/admin/modals/ClassManagementModals"
+import { AssignEducatorModal as AssignEducatorModalComponent, ManageStudentsModal as ManageStudentsModalComponent } from "../../../components/admin/modals/ClassManagementModals"
 import Pagination from "../../../components/admin/Pagination"
 
 export default ClassManagement

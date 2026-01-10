@@ -94,7 +94,7 @@ class AIRecommendationService {
         .from('opportunities')
         .select('*')
         .eq('id', opportunityId)
-        .single();
+        .maybeSingle();
 
       if (fetchError || !opp) {
         throw new Error('Opportunity not found');
@@ -147,7 +147,7 @@ class AIRecommendationService {
         .from('students')
         .select('*')
         .eq('id', studentId)
-        .single();
+        .maybeSingle();
 
       if (fetchError || !student) {
         throw new Error('Student not found');

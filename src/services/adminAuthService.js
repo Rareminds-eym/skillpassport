@@ -1,14 +1,14 @@
 import { supabase } from '../lib/supabaseClient';
 import {
-  AUTH_ERROR_CODES,
-  validateCredentials,
-  mapSupabaseError,
-  handleAuthError,
-  logAuthEvent,
-  withRetry,
-  withTimeout,
-  buildErrorResponse,
-  generateCorrelationId,
+    AUTH_ERROR_CODES,
+    buildErrorResponse,
+    generateCorrelationId,
+    handleAuthError,
+    logAuthEvent,
+    mapSupabaseError,
+    validateCredentials,
+    withRetry,
+    withTimeout,
 } from '../utils/authErrorHandler';
 
 /**
@@ -220,7 +220,7 @@ export const loginAdmin = async (email, password) => {
             ? `${userData.firstName} ${userData.lastName || ''}`.trim() 
             : authData.user.email,
           email: authData.user.email,
-          role: effectiveRole,
+          role: userRole,
         },
         session: authData.session,
         error: null,
@@ -259,15 +259,16 @@ export const loginAdmin = async (email, password) => {
 // ============================================================================
 
 /**
- * Check if user is a school admin
+ * Check if user is a school admin (using unified organizations table)
  */
 const checkSchoolAdmin = async (user, correlationId) => {
   try {
-    const { data: school, error } = await withTimeout(
+    const { data: org, error } = await withTimeout(
       supabase
-        .from('schools')
+        .from('organizations')
         .select('*')
-        .or(`created_by.eq.${user.id},email.eq.${user.email}`)
+        .eq('organization_type', 'school')
+        .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
         .maybeSingle(),
       DB_QUERY_TIMEOUT_MS
     );
@@ -277,19 +278,19 @@ const checkSchoolAdmin = async (user, correlationId) => {
       return { found: false };
     }
 
-    if (!school) {
+    if (!org) {
       return { found: false };
     }
 
     // Check approval status
-    if (school.approval_status !== 'approved') {
+    if (org.approval_status !== 'approved') {
       let statusMessage;
       
-      if (school.approval_status === 'pending') {
+      if (org.approval_status === 'pending') {
         statusMessage = 'Your school registration is pending approval. Please contact RareMinds admin.';
-      } else if (school.approval_status === 'rejected') {
-        statusMessage = school.rejection_reason
-          ? `Your school registration was rejected: ${school.rejection_reason}. Please contact RareMinds admin.`
+      } else if (org.approval_status === 'rejected') {
+        statusMessage = org.rejection_reason
+          ? `Your school registration was rejected: ${org.rejection_reason}. Please contact RareMinds admin.`
           : 'Your school registration was rejected. Please contact RareMinds admin.';
       } else {
         statusMessage = 'Your school account is not approved. Please contact RareMinds admin.';
@@ -299,14 +300,14 @@ const checkSchoolAdmin = async (user, correlationId) => {
         found: true,
         success: false,
         error: statusMessage,
-        errorCode: school.approval_status === 'pending' 
+        errorCode: org.approval_status === 'pending' 
           ? AUTH_ERROR_CODES.ACCOUNT_PENDING_APPROVAL 
           : AUTH_ERROR_CODES.ACCOUNT_REJECTED,
       };
     }
 
     // Check account status
-    if (school.account_status !== 'active' && school.account_status !== 'pending') {
+    if (org.account_status !== 'active' && org.account_status !== 'pending') {
       return {
         found: true,
         success: false,
@@ -319,14 +320,14 @@ const checkSchoolAdmin = async (user, correlationId) => {
       found: true,
       success: true,
       admin: {
-        id: school.id,
+        id: org.id,
         user_id: user.id,
-        name: school.principal_name || school.name,
-        email: school.email,
+        name: org.name,
+        email: org.email,
         role: 'school_admin',
-        schoolId: school.id,
-        schoolName: school.name,
-        schoolCode: school.code,
+        schoolId: org.id,
+        schoolName: org.name,
+        organizationId: org.id,
       },
     };
   } catch (error) {
@@ -336,15 +337,16 @@ const checkSchoolAdmin = async (user, correlationId) => {
 };
 
 /**
- * Check if user is a college admin
+ * Check if user is a college admin (using unified organizations table)
  */
 const checkCollegeAdmin = async (user, correlationId) => {
   try {
-    const { data: college, error } = await withTimeout(
+    const { data: org, error } = await withTimeout(
       supabase
-        .from('colleges')
+        .from('organizations')
         .select('*')
-        .or(`created_by.eq.${user.id},email.eq.${user.email}`)
+        .eq('organization_type', 'college')
+        .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
         .maybeSingle(),
       DB_QUERY_TIMEOUT_MS
     );
@@ -354,7 +356,7 @@ const checkCollegeAdmin = async (user, correlationId) => {
       return { found: false };
     }
 
-    if (!college) {
+    if (!org) {
       return { found: false };
     }
 
@@ -362,13 +364,14 @@ const checkCollegeAdmin = async (user, correlationId) => {
       found: true,
       success: true,
       admin: {
-        id: college.id,
+        id: org.id,
         user_id: user.id,
-        name: college.name,
-        email: college.email || user.email,
+        name: org.name,
+        email: org.email || user.email,
         role: 'college_admin',
-        collegeId: college.id,
-        collegeName: college.name,
+        collegeId: org.id,
+        collegeName: org.name,
+        organizationId: org.id,
       },
     };
   } catch (error) {
@@ -378,15 +381,16 @@ const checkCollegeAdmin = async (user, correlationId) => {
 };
 
 /**
- * Check if user is a university admin
+ * Check if user is a university admin (using unified organizations table)
  */
 const checkUniversityAdmin = async (user, correlationId) => {
   try {
-    const { data: university, error } = await withTimeout(
+    const { data: org, error } = await withTimeout(
       supabase
-        .from('universities')
+        .from('organizations')
         .select('*')
-        .or(`created_by.eq.${user.id},email.eq.${user.email}`)
+        .eq('organization_type', 'university')
+        .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
         .maybeSingle(),
       DB_QUERY_TIMEOUT_MS
     );
@@ -396,7 +400,7 @@ const checkUniversityAdmin = async (user, correlationId) => {
       return { found: false };
     }
 
-    if (!university) {
+    if (!org) {
       return { found: false };
     }
 
@@ -404,13 +408,14 @@ const checkUniversityAdmin = async (user, correlationId) => {
       found: true,
       success: true,
       admin: {
-        id: university.id,
+        id: org.id,
         user_id: user.id,
-        name: university.name,
-        email: university.email || user.email,
+        name: org.name,
+        email: org.email || user.email,
         role: 'university_admin',
-        universityId: university.id,
-        universityName: university.name,
+        universityId: org.id,
+        universityName: org.name,
+        organizationId: org.id,
       },
     };
   } catch (error) {
@@ -424,7 +429,7 @@ const checkUniversityAdmin = async (user, correlationId) => {
 // ============================================================================
 
 /**
- * Get current admin profile
+ * Get current admin profile (using unified organizations table)
  * @returns {Promise<{success: boolean, admin: object|null, error: string|null}>}
  */
 export const getCurrentAdmin = async () => {
@@ -445,7 +450,7 @@ export const getCurrentAdmin = async () => {
       };
     }
 
-    // Check schools table
+    // Check organizations table for school admin
     const schoolResult = await checkSchoolAdmin(user, correlationId);
     if (schoolResult.found && schoolResult.success) {
       return {
@@ -455,7 +460,7 @@ export const getCurrentAdmin = async () => {
       };
     }
 
-    // Check colleges table
+    // Check organizations table for college admin
     const collegeResult = await checkCollegeAdmin(user, correlationId);
     if (collegeResult.found) {
       return {
@@ -465,7 +470,7 @@ export const getCurrentAdmin = async () => {
       };
     }
 
-    // Check universities table
+    // Check organizations table for university admin
     const universityResult = await checkUniversityAdmin(user, correlationId);
     if (universityResult.found) {
       return {

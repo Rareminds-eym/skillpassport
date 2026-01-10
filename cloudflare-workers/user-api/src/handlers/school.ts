@@ -3,15 +3,18 @@
  * - School Admin signup
  * - School Educator signup
  * - School Student signup
+ * 
+ * Uses unified 'organizations' table with organization_type='school'
  */
 
 import { EducatorSignupRequest, Env, SchoolAdminSignupRequest, StudentSignupRequest } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
-import { calculateAge, jsonResponse, splitName, validateEmail } from '../utils/helpers';
+import { calculateAge, capitalizeFirstLetter, jsonResponse, splitName, validateEmail } from '../utils/helpers';
 import { checkEmailExists, deleteAuthUser, getSupabaseAdmin } from '../utils/supabase';
 
 /**
  * Handle school admin signup with school creation
+ * Creates organization record in unified 'organizations' table
  */
 export async function handleSchoolAdminSignup(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
@@ -43,10 +46,11 @@ export async function handleSchoolAdminSignup(request: Request, env: Env): Promi
       return jsonResponse({ error: 'An account with this email already exists' }, 400);
     }
 
-    // Check if school code is unique
+    // Check if school code is unique in organizations table
     const { data: existingSchool } = await supabaseAdmin
-      .from('schools')
+      .from('organizations')
       .select('id')
+      .eq('organization_type', 'school')
       .eq('code', body.schoolCode)
       .maybeSingle();
 
@@ -97,11 +101,12 @@ export async function handleSchoolAdminSignup(request: Request, env: Env): Promi
         throw new Error(`Failed to create user record: ${userError.message}`);
       }
 
-      // 3. Create school record
+      // 3. Create organization record in unified organizations table
       const { data: school, error: schoolError } = await supabaseAdmin
-        .from('schools')
+        .from('organizations')
         .insert({
           name: body.schoolName,
+          organization_type: 'school',
           code: body.schoolCode,
           email: body.email.toLowerCase(),
           phone: body.phone,
@@ -111,15 +116,17 @@ export async function handleSchoolAdminSignup(request: Request, env: Env): Promi
           state: body.state,
           country: body.country || 'India',
           pincode: body.pincode,
-          established_year: body.establishedYear,
-          board: body.board,
-          principal_name: body.principalName,
-          principal_email: body.principalEmail || body.email,
-          principal_phone: body.principalPhone || body.phone,
+          admin_id: userId,
           account_status: 'pending',
           approval_status: 'pending',
-          created_by: userId,
-          updated_by: userId,
+          is_active: true,
+          metadata: {
+            established_year: body.establishedYear,
+            board: body.board,
+            principal_name: body.principalName,
+            principal_email: body.principalEmail || body.email,
+            principal_phone: body.principalPhone || body.phone,
+          },
         })
         .select()
         .single();
@@ -154,7 +161,6 @@ export async function handleSchoolAdminSignup(request: Request, env: Env): Promi
         },
       });
     } catch (error) {
-      // Rollback: delete auth user if subsequent steps fail
       console.error('Rollback: deleting auth user due to error:', error);
       await deleteAuthUser(supabaseAdmin, userId);
       throw error;
@@ -170,6 +176,7 @@ export async function handleSchoolAdminSignup(request: Request, env: Env): Promi
 
 /**
  * Handle school educator signup
+ * Verifies school exists in organizations table
  */
 export async function handleEducatorSignup(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
@@ -177,7 +184,6 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
   try {
     const body = (await request.json()) as EducatorSignupRequest;
 
-    // Validate required fields
     if (!body.email || !body.password || !body.firstName || !body.lastName || !body.schoolId) {
       return jsonResponse(
         { error: 'Missing required fields: email, password, firstName, lastName, schoolId' },
@@ -193,23 +199,22 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
       return jsonResponse({ error: 'Password must be at least 6 characters' }, 400);
     }
 
-    // Check if email already exists
     if (await checkEmailExists(supabaseAdmin, body.email)) {
       return jsonResponse({ error: 'An account with this email already exists' }, 400);
     }
 
-    // Verify school exists
+    // Verify school exists in organizations table
     const { data: school, error: schoolError } = await supabaseAdmin
-      .from('schools')
+      .from('organizations')
       .select('id, name')
       .eq('id', body.schoolId)
+      .eq('organization_type', 'school')
       .single();
 
     if (schoolError || !school) {
       return jsonResponse({ error: 'Invalid school selected' }, 400);
     }
 
-    // Check if educator already exists in school_educators
     const { data: existingEducator } = await supabaseAdmin
       .from('school_educators')
       .select('id')
@@ -220,7 +225,6 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
       return jsonResponse({ error: 'An educator with this email already exists' }, 400);
     }
 
-    // 1. Create auth user
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: body.email.toLowerCase(),
       password: body.password,
@@ -243,15 +247,14 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
     const userId = authUser.user.id;
 
     try {
-      // 2. Create public.users record
       const firstName = capitalizeFirstLetter(body.firstName);
       const lastName = capitalizeFirstLetter(body.lastName);
       
       const { error: userError } = await supabaseAdmin.from('users').insert({
         id: userId,
         email: body.email.toLowerCase(),
-        firstName: firstName,
-        lastName: lastName,
+        firstName,
+        lastName,
         role: 'school_educator',
         organizationId: body.schoolId,
         isActive: true,
@@ -267,7 +270,6 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
         throw new Error(`Failed to create user record: ${userError.message}`);
       }
 
-      // 3. Create school_educators record
       const { data: educator, error: educatorError } = await supabaseAdmin
         .from('school_educators')
         .insert({
@@ -287,9 +289,7 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
           verification_status: 'pending',
           role: 'subject_teacher',
           onboarding_status: 'active',
-          metadata: {
-            source: 'self_signup',
-          },
+          metadata: { source: 'self_signup' },
         })
         .select()
         .single();
@@ -298,7 +298,6 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
         throw new Error(`Failed to create educator profile: ${educatorError?.message}`);
       }
 
-      // 4. Send welcome email
       await sendWelcomeEmail(
         env,
         body.email,
@@ -310,7 +309,7 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
 
       return jsonResponse({
         success: true,
-        message: 'Educator account created successfully! Please check your email for login details.',
+        message: 'Educator account created successfully!',
         data: {
           userId,
           educatorId: educator.id,
@@ -322,7 +321,6 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
         },
       });
     } catch (error) {
-      // Rollback: delete auth user if subsequent steps fail
       console.error('Rollback: deleting auth user due to error:', error);
       await deleteAuthUser(supabaseAdmin, userId);
       throw error;
@@ -336,8 +334,10 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
   }
 }
 
+
 /**
  * Handle school student signup
+ * Verifies school exists in organizations table
  */
 export async function handleStudentSignup(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = getSupabaseAdmin(env);
@@ -345,7 +345,6 @@ export async function handleStudentSignup(request: Request, env: Env): Promise<R
   try {
     const body = (await request.json()) as StudentSignupRequest;
 
-    // Validate required fields
     if (!body.email || !body.password || !body.name || !body.schoolId) {
       return jsonResponse({ error: 'Missing required fields: email, password, name, schoolId' }, 400);
     }
@@ -358,23 +357,22 @@ export async function handleStudentSignup(request: Request, env: Env): Promise<R
       return jsonResponse({ error: 'Password must be at least 6 characters' }, 400);
     }
 
-    // Check if email already exists in auth
     if (await checkEmailExists(supabaseAdmin, body.email)) {
       return jsonResponse({ error: 'An account with this email already exists' }, 400);
     }
 
-    // Verify school exists
+    // Verify school exists in organizations table
     const { data: school, error: schoolError } = await supabaseAdmin
-      .from('schools')
+      .from('organizations')
       .select('id, name')
       .eq('id', body.schoolId)
+      .eq('organization_type', 'school')
       .single();
 
     if (schoolError || !school) {
       return jsonResponse({ error: 'Invalid school selected' }, 400);
     }
 
-    // Check if student already exists
     const { data: existingStudent } = await supabaseAdmin
       .from('students')
       .select('id')
@@ -385,7 +383,6 @@ export async function handleStudentSignup(request: Request, env: Env): Promise<R
       return jsonResponse({ error: 'A student with this email already exists' }, 400);
     }
 
-    // 1. Create auth user
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: body.email.toLowerCase(),
       password: body.password,
@@ -406,7 +403,6 @@ export async function handleStudentSignup(request: Request, env: Env): Promise<R
     const userId = authUser.user.id;
 
     try {
-      // 2. Create public.users record
       const { firstName, lastName } = body.firstName && body.lastName 
         ? { firstName: capitalizeFirstLetter(body.firstName), lastName: capitalizeFirstLetter(body.lastName) }
         : splitName(body.name);
@@ -431,11 +427,9 @@ export async function handleStudentSignup(request: Request, env: Env): Promise<R
         throw new Error(`Failed to create user record: ${userError.message}`);
       }
 
-      // Calculate age from date of birth
       const age = calculateAge(body.dateOfBirth || '');
       const fullName = `${firstName} ${lastName}`.trim();
 
-      // 3. Create students record (first_name/last_name stored in users table only)
       const { data: student, error: studentError } = await supabaseAdmin
         .from('students')
         .insert({
@@ -462,9 +456,7 @@ export async function handleStudentSignup(request: Request, env: Env): Promise<R
           school_id: body.schoolId,
           student_type: 'school_student',
           approval_status: 'approved',
-          metadata: {
-            source: 'self_signup',
-          },
+          metadata: { source: 'self_signup' },
         })
         .select()
         .single();
@@ -473,7 +465,6 @@ export async function handleStudentSignup(request: Request, env: Env): Promise<R
         throw new Error(`Failed to create student profile: ${studentError?.message}`);
       }
 
-      // 4. Send welcome email
       await sendWelcomeEmail(
         env,
         body.email,
@@ -485,7 +476,7 @@ export async function handleStudentSignup(request: Request, env: Env): Promise<R
 
       return jsonResponse({
         success: true,
-        message: 'Student account created successfully! Please check your email for login details.',
+        message: 'Student account created successfully!',
         data: {
           userId,
           studentId: student.id,
@@ -497,7 +488,6 @@ export async function handleStudentSignup(request: Request, env: Env): Promise<R
         },
       });
     } catch (error) {
-      // Rollback: delete auth user if subsequent steps fail
       console.error('Rollback: deleting auth user due to error:', error);
       await deleteAuthUser(supabaseAdmin, userId);
       throw error;

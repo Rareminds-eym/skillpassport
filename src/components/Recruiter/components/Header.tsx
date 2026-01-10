@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  BellIcon, 
+import {
+  BellIcon,
   UserCircleIcon,
   Bars3Icon,
   XMarkIcon
@@ -16,6 +16,31 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
   const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false)
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+
+  const profileRef = useRef<HTMLDivElement>(null)
+  const notificationRef = useRef<HTMLDivElement>(null)
+
+  // Close profile menu and notifications when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Profile Dropdown
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false)
+      }
+      // Notification Panel
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false)
+      }
+    }
+
+    if (showProfileMenu || showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showProfileMenu, showNotifications])
 
   // ✅ get realtime unread notifications
   const { unreadCount } = useNotifications(user?.email || null)
@@ -36,7 +61,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
                 <Bars3Icon className="h-6 w-6" />
               )}
             </button>
-            
+
             {/* Logo */}
             <div className="flex-shrink-0 ml-2 md:ml-0">
               <img
@@ -50,14 +75,17 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
           {/* Right side */}
           <div className="flex items-center space-x-4">
             {/* 🔔 Notifications */}
-            <div className="relative">
+            <div ref={notificationRef} className="relative">
               <button
-                onClick={() => setShowNotifications((s) => !s)}
+                onClick={() => {
+                  setShowNotifications((s) => !s)
+                  setShowProfileMenu(false)
+                }}
                 className="relative p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <BellIcon className="h-6 w-6" />
                 {/* red dot shows only if unread > 0 */}
-                { unreadCount > 0 && (
+                {unreadCount > 0 && (
                   <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
                 )}
               </button>
@@ -71,9 +99,12 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
             </div>
 
             {/* 👤 Profile */}
-            <div className="relative">
+            <div ref={profileRef} className="relative">
               <button
-                onClick={() => setShowProfileMenu((s) => !s)}
+                onClick={() => {
+                  setShowProfileMenu((s) => !s)
+                  setShowNotifications(false)
+                }}
                 className="flex items-center space-x-3 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500"
                 aria-haspopup="true"
                 aria-expanded={showProfileMenu}
@@ -86,7 +117,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
               </button>
 
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
                   <div className="py-1">
                     {/* ✅ Navigate to recruiter profile page */}
                     <button

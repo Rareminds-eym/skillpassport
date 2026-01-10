@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef, useEffect } from 'react'
 import {
     BellIcon,
     XMarkIcon,
@@ -35,6 +35,24 @@ interface NotificationPanelProps {
 const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, educatorEmail }) => {
     const [selectedFilter, setSelectedFilter] = React.useState<FilterKey>('all')
     const [showAll, setShowAll] = React.useState(false)
+    const panelRef = useRef<HTMLDivElement>(null)
+
+    // Close when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+                onClose()
+            }
+        }
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside)
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+        }
+    }, [isOpen, onClose])
 
     const PREVIEW_LIMIT = 4
 
@@ -152,7 +170,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, 
             />
 
             {/* Notification Popup - Fully Mobile Responsive */}
-            <div className="fixed top-16 md:absolute bottom-0 md:bottom-auto left-0 md:left-auto right-0 md:right-0 md:top-14 w-full md:w-96 bg-white shadow-2xl z-40 overflow-hidden md:border border-gray-100 md:rounded-xl lg:rounded-t-xl max-h-[85vh] md:max-h-96 flex flex-col">
+            <div className="fixed top-16 md:absolute bottom-0 md:bottom-auto left-0 md:left-auto right-0 md:right-0 md:top-14 w-full md:w-[28rem] bg-white shadow-xl z-40 overflow-hidden md:border border-gray-100 md:rounded-xl lg:rounded-t-xl max-h-[85vh] md:max-h-[32rem] flex flex-col">
                 {/* Header */}
                 <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 flex-shrink-0">
                     <div className="flex justify-between items-start">

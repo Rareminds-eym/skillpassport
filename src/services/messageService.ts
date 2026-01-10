@@ -13,9 +13,9 @@ export interface Message {
   id: number;
   conversation_id: string;
   sender_id: string;
-  sender_type: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin';
+  sender_type: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin';
   receiver_id: string;
-  receiver_type: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin';
+  receiver_type: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin';
   message_text: string;
   attachments?: any[];
   application_id?: number;
@@ -858,12 +858,13 @@ export class MessageService {
               .update({ college_admin_unread_count: 0 })
               .eq('id', conversationId);
           } else {
-            // Check if user is college owner
+            // Check if user is college owner in organizations table
             const { data: collegeOwner, error: ownerError } = await supabase
-              .from('colleges')
-              .select('created_by')
+              .from('organizations')
+              .select('admin_id')
               .eq('id', conversation.college_id)
-              .eq('created_by', userId)
+              .eq('organization_type', 'college')
+              .eq('admin_id', userId)
               .single();
             
             if (!ownerError && collegeOwner) {
@@ -982,7 +983,7 @@ export class MessageService {
    */
   static subscribeToUserConversations(
     userId: string,
-    userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin',
+    userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin',
     onUpdate: (conversation: Conversation) => void
   ) {
     let column: string;
@@ -1192,7 +1193,7 @@ export class MessageService {
   static async deleteConversationForUser(
     conversationId: string,
     userId: string,
-    userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin'
+    userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin'
   ): Promise<void> {
     try {
       let deletedColumn: string;
@@ -1245,7 +1246,7 @@ export class MessageService {
   static async restoreConversation(
     conversationId: string,
     userId: string,
-    userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin'
+    userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin'
   ): Promise<void> {
     try {
       let deletedColumn: string;

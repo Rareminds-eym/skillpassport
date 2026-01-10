@@ -1,7 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import MessageService from '../services/messageService';
 import { supabase } from '../lib/supabaseClient';
+import MessageService from '../services/messageService';
 
 /**
  * Hook for managing student-admin conversations
@@ -26,7 +26,7 @@ export const useStudentAdminConversations = (studentId, enabled = true) => {
         .from('students')
         .select('school_id')
         .eq('id', studentId)
-        .single();
+        .maybeSingle();
       
       if (studentError || !studentData?.school_id) {
         console.error('Error fetching student school:', studentError);
@@ -281,7 +281,7 @@ export const useCreateStudentAdminConversation = () => {
         .from('students')
         .select('school_id')
         .eq('id', studentId)
-        .single();
+        .maybeSingle();
       
       if (studentError || !studentData?.school_id) {
         throw new Error('Could not find student school');

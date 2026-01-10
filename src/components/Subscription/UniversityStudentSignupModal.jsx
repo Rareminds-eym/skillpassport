@@ -1,7 +1,6 @@
 import { AlertCircle, BookOpen, Building, ChevronDown, GraduationCap, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { signUpWithRole } from '../../services/authService';
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 import { getActiveUniversities, getCollegesByUniversity } from '../../services/universityService';
 import DatePicker from './shared/DatePicker';
@@ -222,58 +221,46 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
       const lastName = capitalizeFirstLetter(formData.lastName);
       const fullName = `${firstName} ${lastName}`.trim();
       
-      const authResult = await signUpWithRole(formData.email, formData.password, {
-        role: 'student',
-        name: fullName,
-        phone: formData.phone,
-        studentType: 'university'
+      // Use Worker API for signup with proper rollback
+      const result = await unifiedSignup({
+        email: formData.email,
+        password: formData.password,
+        firstName,
+        lastName,
+        role: 'college_student',
+        phone: formData.phone || null,
+        dateOfBirth: formData.dateOfBirth || null,
+        country: formData.country,
+        state: formData.state,
+        city: formData.city,
+        preferredLanguage: formData.preferredLanguage,
+        referralCode: formData.referralCode || null,
       });
 
-      if (!authResult.success) {
-        setErrors({ submit: authResult.message || 'Registration failed' });
+      if (!result.success) {
+        setErrors({ submit: result.error || 'Registration failed' });
         setLoading(false);
         return;
       }
 
-      const userId = authResult.user.id;
+      const userId = result.data.userId;
 
-      const { error: userError } = await supabase.from('users').insert({
-        id: userId,
-        email: formData.email,
-        firstName: firstName,
-        lastName: lastName,
-        role: 'college_student',
-        isActive: true,
-        dob: formData.dateOfBirth || null
-      });
+      // Update student record with university-specific fields
+      const { error: studentUpdateError } = await supabase
+        .from('students')
+        .update({
+          universityId: formData.universityId,
+          university_college_id: formData.universityCollegeId,
+          student_type: 'university',
+          enrollmentNumber: formData.enrollmentNumber || null,
+          course_name: formData.courseName || null,
+          expectedGraduationDate: formData.expectedGraduationDate || null,
+          gender: formData.gender || null,
+        })
+        .eq('user_id', userId);
 
-      if (userError) console.error('Error creating user record:', userError);
-
-      // Note: first_name/last_name stored in users table only
-      const { error: studentError } = await supabase.from('students').insert({
-        user_id: userId,
-        email: formData.email,
-        name: fullName,
-        contact_number: formData.phone || null,
-        universityId: formData.universityId,
-        university_college_id: formData.universityCollegeId,
-        student_type: 'university',
-        enrollmentNumber: formData.enrollmentNumber || null,
-        course_name: formData.courseName || null,
-        expectedGraduationDate: formData.expectedGraduationDate || null,
-        dateOfBirth: formData.dateOfBirth || null,
-        gender: formData.gender || null,
-        country: formData.country,
-        state: formData.state,
-        city: formData.city,
-        preferred_language: formData.preferredLanguage,
-        referral_code: formData.referralCode || null,
-        approval_status: 'pending'
-      });
-
-      if (studentError) {
-        console.error('Error creating student record:', studentError);
-        setErrors({ submit: 'Account created but profile setup incomplete.' });
+      if (studentUpdateError) {
+        console.error('Error updating student record:', studentUpdateError);
       }
 
       const userData = {

@@ -1,36 +1,37 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useMemo } from "react";
-import {
-  CalendarIcon,
-  ClockIcon,
-  UserGroupIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ExclamationCircleIcon,
-  ChevronDownIcon,
-  FunnelIcon,
-  TableCellsIcon,
-  Squares2X2Icon,
-  ArrowDownTrayIcon,
-  ChartBarIcon,
-  BellAlertIcon,
-  PlusCircleIcon,
-  XMarkIcon,
-  ClipboardDocumentListIcon,
-  ChartPieIcon,
-  BookOpenIcon,
-  ClipboardDocumentCheckIcon,
-  SparklesIcon,
-  ShieldCheckIcon,
-} from "@heroicons/react/24/outline";
-import SearchBar from "../../../components/common/SearchBar";
-import Pagination from "../../../components/admin/Pagination";
-import KPICard from "../../../components/admin/KPICard";
-import ReactApexChart from "react-apexcharts";
 import AddAttendanceSessionModal from "@/components/admin/modals/AddAttendanceSessionModal";
-import StudentHistoryModal from "@/components/admin/modals/StudentHistoryModal";
 import AttendanceDetailsModal from "@/components/admin/modals/AttendanceDetailsModal";
+import StudentHistoryModal from "@/components/admin/modals/StudentHistoryModal";
+import { supabase } from "@/lib/supabaseClient";
 import { AttendanceRecord, AttendanceSession, Student, SubjectGroup } from "@/types/Attendance";
+import {
+    ArrowDownTrayIcon,
+    BellAlertIcon,
+    BookOpenIcon,
+    CalendarIcon,
+    ChartBarIcon,
+    ChartPieIcon,
+    CheckCircleIcon,
+    ChevronDownIcon,
+    ClipboardDocumentCheckIcon,
+    ClipboardDocumentListIcon,
+    ClockIcon,
+    ExclamationCircleIcon,
+    FunnelIcon,
+    PlusCircleIcon,
+    ShieldCheckIcon,
+    SparklesIcon,
+    Squares2X2Icon,
+    TableCellsIcon,
+    UserGroupIcon,
+    XCircleIcon,
+    XMarkIcon,
+} from "@heroicons/react/24/outline";
+import React, { useEffect, useMemo, useState } from "react";
+import ReactApexChart from "react-apexcharts";
+import KPICard from "../../../components/admin/KPICard";
+import Pagination from "../../../components/admin/Pagination";
+import SearchBar from "../../../components/common/SearchBar";
 
 
 
@@ -305,622 +306,31 @@ const AttendanceTracking: React.FC = () => {
     totalStudents: 0,
   });
 
-  // Sample data
-  const [sessions, setSessions] = useState<AttendanceSession[]>([
-    {
-      id: "1",
-      date: "2025-01-15",
-      startTime: "09:00",
-      endTime: "10:00",
-      subject: "Data Structures",
-      faculty: "Dr. Anil Kumar",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      totalStudents: 10,
-      presentCount: 5,
-      absentCount: 1,
-      lateCount: 2,
-      excusedCount: 1,
-      attendancePercentage: 70.0,
-      status: "completed",
-    },
-    {
-      id: "2",
-      date: "2025-01-15",
-      startTime: "10:15",
-      endTime: "11:15",
-      subject: "Operating Systems",
-      faculty: "Prof. Priya Sharma",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "B",
-      totalStudents: 58,
-      presentCount: 45,
-      absentCount: 10,
-      lateCount: 3,
-      excusedCount: 0,
-      attendancePercentage: 77.6,
-      status: "completed",
-    },
-    {
-      id: "3",
-      date: "2025-01-15",
-      startTime: "11:30",
-      endTime: "12:30",
-      subject: "Database Management",
-      faculty: "Dr. Rajesh Nair",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 4,
-      section: "A",
-      totalStudents: 55,
-      presentCount: 48,
-      absentCount: 4,
-      lateCount: 2,
-      excusedCount: 1,
-      attendancePercentage: 87.3,
-      status: "ongoing",
-    },
-    {
-      id: "4",
-      date: "2025-01-16",
-      startTime: "09:00",
-      endTime: "10:00",
-      subject: "Computer Networks",
-      faculty: "Dr. Meera Reddy",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 5,
-      section: "A",
-      totalStudents: 50,
-      presentCount: 0,
-      absentCount: 0,
-      lateCount: 0,
-      excusedCount: 0,
-      attendancePercentage: 0,
-      status: "scheduled",
-    },
-    {
-      id: "5",
-      date: "2025-01-15",
-      startTime: "14:00",
-      endTime: "15:00",
-      subject: "Digital Electronics",
-      faculty: "Prof. Suresh Kumar",
-      department: "Electronics",
-      course: "B.Tech ECE",
-      semester: 2,
-      section: "A",
-      totalStudents: 62,
-      presentCount: 38,
-      absentCount: 18,
-      lateCount: 4,
-      excusedCount: 2,
-      attendancePercentage: 61.3,
-      status: "completed",
-    },
-    {
-      id: "6",
-      date: "2025-01-15",
-      startTime: "15:15",
-      endTime: "16:15",
-      subject: "Signal Processing",
-      faculty: "Dr. Kavita Iyer",
-      department: "Electronics",
-      course: "B.Tech ECE",
-      semester: 4,
-      section: "B",
-      totalStudents: 48,
-      presentCount: 44,
-      absentCount: 2,
-      lateCount: 1,
-      excusedCount: 1,
-      attendancePercentage: 91.7,
-      status: "completed",
-    },
-    // Additional sessions for the same subject to demonstrate grouping
-    {
-      id: "7",
-      date: "2025-01-08",
-      startTime: "09:00",
-      endTime: "10:00",
-      subject: "Data Structures",
-      faculty: "Dr. Anil Kumar",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      totalStudents: 10,
-      presentCount: 8,
-      absentCount: 1,
-      lateCount: 1,
-      excusedCount: 0,
-      attendancePercentage: 90.0,
-      status: "completed",
-    },
-    {
-      id: "8",
-      date: "2025-01-22",
-      startTime: "09:00",
-      endTime: "10:00",
-      subject: "Data Structures",
-      faculty: "Dr. Anil Kumar",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      totalStudents: 10,
-      presentCount: 6,
-      absentCount: 2,
-      lateCount: 2,
-      excusedCount: 0,
-      attendancePercentage: 80.0,
-      status: "completed",
-    },
-  ]);
+  // Dynamic data states
+  const [subjectGroups, setSubjectGroups] = useState<SubjectGroup[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [analytics, setAnalytics] = useState({
+    totalSessions: 0,
+    completedSessions: 0,
+    avgAttendance: "0",
+    totalStudents: 0,
+    totalPresent: 0,
+    totalAbsent: 0,
+    lowAttendanceSessions: 0,
+  });
 
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([
-    // Data Structures - 2025-01-15
-    {
-      id: "1",
-      studentId: "STU001",
-      studentName: "Arjun Patel",
-      rollNumber: "21CSE001",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-01-15",
-      status: "present",
-      timeIn: "08:55",
-      timeOut: "10:05",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      location: "Room 301",
-    },
-    {
-      id: "2",
-      studentId: "STU002",
-      studentName: "Priya Singh",
-      rollNumber: "21CSE002",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-01-15",
-      status: "late",
-      timeIn: "09:12",
-      timeOut: "10:03",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      remarks: "Traffic delay",
-      location: "Room 301",
-    },
-    {
-      id: "3",
-      studentId: "STU003",
-      studentName: "Rahul Verma",
-      rollNumber: "21CSE003",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-01-15",
-      status: "absent",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      location: "Room 301",
-    },
-    {
-      id: "4",
-      studentId: "STU004",
-      studentName: "Sneha Gupta",
-      rollNumber: "21CSE004",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-01-15",
-      status: "present",
-      timeIn: "08:50",
-      timeOut: "10:02",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      location: "Room 301",
-    },
-    {
-      id: "5",
-      studentId: "STU005",
-      studentName: "Vikram Kumar",
-      rollNumber: "21CSE005",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-01-15",
-      status: "present",
-      timeIn: "08:58",
-      timeOut: "10:01",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      location: "Room 301",
-    },
-    {
-      id: "6",
-      studentId: "STU006",
-      studentName: "Anjali Sharma",
-      rollNumber: "21CSE006",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-01-15",
-      status: "excused",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      remarks: "Medical leave",
-      location: "Room 301",
-    },
-    {
-      id: "7",
-      studentId: "STU007",
-      studentName: "Rohit Jain",
-      rollNumber: "21CSE007",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-01-15",
-      status: "present",
-      timeIn: "09:05",
-      timeOut: "10:04",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      location: "Room 301",
-    },
-    {
-      id: "8",
-      studentId: "STU008",
-      studentName: "Kavita Reddy",
-      rollNumber: "21CSE008",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-01-15",
-      status: "late",
-      timeIn: "09:15",
-      timeOut: "10:03",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      remarks: "Bus delay",
-      location: "Room 301",
-    },
-    // Historical data for student attendance trends
-    // Data Structures - 2025-01-08
-    {
-      id: "9",
-      studentId: "STU001",
-      studentName: "Arjun Patel",
-      rollNumber: "21CSE001",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-01-08",
-      status: "present",
-      timeIn: "08:52",
-      timeOut: "10:08",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      location: "Room 301",
-    },
-    {
-      id: "10",
-      studentId: "STU002",
-      studentName: "Priya Singh",
-      rollNumber: "21CSE002",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-01-08",
-      status: "present",
-      timeIn: "08:55",
-      timeOut: "10:05",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      location: "Room 301",
-    },
-    {
-      id: "11",
-      studentId: "STU003",
-      studentName: "Rahul Verma",
-      rollNumber: "21CSE003",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-01-08",
-      status: "absent",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      location: "Room 301",
-    },
-    // Data Structures - 2025-01-01
-    {
-      id: "12",
-      studentId: "STU001",
-      studentName: "Arjun Patel",
-      rollNumber: "21CSE001",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-01-01",
-      status: "present",
-      timeIn: "08:50",
-      timeOut: "10:10",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      location: "Room 301",
-    },
-    {
-      id: "13",
-      studentId: "STU002",
-      studentName: "Priya Singh",
-      rollNumber: "21CSE002",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-01-01",
-      status: "late",
-      timeIn: "09:10",
-      timeOut: "10:02",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      remarks: "Weather delay",
-      location: "Room 301",
-    },
-    {
-      id: "14",
-      studentId: "STU003",
-      studentName: "Rahul Verma",
-      rollNumber: "21CSE003",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-01-01",
-      status: "present",
-      timeIn: "08:55",
-      timeOut: "10:05",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      location: "Room 301",
-    },
-    // Additional records for November 2025 (current month)
-    {
-      id: "15",
-      studentId: "STU001",
-      studentName: "Arjun Patel",
-      rollNumber: "21CSE001",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-11-01",
-      status: "present",
-      timeIn: "08:45",
-      timeOut: "10:05",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      location: "Room 301",
-    },
-    {
-      id: "16",
-      studentId: "STU002",
-      studentName: "Priya Singh",
-      rollNumber: "21CSE002",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-11-01",
-      status: "present",
-      timeIn: "08:50",
-      timeOut: "10:08",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      location: "Room 301",
-    },
-    {
-      id: "17",
-      studentId: "STU003",
-      studentName: "Rahul Verma",
-      rollNumber: "21CSE003",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-11-08",
-      status: "absent",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      location: "Room 301",
-    },
-    {
-      id: "18",
-      studentId: "STU001",
-      studentName: "Arjun Patel",
-      rollNumber: "21CSE001",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-11-08",
-      status: "present",
-      timeIn: "08:48",
-      timeOut: "10:12",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      location: "Room 301",
-    },
-    {
-      id: "19",
-      studentId: "STU002",
-      studentName: "Priya Singh",
-      rollNumber: "21CSE002",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      date: "2025-11-08",
-      status: "late",
-      timeIn: "09:05",
-      timeOut: "10:06",
-      subject: "Data Structures",
-      facultyId: "FAC001",
-      facultyName: "Dr. Anil Kumar",
-      remarks: "Traffic",
-      location: "Room 301",
-    },
-  ]);
-
-  const [students] = useState<Student[]>([
-    {
-      id: "STU001",
-      rollNumber: "21CSE001",
-      name: "Arjun Patel",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      email: "arjun.patel@college.edu",
-      phone: "+91-9876543210",
-    },
-    {
-      id: "STU002",
-      rollNumber: "21CSE002",
-      name: "Priya Singh",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      email: "priya.singh@college.edu",
-      phone: "+91-9876543211",
-    },
-    {
-      id: "STU003",
-      rollNumber: "21CSE003",
-      name: "Rahul Verma",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      email: "rahul.verma@college.edu",
-      phone: "+91-9876543212",
-    },
-    {
-      id: "STU004",
-      rollNumber: "21CSE004",
-      name: "Sneha Gupta",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      email: "sneha.gupta@college.edu",
-      phone: "+91-9876543213",
-    },
-    {
-      id: "STU005",
-      rollNumber: "21CSE005",
-      name: "Vikram Kumar",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      email: "vikram.kumar@college.edu",
-      phone: "+91-9876543214",
-    },
-    {
-      id: "STU006",
-      rollNumber: "21CSE006",
-      name: "Anjali Sharma",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      email: "anjali.sharma@college.edu",
-      phone: "+91-9876543215",
-    },
-    {
-      id: "STU007",
-      rollNumber: "21CSE007",
-      name: "Rohit Jain",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      email: "rohit.jain@college.edu",
-      phone: "+91-9876543216",
-    },
-    {
-      id: "STU008",
-      rollNumber: "21CSE008",
-      name: "Kavita Reddy",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      email: "kavita.reddy@college.edu",
-      phone: "+91-9876543217",
-    },
-    {
-      id: "STU009",
-      rollNumber: "21CSE009",
-      name: "Amit Singh",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      email: "amit.singh@college.edu",
-      phone: "+91-9876543218",
-    },
-    {
-      id: "STU010",
-      rollNumber: "21CSE010",
-      name: "Meera Patel",
-      department: "Computer Science",
-      course: "B.Tech CSE",
-      semester: 3,
-      section: "A",
-      email: "meera.patel@college.edu",
-      phone: "+91-9876543219",
-    },
-  ]);
+  // Filter options from API
+  const [filterOptions, setFilterOptions] = useState({
+    departments: [] as any[],
+    courses: [] as any[],
+    semesters: [] as any[],
+    sections: [] as any[],
+    faculty: [] as any[],
+    subjects: [] as any[],
+  });
 
   const [filters, setFilters] = useState({
     departments: [] as string[],
@@ -931,150 +341,398 @@ const AttendanceTracking: React.FC = () => {
     faculty: [] as string[],
   });
 
-  // Group sessions by subject
-  const subjectGroups = useMemo(() => {
-    const groups = new Map<string, SubjectGroup>();
-
-    sessions.forEach((session) => {
-      // Create unique key based on subject, department, course, semester, section
-      const key = `${session.subject}-${session.department}-${session.course}-${session.semester}-${session.section}`;
-
-      if (!groups.has(key)) {
-        groups.set(key, {
-          subject: session.subject,
-          department: session.department,
-          course: session.course,
-          semester: session.semester,
-          section: session.section,
-          faculty: session.faculty,
-          sessions: [],
-          totalSessions: 0,
-          avgAttendancePercentage: 0,
-          totalStudents: session.totalStudents,
-          totalPresentCount: 0,
-          totalAbsentCount: 0,
-          totalLateCount: 0,
-          totalExcusedCount: 0,
-          dateRange: {
-            first: session.date,
-            last: session.date,
-          },
-          latestStatus: session.status,
-        });
-      }
-
-      const group = groups.get(key)!;
-      group.sessions.push(session);
-      group.totalSessions++;
-      group.totalPresentCount += session.presentCount;
-      group.totalAbsentCount += session.absentCount;
-      group.totalLateCount += session.lateCount;
-      group.totalExcusedCount += session.excusedCount;
-
-      // Update date range
-      if (session.date < group.dateRange.first) {
-        group.dateRange.first = session.date;
-      }
-      if (session.date > group.dateRange.last) {
-        group.dateRange.last = session.date;
-        group.latestStatus = session.status;
-      }
-    });
-
-    // Calculate average attendance percentage for each group
-    groups.forEach((group) => {
-      const totalPercentage = group.sessions.reduce(
-        (sum, session) => sum + session.attendancePercentage,
-        0
-      );
-      group.avgAttendancePercentage = totalPercentage / group.totalSessions;
+  // Supabase Functions
+  const fetchSubjectGroups = async () => {
+    try {
+      setLoading(true);
       
-      // Sort sessions by date (newest first)
-      group.sessions.sort((a, b) => {
-        const dateCompare = b.date.localeCompare(a.date);
-        if (dateCompare !== 0) return dateCompare;
-        return b.startTime.localeCompare(a.startTime);
+      let query = supabase
+        .from('college_subject_attendance_summary')
+        .select('*');
+
+      // Add search filter
+      if (searchQuery) {
+        query = query.or(`subject.ilike.%${searchQuery}%,faculty.ilike.%${searchQuery}%,department.ilike.%${searchQuery}%`);
+      }
+
+      // Add filters
+      if (filters.departments.length > 0) {
+        query = query.in('department', filters.departments);
+      }
+      if (filters.courses.length > 0) {
+        query = query.in('course', filters.courses);
+      }
+      if (filters.semesters.length > 0) {
+        query = query.in('semester', filters.semesters);
+      }
+      if (filters.sections.length > 0) {
+        query = query.in('section', filters.sections);
+      }
+      if (filters.statuses.length > 0) {
+        query = query.in('latest_status', filters.statuses);
+      }
+      if (filters.faculty.length > 0) {
+        query = query.in('faculty', filters.faculty);
+      }
+
+      // Add date range filter
+      if (dateRange.from || dateRange.to) {
+        if (dateRange.from && dateRange.to) {
+          query = query.gte('first_date', dateRange.from).lte('last_date', dateRange.to);
+        } else if (dateRange.from) {
+          query = query.gte('first_date', dateRange.from);
+        } else if (dateRange.to) {
+          query = query.lte('last_date', dateRange.to);
+        }
+      }
+
+      // Add pagination
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      query = query.range(startIndex, startIndex + itemsPerPage - 1);
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      
+      // Transform Supabase data to match component structure
+      const transformedGroups = (data || []).map((item: any) => ({
+        subject: item.subject,
+        department: item.department,
+        course: item.course,
+        semester: item.semester,
+        section: item.section,
+        faculty: item.faculty,
+        sessions: [], // Will be populated when needed
+        totalSessions: item.total_sessions,
+        avgAttendancePercentage: item.avg_attendance_percentage,
+        totalStudents: item.total_students,
+        totalPresentCount: item.total_present_count,
+        totalAbsentCount: item.total_absent_count,
+        totalLateCount: item.total_late_count,
+        totalExcusedCount: item.total_excused_count,
+        dateRange: {
+          first: item.first_date,
+          last: item.last_date,
+        },
+        latestStatus: item.latest_status,
+      }));
+
+      setSubjectGroups(transformedGroups);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('college_attendance_sessions')
+        .select(`
+          id,
+          status,
+          attendance_percentage,
+          total_students,
+          present_count,
+          absent_count
+        `)
+        .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]); // Last 30 days
+
+      if (error) throw error;
+
+      const sessions = data || [];
+      const totalSessions = sessions.length;
+      const completedSessions = sessions.filter(s => s.status === 'completed').length;
+      const avgAttendance = sessions.length > 0 
+        ? (sessions.reduce((acc, s) => acc + (s.attendance_percentage || 0), 0) / sessions.length).toFixed(1)
+        : "0";
+      const totalStudents = sessions.reduce((acc, s) => acc + (s.total_students || 0), 0);
+      const totalPresent = sessions.reduce((acc, s) => acc + (s.present_count || 0), 0);
+      const totalAbsent = sessions.reduce((acc, s) => acc + (s.absent_count || 0), 0);
+      const lowAttendanceSessions = sessions.filter(s => (s.attendance_percentage || 0) < 75).length;
+
+      setAnalytics({
+        totalSessions,
+        completedSessions,
+        avgAttendance,
+        totalStudents,
+        totalPresent,
+        totalAbsent,
+        lowAttendanceSessions,
       });
-    });
+    } catch (err: any) {
+      console.error('Failed to fetch analytics:', err);
+    }
+  };
 
-    return Array.from(groups.values());
-  }, [sessions]);
+  const fetchFilterOptions = async () => {
+    try {
+      // Get current user's college_id first
+      const { data: { user } } = await supabase.auth.getUser();
+      let currentCollegeId = null;
+      
+      if (user) {
+        // Try to get college_id from user metadata or users table
+        if (user.user_metadata?.college_id) {
+          currentCollegeId = user.user_metadata.college_id;
+        } else {
+          const { data: userProfile } = await supabase
+            .from('users')
+            .select('college_id')
+            .eq('id', user.id)
+            .single();
+          currentCollegeId = userProfile?.college_id;
+        }
+      }
 
-  // Analytics calculations (now based on total sessions)
-  const analytics = useMemo(() => {
-    const totalSessions = sessions.length;
-    const completedSessions = sessions.filter(
-      (s) => s.status === "completed"
-    ).length;
-    const avgAttendance =
-      sessions.reduce((acc, s) => acc + s.attendancePercentage, 0) /
-      totalSessions;
-    const totalStudents = sessions.reduce((acc, s) => acc + s.totalStudents, 0);
-    const totalPresent = sessions.reduce((acc, s) => acc + s.presentCount, 0);
-    const totalAbsent = sessions.reduce((acc, s) => acc + s.absentCount, 0);
-    const lowAttendanceSessions = sessions.filter(
-      (s) => s.attendancePercentage < 75
-    ).length;
+      console.log('Current user college_id:', currentCollegeId);
 
-    return {
-      totalSessions,
-      completedSessions,
-      avgAttendance: avgAttendance.toFixed(1),
-      totalStudents,
-      totalPresent,
-      totalAbsent,
-      lowAttendanceSessions,
-    };
-  }, [sessions]);
+      // Get departments from program_sections_view (filtered by college if available)
+      let departmentsQuery = supabase
+        .from('program_sections_view')
+        .select('department_name')
+        .eq('status', 'active')
+        .not('department_name', 'is', null);
+      
+      if (currentCollegeId) {
+        // Add college filter if we have college_id
+        departmentsQuery = departmentsQuery.eq('college_id', currentCollegeId);
+      }
 
-  // Filter options (based on subject groups)
+      const { data: departmentsData } = await departmentsQuery;
+
+      // Get programs/courses from program_sections_view (filtered by college)
+      let programsQuery = supabase
+        .from('program_sections_view')
+        .select('program_name')
+        .eq('status', 'active')
+        .not('program_name', 'is', null);
+      
+      if (currentCollegeId) {
+        programsQuery = programsQuery.eq('college_id', currentCollegeId);
+      }
+
+      const { data: programsData } = await programsQuery;
+
+      // Get semesters from program_sections_view (filtered by college)
+      let semestersQuery = supabase
+        .from('program_sections_view')
+        .select('semester')
+        .eq('status', 'active')
+        .not('semester', 'is', null);
+      
+      if (currentCollegeId) {
+        semestersQuery = semestersQuery.eq('college_id', currentCollegeId);
+      }
+
+      const { data: semestersData } = await semestersQuery;
+
+      // Get sections from program_sections_view (filtered by college)
+      let sectionsQuery = supabase
+        .from('program_sections_view')
+        .select('section')
+        .eq('status', 'active')
+        .not('section', 'is', null);
+      
+      if (currentCollegeId) {
+        sectionsQuery = sectionsQuery.eq('college_id', currentCollegeId);
+      }
+
+      const { data: sectionsData } = await sectionsQuery;
+
+      // Get faculty from college_lecturers table (filtered by college)
+      let facultyQuery = supabase
+        .from('college_lecturers')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          email,
+          department,
+          "collegeId",
+          colleges!inner(name)
+        `)
+        .eq('"accountStatus"', 'active');
+
+      if (currentCollegeId) {
+        facultyQuery = facultyQuery.eq('"collegeId"', currentCollegeId);
+      }
+
+      const { data: facultyData, error: facultyError } = await facultyQuery;
+
+      console.log('Faculty query result:', { data: facultyData, error: facultyError });
+
+      // Get subjects from college_courses (filtered by college)
+      let subjectsQuery = supabase
+        .from('college_courses')
+        .select('course_name, course_code, id, college_id')
+        .eq('is_active', true);
+
+      if (currentCollegeId) {
+        subjectsQuery = subjectsQuery.eq('college_id', currentCollegeId);
+      }
+
+      const { data: subjectsData } = await subjectsQuery;
+
+      // Remove duplicates and format data
+      const uniqueDepartments = [...new Set((departmentsData || []).map(d => d.department_name))];
+      const uniquePrograms = [...new Set((programsData || []).map(p => p.program_name))];
+      const uniqueSemesters = [...new Set((semestersData || []).map(s => s.semester))].sort((a, b) => a - b);
+      const uniqueSections = [...new Set((sectionsData || []).map(s => s.section))].sort();
+
+      // Format faculty for dropdown (simple format expected by modal)
+      const facultyOptions = (facultyData || []).map(f => {
+        const displayName = f.first_name && f.last_name 
+          ? `${f.first_name} ${f.last_name}` 
+          : f.email;
+        
+        const collegeName = f.colleges?.name || 'Unknown College';
+        
+        console.log(`Faculty: ${displayName} belongs to college: ${collegeName} (ID: ${f.collegeId})`);
+        
+        return {
+          value: f.id, // Use actual faculty UUID
+          label: `${displayName} (${f.department || 'No Dept'})`, // Show name and department
+        };
+      });
+
+      console.log('Filter Options Loaded:', {
+        currentCollegeId,
+        departments: uniqueDepartments.length,
+        programs: uniquePrograms.length,
+        semesters: uniqueSemesters.length,
+        sections: uniqueSections.length,
+        faculty: facultyOptions.length,
+        subjects: (subjectsData || []).length
+      });
+
+      console.log('Faculty list with colleges:', facultyOptions);
+
+      setFilterOptions({
+        departments: uniqueDepartments,
+        courses: uniquePrograms,
+        semesters: uniqueSemesters,
+        sections: uniqueSections,
+        faculty: facultyOptions,
+        subjects: subjectsData || [],
+      });
+    } catch (err: any) {
+      console.error('Failed to fetch filter options:', err);
+    }
+  };
+
+  const fetchAttendanceRecords = async (subjectName: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('college_attendance_records')
+        .select('*')
+        .eq('subject_name', subjectName);
+
+      if (error) throw error;
+      
+      // Transform Supabase data to match component structure
+      const transformedRecords = (data || []).map((record: any) => ({
+        id: record.id,
+        studentId: record.student_id,
+        studentName: record.student_name,
+        rollNumber: record.roll_number,
+        department: record.department_name,
+        course: record.program_name,
+        semester: record.semester,
+        section: record.section,
+        date: record.date,
+        status: record.status,
+        timeIn: record.time_in,
+        timeOut: record.time_out,
+        subject: record.subject_name,
+        facultyId: record.faculty_id,
+        facultyName: record.faculty_name,
+        location: record.location,
+        remarks: record.remarks,
+      }));
+
+      setAttendanceRecords(transformedRecords);
+    } catch (err: any) {
+      console.error('Failed to fetch attendance records:', err);
+    }
+  };
+
+  const fetchStudentCount = async (department: string, course: string, semester: string, section: string) => {
+    try {
+      console.log('Fetching student count for:', { department, course, semester, section });
+      
+      const { data, error } = await supabase
+        .from('program_sections_view')
+        .select('max_students, department_name, program_name, semester, section, status')
+        .eq('department_name', department)
+        .eq('program_name', course)
+        .eq('semester', parseInt(semester))
+        .eq('section', section)
+        .eq('status', 'active');
+
+      console.log('Student count query result:', { data, error });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
+        console.log('Found matching record:', data[0]);
+        return data[0].max_students || 0;
+      } else {
+        console.log('No matching records found');
+        return 0;
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch student count:', err);
+      return 0;
+    }
+  };
+
+  // useEffect hooks
+  useEffect(() => {
+    fetchSubjectGroups();
+  }, [searchQuery, filters, dateRange, currentPage]);
+
+  useEffect(() => {
+    fetchAnalytics();
+    fetchFilterOptions();
+  }, []);
+
+  // Transform filter options for component use
   const departmentOptions = useMemo(() => {
-    const deptCounts: any = {};
-    subjectGroups.forEach((g) => {
-      deptCounts[g.department] = (deptCounts[g.department] || 0) + 1;
-    });
-    return Object.entries(deptCounts).map(([dept, count]) => ({
+    return filterOptions.departments.map(dept => ({
       value: dept,
       label: dept,
-      count,
+      count: subjectGroups.filter(g => g.department === dept).length,
     }));
-  }, [subjectGroups]);
+  }, [filterOptions.departments, subjectGroups]);
 
   const courseOptions = useMemo(() => {
-    const courseCounts: any = {};
-    subjectGroups.forEach((g) => {
-      courseCounts[g.course] = (courseCounts[g.course] || 0) + 1;
-    });
-    return Object.entries(courseCounts).map(([course, count]) => ({
+    return filterOptions.courses.map(course => ({
       value: course,
       label: course,
-      count,
+      count: subjectGroups.filter(g => g.course === course).length,
     }));
-  }, [subjectGroups]);
+  }, [filterOptions.courses, subjectGroups]);
 
   const semesterOptions = useMemo(() => {
-    const semCounts: any = {};
-    subjectGroups.forEach((g) => {
-      semCounts[g.semester] = (semCounts[g.semester] || 0) + 1;
-    });
-    return Object.entries(semCounts).map(([sem, count]) => ({
-      value: Number(sem),
+    return filterOptions.semesters.map(sem => ({
+      value: sem,
       label: `Semester ${sem}`,
-      count,
+      count: subjectGroups.filter(g => g.semester === sem).length,
     }));
-  }, [subjectGroups]);
+  }, [filterOptions.semesters, subjectGroups]);
 
   const sectionOptions = useMemo(() => {
-    const secCounts: any = {};
-    subjectGroups.forEach((g) => {
-      secCounts[g.section] = (secCounts[g.section] || 0) + 1;
-    });
-    return Object.entries(secCounts).map(([sec, count]) => ({
+    return filterOptions.sections.map(sec => ({
       value: sec,
       label: `Section ${sec}`,
-      count,
+      count: subjectGroups.filter(g => g.section === sec).length,
     }));
-  }, [subjectGroups]);
+  }, [filterOptions.sections, subjectGroups]);
 
   const statusOptions = [
     { value: "completed", label: "Completed", count: subjectGroups.filter(g => g.latestStatus === "completed").length },
@@ -1082,80 +740,25 @@ const AttendanceTracking: React.FC = () => {
     { value: "scheduled", label: "Scheduled", count: subjectGroups.filter(g => g.latestStatus === "scheduled").length },
   ];
 
-  const facultyOptions = useMemo(() => {
-    const facCounts: any = {};
-    subjectGroups.forEach((g) => {
-      facCounts[g.faculty] = (facCounts[g.faculty] || 0) + 1;
-    });
-    return Object.entries(facCounts).map(([fac, count]) => ({
-      value: fac,
-      label: fac,
-      count,
+  const facultyFilterOptions = useMemo(() => {
+    return filterOptions.faculty.map(fac => ({
+      value: fac.value, // Use the faculty ID
+      label: fac.label, // Use the formatted name
+      count: subjectGroups.filter(g => g.faculty === fac.label).length,
     }));
-  }, [subjectGroups]);
+  }, [filterOptions.faculty, subjectGroups]);
 
-  // Subject options (sample data - in real app, this would come from API)
-  const subjectOptions = [
-    { value: "Data Structures", label: "Data Structures" },
-    { value: "Operating Systems", label: "Operating Systems" },
-    { value: "Database Management", label: "Database Management" },
-    { value: "Computer Networks", label: "Computer Networks" },
-    { value: "Digital Electronics", label: "Digital Electronics" },
-    { value: "Signal Processing", label: "Signal Processing" },
-    { value: "Algorithms", label: "Algorithms" },
-    { value: "Software Engineering", label: "Software Engineering" },
-    { value: "Web Development", label: "Web Development" },
-    { value: "Machine Learning", label: "Machine Learning" },
-  ];
+  const subjectOptions = useMemo(() => {
+    return filterOptions.subjects.map(subj => ({
+      value: subj.course_name,
+      label: subj.course_name,
+    }));
+  }, [filterOptions.subjects]);
 
-  // Filtered subject groups
+  // Filtered subject groups (now using API data)
   const filteredSubjectGroups = useMemo(() => {
-    return subjectGroups.filter((group) => {
-      const matchesSearch =
-        searchQuery === "" ||
-        group.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        group.faculty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        group.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        group.course.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesDept =
-        filters.departments.length === 0 ||
-        filters.departments.includes(group.department);
-      const matchesCourse =
-        filters.courses.length === 0 || filters.courses.includes(group.course);
-      const matchesSem =
-        filters.semesters.length === 0 ||
-        filters.semesters.includes(group.semester);
-      const matchesSec =
-        filters.sections.length === 0 ||
-        filters.sections.includes(group.section);
-      const matchesStatus =
-        filters.statuses.length === 0 ||
-        filters.statuses.includes(group.latestStatus);
-      const matchesFac =
-        filters.faculty.length === 0 || filters.faculty.includes(group.faculty);
-
-      // Check if ANY session in the group matches the date range
-      const matchesDateRange =
-        group.sessions.some((session) => {
-          return (
-            (!dateRange.from || session.date >= dateRange.from) &&
-            (!dateRange.to || session.date <= dateRange.to)
-          );
-        });
-
-      return (
-        matchesSearch &&
-        matchesDept &&
-        matchesCourse &&
-        matchesSem &&
-        matchesSec &&
-        matchesStatus &&
-        matchesFac &&
-        matchesDateRange
-      );
-    });
-  }, [subjectGroups, searchQuery, filters, dateRange]);
+    return subjectGroups; // Filtering is now done on the server side
+  }, [subjectGroups]);
 
   const totalItems = filteredSubjectGroups.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -1180,9 +783,62 @@ const AttendanceTracking: React.FC = () => {
     setDateRange({ from: "", to: "" });
   };
 
-  const handleViewDetails = (subjectGroup: SubjectGroup) => {
-    setSelectedSubjectGroup(subjectGroup);
-    setShowDetailsModal(true);
+  const handleViewDetails = async (subjectGroup: SubjectGroup) => {
+    try {
+      // Fetch actual sessions for this subject group
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from('college_attendance_sessions')
+        .select('*')
+        .eq('subject_name', subjectGroup.subject)
+        .eq('department_name', subjectGroup.department)
+        .eq('program_name', subjectGroup.course)
+        .eq('semester', subjectGroup.semester)
+        .eq('section', subjectGroup.section)
+        .order('date', { ascending: false });
+
+      if (sessionsError) {
+        console.error('Error fetching sessions:', sessionsError);
+        alert('Error loading session details');
+        return;
+      }
+
+      // Transform sessions data to match expected format
+      const transformedSessions = (sessionsData || []).map((session: any) => ({
+        id: session.id,
+        date: session.date,
+        startTime: session.start_time,
+        endTime: session.end_time,
+        subject: session.subject_name,
+        faculty: session.faculty_name,
+        department: session.department_name,
+        course: session.program_name,
+        semester: session.semester,
+        section: session.section,
+        totalStudents: session.total_students,
+        presentCount: session.present_count,
+        absentCount: session.absent_count,
+        lateCount: session.late_count,
+        excusedCount: session.excused_count,
+        attendancePercentage: session.attendance_percentage,
+        status: session.status,
+      }));
+
+      // Update the subject group with actual sessions data
+      const updatedSubjectGroup = {
+        ...subjectGroup,
+        sessions: transformedSessions,
+      };
+
+      setSelectedSubjectGroup(updatedSubjectGroup);
+      
+      // Fetch attendance records for this subject
+      await fetchAttendanceRecords(subjectGroup.subject);
+      
+      setShowDetailsModal(true);
+    } catch (err: any) {
+      console.error('Error in handleViewDetails:', err);
+      alert('Error loading details');
+    }
   };
 
   const handleEdit = (subjectGroup: SubjectGroup) => {
@@ -1190,12 +846,26 @@ const AttendanceTracking: React.FC = () => {
     // Implement edit logic
   };
 
-  const handleDelete = (subjectGroup: SubjectGroup) => {
+  const handleDelete = async (subjectGroup: SubjectGroup) => {
     if (confirm(`Are you sure you want to delete all ${subjectGroup.totalSessions} sessions for ${subjectGroup.subject}?`)) {
-      console.log("Delete subject group:", subjectGroup);
-      // Implement delete logic
-      const sessionIdsToDelete = subjectGroup.sessions.map(s => s.id);
-      setSessions(prevSessions => prevSessions.filter(s => !sessionIdsToDelete.includes(s.id)));
+      try {
+        const { error } = await supabase
+          .from('college_attendance_sessions')
+          .delete()
+          .eq('subject_name', subjectGroup.subject)
+          .eq('department_name', subjectGroup.department)
+          .eq('program_name', subjectGroup.course)
+          .eq('semester', subjectGroup.semester)
+          .eq('section', subjectGroup.section);
+
+        if (error) throw error;
+        
+        alert('Sessions deleted successfully!');
+        // Refresh the data
+        fetchSubjectGroups();
+      } catch (err: any) {
+        alert(`Error deleting sessions: ${err.message}`);
+      }
     }
   };
 
@@ -1288,24 +958,30 @@ const AttendanceTracking: React.FC = () => {
   };
 
   // Add session handlers
-  const handleFormChange = (field: string, value: any) => {
+  const handleFormChange = async (field: string, value: any) => {
     setSessionFormData(prev => ({
       ...prev,
       [field]: value,
-      // Auto-update total students when class details change
-      ...(field === 'department' || field === 'course' || field === 'semester' || field === 'section' ? {
-        totalStudents: students.filter(
-          (student) =>
-            (field === 'department' ? value : prev.department) === student.department &&
-            (field === 'course' ? value : prev.course) === student.course &&
-            (field === 'semester' ? parseInt(value) : prev.semester ? parseInt(prev.semester) : 0) === student.semester &&
-            (field === 'section' ? value : prev.section) === student.section
-        ).length
-      } : {})
     }));
+
+    // Auto-update total students when class details change
+    if (field === 'department' || field === 'course' || field === 'semester' || field === 'section') {
+      const department = field === 'department' ? value : sessionFormData.department;
+      const course = field === 'course' ? value : sessionFormData.course;
+      const semester = field === 'semester' ? value : sessionFormData.semester;
+      const section = field === 'section' ? value : sessionFormData.section;
+
+      if (department && course && semester && section) {
+        const studentCount = await fetchStudentCount(department, course, semester, section);
+        setSessionFormData(prev => ({
+          ...prev,
+          totalStudents: studentCount,
+        }));
+      }
+    }
   };
 
-  const handleCreateSession = () => {
+  const handleCreateSession = async () => {
     // Basic validation
     if (!sessionFormData.department || !sessionFormData.course || !sessionFormData.semester ||
         !sessionFormData.section || !sessionFormData.subject || !sessionFormData.faculty ||
@@ -1314,56 +990,109 @@ const AttendanceTracking: React.FC = () => {
       return;
     }
 
-    // Create new session
-    const newSession: AttendanceSession = {
-      id: `session_${Date.now()}`,
-      date: sessionFormData.date,
-      startTime: sessionFormData.startTime,
-      endTime: sessionFormData.endTime,
-      subject: sessionFormData.subject,
-      faculty: sessionFormData.faculty,
-      department: sessionFormData.department,
-      course: sessionFormData.course,
-      semester: parseInt(sessionFormData.semester),
-      section: sessionFormData.section,
-      totalStudents: sessionFormData.totalStudents || students.filter(
-        (student) =>
-          student.department === sessionFormData.department &&
-          student.course === sessionFormData.course &&
-          student.semester === parseInt(sessionFormData.semester) &&
-          student.section === sessionFormData.section
-      ).length,
-      presentCount: 0,
-      absentCount: 0,
-      lateCount: 0,
-      excusedCount: 0,
-      attendancePercentage: 0,
-      status: "scheduled",
-    };
+    try {
+      // Get current user and their college_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert("Please log in to create a session.");
+        return;
+      }
 
-    // Add to sessions state - this will automatically update the subject group
-    setSessions(prevSessions => [...prevSessions, newSession]);
-    alert("Session created successfully! It has been added to the existing subject or created a new subject card.");
+      // Get college_id from user profile or session
+      let collegeId = null;
+      
+      // Option 1: Try to get from user metadata
+      if (user.user_metadata?.college_id) {
+        collegeId = user.user_metadata.college_id;
+      } else {
+        // Option 2: Get from users table or profile
+        const { data: userProfile } = await supabase
+          .from('users')
+          .select('college_id')
+          .eq('id', user.id)
+          .single();
+        
+        collegeId = userProfile?.college_id;
+      }
 
-    // Reset form and close modal
-    setSessionFormData({
-      department: "",
-      course: "",
-      semester: "",
-      section: "",
-      subject: "",
-      faculty: "",
-      date: "",
-      startTime: "",
-      endTime: "",
-      roomNumber: "",
-      remarks: "",
-      totalStudents: 0,
-    });
-    setShowAddSessionModal(false);
+      // If still no college_id, try to get the first college from organizations (fallback)
+      if (!collegeId) {
+        const { data: colleges } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('organization_type', 'college')
+          .limit(1);
+        
+        collegeId = colleges?.[0]?.id;
+      }
+
+      if (!collegeId) {
+        alert("Unable to determine college. Please contact administrator.");
+        return;
+      }
+
+      // Get faculty details from the selected faculty ID
+      const selectedFaculty = filterOptions.faculty.find(f => f.value === sessionFormData.faculty);
+      const facultyName = selectedFaculty?.label || sessionFormData.faculty;
+
+      console.log('Creating session with:', {
+        facultyId: sessionFormData.faculty,
+        facultyName: facultyName,
+        collegeId: collegeId,
+        selectedFaculty: selectedFaculty
+      });
+
+      const { data, error } = await supabase
+        .from('college_attendance_sessions')
+        .insert({
+          date: sessionFormData.date,
+          start_time: sessionFormData.startTime,
+          end_time: sessionFormData.endTime,
+          subject_name: sessionFormData.subject,
+          faculty_id: sessionFormData.faculty, // Now this is a proper UUID
+          faculty_name: facultyName, // Use the formatted faculty name
+          department_name: sessionFormData.department,
+          program_name: sessionFormData.course,
+          semester: parseInt(sessionFormData.semester),
+          section: sessionFormData.section,
+          room_number: sessionFormData.roomNumber,
+          remarks: sessionFormData.remarks,
+          status: 'scheduled',
+          college_id: collegeId, // Add the college_id
+          created_by: user.id, // Add the user who created it
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      alert('Session created successfully!');
+      
+      // Refresh the data
+      fetchSubjectGroups();
+      setShowAddSessionModal(false);
+      
+      // Reset form
+      setSessionFormData({
+        department: "",
+        course: "",
+        semester: "",
+        section: "",
+        subject: "",
+        faculty: "",
+        date: "",
+        startTime: "",
+        endTime: "",
+        roomNumber: "",
+        remarks: "",
+        totalStudents: 0,
+      });
+    } catch (err: any) {
+      alert(`Error creating session: ${err.message}`);
+    }
   };
 
-  const handleCreateAndStart = () => {
+  const handleCreateAndStart = async () => {
     // Same validation as create session
     if (!sessionFormData.department || !sessionFormData.course || !sessionFormData.semester ||
         !sessionFormData.section || !sessionFormData.subject || !sessionFormData.faculty ||
@@ -1372,11 +1101,15 @@ const AttendanceTracking: React.FC = () => {
       return;
     }
 
-    // Create session first
-    handleCreateSession();
-
-    // In a real app, this would navigate to the attendance marking page
-    alert("Session created and attendance marking started!");
+    try {
+      // Create session first
+      await handleCreateSession();
+      
+      // In a real app, this would navigate to the attendance marking page
+      alert("Session created and attendance marking started!");
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    }
   };
 
   // Chart data
@@ -1765,7 +1498,7 @@ const AttendanceTracking: React.FC = () => {
 
                   <FilterSection title="Faculty">
                     <CheckboxGroup
-                      options={facultyOptions}
+                      options={facultyFilterOptions}
                       selectedValues={filters.faculty}
                       onChange={(values: string[]) =>
                         setFilters({ ...filters, faculty: values })
@@ -1792,7 +1525,23 @@ const AttendanceTracking: React.FC = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-            {viewMode === "grid" ? (
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                <span className="ml-2 text-gray-600">Loading attendance data...</span>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <div className="text-red-600 mb-2">Error loading data</div>
+                <p className="text-gray-500">{error}</p>
+                <button 
+                  onClick={() => fetchSubjectGroups()}
+                  className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {paginatedSubjectGroups.map((subjectGroup, index) => (
                   <EnhancedSubjectCard
@@ -1970,7 +1719,7 @@ const AttendanceTracking: React.FC = () => {
         semesters={semesterOptions}
         sections={sectionOptions}
         subjects={subjectOptions}
-        faculty={facultyOptions}
+        faculty={filterOptions.faculty}
         students={students}
       />
     </div>

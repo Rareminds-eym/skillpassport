@@ -1800,7 +1800,7 @@ const MentorNotesContent = () => {
           .from("school_educators")
           .select("id")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
         if (educatorError || !educator) {
           alert("School educator profile not found!");
@@ -1822,7 +1822,7 @@ const MentorNotesContent = () => {
           .from("college_lecturers")
           .select("id")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
         if (lecturerError || !lecturer) {
           alert("College lecturer profile not found!");

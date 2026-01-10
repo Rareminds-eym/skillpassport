@@ -1,37 +1,37 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import { 
-  MagnifyingGlassIcon,
-  PaperAirplaneIcon,
-  EllipsisVerticalIcon,
-  PhoneIcon,
-  VideoCameraIcon,
-  PaperClipIcon,
-  FaceSmileIcon,
-  ArchiveBoxIcon,
-  ChevronRightIcon,
-  ArrowUturnLeftIcon,
-  ChevronLeftIcon,
-  TrashIcon,
-  AcademicCapIcon,
-  ChatBubbleLeftRightIcon,
-  XMarkIcon,
-  UserGroupIcon
+import {
+    AcademicCapIcon,
+    ArchiveBoxIcon,
+    ArrowUturnLeftIcon,
+    ChatBubbleLeftRightIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    EllipsisVerticalIcon,
+    FaceSmileIcon,
+    MagnifyingGlassIcon,
+    PaperAirplaneIcon,
+    PaperClipIcon,
+    PhoneIcon,
+    TrashIcon,
+    UserGroupIcon,
+    VideoCameraIcon,
+    XMarkIcon
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import MessageService, { Conversation } from '../../../services/messageService';
-import { supabase } from '../../../lib/supabaseClient';
-import { useCollegeAdminMessages } from '../../../hooks/useCollegeAdminMessages.js';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '../../../context/AuthContext.jsx';
-import { useGlobalPresence } from '../../../context/GlobalPresenceContext';
-import { useRealtimePresence } from '../../../hooks/useRealtimePresence';
-import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
-import { useNotificationBroadcast } from '../../../hooks/useNotificationBroadcast';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
+import { useLocation } from 'react-router-dom';
 import DeleteConversationModal from '../../../components/messaging/DeleteConversationModal';
 import NewStudentConversationModalCollegeAdmin from '../../../components/messaging/NewStudentConversationModalCollegeAdmin';
+import { useAuth } from '../../../context/AuthContext.jsx';
+import { useGlobalPresence } from '../../../context/GlobalPresenceContext';
+import { useCollegeAdminMessages } from '../../../hooks/useCollegeAdminMessages.js';
+import { useNotificationBroadcast } from '../../../hooks/useNotificationBroadcast';
+import { useRealtimePresence } from '../../../hooks/useRealtimePresence';
+import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
+import { supabase } from '../../../lib/supabaseClient';
+import MessageService, { Conversation } from '../../../services/messageService';
 
 const StudentCollegeAdminCommunication = () => {
   const location = useLocation();
@@ -82,18 +82,19 @@ const StudentCollegeAdminCommunication = () => {
         };
       }
       
-      // Fallback: check if user is college owner
-      const { data: ownerData, error: ownerError } = await supabase
-        .from('colleges')
+      // Fallback: check organizations table for college owner
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
         .select('id, name')
-        .eq('created_by', collegeAdminId)
-        .single();
+        .eq('organization_type', 'college')
+        .eq('admin_id', collegeAdminId)
+        .maybeSingle();
       
-      if (ownerError) throw ownerError;
+      if (orgError) throw orgError;
       
       return {
-        college_id: ownerData.id,
-        colleges: ownerData
+        college_id: orgData?.id,
+        colleges: orgData
       };
     },
     enabled: !!collegeAdminId,

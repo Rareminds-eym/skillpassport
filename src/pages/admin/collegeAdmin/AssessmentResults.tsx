@@ -1,22 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  ClipboardDocumentListIcon,
-  EyeIcon,
-  ChevronDownIcon,
-  Squares2X2Icon,
-  TableCellsIcon,
-  FunnelIcon,
-  AcademicCapIcon,
-  ChartBarIcon,
-  XMarkIcon,
-  UserIcon,
-  SparklesIcon,
+    ChevronDownIcon,
+    ClipboardDocumentListIcon,
+    EyeIcon,
+    FunnelIcon,
+    SparklesIcon,
+    Squares2X2Icon,
+    TableCellsIcon
 } from '@heroicons/react/24/outline';
-import { supabase } from '../../../lib/supabaseClient';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import SearchBar from '../../../components/common/SearchBar';
-import { useAuth } from '../../../context/AuthContext';
 import AssessmentReportDrawer from '../../../components/shared/AssessmentReportDrawer';
+import { useAuth } from '../../../context/AuthContext';
+import { supabase } from '../../../lib/supabaseClient';
 
 // Types
 interface AssessmentResult {
@@ -324,24 +320,25 @@ const CollegeAdminAssessmentResults: React.FC = () => {
         return;
       }
 
-      // Find college by matching deanEmail (case-insensitive)
-      const { data: college, error: collegeError } = await supabase
-        .from('colleges')
-        .select('id, name, deanEmail')
-        .ilike('deanEmail', userEmail)
-        .single();
+      // Find college by matching email in organizations table (case-insensitive)
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .select('id, name, email')
+        .eq('organization_type', 'college')
+        .ilike('email', userEmail)
+        .maybeSingle();
 
-      if (collegeError || !college?.id) {
-        console.error('Error fetching college:', collegeError, 'for email:', userEmail);
+      if (orgError || !org?.id) {
+        console.error('Error fetching organization:', orgError, 'for email:', userEmail);
         setError('No college associated with your account');
         setLoading(false);
         return;
       }
 
-      const collegeId = college.id;
+      const collegeId = org.id;
       
-      // Set college name from the already fetched college data
-      setCollegeName(college.name);
+      // Set college name from the already fetched organization data
+      setCollegeName(org.name);
 
       // Get students from this college
       const { data: studentsData, error: studentsError } = await supabase

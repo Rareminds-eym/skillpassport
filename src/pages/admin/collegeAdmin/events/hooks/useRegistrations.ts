@@ -54,14 +54,17 @@ export const useRegistrations = (onCountsChange: () => void) => {
   };
 
   const removeRegistration = async (regId: string, _eventId: string) => {
-    if (!confirm("Remove registration?")) return;
     try {
       const { error } = await supabase.from("college_event_registrations").delete().eq("id", regId);
       if (error) throw error;
       setRegistrations((prev) => prev.filter((r) => r.id !== regId));
       onCountsChange();
       toast.success("Removed");
-    } catch { toast.error("Failed"); }
+      return true;
+    } catch { 
+      toast.error("Failed"); 
+      return false;
+    }
   };
 
 

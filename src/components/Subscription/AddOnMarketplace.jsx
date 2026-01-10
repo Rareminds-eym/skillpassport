@@ -14,7 +14,7 @@
  */
 
 import { Filter, Grid, List, Package, Search, Sparkles, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { useAddOnCatalog } from '../../hooks/useAddOnCatalog';
 import { clearFeatureAccessCache } from '../../hooks/useFeatureGate';
@@ -55,8 +55,26 @@ export function AddOnMarketplace({
     searchAddOns 
   } = useAddOnCatalog({ role });
 
-  const { purchaseAddOn, purchaseBundle, isPurchasing, refreshAccess, fetchUserEntitlements } = useSubscriptionContext();
+  const { purchaseAddOn, purchaseBundle, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionContext();
   const [purchaseError, setPurchaseError] = useState(null);
+
+  // Helper to check if user already owns an add-on (including cancelled but not expired)
+  const isAddOnOwned = useCallback((featureKey) => {
+    if (!activeEntitlements) return false;
+    const now = new Date();
+    return activeEntitlements.some(ent => 
+      ent.feature_key === featureKey && 
+      (ent.status === 'active' || 
+       ent.status === 'grace_period' ||
+       (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
+    );
+  }, [activeEntitlements]);
+
+  // Helper to check if user owns all features in a bundle
+  const isBundleFullyOwned = useCallback((bundleFeatureKeys) => {
+    if (!activeEntitlements || !bundleFeatureKeys?.length) return false;
+    return bundleFeatureKeys.every(key => isAddOnOwned(key));
+  }, [activeEntitlements, isAddOnOwned]);
 
   // Filter add-ons based on search and category
   const filteredAddOns = useMemo(() => {
@@ -69,10 +87,16 @@ export function AddOnMarketplace({
     return result;
   }, [addOns, searchTerm, selectedCategory, searchAddOns]);
 
-  // Handle add-on purchase
+  // Handle add-on purchase with duplicate check
   const handlePurchaseAddOn = async (featureKey, period) => {
     try {
       setPurchaseError(null);
+      
+      // Frontend duplicate check
+      if (isAddOnOwned(featureKey)) {
+        setPurchaseError('You already own this add-on. Access is active until your subscription expires.');
+        return;
+      }
       
       // Load Razorpay script first
       const scriptLoaded = await loadRazorpayScript();
@@ -87,14 +111,29 @@ export function AddOnMarketplace({
       }
     } catch (error) {
       console.error('Purchase failed:', error);
-      setPurchaseError(error.message || 'Purchase failed');
+      // Handle specific error codes from backend
+      if (error.message?.includes('already have') || error.message?.includes('ENTITLEMENT_EXISTS')) {
+        setPurchaseError('You already own this add-on.');
+      } else {
+        setPurchaseError(error.message || 'Purchase failed');
+      }
     }
   };
 
-  // Handle bundle purchase
+  // Handle bundle purchase with duplicate check
   const handlePurchaseBundle = async (bundleId, period) => {
     try {
       setPurchaseError(null);
+      
+      // Get bundle to check features
+      const bundle = bundles.find(b => b.id === bundleId);
+      const bundleFeatureKeys = bundle?.bundle_features?.map(bf => bf.feature_key) || [];
+      
+      // Frontend duplicate check
+      if (isBundleFullyOwned(bundleFeatureKeys)) {
+        setPurchaseError('You already own all features in this bundle.');
+        return;
+      }
       
       // Load Razorpay script first
       const scriptLoaded = await loadRazorpayScript();
@@ -109,7 +148,12 @@ export function AddOnMarketplace({
       }
     } catch (error) {
       console.error('Bundle purchase failed:', error);
-      setPurchaseError(error.message || 'Bundle purchase failed');
+      // Handle specific error codes from backend
+      if (error.message?.includes('already own') || error.message?.includes('BUNDLE_FULLY_OWNED')) {
+        setPurchaseError('You already own all features in this bundle.');
+      } else {
+        setPurchaseError(error.message || 'Bundle purchase failed');
+      }
     }
   };
 
@@ -127,11 +171,25 @@ export function AddOnMarketplace({
         console.log('[AddOnMarketplace] Payment successful, verifying...', response);
         
         try {
-          const verifyResult = await addOnPaymentService.verifyAddonPayment(
-            response.razorpay_order_id,
-            response.razorpay_payment_id,
-            response.razorpay_signature
-          );
+          let verifyResult;
+          
+          if (type === 'bundle') {
+            // Use bundle verification endpoint
+            verifyResult = await addOnPaymentService.verifyBundlePayment(
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature,
+              orderData.bundleId,
+              orderData.billingPeriod
+            );
+          } else {
+            // Use addon verification endpoint
+            verifyResult = await addOnPaymentService.verifyAddonPayment(
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature
+            );
+          }
           
           console.log('[AddOnMarketplace] Verification result:', verifyResult);
           

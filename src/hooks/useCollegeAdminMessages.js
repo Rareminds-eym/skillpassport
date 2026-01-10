@@ -1,7 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import MessageService from '../services/messageService';
 import { supabase } from '../lib/supabaseClient';
+import MessageService from '../services/messageService';
 
 /**
  * Hook for managing college admin conversations with students
@@ -26,15 +26,16 @@ export const useCollegeAdminConversations = (collegeAdminId, enabled = true) => 
         .from('college_lecturers')
         .select('collegeId, college_id')
         .or(`user_id.eq.${collegeAdminId},userId.eq.${collegeAdminId}`)
-        .single();
+        .maybeSingle();
       
       if (collegeError || (!collegeData?.collegeId && !collegeData?.college_id)) {
-        // Fallback: check if user is college owner
+        // Fallback: check if user is college owner in organizations table
         const { data: ownerData, error: ownerError } = await supabase
-          .from('colleges')
+          .from('organizations')
           .select('id')
-          .eq('created_by', collegeAdminId)
-          .single();
+          .eq('organization_type', 'college')
+          .eq('admin_id', collegeAdminId)
+          .maybeSingle();
         
         if (ownerError || !ownerData?.id) {
           console.error('Error fetching college admin college:', collegeError);
@@ -49,7 +50,7 @@ export const useCollegeAdminConversations = (collegeAdminId, enabled = true) => 
           .select(`
             *,
             student:students(id, name, email, university, branch_field),
-            college:colleges(id, name)
+            college:organizations!college_id(id, name)
           `)
           .eq('college_id', collegeId)
           .eq('conversation_type', 'student_college_admin')

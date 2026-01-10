@@ -61,7 +61,7 @@ export const getStudentSettingsByEmail = async (email) => {
         updated_at
       `)
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('❌ Error fetching student settings:', error);
@@ -180,7 +180,7 @@ export const updateStudentSettings = async (email, updates) => {
       .from('students')
       .select('id, user_id')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
     if (findError || !student) {
       return { success: false, error: 'Student not found' };

@@ -57,7 +57,7 @@ export const getTeacherById = async (teacherId: string) => {
     .from('school_educators')
     .select('*')
     .eq('id', teacherId)
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
   return data as Teacher;
@@ -182,7 +182,7 @@ export const getTeacherWorkload = async (teacherId: string) => {
     .from('teacher_workload')
     .select('*')
     .eq('teacher_id', teacherId)
-    .single();
+    .maybeSingle();
 
   if (error && error.code !== 'PGRST116') throw error;
   return data;

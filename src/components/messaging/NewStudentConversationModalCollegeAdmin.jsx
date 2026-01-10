@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { X, Search, GraduationCap } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
+import { GraduationCap, Search, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { supabase } from '../../lib/supabaseClient';
 
 const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, onConversationCreated }) => {
   const [students, setStudents] = useState([]);
@@ -38,9 +38,9 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
     try {
       console.log('🔍 Fetching students for college:', collegeId);
       
-      // First get the college name for fallback search
+      // First get the college name for fallback search from organizations table
       const { data: collegeInfo, error: collegeError } = await supabase
-        .from('colleges')
+        .from('organizations')
         .select('id, name')
         .eq('id', collegeId)
         .single();

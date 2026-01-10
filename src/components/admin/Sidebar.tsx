@@ -1,5 +1,3 @@
-import React, { useState, useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
 import {
   HomeIcon,
   BuildingOffice2Icon,
@@ -24,9 +22,12 @@ import {
   FolderIcon,
   SparklesIcon,
   ShieldCheckIcon,
+  CreditCardIcon,
 } from "@heroicons/react/24/outline";
-import { useAuth } from "../../context/AuthContext";
 import { TrophyIcon } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -328,6 +329,27 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           ],
         },
         {
+          title: "Examination Management",
+          key: "examinations",
+          items: [
+            {
+              name: "Examination Scheduling",
+              path: "/university-admin/examinations",
+              icon: ClipboardDocumentListIcon,
+            },
+            {
+              name: "Grade Calculation",
+              path: "/university-admin/examinations/grades",
+              icon: ChartPieIcon,
+            },
+            {
+              name: "Results Publishing",
+              path: "/university-admin/examinations/results",
+              icon: DocumentChartBarIcon,
+            },
+          ],
+        },
+        {
           title: "Placement & Industry Linkages",
           key: "placements",
           items: [
@@ -350,6 +372,27 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               name: "MoUs & Partnerships",
               path: "/university-admin/placements/mous",
               icon: BuildingOffice2Icon,
+            },
+          ],
+        },
+        {
+          title: "Finance & Fees",
+          key: "finance",
+          items: [
+            {
+              name: "Fee Structures",
+              path: "/university-admin/finance",
+              icon: BanknotesIcon,
+            },
+            {
+              name: "Payment Tracking",
+              path: "/university-admin/finance/payments",
+              icon: CreditCardIcon,
+            },
+            {
+              name: "Financial Reports",
+              path: "/university-admin/finance/reports",
+              icon: DocumentChartBarIcon,
             },
           ],
         },
@@ -405,10 +448,21 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             icon: UserGroupIcon,
           },
           {
+            name: "Enrolled Students",
+            path: "/college-admin/students/enrolled",
+            icon: AcademicCapIcon,
+          },
+          {
             name: "Attendance",
             path: "/college-admin/students/attendance",
             icon: ClipboardDocumentListIcon,
           },
+          {
+            name: "Attendance Policies",
+            path: "/college-admin/students/attendance-policies",
+            icon: ClipboardDocumentListIcon,
+          },
+          
           {
             name: "Performance",
             path: "/college-admin/students/performance",
@@ -455,11 +509,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             path: "/college-admin/departments/educators",
             icon: UserGroupIcon,
           },
-          {
-            name: "Course Mapping",
-            path: "/college-admin/departments/mapping",
-            icon: WrenchScrewdriverIcon,
-          },
         ],
       },
       {
@@ -468,25 +517,35 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
         items: [
           {
             name: "Courses",
-            path: "/college-admin/academics/courses",
-            icon: AcademicCapIcon,
-          },
-          /* OLD: browse-courses - commented out, using courses instead
-          {
-            name: "Courses",
             path: "/college-admin/academics/browse-courses",
             icon: AcademicCapIcon,
           },
           */
+
           {
-            name: "Curriculum Builder",
-            path: "/college-admin/academics/curriculum",
-            icon: BookOpenIcon,
+            name: "Course Master",
+            path: "/college-admin/academics/subject-courses",
+            icon: AcademicCapIcon,
+          },
+          {
+            name: "Programs",
+            path: "/college-admin/academics/programs",
+            icon: AcademicCapIcon,
           },
           {
             name: "Program & Sections",
             path: "/college-admin/academics/program-sections",
             icon: UserGroupIcon,
+          },
+          {
+            name: "Course Mapping",
+            path: "/college-admin/departments/mapping",
+            icon: WrenchScrewdriverIcon,
+          },
+          {
+            name: "Curriculum Builder",
+            path: "/college-admin/academics/curriculum",
+            icon: BookOpenIcon,
           },
           {
             name: "Lesson Plans",
@@ -513,6 +572,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             name: "Exam Management",
             path: "/college-admin/examinations",
             icon: ClipboardDocumentListIcon,
+          },
+          {
+            name: "Grading & Assessments",
+            path: "/college-admin/examinations/assessment-grading",
+            icon: ChartBarIcon,
           },
           {
             name: "Transcripts",

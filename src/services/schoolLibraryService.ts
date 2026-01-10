@@ -101,21 +101,22 @@ class SchoolLibraryService {
       .from('school_educators')
       .select('school_id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     if (educator?.school_id) {
       return educator.school_id;
     }
     
-    // Check schools table by email
-    const { data: school } = await supabase
-      .from('schools')
+    // Check organizations table by email
+    const { data: org } = await supabase
+      .from('organizations')
       .select('id')
+      .eq('organization_type', 'school')
       .eq('email', user.email)
-      .single();
+      .maybeSingle();
     
-    if (school?.id) {
-      return school.id;
+    if (org?.id) {
+      return org.id;
     }
     
     throw new Error('No school found for user');
@@ -172,7 +173,7 @@ class SchoolLibraryService {
       .select('*')
       .eq('id', id)
       .eq('school_id', schoolId)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return data as SchoolLibraryBook;
@@ -402,7 +403,7 @@ class SchoolLibraryService {
       throw new Error('Either book_id or student_id must be provided');
     }
 
-    const { data, error } = await query.single();
+    const { data, error } = await query.maybeSingle();
     
     if (error && error.code !== 'PGRST116') throw error;
     return data as SchoolLibraryBookIssue | null;
@@ -436,7 +437,7 @@ class SchoolLibraryService {
       .from('library_stats_school')
       .select('*')
       .eq('school_id', schoolId)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return data as SchoolLibraryStats;
@@ -609,7 +610,7 @@ class SchoolLibraryService {
       .eq('id', studentId)
       .eq('school_id', schoolId)
       .eq('is_deleted', false)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return data;

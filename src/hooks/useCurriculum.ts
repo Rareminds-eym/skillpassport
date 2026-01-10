@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import * as curriculumService from '../services/curriculumService';
 
 export interface Chapter {
@@ -300,7 +300,7 @@ export const useCurriculum = (
           .from('users')
           .select('role')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
         if (userData?.role === 'school_admin') {
           // School admins can directly approve their own curriculums

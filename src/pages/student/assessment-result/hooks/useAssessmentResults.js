@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../../../lib/supabaseClient';
-import { analyzeAssessmentWithGemini } from '../../../../services/geminiAssessmentService';
-import { riasecQuestions } from '../../assessment-data/riasecQuestions';
-import { bigFiveQuestions } from '../../assessment-data/bigFiveQuestions';
-import { workValuesQuestions } from '../../assessment-data/workValuesQuestions';
-import { employabilityQuestions } from '../../assessment-data/employabilityQuestions';
-import { streamKnowledgeQuestions } from '../../assessment-data/streamKnowledgeQuestions';
 import * as assessmentService from '../../../../services/assessmentService';
 import { saveRecommendations } from '../../../../services/courseRecommendationService';
+import { analyzeAssessmentWithGemini } from '../../../../services/geminiAssessmentService';
+import { bigFiveQuestions } from '../../assessment-data/bigFiveQuestions';
+import { employabilityQuestions } from '../../assessment-data/employabilityQuestions';
+import { riasecQuestions } from '../../assessment-data/riasecQuestions';
+import { streamKnowledgeQuestions } from '../../assessment-data/streamKnowledgeQuestions';
+import { workValuesQuestions } from '../../assessment-data/workValuesQuestions';
 
 /**
  * Custom hook for managing assessment results
@@ -80,7 +80,7 @@ export const useAssessmentResults = () => {
                         school_classes(grade)
                     `)
                     .eq('user_id', user.id)
-                    .single();
+                    .maybeSingle();
 
                 // If the query with relationships fails, try without relationships
                 if (fetchError) {
@@ -89,31 +89,31 @@ export const useAssessmentResults = () => {
                         .from('students')
                         .select('*')
                         .eq('user_id', user.id)
-                        .single();
+                        .maybeSingle();
                     
                     studentData = simpleQuery.data;
                     fetchError = simpleQuery.error;
                     
-                    // If we got data, fetch related college/school names separately
+                    // If we got data, fetch related college/school names separately from organizations table
                     if (studentData) {
                         if (studentData.college_id) {
-                            const { data: collegeData } = await supabase
-                                .from('colleges')
+                            const { data: orgData } = await supabase
+                                .from('organizations')
                                 .select('name')
                                 .eq('id', studentData.college_id)
-                                .single();
-                            if (collegeData) {
-                                studentData.colleges = { name: collegeData.name };
+                                .maybeSingle();
+                            if (orgData) {
+                                studentData.colleges = { name: orgData.name };
                             }
                         }
                         if (studentData.school_id) {
-                            const { data: schoolData } = await supabase
-                                .from('schools')
+                            const { data: orgData } = await supabase
+                                .from('organizations')
                                 .select('name')
                                 .eq('id', studentData.school_id)
-                                .single();
-                            if (schoolData) {
-                                studentData.schools = { name: schoolData.name };
+                                .maybeSingle();
+                            if (orgData) {
+                                studentData.schools = { name: orgData.name };
                             }
                         }
                         if (studentData.school_class_id) {
@@ -121,7 +121,7 @@ export const useAssessmentResults = () => {
                                 .from('school_classes')
                                 .select('grade')
                                 .eq('id', studentData.school_class_id)
-                                .single();
+                                .maybeSingle();
                             if (classData) {
                                 studentData.school_classes = { grade: classData.grade };
                             }
@@ -518,7 +518,7 @@ export const useAssessmentResults = () => {
                                             .from('personal_assessment_results')
                                             .select('id')
                                             .eq('attempt_id', inProgressAttempt.id)
-                                            .single();
+                                            .maybeSingle();
                                         
                                         await saveRecommendations(
                                             user.id,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   BellIcon,
@@ -25,6 +25,30 @@ const Header: React.FC<HeaderProps> = ({
   const [educatorProfile, setEducatorProfile] = useState<any>(null)
   const [educatorEmail, setEducatorEmail] = useState<string | null>(null)
   const navigate = useNavigate()
+  const profileRef = useRef<HTMLDivElement>(null)
+  const notificationRef = useRef<HTMLDivElement>(null)
+
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Profile Dropdown
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false)
+      }
+      // Notification Panel
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false)
+      }
+    }
+
+    if (showProfileMenu || showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showProfileMenu, showNotifications])
 
   // Get notifications using the unified notification system
   const {
@@ -127,6 +151,8 @@ const Header: React.FC<HeaderProps> = ({
   // Menu button click handler
   const handleMenuClick = () => {
     onMenuToggle()
+    setShowNotifications(false)
+    setShowProfileMenu(false)
   }
 
   return (
@@ -162,7 +188,7 @@ const Header: React.FC<HeaderProps> = ({
           {/* Right side */}
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Notifications Button */}
-            <div className="relative">
+            <div ref={notificationRef} className="relative">
               <button
                 onClick={handleNotificationClick}
                 className="relative p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
@@ -187,7 +213,7 @@ const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Profile Menu */}
-            <div className="relative">
+            <div ref={profileRef} className="relative">
               <button
                 onClick={handleProfileClick}
                 className="flex items-center gap-2 sm:gap-3 text-sm rounded-full hover:bg-gray-100 p-1.5 sm:p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
@@ -236,7 +262,7 @@ const Header: React.FC<HeaderProps> = ({
                     onClick={() => setShowProfileMenu(false)}
                   />
 
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
                     {/* Mobile Profile Info */}
                     <div className="sm:hidden px-4 py-3 border-b border-gray-200">
                       <div className="flex items-center space-x-3">

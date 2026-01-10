@@ -109,14 +109,16 @@ class ExpenditureService {
     const collegeId = user.user_metadata?.college_id;
     if (collegeId) return collegeId;
     
-    // Fallback: get from colleges table or use first available college
-    const { data: colleges } = await supabase
-      .from('colleges')
+    // Fallback: get from organizations table
+    const { data: orgs } = await supabase
+      .from('organizations')
       .select('id')
+      .eq('organization_type', 'college')
+      .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
       .limit(1);
     
-    if (colleges && colleges.length > 0) {
-      return colleges[0].id;
+    if (orgs && orgs.length > 0) {
+      return orgs[0].id;
     }
     
     throw new Error('No college found for user');

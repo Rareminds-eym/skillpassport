@@ -2,46 +2,48 @@
  * Router - Maps routes to handlers
  */
 
+import { API_VERSION, corsHeaders } from './constants';
+import {
+    handleCheckCollegeCode,
+    handleCheckCompanyCode,
+    handleCheckEmail,
+    handleCheckSchoolCode,
+    handleCheckUniversityCode,
+    // College
+    handleCollegeAdminSignup,
+    handleCollegeEducatorSignup,
+    handleCollegeStudentSignup,
+    handleCreateCollegeStaff,
+    // Events
+    handleCreateEventUser,
+    // Authenticated
+    handleCreateStudent,
+    handleCreateTeacher,
+    handleEducatorSignup,
+    handleGetColleges,
+    handleGetCompanies,
+    // Utility
+    handleGetSchools,
+    handleGetUniversities,
+    // Recruiter
+    handleRecruiterAdminSignup,
+    handleRecruiterSignup,
+    // Password
+    handleResetPassword,
+    // School
+    handleSchoolAdminSignup,
+    handleSendInterviewReminder,
+    handleStudentSignup,
+    // Unified
+    handleUnifiedSignup,
+    // University
+    handleUniversityAdminSignup,
+    handleUniversityEducatorSignup,
+    handleUniversityStudentSignup,
+    handleUpdateStudentDocuments
+} from './handlers';
 import { Env } from './types';
 import { jsonResponse } from './utils/helpers';
-import { corsHeaders, API_VERSION } from './constants';
-import {
-  // School
-  handleSchoolAdminSignup,
-  handleEducatorSignup,
-  handleStudentSignup,
-  // College
-  handleCollegeAdminSignup,
-  handleCollegeEducatorSignup,
-  handleCollegeStudentSignup,
-  // University
-  handleUniversityAdminSignup,
-  handleUniversityEducatorSignup,
-  handleUniversityStudentSignup,
-  // Recruiter
-  handleRecruiterAdminSignup,
-  handleRecruiterSignup,
-  // Utility
-  handleGetSchools,
-  handleGetColleges,
-  handleGetUniversities,
-  handleGetCompanies,
-  handleCheckSchoolCode,
-  handleCheckCollegeCode,
-  handleCheckUniversityCode,
-  handleCheckCompanyCode,
-  handleCheckEmail,
-  // Authenticated
-  handleCreateStudent,
-  handleCreateTeacher,
-  handleUpdateStudentDocuments,
-  handleCreateCollegeStaff,
-  // Events
-  handleCreateEventUser,
-  handleSendInterviewReminder,
-  // Password
-  handleResetPassword,
-} from './handlers';
 
 type RouteHandler = (request: Request, env: Env) => Promise<Response>;
 
@@ -52,6 +54,9 @@ interface Route {
 
 // Route definitions
 const routes: Record<string, Route> = {
+  // ===== UNIFIED SIGNUP (No Auth) =====
+  '/signup': { method: 'POST', handler: handleUnifiedSignup },
+
   // ===== SCHOOL SIGNUP (No Auth) =====
   '/signup/school-admin': { method: 'POST', handler: handleSchoolAdminSignup },
   '/signup/educator': { method: 'POST', handler: handleEducatorSignup },
@@ -102,6 +107,7 @@ function handleHealthCheck(): Response {
     version: API_VERSION,
     endpoints: {
       signup: {
+        unified: ['/signup'],
         school: ['/signup/school-admin', '/signup/educator', '/signup/student'],
         college: ['/signup/college-admin', '/signup/college-educator', '/signup/college-student'],
         university: ['/signup/university-admin', '/signup/university-educator', '/signup/university-student'],

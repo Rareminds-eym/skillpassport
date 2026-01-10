@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from "react";
 import {
-  Calendar,
-  AlertTriangle,
-  CheckCircle,
-  Plus,
-  Trash2,
-  Shield,
-  Eye,
-  X,
+    AlertTriangle,
+    Calendar,
+    CheckCircle,
+    Eye,
+    Plus,
+    Shield,
+    Trash2,
+    X,
 } from "lucide-react";
-import { supabase } from "../../../../lib/supabaseClient";
+import React, { useEffect, useState } from "react";
 import { useUserRole } from "../../../../hooks/useUserRole";
+import { supabase } from "../../../../lib/supabaseClient";
 
 interface Teacher {
   id: string;
@@ -135,9 +135,10 @@ const TimetableAllocationPage: React.FC = () => {
 
       if (userData?.role === "school_admin") {
         const { data: schoolData } = await supabase
-          .from("schools")
+          .from("organizations")
           .select("id")
-          .eq("created_by", user.id)
+          .eq("organization_type", "school")
+          .eq("admin_id", user.id)
           .maybeSingle();
 
         if (schoolData?.id) {

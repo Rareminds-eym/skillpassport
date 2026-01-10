@@ -278,22 +278,13 @@ const ProgramSectionManagement: React.FC = () => {
               Manage department programs, semesters, sections, and capacity
             </p>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={loadData}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-            >
-              <ArrowPathIcon className="h-4 w-4" />
-              Refresh
-            </button>
-            <button
-              onClick={handleCreateSection}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            >
-              <PlusCircleIcon className="h-5 w-5" />
-              Add Section
-            </button>
-          </div>
+          <button
+            onClick={handleCreateSection}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            <PlusCircleIcon className="h-5 w-5" />
+            Add Section
+          </button>
         </div>
       </div>
 
