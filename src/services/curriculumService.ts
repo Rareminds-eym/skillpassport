@@ -286,6 +286,19 @@ export const getCurrentAcademicYear = async (): Promise<string | null> => {
 // Get current educator's school_id (works for both school_educator and school_admin roles)
 export const getCurrentEducatorSchoolId = async (): Promise<string | null> => {
   try {
+    // First check localStorage for school admin (fastest path)
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        if (userData.role === 'school_admin' && userData.schoolId) {
+          return userData.schoolId;
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) return null;
@@ -317,7 +330,7 @@ export const getCurrentEducatorSchoolId = async (): Promise<string | null> => {
         .from('organizations')
         .select('id, name')
         .eq('organization_type', 'school')
-        .eq('admin_id', user.id)
+        .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
         .maybeSingle();
 
       if (orgError) {

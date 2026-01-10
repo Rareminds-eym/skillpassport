@@ -88,13 +88,13 @@ const StudentCommunication = () => {
       // First try school_educators table
       const { data, error } = await supabase
         .from('school_educators')
-        .select('school_id, schools(id, name)')
+        .select('school_id')
         .eq('user_id', schoolAdminId)
         .eq('role', 'school_admin')
         .maybeSingle();
       
       if (data?.school_id) {
-        return data;
+        return { school_id: data.school_id };
       }
       
       // Fallback: Check organizations table for school admins
@@ -108,7 +108,7 @@ const StudentCommunication = () => {
           .maybeSingle();
         
         if (org?.id) {
-          return { school_id: org.id, schools: { id: org.id, name: org.name } };
+          return { school_id: org.id };
         }
       }
       
@@ -128,8 +128,7 @@ const StudentCommunication = () => {
         .from('conversations')
         .select(`
           *,
-          student:students(id, name, email, school_id, university, branch_field),
-          school:schools(id, name)
+          student:students(id, name, email, school_id, university, branch_field)
         `)
         .eq('school_id', schoolId)
         .eq('conversation_type', 'student_admin')
@@ -156,8 +155,7 @@ const StudentCommunication = () => {
         .from('conversations')
         .select(`
           *,
-          student:students(id, name, email, school_id, university, branch_field),
-          school:schools(id, name)
+          student:students(id, name, email, school_id, university, branch_field)
         `)
         .eq('school_id', schoolId)
         .eq('conversation_type', 'student_admin')
@@ -184,8 +182,7 @@ const StudentCommunication = () => {
         .from('conversations')
         .select(`
           *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url),
-          school:schools(id, name)
+          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
         `)
         .eq('school_id', schoolId)
         .eq('conversation_type', 'educator_admin')
@@ -212,8 +209,7 @@ const StudentCommunication = () => {
         .from('conversations')
         .select(`
           *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url),
-          school:schools(id, name)
+          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
         `)
         .eq('school_id', schoolId)
         .eq('conversation_type', 'educator_admin')

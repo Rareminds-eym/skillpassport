@@ -1171,8 +1171,7 @@ export class MessageService {
         .from('conversations')
         .select(`
           *,
-          student:students(id, name, email),
-          school:schools(id, name)
+          student:students(id, name, email)
         `)
         .eq('id', conversationId)
         .single();
@@ -1446,8 +1445,7 @@ export class MessageService {
         .from('conversations')
         .select(`
           *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url),
-          school:schools(id, name)
+          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
         `)
         .eq('id', conversationId)
         .single();
