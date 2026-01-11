@@ -88,14 +88,10 @@ describe('OrganizationBillingService', () => {
       const mockAddons = [
         {
           id: 'addon-order-001',
-          addon_id: 'addon-001',
+          addon_feature_key: 'premium_support',
           target_member_ids: ['user-1', 'user-2'],
           status: 'completed',
-          subscription_addons: {
-            id: 'addon-001',
-            name: 'Premium Support',
-            price: 50
-          }
+          amount: '100'
         }
       ];
 
@@ -522,7 +518,7 @@ describe('OrganizationBillingService', () => {
       const mockAddons = [
         {
           target_member_ids: ['user-1', 'user-2'],
-          subscription_addons: { price: 50 }
+          amount: '100'
         }
       ];
 

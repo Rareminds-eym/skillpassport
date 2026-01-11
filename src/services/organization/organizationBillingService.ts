@@ -179,16 +179,10 @@ export class OrganizationBillingService {
       if (payError) throw payError;
 
       // 3. Get addon purchases for organization
+      // Note: addon_pending_orders uses addon_feature_key (text), not a foreign key to subscription_addons
       const { data: addons, error: addonError } = await supabase
         .from('addon_pending_orders')
-        .select(`
-          *,
-          subscription_addons (
-            id,
-            name,
-            price
-          )
-        `)
+        .select('*')
         .eq('organization_id', organizationId)
         .eq('status', 'completed');
 
@@ -231,18 +225,19 @@ export class OrganizationBillingService {
       const addonMap = new Map<string, AddonSummary>();
 
       (addons || []).forEach(addon => {
-        const addonId = addon.addon_id;
-        const existing = addonMap.get(addonId);
+        const addonKey = addon.addon_feature_key;
+        const existing = addonMap.get(addonKey);
         const memberCount = addon.target_member_ids?.length || 1;
-        const cost = (addon.subscription_addons?.price || 0) * memberCount;
+        // Use the amount from the order itself since there's no subscription_addons table
+        const cost = parseFloat(addon.amount || 0);
 
         if (existing) {
           existing.memberCount += memberCount;
           existing.monthlyCost += cost;
         } else {
-          addonMap.set(addonId, {
-            addonId,
-            addonName: addon.subscription_addons?.name || 'Unknown Addon',
+          addonMap.set(addonKey, {
+            addonId: addonKey,
+            addonName: addonKey?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown Addon',
             memberCount,
             monthlyCost: cost
           });
@@ -553,12 +548,10 @@ export class OrganizationBillingService {
       if (subError) throw subError;
 
       // Get addon costs
+      // Note: addon_pending_orders uses addon_feature_key (text), not a foreign key to subscription_addons
       const { data: addons, error: addonError } = await supabase
         .from('addon_pending_orders')
-        .select(`
-          *,
-          subscription_addons (price)
-        `)
+        .select('*')
         .eq('organization_id', organizationId)
         .eq('status', 'completed');
 
@@ -573,8 +566,8 @@ export class OrganizationBillingService {
       // Calculate addon costs
       let addonCost = 0;
       (addons || []).forEach(addon => {
-        const memberCount = addon.target_member_ids?.length || 1;
-        addonCost += (addon.subscription_addons?.price || 0) * memberCount;
+        // Use the amount from the order itself
+        addonCost += parseFloat(addon.amount || 0);
       });
 
       const totalBeforeTax = subscriptionCost + addonCost;
