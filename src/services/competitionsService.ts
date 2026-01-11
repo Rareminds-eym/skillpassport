@@ -49,36 +49,70 @@ export interface CompetitionResult {
 // Get current user's school_id
 async function getCurrentUserSchoolId(): Promise<string | null> {
     try {
+        // First check localStorage for school admin
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            try {
+                const userData = JSON.parse(storedUser);
+                if (userData.role === 'school_admin' && userData.schoolId) {
+                    console.log('✅ [CompetitionsService] Found school ID from localStorage:', userData.schoolId);
+                    return userData.schoolId;
+                }
+            } catch (e) {
+                console.error('Error parsing stored user:', e);
+            }
+        }
+
         const userEmail = localStorage.getItem('userEmail');
         console.log('🔍 [CompetitionsService] Getting school ID for user:', userEmail);
-        if (!userEmail) return null;
+
+        // Get current Supabase user
+        const { data: { user } } = await supabase.auth.getUser();
 
         // Try school_educators first
-        const { data: educatorData } = await supabase
-            .from('school_educators')
-            .select('school_id')
-            .eq('email', userEmail)
-            .maybeSingle();
+        if (user) {
+            const { data: educatorData } = await supabase
+                .from('school_educators')
+                .select('school_id')
+                .eq('user_id', user.id)
+                .maybeSingle();
 
-        if (educatorData?.school_id) {
-            console.log('✅ [CompetitionsService] Found school ID from school_educators:', educatorData.school_id);
-            return educatorData.school_id;
+            if (educatorData?.school_id) {
+                console.log('✅ [CompetitionsService] Found school ID from school_educators:', educatorData.school_id);
+                return educatorData.school_id;
+            }
+        }
+
+        // Try by email if userEmail exists
+        if (userEmail) {
+            const { data: educatorByEmail } = await supabase
+                .from('school_educators')
+                .select('school_id')
+                .eq('email', userEmail)
+                .maybeSingle();
+
+            if (educatorByEmail?.school_id) {
+                console.log('✅ [CompetitionsService] Found school ID from school_educators by email:', educatorByEmail.school_id);
+                return educatorByEmail.school_id;
+            }
         }
 
         // Try organizations table (for admins)
-        const { data: orgData } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', 'school')
-            .eq('email', userEmail)
-            .maybeSingle();
+        if (user || userEmail) {
+            const { data: orgData } = await supabase
+                .from('organizations')
+                .select('id')
+                .eq('organization_type', 'school')
+                .or(`admin_id.eq.${user?.id || ''},email.eq.${userEmail || user?.email || ''}`)
+                .maybeSingle();
 
-        if (orgData?.id) {
-            console.log('✅ [CompetitionsService] Found school ID from organizations table:', orgData.id);
-            return orgData.id;
+            if (orgData?.id) {
+                console.log('✅ [CompetitionsService] Found school ID from organizations table:', orgData.id);
+                return orgData.id;
+            }
         }
 
-        console.log('❌ [CompetitionsService] No school ID found for user:', userEmail);
+        console.log('❌ [CompetitionsService] No school ID found for user');
         return null;
     } catch (error) {
         console.error('❌ [CompetitionsService] Error getting school_id:', error);

@@ -3,25 +3,11 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import AddOnMarketplace from '../../components/Subscription/AddOnMarketplace';
-import CollegeLoginModal from '../../components/Subscription/CollegeLoginModal';
-import CollegeSignupModal from '../../components/Subscription/CollegeSignupModal';
-import EducatorLoginModal from '../../components/Subscription/EducatorLoginModal';
-import EducatorSignupModal from '../../components/Subscription/EducatorSignupModal';
-import LoginModal from '../../components/Subscription/LoginModal';
 import { OrganizationPurchasePanel } from '../../components/Subscription/Organization';
-import RecruiterLoginModal from '../../components/Subscription/RecruiterLoginModal';
-import RecruiterSignupModal from '../../components/Subscription/RecruiterSignupModal';
-import RecruitmentAdminSignupModal from '../../components/Subscription/RecruitmentAdminSignupModal';
-import SchoolLoginModal from '../../components/Subscription/SchoolLoginModal';
-import SchoolSignupModal from '../../components/Subscription/SchoolSignupModal';
-import SignupModal from '../../components/Subscription/SignupModal';
-import UniversityAdminLoginModal from '../../components/Subscription/UniversityAdminLoginModal';
-import UniversityAdminSignupModal from '../../components/Subscription/UniversityAdminSignupModal';
-import UniversityStudentLoginModal from '../../components/Subscription/UniversityStudentLoginModal';
-import UniversityStudentSignupModal from '../../components/Subscription/UniversityStudentSignupModal';
 import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
+import { supabase } from '../../lib/supabaseClient';
 import { getEntityContent, parseStudentType, setDatabasePlans } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
@@ -29,6 +15,8 @@ import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscripti
  * Get the subscription manage path based on user role
  */
 function getManagePath(userRole) {
+  if (!userRole) return null; // Return null instead of default to prevent wrong redirects
+  
   const manageRoutes = {
     super_admin: '/admin/subscription/manage',
     rm_admin: '/admin/subscription/manage',
@@ -44,14 +32,14 @@ function getManagePath(userRole) {
     school_student: '/student/subscription/manage',
     college_student: '/student/subscription/manage',
   };
-  return manageRoutes[userRole] || '/student/subscription/manage';
+  return manageRoutes[userRole] || null; // Return null instead of default to prevent wrong redirects
 }
 
 /**
  * Get the subscription manage path based on URL type parameter (more reliable)
  */
 function getManagePathFromType(type) {
-  if (!type) return '/student/subscription/manage';
+  if (!type) return null; // Return null instead of default to prevent wrong redirects
   
   const typeToPath = {
     // Student types
@@ -75,11 +63,13 @@ function getManagePathFromType(type) {
     'university-admin': '/university-admin/subscription/manage',
     // Recruiter
     'recruiter': '/recruitment/subscription/manage',
-    // Generic admin
+    // Generic admin (super_admin, rm_admin)
     'admin': '/admin/subscription/manage',
+    'super_admin': '/admin/subscription/manage',
+    'rm_admin': '/admin/subscription/manage',
   };
   
-  return typeToPath[type] || '/student/subscription/manage';
+  return typeToPath[type] || null; // Return null instead of default to prevent wrong redirects
 }
 
 // Feature comparison data
@@ -396,9 +386,6 @@ PlanCard.displayName = 'PlanCard';
 
 
 function SubscriptionPlans() {
-  const [showSignupModal, setShowSignupModal] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [planToSelect, setPlanToSelect] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { type: pathType } = useParams();
@@ -419,16 +406,46 @@ function SubscriptionPlans() {
   // Use new authentication hook
   const { isAuthenticated, user, loading: authLoading, role: userRole } = useAuth();
   
+  // Debug logging for redirect loop investigation
+  const DEBUG = import.meta.env.DEV || localStorage.getItem('DEBUG_SUBSCRIPTION') === 'true';
+  useEffect(() => {
+    if (DEBUG) {
+      console.log('[SubscriptionPlans] State:', {
+        type,
+        pathType,
+        searchParamType: searchParams.get('type'),
+        userRole,
+        isAuthenticated,
+        authLoading,
+        pathname: location.pathname,
+        search: location.search,
+      });
+    }
+  }, [type, pathType, searchParams, userRole, isAuthenticated, authLoading, location.pathname, location.search, DEBUG]);
+  
   // Get the manage path based on URL type parameter (more reliable than userRole)
   // Falls back to userRole if type is not available
+  // CRITICAL FIX: Ensure we never redirect to wrong path
   const managePath = useMemo(() => {
-    // First try to get path from URL type parameter
+    // First try to get path from URL type parameter (most reliable)
     if (type) {
-      return getManagePathFromType(type);
+      const pathFromType = getManagePathFromType(type);
+      if (DEBUG) console.log('[SubscriptionPlans] managePath from type:', type, '->', pathFromType);
+      return pathFromType;
     }
+    
     // Fall back to userRole from auth
-    return getManagePath(userRole);
-  }, [type, userRole]);
+    if (userRole) {
+      const pathFromRole = getManagePath(userRole);
+      if (DEBUG) console.log('[SubscriptionPlans] managePath from userRole:', userRole, '->', pathFromRole);
+      return pathFromRole;
+    }
+    
+    // SAFETY: If neither type nor userRole is available, don't redirect
+    // This prevents the redirect loop when auth is still loading or role is not set
+    if (DEBUG) console.log('[SubscriptionPlans] managePath: no type or userRole, returning null to prevent redirect');
+    return null;
+  }, [type, userRole, DEBUG]);
   
   // Parse entity and role from type
   const { entity, role: pageRole } = useMemo(() => parseStudentType(type || 'student'), [type]);
@@ -467,19 +484,6 @@ function SubscriptionPlans() {
   }, [dbPlans, configPlans, type]);
 
   const studentType = type || 'student';
-
-  const { SignupComponent, LoginComponent } = useMemo(() => {
-    if (pageRole === 'admin') {
-      if (entity === 'school') return { SignupComponent: SchoolSignupModal, LoginComponent: SchoolLoginModal };
-      if (entity === 'college') return { SignupComponent: CollegeSignupModal, LoginComponent: CollegeLoginModal };
-      if (entity === 'recruitment') return { SignupComponent: RecruitmentAdminSignupModal, LoginComponent: RecruiterLoginModal };
-      if (entity === 'university') return { SignupComponent: UniversityAdminSignupModal, LoginComponent: UniversityAdminLoginModal };
-    }
-    if (pageRole === 'educator') return { SignupComponent: EducatorSignupModal, LoginComponent: EducatorLoginModal };
-    if (pageRole === 'recruiter' && entity === 'recruitment') return { SignupComponent: RecruiterSignupModal, LoginComponent: RecruiterLoginModal };
-    if (pageRole === 'student' && entity === 'university') return { SignupComponent: UniversityStudentSignupModal, LoginComponent: UniversityStudentLoginModal };
-    return { SignupComponent: SignupModal, LoginComponent: LoginModal };
-  }, [entity, pageRole]);
   
   const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionQuery();
   const daysRemaining = useMemo(() => calculateDaysRemaining(subscriptionData?.endDate), [subscriptionData?.endDate]);
@@ -528,9 +532,10 @@ function SubscriptionPlans() {
 
   // Compute whether redirect should occur
   // Don't redirect if user is in upgrade mode or organization mode - they want to see plans
+  // CRITICAL FIX: Also don't redirect if managePath is null (prevents redirect loop)
   const shouldRedirect = useMemo(
-    () => isAuthenticated && hasActiveOrPausedSubscription && !isUpgradeMode && !isOrganizationMode,
-    [isAuthenticated, hasActiveOrPausedSubscription, isUpgradeMode, isOrganizationMode]
+    () => isAuthenticated && hasActiveOrPausedSubscription && !isUpgradeMode && !isOrganizationMode && managePath !== null,
+    [isAuthenticated, hasActiveOrPausedSubscription, isUpgradeMode, isOrganizationMode, managePath]
   );
 
   // Show welcome message from signup flow (only once)
@@ -549,40 +554,99 @@ function SubscriptionPlans() {
   }, [subscriptionError, isAuthenticated]);
 
   useEffect(() => {
-    if (isFullyLoaded && shouldRedirect) {
+    if (isFullyLoaded && shouldRedirect && managePath) {
+      const DEBUG = import.meta.env.DEV || localStorage.getItem('DEBUG_SUBSCRIPTION') === 'true';
+      if (DEBUG) {
+        console.log('[SubscriptionPlans] Redirecting to manage page:', managePath + location.search);
+      }
       navigate(`${managePath}${location.search}`, { replace: true });
     }
   }, [isFullyLoaded, shouldRedirect, navigate, location.search, managePath]);
 
   const handlePlanSelection = useCallback((plan) => {
+    // If user is currently on their active plan, go to manage page
     if (subscriptionData && subscriptionData.plan === plan.id) {
-      navigate(managePath);
+      // Use managePath if available, otherwise construct from type or userRole
+      const targetPath = managePath || getManagePathFromType(type) || getManagePath(userRole) || `/subscription/plans?type=${studentType}`;
+      navigate(targetPath);
       return;
     }
+    
+    // CRITICAL FIX: Check if auth is still loading
+    if (authLoading) {
+      console.log('🔄 Auth still loading, please wait...');
+      return; // Don't redirect while auth is loading
+    }
+    
+    // If not authenticated, redirect to signup
     if (!isAuthenticated) {
-      navigate('/signup');
-    } else if (hasActiveOrPausedSubscription) {
+      console.log('🔐 User not authenticated, redirecting to signup');
+      navigate('/signup', { 
+        state: { 
+          plan, 
+          studentType, 
+          returnTo: '/subscription/payment' 
+        } 
+      });
+      return;
+    }
+    
+    // If user has active/paused subscription, show upgrade mode
+    if (hasActiveOrPausedSubscription) {
       navigate(`/subscription/plans?type=${studentType}&mode=upgrade`);
-    } else {
-      navigate('/subscription/payment', { state: { plan, studentType, isUpgrade: !!subscriptionData } });
+      return;
     }
-  }, [isAuthenticated, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription, managePath]);
-
-  const handleSignupSuccess = useCallback(() => {
-    setShowSignupModal(false);
-    if (planToSelect) {
-      navigate('/subscription/payment', { state: { plan: planToSelect, studentType } });
-      setPlanToSelect(null);
-    }
-  }, [planToSelect, navigate, studentType]);
-
-  const handleLoginSuccess = useCallback(() => {
-    setShowLoginModal(false);
-    if (planToSelect) {
-      navigate('/subscription/payment', { state: { plan: planToSelect, studentType } });
-      setPlanToSelect(null);
-    }
-  }, [planToSelect, navigate, studentType]);
+    
+    // ENHANCED: Validate user exists in database before allowing payment
+    // This prevents the payment page from redirecting back to signup
+    const validateUserAndProceed = async () => {
+      try {
+        // Check if user exists in database
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('id, firstName, lastName, email')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('❌ Error checking user in database:', error);
+          toast.error('Unable to verify account. Please try again.');
+          return;
+        }
+        
+        if (!userData) {
+          console.warn('⚠️ User not found in database, redirecting to complete signup');
+          navigate('/signup', { 
+            state: { 
+              plan, 
+              studentType, 
+              returnTo: '/subscription/payment',
+              message: 'Please complete your account setup to continue with payment.'
+            } 
+          });
+          return;
+        }
+        
+        // User exists in database, proceed to payment
+        console.log('✅ User validated, proceeding to payment');
+        navigate('/subscription/payment', { 
+          state: { 
+            plan, 
+            studentType, 
+            isUpgrade: !!subscriptionData 
+          } 
+        });
+        
+      } catch (err) {
+        console.error('❌ Error validating user:', err);
+        toast.error('Unable to proceed with payment. Please try again.');
+      }
+    };
+    
+    // Execute validation
+    validateUserAndProceed();
+    
+  }, [isAuthenticated, authLoading, user, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription, managePath, type, userRole]);
 
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -852,24 +916,6 @@ function SubscriptionPlans() {
           </a>
         </div>
       </div>
-
-      {/* Modals */}
-      <SignupComponent
-        isOpen={showSignupModal}
-        onClose={() => { setShowSignupModal(false); setPlanToSelect(null); }}
-        selectedPlan={planToSelect}
-        studentType={studentType}
-        onSignupSuccess={handleSignupSuccess}
-        onSwitchToLogin={() => { setShowSignupModal(false); setShowLoginModal(true); }}
-      />
-      <LoginComponent
-        isOpen={showLoginModal}
-        onClose={() => { setShowLoginModal(false); setPlanToSelect(null); }}
-        selectedPlan={planToSelect}
-        studentType={studentType}
-        onLoginSuccess={handleLoginSuccess}
-        onSwitchToSignup={() => { setShowLoginModal(false); setShowSignupModal(true); }}
-      />
       
       {/* Organization Purchase Panel */}
       {showOrgPurchasePanel && selectedPlanForOrg && (

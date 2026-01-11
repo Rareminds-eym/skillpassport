@@ -76,8 +76,7 @@ export async function handleRecruiterAdminSignup(request: Request, env: Env): Pr
         organizationId: null,
         isActive: true,
         phone: body.phone || body.contactPersonPhone,
-        dob: body.dateOfBirth || null,
-        metadata: { source: 'recruiter_admin_signup', companyCode: body.companyCode },
+        metadata: { source: 'recruiter_admin_signup', companyCode: body.companyCode, dateOfBirth: body.dateOfBirth },
       });
 
       const { data: company, error: companyError } = await supabaseAdmin
@@ -245,8 +244,7 @@ export async function handleRecruiterSignup(request: Request, env: Env): Promise
         organizationId: body.companyId,
         isActive: true,
         phone: body.phone,
-        dob: body.dateOfBirth || null,
-        metadata: { source: 'recruiter_signup', companyId: body.companyId },
+        metadata: { source: 'recruiter_signup', companyId: body.companyId, dateOfBirth: body.dateOfBirth },
       });
 
       // Create recruiter record (first_name/last_name stored in users table only)

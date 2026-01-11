@@ -482,22 +482,6 @@ export function useStudents(options?: UseStudentsOptions) {
           imported_at,
           school_id,
           college_id,
-          schools!students_school_id_fkey (
-            id,
-            name,
-            code,
-            city,
-            state,
-            country
-          ),
-          colleges!students_college_id_fkey (
-            id,
-            name,
-            code,
-            city,
-            state,
-            country
-          ),
           grade,
           section,
           roll_number,

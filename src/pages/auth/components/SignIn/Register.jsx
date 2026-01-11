@@ -4,7 +4,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import educatorIllustration from "../../../../assets/images/auth/Educator-illustration.jpg";
 import loginIllustration from "../../../../assets/images/auth/Recruiter-illustration.png";
 import studentIllustration from "../../../../assets/images/auth/Student-illustration.jpg";
-import LoginModal from '../../../../components/Subscription/LoginModal';
 
 import {
     Activity,
@@ -27,7 +26,6 @@ export default function UnifiedSignup() {
   const [recruitmentType, setRecruitmentType] = useState(null);
   const [showAdminInfo, setShowAdminInfo] = useState(false);
   const [showRecruiterInfo, setShowRecruiterInfo] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const navigate = useNavigate();
 
   // Sync URL with active tab
@@ -746,22 +744,6 @@ export default function UnifiedSignup() {
           </div>
         </div>
       </div>
-
-      {/* Login Modal for existing subscription users */}
-      <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        selectedPlan={null}
-        studentType={activeTab}
-        onLoginSuccess={() => {
-          setShowLoginModal(false);
-          navigate('/my-subscription');
-        }}
-        onSwitchToSignup={() => {
-          setShowLoginModal(false);
-          navigate('/signup');
-        }}
-      />
     </div>
   );
 }

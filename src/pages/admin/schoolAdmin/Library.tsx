@@ -140,12 +140,12 @@ export default function LibraryModule() {
         // Then try Supabase auth
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // Check school_educators table first
+          // Check school_educators table first - use maybeSingle() to avoid 406 error
           const { data: educator } = await supabase
             .from('school_educators')
             .select('school_id')
             .eq('user_id', user.id)
-            .single();
+            .maybeSingle();
           
           if (educator?.school_id) {
             setSchoolId(educator.school_id);
@@ -208,14 +208,14 @@ export default function LibraryModule() {
       if (issuesError) throw issuesError;
       setBookIssues(issuesData || []);
 
-      // Fetch library stats
+      // Fetch library stats - use maybeSingle() to avoid 406 error
       const { data: statsData, error: statsError } = await supabase
         .from('library_stats_school')
         .select('*')
         .eq('school_id', schoolId)
-        .single();
+        .maybeSingle();
 
-      if (statsError) {
+      if (statsError || !statsData) {
         console.warn('Stats view not available, calculating manually');
         // Calculate stats manually
         const totalBooks = booksData?.length || 0;

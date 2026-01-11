@@ -36,11 +36,11 @@ export const useStudentCollegeAdminConversations = (studentId, enabled = true) =
       const collegeId = studentData.college_id || studentData.university_college_id;
       
       // Fetch student-college_admin conversations directly from database
+      // Note: colleges table doesn't exist - fetch college name from organizations separately
       const { data: collegeAdminConversations, error: convError } = await supabase
         .from('conversations')
         .select(`
-          *,
-          college:colleges(id, name)
+          *
         `)
         .eq('student_id', studentId)
         .eq('conversation_type', 'student_college_admin')
@@ -51,6 +51,21 @@ export const useStudentCollegeAdminConversations = (studentId, enabled = true) =
       if (convError) {
         console.error('Error fetching college admin conversations:', convError);
         throw convError;
+      }
+      
+      // Fetch college name from organizations table
+      if (collegeAdminConversations && collegeAdminConversations.length > 0) {
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('id, name')
+          .eq('id', collegeId)
+          .maybeSingle();
+        
+        // Add college info to each conversation
+        return collegeAdminConversations.map(conv => ({
+          ...conv,
+          college: orgData || null
+        }));
       }
       
       return collegeAdminConversations || [];

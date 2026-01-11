@@ -26,6 +26,7 @@ import { useEducatorAdminMessages } from '../../hooks/useEducatorAdminMessages.j
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
+import { supabase } from '../../lib/supabaseClient';
 import MessageService, { Conversation } from '../../services/messageService';
 
 const AdminCommunication = () => {
@@ -57,7 +58,7 @@ const AdminCommunication = () => {
       if (!educatorId) return null;
       const { data, error } = await supabase
         .from('school_educators')
-        .select('id, school_id, first_name, last_name, email, schools(id, name)')
+        .select('id, school_id, first_name, last_name, email')
         .eq('user_id', educatorId)
         .maybeSingle();
       
@@ -79,8 +80,7 @@ const AdminCommunication = () => {
         .from('conversations')
         .select(`
           *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url),
-          school:schools(id, name)
+          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
         `)
         .eq('educator_id', educatorRecordId)
         .eq('conversation_type', 'educator_admin')
@@ -107,8 +107,7 @@ const AdminCommunication = () => {
         .from('conversations')
         .select(`
           *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url),
-          school:schools(id, name)
+          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
         `)
         .eq('educator_id', educatorRecordId)
         .eq('conversation_type', 'educator_admin')

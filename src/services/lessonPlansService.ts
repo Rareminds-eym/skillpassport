@@ -76,19 +76,56 @@ export interface LessonPlan {
 
 /**
  * Get current educator ID from authenticated user
+ * For school admins, returns a special identifier or null (they can view but may not create lesson plans)
  */
 export async function getCurrentEducatorId(): Promise<string | null> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
+    // First check if user is an educator
     const { data: educator } = await supabase
       .from("school_educators")
       .select("id")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    return educator?.id || null;
+    if (educator?.id) {
+      return educator.id;
+    }
+
+    // Check if user is a school admin (they may need to view lesson plans)
+    // First check localStorage for school admin role
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        if (userData.role === 'school_admin' && userData.schoolId) {
+          // School admin - return null for educator ID but don't throw error
+          // They can view lesson plans but may not create them as an educator
+          console.log('[LessonPlansService] User is school admin, not an educator');
+          return null;
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+
+    // Check organizations table for school admin
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("organization_type", "school")
+      .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
+      .maybeSingle();
+
+    if (org?.id) {
+      // User is a school admin
+      console.log('[LessonPlansService] User is school admin (from organizations), not an educator');
+      return null;
+    }
+
+    return null;
   } catch (error) {
     console.error("Error getting educator ID:", error);
     return null;
@@ -96,23 +133,78 @@ export async function getCurrentEducatorId(): Promise<string | null> {
 }
 
 /**
- * Get all lesson plans for current educator
+ * Get all lesson plans for current educator or school admin
  */
 export async function getLessonPlans(): Promise<{ data: LessonPlan[] | null; error: any }> {
   try {
     const educatorId = await getCurrentEducatorId();
-    if (!educatorId) {
-      return { data: null, error: new Error("Educator not found") };
+    
+    // Check if user is a school admin (can view all lesson plans for their school)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { data: null, error: new Error("Not authenticated") };
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("lesson_plans")
       .select(`
         *,
         school_classes(academic_year)
       `)
-      .eq("educator_id", educatorId)
       .order("date", { ascending: false });
+
+    if (educatorId) {
+      // Educator - get their own lesson plans
+      query = query.eq("educator_id", educatorId);
+    } else {
+      // Check if school admin - get all lesson plans for their school
+      const storedUser = localStorage.getItem('user');
+      let schoolId: string | null = null;
+      
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          if (userData.role === 'school_admin' && userData.schoolId) {
+            schoolId = userData.schoolId;
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+
+      if (!schoolId) {
+        // Try organizations table
+        const { data: org } = await supabase
+          .from("organizations")
+          .select("id")
+          .eq("organization_type", "school")
+          .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
+          .maybeSingle();
+        
+        schoolId = org?.id || null;
+      }
+
+      if (schoolId) {
+        // School admin - get all lesson plans for educators in their school
+        const { data: educators } = await supabase
+          .from("school_educators")
+          .select("id")
+          .eq("school_id", schoolId);
+        
+        const educatorIds = educators?.map(e => e.id) || [];
+        if (educatorIds.length > 0) {
+          query = query.in("educator_id", educatorIds);
+        } else {
+          // No educators found, return empty
+          return { data: [], error: null };
+        }
+      } else {
+        // Not an educator and not a school admin
+        return { data: null, error: new Error("Educator not found") };
+      }
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching lesson plans:", error);
@@ -387,12 +479,22 @@ export async function getLearningOutcomes(chapterId: string) {
  */
 export async function getSubjects(schoolId?: string) {
   try {
-    const { data, error } = await supabase
+    // Build query - if schoolId is provided, filter by it; otherwise just get global subjects
+    let query = supabase
       .from("curriculum_subjects")
       .select("*")
-      .or(`school_id.is.null,school_id.eq.${schoolId || ""}`)
       .eq("is_active", true)
       .order("display_order", { ascending: true });
+
+    // Only add school_id filter if we have a valid schoolId
+    if (schoolId) {
+      query = query.or(`school_id.is.null,school_id.eq.${schoolId}`);
+    } else {
+      // If no schoolId, just get global subjects (where school_id is null)
+      query = query.is("school_id", null);
+    }
+
+    const { data, error } = await query;
 
     return { data, error };
   } catch (error) {

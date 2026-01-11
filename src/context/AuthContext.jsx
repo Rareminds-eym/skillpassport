@@ -25,6 +25,13 @@ export const AuthProvider = ({ children }) => {
       || sessionUser.user_metadata?.role 
       || 'user';
     
+    console.log('🔍 [AuthContext] restoreUserFromStorage:', {
+      userId: sessionUser.id,
+      email: sessionUser.email,
+      user_metadata: sessionUser.user_metadata,
+      sessionRole,
+    });
+    
     // Handle legacy "admin" role - preserve the stored user's role if it's more specific
     // This allows both school_admin and college_admin to work with "admin" in metadata
     const storedUser = localStorage.getItem('user');

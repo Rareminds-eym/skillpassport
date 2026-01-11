@@ -6,8 +6,11 @@ import { isActiveOrPaused, isManageable } from '../../utils/subscriptionHelpers'
 
 /**
  * Get the subscription manage path based on user role
+ * Returns null if role is unknown to prevent wrong redirects
  */
 function getManagePath(userRole) {
+  if (!userRole) return null; // Return null to prevent wrong redirects
+  
   const manageRoutes = {
     super_admin: '/admin/subscription/manage',
     rm_admin: '/admin/subscription/manage',
@@ -23,7 +26,7 @@ function getManagePath(userRole) {
     school_student: '/student/subscription/manage',
     college_student: '/student/subscription/manage',
   };
-  return manageRoutes[userRole] || '/student/subscription/manage';
+  return manageRoutes[userRole] || null; // Return null for unknown roles
 }
 
 /**
@@ -94,7 +97,7 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
 
       case 'payment':
         // Payment page - redirect if user has active subscription
-        if (hasActiveSubscription) {
+        if (hasActiveSubscription && managePath) {
           setRedirecting(true);
           navigate(managePath, { replace: true });
         }
@@ -127,7 +130,7 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
       default:
         break;
     }
-  }, [user, subscriptionData, hasActiveSubscription, hasManageableSubscription, isLoading, navigate, mode, location]);
+  }, [user, subscriptionData, hasActiveSubscription, hasManageableSubscription, isLoading, navigate, mode, location, managePath]);
 
   // Show loading state while checking or redirecting
   if (isLoading || redirecting) {

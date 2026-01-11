@@ -17,6 +17,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 // @ts-ignore - JS module without types
 import DatePicker from '../../components/Subscription/shared/DatePicker';
+import { supabase } from '../../lib/supabaseClient';
 
 type UserRole = 'school_student' | 'college_student' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
@@ -425,6 +426,22 @@ const UnifiedSignup = () => {
       }
 
       const userId = result.data.userId;
+
+      // CRITICAL FIX: Auto-login after successful signup
+      // This establishes a Supabase session so the user is authenticated
+      console.log('🔐 Auto-logging in after signup...');
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: state.email,
+        password: state.password,
+      });
+
+      if (signInError) {
+        console.error('⚠️ Auto-login failed:', signInError.message);
+        // Even if auto-login fails, the account was created successfully
+        // User can manually log in
+      } else {
+        console.log('✅ Auto-login successful, session established');
+      }
 
       // Map role to entity type for subscription plans
       const entityTypeMap: Record<UserRole, string> = {

@@ -116,8 +116,6 @@ export async function handleUnifiedSignup(request: Request, env: Env): Promise<R
 
     try {
       // 2. Create public.users record
-      // Note: organizationId is explicitly set to null - users are not associated with an org during signup
-      // Admin users will create/join an organization via OrganizationSetup after signup
       const { error: userError } = await supabaseAdmin.from('users').insert({
         id: userId,
         email,
@@ -126,7 +124,7 @@ export async function handleUnifiedSignup(request: Request, env: Env): Promise<R
         role: body.role,
         isActive: true,
         phone: body.phone || null,
-        organizationId: null, // Explicitly null - will be set when user creates/joins an organization
+        organizationId: null,
         metadata: {
           fullName,
           dateOfBirth: body.dateOfBirth,
@@ -138,6 +136,8 @@ export async function handleUnifiedSignup(request: Request, env: Env): Promise<R
           registrationDate: new Date().toISOString(),
           source: 'unified_signup',
         },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       });
 
       if (userError) {

@@ -77,10 +77,13 @@ export const useSubscriptionQuery = () => {
   const { user } = useSupabaseAuth();
   const queryClient = useQueryClient();
 
+  // Check if the query can run
+  const isQueryEnabled = !!user;
+
   const query = useQuery({
     queryKey: [SUBSCRIPTION_QUERY_KEY, user?.id],
     queryFn: () => fetchSubscription(user?.id),
-    enabled: !!user, // Only fetch when user is authenticated
+    enabled: isQueryEnabled, // Only fetch when user is authenticated
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME, // Changed from cacheTime (deprecated in v5)
     refetchOnWindowFocus: false,
@@ -151,7 +154,11 @@ export const useSubscriptionQuery = () => {
 
   return {
     subscriptionData: query.data,
-    loading: query.isLoading,
+    // loading is true if:
+    // 1. The query is loading (initial fetch)
+    // 2. The query is pending (not yet enabled - waiting for user)
+    // This prevents premature redirects when user is not yet available
+    loading: query.isLoading || query.isPending || !isQueryEnabled,
     error: query.error,
     isRefetching: query.isRefetching,
     hasActiveSubscription,

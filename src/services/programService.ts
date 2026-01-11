@@ -98,7 +98,7 @@ export const getCollegeLecturerProgramSections = async (userId: string): Promise
           degree_level,
           department:departments(
             name,
-            college:colleges(name)
+            college_id
           )
         )
       `)
@@ -111,8 +111,26 @@ export const getCollegeLecturerProgramSections = async (userId: string): Promise
       return { data: null, error: error.message }
     }
 
+    // Fetch college names for departments
+    const sectionsWithCollegeNames = await Promise.all(
+      (data || []).map(async (section: any) => {
+        if (section.program?.department?.college_id) {
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', section.program.department.college_id)
+            .maybeSingle();
+          
+          if (orgData && section.program?.department) {
+            section.program.department.college = { name: orgData.name };
+          }
+        }
+        return section;
+      })
+    );
+
     // Get faculty info from college_lecturers table using user_id
-    if (data && data.length > 0) {
+    if (sectionsWithCollegeNames && sectionsWithCollegeNames.length > 0) {
       const { data: facultyData } = await supabase
         .from('college_lecturers')
         .select('first_name, last_name, email, user_id')
@@ -120,7 +138,7 @@ export const getCollegeLecturerProgramSections = async (userId: string): Promise
         .single()
 
       // Add faculty info to each section
-      const sectionsWithFaculty = data.map(section => ({
+      const sectionsWithFaculty = sectionsWithCollegeNames.map(section => ({
         ...section,
         faculty: facultyData ? {
           first_name: facultyData.first_name,
@@ -236,7 +254,7 @@ export const createProgramSection = async (
           degree_level,
           department:departments(
             name,
-            college:colleges(name)
+            college_id
           )
         )
       `)
@@ -245,6 +263,19 @@ export const createProgramSection = async (
     if (error) {
       console.error('Error creating program section:', error)
       return { data: null, error: error.message }
+    }
+
+    // Fetch college name from organizations table
+    if (data?.program?.department?.college_id) {
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('name')
+        .eq('id', data.program.department.college_id)
+        .maybeSingle();
+      
+      if (orgData && data.program?.department) {
+        data.program.department.college = { name: orgData.name };
+      }
     }
 
     return { data: data, error: null }
@@ -305,6 +336,7 @@ export const getProgramSectionStudents = async (userId: string): Promise<Service
     const programIds = sections.map(s => s.program_id)
 
     // Get students with full rich data (same as school educators)
+    // Note: schools and colleges tables don't exist - use organizations table instead
     const { data, error } = await supabase
       .from('students')
       .select(`
@@ -357,22 +389,6 @@ export const getProgramSectionStudents = async (userId: string): Promise<Service
         program_id,
         semester,
         section,
-        schools!students_school_id_fkey (
-          id,
-          name,
-          code,
-          city,
-          state,
-          country
-        ),
-        colleges!students_college_id_fkey (
-          id,
-          name,
-          code,
-          city,
-          state,
-          country
-        ),
         grade,
         roll_number,
         admission_number,

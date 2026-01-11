@@ -66,12 +66,16 @@ export const SubscriptionProvider = ({ children }) => {
   const queryClient = useQueryClient();
   const [purchaseError, setPurchaseError] = useState(null);
 
+  // Check if the subscription query can run
+  const isQueryEnabled = !!user && !!session?.access_token;
+
   // Fetch subscription access from Cloudflare Worker
   const {
     data: accessData,
     isLoading,
     error,
     isRefetching,
+    isPending,
   } = useQuery({
     queryKey: [SUBSCRIPTION_ACCESS_KEY, user?.id],
     queryFn: async () => {
@@ -87,7 +91,7 @@ export const SubscriptionProvider = ({ children }) => {
       const result = await checkSubscriptionAccess(session.access_token);
       return result;
     },
-    enabled: !!user && !!session?.access_token,
+    enabled: isQueryEnabled,
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
     refetchOnWindowFocus: false,
@@ -300,7 +304,11 @@ export const SubscriptionProvider = ({ children }) => {
     // Access state
     hasAccess,
     accessReason,
-    isLoading,
+    // isLoading is true if:
+    // 1. The query is loading (initial fetch)
+    // 2. The query is pending (not yet enabled - waiting for session)
+    // This prevents premature redirects when session is not yet available
+    isLoading: isLoading || isPending || !isQueryEnabled,
     error,
     isRefetching,
     
@@ -371,6 +379,8 @@ export const SubscriptionProvider = ({ children }) => {
     purchaseBundleMutation.isPending,
     cancelAddOnMutation.isPending,
     purchaseError,
+    isPending,
+    isQueryEnabled,
   ]);
 
   return (

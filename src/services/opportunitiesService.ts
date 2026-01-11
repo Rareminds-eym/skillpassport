@@ -271,6 +271,46 @@ class OpportunitiesService {
     }
   }
 
+  // Format opportunity for display in UI
+  formatOpportunityForDisplay(opportunity: Opportunity): Opportunity & {
+    formattedSalary: string;
+    formattedSkills: string[];
+    statusBadgeColor: string;
+  } {
+    return {
+      ...opportunity,
+      formattedSalary: this.formatSalary(opportunity),
+      formattedSkills: this.formatSkills(opportunity.skills_required),
+      statusBadgeColor: this.getStatusBadgeColor(opportunity.status),
+    };
+  }
+
+  // Search opportunities by term
+  async searchOpportunities(searchTerm: string): Promise<Opportunity[]> {
+    try {
+      const { data, error } = await supabase
+        .from('opportunities')
+        .select('*')
+        .or(`title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error searching opportunities:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in searchOpportunities:', error);
+      throw error;
+    }
+  }
+
+  // Get filtered opportunities
+  async getFilteredOpportunities(filters: OpportunityFilters): Promise<Opportunity[]> {
+    return this.getAllOpportunities(filters);
+  }
+
   // Get opportunities statistics
   async getOpportunitiesStats(): Promise<{
     total: number;

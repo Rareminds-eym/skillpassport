@@ -43,8 +43,8 @@ const RecommendedJobsContent = ({
     matchedJobs: recommendations,
     loading,
     error,
-    cacheInfo,
-    forceRefreshMatches
+    cacheInfo = {},
+    refreshMatches
   } = useAIJobMatching(studentProfile, !isDismissed, 3);
 
   // Check localStorage for dismiss preference
@@ -61,13 +61,13 @@ const RecommendedJobsContent = ({
       setShowAnimation(true);
     } else {
       // Shorter animation for cache hits (data was instant)
-      const minAnimationTime = cacheInfo.cached ? 1000 : 3000;
+      const minAnimationTime = cacheInfo?.cached ? 1000 : 3000;
       const timer = setTimeout(() => {
         setShowAnimation(false);
       }, minAnimationTime);
       return () => clearTimeout(timer);
     }
-  }, [loading, cacheInfo.cached]);
+  }, [loading, cacheInfo?.cached]);
 
   const handleDismiss = (e) => {
     e.preventDefault();
@@ -78,7 +78,7 @@ const RecommendedJobsContent = ({
 
   const handleRefresh = async () => {
     setShowAnimation(true);
-    await forceRefreshMatches();
+    await refreshMatches();
   };
 
   const getMatchColor = (score) => {
@@ -301,7 +301,7 @@ const RecommendedJobsContent = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-gray-900">AI Recommended For You</h2>
-                {cacheInfo.cached && (
+                {cacheInfo?.cached && (
                   <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                     <Clock className="w-3 h-3" />
                     Cached
@@ -310,7 +310,7 @@ const RecommendedJobsContent = ({
               </div>
               <p className="text-sm text-gray-600">
                 Based on your profile, skills, and experience
-                {cacheInfo.computedAt && (
+                {cacheInfo?.computedAt && (
                   <span className="text-gray-400 ml-1">
                     • Updated {new Date(cacheInfo.computedAt).toLocaleDateString()}
                   </span>

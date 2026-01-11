@@ -14,7 +14,7 @@ import {
     UniversityStudentSignupRequest,
 } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
-import { calculateAge, jsonResponse, splitName, validateEmail } from '../utils/helpers';
+import { calculateAge, capitalizeFirstLetter, jsonResponse, splitName, validateEmail } from '../utils/helpers';
 import { checkEmailExists, deleteAuthUser, getSupabaseAdmin } from '../utils/supabase';
 
 /**
@@ -87,8 +87,7 @@ export async function handleUniversityAdminSignup(request: Request, env: Env): P
         organizationId: null,
         isActive: true,
         phone: body.phone || body.vcPhone,
-        dob: body.dateOfBirth || null,
-        metadata: { source: 'university_signup', universityCode: body.universityCode },
+        metadata: { source: 'university_signup', universityCode: body.universityCode, dateOfBirth: body.dateOfBirth },
       });
 
       const { data: university, error: universityError } = await supabaseAdmin
@@ -235,8 +234,7 @@ export async function handleUniversityEducatorSignup(request: Request, env: Env)
         organizationId: body.universityId,
         isActive: true,
         phone: body.phone,
-        dob: body.dateOfBirth || null,
-        metadata: { source: 'university_educator_signup', universityId: body.universityId },
+        metadata: { source: 'university_educator_signup', universityId: body.universityId, dateOfBirth: body.dateOfBirth },
       });
 
       const { data: educator, error: educatorError } = await supabaseAdmin
@@ -380,8 +378,7 @@ export async function handleUniversityStudentSignup(request: Request, env: Env):
         organizationId: body.universityId,
         isActive: true,
         phone: body.phone,
-        dob: body.dateOfBirth || null,
-        metadata: { source: 'university_student_signup', universityId: body.universityId },
+        metadata: { source: 'university_student_signup', universityId: body.universityId, dateOfBirth: body.dateOfBirth },
       });
 
       const age = calculateAge(body.dateOfBirth || '');

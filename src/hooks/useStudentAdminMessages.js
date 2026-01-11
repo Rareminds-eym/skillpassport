@@ -37,8 +37,7 @@ export const useStudentAdminConversations = (studentId, enabled = true) => {
       const { data: adminConversations, error: convError } = await supabase
         .from('conversations')
         .select(`
-          *,
-          school:schools(id, name)
+          *
         `)
         .eq('student_id', studentId)
         .eq('conversation_type', 'student_admin')
