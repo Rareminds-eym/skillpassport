@@ -53,31 +53,126 @@ function OrganizationSubscriptionPage() {
     return '/college-admin';
   }, [organizationType]);
   
-  // Get organization ID - check user object first, then localStorage
-  const organizationId = useMemo(() => {
-    // First check user object
-    if (user?.school_id) return user.school_id;
-    if (user?.college_id) return user.college_id;
-    if (user?.university_id) return user.university_id;
-    if (user?.schoolId) return user.schoolId;
-    if (user?.collegeId) return user.collegeId;
-    if (user?.universityId) return user.universityId;
-    
-    // Fallback to localStorage for school admins
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const userData = JSON.parse(storedUser);
-        if (userData.schoolId) return userData.schoolId;
-        if (userData.collegeId) return userData.collegeId;
-        if (userData.universityId) return userData.universityId;
-      } catch (e) {
-        // Ignore parse errors
+  // Get organization ID - check user object first, then localStorage, then fetch from database
+  const [organizationId, setOrganizationId] = useState<string>('');
+  
+  useEffect(() => {
+    const fetchOrganizationId = async () => {
+      console.log('[OrganizationSubscriptionPage] Fetching organization ID, user:', user);
+      
+      // First check user object for organization IDs
+      if (user?.school_id) { console.log('[OrganizationSubscriptionPage] Found school_id in user:', user.school_id); setOrganizationId(user.school_id); return; }
+      if (user?.college_id) { console.log('[OrganizationSubscriptionPage] Found college_id in user:', user.college_id); setOrganizationId(user.college_id); return; }
+      if (user?.university_id) { console.log('[OrganizationSubscriptionPage] Found university_id in user:', user.university_id); setOrganizationId(user.university_id); return; }
+      if (user?.schoolId) { console.log('[OrganizationSubscriptionPage] Found schoolId in user:', user.schoolId); setOrganizationId(user.schoolId); return; }
+      if (user?.collegeId) { console.log('[OrganizationSubscriptionPage] Found collegeId in user:', user.collegeId); setOrganizationId(user.collegeId); return; }
+      if (user?.universityId) { console.log('[OrganizationSubscriptionPage] Found universityId in user:', user.universityId); setOrganizationId(user.universityId); return; }
+      
+      // Fallback to localStorage for school admins
+      const storedUser = localStorage.getItem('user');
+      console.log('[OrganizationSubscriptionPage] Checking localStorage user:', storedUser);
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          if (userData.schoolId) { console.log('[OrganizationSubscriptionPage] Found schoolId in localStorage:', userData.schoolId); setOrganizationId(userData.schoolId); return; }
+          if (userData.collegeId) { console.log('[OrganizationSubscriptionPage] Found collegeId in localStorage:', userData.collegeId); setOrganizationId(userData.collegeId); return; }
+          if (userData.universityId) { console.log('[OrganizationSubscriptionPage] Found universityId in localStorage:', userData.universityId); setOrganizationId(userData.universityId); return; }
+        } catch (e) {
+          // Ignore parse errors
+        }
       }
-    }
+      
+      // If still not found, try to fetch from database based on user email/id
+      const userId = user?.id;
+      const userEmail = user?.email;
+      
+      if (!userId && !userEmail) {
+        console.log('[OrganizationSubscriptionPage] No user ID or email, cannot fetch organization');
+        return;
+      }
+      
+      console.log('[OrganizationSubscriptionPage] Fetching organization from database for user:', userId, userEmail);
+      
+      try {
+        // Try school_educators table first for school admins
+        if (organizationType === 'school' && userId) {
+          const { data: educatorData, error: educatorError } = await supabase
+            .from('school_educators')
+            .select('school_id')
+            .eq('user_id', userId)
+            .maybeSingle();
+          
+          console.log('[OrganizationSubscriptionPage] school_educators query result:', educatorData, educatorError);
+          
+          if (educatorData?.school_id) {
+            console.log('[OrganizationSubscriptionPage] Found school_id from school_educators:', educatorData.school_id);
+            setOrganizationId(educatorData.school_id);
+            return;
+          }
+        }
+        
+        // Try college_lecturers table for college admins
+        if (organizationType === 'college' && userId) {
+          const { data: lecturerData, error: lecturerError } = await supabase
+            .from('college_lecturers')
+            .select('collegeId')
+            .eq('user_id', userId)
+            .maybeSingle();
+          
+          console.log('[OrganizationSubscriptionPage] college_lecturers query result:', lecturerData, lecturerError);
+          
+          if (lecturerData?.collegeId) {
+            console.log('[OrganizationSubscriptionPage] Found collegeId from college_lecturers:', lecturerData.collegeId);
+            setOrganizationId(lecturerData.collegeId);
+            return;
+          }
+        }
+        
+        // Try organizations table (for admins who own the organization)
+        // Query by admin_id first
+        if (userId) {
+          const { data: orgByAdminId, error: adminIdError } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('organization_type', organizationType)
+            .eq('admin_id', userId)
+            .maybeSingle();
+          
+          console.log('[OrganizationSubscriptionPage] organizations by admin_id query result:', orgByAdminId, adminIdError);
+          
+          if (orgByAdminId?.id) {
+            console.log('[OrganizationSubscriptionPage] Found organization by admin_id:', orgByAdminId.id);
+            setOrganizationId(orgByAdminId.id);
+            return;
+          }
+        }
+        
+        // Query by email
+        if (userEmail) {
+          const { data: orgByEmail, error: emailError } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('organization_type', organizationType)
+            .eq('email', userEmail)
+            .maybeSingle();
+          
+          console.log('[OrganizationSubscriptionPage] organizations by email query result:', orgByEmail, emailError);
+          
+          if (orgByEmail?.id) {
+            console.log('[OrganizationSubscriptionPage] Found organization by email:', orgByEmail.id);
+            setOrganizationId(orgByEmail.id);
+            return;
+          }
+        }
+        
+        console.log('[OrganizationSubscriptionPage] Could not find organization ID');
+      } catch (err) {
+        console.error('[OrganizationSubscriptionPage] Error fetching organization ID:', err);
+      }
+    };
     
-    return '';
-  }, [user]);
+    fetchOrganizationId();
+  }, [user, organizationType]);
   
   const organizationName = user?.school_name || user?.college_name || user?.university_name || 'Your Organization';
   
@@ -87,7 +182,12 @@ function OrganizationSubscriptionPage() {
   // Fetch organization details from database
   useEffect(() => {
     const fetchOrganizationDetails = async () => {
-      if (!organizationId) return;
+      if (!organizationId) {
+        console.log('[OrganizationSubscriptionPage] No organizationId yet, skipping fetch');
+        return;
+      }
+      
+      console.log('[OrganizationSubscriptionPage] Fetching organization details for ID:', organizationId);
       
       try {
         const { data, error } = await supabase
@@ -96,6 +196,7 @@ function OrganizationSubscriptionPage() {
           .eq('id', organizationId)
           .maybeSingle();
         
+        console.log('[OrganizationSubscriptionPage] Organization data:', data, 'Error:', error);
         if (error) {
           console.error('Error fetching organization details:', error);
           return;
@@ -245,6 +346,29 @@ function OrganizationSubscriptionPage() {
             className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
           >
             Log In
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show warning if organization ID not found
+  if (!organizationId && !isLoading) {
+    return (
+      <div className="p-6">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+          <h3 className="text-lg font-semibold text-amber-800 mb-2">Organization Not Found</h3>
+          <p className="text-amber-600 mb-4">
+            Could not find your organization. Please ensure you are logged in as an organization admin.
+          </p>
+          <p className="text-sm text-amber-500 mb-4">
+            Debug info: User role: {user?.role}, User ID: {user?.id}
+          </p>
+          <button
+            onClick={() => navigate(`${basePath}/settings`)}
+            className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
+          >
+            Go to Settings
           </button>
         </div>
       </div>
