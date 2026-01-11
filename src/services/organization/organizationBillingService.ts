@@ -158,8 +158,8 @@ export class OrganizationBillingService {
           subscription_plans (
             id,
             name,
-            price,
-            billing_cycle
+            price_monthly,
+            price_yearly
           )
         `)
         .eq('organization_id', organizationId)
@@ -343,7 +343,7 @@ export class OrganizationBillingService {
           .from('organization_subscriptions')
           .select(`
             *,
-            subscription_plans (name, price)
+            subscription_plans (name, price_monthly, price_yearly)
           `)
           .eq('organization_id', transaction.organization_id)
           .order('created_at', { ascending: false })
@@ -544,7 +544,7 @@ export class OrganizationBillingService {
         .from('organization_subscriptions')
         .select(`
           *,
-          subscription_plans (price, billing_cycle)
+          subscription_plans (price_monthly, price_yearly)
         `)
         .eq('organization_id', organizationId)
         .eq('organization_type', organizationType)
@@ -620,7 +620,7 @@ export class OrganizationBillingService {
         .from('organization_subscriptions')
         .select(`
           *,
-          subscription_plans (price, billing_cycle)
+          subscription_plans (price_monthly, price_yearly)
         `)
         .eq('id', subscriptionId)
         .single();
@@ -630,7 +630,8 @@ export class OrganizationBillingService {
       }
 
       const newTotalSeats = subscription.total_seats + additionalSeats;
-      const pricePerSeat = subscription.subscription_plans?.price || subscription.price_per_seat;
+      // Use price_monthly as default (can be enhanced to detect billing cycle from subscription dates)
+      const pricePerSeat = subscription.subscription_plans?.price_monthly || subscription.price_per_seat;
 
       // Calculate new volume discount
       const newDiscountPercentage = this.calculateVolumeDiscount(newTotalSeats);
@@ -745,9 +746,13 @@ export class OrganizationBillingService {
    */
   private calculateMonthlyCost(subscription: any): number {
     const finalAmount = parseFloat(subscription.final_amount);
-    const billingCycle = subscription.subscription_plans?.billing_cycle || 'monthly';
+    // Determine if annual based on subscription duration
+    const startDate = new Date(subscription.start_date);
+    const endDate = new Date(subscription.end_date);
+    const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const isAnnual = durationDays > 60; // More than 2 months = annual
     
-    if (billingCycle === 'annual') {
+    if (isAnnual) {
       return finalAmount / 12;
     }
     return finalAmount;
