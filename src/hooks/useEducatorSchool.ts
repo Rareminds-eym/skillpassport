@@ -56,20 +56,13 @@ export function useEducatorSchool(): EducatorSchoolData {
         setError(null);
 
         // First, check if they are a school educator
+        // Note: schools table doesn't exist - fetch school info from organizations separately
         const { data: schoolEducatorData, error: schoolEducatorError } = await supabase
           .from('school_educators')
           .select(`
             id,
             school_id,
-            role,
-            schools!school_educators_school_id_fkey (
-              id,
-              name,
-              code,
-              city,
-              state,
-              country
-            )
+            role
           `)
           .eq('email', user.email)
           .maybeSingle();
@@ -78,53 +71,51 @@ export function useEducatorSchool(): EducatorSchoolData {
           throw schoolEducatorError;
         }
 
-        if (schoolEducatorData && schoolEducatorData.schools) {
-          // They are a school educator
-          const schoolData = Array.isArray(schoolEducatorData.schools) 
-            ? schoolEducatorData.schools[0] 
-            : schoolEducatorData.schools;
+        if (schoolEducatorData && schoolEducatorData.school_id) {
+          // Fetch school info from organizations table
+          const { data: schoolData } = await supabase
+            .from('organizations')
+            .select('id, name, code, city, state, country')
+            .eq('id', schoolEducatorData.school_id)
+            .maybeSingle();
           
-          setSchool(schoolData as School);
-          setCollege(null);
-          setEducatorType('school');
-          setEducatorRole(schoolEducatorData.role || null);
+          if (schoolData) {
+            // They are a school educator
+            setSchool(schoolData as School);
+            setCollege(null);
+            setEducatorType('school');
+            setEducatorRole(schoolEducatorData.role || null);
 
-          // Fetch assigned class IDs for this educator (only if not admin)
-          if (schoolEducatorData.role !== 'admin') {
-            const { data: classAssignments, error: classError } = await supabase
-              .from('school_educator_class_assignments')
-              .select('class_id')
-              .eq('educator_id', schoolEducatorData.id);
+            // Fetch assigned class IDs for this educator (only if not admin)
+            if (schoolEducatorData.role !== 'admin') {
+              const { data: classAssignments, error: classError } = await supabase
+                .from('school_educator_class_assignments')
+                .select('class_id')
+                .eq('educator_id', schoolEducatorData.id);
 
-            if (classError) {
-              console.warn('Failed to fetch class assignments:', classError);
-              setAssignedClassIds([]);
+              if (classError) {
+                console.warn('Failed to fetch class assignments:', classError);
+                setAssignedClassIds([]);
+              } else {
+                const classIds = classAssignments?.map(assignment => assignment.class_id) || [];
+                setAssignedClassIds(classIds);
+              }
             } else {
-              const classIds = classAssignments?.map(assignment => assignment.class_id) || [];
-              setAssignedClassIds(classIds);
+              // Admins don't need class assignments - they see all students
+              setAssignedClassIds([]);
             }
-          } else {
-            // Admins don't need class assignments - they see all students
-            setAssignedClassIds([]);
+            
+            return;
           }
-          
-          return;
         }
 
         // If not a school educator, check if they are a college lecturer
+        // Note: colleges table doesn't exist - fetch college info from organizations separately
         const { data: collegeLecturerData, error: collegeLecturerError } = await supabase
           .from('college_lecturers')
           .select(`
             id,
-            collegeId,
-            colleges!fk_college_lecturers_college (
-              id,
-              name,
-              code,
-              city,
-              state,
-              country
-            )
+            collegeId
           `)
           .eq('user_id', user.id)
           .maybeSingle();
@@ -139,32 +130,37 @@ export function useEducatorSchool(): EducatorSchoolData {
           throw collegeLecturerError;
         }
 
-        if (collegeLecturerData && collegeLecturerData.colleges) {
-          // They are a college lecturer
-          const collegeData = Array.isArray(collegeLecturerData.colleges) 
-            ? collegeLecturerData.colleges[0] 
-            : collegeLecturerData.colleges;
+        if (collegeLecturerData && collegeLecturerData.collegeId) {
+          // Fetch college info from organizations table
+          const { data: collegeData } = await supabase
+            .from('organizations')
+            .select('id, name, code, city, state, country')
+            .eq('id', collegeLecturerData.collegeId)
+            .maybeSingle();
           
-          setCollege(collegeData as College);
-          setSchool(null);
-          setEducatorType('college');
-          setEducatorRole('lecturer');
+          if (collegeData) {
+            // They are a college lecturer
+            setCollege(collegeData as College);
+            setSchool(null);
+            setEducatorType('college');
+            setEducatorRole('lecturer');
 
-          // Fetch assigned college class IDs for this lecturer
-          const { data: collegeClassAssignments, error: collegeClassError } = await supabase
-            .from('college_faculty_class_assignments')
-            .select('class_id')
-            .eq('faculty_id', collegeLecturerData.id);
+            // Fetch assigned college class IDs for this lecturer
+            const { data: collegeClassAssignments, error: collegeClassError } = await supabase
+              .from('college_faculty_class_assignments')
+              .select('class_id')
+              .eq('faculty_id', collegeLecturerData.id);
 
-          if (collegeClassError) {
-            console.warn('Failed to fetch college class assignments:', collegeClassError);
-            setAssignedClassIds([]);
-          } else {
-            const classIds = collegeClassAssignments?.map(assignment => assignment.class_id) || [];
-            setAssignedClassIds(classIds);
+            if (collegeClassError) {
+              console.warn('Failed to fetch college class assignments:', collegeClassError);
+              setAssignedClassIds([]);
+            } else {
+              const classIds = collegeClassAssignments?.map(assignment => assignment.class_id) || [];
+              setAssignedClassIds(classIds);
+            }
+            
+            return;
           }
-          
-          return;
         }
 
         // If neither, set everything to null
