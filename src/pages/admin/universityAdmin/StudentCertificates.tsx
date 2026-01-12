@@ -5,7 +5,6 @@ import {
   CalendarDaysIcon,
   UserGroupIcon,
   MagnifyingGlassIcon,
-  FunnelIcon,
   DocumentArrowDownIcon,
   EyeIcon,
   PrinterIcon,
@@ -50,6 +49,8 @@ const StudentCertificates: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [collegeFilter, setCollegeFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedCertificate, setSelectedCertificate] = useState<Certificate | null>(null);
 
   // Mock data - replace with actual API call
   useEffect(() => {
@@ -207,7 +208,7 @@ const StudentCertificates: React.FC = () => {
     }
   };
 
-  const handleStatusUpdate = (certificateId: string, newStatus: 'issued' | 'rejected') => {
+  const handleStatusUpdate = (certificateId: string, newStatus: 'pending' | 'issued' | 'rejected') => {
     setCertificates(prev => prev.map(cert => 
       cert.id === certificateId 
         ? { 
@@ -220,6 +221,34 @@ const StudentCertificates: React.FC = () => {
           }
         : cert
     ));
+    
+    // Update stats
+    const updatedCertificates = certificates.map(cert => 
+      cert.id === certificateId 
+        ? { ...cert, status: newStatus }
+        : cert
+    );
+    
+    const newStats = {
+      total: updatedCertificates.length,
+      pending: updatedCertificates.filter(c => c.status === 'pending').length,
+      issued: updatedCertificates.filter(c => c.status === 'issued').length,
+      rejected: updatedCertificates.filter(c => c.status === 'rejected').length,
+    };
+    setStats(newStats);
+  };
+
+  const handleStatusClick = (certificate: Certificate) => {
+    setSelectedCertificate(certificate);
+    setShowStatusModal(true);
+  };
+
+  const handleStatusModalUpdate = (newStatus: 'pending' | 'issued' | 'rejected') => {
+    if (selectedCertificate) {
+      handleStatusUpdate(selectedCertificate.id, newStatus);
+      setShowStatusModal(false);
+      setSelectedCertificate(null);
+    }
   };
 
   const uniqueColleges = Array.from(new Set(certificates.map(cert => cert.college)));
@@ -453,7 +482,11 @@ const StudentCertificates: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
+                    <div 
+                      className="flex items-center cursor-pointer hover:bg-blue-50 rounded-md p-2 transition-colors duration-200 border border-transparent hover:border-blue-200"
+                      onClick={() => handleStatusClick(certificate)}
+                      title="Click to change status"
+                    >
                       {getStatusIcon(certificate.status)}
                       <span className={`ml-2 ${getStatusBadge(certificate.status)}`}>
                         {certificate.status.charAt(0).toUpperCase() + certificate.status.slice(1)}
@@ -481,24 +514,6 @@ const StudentCertificates: React.FC = () => {
                           <PrinterIcon className="h-4 w-4" />
                         </button>
                       )}
-                      {certificate.status === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => handleStatusUpdate(certificate.id, 'issued')}
-                            className="text-green-600 hover:text-green-900"
-                            title="Approve Certificate"
-                          >
-                            <CheckCircleIcon className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleStatusUpdate(certificate.id, 'rejected')}
-                            className="text-red-600 hover:text-red-900"
-                            title="Reject Certificate"
-                          >
-                            <XCircleIcon className="h-4 w-4" />
-                          </button>
-                        </>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -515,6 +530,111 @@ const StudentCertificates: React.FC = () => {
           <p className="mt-1 text-sm text-gray-500">
             Try adjusting your search criteria or filters.
           </p>
+        </div>
+      )}
+
+      {/* Status Update Modal */}
+      {showStatusModal && selectedCertificate && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="flex items-center justify-center min-h-screen px-4 py-6">
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Update Certificate Status</h3>
+                  <button
+                    onClick={() => setShowStatusModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <XCircleIcon className="h-6 w-6" />
+                  </button>
+                </div>
+                
+                <div className="mb-4">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center mb-2">
+                      <UserGroupIcon className="h-5 w-5 text-gray-400 mr-2" />
+                      <span className="font-medium text-gray-900">{selectedCertificate.studentName}</span>
+                    </div>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <p><span className="font-medium">ID:</span> {selectedCertificate.studentId}</p>
+                      <p><span className="font-medium">Program:</span> {selectedCertificate.program}</p>
+                      <p><span className="font-medium">College:</span> {selectedCertificate.college}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Select New Status
+                  </label>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => handleStatusModalUpdate('pending')}
+                      className={`w-full flex items-center justify-between p-3 border rounded-lg hover:bg-yellow-50 transition-colors ${
+                        selectedCertificate.status === 'pending' ? 'border-yellow-300 bg-yellow-50 ring-2 ring-yellow-200' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <ClockIcon className="h-5 w-5 text-yellow-500 mr-3" />
+                        <div className="text-left">
+                          <div className="font-medium text-gray-900">Pending</div>
+                          <div className="text-sm text-gray-500">Certificate is under review</div>
+                        </div>
+                      </div>
+                      {selectedCertificate.status === 'pending' && (
+                        <CheckCircleIcon className="h-5 w-5 text-yellow-500" />
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => handleStatusModalUpdate('issued')}
+                      className={`w-full flex items-center justify-between p-3 border rounded-lg hover:bg-green-50 transition-colors ${
+                        selectedCertificate.status === 'issued' ? 'border-green-300 bg-green-50 ring-2 ring-green-200' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <CheckCircleIcon className="h-5 w-5 text-green-500 mr-3" />
+                        <div className="text-left">
+                          <div className="font-medium text-gray-900">Issued</div>
+                          <div className="text-sm text-gray-500">Certificate has been issued to student</div>
+                        </div>
+                      </div>
+                      {selectedCertificate.status === 'issued' && (
+                        <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => handleStatusModalUpdate('rejected')}
+                      className={`w-full flex items-center justify-between p-3 border rounded-lg hover:bg-red-50 transition-colors ${
+                        selectedCertificate.status === 'rejected' ? 'border-red-300 bg-red-50 ring-2 ring-red-200' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <XCircleIcon className="h-5 w-5 text-red-500 mr-3" />
+                        <div className="text-left">
+                          <div className="font-medium text-gray-900">Rejected</div>
+                          <div className="text-sm text-gray-500">Certificate request has been rejected</div>
+                        </div>
+                      </div>
+                      {selectedCertificate.status === 'rejected' && (
+                        <CheckCircleIcon className="h-5 w-5 text-red-500" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowStatusModal(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

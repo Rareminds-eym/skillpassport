@@ -13,11 +13,14 @@ import {
   PencilSquareIcon,
   DocumentCheckIcon,
   ExclamationTriangleIcon,
+  PaperAirplaneIcon,
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../common/SearchBar";
 import Pagination from "../Pagination";
 import KPICard from "../KPICard";
 import toast from "react-hot-toast";
+import { curriculumApprovalService } from "../../../services/curriculumApprovalService";
+import { supabase } from "../../../lib/supabaseClient";
 
 /* ==============================
    TYPES & INTERFACES (College-adapted)
@@ -1051,7 +1054,7 @@ interface CollegeCurriculumBuilderProps {
   units?: Unit[]; // Changed from chapters
   learningOutcomes?: LearningOutcome[];
   assessmentTypes?: AssessmentType[];
-  status?: "draft" | "approved" | "published";
+  status?: "draft" | "approved" | "published" | "pending_approval" | "rejected";
   loading?: boolean;
   searchQuery?: string;
   setSearchQuery?: (value: string) => void;
@@ -1062,13 +1065,28 @@ interface CollegeCurriculumBuilderProps {
   onDeleteOutcome?: (id: string) => Promise<void>;
   onSaveDraft?: () => Promise<void>;
   onApprove?: () => Promise<void>;
-  onPublish?: () => Promise<void>;
+  onRequestApproval?: (message?: string) => Promise<void>;
   onClone?: (sourceId: string, targetData: any) => Promise<void>;
   onExport?: (format: 'csv' | 'pdf') => Promise<void>;
 }
 const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props) => {
   // Mock user role (no database connection)
   const [isCollegeAdmin] = React.useState(true); // College admin has direct approval authority
+
+  // College affiliation state
+  const [collegeAffiliation, setCollegeAffiliation] = useState<{
+    isAffiliated: boolean;
+    universityId?: string;
+    universityName?: string;
+    loading: boolean;
+  }>({
+    isAffiliated: false,
+    loading: true
+  });
+
+  // Request approval modal state
+  const [showRequestApprovalModal, setShowRequestApprovalModal] = useState(false);
+  const [approvalMessage, setApprovalMessage] = useState("");
 
   // College-specific assessment types (as per requirements)
   const defaultCollegeAssessmentTypes: AssessmentType[] = [];
@@ -1090,7 +1108,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   const [localSelectedAcademicYear, localSetSelectedAcademicYear] = useState("");
   const [localUnits, localSetUnits] = useState<Unit[]>([]);
   const [localLearningOutcomes, localSetLearningOutcomes] = useState<LearningOutcome[]>([]);
-  const [localStatus, localSetStatus] = useState<"draft" | "approved" | "published">("draft");
+  const [localStatus, localSetStatus] = useState<"draft" | "approved" | "published" | "pending_approval" | "rejected">("draft");
   const [localSearchQuery, localSetSearchQuery] = useState("");
 
   // Pagination state
@@ -1153,6 +1171,47 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showExportDropdown]);
+
+  // Check college affiliation when curriculum is loaded
+  useEffect(() => {
+    const checkAffiliation = async () => {
+      if (!props.curriculumId) {
+        setCollegeAffiliation({ isAffiliated: false, loading: false });
+        return;
+      }
+
+      try {
+        // Get curriculum details to find college_id
+        const { data: curriculum } = await supabase
+          .from('college_curriculums')
+          .select('college_id')
+          .eq('id', props.curriculumId)
+          .single();
+
+        if (curriculum?.college_id) {
+          const affiliationResult = await curriculumApprovalService.checkCollegeAffiliation(curriculum.college_id);
+          
+          if (affiliationResult.success) {
+            setCollegeAffiliation({
+              isAffiliated: affiliationResult.isAffiliated,
+              universityId: affiliationResult.universityId,
+              universityName: affiliationResult.universityName,
+              loading: false
+            });
+          } else {
+            setCollegeAffiliation({ isAffiliated: false, loading: false });
+          }
+        } else {
+          setCollegeAffiliation({ isAffiliated: false, loading: false });
+        }
+      } catch (error) {
+        console.error('Error checking college affiliation:', error);
+        setCollegeAffiliation({ isAffiliated: false, loading: false });
+      }
+    };
+
+    checkAffiliation();
+  }, [props.curriculumId]);
   // Enhanced validation for different button states
   const validateForApproval = (): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
@@ -1458,6 +1517,30 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
       return 'Approve this curriculum for publishing';
     }
     return `Complete these steps first: ${approvalValidation.errors.join(', ')}`;
+  };
+
+  // Handle request approval for affiliated colleges
+  const handleRequestApproval = async () => {
+    const validation = validateForApproval();
+    if (!validation.isValid) {
+      toast.error(`Please complete these steps first:\n• ${validation.errors.join('\n• ')}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    setShowRequestApprovalModal(true);
+  };
+
+  const confirmRequestApproval = async () => {
+    if (props.onRequestApproval) {
+      await props.onRequestApproval(approvalMessage);
+    } else {
+      // Fallback to local state
+      setStatus("pending_approval");
+      toast.success("Curriculum submitted for approval!");
+    }
+    setShowRequestApprovalModal(false);
+    setApprovalMessage("");
   };
 
   const handlePublish = async () => {
@@ -2248,7 +2331,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             {/* Only show action buttons when curriculum context is complete */}
             {selectedAcademicYear && selectedCourse && selectedDepartment && selectedProgram && selectedSemester && (
               <>
-                {/* Draft Actions - Admin can directly approve */}
+                {/* Draft Actions - Show different buttons based on affiliation */}
                 {status === "draft" && (
                   <>
                     <button
@@ -2264,38 +2347,95 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                       <DocumentCheckIcon className="h-4 w-4" />
                       {getSaveDraftButtonText()}
                     </button>
+                    
                     {isCollegeAdmin && (
-                      <button
-                        onClick={async () => {
-                          const validation = validateForApproval();
-                          if (!validation.isValid) {
-                            // Show detailed error message
-                            toast.error(`Please complete these steps first:\n• ${validation.errors.join('\n• ')}`);
-                            window.scrollTo({ top: 0, behavior: "smooth" });
-                            return;
-                          }
-                          
-                          if (props.onApprove) {
-                            await props.onApprove();
-                          }
-                        }}
-                        disabled={isApproveDisabled}
-                        className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg transition font-medium shadow-md hover:shadow-lg text-sm ${
-                          isApproveDisabled
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : 'bg-blue-600 text-white hover:bg-blue-700'
-                        }`}
-                        title={getApprovalTooltip()}
-                      >
-                        <CheckCircleIcon className="h-4 w-4" />
-                        {isApproveDisabled ? 'Complete Steps Above' : 'Approve Curriculum'}
-                      </button>
+                      <>
+                        {/* Show Request Approval for affiliated colleges */}
+                        {collegeAffiliation.isAffiliated && !collegeAffiliation.loading && (
+                          <button
+                            onClick={handleRequestApproval}
+                            disabled={isApproveDisabled}
+                            className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg transition font-medium shadow-md hover:shadow-lg text-sm ${
+                              isApproveDisabled
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
+                            title={isApproveDisabled ? getApprovalTooltip() : `Request approval from ${collegeAffiliation.universityName}`}
+                          >
+                            <PaperAirplaneIcon className="h-4 w-4" />
+                            {isApproveDisabled ? 'Complete Steps Above' : 'Request Approval'}
+                          </button>
+                        )}
+                        
+                        {/* Show direct Approve for private colleges */}
+                        {!collegeAffiliation.isAffiliated && !collegeAffiliation.loading && (
+                          <button
+                            onClick={async () => {
+                              const validation = validateForApproval();
+                              if (!validation.isValid) {
+                                toast.error(`Please complete these steps first:\n• ${validation.errors.join('\n• ')}`);
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                                return;
+                              }
+                              
+                              if (props.onApprove) {
+                                await props.onApprove();
+                              }
+                            }}
+                            disabled={isApproveDisabled}
+                            className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg transition font-medium shadow-md hover:shadow-lg text-sm ${
+                              isApproveDisabled
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
+                            title={getApprovalTooltip()}
+                          >
+                            <CheckCircleIcon className="h-4 w-4" />
+                            {isApproveDisabled ? 'Complete Steps Above' : 'Approve Curriculum'}
+                          </button>
+                        )}
+                        
+                        {/* Loading state */}
+                        {collegeAffiliation.loading && (
+                          <button
+                            disabled
+                            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-gray-300 text-gray-500 cursor-not-allowed font-medium text-sm"
+                          >
+                            <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                            Checking Affiliation...
+                          </button>
+                        )}
+                      </>
                     )}
                   </>
                 )}
 
-                {/* Approved Actions - Admin can publish */}
-                {status === "approved" && isCollegeAdmin && (
+                {/* Pending Approval Status */}
+                {status === "pending_approval" && (
+                  <div className="flex items-center gap-3 px-4 py-2.5 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <ArrowPathIcon className="h-5 w-5 text-yellow-600 animate-pulse" />
+                    <div>
+                      <p className="text-sm font-medium text-yellow-800">Approval Pending</p>
+                      <p className="text-xs text-yellow-600">
+                        Waiting for approval from {collegeAffiliation.universityName || 'University Admin'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Rejected Status */}
+                {status === "rejected" && (
+                  <div className="flex items-center gap-3 px-4 py-2.5 bg-red-50 border border-red-200 rounded-lg">
+                    <ExclamationTriangleIcon className="h-5 w-5 text-red-600" />
+                    <div>
+                      <p className="text-sm font-medium text-red-800">Approval Rejected</p>
+                      <p className="text-xs text-red-600">Please review feedback and resubmit</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Approved Actions - Show Publish for private colleges only */}
+                {status === "approved" && isCollegeAdmin && !collegeAffiliation.isAffiliated && (
                   <button
                     onClick={handlePublish}
                     disabled={isApproveDisabled}
@@ -2364,6 +2504,66 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         currentProgram={selectedProgram}
         currentCourse={courses.find(c => c.value === selectedCourse)?.label}
       />
+
+      {/* Request Approval Modal */}
+      <ModalWrapper
+        title="Request Curriculum Approval"
+        subtitle={`Submit to ${collegeAffiliation.universityName || 'University Admin'} for review`}
+        isOpen={showRequestApprovalModal}
+        onClose={() => {
+          setShowRequestApprovalModal(false);
+          setApprovalMessage("");
+        }}
+      >
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="approval-message" className="block text-sm font-medium text-gray-700 mb-2">
+              Message to University Admin (Optional)
+            </label>
+            <textarea
+              id="approval-message"
+              value={approvalMessage}
+              onChange={(e) => setApprovalMessage(e.target.value)}
+              placeholder="Add any notes or context for the approval request..."
+              rows={4}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none"
+            />
+          </div>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <InformationCircleIcon className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">What happens next?</p>
+                <ul className="space-y-1 text-xs">
+                  <li>• Your curriculum will be submitted to {collegeAffiliation.universityName || 'University Admin'}</li>
+                  <li>• University admins will review and approve/reject</li>
+                  <li>• Upon approval, the curriculum will be automatically published</li>
+                  <li>• You'll receive notifications about the status</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+            <button
+              onClick={() => {
+                setShowRequestApprovalModal(false);
+                setApprovalMessage("");
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmRequestApproval}
+              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Submit Request
+            </button>
+          </div>
+        </div>
+      </ModalWrapper>
     </div>
   );
 };
