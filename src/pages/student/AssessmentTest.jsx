@@ -28,17 +28,25 @@ import { Card, CardContent } from '../../components/Students/components/ui/card'
 import { Label } from '../../components/Students/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 
-// Import AI-powered question banks for career assessment
-import { aptitudeModules, getModuleQuestionIndex } from './assessment-data/aptitudeQuestions';
-import { bigFiveQuestions as aiPoweredBigFiveQuestions } from './assessment-data/bigFiveQuestions';
-import { employabilityQuestions as aiPoweredEmployabilityQuestions, getCurrentEmployabilityModule } from './assessment-data/employabilityQuestions';
+// Import AI-powered question banks from centralized assessment feature
 import {
+    // Aptitude
+    aptitudeModules,
+    getModuleQuestionIndex,
+    // Big Five
+    bigFiveQuestions as aiPoweredBigFiveQuestions,
+    // Employability
+    employabilityQuestions as aiPoweredEmployabilityQuestions,
+    getCurrentEmployabilityModule,
+    // Middle/High School rating scales
     aptitudeRatingScale,
     highSchoolRatingScale,
-    strengthsRatingScale
-} from './assessment-data/middleSchoolQuestions';
-import { riasecQuestions as aiPoweredRiasecQuestions } from './assessment-data/riasecQuestions';
-import { workValuesQuestions as aiPoweredWorkValuesQuestions } from './assessment-data/workValuesQuestions';
+    strengthsRatingScale,
+    // RIASEC
+    riasecQuestions as aiPoweredRiasecQuestions,
+    // Work Values
+    workValuesQuestions as aiPoweredWorkValuesQuestions,
+} from '../../features/assessment';
 
 // Import Gemini assessment service
 import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentService';

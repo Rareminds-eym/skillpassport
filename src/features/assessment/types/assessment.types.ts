@@ -1,7 +1,37 @@
 /**
  * Assessment System Type Definitions
  * Centralized types for the entire assessment feature
+ * 
+ * @module features/assessment/types
  */
+
+// =============================================================================
+// RE-EXPORT ADAPTIVE APTITUDE TYPES
+// =============================================================================
+// Comprehensive types for IRT-based adaptive testing
+export type {
+  GradeLevel as AdaptiveGradeLevel,
+  TestPhase,
+  Tier,
+  DifficultyLevel,
+  ConfidenceTag,
+  Subtag,
+  Question as AdaptiveTestQuestion,
+  Response as AdaptiveResponse,
+  TestSession,
+  TestResults,
+  PhaseConstraints,
+  StopConditionResult,
+  AnswerResult,
+  AdaptiveTestConfig,
+} from '../../../types/adaptiveAptitude';
+
+export {
+  DEFAULT_ADAPTIVE_TEST_CONFIG,
+  ALL_SUBTAGS,
+  ALL_DIFFICULTY_LEVELS,
+  TEST_PHASES_ORDER,
+} from '../../../types/adaptiveAptitude';
 
 // ============================================
 // Grade Level Types

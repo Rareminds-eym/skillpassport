@@ -4,11 +4,13 @@ import { supabase } from '../../../../lib/supabaseClient';
 import * as assessmentService from '../../../../services/assessmentService';
 import { saveRecommendations } from '../../../../services/courseRecommendationService';
 import { analyzeAssessmentWithGemini } from '../../../../services/geminiAssessmentService';
-import { bigFiveQuestions } from '../../assessment-data/bigFiveQuestions';
-import { employabilityQuestions } from '../../assessment-data/employabilityQuestions';
-import { riasecQuestions } from '../../assessment-data/riasecQuestions';
-import { streamKnowledgeQuestions } from '../../assessment-data/streamKnowledgeQuestions';
-import { workValuesQuestions } from '../../assessment-data/workValuesQuestions';
+import {
+    riasecQuestions,
+    bigFiveQuestions,
+    workValuesQuestions,
+    employabilityQuestions,
+    streamKnowledgeQuestions,
+} from '../../../../features/assessment';
 
 /**
  * Custom hook for managing assessment results

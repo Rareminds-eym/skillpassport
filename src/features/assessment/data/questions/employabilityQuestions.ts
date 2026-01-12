@@ -1,60 +1,69 @@
-// Employability / 21st-Century Skills Diagnostic + SJT
-// Purpose: Baseline for placement readiness; convert to skill-upgrade plan
-// 21st-century skills are commonly measured via self-ratings plus situational judgement tests
+/**
+ * Employability / 21st-Century Skills Diagnostic + SJT
+ * Purpose: Baseline for placement readiness; convert to skill-upgrade plan
+ * 
+ * @module features/assessment/data/questions/employabilityQuestions
+ */
+
+export interface SelfRatingQuestion {
+  id: string;
+  text: string;
+  type?: string;
+  partType?: string;
+  moduleTitle?: string;
+}
+
+export interface SJTOption {
+  label: string;
+  text: string;
+}
+
+export interface SJTQuestion {
+  id: string;
+  scenario: string;
+  text: string;
+  options: SJTOption[];
+  best: string;
+  worst: string;
+}
 
 // Part A: Self-rating skills (25 items)
-// Response format: 1 = Not like me, 2 = Slightly, 3 = Somewhat, 4 = Mostly, 5 = Very much like me
 export const selfRatingQuestions = {
-  // Communication (3 items)
   communication: [
     { id: 'com1', text: 'I explain my ideas clearly.' },
     { id: 'com2', text: 'I adjust my communication to the audience.' },
     { id: 'com3', text: 'I listen actively without interrupting.' }
   ],
-
-  // Teamwork (3 items)
   teamwork: [
     { id: 'tm1', text: 'I contribute reliably in group tasks.' },
     { id: 'tm2', text: 'I handle disagreements respectfully.' },
     { id: 'tm3', text: 'I help the team stay on track.' }
   ],
-
-  // Problem Solving (3 items)
   problemSolving: [
     { id: 'ps1', text: 'I break problems into smaller parts.' },
     { id: 'ps2', text: 'I generate multiple solutions.' },
     { id: 'ps3', text: 'I choose solutions based on evidence.' }
   ],
-
-  // Adaptability (3 items)
   adaptability: [
     { id: 'ad1', text: 'I stay calm when plans change.' },
     { id: 'ad2', text: 'I learn new tools quickly.' },
     { id: 'ad3', text: 'I handle uncertainty without freezing.' }
   ],
-
-  // Leadership (3 items)
   leadership: [
     { id: 'ld1', text: 'I take initiative when needed.' },
     { id: 'ld2', text: 'I motivate peers toward deadlines.' },
     { id: 'ld3', text: 'I delegate fairly.' }
   ],
-
-  // Digital Fluency (3 items)
   digitalFluency: [
     { id: 'df1', text: "I'm comfortable with new software." },
     { id: 'df2', text: 'I use digital tools to organize work.' },
     { id: 'df3', text: 'I can learn a tech skill from online resources.' }
   ],
-
-  // Professionalism (3 items)
   professionalism: [
     { id: 'pr1', text: 'I manage time and deadlines well.' },
     { id: 'pr2', text: 'I take feedback constructively.' },
     { id: 'pr3', text: 'I communicate progress proactively.' }
   ],
-
-  // Career Readiness (4 items)
   careerReadiness: [
     { id: 'cr1', text: 'I know how to write a strong CV.' },
     { id: 'cr2', text: 'I can describe my strengths confidently.' },
@@ -64,9 +73,7 @@ export const selfRatingQuestions = {
 };
 
 // Part B: Situational Judgement Test (6 scenarios)
-// Response format: Choose BEST and WORST option for each scenario
-// Scoring: Best=2, Worst=0, others=1
-export const sjtQuestions = [
+export const sjtQuestions: SJTQuestion[] = [
   {
     id: 'sjt1',
     scenario: 'Team member not contributing',
@@ -147,33 +154,6 @@ export const sjtQuestions = [
   }
 ];
 
-// Module metadata for UI display
-export const employabilityModules = [
-  {
-    id: 'partA',
-    title: 'Part A: Self-Rating Skills',
-    description: 'Rate yourself on 21st-century workplace skills',
-    subModules: [
-      { id: 'communication', title: 'Communication', questionCount: 3, color: 'blue' },
-      { id: 'teamwork', title: 'Teamwork', questionCount: 3, color: 'green' },
-      { id: 'problemSolving', title: 'Problem Solving', questionCount: 3, color: 'purple' },
-      { id: 'adaptability', title: 'Adaptability', questionCount: 3, color: 'orange' },
-      { id: 'leadership', title: 'Leadership', questionCount: 3, color: 'red' },
-      { id: 'digitalFluency', title: 'Digital Fluency', questionCount: 3, color: 'cyan' },
-      { id: 'professionalism', title: 'Professionalism', questionCount: 3, color: 'indigo' },
-      { id: 'careerReadiness', title: 'Career Readiness', questionCount: 4, color: 'amber' }
-    ],
-    totalQuestions: 25
-  },
-  {
-    id: 'partB',
-    title: 'Part B: Situational Judgement Test',
-    description: 'Choose the BEST and WORST response for each workplace scenario',
-    totalQuestions: 6,
-    color: 'rose'
-  }
-];
-
 // Flatten all employability questions for the assessment
 export const employabilityQuestions = [
   // Part A: Self-rating (25 items)
@@ -204,9 +184,8 @@ export const employabilityQuestions = [
 ];
 
 // Get current module based on question index
-export const getCurrentEmployabilityModule = (questionIndex) => {
+export const getCurrentEmployabilityModule = (questionIndex: number) => {
   if (questionIndex < 25) {
-    // Part A - find which skill domain
     let cumulative = 0;
     const domains = [
       { id: 'communication', title: 'Communication', count: 3 },
@@ -233,7 +212,6 @@ export const getCurrentEmployabilityModule = (questionIndex) => {
     }
   }
   
-  // Part B - SJT
   return {
     part: 'B',
     partTitle: 'Part B: Situational Judgement Test',
@@ -243,7 +221,6 @@ export const getCurrentEmployabilityModule = (questionIndex) => {
   };
 };
 
-// Get question counts
 export const getEmployabilityQuestionCounts = () => ({
   selfRating: 25,
   sjt: 6,

@@ -147,7 +147,7 @@ const StudentPublicViewer = lazy(() =>
   import("../components/Students/components/StudentPublicViewer")
 );
 const Settings = lazy(() => import("../pages/student/Settings"));
-const AssessmentTest = lazy(() => import("../pages/student/AssessmentTest"));
+// AssessmentTest is deprecated - using AssessmentTestPage from feature module instead
 const AssessmentResult = lazy(() => import("../pages/student/AssessmentResult"));
 const AssessmentTestPage = lazy(() => import("../pages/student/AssessmentTestPage"));
 const AssessmentResults = lazy(() => import("../pages/student/AssessmentResults"));
@@ -832,8 +832,8 @@ const AppRoutes = () => {
           <Route path="clubs" element={<Clubs />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
-          <Route path="assessment-report" element={<AssessmentTest />} /> {/* Keep old path for backward compat if needed, or redirect */}
-          <Route path="assessment/test" element={<AssessmentTest />} />
+          <Route path="assessment-report" element={<AssessmentTestPage />} /> {/* Updated to use new modular component */}
+          <Route path="assessment/test" element={<AssessmentTestPage />} /> {/* Updated to use new modular component */}
           <Route path="assessment/result" element={<AssessmentResult />} />
           <Route path="assessment/platform" element={<AssessmentStart />} />
           <Route path="assessment/dynamic" element={<DynamicAssessment />} />
