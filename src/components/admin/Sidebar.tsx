@@ -520,8 +520,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             path: "/college-admin/academics/browse-courses",
             icon: AcademicCapIcon,
           },
-          */
-
           {
             name: "Course Master",
             path: "/college-admin/academics/subject-courses",
