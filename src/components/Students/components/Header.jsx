@@ -314,16 +314,19 @@ const Header = ({ activeTab, setActiveTab }) => {
               align="end"
               className="w-48 bg-white border border-gray-200 shadow-xl"
             >
-              <DropdownMenuItem
-                onClick={() => {
-                  setActiveTab("profile");
-                  navigate("/student/profile");
-                }}
-                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                <PencilIcon className="w-4 h-4 mr-2" />
-                Edit Profile
-              </DropdownMenuItem>
+              {/* Only show Edit Profile if student is NOT part of school or college */}
+              {!isPartOfSchoolOrCollege && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setActiveTab("profile");
+                    navigate("/student/profile");
+                  }}
+                  className="cursor-pointer w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <PencilIcon className="w-4 h-4 mr-2" />
+                  Edit Profile
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onClick={() => {
                   setActiveTab("saved-jobs");
