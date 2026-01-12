@@ -53,6 +53,16 @@ export const getStudentSettingsByEmail = async (email) => {
         guardianEmail,
         guardianRelation,
         currentCgpa,
+        grade,
+        grade_start_date,
+        universityId,
+        university_college_id,
+        school_id,
+        school_class_id,
+        college_id,
+        program_id,
+        program_section_id,
+        semester,
         expectedGraduationDate,
         enrollmentDate,
         user_id,
@@ -110,6 +120,16 @@ export const getStudentSettingsByEmail = async (email) => {
       registrationNumber: data.registration_number || '',
       enrollmentNumber: data.enrollmentNumber || '',
       currentCgpa: data.currentCgpa || '',
+      grade: data.grade || '',
+      gradeStartDate: data.grade_start_date || '',
+      universityId: data.universityId || '',
+      universityCollegeId: data.university_college_id || '',
+      schoolId: data.school_id || '',
+      schoolClassId: data.school_class_id || '',
+      collegeId: data.college_id || '',
+      programId: data.program_id || '',
+      programSectionId: data.program_section_id || '',
+      semester: data.semester || '',
       enrollmentDate: data.enrollmentDate || '',
       expectedGraduationDate: data.expectedGraduationDate || '',
 
@@ -209,6 +229,16 @@ export const updateStudentSettings = async (email, updates) => {
       registrationNumber: 'registration_number',
       enrollmentNumber: 'enrollmentNumber',
       currentCgpa: 'currentCgpa',
+      grade: 'grade',
+      gradeStartDate: 'grade_start_date',
+      universityId: 'universityId',
+      universityCollegeId: 'university_college_id',
+      schoolId: 'school_id',
+      schoolClassId: 'school_class_id',
+      collegeId: 'college_id',
+      programId: 'program_id',
+      programSectionId: 'program_section_id',
+      semester: 'semester',
       enrollmentDate: 'enrollmentDate',
       expectedGraduationDate: 'expectedGraduationDate',
       guardianName: 'guardianName',
@@ -226,7 +256,10 @@ export const updateStudentSettings = async (email, updates) => {
     };
 
     // Define numeric fields that should be null instead of empty string
-    const numericFields = ['age', 'pincode', 'currentCgpa'];
+    const numericFields = ['age', 'pincode', 'currentCgpa', 'semester'];
+
+    // Define UUID fields that should be null instead of empty string
+    const uuidFields = ['universityCollegeId', 'schoolId', 'schoolClassId', 'collegeId', 'programId', 'universityId', 'programSectionId'];
 
     // Define fields that might contain phone numbers (could be numeric in DB)
     const phoneFields = ['phone', 'alternatePhone', 'guardianPhone'];
@@ -238,6 +271,11 @@ export const updateStudentSettings = async (email, updates) => {
 
         // Handle numeric fields - convert empty strings to null
         if (numericFields.includes(key) && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+
+        // Handle UUID fields - convert empty strings to null
+        if (uuidFields.includes(key) && (value === '' || value === null || value === undefined)) {
           value = null;
         }
 
