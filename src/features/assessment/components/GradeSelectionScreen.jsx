@@ -73,6 +73,17 @@ const GRADE_OPTIONS = [
 ];
 
 /**
+ * Extract numeric grade from various formats
+ * Handles: "10", "10th", "Grade 10", "grade 10", "Class 10", etc.
+ */
+const extractNumericGrade = (grade) => {
+  if (!grade) return null;
+  const gradeStr = String(grade).toLowerCase().trim();
+  const match = gradeStr.match(/(\d+)/);
+  return match ? parseInt(match[1], 10) : null;
+};
+
+/**
  * Check if a grade option should be visible
  */
 const shouldShowOption = (optionId, {
@@ -89,8 +100,10 @@ const shouldShowOption = (optionId, {
   // Don't filter if not required
   if (!shouldFilterByGrade) return true;
 
-  const isGrade10 = studentGrade === '10' || studentGrade === '10th';
-  const isGrade12 = studentGrade === '12' || studentGrade === '12th';
+  // Extract numeric grade from various formats (e.g., "Grade 10", "10th", "10")
+  const numericGrade = extractNumericGrade(studentGrade);
+  const isGrade10 = numericGrade === 10;
+  const isGrade12 = numericGrade === 12;
   const hasBeenInGrade6Months = monthsInGrade !== null && monthsInGrade >= 6;
 
   switch (optionId) {
@@ -131,8 +144,10 @@ const shouldShowOption = (optionId, {
  * Get additional info text for grade option
  */
 const getAdditionalInfo = (optionId, { studentGrade, monthsInGrade }) => {
-  const isGrade10 = studentGrade === '10' || studentGrade === '10th';
-  const isGrade12 = studentGrade === '12' || studentGrade === '12th';
+  // Extract numeric grade from various formats (e.g., "Grade 10", "10th", "10")
+  const numericGrade = extractNumericGrade(studentGrade);
+  const isGrade10 = numericGrade === 10;
+  const isGrade12 = numericGrade === 12;
   const hasBeenInGrade6Months = monthsInGrade !== null && monthsInGrade >= 6;
   const lessThan6Months = monthsInGrade !== null && monthsInGrade < 6;
 
