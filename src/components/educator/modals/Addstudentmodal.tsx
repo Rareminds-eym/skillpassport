@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
 import storageService from '../../../services/storageService'
 import userApiService from '../../../services/userApiService'
+import { usePermission } from '../../../hooks/usePermissions'
 
 interface DocumentUploadProgress {
   file: string
@@ -62,6 +63,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const [documentUploadProgress, setDocumentUploadProgress] = useState<DocumentUploadProgress[]>([])
   const [isUploadingDocuments, setIsUploadingDocuments] = useState(false)
+
+  // Permission check
+  const { allowed: canAddStudents, reason: addReason, loading: permissionLoading } = usePermission('Students', 'create');
 
   const [formData, setFormData] = useState<StudentFormData>({
     name: '',
@@ -125,6 +129,11 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setIsUploadingDocuments(false)
     }
   }, [isOpen])
+
+  // Don't render modal if user doesn't have permission
+  if (!permissionLoading && !canAddStudents) {
+    return null;
+  }
 
   // Download sample CSV template
   const downloadSampleCSV = () => {
