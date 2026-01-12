@@ -13,11 +13,11 @@
 const PrintStyles = () => (
   <style>
     {`
-      /* @page rules for A4 dimensions (210mm x 297mm) and 15mm margins */
+      /* @page rules for A4 dimensions (210mm x 297mm) */
       /* Validates: Requirements 4.1, 4.2 */
       @page {
         size: A4;
-        margin: 15mm 15mm 20mm 15mm;
+        margin: 0;
       }
       
       /* First page (cover page) specific rules */
