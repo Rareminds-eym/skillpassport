@@ -62,7 +62,7 @@ export function useEducatorSchool(): EducatorSchoolData {
             id,
             school_id,
             role,
-            schools!school_educators_school_id_fkey (
+            organizations!school_educators_school_id_fkey (
               id,
               name,
               code,
@@ -78,11 +78,11 @@ export function useEducatorSchool(): EducatorSchoolData {
           throw schoolEducatorError;
         }
 
-        if (schoolEducatorData && schoolEducatorData.schools) {
+        if (schoolEducatorData && schoolEducatorData.organizations) {
           // They are a school educator
-          const schoolData = Array.isArray(schoolEducatorData.schools) 
-            ? schoolEducatorData.schools[0] 
-            : schoolEducatorData.schools;
+          const schoolData = Array.isArray(schoolEducatorData.organizations) 
+            ? schoolEducatorData.organizations[0] 
+            : schoolEducatorData.organizations;
           
           setSchool(schoolData as School);
           setCollege(null);
@@ -114,18 +114,7 @@ export function useEducatorSchool(): EducatorSchoolData {
         // If not a school educator, check if they are a college lecturer
         const { data: collegeLecturerData, error: collegeLecturerError } = await supabase
           .from('college_lecturers')
-          .select(`
-            id,
-            collegeId,
-            colleges!fk_college_lecturers_college (
-              id,
-              name,
-              code,
-              city,
-              state,
-              country
-            )
-          `)
+          .select('id, collegeId')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -139,12 +128,22 @@ export function useEducatorSchool(): EducatorSchoolData {
           throw collegeLecturerError;
         }
 
-        if (collegeLecturerData && collegeLecturerData.colleges) {
+        if (collegeLecturerData && collegeLecturerData.collegeId) {
+          // Fetch college details from organizations table
+          const { data: collegeData, error: collegeError } = await supabase
+            .from('organizations')
+            .select('id, name, code, city, state, country')
+            .eq('id', collegeLecturerData.collegeId)
+            .eq('organization_type', 'college')
+            .single();
+
+          console.log('🏫 College data fetch result:', { collegeData, collegeError });
+
+          if (collegeError) {
+            console.warn('Failed to fetch college details:', collegeError);
+          }
+
           // They are a college lecturer
-          const collegeData = Array.isArray(collegeLecturerData.colleges) 
-            ? collegeLecturerData.colleges[0] 
-            : collegeLecturerData.colleges;
-          
           setCollege(collegeData as College);
           setSchool(null);
           setEducatorType('college');

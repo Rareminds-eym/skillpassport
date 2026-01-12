@@ -24,6 +24,7 @@ import Pagination from "../../components/educator/Pagination"
 import { useAuth } from "../../context/AuthContext"
 import { ProgramSection } from "../../services/programService"
 import ManageProgramStudentsModal from "../../components/educator/ManageProgramStudentsModal"
+import { usePermission } from "../../hooks/usePermissions"
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, string> = {
@@ -403,6 +404,11 @@ const ProgramSectionsPage = () => {
   const { user, isAuthenticated } = useAuth()
   const { college: educatorCollege, educatorType, loading: schoolLoading } = useEducatorSchool()
   
+  // Permission controls for Classroom Management module
+  const canView = usePermission("Classroom Management", "view")
+  const canCreate = usePermission("Classroom Management", "create")
+  const canEdit = usePermission("Classroom Management", "edit")
+  
   const {
     programSections,
     departments,
@@ -437,6 +443,15 @@ const ProgramSectionsPage = () => {
       return
     }
   }, [isAuthenticated, user, navigate])
+
+  // Permission check - redirect if no view permission
+  useEffect(() => {
+    if (!canView) {
+      console.warn('Access denied: No view permission for Classroom Management')
+      navigate('/educator/dashboard')
+      return
+    }
+  }, [canView, navigate])
 
   // Fetch departments when college is loaded
   useEffect(() => {
@@ -508,8 +523,66 @@ const ProgramSectionsPage = () => {
   const isLoading = loading || schoolLoading
   const isEmpty = !isLoading && paginatedSections.length === 0 && !error && !searchQuery
 
+  // Show access denied if no view permission
+  if (!canView) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+            <XMarkIcon className="h-6 w-6 text-red-600" />
+          </div>
+          <h3 className="mt-4 text-lg font-medium text-gray-900">Access Denied</h3>
+          <p className="mt-2 text-sm text-gray-500">
+            You don't have permission to view the Classroom Management module.
+          </p>
+          <div className="mt-6">
+            <button
+              onClick={() => navigate('/educator/dashboard')}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+            >
+              Go to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex overflow-y-auto mb-4 flex-col h-screen">
+      {/* Permission Debug Panel - Only in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+          <div className="flex">
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">
+                🎓 Educator Permission Debug - Classroom Management
+              </h3>
+              <div className="mt-2 text-sm text-blue-700">
+                <p><strong>User Role:</strong> {user?.role}</p>
+                <p><strong>Module:</strong> Classroom Management</p>
+                <div className="flex gap-4 mt-1">
+                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                    canView ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    View: {canView ? '✅' : '❌'}
+                  </span>
+                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                    canCreate ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    Create: {canCreate ? '✅' : '❌'}
+                  </span>
+                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                    canEdit ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    Edit: {canEdit ? '✅' : '❌'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className='p-4 sm:p-6 lg:p-8 mb-2'>
         <h1 className="text-xl md:text-3xl font-bold text-gray-900">Program Sections</h1>
         <p className="text-base md:text-lg mt-2 text-gray-600">Manage your assigned program sections and students.</p>
@@ -670,9 +743,35 @@ const ProgramSectionsPage = () => {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setManageStudentsSection(section)}
-                          className="inline-flex items-center px-3 py-1.5 border border-indigo-200 rounded text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
+                          onClick={() => {
+                            if (!canCreate) {
+                              console.log('❌ [ProgramSectionsPage] Action Blocked: Students Button - No Create Permission');
+                              alert('❌ Access Denied: You need CREATE permission to manage students');
+                              return;
+                            }
+                            console.log('🎓 [ProgramSectionsPage] Action: Students Button Clicked', {
+                              userRole: user?.role,
+                              module: 'Classroom Management',
+                              action: 'Manage Students',
+                              permissions: {
+                                canView: canView.allowed,
+                                canCreate: canCreate.allowed,
+                                canEdit: canEdit.allowed
+                              },
+                              sectionId: section.id,
+                              sectionName: section.program.name,
+                              timestamp: new Date().toISOString()
+                            });
+                            setManageStudentsSection(section);
+                          }}
+                          disabled={!canCreate.allowed}
+                          className={`inline-flex items-center px-3 py-1.5 border rounded text-xs font-medium transition-all ${
+                            canCreate.allowed
+                              ? 'border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 cursor-pointer'
+                              : 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed opacity-50 blur-sm'
+                          }`}
                           type="button"
+                          title={canCreate.allowed ? 'Manage Students' : '❌ No CREATE permission'}
                         >
                           <UserGroupIcon className="h-4 w-4 mr-1" />
                           Students
@@ -680,9 +779,35 @@ const ProgramSectionsPage = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setDetailSection(section)}
-                          className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                          onClick={() => {
+                            if (!canView) {
+                              console.log('❌ [ProgramSectionsPage] Action Blocked: View Button - No View Permission');
+                              alert('❌ Access Denied: You need VIEW permission to see details');
+                              return;
+                            }
+                            console.log('🎓 [ProgramSectionsPage] Action: View Button Clicked', {
+                              userRole: user?.role,
+                              module: 'Classroom Management',
+                              action: 'View Details',
+                              permissions: {
+                                canView: canView.allowed,
+                                canCreate: canCreate.allowed,
+                                canEdit: canEdit.allowed
+                              },
+                              sectionId: section.id,
+                              sectionName: section.program.name,
+                              timestamp: new Date().toISOString()
+                            });
+                            setDetailSection(section);
+                          }}
+                          disabled={!canView.allowed}
+                          className={`inline-flex items-center px-3 py-1.5 border rounded text-xs font-medium transition-all ${
+                            canView.allowed
+                              ? 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 cursor-pointer'
+                              : 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed opacity-50 blur-sm'
+                          }`}
                           type="button"
+                          title={canView.allowed ? 'View Details' : '❌ No VIEW permission'}
                         >
                           <EyeIcon className="h-4 w-4 mr-1" />
                           View
@@ -731,13 +856,68 @@ const ProgramSectionsPage = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
                             <button 
-                              onClick={() => setManageStudentsSection(section)} 
-                              className="text-indigo-600 hover:text-indigo-900" 
+                              onClick={() => {
+                                if (!canCreate) {
+                                  console.log('❌ [ProgramSectionsPage] Action Blocked: Students Button (Table) - No Create Permission');
+                                  alert('❌ Access Denied: You need CREATE permission to manage students');
+                                  return;
+                                }
+                                console.log('🎓 [ProgramSectionsPage] Action: Students Button Clicked (Table)', {
+                                  userRole: user?.role,
+                                  module: 'Classroom Management',
+                                  action: 'Manage Students',
+                                  permissions: {
+                                    canView: canView.allowed,
+                                    canCreate: canCreate.allowed,
+                                    canEdit: canEdit.allowed
+                                  },
+                                  sectionId: section.id,
+                                  sectionName: section.program.name,
+                                  timestamp: new Date().toISOString()
+                                });
+                                setManageStudentsSection(section);
+                              }} 
+                              disabled={!canCreate.allowed}
+                              className={`transition-all ${
+                                canCreate.allowed
+                                  ? 'text-indigo-600 hover:text-indigo-900 cursor-pointer'
+                                  : 'text-gray-400 cursor-not-allowed opacity-50 blur-sm'
+                              }`}
                               type="button"
+                              title={canCreate.allowed ? 'Manage Students' : '❌ No CREATE permission'}
                             >
                               Students
                             </button>
-                            <button onClick={() => setDetailSection(section)} className="text-indigo-600 hover:text-indigo-900" type="button">
+                            <button onClick={() => {
+                              if (!canView) {
+                                console.log('❌ [ProgramSectionsPage] Action Blocked: View Button (Table) - No View Permission');
+                                alert('❌ Access Denied: You need VIEW permission to see details');
+                                return;
+                              }
+                              console.log('🎓 [ProgramSectionsPage] Action: View Button Clicked (Table)', {
+                                userRole: user?.role,
+                                module: 'Classroom Management',
+                                action: 'View Details',
+                                permissions: {
+                                  canView: canView.allowed,
+                                  canCreate: canCreate.allowed,
+                                  canEdit: canEdit.allowed
+                                },
+                                sectionId: section.id,
+                                sectionName: section.program.name,
+                                timestamp: new Date().toISOString()
+                              });
+                              setDetailSection(section);
+                            }} 
+                            disabled={!canView.allowed}
+                            className={`transition-all ${
+                              canView.allowed
+                                ? 'text-indigo-600 hover:text-indigo-900 cursor-pointer'
+                                : 'text-gray-400 cursor-not-allowed opacity-50 blur-sm'
+                            }`}
+                            type="button"
+                            title={canView.allowed ? 'View Details' : '❌ No VIEW permission'}
+                            >
                               View
                             </button>
                           </div>
