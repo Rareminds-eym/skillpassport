@@ -382,12 +382,12 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
   phases: {
     diagnostic_screener: {
       phase: 'diagnostic_screener',
-      minQuestions: 6,
-      maxQuestions: 6,
+      minQuestions: 5,
+      maxQuestions: 5,
       difficultyDistribution: {
         easy: 2,    // 2 easy questions
         medium: 2,  // 2 medium questions
-        hard: 2,    // 2 hard questions
+        hard: 1,    // 1 hard question
       },
       minSubtags: 3,
       maxConsecutiveSameSubtag: 1,
@@ -395,14 +395,14 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
     adaptive_core: {
       phase: 'adaptive_core',
       minQuestions: 8,
-      maxQuestions: 11,  // Updated: 11 questions for adaptive core
+      maxQuestions: 11,  // 11 questions for adaptive core
       maxConsecutiveSameSubtag: 2,
       maxConsecutiveSameDirectionJumps: 2,
     },
     stability_confirmation: {
       phase: 'stability_confirmation',
       minQuestions: 4,
-      maxQuestions: 4,  // Updated: 4 questions for stability
+      maxQuestions: 4,  // 4 questions for stability
       maxConsecutiveSameSubtag: 2,
     },
   },
@@ -411,7 +411,7 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
     M: 3,
     H: 4,
   },
-  minimumQuestionsForStop: 16,
+  minimumQuestionsForStop: 15,
   consistencyWindowSize: 5,
   maxDirectionChangesForHighConfidence: 1,
   maxDirectionChangesForMediumConfidence: 2,

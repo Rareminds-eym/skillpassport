@@ -93,7 +93,7 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
               lineProgress = 100;
             } else if (idx === currentSectionIndex) {
               if (section.isAdaptive) {
-                const adaptiveTotal = adaptiveProgress?.estimatedTotalQuestions || 21;
+                const adaptiveTotal = adaptiveProgress?.estimatedTotalQuestions || 20;
                 const adaptiveAnswered = adaptiveProgress?.questionsAnswered || 0;
                 lineProgress = adaptiveTotal > 0 ? (adaptiveAnswered / adaptiveTotal) * 100 : 0;
               } else {

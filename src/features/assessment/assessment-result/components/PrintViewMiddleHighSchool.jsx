@@ -473,13 +473,18 @@ const SkillsToDevelopSection = ({ skillGap }) => {
  * Requirements: 1.1 - 12-month journey for middle/high school
  */
 const TwelveMonthJourneySection = ({ twelveMonthJourney }) => {
-  if (!twelveMonthJourney || twelveMonthJourney.length === 0) return null;
+  // Handle various data formats - could be array, object with items, or null
+  const journeyItems = Array.isArray(twelveMonthJourney) 
+    ? twelveMonthJourney 
+    : twelveMonthJourney?.items || twelveMonthJourney?.months || [];
+  
+  if (!journeyItems || journeyItems.length === 0) return null;
 
   return (
     <>
       <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>4. Your 12-Month Journey</h2>
       <div style={{ marginTop: '10px' }}>
-        {twelveMonthJourney.map((item, idx) => (
+        {journeyItems.map((item, idx) => (
           <div key={idx} style={{ ...printStyles.card, marginBottom: '8px' }}>
             <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#4f46e5', marginBottom: '3px' }}>
               {safeRender(item.month || `Month ${idx + 1}`)}

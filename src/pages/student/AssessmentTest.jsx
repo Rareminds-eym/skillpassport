@@ -1072,7 +1072,7 @@ const AssessmentTest = () => {
     const totalQuestions = sections?.reduce((sum, section) => {
         // For adaptive sections, use estimated total questions (~21)
         if (section?.isAdaptive) {
-            return sum + (adaptiveAptitude.progress?.estimatedTotalQuestions || 21);
+            return sum + (adaptiveAptitude.progress?.estimatedTotalQuestions || 20);
         }
         return sum + (section?.questions?.length || 0);
     }, 0) || 0;
@@ -2272,7 +2272,7 @@ const AssessmentTest = () => {
                             } else if (idx === currentSectionIndex) {
                                 // Handle adaptive section progress differently
                                 if (sections[idx].isAdaptive) {
-                                    const adaptiveTotal = adaptiveAptitude.progress?.estimatedTotalQuestions || 21;
+                                    const adaptiveTotal = adaptiveAptitude.progress?.estimatedTotalQuestions || 20;
                                     const adaptiveAnswered = adaptiveAptitude.progress?.questionsAnswered || 0;
                                     lineProgress = adaptiveTotal > 0 ? (adaptiveAnswered / adaptiveTotal) * 100 : 0;
                                 } else {
@@ -2791,7 +2791,7 @@ const AssessmentTest = () => {
                                                     : `${currentQuestionIndex + 1}`
                                             } / {
                                                 currentSection?.isAdaptive 
-                                                    ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 21}`
+                                                    ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 20}`
                                                     : (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 
                                                     : (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 
                                                     : currentSection.questions.length
@@ -2917,7 +2917,7 @@ const AssessmentTest = () => {
                                                                 : `${currentQuestionIndex + 1}`
                                                         } / {
                                                             currentSection?.isAdaptive 
-                                                                ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 21}`
+                                                                ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 20}`
                                                                 : (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 
                                                                 : (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 
                                                                 : currentSection.questions.length

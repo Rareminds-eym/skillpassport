@@ -1,10 +1,10 @@
 /**
  * AssessmentResult - Re-export for routing
  * 
- * This file re-exports the AssessmentResult component from the assessment-result folder.
+ * This file re-exports the AssessmentResult component from the features/assessment folder.
  * Kept for backward compatibility with existing routes.
  * 
- * @see src/pages/student/assessment-result/AssessmentResult.jsx
+ * @see src/features/assessment/assessment-result/AssessmentResult.jsx
  */
 
-export { default } from './assessment-result/AssessmentResult';
+export { default } from '../../features/assessment/assessment-result/AssessmentResult';

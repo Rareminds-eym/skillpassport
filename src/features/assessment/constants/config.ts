@@ -145,6 +145,26 @@ export const STREAMS_BY_CATEGORY: Record<string, StreamOption[]> = {
 };
 
 // ============================================
+// After 10th Streams by Category (11th/12th Class)
+// ============================================
+
+export const AFTER10_STREAMS_BY_CATEGORY: Record<string, StreamOption[]> = {
+  science: [
+    { id: 'science_pcmb', label: 'Science (PCMB)', riasec: ['I', 'R', 'C'], aptitudeStrengths: ['numerical', 'logical', 'verbal'], description: 'Physics, Chemistry, Maths, Biology - Medical & Engineering' },
+    { id: 'science_pcms', label: 'Science (PCMS)', riasec: ['I', 'C', 'R'], aptitudeStrengths: ['logical', 'numerical', 'abstract'], description: 'Physics, Chemistry, Maths, Computer Science - Engineering/IT' },
+    { id: 'science_pcm', label: 'Science (PCM)', riasec: ['R', 'I', 'C'], aptitudeStrengths: ['numerical', 'spatial', 'logical'], description: 'Physics, Chemistry, Maths - Engineering' },
+    { id: 'science_pcb', label: 'Science (PCB)', riasec: ['I', 'S', 'R'], aptitudeStrengths: ['verbal', 'logical', 'numerical'], description: 'Physics, Chemistry, Biology - Medical' },
+  ],
+  commerce: [
+    { id: 'commerce_maths', label: 'Commerce with Maths', riasec: ['C', 'E', 'I'], aptitudeStrengths: ['numerical', 'logical', 'verbal'], description: 'For CA, Finance, Economics, Statistics' },
+    { id: 'commerce_general', label: 'Commerce without Maths', riasec: ['E', 'C', 'S'], aptitudeStrengths: ['verbal', 'numerical', 'logical'], description: 'For Business, Accounting, Management' },
+  ],
+  arts: [
+    { id: 'arts_humanities', label: 'Arts & Humanities', riasec: ['S', 'A', 'I'], aptitudeStrengths: ['verbal', 'abstract', 'logical'], description: 'Literature, History, Political Science, Languages, Psychology' },
+  ],
+};
+
+// ============================================
 // Response Scales
 // ============================================
 

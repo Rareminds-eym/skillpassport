@@ -19,6 +19,22 @@ import {
 } from './courseRecommendationService';
 
 // ============================================================================
+// PROGRESS TRACKING
+// ============================================================================
+
+/**
+ * Update analysis progress (for UI feedback)
+ * @param {string} stage - Current stage: 'preparing' | 'sending' | 'analyzing' | 'processing' | 'courses' | 'saving' | 'complete' | 'error'
+ * @param {string} message - Optional message to display
+ */
+const updateProgress = (stage, message) => {
+  if (typeof window !== 'undefined' && window.setAnalysisProgress) {
+    window.setAnalysisProgress(stage, message);
+  }
+  console.log(`📊 Analysis Progress: ${stage} - ${message || ''}`);
+};
+
+// ============================================================================
 // API COMMUNICATION
 // ============================================================================
 
@@ -34,40 +50,67 @@ const callOpenRouterAssessment = async (assessmentData) => {
                   'https://analyze-assessment-api.dark-mode-d021.workers.dev';
 
   // Get auth token
+  updateProgress('sending', 'Authenticating...');
   const { data: { session } } = await import('../lib/supabaseClient').then(m => m.supabase.auth.getSession());
   const token = session?.access_token;
 
   if (!token) {
+    updateProgress('error', 'Authentication required');
     throw new Error('Authentication required for assessment analysis');
   }
 
   console.log('🤖 Sending assessment data to backend for analysis...');
   console.log(`📊 Grade Level: ${assessmentData.gradeLevel}, Stream: ${assessmentData.stream}`);
+  console.log(`🔗 API URL: ${API_URL}/analyze-assessment`);
+  console.log(`📝 Assessment data keys:`, Object.keys(assessmentData));
 
-  const response = await fetch(`${API_URL}/analyze-assessment`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({ assessmentData })
-  });
+  updateProgress('analyzing', 'AI is processing your responses...');
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Server error: ${response.status}`);
+  try {
+    const response = await fetch(`${API_URL}/analyze-assessment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ assessmentData })
+    });
+
+    console.log(`📡 Response status: ${response.status}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ API Error Response:', errorText);
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { error: errorText };
+      }
+      updateProgress('error', errorData.error || `Server error: ${response.status}`);
+      throw new Error(errorData.error || errorData.details || `Server error: ${response.status}`);
+    }
+
+    updateProgress('processing', 'Processing AI results...');
+
+    const result = await response.json();
+    console.log('📦 API Response:', { success: result.success, hasData: !!result.data, error: result.error });
+
+    if (!result.success || !result.data) {
+      console.error('❌ Invalid response:', result);
+      updateProgress('error', result.error || 'Invalid response from server');
+      throw new Error(result.error || result.details || 'Invalid response from server');
+    }
+
+    console.log('✅ Assessment analysis successful');
+    console.log('📊 Response keys:', Object.keys(result.data));
+    
+    return result.data;
+  } catch (error) {
+    console.error('❌ Assessment API call failed:', error);
+    updateProgress('error', error.message);
+    throw error;
   }
-
-  const result = await response.json();
-
-  if (!result.success || !result.data) {
-    throw new Error(result.error || 'Invalid response from server');
-  }
-
-  console.log('✅ Assessment analysis successful');
-  console.log('📊 Response keys:', Object.keys(result.data));
-  
-  return result.data;
 };
 
 // ============================================================================
@@ -128,6 +171,7 @@ const validateResults = (results) => {
 const addCourseRecommendations = async (assessmentResults) => {
   try {
     console.log('=== Adding Course Recommendations ===');
+    updateProgress('courses', 'Finding relevant courses...');
 
     let coursesByType = { technical: [], soft: [] };
     let platformCourses = [];
@@ -528,6 +572,8 @@ export const analyzeAssessmentWithOpenRouter = async (
   console.log('🤖 Starting assessment analysis...');
   console.log(`📊 Grade: ${gradeLevel}, Stream: ${stream}`);
   
+  updateProgress('preparing', 'Preparing your assessment data...');
+  
   try {
     // Prepare the assessment data
     const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings, gradeLevel);
@@ -544,11 +590,18 @@ export const analyzeAssessmentWithOpenRouter = async (
     // Add course recommendations
     const resultsWithCourses = await addCourseRecommendations(parsedResults);
     
+    updateProgress('saving', 'Saving your results...');
+    
     console.log('✅ Assessment analysis complete');
+    
+    // Mark as complete after a short delay to show the saving stage
+    setTimeout(() => updateProgress('complete', 'Analysis complete!'), 500);
+    
     return resultsWithCourses;
     
   } catch (error) {
     console.error('❌ Assessment analysis failed:', error.message);
+    updateProgress('error', error.message);
     throw new Error(`Assessment analysis failed: ${error.message}. Please try again.`);
   }
 };

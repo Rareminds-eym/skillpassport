@@ -6,3 +6,4 @@
 
 export { ProgressHeader } from './ProgressHeader';
 export { TestModeControls } from './TestModeControls';
+export { QuestionLayout } from './QuestionLayout';

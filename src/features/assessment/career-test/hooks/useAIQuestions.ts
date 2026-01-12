@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+// @ts-ignore - JS file without type declarations
 import { loadCareerAssessmentQuestions } from '../../../../services/careerAssessmentAIService';
 import type { GradeLevel } from '../config/sections';
 
@@ -68,10 +69,13 @@ export const useAIQuestions = ({
   const [error, setError] = useState<string | null>(null);
 
   const loadQuestions = useCallback(async () => {
-    // Only load for grade levels that use AI questions
-    const usesAI = gradeLevel && ['after10', 'after12', 'college'].includes(gradeLevel);
+    // Only load for grade levels that use AI questions (stream-based assessments)
+    const usesAI = gradeLevel && ['higher_secondary', 'after10', 'after12', 'college'].includes(gradeLevel);
     
-    if (!usesAI || !studentStream) {
+    // For after10, we use 'general' stream if no specific stream is set
+    const effectiveStream = studentStream || (gradeLevel === 'after10' ? 'general' : null);
+    
+    if (!usesAI || !effectiveStream) {
       return;
     }
 
@@ -79,10 +83,10 @@ export const useAIQuestions = ({
     setError(null);
 
     try {
-      console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, studentStream);
+      console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, effectiveStream);
       
       const questions = await loadCareerAssessmentQuestions(
-        studentStream,
+        effectiveStream,
         gradeLevel,
         studentId || null,
         attemptId || null

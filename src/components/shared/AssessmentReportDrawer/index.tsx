@@ -26,10 +26,10 @@ import {
 } from '../../Students/components/ui/dialog';
 
 // Import section components from assessment-result
-import ProfileSection from '../../../pages/student/assessment-result/components/sections/ProfileSection';
-import CareerSection from '../../../pages/student/assessment-result/components/sections/CareerSection';
-import SkillsSection from '../../../pages/student/assessment-result/components/sections/SkillsSection';
-import RoadmapSection from '../../../pages/student/assessment-result/components/sections/RoadmapSection';
+import ProfileSection from '../../../features/assessment/assessment-result/components/sections/ProfileSection';
+import CareerSection from '../../../features/assessment/assessment-result/components/sections/CareerSection';
+import SkillsSection from '../../../features/assessment/assessment-result/components/sections/SkillsSection';
+import RoadmapSection from '../../../features/assessment/assessment-result/components/sections/RoadmapSection';
 
 interface AssessmentReportDrawerProps {
   student: any;

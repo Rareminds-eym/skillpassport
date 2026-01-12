@@ -128,6 +128,18 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         streamKnowledgeQuestions: { [studentStream || '']: getQuestionsForSection(sections, getSectionId('knowledge', gradeLevel)) }
       };
 
+      console.log('📚 Question banks prepared:', {
+        riasec: questionBanks.riasecQuestions?.length || 0,
+        aptitude: questionBanks.aptitudeQuestions?.length || 0,
+        bigFive: questionBanks.bigFiveQuestions?.length || 0,
+        workValues: questionBanks.workValuesQuestions?.length || 0,
+        employability: questionBanks.employabilityQuestions?.length || 0,
+        knowledge: questionBanks.streamKnowledgeQuestions?.[studentStream || '']?.length || 0
+      });
+      console.log('📝 Total answers:', Object.keys(answers).length);
+      console.log('🎓 Grade level:', gradeLevel);
+      console.log('📖 Stream:', studentStream);
+
       // Include adaptive aptitude results if available
       const answersWithAdaptive = { ...answers };
       if ((gradeLevel === 'highschool' || gradeLevel === 'middle') && answers.adaptive_aptitude_results) {
@@ -253,7 +265,15 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
     } catch (err: any) {
       console.error('Error submitting assessment:', err);
       setIsSubmitting(false);
-      setError(err.message || 'Failed to analyze assessment with AI. Please try again.');
+      
+      // Show a more detailed error message
+      const errorMessage = err.message || 'Failed to analyze assessment with AI. Please try again.';
+      console.error('❌ Assessment submission failed:', errorMessage);
+      
+      // Alert the user about the error (in addition to the error state)
+      alert(`Assessment Analysis Error: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
+      
+      setError(errorMessage);
     }
   }, [navigate]);
 

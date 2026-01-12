@@ -10,7 +10,7 @@ import { ArrowLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '../../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../../components/Students/components/ui/card';
 import { Label } from '../../../components/Students/components/ui/label';
-import { STREAMS_BY_CATEGORY, STREAM_CATEGORIES } from '../constants/config';
+import { STREAMS_BY_CATEGORY, STREAM_CATEGORIES, AFTER10_STREAMS_BY_CATEGORY } from '../constants/config';
 
 /**
  * @typedef {Object} StreamSelectionScreenProps
@@ -56,7 +56,14 @@ const StreamOptionButton = ({ stream, onClick, isRecommended }) => (
             </span>
           )}
         </div>
-        {stream.riasec && stream.riasec.length > 0 && (
+        {/* Show description if available (for after10 streams) */}
+        {stream.description && (
+          <p className="text-sm text-gray-600 mt-1">
+            {stream.description}
+          </p>
+        )}
+        {/* Show RIASEC info if no description */}
+        {!stream.description && stream.riasec && stream.riasec.length > 0 && (
           <p className="text-xs text-gray-500 mt-1">
             Best for: {stream.riasec.join(', ')} personality types
           </p>
@@ -90,8 +97,11 @@ export const StreamSelectionScreen = ({
   isLoading = false,
   studentProgram = null,
 }) => {
+  // Use different streams based on grade level
+  const streamsConfig = gradeLevel === 'after10' ? AFTER10_STREAMS_BY_CATEGORY : STREAMS_BY_CATEGORY;
+  
   // Get streams for selected category (handle null/undefined)
-  const streams = selectedCategory ? (STREAMS_BY_CATEGORY[selectedCategory] || []) : [];
+  const streams = selectedCategory ? (streamsConfig[selectedCategory] || []) : [];
   const categoryLabel = getCategoryLabel(selectedCategory);
 
   // Check if a stream matches student's program (for recommendations)

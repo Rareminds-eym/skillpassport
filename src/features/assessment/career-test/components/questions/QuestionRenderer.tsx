@@ -12,6 +12,7 @@ import { LikertQuestion } from './LikertQuestion';
 import { MCQQuestion } from './MCQQuestion';
 import { SJTQuestion } from './SJTQuestion';
 import { AdaptiveQuestion } from './AdaptiveQuestion';
+import { MultiSelectQuestion } from './MultiSelectQuestion';
 
 interface ResponseScaleItem {
   value: number;
@@ -91,6 +92,22 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
         optionLabels={question.optionLabels}
         selectedAnswer={answer}
         onAnswer={onAnswer}
+      />
+    );
+  }
+
+  // MultiSelect Questions (pick multiple options)
+  if (question.type === 'multiselect' && question.maxSelections && question.maxSelections > 1) {
+    return (
+      <MultiSelectQuestion
+        questionId={questionId}
+        questionText={question.text}
+        options={question.options as string[]}
+        selectedAnswers={Array.isArray(answer) ? answer : []}
+        onAnswer={onAnswer}
+        maxSelections={question.maxSelections}
+        moduleTitle={question.moduleTitle}
+        subtype={question.subtype}
       />
     );
   }

@@ -17,7 +17,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
 
 // Auth & Database
 // @ts-ignore - JS file without type declarations
@@ -47,7 +46,9 @@ import { QuestionNavigation } from './components/QuestionNavigation';
 import { SectionIntroScreen } from './components/screens/SectionIntroScreen';
 import { SectionCompleteScreen } from './components/screens/SectionCompleteScreen';
 import { LoadingScreen } from './components/screens/LoadingScreen';
+import { AnalyzingScreen } from './components/screens/AnalyzingScreen';
 import { ProgressHeader } from './components/layout/ProgressHeader';
+import { QuestionLayout } from './components/layout/QuestionLayout';
 
 // Shared Components (from parent assessment feature)
 // @ts-ignore - JSX components
@@ -305,7 +306,15 @@ const AssessmentTestPage: React.FC = () => {
   
   // Build sections when grade level, stream, or AI questions change
   useEffect(() => {
-    if (flow.gradeLevel && (flow.studentStream || !['after10', 'after12', 'college'].includes(flow.gradeLevel))) {
+    if (!flow.gradeLevel) return;
+    
+    // For stream-based assessments (higher_secondary, after12, college), wait for stream selection
+    // For middle/highschool, build sections immediately
+    // For after10, we use 'general' stream which is set automatically in handleGradeSelect
+    const needsStream = ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
+    const canBuild = flow.studentStream || !needsStream;
+    
+    if (canBuild) {
       const builtSections = buildSectionsWithQuestions(
         flow.gradeLevel,
         flow.studentStream,
@@ -363,18 +372,38 @@ const AssessmentTestPage: React.FC = () => {
   }, [flow.aptitudeQuestionTimer, flow.aptitudePhase, flow.showSectionIntro, flow.showSectionComplete, flow.currentSectionIndex, sections]);
   
   // Handlers
-  const handleGradeSelect = useCallback((level: GradeLevel) => {
+  const handleGradeSelect = useCallback(async (level: GradeLevel) => {
     flow.setGradeLevel(level);
     
     // Determine next screen based on grade level
-    if (['after10', 'after12', 'college'].includes(level)) {
+    // Students in grades 11-12 and above need to select their stream (Science/Commerce/Arts)
+    // Students below 10th class (middle school 6-8, high school 9-10) go directly to assessment
+    // After 10th students also go directly to assessment (stream recommendation comes from AI analysis)
+    if (['higher_secondary', 'after12', 'college'].includes(level)) {
       flow.setCurrentScreen('category_selection');
+    } else if (level === 'after10') {
+      // After 10th students skip stream selection - use 'general' stream for AI questions
+      // The AI analysis will recommend the best stream based on their assessment results
+      flow.setStudentStream('general');
+      setAssessmentStarted(true);
+      
+      // Start database attempt with 'general' stream
+      if (studentRecordId) {
+        try {
+          setUseDatabase(true);
+          await dbStartAssessment('general', level);
+        } catch (err) {
+          console.error('Error starting assessment:', err);
+        }
+      }
+      
+      flow.setCurrentScreen('section_intro');
     } else {
-      // Middle/High school - start directly
+      // Middle school (6-8), High school (9-10) - start directly without stream selection
       setAssessmentStarted(true);
       flow.setCurrentScreen('section_intro');
     }
-  }, [flow]);
+  }, [flow, studentRecordId, dbStartAssessment]);
   
   const handleCategorySelect = useCallback((category: string) => {
     flow.setSelectedCategory(category);
@@ -465,6 +494,12 @@ const AssessmentTestPage: React.FC = () => {
     
     // Handle adaptive section
     if (currentSection?.isAdaptive) {
+      // Prevent double submission - check if already submitting
+      if (adaptiveAptitude.submitting) {
+        console.log('⏳ Already submitting adaptive answer, ignoring click');
+        return;
+      }
+      
       if (adaptiveAptitudeAnswer !== null) {
         adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer as 'A' | 'B' | 'C' | 'D');
         setAdaptiveAptitudeAnswer(null);
@@ -682,17 +717,9 @@ const AssessmentTestPage: React.FC = () => {
     );
   }
   
-  // Submitting state
+  // Submitting state - show engaging multi-stage progress screen
   if (submission.isSubmitting || flow.isSubmitting) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-indigo-600 mx-auto mb-4" />
-          <p className="text-gray-600">Analyzing your responses with AI...</p>
-          <p className="text-sm text-gray-500 mt-2">This may take a moment</p>
-        </div>
-      </div>
-    );
+    return <AnalyzingScreen gradeLevel={flow.gradeLevel || undefined} />;
   }
   
   // Calculate overall progress
@@ -732,7 +759,7 @@ const AssessmentTestPage: React.FC = () => {
           progress={calculateProgress()}
           adaptiveProgress={adaptiveAptitude.progress ? {
             questionsAnswered: adaptiveAptitude.progress.questionsAnswered,
-            estimatedTotalQuestions: 21
+            estimatedTotalQuestions: 20
           } : null}
           isDevMode={isDevMode}
           testMode={testMode}
@@ -766,7 +793,7 @@ const AssessmentTestPage: React.FC = () => {
         </div>
       )}
       
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         <AnimatePresence mode="wait">
           {/* Section Intro */}
           {flow.showSectionIntro && currentSection && (
@@ -800,7 +827,7 @@ const AssessmentTestPage: React.FC = () => {
             />
           )}
           
-          {/* Question */}
+          {/* Question with Sidebar Layout */}
           {!flow.showSectionIntro && !flow.showSectionComplete && currentQuestion && (
             <motion.div
               key={questionId}
@@ -809,27 +836,53 @@ const AssessmentTestPage: React.FC = () => {
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <QuestionRenderer
-                question={currentQuestion}
-                questionId={questionId}
+              <QuestionLayout
+                sectionTitle={currentSection?.title || ''}
+                sectionDescription={currentSection?.description || ''}
+                sectionInstruction={currentSection?.instruction}
                 sectionId={currentSection?.id || ''}
-                answer={currentSection?.isAdaptive ? adaptiveAptitudeAnswer : flow.answers[questionId]}
-                onAnswer={handleAnswerChange}
-                responseScale={currentSection?.responseScale}
-                isAdaptive={currentSection?.isAdaptive}
-                adaptiveTimer={90}
-                adaptiveDifficulty={3}
-                adaptiveLoading={false}
-              />
-              
-              <QuestionNavigation
-                onPrevious={flow.goToPreviousQuestion}
-                onNext={handleNextQuestion}
-                canGoPrevious={flow.currentQuestionIndex > 0 && !currentSection?.isAdaptive}
-                canGoNext={isCurrentAnswered}
-                isAnswered={isCurrentAnswered}
-                isLastQuestion={flow.isLastQuestion}
-              />
+                sectionColor={currentSection?.color}
+                currentSectionIndex={flow.currentSectionIndex}
+                totalSections={sections.length}
+                currentQuestionIndex={currentSection?.isAdaptive 
+                  ? (adaptiveAptitude.progress?.questionsAnswered || 0)
+                  : flow.currentQuestionIndex}
+                totalQuestions={currentSection?.isAdaptive 
+                  ? (adaptiveAptitude.progress?.estimatedTotalQuestions || 20)
+                  : (currentSection?.questions?.length || 0)}
+                elapsedTime={flow.elapsedTime}
+                showNoWrongAnswers={!currentSection?.isAptitude && !currentSection?.isAdaptive}
+              >
+                {/* Question Number Label */}
+                <div className="text-sm font-semibold text-indigo-600 mb-2">
+                  QUESTION {currentSection?.isAdaptive 
+                    ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1} / ${adaptiveAptitude.progress?.estimatedTotalQuestions || 20}`
+                    : `${flow.currentQuestionIndex + 1} / ${currentSection?.questions?.length || 0}`}
+                </div>
+                
+                <QuestionRenderer
+                  question={currentQuestion}
+                  questionId={questionId}
+                  sectionId={currentSection?.id || ''}
+                  answer={currentSection?.isAdaptive ? adaptiveAptitudeAnswer : flow.answers[questionId]}
+                  onAnswer={handleAnswerChange}
+                  responseScale={currentSection?.responseScale}
+                  isAdaptive={currentSection?.isAdaptive}
+                  adaptiveTimer={90}
+                  adaptiveDifficulty={3}
+                  adaptiveLoading={false}
+                />
+                
+                <QuestionNavigation
+                  onPrevious={flow.goToPreviousQuestion}
+                  onNext={handleNextQuestion}
+                  canGoPrevious={flow.currentQuestionIndex > 0 && !currentSection?.isAdaptive}
+                  canGoNext={isCurrentAnswered}
+                  isAnswered={isCurrentAnswered}
+                  isSubmitting={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
+                  isLastQuestion={flow.isLastQuestion}
+                />
+              </QuestionLayout>
             </motion.div>
           )}
         </AnimatePresence>

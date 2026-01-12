@@ -111,12 +111,12 @@ export interface UseAdaptiveAptitudeReturn {
 
 /** Estimated questions per phase for progress calculation */
 const ESTIMATED_QUESTIONS_PER_PHASE: Record<TestPhase, number> = {
-  diagnostic_screener: 6,
+  diagnostic_screener: 5,
   adaptive_core: 11,
   stability_confirmation: 4,
 };
 
-/** Total estimated questions (21 = 6 + 11 + 4) */
+/** Total estimated questions (20 = 5 + 11 + 4) */
 const ESTIMATED_TOTAL_QUESTIONS = 
   ESTIMATED_QUESTIONS_PER_PHASE.diagnostic_screener +
   ESTIMATED_QUESTIONS_PER_PHASE.adaptive_core +

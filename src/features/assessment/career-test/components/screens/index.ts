@@ -7,3 +7,4 @@
 export { SectionIntroScreen } from './SectionIntroScreen';
 export { SectionCompleteScreen } from './SectionCompleteScreen';
 export { LoadingScreen } from './LoadingScreen';
+export { AnalyzingScreen } from './AnalyzingScreen';

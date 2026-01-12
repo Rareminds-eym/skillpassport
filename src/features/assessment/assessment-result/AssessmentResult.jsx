@@ -54,7 +54,7 @@ import { calculateCourseMatchScores, DEGREE_PROGRAMS } from './utils/courseMatch
 import { calculateStreamRecommendations } from './utils/streamMatchingEngine';
 
 // Import centralized utilities from assessment feature
-import { normalizeCourseRecommendations } from '../../../features/assessment';
+import { normalizeCourseRecommendations } from '../index';
 
 /**
  * Gemini-Style Career Path Connector
@@ -629,7 +629,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
     const [selectedTrack, setSelectedTrack] = useState(null);
     const [selectedRole, setSelectedRole] = useState(null);
     const [currentStep, setCurrentStep] = useState(0); // 0 = role selection, 1-3 = wizard pages
-    const [activeRecommendationTab, setActiveRecommendationTab] = useState('career'); // 'primary' or 'career' - default to career recommendations
+    const [activeRecommendationTab, setActiveRecommendationTab] = useState('primary'); // 'primary' or 'career' - default to primary (stream for after10, degree for after12)
     const lastScrollY = useRef(0);
 
     useEffect(() => {
@@ -709,17 +709,26 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
         // Use the stream matching engine with academic data (marks, projects, experiences)
         const streamRec = calculateStreamRecommendations(results, studentAcademicData);
         
-        // Merge with AI recommendation if available, preferring data-driven results
+        // Merge with AI recommendation if available, PREFERRING AI results over engine calculations
+        // AI has analyzed the full assessment context and provides more accurate recommendations
         if (results?.streamRecommendation) {
             return {
-                ...results.streamRecommendation,
-                ...streamRec,
-                // Keep AI reasoning if our engine didn't find specific reasons
+                ...streamRec,                      // Engine results as base
+                ...results.streamRecommendation,   // AI results OVERRIDE engine (AI is more accurate)
+                // Merge reasoning - prefer AI reasoning, fallback to engine
                 reasoning: {
-                    interests: streamRec.reasoning?.interests || results.streamRecommendation.reasoning?.interests,
-                    aptitude: streamRec.reasoning?.aptitude || results.streamRecommendation.reasoning?.aptitude,
-                    personality: streamRec.reasoning?.personality || results.streamRecommendation.reasoning?.personality
-                }
+                    interests: results.streamRecommendation.reasoning?.interests || streamRec.reasoning?.interests,
+                    aptitude: results.streamRecommendation.reasoning?.aptitude || streamRec.reasoning?.aptitude,
+                    personality: results.streamRecommendation.reasoning?.personality || streamRec.reasoning?.personality
+                },
+                // Keep engine's additional data that AI doesn't provide
+                subjectsToFocus: results.streamRecommendation.subjectsToFocus || streamRec.subjectsToFocus,
+                careerPathsAfter12: results.streamRecommendation.careerPathsAfter12 || streamRec.careerPathsAfter12,
+                entranceExams: results.streamRecommendation.entranceExams || streamRec.entranceExams,
+                collegeTypes: results.streamRecommendation.collegeTypes || streamRec.collegeTypes,
+                alternativeStream: results.streamRecommendation.alternativeStream || streamRec.alternativeStream,
+                alternativeReason: results.streamRecommendation.alternativeReason || streamRec.alternativeReason,
+                allStreamScores: streamRec.allStreamScores // Keep engine's detailed scores for reference
             };
         }
         

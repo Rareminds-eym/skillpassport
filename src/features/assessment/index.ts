@@ -112,6 +112,10 @@ export {
 // Re-exports from assessment-result module
 export * from './results';
 
+// Direct export of AssessmentResult page component
+// @ts-expect-error - JS file without type declarations
+export { default as AssessmentResult } from './assessment-result/AssessmentResult';
+
 // =============================================================================
 // CAREER TEST MODULE (Refactored Assessment Components)
 // =============================================================================

@@ -167,12 +167,6 @@ export const HIGH_SCHOOL_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
 ];
 
 /**
- * Section definitions for Higher Secondary (Grades 11-12)
- * Same as high school but with stream focus
- */
-export const HIGHER_SECONDARY_SECTIONS = HIGH_SCHOOL_SECTIONS;
-
-/**
  * Section definitions for After 10th, After 12th, and College
  * Full comprehensive assessment with 6 sections
  */
@@ -232,6 +226,13 @@ export const COMPREHENSIVE_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
 ];
 
 /**
+ * Section definitions for Higher Secondary (Grades 11-12)
+ * Students have already chosen their stream (Science/Commerce/Arts)
+ * Uses comprehensive assessment with stream-specific questions
+ */
+export const HIGHER_SECONDARY_SECTIONS = COMPREHENSIVE_SECTIONS;
+
+/**
  * Get section configurations for a specific grade level
  */
 export const getSectionsForGrade = (gradeLevel: GradeLevel): Omit<SectionConfig, 'icon'>[] => {
@@ -255,7 +256,7 @@ export const getSectionsForGrade = (gradeLevel: GradeLevel): Omit<SectionConfig,
  * Check if a grade level uses AI-powered questions
  */
 export const usesAIQuestions = (gradeLevel: GradeLevel): boolean => {
-  return ['after10', 'after12', 'college'].includes(gradeLevel);
+  return ['higher_secondary', 'after10', 'after12', 'college'].includes(gradeLevel);
 };
 
 /**

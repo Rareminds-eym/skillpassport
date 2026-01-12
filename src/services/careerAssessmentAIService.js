@@ -48,6 +48,18 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
     name: 'Science (PCB)',
     topics: ['Physics fundamentals', 'Chemistry basics', 'Biology concepts', 'Medical sciences basics', 'Laboratory techniques', 'Scientific method']
   },
+  'commerce_maths': {
+    name: 'Commerce with Maths',
+    topics: ['Accountancy basics', 'Business Studies', 'Economics fundamentals', 'Mathematics for Commerce', 'Statistics', 'Financial literacy']
+  },
+  'commerce_general': {
+    name: 'Commerce without Maths',
+    topics: ['Accountancy basics', 'Business Studies', 'Economics fundamentals', 'Business Communication', 'Entrepreneurship', 'Financial literacy']
+  },
+  'arts_humanities': {
+    name: 'Arts & Humanities',
+    topics: ['English Literature', 'History concepts', 'Political Science basics', 'Psychology fundamentals', 'Sociology', 'Critical thinking']
+  },
   
   // ═══════════════════════════════════════════════════════════════════════════
   // B.TECH / ENGINEERING SPECIALIZATIONS (College/University)
@@ -548,6 +560,10 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
   // ═══════════════════════════════════════════════════════════════════════════
   // GENERIC/FALLBACK STREAMS
   // ═══════════════════════════════════════════════════════════════════════════
+  general: {
+    name: 'General Assessment',
+    topics: ['Logical Reasoning', 'Verbal Ability', 'Numerical Aptitude', 'General Knowledge', 'Critical Thinking', 'Problem Solving']
+  },
   college: {
     name: 'College/University',
     topics: ['Critical Thinking', 'Communication Skills', 'Problem Solving', 'Research Methods', 'Professional Ethics', 'Career Planning']

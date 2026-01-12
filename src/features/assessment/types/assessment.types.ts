@@ -61,6 +61,7 @@ export interface StreamOption {
   label: string;
   riasec?: string[];
   aptitudeStrengths?: string[];
+  description?: string; // Optional description for after10 streams
 }
 
 export interface CategoryOption {

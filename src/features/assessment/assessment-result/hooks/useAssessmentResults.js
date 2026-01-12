@@ -10,7 +10,7 @@ import {
     workValuesQuestions,
     employabilityQuestions,
     streamKnowledgeQuestions,
-} from '../../../../features/assessment';
+} from '../../index';
 
 /**
  * Custom hook for managing assessment results
@@ -355,7 +355,7 @@ export const useAssessmentResults = () => {
         const attemptId = searchParams.get('attemptId');
         
         if (attemptId) {
-            // Load results from database
+            // Load results from database - ALWAYS prefer database over localStorage
             try {
                 const attempt = await assessmentService.getAttemptWithResults(attemptId);
                 if (attempt?.results?.[0]?.gemini_results) {
@@ -367,6 +367,10 @@ export const useAssessmentResults = () => {
                         setGradeLevel(attempt.grade_level);
                         setGradeLevelFromAttempt(true);
                     }
+
+                    // Clear localStorage to prevent stale data issues
+                    localStorage.removeItem('assessment_gemini_results');
+                    localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
 
                     // Ensure recommendations are saved (in case they weren't before)
                     if (geminiResults.platformCourses && geminiResults.platformCourses.length > 0) {
@@ -410,6 +414,10 @@ export const useAssessmentResults = () => {
                         setGradeLevelFromAttempt(true);
                     }
 
+                    // Sync localStorage with database results to prevent stale data
+                    localStorage.removeItem('assessment_gemini_results');
+                    localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
+
                     // Ensure recommendations are saved
                     if (geminiResults.platformCourses && geminiResults.platformCourses.length > 0) {
                         try {
@@ -450,10 +458,24 @@ export const useAssessmentResults = () => {
                 console.log('Cached results aptitude:', geminiResults.aptitude);
                 console.log('Cached results aptitude.scores:', geminiResults.aptitude?.scores);
                 console.log('Cached results streamRecommendation:', geminiResults.streamRecommendation);
+                console.log('Cached results careerFit:', geminiResults.careerFit);
+                console.log('Stored grade level:', storedGradeLevel);
                 
-                // Check if results are complete (have careerFit AND streamRecommendation)
-                // If streamRecommendation is missing, re-analyze to get it
-                if (geminiResults.careerFit && geminiResults.streamRecommendation) {
+                // Check if results are complete (have careerFit)
+                // streamRecommendation is only required for after10 students who need stream guidance
+                // For after12, middle, highschool, higher_secondary - careerFit is sufficient
+                const hasCareerFit = geminiResults.careerFit && geminiResults.careerFit.clusters?.length > 0;
+                
+                // Only after10 students truly need streamRecommendation with a valid recommendedStream
+                const needsStreamRecommendation = storedGradeLevel === 'after10';
+                const hasValidStreamRecommendation = geminiResults.streamRecommendation?.recommendedStream && 
+                    geminiResults.streamRecommendation.recommendedStream !== 'N/A';
+                
+                const isComplete = hasCareerFit && (!needsStreamRecommendation || hasValidStreamRecommendation);
+                
+                console.log('Completeness check:', { hasCareerFit, needsStreamRecommendation, hasValidStreamRecommendation, isComplete });
+                
+                if (isComplete) {
                     setResults(geminiResults);
                     // Set grade level from localStorage if available
                     if (storedGradeLevel) {
@@ -463,7 +485,7 @@ export const useAssessmentResults = () => {
                     setLoading(false);
                     return;
                 }
-                console.log('Results missing streamRecommendation, re-analyzing...');
+                console.log('Results incomplete, re-analyzing...', { hasCareerFit, needsStreamRecommendation, hasValidStreamRecommendation });
             } catch (e) {
                 console.error('Error parsing Gemini results:', e);
             }

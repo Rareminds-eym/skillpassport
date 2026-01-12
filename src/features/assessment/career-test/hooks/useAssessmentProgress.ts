@@ -63,7 +63,7 @@ export const useAssessmentProgress = ({
     // Calculate total questions (including adaptive section estimate)
     const totalQuestions = sections.reduce((sum, section) => {
       if (section.isAdaptive) {
-        return sum + (adaptiveProgress?.estimatedTotalQuestions || 21);
+        return sum + (adaptiveProgress?.estimatedTotalQuestions || 20);
       }
       return sum + (section.questions?.length || 0);
     }, 0);
@@ -83,7 +83,7 @@ export const useAssessmentProgress = ({
     let currentSectionProgress = 0;
     if (currentSection) {
       if (currentSection.isAdaptive) {
-        const adaptiveTotal = adaptiveProgress?.estimatedTotalQuestions || 21;
+        const adaptiveTotal = adaptiveProgress?.estimatedTotalQuestions || 20;
         currentSectionProgress = adaptiveTotal > 0 
           ? (adaptiveAnsweredCount / adaptiveTotal) * 100 
           : 0;
