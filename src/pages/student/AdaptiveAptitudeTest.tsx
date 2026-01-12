@@ -13,7 +13,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
   Loader2,
-  Target,
   Award,
   AlertCircle,
   ChevronRight,
@@ -545,16 +544,6 @@ const AdaptiveAptitudeTest = () => {
                 {phase ? PHASE_DISPLAY_NAMES[phase] : 'Loading...'}
               </span>
             </div>
-            
-            {/* Difficulty indicator */}
-            {session && (
-              <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full">
-                <Target className="w-4 h-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">
-                  Level {session.currentDifficulty}
-                </span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -617,11 +606,8 @@ const AdaptiveAptitudeTest = () => {
                         {currentQuestion.text}
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600">
+                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600 capitalize">
                           {SUBTAG_DISPLAY_NAMES[currentQuestion.subtag]}
-                        </span>
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 rounded-full text-xs font-medium text-blue-600">
-                          Difficulty: {currentQuestion.difficulty}
                         </span>
                       </div>
                     </div>

@@ -13,6 +13,7 @@ import { MCQQuestion } from './MCQQuestion';
 import { SJTQuestion } from './SJTQuestion';
 import { AdaptiveQuestion } from './AdaptiveQuestion';
 import { MultiSelectQuestion } from './MultiSelectQuestion';
+import { TextQuestion } from './TextQuestion';
 
 interface ResponseScaleItem {
   value: number;
@@ -45,6 +46,7 @@ interface QuestionRendererProps {
   adaptiveTimer?: number;
   adaptiveDifficulty?: number;
   adaptiveLoading?: boolean;
+  adaptiveDisabled?: boolean;
   color?: string;
 }
 
@@ -54,14 +56,14 @@ interface QuestionRendererProps {
 export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
   question,
   questionId,
-  sectionId,
   answer,
   onAnswer,
   responseScale,
   isAdaptive = false,
   adaptiveTimer = 90,
-  adaptiveDifficulty = 3,
+  adaptiveDifficulty,
   adaptiveLoading = false,
+  adaptiveDisabled = false,
   color = 'indigo'
 }) => {
   // Adaptive Aptitude Questions
@@ -77,6 +79,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
         subtag={question.subtype}
         timer={adaptiveTimer}
         loading={adaptiveLoading}
+        disabled={adaptiveDisabled}
       />
     );
   }
@@ -108,6 +111,20 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
         maxSelections={question.maxSelections}
         moduleTitle={question.moduleTitle}
         subtype={question.subtype}
+      />
+    );
+  }
+
+  // Text Questions (open-ended responses)
+  if (question.type === 'text') {
+    return (
+      <TextQuestion
+        questionId={questionId}
+        questionText={question.text}
+        placeholder={question.placeholder}
+        value={answer || ''}
+        onAnswer={onAnswer}
+        minLength={10}
       />
     );
   }

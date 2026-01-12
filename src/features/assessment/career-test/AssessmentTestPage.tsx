@@ -209,6 +209,7 @@ const AssessmentTestPage: React.FC = () => {
   const [checkingExistingAttempt, setCheckingExistingAttempt] = useState(true);
   const [assessmentStarted, setAssessmentStarted] = useState(false);
   const [adaptiveAptitudeAnswer, setAdaptiveAptitudeAnswer] = useState<string | null>(null);
+  const [adaptiveQuestionTimer, setAdaptiveQuestionTimer] = useState(90); // 90 seconds per question
   
   // Flow state machine
   const flow = useAssessmentFlow({
@@ -377,6 +378,40 @@ const AssessmentTestPage: React.FC = () => {
       handleNextQuestion();
     }
   }, [flow.aptitudeQuestionTimer, flow.aptitudePhase, flow.showSectionIntro, flow.showSectionComplete, flow.currentSectionIndex, sections]);
+  
+  // Adaptive aptitude per-question timer (90 seconds)
+  useEffect(() => {
+    const currentSection = sections[flow.currentSectionIndex];
+    if (!currentSection?.isAdaptive) return;
+    if (flow.showSectionIntro || flow.showSectionComplete) return;
+    if (adaptiveAptitude.loading || adaptiveAptitude.submitting) return;
+    if (!adaptiveAptitude.currentQuestion) return;
+    
+    if (adaptiveQuestionTimer > 0) {
+      const interval = setInterval(() => {
+        setAdaptiveQuestionTimer(prev => prev - 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      // Auto-submit when time runs out - select a random answer if none selected
+      if (adaptiveAptitudeAnswer) {
+        adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer as 'A' | 'B' | 'C' | 'D');
+        setAdaptiveAptitudeAnswer(null);
+        setAdaptiveQuestionTimer(90); // Reset for next question
+      } else {
+        // No answer selected, auto-submit 'A' as default
+        adaptiveAptitude.submitAnswer('A');
+        setAdaptiveQuestionTimer(90); // Reset for next question
+      }
+    }
+  }, [adaptiveQuestionTimer, adaptiveAptitudeAnswer, adaptiveAptitude.currentQuestion, adaptiveAptitude.loading, adaptiveAptitude.submitting, flow.showSectionIntro, flow.showSectionComplete, flow.currentSectionIndex, sections]);
+  
+  // Reset adaptive timer when question changes
+  useEffect(() => {
+    if (adaptiveAptitude.currentQuestion) {
+      setAdaptiveQuestionTimer(90);
+    }
+  }, [adaptiveAptitude.currentQuestion?.id]);
   
   // Handlers
   const handleGradeSelect = useCallback(async (level: GradeLevel) => {
@@ -894,7 +929,7 @@ const AssessmentTestPage: React.FC = () => {
                 {/* Question Number Label */}
                 <div className="text-sm font-semibold text-indigo-600 mb-2">
                   QUESTION {currentSection?.isAdaptive 
-                    ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1} / ${adaptiveAptitude.progress?.estimatedTotalQuestions || 20}`
+                    ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1} / ${adaptiveAptitude.progress?.estimatedTotalQuestions || 21}`
                     : `${flow.currentQuestionIndex + 1} / ${currentSection?.questions?.length || 0}`}
                 </div>
                 
@@ -906,9 +941,10 @@ const AssessmentTestPage: React.FC = () => {
                   onAnswer={handleAnswerChange}
                   responseScale={currentSection?.responseScale}
                   isAdaptive={currentSection?.isAdaptive}
-                  adaptiveTimer={90}
-                  adaptiveDifficulty={3}
+                  adaptiveTimer={adaptiveQuestionTimer}
+                  adaptiveDifficulty={adaptiveAptitude.currentQuestion?.difficulty || adaptiveAptitude.progress?.currentDifficulty}
                   adaptiveLoading={false}
+                  adaptiveDisabled={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
                 />
                 
                 <QuestionNavigation
