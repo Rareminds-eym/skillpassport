@@ -121,18 +121,28 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                     );
                   }
 
-                  if (period.is_break) {
+                  // Check if this is a break period (by flag or name)
+                  const isBreakPeriod = period.is_break || 
+                    period.period_name?.toLowerCase().includes('break') ||
+                    period.period_name?.toLowerCase().includes('lunch');
+
+                  if (isBreakPeriod) {
                     return (
                       <td
                         key={dayIndex}
-                        className="px-2 py-2 border-b border-r border-gray-200 last:border-r-0"
+                        className="px-2 py-2 border-b border-r border-gray-200 last:border-r-0 bg-gray-100"
                         style={{
                           backgroundImage:
                             "repeating-linear-gradient(45deg, #e5e7eb, #e5e7eb 2px, #f3f4f6 2px, #f3f4f6 4px)",
                         }}
                       >
-                        <div className="h-10 flex items-center justify-center">
-                          <Coffee className="h-4 w-4 text-gray-400" />
+                        <div className="h-14 flex items-center justify-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <Coffee className="h-5 w-5 text-gray-500" />
+                            <span className="text-xs text-gray-500 font-medium">
+                              {period.period_name?.toLowerCase().includes('lunch') ? 'Lunch' : 'Break'}
+                            </span>
+                          </div>
                         </div>
                       </td>
                     );
