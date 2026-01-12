@@ -158,10 +158,11 @@ async function generateDiagnosticScreenerQuestions(
   // Generate missing questions
   if (missingSpecs.length > 0) {
     try {
-      const systemPrompt = buildAdaptiveSystemPrompt(gradeLevel);
+      const systemPrompt = buildAdaptiveSystemPrompt(gradeLevel, 'diagnostic_screener');
       const userPrompt = buildAdaptiveUserPrompt(
         missingSpecs.map(s => ({ difficulty: s.difficulty, subtag: s.subtag })),
-        gradeLevel
+        gradeLevel,
+        'diagnostic_screener'
       );
 
       const content = await callOpenRouterForAdaptive(apiKey, systemPrompt, userPrompt);

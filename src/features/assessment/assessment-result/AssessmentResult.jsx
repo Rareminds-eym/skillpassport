@@ -434,9 +434,9 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                         overflow: 'hidden'
                                     }}
                                 >
-                                    <div className="relative z-[1] px-8 py-4">
+                                    <div className="relative z-[1] px-8 py-6">
                                         {/* Header with number badge and title */}
-                                        <div className="flex items-center gap-3 mb-4">
+                                        <div className="flex items-center gap-3 mb-6">
                                             <div
                                                 className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg"
                                                 style={{ backgroundColor: config.accent }}
@@ -454,48 +454,24 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                             </div>
                                         </div>
 
-                                        {/* Description */}
-                                        <p className="text-gray-300 mb-4 leading-relaxed text-sm">{cluster.description}</p>
-
-                                        {/* Why It Fits / What You'll Do */}
-                                        {(cluster.whyItFits || cluster.whatYoullDo) && (
-                                            <div
-                                                className="rounded-lg p-3 border"
-                                                style={{
-                                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                                    borderColor: config.accent
-                                                }}
-                                            >
-                                                <h5
-                                                    className="text-xs font-bold uppercase mb-2"
-                                                    style={{ color: config.accentLight }}
-                                                >
-                                                    {cluster.whyItFits ? 'Why It Fits You' : 'What You\'ll Do'}
-                                                </h5>
-                                                <p className="text-gray-300 text-sm leading-relaxed">
-                                                    {cluster.whyItFits || cluster.whatYoullDo}
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* Specific Roles with Salary */}
+                                        {/* Top Roles & Salary Section */}
                                         {specificRoles && specificRoles.length > 0 && (
-                                            <div className="mt-3 pt-3 border-t border-white/10">
+                                            <div className="mt-2">
                                                 <h5
-                                                    className="text-xs font-bold uppercase mb-2"
+                                                    className="text-xs font-bold uppercase mb-3 tracking-wider"
                                                     style={{ color: config.accentLight }}
                                                 >
-                                                    Top Roles & Salary
+                                                    TOP ROLES & SALARY
                                                 </h5>
-                                                <div className="space-y-1">
+                                                <div className="space-y-2">
                                                     {specificRoles.slice(0, 3).map((role, idx) => {
                                                         const name = getRoleName(role);
                                                         const salary = formatSalary(role);
                                                         return (
-                                                            <div key={idx} className="flex items-center justify-between text-sm">
-                                                                <span className="text-gray-300">{name}</span>
+                                                            <div key={idx} className="flex items-center justify-between">
+                                                                <span className="text-gray-200 text-base">{name}</span>
                                                                 {salary && (
-                                                                    <span className="text-green-400 font-medium">{salary}</span>
+                                                                    <span className="text-green-400 font-semibold text-base">{salary}</span>
                                                                 )}
                                                             </div>
                                                         );
@@ -630,6 +606,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
     const [selectedRole, setSelectedRole] = useState(null);
     const [currentStep, setCurrentStep] = useState(0); // 0 = role selection, 1-3 = wizard pages
     const [activeRecommendationTab, setActiveRecommendationTab] = useState('primary'); // 'primary' or 'career' - default to primary (stream for after10, degree for after12)
+    const [after10Step, setAfter10Step] = useState(1); // 1 = Stream Recommendation, 2 = Career Clusters (stepper for after10)
     const lastScrollY = useRef(0);
 
     useEffect(() => {
@@ -1152,9 +1129,404 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                     </div>*/}
 
                     {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-                    {/* RECOMMENDATION TOGGLE SECTION - For After 10th and After 12th students */}
+                    {/* AFTER 10TH - STEPPER BASED FLOW (Stream → Career Clusters) */}
                     {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-                    {(gradeLevel === 'after10' || gradeLevel === 'after12') && (
+                    {gradeLevel === 'after10' && (
+                        <div className="mb-8">
+                            {/* Stepper Header */}
+                            <div className="flex justify-center mb-8">
+                                <div className="flex items-center gap-4">
+                                    {/* Step 1 */}
+                                    <div 
+                                        className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${after10Step === 1 ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
+                                        onClick={() => setAfter10Step(1)}
+                                    >
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
+                                            after10Step === 1 
+                                                ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30' 
+                                                : after10Step > 1 
+                                                    ? 'bg-green-500 text-white' 
+                                                    : 'bg-gray-200 text-gray-500'
+                                        }`}>
+                                            {after10Step > 1 ? <CheckCircle2 className="w-5 h-5" /> : '1'}
+                                        </div>
+                                        <span className={`font-medium text-sm hidden sm:block ${after10Step === 1 ? 'text-blue-600' : 'text-gray-500'}`}>
+                                            11th/12th Stream
+                                        </span>
+                                    </div>
+
+                                    {/* Connector */}
+                                    <div className={`w-16 h-1 rounded-full transition-all duration-500 ${after10Step > 1 ? 'bg-green-500' : 'bg-gray-200'}`} />
+
+                                    {/* Step 2 */}
+                                    <div 
+                                        className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${after10Step === 2 ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
+                                        onClick={() => after10Step > 1 && setAfter10Step(2)}
+                                    >
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
+                                            after10Step === 2 
+                                                ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30' 
+                                                : 'bg-gray-200 text-gray-500'
+                                        }`}>
+                                            2
+                                        </div>
+                                        <span className={`font-medium text-sm hidden sm:block ${after10Step === 2 ? 'text-blue-600' : 'text-gray-500'}`}>
+                                            Career Paths
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Step 1: Stream Recommendation - Single Card with Purple/Track 3 Theme */}
+                            {after10Step === 1 && (enhancedStreamRecommendation || streamRecommendation) && (enhancedStreamRecommendation?.recommendedStream || streamRecommendation?.recommendedStream) && (
+                                (() => {
+                                    const streamRec = enhancedStreamRecommendation || streamRecommendation;
+                                    // Purple/Track 3 color config
+                                    const purpleConfig = {
+                                        bg: '#1e293b',
+                                        accent: '#60a5fa',
+                                        accentLight: '#bfdbfe',
+                                        shadow: 'rgba(96, 165, 250, 0.3)'
+                                    };
+                                    return (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 50 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ duration: 0.6, ease: "easeOut" }}
+                                            className="max-w-6xl mx-auto"
+                                        >
+                                            {/* Single Card Container - Purple/Track 3 Theme */}
+                                            <div
+                                                className="relative rounded-[10px] p-[1px]"
+                                                style={{
+                                                    background: `radial-gradient(circle 230px at 0% 0%, ${purpleConfig.accentLight}, #0c0d0d)`,
+                                                    boxShadow: `0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 0 15px 3px ${purpleConfig.shadow}`,
+                                                }}
+                                            >
+                                                {/* Animated Dot - moves along the grid lines */}
+                                                <div
+                                                    className="absolute w-[6px] aspect-square rounded-full z-[3]"
+                                                    style={{
+                                                        backgroundColor: '#fff',
+                                                        boxShadow: `0 0 10px ${purpleConfig.accentLight}, 0 0 20px ${purpleConfig.accent}`,
+                                                        animation: 'moveStreamDot 6s linear infinite',
+                                                    }}
+                                                />
+
+                                                {/* Keyframes for stream card dot animation */}
+                                                <style>{`
+                                                    @keyframes moveStreamDot {
+                                                        0%, 100% {
+                                                            top: 2%;
+                                                            right: 2%;
+                                                        }
+                                                        25% {
+                                                            top: 2%;
+                                                            right: calc(100% - 10px);
+                                                        }
+                                                        50% {
+                                                            top: calc(100% - 10px);
+                                                            right: calc(100% - 10px);
+                                                        }
+                                                        75% {
+                                                            top: calc(100% - 10px);
+                                                            right: 2%;
+                                                        }
+                                                    }
+                                                `}</style>
+
+                                                {/* Main Card Inner */}
+                                                <div
+                                                    className="relative w-full rounded-[9px] overflow-hidden"
+                                                    style={{
+                                                        background: `radial-gradient(circle 280px at 0% 0%, ${purpleConfig.accent}40, #0c0d0d)`,
+                                                        backgroundSize: '20px 20px',
+                                                    }}
+                                                >
+                                                    {/* Ray Light Effect */}
+                                                    <div
+                                                        className="absolute w-[220px] h-[45px] rounded-[100px] opacity-40 blur-[10px]"
+                                                        style={{
+                                                            backgroundColor: purpleConfig.accentLight,
+                                                            boxShadow: `0 0 50px ${purpleConfig.accentLight}`,
+                                                            transformOrigin: '10%',
+                                                            top: '0%',
+                                                            left: '0',
+                                                            transform: 'rotate(40deg)'
+                                                        }}
+                                                    />
+
+                                                    {/* Grid Lines - Vertical (at 2% from edges) */}
+                                                    <div
+                                                        className="absolute w-[1px] h-full"
+                                                        style={{
+                                                            left: '2%',
+                                                            background: `linear-gradient(180deg, ${purpleConfig.accent}74 30%, #222424 70%)`
+                                                        }}
+                                                    />
+                                                    <div
+                                                        className="absolute w-[1px] h-full"
+                                                        style={{
+                                                            right: '2%',
+                                                            background: `linear-gradient(180deg, ${purpleConfig.accent}40 30%, #222424 70%)`
+                                                        }}
+                                                    />
+                                                    {/* Grid Lines - Horizontal (at 2% from edges) */}
+                                                    <div
+                                                        className="absolute w-full h-[1px]"
+                                                        style={{
+                                                            top: '2%',
+                                                            background: `linear-gradient(90deg, ${purpleConfig.accent}74 30%, #1d1f1f 70%)`
+                                                        }}
+                                                    />
+                                                    <div
+                                                        className="absolute w-full h-[1px]"
+                                                        style={{
+                                                            bottom: '2%',
+                                                            background: `linear-gradient(90deg, ${purpleConfig.accent}40 30%, #1d1f1f 70%)`
+                                                        }}
+                                                    />
+
+                                                    {/* Content */}
+                                                    <div className="relative z-[1] px-16 py-12">
+                                                        {/* Header Section */}
+                                                        <div className="flex items-center gap-4 mb-6">
+                                                            <div
+                                                                className="w-14 h-14 rounded-xl flex items-center justify-center text-white shadow-lg"
+                                                                style={{ backgroundColor: purpleConfig.accent }}
+                                                            >
+                                                                <GraduationCap className="w-7 h-7" />
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <span
+                                                                    className="inline-block px-3 py-1 text-white text-xs font-semibold rounded-full mb-1"
+                                                                    style={{ backgroundColor: purpleConfig.accent }}
+                                                                >
+                                                                    RECOMMENDED STREAM
+                                                                </span>
+                                                                <h3 className="text-2xl sm:text-3xl font-bold text-white">{streamRec.recommendedStream || 'N/A'}</h3>
+                                                            </div>
+                                                            {/* Fit Badge */}
+                                                            <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg border border-white/20">
+                                                                <Star className="w-5 h-5 text-yellow-400" />
+                                                                <span className={`text-base font-semibold ${streamRec.streamFit === 'High' ? 'text-green-400' : 'text-blue-300'}`}>
+                                                                    {streamRec.streamFit || 'Medium'} Fit
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Two Column Layout for Main Content */}
+                                                        <div className="grid md:grid-cols-2 gap-6 mb-6">
+                                                            {/* Left Column - Why This Stream */}
+                                                            {streamRec.reasoning && (
+                                                                <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+                                                                    <h5 className="text-xs font-bold uppercase mb-3 tracking-wider" style={{ color: purpleConfig.accentLight }}>
+                                                                        WHY THIS STREAM
+                                                                    </h5>
+                                                                    <div className="space-y-2">
+                                                                        {streamRec.reasoning.interests && (
+                                                                            <p className="text-gray-300 text-sm">• {streamRec.reasoning.interests}</p>
+                                                                        )}
+                                                                        {streamRec.reasoning.aptitude && (
+                                                                            <p className="text-gray-300 text-sm">• {streamRec.reasoning.aptitude}</p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Right Column - Subjects to Focus */}
+                                                            {streamRec.subjectsToFocus && streamRec.subjectsToFocus.length > 0 && (
+                                                                <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+                                                                    <h5 className="text-xs font-bold uppercase mb-3 tracking-wider" style={{ color: purpleConfig.accentLight }}>
+                                                                        SUBJECTS TO FOCUS
+                                                                    </h5>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {streamRec.subjectsToFocus.map((subject, idx) => (
+                                                                            <span key={idx} className="px-3 py-1.5 bg-white/10 text-white rounded-full text-sm border border-white/20">
+                                                                                {subject}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Alternative Stream Section */}
+                                                        {streamRec.alternativeStream && (
+                                                            <div className="bg-white/5 rounded-xl p-5 border border-white/10 mb-6">
+                                                                <div className="flex items-center gap-3 mb-3">
+                                                                    <div
+                                                                        className="w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-lg"
+                                                                        style={{ backgroundColor: purpleConfig.accent }}
+                                                                    >
+                                                                        <span className="text-sm font-bold">ALT</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: purpleConfig.accentLight }}>Alternative Option</span>
+                                                                        <h4 className="text-lg font-bold text-white">{streamRec.alternativeStream}</h4>
+                                                                    </div>
+                                                                </div>
+                                                                {streamRec.alternativeReason && (
+                                                                    <p className="text-gray-300 text-sm ml-13">{streamRec.alternativeReason}</p>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Career Paths & Entrance Exams - Two Column */}
+                                                        <div className="grid md:grid-cols-2 gap-6 mb-6">
+                                                            {/* Career Paths After 12th */}
+                                                            {streamRec.careerPathsAfter12 && streamRec.careerPathsAfter12.length > 0 && (
+                                                                <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+                                                                    <h5 className="text-xs font-bold uppercase mb-3 tracking-wider flex items-center gap-2" style={{ color: purpleConfig.accentLight }}>
+                                                                        <TrendingUp className="w-4 h-4" />
+                                                                        Career Paths After 12th
+                                                                    </h5>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {streamRec.careerPathsAfter12.map((career, idx) => (
+                                                                            <span key={idx} className="px-3 py-1.5 bg-white/10 text-gray-200 rounded-lg text-sm border border-white/10">
+                                                                                {career}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Entrance Exams */}
+                                                            {streamRec.entranceExams && streamRec.entranceExams.length > 0 && (
+                                                                <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+                                                                    <h5 className="text-xs font-bold uppercase mb-3 tracking-wider flex items-center gap-2" style={{ color: purpleConfig.accentLight }}>
+                                                                        <Target className="w-4 h-4" />
+                                                                        Entrance Exams to Prepare
+                                                                    </h5>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {streamRec.entranceExams.map((exam, idx) => (
+                                                                            <span key={idx} className="px-3 py-1.5 bg-white/10 text-gray-200 rounded-lg text-sm border border-white/10 font-medium">
+                                                                                {exam}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Next Button - Dark theme with hover effect like back card */}
+                                                        <div className="flex justify-center pt-4">
+                                                            <motion.button
+                                                                onClick={() => setAfter10Step(2)}
+                                                                className="group flex items-center gap-3 px-4 py-2 text-white font-semibold rounded-xl transition-all duration-300"
+                                                                style={{
+                                                                    backgroundColor: '#333333',
+                                                                    border: '1px solid #4a4a4a',
+                                                                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)'
+                                                                }}
+                                                                whileHover={{ 
+                                                                    backgroundColor: '#ffffff',
+                                                                    color: '#000000',
+                                                                    scale: 1.05,
+                                                                    boxShadow: '0 0 20px rgba(255, 255, 255, 0.3)'
+                                                                }}
+                                                                whileTap={{ scale: 0.95 }}
+                                                            >
+                                                                <span>View Career Clusters</span>
+                                                                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                                            </motion.button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })()
+                            )}
+
+                            {/* Step 1 Fallback - No stream data */}
+                            {after10Step === 1 && !(enhancedStreamRecommendation?.recommendedStream || streamRecommendation?.recommendedStream) && (
+                                <div className="bg-slate-900 rounded-xl p-8 text-center border border-slate-700">
+                                    <GraduationCap className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+                                    <h3 className="text-lg font-semibold text-white mb-2">Stream Recommendation Loading...</h3>
+                                    <p className="text-slate-400 text-sm">Your personalized 11th/12th stream recommendation is being calculated.</p>
+                                </div>
+                            )}
+
+                            {/* Step 2: Career Clusters */}
+                            {after10Step === 2 && (
+                                <div className="space-y-8">
+                                    {/* Back Button & Header */}
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.4 }}
+                                        className="flex items-center gap-4 mb-6"
+                                    >
+                                        <button
+                                            onClick={() => setAfter10Step(1)}
+                                            className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                                        >
+                                            <ArrowLeft className="w-4 h-4" />
+                                            <span className="text-sm">Back to Stream</span>
+                                        </button>
+                                    </motion.div>
+
+                                    {/* Section Header */}
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.5 }}
+                                        className="text-center mb-8"
+                                    >
+                                        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+                                            Career Paths for {(enhancedStreamRecommendation || streamRecommendation)?.recommendedStream || 'Your Stream'}
+                                        </h2>
+                                        <p className="text-gray-400">
+                                            Explore career clusters aligned with your recommended stream
+                                        </p>
+                                    </motion.div>
+
+                                    {/* Career Cards */}
+                                    {careerFit && careerFit.clusters && careerFit.clusters.length > 0 ? (
+                                        careerFit.clusters.map((cluster, index) => (
+                                            <CareerCard
+                                                key={index}
+                                                cluster={cluster}
+                                                index={index}
+                                                fitType={index === 0 ? 'TRACK 1' : index === 1 ? 'TRACK 2' : 'TRACK 3'}
+                                                color={index === 0 ? 'green' : index === 1 ? 'yellow' : 'purple'}
+                                                reverse={index === 1}
+                                                specificRoles={careerFit?.specificOptions?.[
+                                                    index === 0 ? 'highFit' : 
+                                                    index === 1 ? 'mediumFit' : 
+                                                    'exploreLater'
+                                                ] || cluster.specificRoles || []}
+                                                onCardClick={handleTrackClick}
+                                            />
+                                        ))
+                                    ) : (
+                                        <div className="bg-slate-900 rounded-xl p-8 text-center border border-slate-700">
+                                            <Briefcase className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+                                            <h3 className="text-lg font-semibold text-white mb-2">Career Recommendations Loading...</h3>
+                                            <p className="text-slate-400 text-sm">Your personalized career recommendations are being calculated.</p>
+                                        </div>
+                                    )}
+
+                                    {/* Career Track Detail Modal */}
+                                    {selectedTrack && (
+                                        <CareerTrackModal
+                                            selectedTrack={selectedTrack}
+                                            onClose={closeTrackModal}
+                                            skillGap={skillGap}
+                                            roadmap={roadmap}
+                                            results={results}
+                                        />
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+                    {/* AFTER 12TH - TAB BASED (Keep existing behavior) */}
+                    {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+                    {gradeLevel === 'after12' && (
                         <div className="mb-8">
                             {/* Toggle Buttons */}
                             <div className="flex justify-center mb-6">
@@ -1167,17 +1539,10 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                                 : 'text-gray-600 hover:text-gray-800'
                                         }`}
                                     >
-                                        {gradeLevel === 'after10' ? (
-                                            <span className="flex items-center gap-2">
-                                                <GraduationCap className="w-4 h-4" />
-                                                11th/12th Stream
-                                            </span>
-                                        ) : (
-                                            <span className="flex items-center gap-2">
-                                                <GraduationCap className="w-4 h-4" />
-                                                Recommended Programs
-                                            </span>
-                                        )}
+                                        <span className="flex items-center gap-2">
+                                            <GraduationCap className="w-4 h-4" />
+                                            Recommended Programs
+                                        </span>
                                     </button>
                                     <button
                                         onClick={() => setActiveRecommendationTab('career')}
@@ -1198,163 +1563,6 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                             {/* PRIMARY TAB CONTENT */}
                             {activeRecommendationTab === 'primary' && (
                                 <>
-                                    {/* After 10th: Stream Recommendation */}
-                                    {gradeLevel === 'after10' && (enhancedStreamRecommendation || streamRecommendation) && (enhancedStreamRecommendation?.recommendedStream || streamRecommendation?.recommendedStream) && (
-                                        (() => {
-                                            const streamRec = enhancedStreamRecommendation || streamRecommendation;
-                                            return (
-                                                <div className="relative w-full rounded-xl overflow-hidden bg-white shadow-lg">
-                                                    {/* Header with slate background matching assessment result style */}
-                                                    <div className="relative px-6 md:px-8 py-6 bg-gradient-to-r from-slate-800 to-slate-700">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
-                                                                <GraduationCap className="w-7 h-7 text-white" />
-                                                            </div>
-                                                            <div>
-                                                                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-1">
-                                                                    Your Recommended 11th/12th Stream
-                                                                </h2>
-                                                                <p className="text-slate-300 text-sm">Based on your marks, projects, experiences, and interests</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Content */}
-                                                    <div className="px-6 md:px-8 py-8">
-                                                        {/* Main Recommendation Card */}
-                                                        <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 mb-6">
-                                                            <div className="flex items-center justify-between mb-4">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center">
-                                                                        <Star className="w-6 h-6 text-white" />
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="text-sm text-slate-600 font-medium">Best Match for You</p>
-                                                                        <h3 className="text-2xl font-bold text-slate-800">{streamRec.recommendedStream || 'N/A'}</h3>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="text-right">
-                                                                    <p className="text-sm text-slate-500">Confidence</p>
-                                                                    <p className={`text-lg font-bold ${streamRec.streamFit === 'High' ? 'text-slate-800' : 'text-slate-700'}`}>
-                                                                        {streamRec.streamFit || 'Medium'} Fit
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Reasoning */}
-                                                            {streamRec.reasoning && (
-                                                                <div className="space-y-3 mb-4">
-                                                                    {streamRec.reasoning.interests && (
-                                                                        <div className="flex gap-2">
-                                                                            <span className="text-slate-700 font-medium text-sm min-w-[80px]">Interests:</span>
-                                                                            <span className="text-slate-600 text-sm">{streamRec.reasoning.interests}</span>
-                                                                        </div>
-                                                                    )}
-                                                                    {streamRec.reasoning.aptitude && (
-                                                                        <div className="flex gap-2">
-                                                                            <span className="text-slate-700 font-medium text-sm min-w-[80px]">Aptitude:</span>
-                                                                            <span className="text-slate-600 text-sm">{streamRec.reasoning.aptitude}</span>
-                                                                        </div>
-                                                                    )}
-                                                                    {streamRec.reasoning.personality && (
-                                                                        <div className="flex gap-2">
-                                                                            <span className="text-slate-700 font-medium text-sm min-w-[80px]">Activities:</span>
-                                                                            <span className="text-slate-600 text-sm">{streamRec.reasoning.personality}</span>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            )}
-
-                                                            {/* Subjects to Focus */}
-                                                            {streamRec.subjectsToFocus && streamRec.subjectsToFocus.length > 0 && (
-                                                                <div>
-                                                                    <p className="text-sm font-semibold text-slate-700 mb-2">Subjects to Focus On:</p>
-                                                                    <div className="flex flex-wrap gap-2">
-                                                                        {streamRec.subjectsToFocus.map((subject, idx) => (
-                                                                            <span key={idx} className="px-3 py-1 bg-white text-slate-700 rounded-full text-sm font-medium border border-slate-300">
-                                                                                {subject}
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-
-                                                        {/* Alternative Stream */}
-                                                        {streamRec.alternativeStream && (
-                                                            <div className="mb-6">
-                                                                <h4 className="text-lg font-semibold text-slate-800 mb-3">Alternative Option to Consider</h4>
-                                                                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-                                                                    <div className="flex items-center justify-between mb-2">
-                                                                        <h5 className="font-semibold text-slate-800">{streamRec.alternativeStream}</h5>
-                                                                        <span className="text-sm px-2 py-1 rounded-full bg-slate-200 text-slate-700">Good Fit</span>
-                                                                    </div>
-                                                                    {streamRec.alternativeReason && (
-                                                                        <p className="text-sm text-slate-600">{streamRec.alternativeReason}</p>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Future Career Paths */}
-                                                        {streamRec.careerPathsAfter12 && streamRec.careerPathsAfter12.length > 0 && (
-                                                            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 mb-6">
-                                                                <h4 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                                                                    <TrendingUp className="w-5 h-5 text-slate-700" />
-                                                                    Career Paths After 12th with {streamRec.recommendedStream}
-                                                                </h4>
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    {streamRec.careerPathsAfter12.map((career, idx) => (
-                                                                        <span key={idx} className="px-3 py-2 bg-white text-slate-700 rounded-lg text-sm border border-slate-300 shadow-sm">
-                                                                            {career}
-                                                                        </span>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Entrance Exams */}
-                                                        {streamRec.entranceExams && streamRec.entranceExams.length > 0 && (
-                                                            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 mb-6">
-                                                                <h4 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                                                                    <Target className="w-5 h-5 text-slate-700" />
-                                                                    Entrance Exams to Prepare For
-                                                                </h4>
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    {streamRec.entranceExams.map((exam, idx) => (
-                                                                        <span key={idx} className="px-3 py-2 bg-white text-slate-700 rounded-lg text-sm border border-slate-300 shadow-sm font-medium">
-                                                                            {exam}
-                                                                        </span>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Advice Note */}
-                                                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-                                                            <div className="flex gap-3">
-                                                                <AlertCircle className="w-5 h-5 text-slate-600 flex-shrink-0 mt-0.5" />
-                                                                <div className="text-sm text-slate-700">
-                                                                    <p className="font-semibold mb-1">Important Note</p>
-                                                                    <p>This recommendation is based on your marks, projects, experiences, and interests. Discuss with your parents, teachers, and career counselors before making your final decision.</p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })()
-                                    )}
-
-                                    {/* Fallback for After 10th when no stream data */}
-                                    {gradeLevel === 'after10' && !(enhancedStreamRecommendation?.recommendedStream || streamRecommendation?.recommendedStream) && (
-                                        <div className="bg-slate-50 rounded-xl p-8 text-center border border-slate-200">
-                                            <GraduationCap className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                                            <h3 className="text-lg font-semibold text-slate-700 mb-2">Stream Recommendation Loading...</h3>
-                                            <p className="text-slate-500 text-sm">Your personalized 11th/12th stream recommendation is being calculated based on your assessment results.</p>
-                                        </div>
-                                    )}
-
                                     {/* After 12th: Course Recommendations */}
                                     {shouldShowProgramRecommendations && enhancedCourseRecommendations && enhancedCourseRecommendations.length > 0 && (
                                         <div>
