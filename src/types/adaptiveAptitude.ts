@@ -377,17 +377,23 @@ export interface AdaptiveTestConfig {
 
 /**
  * Default configuration for the adaptive aptitude test
+ * 
+ * Question Pattern:
+ * - Phase 1 (Diagnostic Screener): Q1-Q6 all at Level 3 (baseline) - 6 questions
+ * - Phase 2 (Adaptive Core): Q7-Q17 truly adaptive based on performance - 11 questions
+ * - Phase 3 (Stability Confirmation): Q18-Q21 at final level - 4 questions
+ * Total: 21 questions
  */
 export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
   phases: {
     diagnostic_screener: {
       phase: 'diagnostic_screener',
-      minQuestions: 5,
-      maxQuestions: 5,
+      minQuestions: 6,
+      maxQuestions: 6,  // 6 questions for baseline (all at Level 3)
       difficultyDistribution: {
-        easy: 2,    // 2 easy questions
-        medium: 2,  // 2 medium questions
-        hard: 1,    // 1 hard question
+        easy: 0,    // All at level 3 for baseline
+        medium: 6,  // 6 medium questions (Level 3)
+        hard: 0,    // No hard questions in baseline
       },
       minSubtags: 3,
       maxConsecutiveSameSubtag: 1,

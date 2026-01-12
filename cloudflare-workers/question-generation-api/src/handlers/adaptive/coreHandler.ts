@@ -191,10 +191,11 @@ async function generateAdaptiveCoreQuestions(
 
   if (missingSpecs.length > 0) {
     try {
-      const systemPrompt = buildAdaptiveSystemPrompt(gradeLevel);
+      const systemPrompt = buildAdaptiveSystemPrompt(gradeLevel, 'adaptive_core');
       const userPrompt = buildAdaptiveUserPrompt(
         missingSpecs.map(s => ({ difficulty: s.difficulty, subtag: s.subtag })),
-        gradeLevel
+        gradeLevel,
+        'adaptive_core'
       );
 
       const content = await callOpenRouterForAdaptive(apiKey, systemPrompt, userPrompt);

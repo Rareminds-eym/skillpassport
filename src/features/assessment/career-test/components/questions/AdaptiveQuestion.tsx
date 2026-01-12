@@ -1,15 +1,15 @@
 /**
  * AdaptiveQuestion Component
  * 
- * Renders an adaptive aptitude test question with difficulty level
- * indicator and per-question timer.
+ * Renders an adaptive aptitude test question with per-question timer.
+ * Difficulty level is hidden from the user for a better test experience.
  * 
  * @module features/assessment/career-test/components/questions/AdaptiveQuestion
  */
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Clock, Target, Loader2 } from 'lucide-react';
+import { Clock, Loader2, Target } from 'lucide-react';
 
 interface AdaptiveQuestionProps {
   questionId: string;
@@ -17,14 +17,15 @@ interface AdaptiveQuestionProps {
   options: Record<string, string>; // { A: "option1", B: "option2", ... }
   selectedAnswer: string | null; // 'A', 'B', 'C', 'D'
   onAnswer: (value: string) => void;
-  difficultyLevel: number;
+  difficultyLevel?: number; // Hidden from UI
   subtag?: string;
   timer: number; // seconds remaining
   loading?: boolean;
+  disabled?: boolean; // Disable options when saving
 }
 
 /**
- * Adaptive aptitude question component with difficulty indicator
+ * Adaptive aptitude question component
  */
 export const AdaptiveQuestion: React.FC<AdaptiveQuestionProps> = ({
   questionId,
@@ -32,10 +33,11 @@ export const AdaptiveQuestion: React.FC<AdaptiveQuestionProps> = ({
   options,
   selectedAnswer,
   onAnswer,
-  difficultyLevel,
+  difficultyLevel = 3,
   subtag,
   timer,
-  loading = false
+  loading = false,
+  disabled = false
 }) => {
   // Format timer display
   const minutes = Math.floor(timer / 60);
@@ -63,21 +65,21 @@ export const AdaptiveQuestion: React.FC<AdaptiveQuestionProps> = ({
       {/* Info Badges with Timer */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <div className="flex flex-wrap gap-2">
-          {/* Difficulty Level */}
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 rounded-full text-xs font-medium text-purple-700">
+          {/* Difficulty Level Badge */}
+          <span className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 rounded-full text-xs font-medium text-indigo-700">
             <Target className="w-3 h-3" />
             Level {difficultyLevel}
           </span>
           
           {/* Subtag/Category */}
           {subtag && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600">
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600 capitalize">
               {subtag.replace(/_/g, ' ')}
             </span>
           )}
         </div>
 
-        {/* Per-question Timer */}
+        {/* Per-question Timer (90 seconds) */}
         <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold ${getTimerColor()}`}>
           <Clock className="w-4 h-4" />
           {timerDisplay}
@@ -101,14 +103,18 @@ export const AdaptiveQuestion: React.FC<AdaptiveQuestionProps> = ({
             <motion.button
               key={optionKey}
               type="button"
-              onClick={() => onAnswer(optionKey)}
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
+              onClick={() => !disabled && onAnswer(optionKey)}
+              whileHover={!disabled ? { scale: 1.01 } : {}}
+              whileTap={!disabled ? { scale: 0.99 } : {}}
+              disabled={disabled}
               className={`
                 w-full border-2 rounded-xl p-4 transition-all text-left
+                ${disabled ? 'cursor-not-allowed opacity-70' : ''}
                 ${isSelected
                   ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
-                  : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                  : disabled 
+                    ? 'border-gray-200 bg-gray-50'
+                    : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                 }
               `}
             >
@@ -134,22 +140,13 @@ export const AdaptiveQuestion: React.FC<AdaptiveQuestionProps> = ({
         })}
       </div>
 
-      {/* Difficulty Scale Indicator */}
-      <div className="flex items-center justify-center gap-1 mt-4">
-        {[1, 2, 3, 4, 5].map((level) => (
-          <div
-            key={level}
-            className={`
-              w-2 h-2 rounded-full transition-all
-              ${level <= difficultyLevel
-                ? 'bg-purple-500'
-                : 'bg-gray-200'
-              }
-            `}
-          />
-        ))}
-        <span className="text-xs text-gray-500 ml-2">Difficulty</span>
-      </div>
+      {/* Saving indicator when disabled */}
+      {disabled && (
+        <div className="flex items-center justify-center gap-2 mt-4 text-gray-500">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span className="text-sm">Saving your answer...</span>
+        </div>
+      )}
     </div>
   );
 };

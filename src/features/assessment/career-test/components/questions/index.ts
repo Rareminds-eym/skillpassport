@@ -10,3 +10,4 @@ export { MCQQuestion } from './MCQQuestion';
 export { SJTQuestion } from './SJTQuestion';
 export { AdaptiveQuestion } from './AdaptiveQuestion';
 export { MultiSelectQuestion } from './MultiSelectQuestion';
+export { TextQuestion } from './TextQuestion';

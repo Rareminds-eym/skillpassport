@@ -52,9 +52,9 @@ export async function handleSingleGeneration(
       });
     }
 
-    // Generate new question
-    const systemPrompt = buildAdaptiveSystemPrompt(gradeLevel);
-    const userPrompt = buildAdaptiveUserPrompt([{ difficulty, subtag }], gradeLevel);
+    // Generate new question - pass phase for context-aware generation
+    const systemPrompt = buildAdaptiveSystemPrompt(gradeLevel, phase as 'diagnostic_screener' | 'adaptive_core' | 'stability_confirmation' | undefined);
+    const userPrompt = buildAdaptiveUserPrompt([{ difficulty, subtag }], gradeLevel, phase as 'diagnostic_screener' | 'adaptive_core' | 'stability_confirmation' | undefined);
 
     const content = await callOpenRouterForAdaptive(apiKey, systemPrompt, userPrompt);
     const rawQuestions = parseAIArrayResponse(content);

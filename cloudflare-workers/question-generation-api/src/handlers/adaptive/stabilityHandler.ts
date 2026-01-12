@@ -179,10 +179,11 @@ async function generateStabilityConfirmationQuestions(
 
   if (missingSpecs.length > 0) {
     try {
-      const systemPrompt = buildAdaptiveSystemPrompt(gradeLevel);
+      const systemPrompt = buildAdaptiveSystemPrompt(gradeLevel, 'stability_confirmation');
       const userPrompt = buildAdaptiveUserPrompt(
         missingSpecs.map(s => ({ difficulty: s.difficulty, subtag: s.subtag })),
-        gradeLevel
+        gradeLevel,
+        'stability_confirmation'
       );
 
       const content = await callOpenRouterForAdaptive(apiKey, systemPrompt, userPrompt);
