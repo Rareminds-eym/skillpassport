@@ -418,16 +418,27 @@ export const getAttemptWithResults = async (attemptId) => {
 
 /**
  * Get the latest completed assessment result for a student
- * @param {string} studentId - Student's user_id
+ * @param {string} userId - Student's user_id (from auth)
  */
-export const getLatestResult = async (studentId) => {
+export const getLatestResult = async (userId) => {
+  // First, get the student's ID from their user_id
+  const { data: student, error: studentError } = await supabase
+    .from('students')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (studentError) throw studentError;
+  if (!student) return null; // No student record found
+
+  // Now get the latest result using the student's ID
   const { data, error } = await supabase
     .from('personal_assessment_results')
     .select('*')
-    .eq('student_id', studentId)
+    .eq('student_id', student.id)
     .order('created_at', { ascending: false })
     .limit(1)
-    .maybeSingle(); // Use maybeSingle() to return null instead of 406 error when no rows found
+    .maybeSingle();
 
   if (error) throw error;
   return data;
