@@ -92,6 +92,20 @@ const Settings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
 
+  // State for custom institution entry (B2C students)
+  const [showCustomSchool, setShowCustomSchool] = useState(false);
+  const [showCustomUniversity, setShowCustomUniversity] = useState(false);
+  const [showCustomCollege, setShowCustomCollege] = useState(false);
+  const [showCustomSchoolClass, setShowCustomSchoolClass] = useState(false);
+  const [showCustomProgram, setShowCustomProgram] = useState(false);
+  const [showCustomSemester, setShowCustomSemester] = useState(false);
+  const [customSchoolName, setCustomSchoolName] = useState('');
+  const [customUniversityName, setCustomUniversityName] = useState('');
+  const [customCollegeName, setCustomCollegeName] = useState('');
+  const [customSchoolClassName, setCustomSchoolClassName] = useState('');
+  const [customProgramName, setCustomProgramName] = useState('');
+  const [customSemesterName, setCustomSemesterName] = useState('');
+
   // Fetch institutions data
   const {
     schools,
@@ -129,6 +143,28 @@ const Settings = () => {
         programSectionId: 'Semester/Section',
         schoolClassId: 'Class',
       };
+      
+      // Show custom input for B2C students
+      if (field === 'schoolId') {
+        setShowCustomSchool(true);
+        return;
+      } else if (field === 'universityId') {
+        setShowCustomUniversity(true);
+        return;
+      } else if (field === 'universityCollegeId') {
+        setShowCustomCollege(true);
+        return;
+      } else if (field === 'schoolClassId') {
+        setShowCustomSchoolClass(true);
+        return;
+      } else if (field === 'programId') {
+        setShowCustomProgram(true);
+        return;
+      } else if (field === 'programSectionId') {
+        setShowCustomSemester(true);
+        return;
+      }
+      
       toast({
         title: `Add New ${typeMap[field]}`,
         description: `Please contact your administrator to add a new ${typeMap[field].toLowerCase()}.`,
@@ -136,20 +172,55 @@ const Settings = () => {
       return;
     }
     
+    // Hide custom inputs when selecting from dropdown
+    if (field === 'schoolId' && value) {
+      setShowCustomSchool(false);
+      setCustomSchoolName('');
+    } else if (field === 'universityId' && value) {
+      setShowCustomUniversity(false);
+      setCustomUniversityName('');
+    } else if (field === 'universityCollegeId' && value) {
+      setShowCustomCollege(false);
+      setCustomCollegeName('');
+    } else if (field === 'schoolClassId' && value) {
+      setShowCustomSchoolClass(false);
+      setCustomSchoolClassName('');
+    } else if (field === 'programId' && value) {
+      setShowCustomProgram(false);
+      setCustomProgramName('');
+    } else if (field === 'programSectionId' && value) {
+      setShowCustomSemester(false);
+      setCustomSemesterName('');
+    }
+    
     // Cascading logic: clear dependent fields
     if (field === 'schoolId') {
-      // If school is selected, clear all university-related fields
+      // If school is selected, clear all university-related fields (including custom)
       setProfileData(prev => ({
         ...prev,
         schoolId: value,
         schoolClassId: '',
         grade: '', // Clear grade when school changes
-        // Clear university path
+        // Clear university path (both dropdown and custom)
         universityId: '',
         universityCollegeId: '',
         departmentId: '',
         programId: '',
+        programSectionId: '',
+        university: '',
+        college: '',
+        branch: '',
+        section: '',
       }));
+      // Clear custom university fields
+      setShowCustomUniversity(false);
+      setCustomUniversityName('');
+      setShowCustomCollege(false);
+      setCustomCollegeName('');
+      setShowCustomProgram(false);
+      setCustomProgramName('');
+      setShowCustomSemester(false);
+      setCustomSemesterName('');
     } else if (field === 'schoolClassId') {
       // If school class is selected, auto-set grade
       const selectedClass = schoolClasses.find(sc => sc.id === value);
@@ -160,17 +231,25 @@ const Settings = () => {
         grade: gradeValue,
       }));
     } else if (field === 'universityId') {
-      // If university is selected, clear all school-related fields
+      // If university is selected, clear all school-related fields (including custom)
       setProfileData(prev => ({
         ...prev,
         universityId: value,
         universityCollegeId: '',
         programId: '',
+        programSectionId: '',
         grade: '', // Clear grade when university changes
-        // Clear school path
+        // Clear school path (both dropdown and custom)
         schoolId: '',
         schoolClassId: '',
+        college: '', // This field is used for custom school name
+        section: '', // This field is used for custom class name
       }));
+      // Clear custom school fields
+      setShowCustomSchool(false);
+      setCustomSchoolName('');
+      setShowCustomSchoolClass(false);
+      setCustomSchoolClassName('');
     } else if (field === 'universityCollegeId') {
       // If university college changes, clear program
       setProfileData(prev => ({
@@ -201,14 +280,36 @@ const Settings = () => {
         grade: gradeValue,
       }));
     } else if (field === 'programSectionId') {
-      // If program section is selected, auto-set semester
+      // If program section is selected, auto-set semester and grade
       const selectedSection = programSections.find(ps => ps.id === value);
-      const semesterValue = selectedSection ? selectedSection.semester : null;
-      setProfileData(prev => ({
-        ...prev,
-        programSectionId: value,
-        semester: semesterValue,
-      }));
+      if (selectedSection) {
+        const semesterNum = selectedSection.semester;
+        const year = Math.ceil(semesterNum / 2);
+        
+        // Determine if UG or PG based on current grade or program
+        const currentGrade = profileData.grade || '';
+        let gradeValue = '';
+        
+        if (currentGrade.includes('PG') || semesterNum <= 4) {
+          // PG programs (2 years = 4 semesters)
+          gradeValue = semesterNum <= 2 ? 'PG Year 1' : 'PG Year 2';
+        } else {
+          // UG programs (4 years = 8 semesters)
+          gradeValue = `UG Year ${Math.min(year, 4)}`;
+        }
+        
+        setProfileData(prev => ({
+          ...prev,
+          programSectionId: value,
+          semester: semesterNum,
+          grade: gradeValue,
+        }));
+      } else {
+        setProfileData(prev => ({
+          ...prev,
+          programSectionId: value,
+        }));
+      }
     } else if (field === 'collegeId') {
       // If college changes, clear program
       setProfileData(prev => ({
@@ -252,6 +353,7 @@ const Settings = () => {
     programId: "",
     programSectionId: "",
     semester: "",
+    section: "",
     guardianName: "",
     guardianPhone: "",
     guardianEmail: "",
@@ -326,6 +428,7 @@ const Settings = () => {
         programId: studentData.programId || "",
         programSectionId: studentData.programSectionId || "",
         semester: studentData.semester || "",
+        section: studentData.section || "",
         guardianName: studentData.guardianName || "",
         guardianPhone: studentData.guardianPhone || "",
         guardianEmail: studentData.guardianEmail || "",
@@ -338,6 +441,26 @@ const Settings = () => {
         instagram: studentData.instagram || "",
         portfolio: studentData.portfolio || "",
       });
+
+      // Detect custom entries (B2C students) and show custom input fields
+      // If text fields have data but no ID is set, show custom input
+      if (studentData.college && !studentData.universityCollegeId) {
+        setShowCustomCollege(true);
+        setCustomCollegeName(studentData.college);
+      }
+      if (studentData.university && !studentData.universityId) {
+        setShowCustomUniversity(true);
+        setCustomUniversityName(studentData.university);
+      }
+      if (studentData.branch && !studentData.programId) {
+        setShowCustomProgram(true);
+        setCustomProgramName(studentData.branch);
+      }
+      // Check for custom semester/section (stored in section field)
+      if (studentData.section && !studentData.programSectionId) {
+        setShowCustomSemester(true);
+        setCustomSemesterName(studentData.section);
+      }
 
       // Load notification settings - only when not saving
       if (studentData.notificationSettings && !savingRef.current) {
@@ -1032,202 +1155,156 @@ const Settings = () => {
                     </div>
                   </div>
 
-                  {/* Academic Information */}
-                  <div className="pt-6 border-t border-slate-100">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Briefcase className="w-5 h-5 text-blue-600" />
-                      Academic Information
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* University */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">
-                          University
-                        </label>
-                        <input
-                          type="text"
-                          value={profileData.university}
-                          onChange={(e) =>
-                            handleProfileChange("university", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                          placeholder="Enter university name"
-                        />
-                      </div>
-
-                      {/* College */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">
-                          College/School
-                        </label>
-                        <input
-                          type="text"
-                          value={profileData.college}
-                          onChange={(e) =>
-                            handleProfileChange("college", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                          placeholder="Enter college/school name"
-                        />
-                      </div>
-
-                      {/* Branch */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">
-                          Branch/Field
-                        </label>
-                        <input
-                          type="text"
-                          value={profileData.branch}
-                          onChange={(e) =>
-                            handleProfileChange("branch", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                          placeholder="Enter branch/field of study"
-                        />
-                      </div>
-
-                      {/* Registration Number */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">
-                          Registration Number
-                        </label>
-                        <input
-                          type="text"
-                          value={profileData.registrationNumber}
-                          onChange={(e) =>
-                            handleProfileChange(
-                              "registrationNumber",
-                              e.target.value
-                            )
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                          placeholder="Enter registration number"
-                        />
-                      </div>
-
-                      {/* Enrollment Number */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">
-                          Enrollment Number
-                        </label>
-                        <input
-                          type="text"
-                          value={profileData.enrollmentNumber}
-                          onChange={(e) =>
-                            handleProfileChange(
-                              "enrollmentNumber",
-                              e.target.value
-                            )
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                          placeholder="Enter enrollment number"
-                        />
-                      </div>
-
-                      {/* Current CGPA */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">
-                          Current CGPA
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="10"
-                          value={profileData.currentCgpa}
-                          onChange={(e) =>
-                            handleProfileChange("currentCgpa", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                          placeholder="Enter current CGPA"
-                        />
-                      </div>
-
-                      {/* Grade */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">
-                          Grade/Class
-                        </label>
-                        <select
-                          value={profileData.grade}
-                          onChange={(e) =>
-                            handleProfileChange("grade", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                        >
-                          <option value="">Select Grade/Class</option>
-                          <option value="Grade 6">Grade 6</option>
-                          <option value="Grade 7">Grade 7</option>
-                          <option value="Grade 8">Grade 8</option>
-                          <option value="Grade 9">Grade 9</option>
-                          <option value="Grade 10">Grade 10</option>
-                          <option value="Grade 11">Grade 11</option>
-                          <option value="Grade 12">Grade 12</option>
-                          <option value="Diploma">Diploma</option>
-                          <option value="UG Year 1">UG Year 1</option>
-                          <option value="UG Year 2">UG Year 2</option>
-                          <option value="UG Year 3">UG Year 3</option>
-                          <option value="UG Year 4">UG Year 4</option>
-                          <option value="PG Year 1">PG Year 1</option>
-                          <option value="PG Year 2">PG Year 2</option>
-                          <option value="PG">PG</option>
-                        </select>
-                      </div>
-
-                      {/* Grade Start Date */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">
-                          Grade Start Date
-                        </label>
-                        <input
-                          type="date"
-                          value={profileData.gradeStartDate}
-                          onChange={(e) =>
-                            handleProfileChange("gradeStartDate", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Institutional IDs Section */}
                   <div className="pt-6 border-t border-slate-100">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Briefcase className="w-5 h-5 text-blue-600" />
-                      Institution Details
-                    </h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <Briefcase className="w-5 h-5 text-blue-600" />
+                        Institution Details
+                      </h3>
+                      {/* Clear Path Buttons */}
+                      <div className="flex gap-2">
+                        {(profileData.schoolId || profileData.schoolClassId || showCustomSchool || customSchoolName || showCustomSchoolClass || customSchoolClassName) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Clear all school-related fields
+                              setProfileData(prev => ({
+                                ...prev,
+                                schoolId: '',
+                                schoolClassId: '',
+                                college: '',
+                                section: '',
+                              }));
+                              setShowCustomSchool(false);
+                              setCustomSchoolName('');
+                              setShowCustomSchoolClass(false);
+                              setCustomSchoolClassName('');
+                              toast({
+                                title: "School path cleared",
+                                description: "You can now select university",
+                              });
+                            }}
+                            className="text-xs px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                          >
+                            Clear School Path
+                          </button>
+                        )}
+                        {(profileData.universityId || profileData.universityCollegeId || profileData.programId || showCustomUniversity || customUniversityName || showCustomCollege || customCollegeName || showCustomProgram || customProgramName) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Clear all university-related fields
+                              setProfileData(prev => ({
+                                ...prev,
+                                universityId: '',
+                                universityCollegeId: '',
+                                programId: '',
+                                programSectionId: '',
+                                university: '',
+                                branch: '',
+                              }));
+                              setShowCustomUniversity(false);
+                              setCustomUniversityName('');
+                              setShowCustomCollege(false);
+                              setCustomCollegeName('');
+                              setShowCustomProgram(false);
+                              setCustomProgramName('');
+                              setShowCustomSemester(false);
+                              setCustomSemesterName('');
+                              toast({
+                                title: "University path cleared",
+                                description: "You can now select school",
+                              });
+                            }}
+                            className="text-xs px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                          >
+                            Clear University Path
+                          </button>
+                        )}
+                      </div>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* School */}
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-700">
                           School
                         </label>
-                        <select
-                          value={profileData.schoolId}
-                          onChange={(e) =>
-                            handleInstitutionChange("schoolId", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-                          disabled={!!profileData.universityId}
-                        >
-                          <option value="">
-                            {profileData.universityId ? 'University selected - clear to use school' : 'Select School'}
-                          </option>
-                          {schools.map((school) => (
-                            <option key={school.id} value={school.id}>
-                              {school.name} {school.city && `- ${school.city}`}
-                            </option>
-                          ))}
-                          {!profileData.universityId && (
-                            <option value="add_new" className="font-semibold text-blue-600">
-                              + Add New School
-                            </option>
-                          )}
-                        </select>
-                        {profileData.universityId && (
-                          <p className="text-xs text-gray-500">Clear university selection to use school</p>
+                        {!showCustomSchool ? (
+                          <>
+                            <select
+                              value={profileData.schoolId}
+                              onChange={(e) =>
+                                handleInstitutionChange("schoolId", e.target.value)
+                              }
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                              disabled={!!profileData.universityId || showCustomUniversity || !!customUniversityName || !!profileData.universityCollegeId || showCustomCollege || !!customCollegeName}
+                            >
+                              <option value="">
+                                {(profileData.universityId || showCustomUniversity || customUniversityName || profileData.universityCollegeId || showCustomCollege || customCollegeName) ? 'University path selected - clear to use school' : 'Select School'}
+                              </option>
+                              {schools.map((school) => (
+                                <option key={school.id} value={school.id}>
+                                  {school.name} {school.city && `- ${school.city}`}
+                                </option>
+                              ))}
+                              {!(profileData.universityId || showCustomUniversity || customUniversityName || profileData.universityCollegeId || showCustomCollege || customCollegeName) && (
+                                <option value="add_new" className="font-semibold text-blue-600">
+                                  + Add Custom School
+                                </option>
+                              )}
+                            </select>
+                            {(profileData.universityId || showCustomUniversity || customUniversityName || profileData.universityCollegeId || showCustomCollege || customCollegeName) && (
+                              <p className="text-xs text-gray-500">Clear university path to use school</p>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              type="text"
+                              value={customSchoolName}
+                              onChange={(e) => {
+                                const schoolName = e.target.value;
+                                setCustomSchoolName(schoolName);
+                                handleProfileChange("college", schoolName); // Store in college_school_name field
+                                
+                                // Clear university path when custom school is entered
+                                if (schoolName) {
+                                  setProfileData(prev => ({
+                                    ...prev,
+                                    universityId: '',
+                                    universityCollegeId: '',
+                                    programId: '',
+                                    programSectionId: '',
+                                    university: '',
+                                    branch: '',
+                                    section: '',
+                                  }));
+                                  setShowCustomUniversity(false);
+                                  setCustomUniversityName('');
+                                  setShowCustomCollege(false);
+                                  setCustomCollegeName('');
+                                  setShowCustomProgram(false);
+                                  setCustomProgramName('');
+                                  setShowCustomSemester(false);
+                                  setCustomSemesterName('');
+                                }
+                              }}
+                              placeholder="Enter your school name"
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowCustomSchool(false);
+                                setCustomSchoolName('');
+                                handleProfileChange("college", '');
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              ← Back to dropdown
+                            </button>
+                          </>
                         )}
                       </div>
 
@@ -1236,32 +1313,70 @@ const Settings = () => {
                         <label className="text-sm font-semibold text-gray-700">
                           School Class
                         </label>
-                        <select
-                          value={profileData.schoolClassId}
-                          onChange={(e) =>
-                            handleInstitutionChange("schoolClassId", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-                          disabled={!profileData.schoolId}
-                        >
-                          <option value="">
-                            {profileData.schoolId ? 'Select Class' : 'Select a school first'}
-                          </option>
-                          {schoolClasses
-                            .filter(sc => !profileData.schoolId || sc.school_id === profileData.schoolId)
-                            .map((schoolClass) => (
-                              <option key={schoolClass.id} value={schoolClass.id}>
-                                {schoolClass.name || `Grade ${schoolClass.grade} - ${schoolClass.section}`}
+                        {!showCustomSchoolClass ? (
+                          <>
+                            <select
+                              value={profileData.schoolClassId}
+                              onChange={(e) =>
+                                handleInstitutionChange("schoolClassId", e.target.value)
+                              }
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                              disabled={(!profileData.schoolId && !showCustomSchool && !customSchoolName) || !!profileData.universityId || showCustomUniversity || !!customUniversityName}
+                            >
+                              <option value="">
+                                {(profileData.schoolId || showCustomSchool || customSchoolName) ? 'Select Class' : 'Select a school first'}
                               </option>
-                            ))}
-                          {profileData.schoolId && (
-                            <option value="add_new" className="font-semibold text-blue-600">
-                              + Add New Class
-                            </option>
-                          )}
-                        </select>
-                        {!profileData.schoolId && (
-                          <p className="text-xs text-gray-500">Please select a school first</p>
+                              {schoolClasses
+                                .filter(sc => !profileData.schoolId || sc.school_id === profileData.schoolId)
+                                .map((schoolClass) => (
+                                  <option key={schoolClass.id} value={schoolClass.id}>
+                                    {schoolClass.name || `Grade ${schoolClass.grade} - ${schoolClass.section}`}
+                                  </option>
+                                ))}
+                              {(profileData.schoolId || showCustomSchool || customSchoolName) && !(profileData.universityId || showCustomUniversity || customUniversityName) && (
+                                <option value="add_new" className="font-semibold text-blue-600">
+                                  + Add Custom Class
+                                </option>
+                              )}
+                            </select>
+                            {(!profileData.schoolId && !showCustomSchool && !customSchoolName) && (
+                              <p className="text-xs text-gray-500">Please select a school first</p>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              type="text"
+                              value={customSchoolClassName}
+                              onChange={(e) => {
+                                const className = e.target.value;
+                                setCustomSchoolClassName(className);
+                                // Store in section field
+                                handleProfileChange("section", className);
+                                
+                                // Auto-extract and set grade from class name
+                                // e.g., "Grade 10-A" -> "Grade 10", "Class 12-B" -> "Grade 12"
+                                const gradeMatch = className.match(/(?:Grade|Class)\s*(\d+)/i);
+                                if (gradeMatch) {
+                                  const gradeNum = gradeMatch[1];
+                                  handleProfileChange("grade", `Grade ${gradeNum}`);
+                                }
+                              }}
+                              placeholder="Enter class/section (e.g., Grade 10-A)"
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowCustomSchoolClass(false);
+                                setCustomSchoolClassName('');
+                                handleProfileChange("section", '');
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              ← Back to dropdown
+                            </button>
+                          </>
                         )}
                       </div>
 
@@ -1270,30 +1385,74 @@ const Settings = () => {
                         <label className="text-sm font-semibold text-gray-700">
                           University
                         </label>
-                        <select
-                          value={profileData.universityId}
-                          onChange={(e) =>
-                            handleInstitutionChange("universityId", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-                          disabled={!!profileData.schoolId}
-                        >
-                          <option value="">
-                            {profileData.schoolId ? 'School selected - clear to use university' : 'Select University'}
-                          </option>
-                          {universities.map((uni) => (
-                            <option key={uni.id} value={uni.id}>
-                              {uni.name} {uni.code && `(${uni.code})`}
-                            </option>
-                          ))}
-                          {!profileData.schoolId && (
-                            <option value="add_new" className="font-semibold text-blue-600">
-                              + Add New University
-                            </option>
-                          )}
-                        </select>
-                        {profileData.schoolId && (
-                          <p className="text-xs text-gray-500">Clear school selection to use university</p>
+                        {!showCustomUniversity ? (
+                          <>
+                            <select
+                              value={profileData.universityId}
+                              onChange={(e) =>
+                                handleInstitutionChange("universityId", e.target.value)
+                              }
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                              disabled={!!profileData.schoolId || showCustomSchool || !!customSchoolName || !!profileData.schoolClassId || showCustomSchoolClass || !!customSchoolClassName}
+                            >
+                              <option value="">
+                                {(profileData.schoolId || showCustomSchool || customSchoolName || profileData.schoolClassId || showCustomSchoolClass || customSchoolClassName) ? 'School path selected - clear to use university' : 'Select University'}
+                              </option>
+                              {universities.map((uni) => (
+                                <option key={uni.id} value={uni.id}>
+                                  {uni.name} {uni.code && `(${uni.code})`}
+                                </option>
+                              ))}
+                              {!(profileData.schoolId || showCustomSchool || customSchoolName || profileData.schoolClassId || showCustomSchoolClass || customSchoolClassName) && (
+                                <option value="add_new" className="font-semibold text-blue-600">
+                                  + Add Custom University
+                                </option>
+                              )}
+                            </select>
+                            {(profileData.schoolId || showCustomSchool || customSchoolName || profileData.schoolClassId || showCustomSchoolClass || customSchoolClassName) && (
+                              <p className="text-xs text-gray-500">Clear school path to use university</p>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              type="text"
+                              value={customUniversityName}
+                              onChange={(e) => {
+                                const universityName = e.target.value;
+                                setCustomUniversityName(universityName);
+                                handleProfileChange("university", universityName);
+                                
+                                // Clear school path when custom university is entered
+                                if (universityName) {
+                                  setProfileData(prev => ({
+                                    ...prev,
+                                    schoolId: '',
+                                    schoolClassId: '',
+                                    college: '', // This field is used for custom school name
+                                    section: '', // This field is used for custom class name
+                                  }));
+                                  setShowCustomSchool(false);
+                                  setCustomSchoolName('');
+                                  setShowCustomSchoolClass(false);
+                                  setCustomSchoolClassName('');
+                                }
+                              }}
+                              placeholder="Enter your university name"
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowCustomUniversity(false);
+                                setCustomUniversityName('');
+                                handleProfileChange("university", '');
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              ← Back to dropdown
+                            </button>
+                          </>
                         )}
                       </div>
 
@@ -1302,32 +1461,74 @@ const Settings = () => {
                         <label className="text-sm font-semibold text-gray-700">
                           College
                         </label>
-                        <select
-                          value={profileData.universityCollegeId}
-                          onChange={(e) =>
-                            handleInstitutionChange("universityCollegeId", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-                          disabled={!profileData.universityId}
-                        >
-                          <option value="">
-                            {profileData.universityId ? 'Select College' : 'Select university first'}
-                          </option>
-                          {universityColleges
-                            .filter(uc => !profileData.universityId || uc.university_id === profileData.universityId)
-                            .map((uc) => (
-                              <option key={uc.id} value={uc.id}>
-                                {uc.name} {uc.code && `(${uc.code})`}
+                        {!showCustomCollege ? (
+                          <>
+                            <select
+                              value={profileData.universityCollegeId}
+                              onChange={(e) =>
+                                handleInstitutionChange("universityCollegeId", e.target.value)
+                              }
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                              disabled={(!profileData.universityId && !showCustomUniversity && !customUniversityName) || !!profileData.schoolId || showCustomSchool || !!customSchoolName}
+                            >
+                              <option value="">
+                                {(profileData.universityId || showCustomUniversity || customUniversityName) ? 'Select College' : 'Select university first'}
                               </option>
-                            ))}
-                          {profileData.universityId && (
-                            <option value="add_new" className="font-semibold text-blue-600">
-                              + Add New College
-                            </option>
-                          )}
-                        </select>
-                        {!profileData.universityId && (
-                          <p className="text-xs text-gray-500">Please select a university first</p>
+                              {universityColleges
+                                .filter(uc => !profileData.universityId || uc.university_id === profileData.universityId)
+                                .map((uc) => (
+                                  <option key={uc.id} value={uc.id}>
+                                    {uc.name} {uc.code && `(${uc.code})`}
+                                  </option>
+                                ))}
+                              {(profileData.universityId || showCustomUniversity || customUniversityName) && !(profileData.schoolId || showCustomSchool || customSchoolName) && (
+                                <option value="add_new" className="font-semibold text-blue-600">
+                                  + Add Custom College
+                                </option>
+                              )}
+                            </select>
+                            {(!profileData.universityId && !showCustomUniversity && !customUniversityName) && (
+                              <p className="text-xs text-gray-500">Please select a university first</p>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              type="text"
+                              value={customCollegeName}
+                              onChange={(e) => {
+                                const collegeName = e.target.value;
+                                setCustomCollegeName(collegeName);
+                                handleProfileChange("college", collegeName);
+                                
+                                // Clear school path when custom college is entered
+                                if (collegeName) {
+                                  setProfileData(prev => ({
+                                    ...prev,
+                                    schoolId: '',
+                                    schoolClassId: '',
+                                  }));
+                                  setShowCustomSchool(false);
+                                  setCustomSchoolName('');
+                                  setShowCustomSchoolClass(false);
+                                  setCustomSchoolClassName('');
+                                }
+                              }}
+                              placeholder="Enter your college name"
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowCustomCollege(false);
+                                setCustomCollegeName('');
+                                handleProfileChange("college", '');
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              ← Back to dropdown
+                            </button>
+                          </>
                         )}
                       </div>
 
@@ -1336,30 +1537,70 @@ const Settings = () => {
                         <label className="text-sm font-semibold text-gray-700">
                           Program
                         </label>
-                        <select
-                          value={profileData.programId}
-                          onChange={(e) =>
-                            handleInstitutionChange("programId", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-                          disabled={!profileData.universityCollegeId}
-                        >
-                          <option value="">
-                            {profileData.universityCollegeId ? 'Select Program' : 'Select college first'}
-                          </option>
-                          {programs.map((program) => (
-                            <option key={program.id} value={program.id}>
-                              {program.name} {program.degree_level && `(${program.degree_level})`}
-                            </option>
-                          ))}
-                          {profileData.universityCollegeId && (
-                            <option value="add_new" className="font-semibold text-blue-600">
-                              + Add New Program
-                            </option>
-                          )}
-                        </select>
-                        {!profileData.universityCollegeId && (
-                          <p className="text-xs text-gray-500">Please select a college first</p>
+                        {!showCustomProgram ? (
+                          <>
+                            <select
+                              value={profileData.programId}
+                              onChange={(e) =>
+                                handleInstitutionChange("programId", e.target.value)
+                              }
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                              disabled={(!profileData.universityCollegeId && !showCustomCollege && !customCollegeName) || !!profileData.schoolId || showCustomSchool || !!customSchoolName}
+                            >
+                              <option value="">
+                                {(profileData.universityCollegeId || showCustomCollege || customCollegeName) ? 'Select Program' : 'Select college first'}
+                              </option>
+                              {programs.map((program) => (
+                                <option key={program.id} value={program.id}>
+                                  {program.name} {program.degree_level && `(${program.degree_level})`}
+                                </option>
+                              ))}
+                              {(profileData.universityCollegeId || showCustomCollege || customCollegeName) && !(profileData.schoolId || showCustomSchool || customSchoolName) && (
+                                <option value="add_new" className="font-semibold text-blue-600">
+                                  + Add Custom Program
+                                </option>
+                              )}
+                            </select>
+                            {(!profileData.universityCollegeId && !showCustomCollege && !customCollegeName) && (
+                              <p className="text-xs text-gray-500">Please select a college first</p>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              type="text"
+                              value={customProgramName}
+                              onChange={(e) => {
+                                const programName = e.target.value;
+                                setCustomProgramName(programName);
+                                // Store in branch_field
+                                handleProfileChange("branch", programName);
+                                
+                                // Auto-set grade based on program name
+                                const lowerName = programName.toLowerCase();
+                                if (lowerName.includes('bachelor') || lowerName.includes('b.tech') || lowerName.includes('b.sc') || lowerName.includes('bca') || lowerName.includes('ug')) {
+                                  handleProfileChange("grade", "UG Year 1");
+                                } else if (lowerName.includes('master') || lowerName.includes('m.tech') || lowerName.includes('m.sc') || lowerName.includes('mca') || lowerName.includes('pg') || lowerName.includes('mba')) {
+                                  handleProfileChange("grade", "PG Year 1");
+                                } else if (lowerName.includes('diploma')) {
+                                  handleProfileChange("grade", "Diploma");
+                                }
+                              }}
+                              placeholder="Enter program name (e.g., B.Tech Computer Science)"
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowCustomProgram(false);
+                                setCustomProgramName('');
+                                handleProfileChange("branch", '');
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              ← Back to dropdown
+                            </button>
+                          </>
                         )}
                       </div>
 
@@ -1368,33 +1609,208 @@ const Settings = () => {
                         <label className="text-sm font-semibold text-gray-700">
                           Semester / Section
                         </label>
-                        <select
-                          value={profileData.programSectionId}
-                          onChange={(e) =>
-                            handleInstitutionChange("programSectionId", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-                          disabled={!profileData.programId}
-                        >
-                          <option value="">
-                            {profileData.programId ? 'Select Semester/Section' : 'Select program first'}
-                          </option>
-                          {programSections
-                            .filter(ps => !profileData.programId || ps.program_id === profileData.programId)
-                            .map((ps) => (
-                              <option key={ps.id} value={ps.id}>
-                                Semester {ps.semester} - Section {ps.section}
+                        {!showCustomSemester ? (
+                          <>
+                            <select
+                              value={profileData.programSectionId}
+                              onChange={(e) =>
+                                handleInstitutionChange("programSectionId", e.target.value)
+                              }
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                              disabled={!profileData.programId && !showCustomProgram}
+                            >
+                              <option value="">
+                                {profileData.programId || showCustomProgram ? 'Select Semester/Section' : 'Select program first'}
                               </option>
-                            ))}
-                          {profileData.programId && (
-                            <option value="add_new" className="font-semibold text-blue-600">
-                              + Add New Section
-                            </option>
-                          )}
-                        </select>
-                        {!profileData.programId && (
-                          <p className="text-xs text-gray-500">Please select a program first</p>
+                              {programSections
+                                .filter(ps => !profileData.programId || ps.program_id === profileData.programId)
+                                .map((ps) => (
+                                  <option key={ps.id} value={ps.id}>
+                                    Semester {ps.semester} - Section {ps.section}
+                                  </option>
+                                ))}
+                              {(profileData.programId || showCustomProgram) && (
+                                <option value="add_new" className="font-semibold text-blue-600">
+                                  + Add Custom Semester
+                                </option>
+                              )}
+                            </select>
+                            {!profileData.programId && !showCustomProgram && (
+                              <p className="text-xs text-gray-500">Please select a program first</p>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              type="text"
+                              value={customSemesterName}
+                              onChange={(e) => {
+                                const semesterText = e.target.value;
+                                setCustomSemesterName(semesterText);
+                                
+                                // Auto-extract semester number
+                                const semesterMatch = semesterText.match(/(\d+)/);
+                                if (semesterMatch) {
+                                  const semesterNum = parseInt(semesterMatch[1]);
+                                  
+                                  // Auto-update grade based on semester
+                                  // Semesters 1-2 = Year 1, 3-4 = Year 2, 5-6 = Year 3, 7-8 = Year 4
+                                  const year = Math.ceil(semesterNum / 2);
+                                  
+                                  // Check if it's UG or PG based on current grade or default to UG
+                                  const currentGrade = profileData.grade || '';
+                                  let newGrade = '';
+                                  
+                                  if (currentGrade.includes('PG') || semesterNum <= 4) {
+                                    // For PG programs (usually 2 years = 4 semesters)
+                                    if (semesterNum <= 2) {
+                                      newGrade = "PG Year 1";
+                                    } else {
+                                      newGrade = "PG Year 2";
+                                    }
+                                  } else {
+                                    // For UG programs (usually 4 years = 8 semesters)
+                                    newGrade = `UG Year ${Math.min(year, 4)}`;
+                                  }
+                                  
+                                  // Update both section, semester, and grade together
+                                  setProfileData(prev => ({
+                                    ...prev,
+                                    section: semesterText,
+                                    semester: semesterNum,
+                                    grade: newGrade,
+                                  }));
+                                }
+                              }}
+                              placeholder="Enter semester/section (e.g., Semester 3, 5th Sem)"
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowCustomSemester(false);
+                                setCustomSemesterName('');
+                                handleProfileChange("section", '');
+                                handleProfileChange("semester", null);
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              ← Back to dropdown
+                            </button>
+                          </>
                         )}
+                      </div>
+                    </div>
+
+                    {/* Academic Details Subsection - Added from Academic Information */}
+                    <div className="mt-8 pt-6 border-t border-slate-100">
+                      <h4 className="text-md font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <Briefcase className="w-4 h-4 text-blue-500" />
+                        Academic Details
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Registration Number */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            Registration Number
+                          </label>
+                          <input
+                            type="text"
+                            value={profileData.registrationNumber}
+                            onChange={(e) =>
+                              handleProfileChange(
+                                "registrationNumber",
+                                e.target.value
+                              )
+                            }
+                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            placeholder="Enter registration number"
+                          />
+                        </div>
+
+                        {/* Enrollment Number */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            Enrollment Number
+                          </label>
+                          <input
+                            type="text"
+                            value={profileData.enrollmentNumber}
+                            onChange={(e) =>
+                              handleProfileChange(
+                                "enrollmentNumber",
+                                e.target.value
+                              )
+                            }
+                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            placeholder="Enter enrollment number"
+                          />
+                        </div>
+
+                        {/* Current CGPA */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            Current CGPA
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="10"
+                            value={profileData.currentCgpa}
+                            onChange={(e) =>
+                              handleProfileChange("currentCgpa", e.target.value)
+                            }
+                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            placeholder="Enter current CGPA"
+                          />
+                        </div>
+
+                        {/* Grade */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            Grade/Class
+                          </label>
+                          <select
+                            value={profileData.grade}
+                            onChange={(e) =>
+                              handleProfileChange("grade", e.target.value)
+                            }
+                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          >
+                            <option value="">Select Grade/Class</option>
+                            <option value="Grade 6">Grade 6</option>
+                            <option value="Grade 7">Grade 7</option>
+                            <option value="Grade 8">Grade 8</option>
+                            <option value="Grade 9">Grade 9</option>
+                            <option value="Grade 10">Grade 10</option>
+                            <option value="Grade 11">Grade 11</option>
+                            <option value="Grade 12">Grade 12</option>
+                            <option value="Diploma">Diploma</option>
+                            <option value="UG Year 1">UG Year 1</option>
+                            <option value="UG Year 2">UG Year 2</option>
+                            <option value="UG Year 3">UG Year 3</option>
+                            <option value="UG Year 4">UG Year 4</option>
+                            <option value="PG Year 1">PG Year 1</option>
+                            <option value="PG Year 2">PG Year 2</option>
+                            <option value="PG">PG</option>
+                          </select>
+                        </div>
+
+                        {/* Grade Start Date */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            Grade Start Date
+                          </label>
+                          <input
+                            type="date"
+                            value={profileData.gradeStartDate}
+                            onChange={(e) =>
+                              handleProfileChange("gradeStartDate", e.target.value)
+                            }
+                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>

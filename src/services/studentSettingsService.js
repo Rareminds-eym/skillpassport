@@ -63,6 +63,7 @@ export const getStudentSettingsByEmail = async (email) => {
         program_id,
         program_section_id,
         semester,
+        section,
         expectedGraduationDate,
         enrollmentDate,
         user_id,
@@ -130,6 +131,7 @@ export const getStudentSettingsByEmail = async (email) => {
       programId: data.program_id || '',
       programSectionId: data.program_section_id || '',
       semester: data.semester || '',
+      section: data.section || '',
       enrollmentDate: data.enrollmentDate || '',
       expectedGraduationDate: data.expectedGraduationDate || '',
 
@@ -239,6 +241,7 @@ export const updateStudentSettings = async (email, updates) => {
       programId: 'program_id',
       programSectionId: 'program_section_id',
       semester: 'semester',
+      section: 'section',
       enrollmentDate: 'enrollmentDate',
       expectedGraduationDate: 'expectedGraduationDate',
       guardianName: 'guardianName',
