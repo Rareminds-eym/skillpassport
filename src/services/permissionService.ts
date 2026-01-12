@@ -120,13 +120,13 @@ class PermissionService {
       const permissions = await this.getUserPermissions();
       
       return {
-        canAddStudent: permissions['Student Management']?.includes('create') || false,
-        canEditProfile: permissions['Student Management']?.includes('update') || false,
+        canAddStudent: permissions['Students']?.includes('create') || false,
+        canEditProfile: permissions['Students']?.includes('edit') || false,
         canMarkAttendance: permissions['Classroom Management']?.includes('create') || false,
-        canEditAttendance: permissions['Classroom Management']?.includes('update') || false,
-        canTransferStudent: permissions['Student Management']?.includes('update') || false,
+        canEditAttendance: permissions['Classroom Management']?.includes('edit') || false,
+        canTransferStudent: permissions['Students']?.includes('edit') || false,
         canGenerateReport: permissions['Reports']?.includes('view') || false,
-        canChangeClassSection: permissions['Classroom Management']?.includes('update') || false
+        canChangeClassSection: permissions['Classroom Management']?.includes('edit') || false
       };
     } catch (error) {
       console.error('Error getting feature access:', error);
@@ -152,10 +152,10 @@ class PermissionService {
         return { allowed: false, reason: 'User not authenticated' };
       }
 
-      // For now, allow access if user has view permission for Student Management
+      // For now, allow access if user has view permission for Students
       // In the future, you could add logic to check if the user is specifically
       // assigned to this student (e.g., as their teacher or counselor)
-      const permissionCheck = await this.checkPermission('Student Management', 'view');
+      const permissionCheck = await this.checkPermission('Students', 'view');
       
       // You could add additional student-specific checks here:
       // - Check if educator is assigned to student's class

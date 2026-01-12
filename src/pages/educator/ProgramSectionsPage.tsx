@@ -551,7 +551,7 @@ const ProgramSectionsPage = () => {
   return (
     <div className="flex overflow-y-auto mb-4 flex-col h-screen">
       {/* Permission Debug Panel - Only in development */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* {process.env.NODE_ENV === 'development' && (
         <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
           <div className="flex">
             <div className="ml-3">
@@ -582,7 +582,7 @@ const ProgramSectionsPage = () => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
       <div className='p-4 sm:p-6 lg:p-8 mb-2'>
         <h1 className="text-xl md:text-3xl font-bold text-gray-900">Program Sections</h1>
         <p className="text-base md:text-lg mt-2 text-gray-600">Manage your assigned program sections and students.</p>
