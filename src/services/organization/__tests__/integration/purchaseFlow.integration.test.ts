@@ -25,8 +25,8 @@ const mockOrganization = {
 const mockPlan = {
   id: 'plan-123',
   name: 'Premium Plan',
-  price: 1000,
-  billing_cycle: 'monthly',
+  price_monthly: 1000,
+  price_yearly: 10000,
   features: ['feature1', 'feature2']
 };
 
@@ -86,7 +86,7 @@ describe('Purchase Flow Integration Tests', () => {
         };
       };
 
-      const pricing = calculatePricing(selectedPlan.price, seatCount);
+      const pricing = calculatePricing(selectedPlan.price_monthly, seatCount);
       
       // Verify pricing calculation
       expect(pricing.discountPercentage).toBe(10); // 50 seats = 10% discount

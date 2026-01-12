@@ -114,14 +114,27 @@ const UserManagement: React.FC = () => {
 
         // If not found, try organizations table (colleges table doesn't exist)
         if (!collegeId) {
-          const { data: orgData } = await supabase
+          // Try by admin_id first
+          const { data: orgByAdminId } = await supabase
             .from('organizations')
             .select('id')
             .eq('organization_type', 'college')
-            .or(`email.eq.${currentUser.email},admin_email.eq.${currentUser.email}`)
+            .eq('admin_id', currentUser.id)
             .maybeSingle();
           
-          collegeId = orgData?.id;
+          if (orgByAdminId?.id) {
+            collegeId = orgByAdminId.id;
+          } else {
+            // Try by email
+            const { data: orgByEmail } = await supabase
+              .from('organizations')
+              .select('id')
+              .eq('organization_type', 'college')
+              .eq('email', currentUser.email)
+              .maybeSingle();
+            
+            collegeId = orgByEmail?.id;
+          }
         }
 
         // If still not found, get first college from organizations

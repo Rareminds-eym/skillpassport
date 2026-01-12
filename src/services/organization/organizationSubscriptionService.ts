@@ -131,8 +131,9 @@ export class OrganizationSubscriptionService {
         throw new Error('Subscription plan not found');
       }
 
-      // 2. Calculate pricing
-      const pricing = calculateBulkPricing(plan.price, request.seatCount);
+      // 2. Calculate pricing - use price_monthly or price_yearly based on billing cycle
+      const basePrice = request.billingCycle === 'annual' ? plan.price_yearly : plan.price_monthly;
+      const pricing = calculateBulkPricing(basePrice, request.seatCount);
 
       // 3. Calculate subscription dates
       const startDate = new Date();
@@ -375,8 +376,9 @@ export class OrganizationSubscriptionService {
         throw new Error('Current subscription not found');
       }
 
-      // Recalculate pricing with new plan
-      const pricing = calculateBulkPricing(newPlan.price, current.totalSeats);
+      // Recalculate pricing with new plan - use price_monthly as default
+      const basePrice = newPlan.price_monthly || newPlan.price_yearly;
+      const pricing = calculateBulkPricing(basePrice, current.totalSeats);
 
       const { data, error } = await supabase
         .from('organization_subscriptions')
