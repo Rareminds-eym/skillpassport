@@ -4,10 +4,12 @@
  * Fetches and manages student grade information from the database.
  * Handles both school students and college students.
  * 
+ * OPTIMIZED: Single efficient query with all needed joins
+ * 
  * @module features/assessment/career-test/hooks/useStudentGrade
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../../../lib/supabaseClient';
 import { calculateMonthsInGrade, getGradeLevelFromGrade } from '../../utils/gradeUtils';
 import type { GradeLevel } from '../config/sections';
@@ -43,19 +45,27 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
   const [monthsInGrade, setMonthsInGrade] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Track if fetch is complete to avoid duplicate calls
+  const fetchComplete = useRef(false);
 
   const fetchStudentGrade = useCallback(async () => {
-    if (!userId) {
-      setLoading(false);
+    // Skip if no userId or already fetched
+    if (!userId || fetchComplete.current) {
+      if (!userId) setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('🚀 useStudentGrade: Fetching student data...');
+      const startTime = performance.now();
 
-      // First try to get student by user_id with school_class grade and program name joined
-      let { data: student, error: fetchError } = await supabase
+      // OPTIMIZED: Single query with OR condition to check both user_id and id
+      // Also fetch by email as fallback in the same query pattern
+      const { data: student, error: fetchError } = await supabase
         .from('students')
         .select(`
           id, 
@@ -69,30 +79,11 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
           school_classes:school_class_id(grade, academic_year), 
           program:program_id(name, code)
         `)
-        .eq('user_id', userId)
+        .or(`user_id.eq.${userId}${userEmail ? `,email.eq.${userEmail}` : ''}`)
         .maybeSingle();
-
-      // If not found by user_id, try by email
-      if (!student && userEmail) {
-        const result = await supabase
-          .from('students')
-          .select(`
-            id, 
-            grade, 
-            grade_start_date, 
-            school_class_id, 
-            school_id, 
-            university_college_id, 
-            program_id, 
-            course_name, 
-            school_classes:school_class_id(grade, academic_year), 
-            program:program_id(name, code)
-          `)
-          .eq('email', userEmail)
-          .maybeSingle();
-        student = result.data;
-        fetchError = result.error;
-      }
+      
+      const endTime = performance.now();
+      console.log(`✅ useStudentGrade: Query completed in ${Math.round(endTime - startTime)}ms`);
 
       if (fetchError) {
         console.error('Error fetching student grade:', fetchError);
@@ -138,6 +129,8 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
         setStudentGrade(effectiveGrade);
         setStudentSchoolClassId(student.school_class_id);
       }
+      
+      fetchComplete.current = true;
     } catch (err) {
       console.error('Error fetching student grade:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');

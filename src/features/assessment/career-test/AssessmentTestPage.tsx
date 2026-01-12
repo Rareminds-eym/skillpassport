@@ -271,22 +271,29 @@ const AssessmentTestPage: React.FC = () => {
   });
   
   // Check for existing in-progress attempt on mount
+  // OPTIMIZED: Start checking as soon as studentRecordId is available
   useEffect(() => {
     const checkExisting = async () => {
-      // Wait for both student grade and database hooks to finish loading
-      if (loadingStudentGrade || dbLoading) {
+      // If still loading student record, wait
+      if (dbLoading) {
         return;
       }
       
+      // If no student record found, proceed to grade selection immediately
       if (!studentRecordId) {
-        // No student record found, proceed to grade selection
+        console.log('🚀 No student record, skipping to grade selection');
         setCheckingExistingAttempt(false);
         flow.setCurrentScreen('grade_selection');
         return;
       }
       
       try {
+        console.log('🔍 Checking for in-progress attempt...');
+        const startTime = performance.now();
         const attempt = await checkInProgressAttempt();
+        const endTime = performance.now();
+        console.log(`✅ In-progress check completed in ${Math.round(endTime - startTime)}ms`);
+        
         if (attempt) {
           setPendingAttempt(attempt);
           setShowResumePrompt(true);
@@ -302,7 +309,7 @@ const AssessmentTestPage: React.FC = () => {
     };
     
     checkExisting();
-  }, [studentRecordId, loadingStudentGrade, dbLoading, checkInProgressAttempt]);
+  }, [studentRecordId, dbLoading, checkInProgressAttempt]);
   
   // Build sections when grade level, stream, or AI questions change
   useEffect(() => {
@@ -807,18 +814,18 @@ const AssessmentTestPage: React.FC = () => {
             </button>
             <button
               onClick={() => {
-                // Find knowledge section dynamically
-                const knowledgeIndex = sections.findIndex(s => s.id === 'knowledge');
-                if (knowledgeIndex >= 0) {
-                  skipToSection(knowledgeIndex);
+                // Find adaptive section dynamically (renamed from "Skip to Knowledge")
+                const adaptiveIndex = sections.findIndex(s => s.id === 'adaptive_aptitude' || s.id === 'knowledge');
+                if (adaptiveIndex >= 0) {
+                  skipToSection(adaptiveIndex);
                 } else {
-                  console.warn('❌ Knowledge section not found in sections:', sections.map(s => s.id));
+                  console.warn('❌ Adaptive/Knowledge section not found in sections:', sections.map(s => s.id));
                 }
               }}
               className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200"
               disabled={sections.length === 0}
             >
-              Skip to Knowledge
+              Skip to Adaptive
             </button>
           </div>
         </div>

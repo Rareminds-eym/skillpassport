@@ -669,7 +669,53 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
     // Determine if we should show program recommendations
     // Only show for: After 10 with 6+ months, After 12, College
     // DON'T show for: Grade 6-10 (middle, highschool), After 10 with < 6 months
+    // IMPORTANT: Use student's ACTUAL grade from database, not the assessment's grade_level
     const shouldShowProgramRecommendations = useMemo(() => {
+        // Get the student's actual grade from studentInfo (from database)
+        const actualGrade = studentInfo?.grade;
+        
+        // Parse the actual grade number
+        let actualGradeNum = null;
+        if (actualGrade) {
+            const match = actualGrade.toString().match(/\d+/);
+            if (match) {
+                actualGradeNum = parseInt(match[0], 10);
+            }
+        }
+        
+        console.log('shouldShowProgramRecommendations check:', {
+            gradeLevel,
+            actualGrade,
+            actualGradeNum,
+            monthsInGrade
+        });
+        
+        // If we have actual grade from database, use it for the decision
+        if (actualGradeNum !== null) {
+            // Grade 6-8 (middle school) - DON'T show
+            if (actualGradeNum >= 6 && actualGradeNum <= 8) {
+                console.log('Not showing recommendations: Middle school (Grade 6-8)');
+                return false;
+            }
+            // Grade 9-10 (high school) - DON'T show
+            if (actualGradeNum >= 9 && actualGradeNum <= 10) {
+                console.log('Not showing recommendations: High school (Grade 9-10)');
+                return false;
+            }
+            // Grade 11 (After 10th) - only show if 6+ months in grade
+            if (actualGradeNum === 11) {
+                const show = monthsInGrade !== null && monthsInGrade >= 6;
+                console.log(`Grade 11 with ${monthsInGrade} months: ${show ? 'showing' : 'not showing'} recommendations`);
+                return show;
+            }
+            // Grade 12 and above - always show
+            if (actualGradeNum >= 12) {
+                console.log('Showing recommendations: Grade 12+');
+                return true;
+            }
+        }
+        
+        // Fallback to gradeLevel from assessment if no actual grade
         // Middle school (6-8) - DON'T show
         if (gradeLevel === 'middle') {
             return false;
@@ -687,31 +733,51 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
             return true;
         }
         return false;
-    }, [gradeLevel, monthsInGrade]);
+    }, [gradeLevel, monthsInGrade, studentInfo?.grade]);
 
     // Calculate enhanced course recommendations with accurate match scores
     // Only calculate for grade levels that should show recommendations
+    // IMPORTANT: Use student's ACTUAL grade from database, not the assessment's grade_level
     const enhancedCourseRecommendations = useMemo(() => {
-        // Don't calculate for middle school or high school
-        if (gradeLevel === 'middle' || gradeLevel === 'highschool') {
-            return [];
+        // Get the student's actual grade from studentInfo (from database)
+        const actualGrade = studentInfo?.grade;
+        let actualGradeNum = null;
+        if (actualGrade) {
+            const match = actualGrade.toString().match(/\d+/);
+            if (match) {
+                actualGradeNum = parseInt(match[0], 10);
+            }
         }
         
-        // Don't calculate for after10 with < 6 months
-        if (gradeLevel === 'after10' && (monthsInGrade === null || monthsInGrade < 6)) {
-            return [];
+        // If we have actual grade, use it for the decision
+        if (actualGradeNum !== null) {
+            // Grade 6-10 - DON'T calculate
+            if (actualGradeNum >= 6 && actualGradeNum <= 10) {
+                return [];
+            }
+            // Grade 11 - only calculate if 6+ months
+            if (actualGradeNum === 11 && (monthsInGrade === null || monthsInGrade < 6)) {
+                return [];
+            }
+        } else {
+            // Fallback to gradeLevel from assessment
+            // Don't calculate for middle school or high school
+            if (gradeLevel === 'middle' || gradeLevel === 'highschool') {
+                return [];
+            }
+            // Don't calculate for after10 with < 6 months
+            if (gradeLevel === 'after10' && (monthsInGrade === null || monthsInGrade < 6)) {
+                return [];
+            }
         }
         
-        // For after12, college, and after10 with 6+ months - use DEGREE_PROGRAMS
-        if (gradeLevel === 'after12' || gradeLevel === 'college' || 
-            (gradeLevel === 'after10' && monthsInGrade !== null && monthsInGrade >= 6)) {
-            // Use degree programs from knowledge base for proper scoring
-            return calculateCourseMatchScores(
-                DEGREE_PROGRAMS,
-                results?.riasec?.scores || {},
-                studentAcademicData
-            );
-        }
+        // For eligible students - use DEGREE_PROGRAMS
+        // Use degree programs from knowledge base for proper scoring
+        return calculateCourseMatchScores(
+            DEGREE_PROGRAMS,
+            results?.riasec?.scores || {},
+            studentAcademicData
+        );
         
         return [];
     }, [gradeLevel, monthsInGrade, results, studentAcademicData]);
