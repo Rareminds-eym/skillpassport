@@ -566,6 +566,19 @@ const AssessmentTestPage: React.FC = () => {
   }, [sections, flow]);
   
   const skipToSection = useCallback((sectionIndex: number) => {
+    console.log(`🚀 skipToSection called: sectionIndex=${sectionIndex}, sections.length=${sections.length}`);
+    console.log(`📋 Available sections:`, sections.map((s, i) => `${i}: ${s.id}`));
+    
+    if (sections.length === 0) {
+      console.warn('❌ Cannot skip: sections array is empty');
+      return;
+    }
+    
+    if (sectionIndex >= sections.length) {
+      console.warn(`❌ Cannot skip to section ${sectionIndex}: only ${sections.length} sections available`);
+      return;
+    }
+    
     // Fill all previous sections with dummy answers
     sections.slice(0, sectionIndex).forEach(section => {
       section.questions?.forEach((question: any) => {
@@ -586,7 +599,7 @@ const AssessmentTestPage: React.FC = () => {
     
     // Jump to the target section
     flow.jumpToSection(sectionIndex);
-    console.log(`Test Mode: Skipped to section ${sectionIndex}`);
+    console.log(`✅ Test Mode: Skipped to section ${sectionIndex} (${sections[sectionIndex]?.title})`);
   }, [sections, flow]);
   
   // Get current question (handle adaptive sections)
@@ -778,14 +791,32 @@ const AssessmentTestPage: React.FC = () => {
               Auto-Fill All
             </button>
             <button
-              onClick={() => skipToSection(4)}
+              onClick={() => {
+                // Find aptitude section dynamically
+                const aptitudeIndex = sections.findIndex(s => s.id === 'aptitude' || s.id === 'hs_aptitude_sampling' || s.id === 'adaptive_aptitude');
+                if (aptitudeIndex >= 0) {
+                  skipToSection(aptitudeIndex);
+                } else {
+                  console.warn('❌ Aptitude section not found in sections:', sections.map(s => s.id));
+                }
+              }}
               className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200"
+              disabled={sections.length === 0}
             >
               Skip to Aptitude
             </button>
             <button
-              onClick={() => skipToSection(5)}
+              onClick={() => {
+                // Find knowledge section dynamically
+                const knowledgeIndex = sections.findIndex(s => s.id === 'knowledge');
+                if (knowledgeIndex >= 0) {
+                  skipToSection(knowledgeIndex);
+                } else {
+                  console.warn('❌ Knowledge section not found in sections:', sections.map(s => s.id));
+                }
+              }}
               className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200"
+              disabled={sections.length === 0}
             >
               Skip to Knowledge
             </button>

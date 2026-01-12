@@ -658,6 +658,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
         error,
         retrying,
         gradeLevel,
+        monthsInGrade,
         studentInfo,
         studentAcademicData,
         handleRetry,
@@ -665,11 +666,45 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
         navigate
     } = useAssessmentResults();
 
+    // Determine if we should show program recommendations
+    // Only show for: After 10 with 6+ months, After 12, College
+    // DON'T show for: Grade 6-10 (middle, highschool), After 10 with < 6 months
+    const shouldShowProgramRecommendations = useMemo(() => {
+        // Middle school (6-8) - DON'T show
+        if (gradeLevel === 'middle') {
+            return false;
+        }
+        // High school (9-10) - DON'T show
+        if (gradeLevel === 'highschool') {
+            return false;
+        }
+        // After 10 (11th grade) - only show if 6+ months in grade
+        if (gradeLevel === 'after10') {
+            return monthsInGrade !== null && monthsInGrade >= 6;
+        }
+        // After 12 and college - always show
+        if (gradeLevel === 'after12' || gradeLevel === 'college') {
+            return true;
+        }
+        return false;
+    }, [gradeLevel, monthsInGrade]);
+
     // Calculate enhanced course recommendations with accurate match scores
+    // Only calculate for grade levels that should show recommendations
     const enhancedCourseRecommendations = useMemo(() => {
-        // For after12 students, use DEGREE_PROGRAMS (B.Tech, BBA, etc.) instead of platform courses
-        // This ensures students see proper degree program recommendations, not training courses
-        if (gradeLevel === 'after12') {
+        // Don't calculate for middle school or high school
+        if (gradeLevel === 'middle' || gradeLevel === 'highschool') {
+            return [];
+        }
+        
+        // Don't calculate for after10 with < 6 months
+        if (gradeLevel === 'after10' && (monthsInGrade === null || monthsInGrade < 6)) {
+            return [];
+        }
+        
+        // For after12, college, and after10 with 6+ months - use DEGREE_PROGRAMS
+        if (gradeLevel === 'after12' || gradeLevel === 'college' || 
+            (gradeLevel === 'after10' && monthsInGrade !== null && monthsInGrade >= 6)) {
             // Use degree programs from knowledge base for proper scoring
             return calculateCourseMatchScores(
                 DEGREE_PROGRAMS,
@@ -678,29 +713,8 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
             );
         }
         
-        // For other grade levels (middle, highschool), use AI-returned platform courses
-        // Use centralized utility to normalize course recommendations
-        // This handles both platformCourses (new) and courseRecommendations (legacy) field names
-        const normalizedCourses = normalizeCourseRecommendations(results);
-        if (normalizedCourses.length === 0) return [];
-        
-        // Transform to format expected by calculateCourseMatchScores
-        const transformedCourses = normalizedCourses.map(course => ({
-            courseId: course.courseId,
-            courseName: course.title || course.courseName,
-            category: course.category || 'General',
-            matchScore: course.matchScore || course.relevanceScore || 70,
-            reasons: course.matchReasons || course.reasons || [],
-            ...course
-        }));
-        
-        // Use the powerful matching engine to calculate accurate scores
-        return calculateCourseMatchScores(
-            transformedCourses,
-            results?.riasec?.scores || {},
-            studentAcademicData
-        );
-    }, [gradeLevel, results, studentAcademicData]);
+        return [];
+    }, [gradeLevel, monthsInGrade, results, studentAcademicData]);
 
     // Calculate stream recommendations for after 10th students using academic data
     const enhancedStreamRecommendation = useMemo(() => {
@@ -1276,7 +1290,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                     )}
 
                                     {/* After 12th: Course Recommendations */}
-                                    {gradeLevel === 'after12' && enhancedCourseRecommendations && enhancedCourseRecommendations.length > 0 && (
+                                    {shouldShowProgramRecommendations && enhancedCourseRecommendations && enhancedCourseRecommendations.length > 0 && (
                                         <div>
                                             <div className="flex items-center gap-3 mb-6">
                                                 <div className="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center shadow-lg">
@@ -1380,8 +1394,8 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                         </div>
                                     )}
 
-                                    {/* Fallback for After 12th when no course data */}
-                                    {gradeLevel === 'after12' && (!enhancedCourseRecommendations || enhancedCourseRecommendations.length === 0) && (
+                                    {/* Fallback when no course data but should show recommendations */}
+                                    {shouldShowProgramRecommendations && (!enhancedCourseRecommendations || enhancedCourseRecommendations.length === 0) && (
                                         <div className="bg-slate-50 rounded-xl p-8 text-center border border-slate-200">
                                             <GraduationCap className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                                             <h3 className="text-lg font-semibold text-slate-700 mb-2">Program Recommendations Loading...</h3>
