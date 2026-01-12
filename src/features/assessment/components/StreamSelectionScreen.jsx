@@ -26,6 +26,7 @@ import { STREAMS_BY_CATEGORY, STREAM_CATEGORIES } from '../constants/config';
  * Get category label from ID
  */
 const getCategoryLabel = (categoryId) => {
+  if (!categoryId) return 'Selected';
   const category = STREAM_CATEGORIES.find(c => c.id === categoryId);
   return category?.label || categoryId;
 };
@@ -89,8 +90,8 @@ export const StreamSelectionScreen = ({
   isLoading = false,
   studentProgram = null,
 }) => {
-  // Get streams for selected category
-  const streams = STREAMS_BY_CATEGORY[selectedCategory] || [];
+  // Get streams for selected category (handle null/undefined)
+  const streams = selectedCategory ? (STREAMS_BY_CATEGORY[selectedCategory] || []) : [];
   const categoryLabel = getCategoryLabel(selectedCategory);
 
   // Check if a stream matches student's program (for recommendations)

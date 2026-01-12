@@ -21,6 +21,7 @@ export {
 // Components
 export { default as RiasecIcon } from './RiasecIcon';
 export { default as PrintStyles } from './PrintStyles';
+export { default as PrintPage } from './PrintPage';
 export {
   default as Watermarks,
   PrintFooter,

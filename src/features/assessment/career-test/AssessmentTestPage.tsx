@@ -20,14 +20,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 
 // Auth & Database
+// @ts-ignore - JS file without type declarations
 import { useAuth } from '../../../context/AuthContext';
+// @ts-ignore - JS file without type declarations
 import { useAssessment } from '../../../hooks/useAssessment';
 import { useAdaptiveAptitude } from '../../../hooks/useAdaptiveAptitude';
 // @ts-ignore - JS service
 import * as assessmentService from '../../../services/assessmentService';
 
 // Hooks
-import { useAssessmentFlow, type FlowScreen } from './hooks/useAssessmentFlow';
+import { useAssessmentFlow } from './hooks/useAssessmentFlow';
 import { useStudentGrade } from './hooks/useStudentGrade';
 import { useAIQuestions } from './hooks/useAIQuestions';
 import { useAssessmentSubmission } from './hooks/useAssessmentSubmission';
@@ -38,7 +40,6 @@ import {
   type GradeLevel,
   RESPONSE_SCALES 
 } from './config/sections';
-import { STREAMS_BY_CATEGORY } from './config/streams';
 
 // Components
 import { QuestionRenderer } from './components/questions/QuestionRenderer';
@@ -47,7 +48,6 @@ import { SectionIntroScreen } from './components/screens/SectionIntroScreen';
 import { SectionCompleteScreen } from './components/screens/SectionCompleteScreen';
 import { LoadingScreen } from './components/screens/LoadingScreen';
 import { ProgressHeader } from './components/layout/ProgressHeader';
-import { TestModeControls } from './components/layout/TestModeControls';
 
 // Shared Components (from parent assessment feature)
 // @ts-ignore - JSX components
@@ -63,9 +63,6 @@ import {
 import {
   getGradeLevelFromGrade,
   getAdaptiveGradeLevel,
-  formatTime,
-  formatElapsedTime,
-  TIMERS,
 } from '../../assessment';
 
 // Question Data
@@ -85,17 +82,14 @@ import {
   highSchoolAptitudeQuestions,
 } from '../../assessment/data/questions';
 
-// @ts-ignore - JS service
-import { loadCareerAssessmentQuestions, normalizeStreamId } from '../../../services/careerAssessmentAIService';
-
 /**
  * Build sections with questions for a given grade level
  */
 const buildSectionsWithQuestions = (
   gradeLevel: GradeLevel,
-  studentStream: string | null,
+  _studentStream: string | null,
   aiQuestions: any,
-  selectedCategory: string | null
+  _selectedCategory: string | null
 ) => {
   const sectionConfigs = getSectionsForGrade(gradeLevel);
   
@@ -202,7 +196,6 @@ const AssessmentTestPage: React.FC = () => {
     saveResponse: dbSaveResponse,
     updateProgress: dbUpdateProgress,
     checkInProgressAttempt,
-    completeAssessment: dbCompleteAssessment,
     studentRecordId
   } = useAssessment();
   
@@ -216,11 +209,6 @@ const AssessmentTestPage: React.FC = () => {
   const [assessmentStarted, setAssessmentStarted] = useState(false);
   const [adaptiveAptitudeAnswer, setAdaptiveAptitudeAnswer] = useState<string | null>(null);
   
-  // AI Questions state
-  const [aiQuestions, setAiQuestions] = useState<any>(null);
-  const [questionsLoading, setQuestionsLoading] = useState(false);
-  const [questionsError, setQuestionsError] = useState<string | null>(null);
-  
   // Flow state machine
   const flow = useAssessmentFlow({
     sections,
@@ -231,9 +219,22 @@ const AssessmentTestPage: React.FC = () => {
       }
     },
     onAnswerChange: (questionId, answer) => {
+      // Only save to database if:
+      // 1. Database mode is enabled
+      // 2. We have an active attempt
+      // 3. The question ID is a valid UUID (AI-generated questions have UUIDs, hardcoded don't)
       if (useDatabase && currentAttempt?.id) {
         const [sectionId, qId] = questionId.split('_');
-        dbSaveResponse(sectionId, qId, answer);
+        
+        // Check if qId is a valid UUID (36 chars with dashes: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(qId);
+        
+        if (isUUID) {
+          dbSaveResponse(sectionId, qId, answer);
+        } else {
+          // For non-UUID questions (hardcoded), just log and skip database save
+          console.log(`Skipping DB save for non-UUID question: ${questionId}`);
+        }
       }
     }
   });
@@ -241,10 +242,22 @@ const AssessmentTestPage: React.FC = () => {
   // Submission hook
   const submission = useAssessmentSubmission();
   
+  // AI Questions Hook - loads aptitude and knowledge questions for after10/after12/college
+  const {
+    aiQuestions,
+    loading: questionsLoading,
+    error: questionsError
+  } = useAIQuestions({
+    gradeLevel: flow.gradeLevel,
+    studentStream: flow.studentStream,
+    studentId: studentId || null,
+    attemptId: currentAttempt?.id || null
+  });
+  
   // Adaptive Aptitude Hook
   const adaptiveAptitude = useAdaptiveAptitude({
     studentId: studentId || '',
-    gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || 'after12'),
+    gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
     onTestComplete: (testResults) => {
       console.log('✅ Adaptive aptitude test completed:', testResults);
       flow.setAnswer('adaptive_aptitude_results', testResults);
@@ -259,8 +272,15 @@ const AssessmentTestPage: React.FC = () => {
   // Check for existing in-progress attempt on mount
   useEffect(() => {
     const checkExisting = async () => {
+      // Wait for both student grade and database hooks to finish loading
+      if (loadingStudentGrade || dbLoading) {
+        return;
+      }
+      
       if (!studentRecordId) {
+        // No student record found, proceed to grade selection
         setCheckingExistingAttempt(false);
+        flow.setCurrentScreen('grade_selection');
         return;
       }
       
@@ -280,12 +300,10 @@ const AssessmentTestPage: React.FC = () => {
       }
     };
     
-    if (!loadingStudentGrade) {
-      checkExisting();
-    }
-  }, [studentRecordId, loadingStudentGrade, checkInProgressAttempt]);
+    checkExisting();
+  }, [studentRecordId, loadingStudentGrade, dbLoading, checkInProgressAttempt]);
   
-  // Build sections when grade level or stream changes
+  // Build sections when grade level, stream, or AI questions change
   useEffect(() => {
     if (flow.gradeLevel && (flow.studentStream || !['after10', 'after12', 'college'].includes(flow.gradeLevel))) {
       const builtSections = buildSectionsWithQuestions(
@@ -297,31 +315,6 @@ const AssessmentTestPage: React.FC = () => {
       setSections(builtSections);
     }
   }, [flow.gradeLevel, flow.studentStream, aiQuestions, flow.selectedCategory]);
-  
-  // Load AI questions when stream is selected (for after10/after12/college)
-  useEffect(() => {
-    const loadAIQuestions = async () => {
-      if (!flow.studentStream || !['after10', 'after12', 'college'].includes(flow.gradeLevel || '')) {
-        return;
-      }
-      
-      setQuestionsLoading(true);
-      setQuestionsError(null);
-      
-      try {
-        const normalizedStream = normalizeStreamId(flow.studentStream);
-        const questions = await loadCareerAssessmentQuestions(normalizedStream, studentId);
-        setAiQuestions(questions);
-      } catch (err: any) {
-        console.error('Error loading AI questions:', err);
-        setQuestionsError(err.message || 'Failed to load questions');
-      } finally {
-        setQuestionsLoading(false);
-      }
-    };
-    
-    loadAIQuestions();
-  }, [flow.studentStream, flow.gradeLevel, studentId]);
   
   // Timer effects
   useEffect(() => {
@@ -385,7 +378,7 @@ const AssessmentTestPage: React.FC = () => {
   
   const handleCategorySelect = useCallback((category: string) => {
     flow.setSelectedCategory(category);
-    flow.setCurrentScreen('stream_selection' as FlowScreen);
+    flow.setCurrentScreen('stream_selection');
   }, [flow]);
   
   const handleStreamSelect = useCallback(async (stream: string) => {
@@ -460,7 +453,7 @@ const AssessmentTestPage: React.FC = () => {
     }
     
     // Initialize adaptive test
-    if (currentSection?.isAdaptive && !adaptiveAptitude.isActive) {
+    if (currentSection?.isAdaptive && !adaptiveAptitude.session) {
       adaptiveAptitude.startTest();
     }
     
@@ -473,7 +466,7 @@ const AssessmentTestPage: React.FC = () => {
     // Handle adaptive section
     if (currentSection?.isAdaptive) {
       if (adaptiveAptitudeAnswer !== null) {
-        adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer);
+        adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer as 'A' | 'B' | 'C' | 'D');
         setAdaptiveAptitudeAnswer(null);
       }
       return;
@@ -538,7 +531,7 @@ const AssessmentTestPage: React.FC = () => {
   }, [sections, flow]);
   
   const skipToSection = useCallback((sectionIndex: number) => {
-    // Fill all previous sections
+    // Fill all previous sections with dummy answers
     sections.slice(0, sectionIndex).forEach(section => {
       section.questions?.forEach((question: any) => {
         const questionId = `${section.id}_${question.id}`;
@@ -556,8 +549,8 @@ const AssessmentTestPage: React.FC = () => {
       });
     });
     
-    // Jump to section
-    // Note: This requires adding a setCurrentSectionIndex to the flow hook
+    // Jump to the target section
+    flow.jumpToSection(sectionIndex);
     console.log(`Test Mode: Skipped to section ${sectionIndex}`);
   }, [sections, flow]);
   
@@ -592,8 +585,22 @@ const AssessmentTestPage: React.FC = () => {
     return true;
   }, [currentSection, adaptiveAptitudeAnswer, flow.answers, questionId, currentQuestion]);
   
-  // Loading state
+  // Loading state - add debug logging
   const showLoading = checkingExistingAttempt || questionsLoading || (!assessmentStarted && dbLoading);
+  
+  // Debug: Log loading states
+  if (showLoading) {
+    console.log('🔄 Loading states:', {
+      checkingExistingAttempt,
+      questionsLoading,
+      assessmentStarted,
+      dbLoading,
+      loadingStudentGrade,
+      studentRecordId,
+      currentScreen: flow.currentScreen
+    });
+  }
+  
   if (showLoading) {
     return <LoadingScreen message="Loading assessment..." />;
   }
@@ -663,15 +670,14 @@ const AssessmentTestPage: React.FC = () => {
   }
   
   // Stream Selection
-  if (flow.currentScreen === 'stream_selection' as FlowScreen) {
-    const streams = flow.selectedCategory ? STREAMS_BY_CATEGORY[flow.selectedCategory] || [] : [];
-    
+  if (flow.currentScreen === 'stream_selection') {
     return (
       <StreamSelectionScreen
         onStreamSelect={handleStreamSelect}
         onBack={() => flow.setCurrentScreen('category_selection')}
-        streams={streams}
-        category={flow.selectedCategory}
+        selectedCategory={flow.selectedCategory}
+        gradeLevel={flow.gradeLevel}
+        studentProgram={studentProgram}
       />
     );
   }

@@ -16,6 +16,7 @@ export type FlowScreen =
   | 'resume_prompt'
   | 'grade_selection'
   | 'category_selection'
+  | 'stream_selection'
   | 'section_intro'
   | 'question'
   | 'section_complete'
@@ -88,6 +89,7 @@ interface UseAssessmentFlowResult {
   startSection: () => void;
   completeSection: () => void;
   goToNextSection: () => void;
+  jumpToSection: (sectionIndex: number) => void;
   setTimeRemaining: (time: number | null) => void;
   setElapsedTime: (time: number) => void;
   setAptitudeQuestionTimer: (time: number) => void;
@@ -243,6 +245,17 @@ export const useAssessmentFlow = ({
     }
   }, [currentSectionIndex, sections.length]);
 
+  const jumpToSection = useCallback((sectionIndex: number) => {
+    if (sectionIndex >= 0 && sectionIndex < sections.length) {
+      setCurrentSectionIndex(sectionIndex);
+      setCurrentQuestionIndex(0);
+      setTimeRemaining(null);
+      setElapsedTime(0);
+      setShowSectionIntro(true);
+      setShowSectionComplete(false);
+    }
+  }, [sections.length]);
+
   const resetFlow = useCallback(() => {
     setCurrentScreen('loading');
     setCurrentSectionIndex(0);
@@ -306,6 +319,7 @@ export const useAssessmentFlow = ({
     startSection,
     completeSection,
     goToNextSection,
+    jumpToSection,
     setTimeRemaining,
     setElapsedTime,
     setAptitudeQuestionTimer,

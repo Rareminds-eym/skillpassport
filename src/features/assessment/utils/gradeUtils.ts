@@ -55,7 +55,7 @@ export const getGradeLevelFromNumber = (gradeNum: number): GradeLevel | null => 
 /**
  * Map UI grade level to adaptive aptitude grade level
  */
-export const getAdaptiveGradeLevel = (gradeLevel: GradeLevel | null): string => {
+export const getAdaptiveGradeLevel = (gradeLevel: GradeLevel | null): 'middle_school' | 'high_school' | 'higher_secondary' => {
   switch (gradeLevel) {
     case 'highschool':
     case 'higher_secondary':
