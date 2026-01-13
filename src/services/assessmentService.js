@@ -484,30 +484,83 @@ export const getAttemptWithResults = async (attemptId) => {
 
 /**
  * Get the latest completed assessment result for a student
- * @param {string} userId - Student's user_id (from auth)
+ * @param {string} studentIdOrUserId - Student's ID from students table OR user_id from auth
+ * @returns {object|null} Latest assessment result, or null if none found
  */
-export const getLatestResult = async (userId) => {
-  // First, get the student's ID from their user_id
-  const { data: student, error: studentError } = await supabase
-    .from('students')
-    .select('id')
-    .eq('user_id', userId)
-    .maybeSingle();
+export const getLatestResult = async (studentIdOrUserId) => {
+  if (!studentIdOrUserId) {
+    console.warn('getLatestResult: No student ID provided');
+    return null;
+  }
 
-  if (studentError) throw studentError;
-  if (!student) return null; // No student record found
-
-  // Now get the latest result using the student's ID
-  const { data, error } = await supabase
+  // Try direct lookup first (assuming it's student.id)
+  let { data, error } = await supabase
     .from('personal_assessment_results')
     .select('*')
-    .eq('student_id', student.id)
+    .eq('student_id', studentIdOrUserId)
+    .eq('status', 'completed')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (error) throw error;
-  return data;
+  if (error) {
+    console.error('Error fetching latest result:', error);
+    throw error;
+  }
+
+  // If found, return it
+  if (data) {
+    console.log('✅ Found assessment result (direct lookup)');
+    return data;
+  }
+
+  // If not found, try looking up by user_id (in case we were passed auth.uid())
+  console.log('🔄 No direct match, trying user_id lookup...');
+  
+  try {
+    // Get student.id from user_id
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('id')
+      .eq('user_id', studentIdOrUserId)
+      .maybeSingle();
+
+    if (studentError) {
+      console.warn('Error looking up student by user_id:', studentError);
+      return null;
+    }
+
+    if (!student) {
+      console.warn('No student record found for user_id:', studentIdOrUserId);
+      return null;
+    }
+
+    // Now try again with the correct student.id
+    const { data: resultData, error: resultError } = await supabase
+      .from('personal_assessment_results')
+      .select('*')
+      .eq('student_id', student.id)
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (resultError) {
+      console.error('Error fetching result by student.id:', resultError);
+      return null;
+    }
+
+    if (resultData) {
+      console.log('✅ Found assessment result (via user_id lookup)');
+    } else {
+      console.log('❌ No completed assessment result found for this student');
+    }
+
+    return resultData;
+  } catch (err) {
+    console.error('Error in user_id fallback lookup:', err);
+    return null;
+  }
 };
 
 /**
@@ -558,24 +611,91 @@ export const canTakeAssessment = async (studentId, gradeLevel = null) => {
 
 /**
  * Check if student has an in-progress attempt
- * @param {string} studentId - Student's user_id
+ * @param {string} studentIdOrUserId - Student's ID from students table OR user_id from auth
+ * @returns {object|null} In-progress attempt with responses, or null if none found
  */
-export const getInProgressAttempt = async (studentId) => {
-  const { data, error } = await supabase
+export const getInProgressAttempt = async (studentIdOrUserId) => {
+  if (!studentIdOrUserId) {
+    console.warn('getInProgressAttempt: No student ID provided');
+    return null;
+  }
+
+  // Try direct lookup first (assuming it's student.id)
+  let { data, error } = await supabase
     .from('personal_assessment_attempts')
     .select(`
       *,
       stream:personal_assessment_streams(*),
       responses:personal_assessment_responses(*)
     `)
-    .eq('student_id', studentId)
+    .eq('student_id', studentIdOrUserId)
     .eq('status', 'in_progress')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (error) throw error;
-  return data;
+  if (error) {
+    console.error('Error fetching in-progress attempt:', error);
+    throw error;
+  }
+
+  // If found, return it
+  if (data) {
+    console.log('✅ Found in-progress attempt (direct lookup):', data.id);
+    return data;
+  }
+
+  // If not found, try looking up by user_id (in case we were passed auth.uid())
+  console.log('🔄 No direct match, trying user_id lookup...');
+  
+  try {
+    // Get student.id from user_id
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('id')
+      .eq('user_id', studentIdOrUserId)
+      .maybeSingle();
+
+    if (studentError) {
+      console.warn('Error looking up student by user_id:', studentError);
+      return null;
+    }
+
+    if (!student) {
+      console.warn('No student record found for user_id:', studentIdOrUserId);
+      return null;
+    }
+
+    // Now try again with the correct student.id
+    const { data: attemptData, error: attemptError } = await supabase
+      .from('personal_assessment_attempts')
+      .select(`
+        *,
+        stream:personal_assessment_streams(*),
+        responses:personal_assessment_responses(*)
+      `)
+      .eq('student_id', student.id)
+      .eq('status', 'in_progress')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (attemptError) {
+      console.error('Error fetching attempt by student.id:', attemptError);
+      return null;
+    }
+
+    if (attemptData) {
+      console.log('✅ Found in-progress attempt (via user_id lookup):', attemptData.id);
+    } else {
+      console.log('❌ No in-progress attempt found for this student');
+    }
+
+    return attemptData;
+  } catch (err) {
+    console.error('Error in user_id fallback lookup:', err);
+    return null;
+  }
 };
 
 /**
