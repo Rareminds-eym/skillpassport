@@ -87,11 +87,16 @@ const Sidebar: React.FC<SidebarProps> = ({
       title: "Learning & Evaluation",
       key: "learning",
       items: [
-        {
-          name: "Assignments",
-          path: "/educator/assignments",
-          icon: ClipboardDocumentListIcon,
-        },
+        // {
+        //   name: "Assignments",
+        //   path: "/educator/assignments",
+        //   icon: ClipboardDocumentListIcon,
+        // },
+        // Show different navigation based on educator type
+        ...(educatorType === 'college' 
+          ? [{ name: "College Assignments", path: "/educator/college-assignments", icon: AcademicCapIcon }]
+          : [{ name: "Assignments", path: "/educator/assignments", icon: AcademicCapIcon }]
+        ),
         {
           name: "Mentor Notes",
           path: "/educator/mentornotes",
