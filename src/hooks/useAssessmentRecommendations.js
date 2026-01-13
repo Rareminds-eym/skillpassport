@@ -2,9 +2,10 @@
  * Hook to fetch and process assessment-based training recommendations
  */
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
 import { getLatestResult, getInProgressAttempt } from '../services/assessmentService';
 
-export const useAssessmentRecommendations = (studentId, enabled = true) => {
+export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) => {
   const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,7 +14,8 @@ export const useAssessmentRecommendations = (studentId, enabled = true) => {
   const [inProgressAttempt, setInProgressAttempt] = useState(null);
 
   useEffect(() => {
-    if (!studentId || !enabled) {
+    if (!studentIdOrUserId || !enabled) {
+      console.log('⏸️ useAssessmentRecommendations: Skipping (studentId:', studentIdOrUserId, 'enabled:', enabled, ')');
       setLoading(false);
       return;
     }
@@ -23,24 +25,35 @@ export const useAssessmentRecommendations = (studentId, enabled = true) => {
         setLoading(true);
         setError(null);
 
+        console.log('🔍 useAssessmentRecommendations: Checking for student:', studentIdOrUserId);
+        console.log('🔍 Type of studentIdOrUserId:', typeof studentIdOrUserId);
+
         // Check for in-progress assessment first
+        // getInProgressAttempt expects student.id (from students table)
         try {
-          const inProgress = await getInProgressAttempt(studentId);
+          console.log('🔍 Calling getInProgressAttempt with studentId:', studentIdOrUserId);
+          const inProgress = await getInProgressAttempt(studentIdOrUserId);
+          console.log('📊 getInProgressAttempt result:', inProgress);
+          
           if (inProgress) {
+            console.log('✅ Found in-progress attempt:', inProgress.id);
             setHasInProgressAssessment(true);
             setInProgressAttempt(inProgress);
           } else {
+            console.log('❌ No in-progress attempt found');
             setHasInProgressAssessment(false);
             setInProgressAttempt(null);
           }
         } catch (err) {
-          console.warn('Error checking in-progress assessment:', err);
+          console.error('❌ Error checking in-progress assessment:', err);
           setHasInProgressAssessment(false);
         }
 
-        const result = await getLatestResult(studentId);
+        // getLatestResult can handle both student.id and user.id
+        let result = await getLatestResult(studentIdOrUserId);
         
         if (!result) {
+          console.log('❌ No assessment result found');
           setRecommendations(null);
           setHasCompletedAssessment(false);
           setLoading(false);
@@ -116,7 +129,7 @@ export const useAssessmentRecommendations = (studentId, enabled = true) => {
     };
 
     fetchRecommendations();
-  }, [studentId, enabled]);
+  }, [studentIdOrUserId, enabled]);
 
   return {
     recommendations,

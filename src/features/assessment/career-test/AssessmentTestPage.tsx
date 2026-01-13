@@ -239,6 +239,10 @@ const AssessmentTestPage: React.FC = () => {
           // For non-UUID questions (hardcoded), just log and skip database save
           console.log(`Skipping DB save for non-UUID question: ${questionId}`);
         }
+        
+        // Update progress (current position) after every answer
+        // This ensures we can resume from the exact question if user navigates away
+        dbUpdateProgress(flow.currentSectionIndex, flow.currentQuestionIndex, flow.sectionTimings);
       }
     }
   });
@@ -519,17 +523,30 @@ const AssessmentTestPage: React.FC = () => {
     flow.setGradeLevel(pendingAttempt.grade_level as GradeLevel);
     flow.setStudentStream(pendingAttempt.stream_id);
     
-    // Restore progress
-    if (pendingAttempt.progress) {
-      // Restore answers
-      if (pendingAttempt.restoredResponses) {
-        Object.entries(pendingAttempt.restoredResponses).forEach(([key, value]) => {
-          flow.setAnswer(key, value);
-        });
-      }
+    // Restore answers
+    if (pendingAttempt.restoredResponses) {
+      Object.entries(pendingAttempt.restoredResponses).forEach(([key, value]) => {
+        flow.setAnswer(key, value);
+      });
     }
     
-    flow.setCurrentScreen('section_intro');
+    // Restore section and question indices from database columns
+    const sectionIndex = pendingAttempt.current_section_index ?? 0;
+    const questionIndex = pendingAttempt.current_question_index ?? 0;
+    
+    console.log('📍 Resuming from section:', sectionIndex, 'question:', questionIndex);
+    
+    // Restore position using the newly exposed setters
+    flow.setCurrentSectionIndex(sectionIndex);
+    flow.setCurrentQuestionIndex(questionIndex);
+    
+    // If we're in the middle of a section, skip the intro
+    if (questionIndex > 0) {
+      flow.setShowSectionIntro(false);
+      flow.setCurrentScreen('assessment');
+    } else {
+      flow.setCurrentScreen('section_intro');
+    }
   }, [pendingAttempt, flow]);
   
   const handleStartNewAssessment = useCallback(async () => {
@@ -901,6 +918,53 @@ const AssessmentTestPage: React.FC = () => {
               disabled={sections.length === 0}
             >
               Skip to Adaptive
+            </button>
+            <button
+              onClick={() => {
+                console.log('🎯 Submit button clicked');
+                
+                if (sections.length === 0) {
+                  console.warn('❌ Cannot submit: sections array is empty');
+                  return;
+                }
+                
+                // Auto-fill all answers first
+                autoFillAllAnswers();
+                
+                // Use setTimeout to ensure state updates after auto-fill
+                setTimeout(() => {
+                  const lastSectionIndex = sections.length - 1;
+                  const lastSection = sections[lastSectionIndex];
+                  
+                  console.log(`🎯 Jumping to last section: ${lastSectionIndex} (${lastSection?.title})`);
+                  
+                  // For adaptive sections, we need to start the test first
+                  if (lastSection?.isAdaptive) {
+                    flow.setCurrentSectionIndex(lastSectionIndex);
+                    flow.setCurrentQuestionIndex(0);
+                    flow.setShowSectionIntro(false); // Skip intro, go straight to questions
+                    
+                    // Start the adaptive test if not already started
+                    if (!adaptiveAptitude.session) {
+                      adaptiveAptitude.startTest();
+                    }
+                    console.log('✅ Jumped to adaptive section and started test');
+                  } else {
+                    // For regular sections, go to the last question
+                    const lastQuestionIndex = Math.max(0, (lastSection?.questions?.length || 1) - 1);
+                    console.log(`🎯 Going to last question: ${lastQuestionIndex} of ${lastSection?.questions?.length}`);
+                    
+                    flow.setCurrentSectionIndex(lastSectionIndex);
+                    flow.setCurrentQuestionIndex(lastQuestionIndex);
+                    flow.setShowSectionIntro(false);
+                    console.log('✅ Jumped to last question successfully');
+                  }
+                }, 100);
+              }}
+              className="px-3 py-1.5 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
+              disabled={sections.length === 0}
+            >
+              Submit
             </button>
           </div>
         </div>
