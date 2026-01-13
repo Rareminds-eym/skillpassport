@@ -902,7 +902,7 @@ const CloneCurriculumModal = ({
             </select>
           )}
           <p className="mt-1 text-xs text-gray-500">
-            Only published or approved curriculums can be cloned
+            Only published curriculums can be cloned
           </p>
         </div>
 
@@ -1054,7 +1054,7 @@ interface CollegeCurriculumBuilderProps {
   units?: Unit[]; // Changed from chapters
   learningOutcomes?: LearningOutcome[];
   assessmentTypes?: AssessmentType[];
-  status?: "draft" | "approved" | "published" | "pending_approval" | "rejected";
+  status?: "draft" | "submitted" | "pending_approval" | "approved" | "published" | "archived" | "rejected";
   loading?: boolean;
   searchQuery?: string;
   setSearchQuery?: (value: string) => void;
@@ -1108,7 +1108,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   const [localSelectedAcademicYear, localSetSelectedAcademicYear] = useState("");
   const [localUnits, localSetUnits] = useState<Unit[]>([]);
   const [localLearningOutcomes, localSetLearningOutcomes] = useState<LearningOutcome[]>([]);
-  const [localStatus, localSetStatus] = useState<"draft" | "approved" | "published" | "pending_approval" | "rejected">("draft");
+  const [localStatus, localSetStatus] = useState<"draft" | "submitted" | "pending_approval" | "approved" | "published" | "archived" | "rejected">("draft");
   const [localSearchQuery, localSetSearchQuery] = useState("");
 
   // Pagination state
@@ -1175,32 +1175,20 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   // Check college affiliation when curriculum is loaded
   useEffect(() => {
     const checkAffiliation = async () => {
-      if (!props.curriculumId) {
-        setCollegeAffiliation({ isAffiliated: false, loading: false });
-        return;
-      }
-
       try {
-        // Get curriculum details to find college_id
-        const { data: curriculum } = await supabase
-          .from('college_curriculums')
-          .select('college_id')
-          .eq('id', props.curriculumId)
-          .single();
-
-        if (curriculum?.college_id) {
-          const affiliationResult = await curriculumApprovalService.checkCollegeAffiliation(curriculum.college_id);
-          
-          if (affiliationResult.success) {
-            setCollegeAffiliation({
-              isAffiliated: affiliationResult.isAffiliated,
-              universityId: affiliationResult.universityId,
-              universityName: affiliationResult.universityName,
-              loading: false
-            });
-          } else {
-            setCollegeAffiliation({ isAffiliated: false, loading: false });
-          }
+        setCollegeAffiliation({ isAffiliated: false, loading: true });
+        
+        // Use the improved service function
+        const affiliationResult = await curriculumApprovalService.checkCollegeAffiliation();
+        
+        if (affiliationResult.success && affiliationResult.data) {
+          setCollegeAffiliation({
+            isAffiliated: affiliationResult.data.isAffiliated,
+            collegeId: affiliationResult.data.collegeId || undefined,
+            universityId: affiliationResult.data.universityId || undefined,
+            universityName: affiliationResult.data.universityName || undefined,
+            loading: false
+          });
         } else {
           setCollegeAffiliation({ isAffiliated: false, loading: false });
         }
@@ -1211,7 +1199,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     };
 
     checkAffiliation();
-  }, [props.curriculumId]);
+  }, []); // Check once on component mount
   // Enhanced validation for different button states
   const validateForApproval = (): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
@@ -1381,8 +1369,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         setUnits((prev) =>
           prev.map((u) => (u.id === unit.id ? unit : u))
         );
-        // If curriculum was approved or published and is being edited, set to draft for re-approval
-        if (status === "approved" || status === "published") {
+        // If curriculum was published and is being edited, set to draft for re-approval
+        if (status === "published") {
           setStatus("draft");
           toast("Curriculum moved to draft status. Please get approval before publishing again.", {
             icon: "ℹ️",
@@ -1397,8 +1385,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
           ...prev,
           { ...unit, order: prev.length + 1 },
         ]);
-        // If curriculum was approved or published and is being edited, set to draft for re-approval
-        if (status === "approved" || status === "published") {
+        // If curriculum was published and is being edited, set to draft for re-approval
+        if (status === "published") {
           setStatus("draft");
           toast("Curriculum moved to draft status. Please get approval before publishing again.", {
             icon: "ℹ️",
@@ -1436,8 +1424,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         setLearningOutcomes((prev) =>
           prev.map((lo) => (lo.id === outcome.id ? outcome : lo))
         );
-        // If curriculum was approved or published and is being edited, set to draft for re-approval
-        if (status === "approved" || status === "published") {
+        // If curriculum was published and is being edited, set to draft for re-approval
+        if (status === "published") {
           setStatus("draft");
           toast("Curriculum moved to draft status. Please get approval before publishing again.", {
             icon: "ℹ️",
@@ -1449,8 +1437,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         setEditingOutcome(null);
       } else {
         setLearningOutcomes((prev) => [...prev, outcome]);
-        // If curriculum was approved or published and is being edited, set to draft for re-approval
-        if (status === "approved" || status === "published") {
+        // If curriculum was published and is being edited, set to draft for re-approval
+        if (status === "published") {
           setStatus("draft");
           toast("Curriculum moved to draft status. Please get approval before publishing again.", {
             icon: "ℹ️",
@@ -1532,47 +1520,33 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   };
 
   const confirmRequestApproval = async () => {
-    if (props.onRequestApproval) {
-      await props.onRequestApproval(approvalMessage);
-    } else {
-      // Fallback to local state
-      setStatus("pending_approval");
-      toast.success("Curriculum submitted for approval!");
-    }
-    setShowRequestApprovalModal(false);
-    setApprovalMessage("");
-  };
-
-  const handlePublish = async () => {
-    const validation = validateForApproval();
-    if (!validation.isValid) {
-      toast.error(`Please complete these steps first:\n• ${validation.errors.join('\n• ')}`);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+    try {
+      if (props.onRequestApproval) {
+        await props.onRequestApproval(approvalMessage);
+      } else if (props.curriculumId) {
+        // Use the curriculum approval service
+        const result = await curriculumApprovalService.submitForApproval(props.curriculumId, approvalMessage);
+        
+        if (result.success) {
+          setStatus("pending_approval");
+          toast.success(`Curriculum submitted for approval to ${collegeAffiliation.universityName}!`);
+        } else {
+          toast.error(result.error || "Failed to submit curriculum for approval");
+          return;
+        }
+      } else {
+        // Fallback to local state
+        setStatus("pending_approval");
+        toast.success("Curriculum submitted for approval!");
+      }
+    } catch (error) {
+      console.error('Error submitting curriculum for approval:', error);
+      toast.error("Failed to submit curriculum for approval");
       return;
     }
-
-    if (props.onPublish) {
-      await props.onPublish();
-    }
-  };
-
-  const confirmPublish = async () => {
-    if (props.onPublish) {
-      await props.onPublish();
-    } else {
-      // Fallback to local state
-      setStatus("published");
-      toast.success("Curriculum published successfully! It is now active and available.");
-    }
-  };
-
-  const confirmApprove = async () => {
-    if (props.onApprove) {
-      await props.onApprove();
-    } else {
-      setStatus("approved");
-      toast.success("Curriculum approved successfully!");
-    }
+    
+    setShowRequestApprovalModal(false);
+    setApprovalMessage("");
   };
 
   const handleExportCSV = async () => {
@@ -1739,8 +1713,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                 )}
               </div>
 
-              {/* Clone Button - Available for published/approved curriculums */}
-              {(status === "published" || status === "approved") && (
+              {/* Clone Button - Available for published curriculums */}
+              {status === "published" && (
                 <button
                   onClick={() => setShowCloneModal(true)}
                   className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium text-sm"
@@ -1756,12 +1730,6 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
                 <CheckCircleIcon className="h-4 w-4" />
                 Published
-              </span>
-            )}
-            {status === "approved" && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
-                <CheckCircleIcon className="h-4 w-4" />
-                Approved
               </span>
             )}
           </div>
@@ -1934,8 +1902,6 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
           <div className={`rounded-xl border p-5 ${
             status === "published"
               ? "bg-gradient-to-br from-green-50 to-emerald-100 border-green-200"
-              : status === "approved"
-              ? "bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200"
               : "bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200"
           }`}>
             <div className="flex items-start gap-3 mb-3">
@@ -1943,14 +1909,10 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                 className={`p-2 rounded-lg ${
                   status === "published"
                     ? "bg-green-500 text-white"
-                    : status === "approved"
-                    ? "bg-blue-500 text-white"
                     : "bg-indigo-500 text-white"
                 }`}
               >
                 {status === "published" ? (
-                  <CheckCircleIcon className="h-4 w-4" />
-                ) : status === "approved" ? (
                   <CheckCircleIcon className="h-4 w-4" />
                 ) : (
                   <DocumentCheckIcon className="h-4 w-4" />
@@ -1958,25 +1920,20 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               </div>
               <div className="flex-1">
                 <h3 className={`text-sm font-semibold mb-1 ${
-                  status === "published" ? "text-green-900" :
-                  status === "approved" ? "text-blue-900" : "text-indigo-900"
+                  status === "published" ? "text-green-900" : "text-indigo-900"
                 }`}>
-                  {status === "published" ? "Published" :
-                   status === "approved" ? "Approved" : "Draft"}
+                  {status === "published" ? "Published" : "Draft"}
                 </h3>
                 <p className={`text-xs ${
-                  status === "published" ? "text-green-700" :
-                  status === "approved" ? "text-blue-700" : "text-indigo-700"
+                  status === "published" ? "text-green-700" : "text-indigo-700"
                 }`}>
                   {status === "published"
                     ? "This curriculum is published"
-                    : status === "approved"
-                    ? "Ready to be published"
                     : "Save your progress and get approval when ready"}
                 </p>
               </div>
             </div>
-            {approvedBy && (status === "approved" || status === "published") && (
+            {approvedBy && status === "published" && (
               <div className="mt-3 pt-3 border-t border-green-200">
                 <p className="text-xs font-medium text-green-800">
                   ✓ Approved by Academic Head
@@ -2378,20 +2335,29 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                                 return;
                               }
                               
-                              if (props.onApprove) {
-                                await props.onApprove();
+                              try {
+                                if (props.onPublish) {
+                                  await props.onPublish();
+                                } else {
+                                  // For private colleges, publish directly (skip intermediate approved status)
+                                  setStatus("published");
+                                  toast.success("Curriculum published successfully! It is now active and available.");
+                                }
+                              } catch (error) {
+                                console.error('Error publishing curriculum:', error);
+                                toast.error("Failed to publish curriculum");
                               }
                             }}
                             disabled={isApproveDisabled}
                             className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg transition font-medium shadow-md hover:shadow-lg text-sm ${
                               isApproveDisabled
                                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                                : 'bg-green-600 text-white hover:bg-green-700'
                             }`}
                             title={getApprovalTooltip()}
                           >
                             <CheckCircleIcon className="h-4 w-4" />
-                            {isApproveDisabled ? 'Complete Steps Above' : 'Approve Curriculum'}
+                            {isApproveDisabled ? 'Complete Steps Above' : 'Publish Curriculum'}
                           </button>
                         )}
                         
@@ -2434,22 +2400,9 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                   </div>
                 )}
 
-                {/* Approved Actions - Show Publish for private colleges only */}
-                {status === "approved" && isCollegeAdmin && !collegeAffiliation.isAffiliated && (
-                  <button
-                    onClick={handlePublish}
-                    disabled={isApproveDisabled}
-                    className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg transition font-medium shadow-md hover:shadow-lg text-sm ${
-                      isApproveDisabled
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-green-600 text-white hover:bg-green-700'
-                    }`}
-                    title={isApproveDisabled ? getApprovalTooltip() : 'Publish curriculum to make it active'}
-                  >
-                    <CheckCircleIcon className="h-4 w-4" />
-                    {isApproveDisabled ? 'Complete Steps Above' : 'Publish Curriculum'}
-                  </button>
-                )}
+                {/* Approved Actions - No longer needed since we go directly to published */}
+                {/* For affiliated colleges: pending_approval → published (auto) */}
+                {/* For private colleges: draft → published (direct) */}
 
                 {/* Published Actions - No additional message needed */}
                 {/* Published curriculums can still be edited by admins, triggering re-approval workflow */}

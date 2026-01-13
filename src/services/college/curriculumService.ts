@@ -127,14 +127,14 @@ export const curriculumService = {
         .select('semester')
         .eq('program_id', data.program_id)
         .eq('course_id', data.course_id)
-        .single();
+        .limit(1); // Get first result instead of .single()
 
       // Flatten the response
       const result = {
         ...curriculum,
         course_code: curriculum.course?.course_code,
         course_name: curriculum.course?.course_name,
-        semester: mapping?.semester,
+        semester: mapping?.[0]?.semester, // Access first element
       };
 
       return { success: true, data: result };
@@ -174,7 +174,7 @@ export const curriculumService = {
         .select('semester')
         .eq('program_id', curriculum.program_id)
         .eq('course_id', curriculum.course_id)
-        .single();
+        .limit(1); // Get first result instead of .single()
 
       // Get units
       const { data: units, error: unitsError } = await supabase
@@ -197,7 +197,7 @@ export const curriculumService = {
         ...curriculum,
         course_code: curriculum.course?.course_code,
         course_name: curriculum.course?.course_name,
-        semester: mapping?.semester,
+        semester: mapping?.[0]?.semester,
         units: units || [],
         outcomes: outcomes || [],
         department_name: curriculum.departments?.name,
@@ -545,7 +545,7 @@ export const curriculumService = {
   },
 
   /**
-   * Approve curriculum
+   * Approve curriculum - For private colleges only
    */
   async approveCurriculum(id: string): Promise<{ success: boolean; error?: any }> {
     try {
@@ -554,18 +554,33 @@ export const curriculumService = {
         return { success: false, error: { message: 'User not authenticated' } };
       }
 
+      // Check if college is affiliated (should not allow direct approval for affiliated colleges)
+      const { data: curriculum, error: fetchError } = await supabase
+        .from('college_curriculums')
+        .select('status, college_id, university_id')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (curriculum.university_id) {
+        return {
+          success: false,
+          error: {
+            code: 'AFFILIATED_COLLEGE',
+            message: 'Affiliated colleges cannot directly approve curriculum. Please request approval from your university.',
+          },
+        };
+      }
+
       // Validate that curriculum has units and outcomes
       const { data: units } = await supabase
-        .from('college_curriculum_units')
-        .select('id')
-        .eq('curriculum_id', id);
+        .from('college_curriculums')
+        .select('units')
+        .eq('id', id)
+        .single();
 
-      const { data: outcomes } = await supabase
-        .from('college_curriculum_outcomes')
-        .select('id')
-        .eq('curriculum_id', id);
-
-      if (!units || units.length === 0) {
+      if (!units || !units.units || units.units.length === 0) {
         return {
           success: false,
           error: {
@@ -575,7 +590,13 @@ export const curriculumService = {
         };
       }
 
-      if (!outcomes || outcomes.length === 0) {
+      const { data: outcomes } = await supabase
+        .from('college_curriculums')
+        .select('outcomes')
+        .eq('id', id)
+        .single();
+
+      if (!outcomes || !outcomes.outcomes || outcomes.outcomes.length === 0) {
         return {
           success: false,
           error: {
@@ -585,59 +606,12 @@ export const curriculumService = {
         };
       }
 
-      // Validate that every unit has at least one outcome
-      const unitIds = units.map(u => u.id);
-      const { data: detailedOutcomes } = await supabase
-        .from('college_curriculum_outcomes')
-        .select('id, unit_id, assessment_mappings')
-        .eq('curriculum_id', id);
-
-      const outcomesByUnit = (detailedOutcomes || []).reduce((acc, outcome) => {
-        acc[outcome.unit_id] = (acc[outcome.unit_id] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const unitsWithoutOutcomes = unitIds.filter(unitId => !outcomesByUnit[unitId]);
-      if (unitsWithoutOutcomes.length > 0) {
-        // Get unit names for better error message
-        const { data: unitDetails } = await supabase
-          .from('college_curriculum_units')
-          .select('name')
-          .in('id', unitsWithoutOutcomes);
-        
-        const unitNames = unitDetails?.map(u => u.name).join(', ') || 'some units';
-        return {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: `These units need learning outcomes: ${unitNames}`,
-          },
-        };
-      }
-
-      // Validate that every outcome has at least one assessment mapping
-      const outcomesWithoutAssessments = (detailedOutcomes || []).filter(outcome => 
-        !outcome.assessment_mappings || 
-        outcome.assessment_mappings.length === 0 ||
-        JSON.stringify(outcome.assessment_mappings) === '[]'
-      );
-
-      if (outcomesWithoutAssessments.length > 0) {
-        return {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: `${outcomesWithoutAssessments.length} learning outcome(s) need assessment type mappings`,
-          },
-        };
-      }
-
       const { error } = await supabase
         .from('college_curriculums')
         .update({ 
           status: 'approved',
-          approved_by: user.id,
-          approval_date: new Date().toISOString(),
+          reviewed_by: user.id,
+          review_date: new Date().toISOString(),
         })
         .eq('id', id);
 
@@ -656,7 +630,7 @@ export const curriculumService = {
   },
 
   /**
-   * Publish curriculum (make it active)
+   * Publish curriculum (make it active) - For private colleges only
    */
   async publishCurriculum(id: string): Promise<{ success: boolean; error?: any }> {
     try {
@@ -665,14 +639,25 @@ export const curriculumService = {
         return { success: false, error: { message: 'User not authenticated' } };
       }
 
-      // Check if curriculum is approved
+      // Check if curriculum is approved and college affiliation
       const { data: curriculum, error: fetchError } = await supabase
         .from('college_curriculums')
-        .select('status')
+        .select('status, college_id, university_id')
         .eq('id', id)
         .single();
 
       if (fetchError) throw fetchError;
+
+      // Check if college is affiliated (should not allow direct publish for affiliated colleges)
+      if (curriculum.university_id) {
+        return {
+          success: false,
+          error: {
+            code: 'AFFILIATED_COLLEGE',
+            message: 'Affiliated colleges cannot directly publish curriculum. Please request approval from your university.',
+          },
+        };
+      }
 
       if (curriculum.status !== 'approved') {
         return {

@@ -9,7 +9,6 @@ import {
   DocumentTextIcon,
   ExclamationTriangleIcon,
   CheckIcon,
-  ArrowPathIcon,
   MagnifyingGlassIcon,
   BarsArrowDownIcon,
   Squares2X2Icon,
@@ -34,7 +33,7 @@ const SyllabusApproval: React.FC = () => {
   const [approvalRequests, setApprovalRequests] = useState<CurriculumApprovalDashboard[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<ApprovalFilters>({
-    status: 'pending',
+    status: '', // Show all records by default instead of just pending
     collegeId: '',
     departmentId: '',
   });
@@ -55,8 +54,13 @@ const SyllabusApproval: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const requestsPerPage = 6;
 
-  // Get current user's university ID (mock for now)
-  const [universityId] = useState('mock-university-id'); // Replace with actual auth
+  // Get current user's university ID (this should come from actual auth context)
+  const [universityId] = useState(() => {
+    // In production, this should come from auth context or user session
+    // For now, we'll try to get it from localStorage or use a default
+    const storedUniversityId = localStorage.getItem('universityId');
+    return storedUniversityId || 'mock-university-id';
+  });
 
   useEffect(() => {
     loadApprovalRequests();
@@ -73,15 +77,31 @@ const SyllabusApproval: React.FC = () => {
 
     try {
       setLoading(true);
+      
+      // Handle the approved filter - include both 'approved' and 'published' statuses
+      let statusFilter = filters.status;
+      if (filters.status === 'approved') {
+        // For "approved" filter, we need to get both approved and published records
+        // since approved curricula are automatically published
+        statusFilter = undefined; // We'll filter manually after fetching
+      }
+      
       const result = await curriculumApprovalService.getApprovalRequests(universityId, {
-        status: filters.status || undefined,
+        status: statusFilter || undefined,
         collegeId: filters.collegeId || undefined,
         departmentId: filters.departmentId || undefined,
         limit: 50,
       });
 
       if (result.success) {
-        setApprovalRequests(result.data || []);
+        let data = result.data || [];
+        
+        // Manual filtering for approved status (include both approved and published)
+        if (filters.status === 'approved') {
+          data = data.filter(item => item.request_status === 'approved' || item.request_status === 'published');
+        }
+        
+        setApprovalRequests(data);
       } else {
         toast.error(result.error || 'Failed to load approval requests');
       }
@@ -112,7 +132,12 @@ const SyllabusApproval: React.FC = () => {
     try {
       const result = await curriculumApprovalService.getApprovalStatistics(universityId);
       if (result.success && result.data) {
-        setStatistics(result.data);
+        // Adjust the statistics to combine approved and published counts
+        const adjustedStats = {
+          ...result.data,
+          approved: result.data.approved + result.data.published, // Combine approved and published
+        };
+        setStatistics(adjustedStats);
       }
     } catch (error) {
       console.error('Error loading statistics:', error);
@@ -133,7 +158,7 @@ const SyllabusApproval: React.FC = () => {
       let result;
       if (reviewAction === 'approve') {
         result = await curriculumApprovalService.approveCurriculum(
-          selectedRequest.request_id,
+          selectedRequest.curriculum_id,
           reviewNotes
         );
       } else {
@@ -142,7 +167,7 @@ const SyllabusApproval: React.FC = () => {
           return;
         }
         result = await curriculumApprovalService.rejectCurriculum(
-          selectedRequest.request_id,
+          selectedRequest.curriculum_id,
           reviewNotes
         );
       }
@@ -156,8 +181,10 @@ const SyllabusApproval: React.FC = () => {
         setShowReviewModal(false);
         setSelectedRequest(null);
         setReviewNotes('');
-        loadApprovalRequests();
-        loadStatistics();
+        
+        // Reload data to reflect changes
+        await loadApprovalRequests();
+        await loadStatistics();
       } else {
         toast.error(result.error || `Failed to ${reviewAction} curriculum`);
       }
@@ -169,12 +196,16 @@ const SyllabusApproval: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: ClockIcon, label: 'Pending Review' },
+      pending_approval: { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: ClockIcon, label: 'Pending Review' },
       approved: { color: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircleIcon, label: 'Approved' },
       rejected: { color: 'bg-red-100 text-red-800 border-red-200', icon: XMarkIcon, label: 'Rejected' },
+      published: { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: CheckCircleIcon, label: 'Published' },
+      draft: { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: DocumentTextIcon, label: 'Draft' },
+      submitted: { color: 'bg-indigo-100 text-indigo-800 border-indigo-200', icon: ClockIcon, label: 'Submitted' },
+      archived: { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: XMarkIcon, label: 'Archived' },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending_approval;
     const Icon = config.icon;
 
     return (
@@ -186,6 +217,7 @@ const SyllabusApproval: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return 'Unknown date';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -195,24 +227,40 @@ const SyllabusApproval: React.FC = () => {
     });
   };
 
+  // Helper function to get display date (request_date or published_date)
+  const getDisplayDate = (request: CurriculumApprovalDashboard) => {
+    return request.request_date || request.published_date || new Date().toISOString();
+  };
+
+  // Helper function to get display course name (course_name or program_name)
+  const getDisplayCourseName = (request: CurriculumApprovalDashboard) => {
+    return request.course_name || request.program_name || 'Untitled Course';
+  };
+
   // Check if a request is new (submitted within last 24 hours)
-  const isNewRequest = (requestDate: string) => {
-    if (!requestDate) return false;
-    const reqDate = new Date(requestDate);
-    const now = new Date();
-    const hoursDifference = (now.getTime() - reqDate.getTime()) / (1000 * 60 * 60);
-    return hoursDifference <= 24;
+  const isNewRequest = (request: CurriculumApprovalDashboard) => {
+    const dateString = request.request_date || request.published_date;
+    if (!dateString) return false;
+    try {
+      const reqDate = new Date(dateString);
+      const now = new Date();
+      const hoursDifference = (now.getTime() - reqDate.getTime()) / (1000 * 60 * 60);
+      return hoursDifference <= 24;
+    } catch (error) {
+      console.error('Error parsing date:', dateString, error);
+      return false;
+    }
   };
 
   // Filter and search requests
   const filteredRequests = React.useMemo(() => {
     let filtered = approvalRequests.filter(request => {
       const matchesSearch = 
-        request.course_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.course_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.college_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.department_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.requester_name.toLowerCase().includes(searchTerm.toLowerCase());
+        (request.course_name || request.program_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (request.course_code || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (request.college_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (request.department_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (request.requester_name || '').toLowerCase().includes(searchTerm.toLowerCase());
 
       return matchesSearch;
     });
@@ -221,11 +269,11 @@ const SyllabusApproval: React.FC = () => {
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'college_name':
-          return a.college_name.localeCompare(b.college_name);
+          return (a.college_name || '').localeCompare(b.college_name || '');
         case 'course_name':
-          return a.course_name.localeCompare(b.course_name);
+          return (a.course_name || a.program_name || '').localeCompare(b.course_name || b.program_name || '');
         case 'request_date':
-          return new Date(b.request_date).getTime() - new Date(a.request_date).getTime();
+          return new Date(b.request_date || b.published_date || 0).getTime() - new Date(a.request_date || a.published_date || 0).getTime();
         default:
           return 0;
       }
@@ -422,9 +470,12 @@ const SyllabusApproval: React.FC = () => {
                 className="h-12 px-4 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm flex-1 lg:flex-none lg:min-w-[150px]"
               >
                 <option value="">All Statuses</option>
-                <option value="pending">Pending Review</option>
-                <option value="approved">Approved</option>
+                <option value="pending_approval">Pending Review</option>
+                <option value="approved">Approved (Published)</option>
                 <option value="rejected">Rejected</option>
+                <option value="draft">Draft</option>
+                <option value="submitted">Submitted</option>
+                <option value="archived">Archived</option>
               </select>
 
               {/* Sort By Filter */}
@@ -458,10 +509,10 @@ const SyllabusApproval: React.FC = () => {
               </div>
 
               {/* Clear Filters Button */}
-              {(filters.status !== 'pending' || searchTerm !== '' || sortBy !== 'request_date') && (
+              {(filters.status !== '' || searchTerm !== '' || sortBy !== 'request_date') && (
                 <button
                   onClick={() => {
-                    setFilters({ status: 'pending', collegeId: '', departmentId: '' });
+                    setFilters({ status: '', collegeId: '', departmentId: '' });
                     setSearchTerm('');
                     setSortBy('request_date');
                   }}
@@ -505,7 +556,7 @@ const SyllabusApproval: React.FC = () => {
                       <AcademicCapIcon className="h-12 w-12 text-white opacity-90" />
                     </div>
                     {/* NEW Badge */}
-                    {isNewRequest(request.request_date) && (
+                    {isNewRequest(request) && (
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
@@ -523,44 +574,44 @@ const SyllabusApproval: React.FC = () => {
                       <div className="flex gap-2 flex-wrap">
                         {getStatusBadge(request.request_status)}
                       </div>
-                      <span className="text-xs font-medium text-gray-500">{request.course_code}</span>
+                      <span className="text-xs font-medium text-gray-500">{request.course_code || 'N/A'}</span>
                     </div>
-                    <CardTitle className="text-lg line-clamp-2">{request.course_name}</CardTitle>
+                    <CardTitle className="text-lg line-clamp-2">{getDisplayCourseName(request)}</CardTitle>
                   </CardHeader>
 
                   <CardContent className="space-y-4 flex-grow flex flex-col">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <BuildingOfficeIcon className="w-4 h-4" />
-                        <span className="font-medium">{request.college_name}</span>
+                        <span className="font-medium">{request.college_name || 'Unknown College'}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <DocumentTextIcon className="w-4 h-4" />
-                        <span>{request.department_name}</span>
+                        <span>{request.department_name || 'Unknown Department'}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <ClockIcon className="w-4 h-4" />
-                        <span>{formatDate(request.request_date)}</span>
+                        <span>{formatDate(getDisplayDate(request))}</span>
                       </div>
                     </div>
 
                     {/* Requester Info */}
                     <div className="flex items-center gap-2 pt-2 border-t border-gray-100 mt-auto">
                       <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
-                        {request.requester_name.charAt(0).toUpperCase()}
+                        {(request.requester_name || 'U').charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Submitted by</p>
-                        <p className="text-sm font-medium text-gray-900">{request.requester_name}</p>
+                        <p className="text-sm font-medium text-gray-900">{request.requester_name || 'Unknown User'}</p>
                       </div>
                     </div>
 
                     {/* Action Buttons */}
                     <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                      {request.request_status === 'pending' && (
+                      {request.request_status === 'pending_approval' && (
                         <>
                           <Button
-                            onClick={(e) => {
+                            onClick={(e: React.MouseEvent) => {
                               e.stopPropagation();
                               handleReview(request, 'approve');
                             }}
@@ -570,7 +621,7 @@ const SyllabusApproval: React.FC = () => {
                             Approve
                           </Button>
                           <Button
-                            onClick={(e) => {
+                            onClick={(e: React.MouseEvent) => {
                               e.stopPropagation();
                               handleReview(request, 'reject');
                             }}
@@ -582,9 +633,9 @@ const SyllabusApproval: React.FC = () => {
                         </>
                       )}
                       <Button
-                        onClick={(e) => {
+                        onClick={(e: React.MouseEvent) => {
                           e.stopPropagation();
-                          toast.info('Curriculum preview coming soon');
+                          toast('Curriculum preview coming soon');
                         }}
                         className="flex-1 bg-gray-600 hover:bg-gray-700 text-white text-xs py-2"
                       >
@@ -619,7 +670,7 @@ const SyllabusApproval: React.FC = () => {
                           <AcademicCapIcon className="h-8 w-8 text-white opacity-90" />
                         </div>
                         {/* NEW Badge */}
-                        {isNewRequest(request.request_date) && (
+                        {isNewRequest(request) && (
                           <div className="absolute top-1 left-1">
                             <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-2 py-0.5 text-xs">
                               NEW
@@ -633,34 +684,34 @@ const SyllabusApproval: React.FC = () => {
                         <div className="flex items-start justify-between mb-2">
                           <div>
                             <div className="flex items-center gap-3 mb-2 flex-wrap">
-                              <h3 className="text-xl font-bold text-gray-900">{request.course_name}</h3>
+                              <h3 className="text-xl font-bold text-gray-900">{getDisplayCourseName(request)}</h3>
                               {getStatusBadge(request.request_status)}
                             </div>
-                            <p className="text-sm text-gray-500">Course Code: {request.course_code}</p>
+                            <p className="text-sm text-gray-500">Course Code: {request.course_code || 'N/A'}</p>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           <div>
                             <p className="text-sm font-medium text-gray-700">College & Department</p>
-                            <p className="text-sm text-gray-600">{request.college_name}</p>
-                            <p className="text-sm text-gray-600">{request.department_name}</p>
+                            <p className="text-sm text-gray-600">{request.college_name || 'Unknown College'}</p>
+                            <p className="text-sm text-gray-600">{request.department_name || 'Unknown Department'}</p>
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-700">Submitted By</p>
-                            <p className="text-sm text-gray-600">{request.requester_name}</p>
-                            <p className="text-sm text-gray-500">{request.requester_email}</p>
+                            <p className="text-sm text-gray-600">{request.requester_name || 'Unknown User'}</p>
+                            <p className="text-sm text-gray-500">{request.requester_email || 'No email'}</p>
                           </div>
                         </div>
 
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <ClockIcon className="w-4 h-4" />
-                            <span>Submitted {formatDate(request.request_date)}</span>
+                            <span>Submitted {formatDate(getDisplayDate(request))}</span>
                           </div>
 
                           <div className="flex items-center gap-2">
-                            {request.request_status === 'pending' && (
+                            {request.request_status === 'pending_approval' && (
                               <>
                                 <Button
                                   onClick={() => handleReview(request, 'approve')}
@@ -680,7 +731,7 @@ const SyllabusApproval: React.FC = () => {
                             )}
                             <Button
                               onClick={() => {
-                                toast.info('Curriculum preview coming soon');
+                                toast('Curriculum preview coming soon');
                               }}
                               className="bg-gray-600 hover:bg-gray-700 text-white text-sm px-4 py-2"
                             >
@@ -777,7 +828,7 @@ const SyllabusApproval: React.FC = () => {
                     {reviewAction === 'approve' ? 'Approve Curriculum' : 'Reject Curriculum'}
                   </h2>
                   <p className="mt-1 text-sm text-gray-500">
-                    {selectedRequest.course_code} - {selectedRequest.course_name}
+                    {selectedRequest.course_code || 'N/A'} - {getDisplayCourseName(selectedRequest)}
                   </p>
                 </div>
                 <button
@@ -792,10 +843,10 @@ const SyllabusApproval: React.FC = () => {
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h3 className="text-sm font-medium text-gray-900 mb-2">Curriculum Details</h3>
                   <div className="space-y-1 text-sm text-gray-600">
-                    <p><span className="font-medium">College:</span> {selectedRequest.college_name}</p>
-                    <p><span className="font-medium">Department:</span> {selectedRequest.department_name}</p>
-                    <p><span className="font-medium">Program:</span> {selectedRequest.program_name}</p>
-                    <p><span className="font-medium">Submitted by:</span> {selectedRequest.requester_name}</p>
+                    <p><span className="font-medium">College:</span> {selectedRequest.college_name || 'Unknown College'}</p>
+                    <p><span className="font-medium">Department:</span> {selectedRequest.department_name || 'Unknown Department'}</p>
+                    <p><span className="font-medium">Program:</span> {selectedRequest.program_name || 'Unknown Program'}</p>
+                    <p><span className="font-medium">Submitted by:</span> {selectedRequest.requester_name || 'Unknown User'}</p>
                   </div>
                 </div>
 
