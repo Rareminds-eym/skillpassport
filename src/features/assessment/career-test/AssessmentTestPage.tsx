@@ -239,6 +239,10 @@ const AssessmentTestPage: React.FC = () => {
           // For non-UUID questions (hardcoded), just log and skip database save
           console.log(`Skipping DB save for non-UUID question: ${questionId}`);
         }
+        
+        // Update progress (current position) after every answer
+        // This ensures we can resume from the exact question if user navigates away
+        dbUpdateProgress(flow.currentSectionIndex, flow.currentQuestionIndex, flow.sectionTimings);
       }
     }
   });
@@ -519,17 +523,30 @@ const AssessmentTestPage: React.FC = () => {
     flow.setGradeLevel(pendingAttempt.grade_level as GradeLevel);
     flow.setStudentStream(pendingAttempt.stream_id);
     
-    // Restore progress
-    if (pendingAttempt.progress) {
-      // Restore answers
-      if (pendingAttempt.restoredResponses) {
-        Object.entries(pendingAttempt.restoredResponses).forEach(([key, value]) => {
-          flow.setAnswer(key, value);
-        });
-      }
+    // Restore answers
+    if (pendingAttempt.restoredResponses) {
+      Object.entries(pendingAttempt.restoredResponses).forEach(([key, value]) => {
+        flow.setAnswer(key, value);
+      });
     }
     
-    flow.setCurrentScreen('section_intro');
+    // Restore section and question indices from database columns
+    const sectionIndex = pendingAttempt.current_section_index ?? 0;
+    const questionIndex = pendingAttempt.current_question_index ?? 0;
+    
+    console.log('📍 Resuming from section:', sectionIndex, 'question:', questionIndex);
+    
+    // Restore position using the newly exposed setters
+    flow.setCurrentSectionIndex(sectionIndex);
+    flow.setCurrentQuestionIndex(questionIndex);
+    
+    // If we're in the middle of a section, skip the intro
+    if (questionIndex > 0) {
+      flow.setShowSectionIntro(false);
+      flow.setCurrentScreen('assessment');
+    } else {
+      flow.setCurrentScreen('section_intro');
+    }
   }, [pendingAttempt, flow]);
   
   const handleStartNewAssessment = useCallback(async () => {
