@@ -26,7 +26,7 @@ import type { Env } from './types';
 import { handleCorsPreflightRequest } from './utils/cors';
 import { notFoundResponse } from './utils/response';
 import { handleHealthCheck } from './handlers/healthHandler';
-import { handleAptitudeGeneration, handleKnowledgeGeneration } from './handlers/career';
+import { handleAptitudeGeneration, handleKnowledgeGeneration, handleStreamingAptitudeGeneration } from './handlers/career';
 import { handleDiagnosticGeneration, handleCoreGeneration, handleStabilityGeneration, handleSingleGeneration } from './handlers/adaptive';
 import { handleCourseAssessment } from './handlers/course';
 
@@ -56,6 +56,13 @@ export default {
          path === '/api/career-assessment/generate-aptitude') && 
         request.method === 'POST') {
       return handleAptitudeGeneration(request, env);
+    }
+
+    // Generate aptitude questions with STREAMING (SSE)
+    if ((path === '/career-assessment/generate-aptitude/stream' || 
+         path === '/api/career-assessment/generate-aptitude/stream') && 
+        request.method === 'POST') {
+      return handleStreamingAptitudeGeneration(request, env);
     }
 
     // Generate knowledge questions (20 questions)
