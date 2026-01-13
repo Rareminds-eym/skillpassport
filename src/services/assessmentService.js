@@ -217,6 +217,11 @@ export const updateAttemptProgress = async (attemptId, progress) => {
   if (progress.adaptiveAptitudeSessionId) {
     updateData.adaptive_aptitude_session_id = progress.adaptiveAptitudeSessionId;
   }
+
+  // Include all_responses if provided (for non-UUID questions like RIASEC, BigFive, etc.)
+  if (progress.allResponses) {
+    updateData.all_responses = progress.allResponses;
+  }
   
   const { data, error } = await supabase
     .from('personal_assessment_attempts')
@@ -227,6 +232,37 @@ export const updateAttemptProgress = async (attemptId, progress) => {
 
   if (error) throw error;
   return data;
+};
+
+/**
+ * Save all responses to the attempt (for non-UUID questions)
+ * This is used for RIASEC, BigFive, Values, Employability questions that have string IDs
+ * @param {string} attemptId - Attempt UUID
+ * @param {object} allResponses - All responses object { "riasec_r1": 4, "bigfive_o1": 3, ... }
+ */
+export const saveAllResponses = async (attemptId, allResponses) => {
+  try {
+    const { data, error } = await supabase
+      .from('personal_assessment_attempts')
+      .update({
+        all_responses: allResponses,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', attemptId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving all responses:', error);
+      throw error;
+    }
+    
+    console.log('✅ All responses saved to database');
+    return data;
+  } catch (err) {
+    console.error('Error in saveAllResponses:', err);
+    throw err;
+  }
 };
 
 /**
@@ -759,6 +795,7 @@ export default {
   createAttempt,
   updateAttemptProgress,
   saveResponse,
+  saveAllResponses,
   getAttemptResponses,
   completeAttempt,
   getStudentAttempts,

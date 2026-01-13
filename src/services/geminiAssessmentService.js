@@ -99,9 +99,14 @@ const callOpenRouterAssessment = async (assessmentData) => {
 
     const result = await response.json();
     console.log('📦 API Response:', { success: result.success, hasData: !!result.data, error: result.error });
+    console.log('📦 Full API Response:', JSON.stringify(result).substring(0, 500));
 
     if (!result.success || !result.data) {
       console.error('❌ Invalid response:', result);
+      console.error('❌ Response success:', result.success);
+      console.error('❌ Response data:', result.data);
+      console.error('❌ Response error:', result.error);
+      console.error('❌ Response details:', result.details);
       updateProgress('error', result.error || 'Invalid response from server');
       throw new Error(result.error || result.details || 'Invalid response from server');
     }
@@ -308,13 +313,25 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     streamKnowledgeQuestions 
   } = questionBanks;
 
-  // Extract RIASEC answers
+  // Debug: Log what we received
+  console.log('=== prepareAssessmentData DEBUG ===');
+  console.log('Total answers received:', Object.keys(answers).length);
+  console.log('riasecQuestions provided:', riasecQuestions?.length || 0);
+  console.log('bigFiveQuestions provided:', bigFiveQuestions?.length || 0);
+  console.log('workValuesQuestions provided:', workValuesQuestions?.length || 0);
+  console.log('employabilityQuestions provided:', employabilityQuestions?.length || 0);
+
+  // Extract RIASEC answers - IMPROVED: Extract even if riasecQuestions is empty
   const riasecAnswers = {};
   const riasecPrefix = getSectionPrefix('riasec', gradeLevel);
+  console.log('RIASEC prefix:', riasecPrefix);
+  
+  // First, try to extract using question bank
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith(`${riasecPrefix}_`)) {
       const questionId = key.replace(`${riasecPrefix}_`, '');
       const question = riasecQuestions?.find(q => q.id === questionId);
+      
       if (question) {
         riasecAnswers[questionId] = {
           question: question.text,
@@ -322,9 +339,25 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
           categoryMapping: question.categoryMapping,
           type: question.type
         };
+      } else {
+        // FALLBACK: Extract RIASEC type from question ID (e.g., 'r1' -> 'R', 'i2' -> 'I')
+        // This ensures we capture answers even if questionBanks is empty
+        const riasecType = questionId.charAt(0).toUpperCase();
+        if (['R', 'I', 'A', 'S', 'E', 'C'].includes(riasecType)) {
+          riasecAnswers[questionId] = {
+            question: `RIASEC ${riasecType} question ${questionId}`,
+            answer: value,
+            type: riasecType,
+            // For rating questions, the answer IS the score
+            categoryMapping: null
+          };
+          console.log(`Extracted RIASEC answer without question bank: ${questionId} = ${value}`);
+        }
       }
     }
   });
+  
+  console.log('RIASEC answers extracted:', Object.keys(riasecAnswers).length);
 
   // Extract Aptitude answers
   const aptitudeAnswers = {
@@ -374,32 +407,54 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     });
   }
 
-  // Extract Big Five answers
+  // Extract Big Five answers - IMPROVED: Extract even if bigFiveQuestions is empty
   const bigFiveAnswers = {};
   const bigFivePrefix = getSectionPrefix('bigfive', gradeLevel);
+  console.log('BigFive prefix:', bigFivePrefix);
+  
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith(`${bigFivePrefix}_`)) {
       const questionId = key.replace(`${bigFivePrefix}_`, '');
       const question = bigFiveQuestions?.find(q => q.id === questionId);
+      
       if (question) {
         bigFiveAnswers[questionId] = { question: question.text, answer: value };
+      } else {
+        // FALLBACK: Extract even without question bank
+        bigFiveAnswers[questionId] = { 
+          question: `BigFive question ${questionId}`, 
+          answer: value 
+        };
+        console.log(`Extracted BigFive answer without question bank: ${questionId} = ${value}`);
       }
     }
   });
+  
+  console.log('BigFive answers extracted:', Object.keys(bigFiveAnswers).length);
 
-  // Extract Work Values answers
+  // Extract Work Values answers - IMPROVED: Extract even if workValuesQuestions is empty
   const workValuesAnswers = {};
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith('values_')) {
       const questionId = key.replace('values_', '');
-      const question = workValuesQuestions.find(q => q.id === questionId);
+      const question = workValuesQuestions?.find(q => q.id === questionId);
+      
       if (question) {
         workValuesAnswers[questionId] = { question: question.text, answer: value };
+      } else {
+        // FALLBACK: Extract even without question bank
+        workValuesAnswers[questionId] = { 
+          question: `Work Values question ${questionId}`, 
+          answer: value 
+        };
+        console.log(`Extracted WorkValues answer without question bank: ${questionId} = ${value}`);
       }
     }
   });
+  
+  console.log('WorkValues answers extracted:', Object.keys(workValuesAnswers).length);
 
-  // Extract Employability answers
+  // Extract Employability answers - IMPROVED: Extract even if employabilityQuestions is empty
   const employabilityAnswers = {
     selfRating: {
       Communication: [],
@@ -417,7 +472,8 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith('employability_')) {
       const questionId = key.replace('employability_', '');
-      const question = employabilityQuestions.find(q => q.id === questionId);
+      const question = employabilityQuestions?.find(q => q.id === questionId);
+      
       if (question) {
         if (question.partType === 'selfRating') {
           const domain = question.type;
@@ -447,9 +503,37 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
             score
           });
         }
+      } else {
+        // FALLBACK: Extract even without question bank
+        // Try to determine if it's SJT based on value structure
+        if (typeof value === 'object' && (value?.best || value?.worst)) {
+          employabilityAnswers.sjt.push({
+            scenario: `Employability SJT question ${questionId}`,
+            question: `Employability SJT question ${questionId}`,
+            studentBestChoice: value?.best || value,
+            studentWorstChoice: value?.worst || null,
+            score: 1 // Default score when we can't verify
+          });
+        } else {
+          // Assume it's a self-rating question
+          employabilityAnswers.selfRating.CareerReadiness.push({
+            question: `Employability question ${questionId}`,
+            answer: value,
+            domain: 'General'
+          });
+        }
+        console.log(`Extracted Employability answer without question bank: ${questionId}`);
       }
     }
   });
+  
+  console.log('Employability SJT answers extracted:', employabilityAnswers.sjt.length);
+  console.log('Employability selfRating categories with answers:', 
+    Object.entries(employabilityAnswers.selfRating)
+      .filter(([_, arr]) => arr.length > 0)
+      .map(([key, arr]) => `${key}:${arr.length}`)
+      .join(', ') || 'none'
+  );
 
   // Extract Knowledge answers
   const knowledgeAnswers = {};
@@ -532,8 +616,26 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log('=== ASSESSMENT DATA PREPARED ===');
   console.log('Grade Level:', gradeLevel);
   console.log('Stream:', stream);
-  console.log('RIASEC answers:', Object.keys(riasecAnswers).length);
+  console.log('RIASEC prefix used:', riasecPrefix);
+  console.log('BigFive prefix used:', bigFivePrefix);
+  console.log('Total answers received:', Object.keys(answers).length);
+  console.log('Sample answer keys:', Object.keys(answers).slice(0, 10));
+  console.log('RIASEC answers extracted:', Object.keys(riasecAnswers).length);
+  console.log('BigFive answers extracted:', Object.keys(bigFiveAnswers).length);
+  console.log('WorkValues answers extracted:', Object.keys(workValuesAnswers).length);
+  console.log('Employability SJT answers:', employabilityAnswers.sjt.length);
+  console.log('Knowledge answers extracted:', Object.keys(knowledgeAnswers).length);
   console.log('Aptitude scores:', aptitudeScores);
+  
+  // Debug: Check if riasecQuestions was provided
+  console.log('riasecQuestions provided:', riasecQuestions?.length || 0);
+  console.log('bigFiveQuestions provided:', bigFiveQuestions?.length || 0);
+  console.log('workValuesQuestions provided:', workValuesQuestions?.length || 0);
+  console.log('employabilityQuestions provided:', employabilityQuestions?.length || 0);
+  
+  // Debug: Check for keys that should match RIASEC pattern
+  const riasecKeys = Object.keys(answers).filter(k => k.startsWith('riasec_'));
+  console.log('Keys starting with riasec_:', riasecKeys.length, riasecKeys.slice(0, 5));
 
   // ============================================================================
   // RULE-BASED STREAM RECOMMENDATION (For After 10th students)

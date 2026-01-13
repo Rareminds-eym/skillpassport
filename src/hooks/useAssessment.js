@@ -211,7 +211,7 @@ export const useAssessment = () => {
   }, [currentAttempt?.id]);
 
   // Update progress
-  const updateProgress = useCallback(async (sectionIndex, questionIndex, sectionTimings, timerRemaining = null, elapsedTime = null) => {
+  const updateProgress = useCallback(async (sectionIndex, questionIndex, sectionTimings, timerRemaining = null, elapsedTime = null, allResponses = null) => {
     if (!currentAttempt?.id) return { success: false, error: 'No active attempt' };
 
     try {
@@ -220,7 +220,8 @@ export const useAssessment = () => {
         questionIndex,
         sectionTimings,
         timerRemaining,
-        elapsedTime
+        elapsedTime,
+        allResponses
       });
       return { success: true };
     } catch (err) {

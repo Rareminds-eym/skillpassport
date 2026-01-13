@@ -219,14 +219,12 @@ const AssessmentTestPage: React.FC = () => {
     onSectionComplete: (sectionId, timeSpent) => {
       console.log(`Section ${sectionId} completed in ${timeSpent}s`);
       if (useDatabase && currentAttempt?.id) {
-        dbUpdateProgress(flow.currentSectionIndex, 0, flow.sectionTimings);
+        // Save all responses including non-UUID questions (RIASEC, BigFive, etc.)
+        dbUpdateProgress(flow.currentSectionIndex, 0, flow.sectionTimings, null, null, flow.answers);
       }
     },
     onAnswerChange: (questionId, answer) => {
-      // Only save to database if:
-      // 1. Database mode is enabled
-      // 2. We have an active attempt
-      // 3. The question ID is a valid UUID (AI-generated questions have UUIDs, hardcoded don't)
+      // Save to database if database mode is enabled and we have an active attempt
       if (useDatabase && currentAttempt?.id) {
         const [sectionId, qId] = questionId.split('_');
         
@@ -234,15 +232,15 @@ const AssessmentTestPage: React.FC = () => {
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(qId);
         
         if (isUUID) {
+          // UUID questions (AI-generated) go to personal_assessment_responses table
           dbSaveResponse(sectionId, qId, answer);
-        } else {
-          // For non-UUID questions (hardcoded), just log and skip database save
-          console.log(`Skipping DB save for non-UUID question: ${questionId}`);
         }
+        // Note: Non-UUID questions (RIASEC, BigFive, etc.) are saved via all_responses
+        // in the updateProgress call below, which includes flow.answers
         
         // Update progress (current position) after every answer
-        // This ensures we can resume from the exact question if user navigates away
-        dbUpdateProgress(flow.currentSectionIndex, flow.currentQuestionIndex, flow.sectionTimings);
+        // Also save all responses to the all_responses column
+        dbUpdateProgress(flow.currentSectionIndex, flow.currentQuestionIndex, flow.sectionTimings, null, null, flow.answers);
       }
     }
   });

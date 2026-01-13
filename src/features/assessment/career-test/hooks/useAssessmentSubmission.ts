@@ -139,6 +139,16 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
       console.log('📝 Total answers:', Object.keys(answers).length);
       console.log('🎓 Grade level:', gradeLevel);
       console.log('📖 Stream:', studentStream);
+      
+      // Debug: Log sample answer keys to verify format
+      const answerKeys = Object.keys(answers);
+      console.log('🔑 Sample answer keys:', answerKeys.slice(0, 20));
+      console.log('🔑 RIASEC keys:', answerKeys.filter(k => k.startsWith('riasec_')).length);
+      console.log('🔑 BigFive keys:', answerKeys.filter(k => k.startsWith('bigfive_')).length);
+      console.log('🔑 Values keys:', answerKeys.filter(k => k.startsWith('values_')).length);
+      console.log('🔑 Employability keys:', answerKeys.filter(k => k.startsWith('employability_')).length);
+      console.log('🔑 Aptitude keys:', answerKeys.filter(k => k.startsWith('aptitude_')).length);
+      console.log('🔑 Knowledge keys:', answerKeys.filter(k => k.startsWith('knowledge_')).length);
 
       // Include adaptive aptitude results if available
       const answersWithAdaptive = { ...answers };
@@ -155,9 +165,19 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         gradeLevel
       );
 
-      if (!geminiResults) {
-        throw new Error('AI analysis returned no results. Please check your API key configuration.');
+      // Check for empty or invalid results
+      if (!geminiResults || Object.keys(geminiResults).length === 0) {
+        console.error('❌ AI analysis returned empty results:', geminiResults);
+        throw new Error('AI analysis returned empty results. Please try again.');
       }
+      
+      // Validate that we have essential fields
+      if (!geminiResults.riasec && !geminiResults.careerFit) {
+        console.error('❌ AI analysis missing essential fields:', Object.keys(geminiResults));
+        throw new Error('AI analysis returned incomplete results. Please try again.');
+      }
+      
+      console.log('✅ AI analysis successful, keys:', Object.keys(geminiResults));
 
       // Enhance results with adaptive aptitude data for high school students
       if ((gradeLevel === 'highschool' || gradeLevel === 'middle') && answers.adaptive_aptitude_results) {
