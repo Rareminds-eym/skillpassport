@@ -211,6 +211,7 @@ const AssessmentTestPage: React.FC = () => {
   const [checkingExistingAttempt, setCheckingExistingAttempt] = useState(true);
   const [assessmentStarted, setAssessmentStarted] = useState(false);
   const [adaptiveAptitudeAnswer, setAdaptiveAptitudeAnswer] = useState<string | null>(null);
+  const [adaptiveQuestionTimer, setAdaptiveQuestionTimer] = useState(90); // 90 seconds per question
   
   // Flow state machine
   const flow = useAssessmentFlow({
@@ -273,22 +274,29 @@ const AssessmentTestPage: React.FC = () => {
   });
   
   // Check for existing in-progress attempt on mount
+  // OPTIMIZED: Start checking as soon as studentRecordId is available
   useEffect(() => {
     const checkExisting = async () => {
-      // Wait for both student grade and database hooks to finish loading
-      if (loadingStudentGrade || dbLoading) {
+      // If still loading student record, wait
+      if (dbLoading) {
         return;
       }
       
+      // If no student record found, proceed to grade selection immediately
       if (!studentRecordId) {
-        // No student record found, proceed to grade selection
+        console.log('🚀 No student record, skipping to grade selection');
         setCheckingExistingAttempt(false);
         flow.setCurrentScreen('grade_selection');
         return;
       }
       
       try {
+        console.log('🔍 Checking for in-progress attempt...');
+        const startTime = performance.now();
         const attempt = await checkInProgressAttempt();
+        const endTime = performance.now();
+        console.log(`✅ In-progress check completed in ${Math.round(endTime - startTime)}ms`);
+        
         if (attempt) {
           setPendingAttempt(attempt);
           setShowResumePrompt(true);
@@ -304,7 +312,7 @@ const AssessmentTestPage: React.FC = () => {
     };
     
     checkExisting();
-  }, [studentRecordId, loadingStudentGrade, dbLoading, checkInProgressAttempt]);
+  }, [studentRecordId, dbLoading, checkInProgressAttempt]);
   
   // Build sections when grade level, stream, or AI questions change
   useEffect(() => {
@@ -372,6 +380,40 @@ const AssessmentTestPage: React.FC = () => {
       handleNextQuestion();
     }
   }, [flow.aptitudeQuestionTimer, flow.aptitudePhase, flow.showSectionIntro, flow.showSectionComplete, flow.currentSectionIndex, sections]);
+  
+  // Adaptive aptitude per-question timer (90 seconds)
+  useEffect(() => {
+    const currentSection = sections[flow.currentSectionIndex];
+    if (!currentSection?.isAdaptive) return;
+    if (flow.showSectionIntro || flow.showSectionComplete) return;
+    if (adaptiveAptitude.loading || adaptiveAptitude.submitting) return;
+    if (!adaptiveAptitude.currentQuestion) return;
+    
+    if (adaptiveQuestionTimer > 0) {
+      const interval = setInterval(() => {
+        setAdaptiveQuestionTimer(prev => prev - 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      // Auto-submit when time runs out - select a random answer if none selected
+      if (adaptiveAptitudeAnswer) {
+        adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer as 'A' | 'B' | 'C' | 'D');
+        setAdaptiveAptitudeAnswer(null);
+        setAdaptiveQuestionTimer(90); // Reset for next question
+      } else {
+        // No answer selected, auto-submit 'A' as default
+        adaptiveAptitude.submitAnswer('A');
+        setAdaptiveQuestionTimer(90); // Reset for next question
+      }
+    }
+  }, [adaptiveQuestionTimer, adaptiveAptitudeAnswer, adaptiveAptitude.currentQuestion, adaptiveAptitude.loading, adaptiveAptitude.submitting, flow.showSectionIntro, flow.showSectionComplete, flow.currentSectionIndex, sections]);
+  
+  // Reset adaptive timer when question changes
+  useEffect(() => {
+    if (adaptiveAptitude.currentQuestion) {
+      setAdaptiveQuestionTimer(90);
+    }
+  }, [adaptiveAptitude.currentQuestion?.id]);
   
   // Handlers
   const handleGradeSelect = useCallback(async (level: GradeLevel) => {
@@ -605,6 +647,19 @@ const AssessmentTestPage: React.FC = () => {
   }, [sections, flow]);
   
   const skipToSection = useCallback((sectionIndex: number) => {
+    console.log(`🚀 skipToSection called: sectionIndex=${sectionIndex}, sections.length=${sections.length}`);
+    console.log(`📋 Available sections:`, sections.map((s, i) => `${i}: ${s.id}`));
+    
+    if (sections.length === 0) {
+      console.warn('❌ Cannot skip: sections array is empty');
+      return;
+    }
+    
+    if (sectionIndex >= sections.length) {
+      console.warn(`❌ Cannot skip to section ${sectionIndex}: only ${sections.length} sections available`);
+      return;
+    }
+    
     // Fill all previous sections with dummy answers
     sections.slice(0, sectionIndex).forEach(section => {
       section.questions?.forEach((question: any) => {
@@ -625,7 +680,7 @@ const AssessmentTestPage: React.FC = () => {
     
     // Jump to the target section
     flow.jumpToSection(sectionIndex);
-    console.log(`Test Mode: Skipped to section ${sectionIndex}`);
+    console.log(`✅ Test Mode: Skipped to section ${sectionIndex} (${sections[sectionIndex]?.title})`);
   }, [sections, flow]);
   
   // Get current question (handle adaptive sections)
@@ -818,16 +873,34 @@ const AssessmentTestPage: React.FC = () => {
               Auto-Fill All
             </button>
             <button
-              onClick={() => skipToSection(4)}
+              onClick={() => {
+                // Find aptitude section dynamically
+                const aptitudeIndex = sections.findIndex(s => s.id === 'aptitude' || s.id === 'hs_aptitude_sampling' || s.id === 'adaptive_aptitude');
+                if (aptitudeIndex >= 0) {
+                  skipToSection(aptitudeIndex);
+                } else {
+                  console.warn('❌ Aptitude section not found in sections:', sections.map(s => s.id));
+                }
+              }}
               className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200"
+              disabled={sections.length === 0}
             >
               Skip to Aptitude
             </button>
             <button
-              onClick={() => skipToSection(5)}
+              onClick={() => {
+                // Find adaptive section dynamically (renamed from "Skip to Knowledge")
+                const adaptiveIndex = sections.findIndex(s => s.id === 'adaptive_aptitude' || s.id === 'knowledge');
+                if (adaptiveIndex >= 0) {
+                  skipToSection(adaptiveIndex);
+                } else {
+                  console.warn('❌ Adaptive/Knowledge section not found in sections:', sections.map(s => s.id));
+                }
+              }}
               className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200"
+              disabled={sections.length === 0}
             >
-              Skip to Knowledge
+              Skip to Adaptive
             </button>
           </div>
         </div>
@@ -896,7 +969,7 @@ const AssessmentTestPage: React.FC = () => {
                 {/* Question Number Label */}
                 <div className="text-sm font-semibold text-indigo-600 mb-2">
                   QUESTION {currentSection?.isAdaptive 
-                    ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1} / ${adaptiveAptitude.progress?.estimatedTotalQuestions || 20}`
+                    ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1} / ${adaptiveAptitude.progress?.estimatedTotalQuestions || 21}`
                     : `${flow.currentQuestionIndex + 1} / ${currentSection?.questions?.length || 0}`}
                 </div>
                 
@@ -908,9 +981,10 @@ const AssessmentTestPage: React.FC = () => {
                   onAnswer={handleAnswerChange}
                   responseScale={currentSection?.responseScale}
                   isAdaptive={currentSection?.isAdaptive}
-                  adaptiveTimer={90}
-                  adaptiveDifficulty={3}
+                  adaptiveTimer={adaptiveQuestionTimer}
+                  adaptiveDifficulty={adaptiveAptitude.currentQuestion?.difficulty || adaptiveAptitude.progress?.currentDifficulty}
                   adaptiveLoading={false}
+                  adaptiveDisabled={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
                 />
                 
                 <QuestionNavigation

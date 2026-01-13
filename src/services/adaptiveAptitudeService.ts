@@ -375,7 +375,7 @@ export async function getNextQuestion(sessionId: string): Promise<NextQuestionRe
   const totalQuestionsAnswered = sessionData.questions_answered as number;
   const maxTotalQuestions = DEFAULT_ADAPTIVE_TEST_CONFIG.phases.diagnostic_screener.maxQuestions +
     DEFAULT_ADAPTIVE_TEST_CONFIG.phases.adaptive_core.maxQuestions +
-    DEFAULT_ADAPTIVE_TEST_CONFIG.phases.stability_confirmation.maxQuestions; // 5 + 11 + 4 = 20
+    DEFAULT_ADAPTIVE_TEST_CONFIG.phases.stability_confirmation.maxQuestions; // 6 + 11 + 4 = 21
 
   // Hard limit: if we've answered max questions, complete the test
   if (totalQuestionsAnswered >= maxTotalQuestions) {
@@ -872,7 +872,7 @@ export async function submitAnswer(options: SubmitAnswerOptions): Promise<Answer
   }
 
   // Determine if test is complete
-  // Hard limit: max 20 questions total (5 + 11 + 4)
+  // Hard limit: max 21 questions total (6 + 11 + 4)
   const maxTotalQuestions = DEFAULT_ADAPTIVE_TEST_CONFIG.phases.diagnostic_screener.maxQuestions +
     DEFAULT_ADAPTIVE_TEST_CONFIG.phases.adaptive_core.maxQuestions +
     DEFAULT_ADAPTIVE_TEST_CONFIG.phases.stability_confirmation.maxQuestions;

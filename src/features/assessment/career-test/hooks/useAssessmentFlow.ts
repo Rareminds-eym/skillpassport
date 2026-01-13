@@ -246,15 +246,19 @@ export const useAssessmentFlow = ({
   }, [currentSectionIndex, sections.length]);
 
   const jumpToSection = useCallback((sectionIndex: number) => {
+    console.log(`🎯 jumpToSection called: sectionIndex=${sectionIndex}, sections.length=${sections.length}`);
     if (sectionIndex >= 0 && sectionIndex < sections.length) {
+      console.log(`✅ Jumping to section ${sectionIndex}: ${sections[sectionIndex]?.title || 'unknown'}`);
       setCurrentSectionIndex(sectionIndex);
       setCurrentQuestionIndex(0);
       setTimeRemaining(null);
       setElapsedTime(0);
       setShowSectionIntro(true);
       setShowSectionComplete(false);
+    } else {
+      console.warn(`❌ Cannot jump to section ${sectionIndex}: sections.length=${sections.length}`);
     }
-  }, [sections.length]);
+  }, [sections]);
 
   const resetFlow = useCallback(() => {
     setCurrentScreen('loading');

@@ -148,7 +148,61 @@ You MUST provide a PERSONALIZED recommendation based on THEIR SPECIFIC scores be
 YOUR STUDENT IS DIFFERENT FROM THESE EXAMPLES!
 Analyze THEIR scores below and recommend THEIR best stream!
 
-IMPORTANT: Base your recommendation ONLY on the ACTUAL scores provided below, not on assumptions or defaults!
+IMPORTANT: Base your recommendation on the ACTUAL scores provided, not assumptions!
+
+## CRITICAL: CAREER CLUSTERS MUST ALIGN WITH RECOMMENDED STREAM
+
+For after 10th students, the career clusters in "careerFit.clusters" MUST be directly related to the streams:
+- **Cluster 1 (High Fit)** and **Cluster 2 (Medium Fit)**: Based on the PRIMARY recommended stream
+- **Cluster 3 (Explore)**: Based on the ALTERNATIVE stream recommendation (the second-best stream option)
+
+Use this mapping to select appropriate career clusters:
+
+**PCMB (Physics, Chemistry, Maths, Biology):**
+- Cluster 1 (High Fit): Healthcare & Medicine (Doctor, Medical Researcher, Pharmacist)
+- Cluster 2 (Medium Fit): Biotechnology & Life Sciences (Biotech Researcher, Geneticist, Microbiologist)
+
+**PCMS (Physics, Chemistry, Maths, Computer Science):**
+- Cluster 1 (High Fit): Technology & Software (Software Engineer, Data Scientist, AI/ML Engineer)
+- Cluster 2 (Medium Fit): Engineering & Innovation (Systems Engineer, Product Developer, Tech Architect)
+
+**PCM (Physics, Chemistry, Maths):**
+- Cluster 1 (High Fit): Engineering (Mechanical/Civil/Electrical Engineer, Architect)
+- Cluster 2 (Medium Fit): Defense & Aviation (Pilot, Defense Services, Aerospace Engineer)
+
+**PCB (Physics, Chemistry, Biology):**
+- Cluster 1 (High Fit): Healthcare & Nursing (Doctor, Nurse, Physiotherapist, Dentist)
+- Cluster 2 (Medium Fit): Allied Health Sciences (Medical Lab Technician, Radiologist, Nutritionist)
+
+**Commerce with Maths:**
+- Cluster 1 (High Fit): Finance & Accounting (Chartered Accountant, Financial Analyst, Investment Banker)
+- Cluster 2 (Medium Fit): Banking & Insurance (Bank Manager, Actuary, Risk Analyst)
+
+**Commerce without Maths:**
+- Cluster 1 (High Fit): Business & Management (Business Manager, Entrepreneur, Marketing Manager)
+- Cluster 2 (Medium Fit): Human Resources & Administration (HR Manager, Company Secretary, Admin Head)
+
+**Arts with Psychology:**
+- Cluster 1 (High Fit): Psychology & Counseling (Psychologist, Counselor, Therapist)
+- Cluster 2 (Medium Fit): Human Resources & Training (HR Professional, Corporate Trainer, Life Coach)
+
+**Arts with Economics:**
+- Cluster 1 (High Fit): Civil Services & Policy (IAS/IPS Officer, Policy Analyst, Government Administrator)
+- Cluster 2 (Medium Fit): Economics & Research (Economist, Research Analyst, Think Tank Researcher)
+
+**Arts General:**
+- Cluster 1 (High Fit): Law & Legal Services (Lawyer, Legal Advisor, Judge)
+- Cluster 2 (Medium Fit): Media & Communication (Journalist, Content Creator, PR Manager)
+
+**FOR CLUSTER 3 (Explore) - USE THE ALTERNATIVE STREAM:**
+- Look at the "alternativeStream" you recommend in streamRecommendation
+- Pick a career cluster from THAT alternative stream's mapping above
+- Example: If primary is PCMS and alternative is Commerce with Maths, Cluster 3 should be Finance & Accounting or Banking & Insurance
+
+**IMPORTANT:** 
+- Clusters 1 & 2 MUST match the PRIMARY recommended stream
+- Cluster 3 MUST match the ALTERNATIVE stream recommendation
+- This gives students visibility into careers from both their best-fit and second-best stream options
 ` : '';
 
   return `You are a career counselor and psychometric assessment expert. Analyze the following student assessment data and provide comprehensive results.
@@ -351,7 +405,12 @@ CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL:
 3. ALL arrays must have at least 2 items - NO empty arrays
 4. ALL career clusters must have roles.entry, roles.mid, and domains filled with real job titles
 5. For after10 students, streamRecommendation is MANDATORY with a specific stream choice
-6. Use EXACT scoring formulas provided - Be DETERMINISTIC (same input = same output)
-7. Provide SPECIFIC, ACTIONABLE career guidance based on the student's actual scores
-8. DO NOT truncate the response - complete ALL fields`;
+6. **FOR AFTER 10TH STUDENTS: Career clusters MUST align with streams as follows:**
+   - **Cluster 1 (High Fit) & Cluster 2 (Medium Fit)**: Must be from the PRIMARY recommended stream
+   - **Cluster 3 (Explore)**: Must be from the ALTERNATIVE stream (second-best option)
+   - Example: If primary=PCMS, alternative=Commerce → Clusters 1&2 are Tech/Engineering, Cluster 3 is Finance/Business
+   - This shows students career options from both their best-fit AND second-best stream choices
+7. Use EXACT scoring formulas provided - Be DETERMINISTIC (same input = same output)
+8. Provide SPECIFIC, ACTIONABLE career guidance based on the student's actual scores
+9. DO NOT truncate the response - complete ALL fields`;
 }

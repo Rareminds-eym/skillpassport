@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../../../lib/supabaseClient';
 import * as assessmentService from '../../../../services/assessmentService';
@@ -25,6 +25,8 @@ export const useAssessmentResults = () => {
     const [retrying, setRetrying] = useState(false);
     const [gradeLevel, setGradeLevel] = useState('after12'); // Default to after12
     const [gradeLevelFromAttempt, setGradeLevelFromAttempt] = useState(false); // Track if grade level was set from attempt
+    // Use ref to track grade level from attempt synchronously (avoids race condition with async state updates)
+    const gradeLevelFromAttemptRef = useRef(false);
     const [studentInfo, setStudentInfo] = useState({
         name: '—',
         regNo: '—',
@@ -42,6 +44,16 @@ export const useAssessmentResults = () => {
         experiences: [],
         education: []
     });
+    const [monthsInGrade, setMonthsInGrade] = useState(null);
+
+    // Calculate months between a start date and now
+    const calculateMonthsInGrade = (startDate) => {
+        if (!startDate) return null;
+        const start = new Date(startDate);
+        const now = new Date();
+        const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+        return Math.max(0, months);
+    };
 
     // Convert string to Title Case
     const toTitleCase = (str) => {
@@ -77,9 +89,10 @@ export const useAssessmentResults = () => {
                         school_class_id,
                         branch_field,
                         course_name,
+                        grade_start_date,
                         colleges(name),
                         schools(name),
-                        school_classes(grade)
+                        school_classes(grade, academic_year)
                     `)
                     .eq('user_id', user.id)
                     .maybeSingle();
@@ -234,7 +247,8 @@ export const useAssessmentResults = () => {
                     
                     // Update gradeLevel state - this is a fallback value
                     // Only set if grade level wasn't already set from the assessment attempt
-                    if (!gradeLevelFromAttempt) {
+                    // Use ref for synchronous check to avoid race condition with async state updates
+                    if (!gradeLevelFromAttemptRef.current) {
                         setGradeLevel(derivedGradeLevel);
                     }
                     console.log('Derived gradeLevel from student data:', derivedGradeLevel, 'grade:', studentGrade, 'school_id:', studentData.school_id, 'college_id:', studentData.college_id);
@@ -250,6 +264,23 @@ export const useAssessmentResults = () => {
                         branchField: studentData.branch_field || '—',
                         courseName: studentData.course_name || '—'
                     });
+
+                    // Calculate months in grade from grade_start_date
+                    if (studentData.grade_start_date) {
+                        const months = calculateMonthsInGrade(studentData.grade_start_date);
+                        setMonthsInGrade(months);
+                        console.log('Months in grade:', months, 'from grade_start_date:', studentData.grade_start_date);
+                    } else if (studentData.school_classes?.academic_year) {
+                        // Fallback: estimate from academic year (e.g., "2024-2025")
+                        const yearMatch = studentData.school_classes.academic_year.match(/^(\d{4})/);
+                        if (yearMatch) {
+                            const startYear = parseInt(yearMatch[1]);
+                            const estimatedStartDate = `${startYear}-06-01`; // Assume June start
+                            const months = calculateMonthsInGrade(estimatedStartDate);
+                            setMonthsInGrade(months);
+                            console.log('Months in grade (estimated):', months, 'from academic_year:', studentData.school_classes.academic_year);
+                        }
+                    }
 
                     localStorage.setItem('studentName', fullName);
                     localStorage.setItem('studentRegNo', rollNumber);
@@ -347,6 +378,8 @@ export const useAssessmentResults = () => {
     const loadResults = async () => {
         setLoading(true);
         setError(null);
+        // Reset the ref at the start of loading to ensure clean state
+        gradeLevelFromAttemptRef.current = false;
 
         // Don't await fetchStudentInfo - it runs in parallel but won't override attempt grade_level
         fetchStudentInfo();
@@ -366,6 +399,7 @@ export const useAssessmentResults = () => {
                     if (attempt.grade_level) {
                         setGradeLevel(attempt.grade_level);
                         setGradeLevelFromAttempt(true);
+                        gradeLevelFromAttemptRef.current = true; // Set ref synchronously to prevent race condition
                     }
 
                     // Clear localStorage to prevent stale data issues
@@ -412,6 +446,7 @@ export const useAssessmentResults = () => {
                     if (latestResult.grade_level) {
                         setGradeLevel(latestResult.grade_level);
                         setGradeLevelFromAttempt(true);
+                        gradeLevelFromAttemptRef.current = true; // Set ref synchronously to prevent race condition
                     }
 
                     // Sync localStorage with database results to prevent stale data
@@ -481,6 +516,7 @@ export const useAssessmentResults = () => {
                     if (storedGradeLevel) {
                         setGradeLevel(storedGradeLevel);
                         setGradeLevelFromAttempt(true);
+                        gradeLevelFromAttemptRef.current = true; // Set ref synchronously to prevent race condition
                     }
                     setLoading(false);
                     return;
@@ -514,6 +550,7 @@ export const useAssessmentResults = () => {
                     if (storedGradeLevel) {
                         setGradeLevel(storedGradeLevel);
                         setGradeLevelFromAttempt(true);
+                        gradeLevelFromAttemptRef.current = true; // Set ref synchronously to prevent race condition
                     }
                     
                     // Also try to save to database if user is logged in
@@ -736,6 +773,7 @@ export const useAssessmentResults = () => {
         error,
         retrying,
         gradeLevel, // Export grade level
+        monthsInGrade, // Export months in grade for conditional display
         studentInfo,
         studentAcademicData, // Export academic data for course matching
         handleRetry,
