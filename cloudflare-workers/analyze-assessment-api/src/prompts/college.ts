@@ -9,54 +9,144 @@ export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: 
 
   // After 10th stream recommendation section
   const after10StreamSection = isAfter10 ? `
-## AFTER 10TH STREAM RECOMMENDATION (MANDATORY FOR THIS STUDENT):
+## ⚠️ CRITICAL: AFTER 10TH STREAM RECOMMENDATION (MANDATORY FOR THIS STUDENT) ⚠️
 This student is completing 10th grade and needs guidance on which 11th/12th stream to choose.
-Based on their ACTUAL assessment scores below, you MUST recommend the best stream.
 
-**Available Streams (Choose ONE as primary recommendation):**
+${assessmentData.ruleBasedStreamHint ? `
+## 🎯 RULE-BASED RECOMMENDATION (STRONGLY CONSIDER THIS):
+Our precise scoring algorithm analyzed this student's RIASEC scores and suggests:
+
+**Recommended Stream**: ${assessmentData.ruleBasedStreamHint.stream}
+**Confidence**: ${assessmentData.ruleBasedStreamHint.confidence}%
+**Match Level**: ${assessmentData.ruleBasedStreamHint.matchLevel}
+**RIASEC Scores**: ${JSON.stringify(assessmentData.ruleBasedStreamHint.riasecScores)}
+**Alternative**: ${assessmentData.ruleBasedStreamHint.alternativeStream || 'N/A'}
+
+**Top 3 Stream Matches**:
+${assessmentData.ruleBasedStreamHint.allScores?.map((s, i) => `${i + 1}. ${s.stream} (${s.score}% match, ${s.category})`).join('\n') || 'N/A'}
+
+⚠️ IMPORTANT: This recommendation is based on ACTUAL assessment scores using a validated algorithm.
+You should STRONGLY AGREE with this recommendation unless you have compelling evidence otherwise.
+If you recommend a different stream, you MUST provide clear reasoning based on the scores below.
+` : ''}
+
+**PERSONALIZATION REQUIREMENT - READ CAREFULLY:**
+You are analyzing a UNIQUE student with UNIQUE scores. Their assessment responses are DIFFERENT from other students.
+You MUST provide a PERSONALIZED recommendation based on THEIR SPECIFIC scores below.
+
+❌ DO NOT default to PCMS for everyone!
+❌ DO NOT assume all students want technology careers!
+❌ DO NOT give the same recommendation to different students!
+
+✅ DO analyze THEIR actual RIASEC scores
+✅ DO analyze THEIR actual aptitude scores
+✅ DO match THEIR pattern to the appropriate stream
+✅ DO provide reasoning based on THEIR specific profile
+
+**Available Streams (Choose ONE as primary recommendation based on ACTUAL scores):**
 
 **Science Streams:**
-- PCMB (Physics, Chemistry, Maths, Biology) - Best for: High I (Investigative) + Strong Numerical + Interest in Biology/Medicine
-- PCMS (Physics, Chemistry, Maths, Computer Science) - Best for: High I + Strong Numerical + Strong Abstract/Logical + Interest in Technology
-- PCM (Physics, Chemistry, Maths) - Best for: High I + Strong Numerical + Strong Spatial/Mechanical
-- PCB (Physics, Chemistry, Biology) - Best for: High I + High S (Social) + Interest in Healthcare/Life Sciences
+- **PCMB** (Physics, Chemistry, Maths, Biology) - Best for: High I (Investigative) + Strong Numerical + Interest in Biology/Medicine
+  * Choose if: I >= 60% AND Numerical >= 70% AND (S >= 60% OR biology interest shown)
+  * Career paths: Doctor, Dentist, Biotechnologist, Medical Researcher
+  
+- **PCMS** (Physics, Chemistry, Maths, Computer Science) - Best for: High I + Strong Numerical + Strong Abstract/Logical + Interest in Technology
+  * Choose if: I >= 60% AND Numerical >= 70% AND Abstract >= 70%
+  * Career paths: Software Engineer, Data Scientist, AI/ML Engineer
+  
+- **PCM** (Physics, Chemistry, Maths) - Best for: High I + Strong Numerical + Strong Spatial/Mechanical
+  * Choose if: I >= 60% AND Numerical >= 70% AND (R >= 60% OR Spatial >= 70%)
+  * Career paths: Mechanical Engineer, Civil Engineer, Architect
+  
+- **PCB** (Physics, Chemistry, Biology) - Best for: High I + High S (Social) + Interest in Healthcare/Life Sciences
+  * Choose if: I >= 60% AND S >= 60% AND biology interest
+  * Career paths: Physiotherapist, Pharmacist, Biotechnologist
 
 **Commerce Stream:**
-- Commerce with Maths - Best for: High E (Enterprising) + High C (Conventional) + Strong Numerical
-- Commerce without Maths - Best for: High E + High C + Strong Verbal + Moderate Numerical
+- **Commerce with Maths** - Best for: High E (Enterprising) + High C (Conventional) + Strong Numerical
+  * Choose if: E >= 60% AND C >= 60% AND Numerical >= 70%
+  * Career paths: Chartered Accountant, Financial Analyst, Economist
+  
+- **Commerce without Maths** - Best for: High E + High C + Strong Verbal + Moderate Numerical
+  * Choose if: E >= 60% AND C >= 60% AND Verbal >= 70% AND Numerical < 70%
+  * Career paths: Business Manager, Marketing Professional, HR Specialist
 
 **Arts/Humanities Stream:**
-- Arts with Psychology - Best for: High S (Social) + High A (Artistic) + Interest in Human Behavior
-- Arts with Economics - Best for: High I + High E + Strong Verbal + Interest in Society/Policy
-- Arts General - Best for: High A (Artistic) + Strong Verbal + Creative Interests
+- **Arts with Psychology** - Best for: High S (Social) + High A (Artistic) + Interest in Human Behavior
+  * Choose if: S >= 70% AND (A >= 60% OR psychology interest)
+  * Career paths: Psychologist, Counselor, Social Worker
+  
+- **Arts with Economics** - Best for: High I + High E + Strong Verbal + Interest in Society/Policy
+  * Choose if: I >= 60% AND E >= 60% AND Verbal >= 70%
+  * Career paths: Economist, Policy Analyst, Journalist
+  
+- **Arts General** - Best for: High A (Artistic) + Strong Verbal + Creative Interests
+  * Choose if: A >= 70% AND Verbal >= 70%
+  * Career paths: Writer, Designer, Artist, Teacher
 
-## SCORING-BASED RECOMMENDATION ALGORITHM (FOLLOW EXACTLY):
+## EXACT SCORING-BASED RECOMMENDATION ALGORITHM (FOLLOW STEP-BY-STEP):
 
-**Step 1: Analyze RIASEC Scores**
-- Calculate which RIASEC types have scores >= 60%
+**Step 1: Calculate RIASEC Percentages from Actual Responses**
+- Look at the RIASEC responses provided below
+- Calculate percentage for each type (R, I, A, S, E, C)
+- Identify which types have scores >= 60%
 - Identify top 2-3 dominant types
 
-**Step 2: Analyze Aptitude Scores**
+**Step 2: Analyze Aptitude Scores from Actual Results**
 - Numerical >= 70%: Strong fit for Science/Commerce with Maths
 - Verbal >= 70%: Strong fit for Arts/Commerce
 - Abstract/Logical >= 70%: Strong fit for Science (especially PCMS)
 - Spatial >= 70%: Strong fit for Engineering (PCM/PCMS)
 - Clerical >= 70%: Strong fit for Commerce
 
-**Step 3: Match Pattern to Stream**
-| Pattern | Recommended Stream |
+**Step 3: Match THIS Student's Pattern to Stream**
+| THIS Student's Pattern | Recommended Stream |
 |---------|-------------------|
 | High I + High Numerical + High Abstract | PCMS or PCM |
 | High I + High Numerical + Biology Interest | PCMB or PCB |
 | High I + High S + Biology Interest | PCB |
 | High E + High C + High Numerical | Commerce with Maths |
 | High E + High C + High Verbal | Commerce without Maths |
-| High A + High S + High Verbal | Arts |
+| High A + High S + High Verbal | Arts with Psychology |
 | High I + High E + High Verbal | Arts with Economics |
+| High A + High Verbal | Arts General |
 
-**Step 4: Determine Confidence**
-- High Fit: Pattern matches clearly (2+ indicators align)
-- Medium Fit: Pattern partially matches (1-2 indicators align)
+**Step 4: Determine Confidence Based on Pattern Clarity**
+- High Fit (85-100%): Pattern matches clearly (3+ indicators align)
+- Medium Fit (75-84%): Pattern partially matches (2 indicators align)
+
+**Step 5: Provide Alternative Stream**
+- Suggest a second-best option if scores are close
+- Explain what would make the alternative a better fit
+
+## EXAMPLE DIFFERENTIATION (to show you MUST personalize):
+
+**Example Student A:**
+- RIASEC: I=85%, R=70%, A=45%, S=40%, E=35%, C=50%
+- Aptitude: Numerical=85%, Abstract=80%, Verbal=65%
+- **Recommendation**: PCMS (Physics, Chemistry, Maths, Computer Science)
+- **Reasoning**: High investigative interest + exceptional numerical & abstract reasoning = perfect for technology/engineering
+
+**Example Student B:**
+- RIASEC: I=80%, S=75%, A=50%, R=45%, E=40%, C=55%
+- Aptitude: Numerical=75%, Verbal=80%, Abstract=65%
+- **Recommendation**: PCMB (Physics, Chemistry, Maths, Biology)
+- **Reasoning**: High investigative + social interests + strong verbal skills = ideal for medical/healthcare field
+
+**Example Student C:**
+- RIASEC: E=85%, C=80%, I=50%, S=60%, A=40%, R=35%
+- Aptitude: Numerical=75%, Verbal=85%, Abstract=60%
+- **Recommendation**: Commerce with Maths
+- **Reasoning**: High enterprising + conventional + strong numerical & verbal = perfect for business/finance
+
+**Example Student D:**
+- RIASEC: A=85%, S=75%, I=55%, E=50%, R=35%, C=40%
+- Aptitude: Verbal=85%, Numerical=55%, Abstract=70%
+- **Recommendation**: Arts with Psychology
+- **Reasoning**: High artistic + social interests + exceptional verbal skills = ideal for humanities/social sciences
+
+YOUR STUDENT IS DIFFERENT FROM THESE EXAMPLES!
+Analyze THEIR scores below and recommend THEIR best stream!
 
 IMPORTANT: Base your recommendation on the ACTUAL scores provided, not assumptions!
 
