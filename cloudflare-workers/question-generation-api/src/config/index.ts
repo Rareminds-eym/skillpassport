@@ -16,7 +16,7 @@ export const OPENROUTER_MODEL = 'openai/gpt-4o-mini';
 export const CLAUDE_MODEL = 'claude-3-haiku-20240307';
 
 // =============================================================================
-// ADAPTIVE TEST CONFIG
+// ADAPTIVE TEST CONFIG (21 questions total: 6 + 11 + 4)
 // =============================================================================
 
 export const ALL_SUBTAGS: Subtag[] = [
@@ -28,11 +28,16 @@ export const ALL_SUBTAGS: Subtag[] = [
   'pattern_recognition',
 ];
 
+// Phase 1: Diagnostic Screener - 6 questions at Level 3 (baseline)
 export const DIAGNOSTIC_QUESTION_COUNT = 6;
-export const ADAPTIVE_MIN_QUESTIONS = 8;
+
+// Phase 2: Adaptive Core - 11 truly adaptive questions
+export const ADAPTIVE_MIN_QUESTIONS = 11;
 export const ADAPTIVE_MAX_QUESTIONS = 11;
+
+// Phase 3: Stability Confirmation - 4 questions to confirm aptitude level
 export const STABILITY_MIN_QUESTIONS = 4;
-export const STABILITY_MAX_QUESTIONS = 6;
+export const STABILITY_MAX_QUESTIONS = 4;
 
 // =============================================================================
 // CAREER ASSESSMENT CONFIG

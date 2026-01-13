@@ -1,6 +1,7 @@
 /**
  * Adaptive Assessment - Core Questions Handler
- * Generates 8-11 adaptive core questions based on starting difficulty
+ * Generates 11 adaptive core questions (Phase 2: Q7-Q17)
+ * Difficulty adapts based on student performance
  */
 
 import type { Env, AdaptiveQuestion, DifficultyLevel, Subtag, TestPhase, AdaptiveQuestionGenerationResult } from '../../types';
@@ -29,7 +30,7 @@ export async function handleCoreGeneration(
 ): Promise<Response> {
   try {
     const body = await request.json() as CoreRequestBody;
-    const { gradeLevel, startingDifficulty = 3, count = 10, excludeQuestionIds = [], excludeQuestionTexts = [] } = body;
+    const { gradeLevel, startingDifficulty = 3, count = 11, excludeQuestionIds = [], excludeQuestionTexts = [] } = body;
 
     if (!gradeLevel || !['middle_school', 'high_school'].includes(gradeLevel)) {
       return errorResponse('Valid gradeLevel is required (middle_school or high_school)', 400);
@@ -134,7 +135,7 @@ async function generateAdaptiveCoreQuestions(
   env: Env,
   gradeLevel: GradeLevel,
   startingDifficulty: DifficultyLevel,
-  count: number = 10,
+  count: number = 11,
   excludeQuestionIds: string[] = [],
   excludeQuestionTexts: string[] = []
 ): Promise<AdaptiveQuestionGenerationResult> {
@@ -147,6 +148,7 @@ async function generateAdaptiveCoreQuestions(
   }
 
   const phase: TestPhase = 'adaptive_core';
+  // Phase 2: Exactly 11 adaptive questions (Q7-Q17)
   const questionCount = Math.min(Math.max(count, 8), 11);
 
   const difficultyRange = generateDifficultyRange(startingDifficulty, questionCount);

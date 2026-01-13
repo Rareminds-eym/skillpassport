@@ -1209,7 +1209,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                                     style={{
                                                         backgroundColor: '#fff',
                                                         boxShadow: `0 0 10px ${purpleConfig.accentLight}, 0 0 20px ${purpleConfig.accent}`,
-                                                        animation: 'moveStreamDot 6s linear infinite',
+                                                        animation: 'moveStreamDot 10s linear infinite',
                                                     }}
                                                 />
 

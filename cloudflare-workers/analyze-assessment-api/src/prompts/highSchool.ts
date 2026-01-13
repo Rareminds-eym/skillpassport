@@ -2,28 +2,100 @@
  * High School (Grades 9-12) Assessment Prompt Builder
  */
 
-import type { AssessmentData } from '../types';
+import type { AssessmentData, AdaptiveAptitudeResults } from '../types';
+
+/**
+ * Pre-process adaptive aptitude results into actionable insights
+ */
+function processAdaptiveResults(results: AdaptiveAptitudeResults): {
+  section: string;
+  isHighAptitude: boolean;
+  topStrengths: string[];
+} {
+  const level = results.aptitudeLevel;
+  const accuracy = results.overallAccuracy;
+  const isHighAptitude = level >= 4 || accuracy >= 75;
+  
+  const levelLabels: Record<number, string> = {
+    1: 'Basic',
+    2: 'Developing', 
+    3: 'Proficient',
+    4: 'Advanced',
+    5: 'Expert'
+  };
+  
+  // Extract and sort subtags by accuracy
+  const subtags = results.accuracyBySubtag || {};
+  const sortedSubtags = Object.entries(subtags)
+    .map(([name, data]: [string, any]) => ({
+      name: name.replace(/_/g, ' '),
+      accuracy: typeof data === 'number' ? data : data?.accuracy || 0
+    }))
+    .sort((a, b) => b.accuracy - a.accuracy);
+  
+  const topStrengths = sortedSubtags
+    .filter(s => s.accuracy >= 70)
+    .slice(0, 3)
+    .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
+  
+  const weakAreas = sortedSubtags
+    .filter(s => s.accuracy < 50)
+    .slice(0, 2)
+    .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
+
+  // Career mapping for high school (more specific)
+  const careerMapping: Record<string, string[]> = {
+    'numerical reasoning': ['Data Scientist', 'Quantitative Analyst', 'Actuary', 'Financial Engineer', 'ISRO Scientist', 'CA'],
+    'logical reasoning': ['Software Architect', 'AI/ML Engineer', 'Corporate Lawyer', 'IAS Officer', 'Management Consultant'],
+    'verbal reasoning': ['Journalist', 'Diplomat (IFS)', 'Content Strategist', 'Professor', 'Supreme Court Advocate'],
+    'spatial reasoning': ['Architect', 'Surgeon', 'Game Developer', 'Aerospace Engineer', 'VR/AR Designer'],
+    'pattern recognition': ['Cybersecurity Expert', 'Research Scientist', 'Algorithmic Trader', 'Cryptographer', 'Data Engineer'],
+    'data interpretation': ['Business Analyst', 'Economist', 'Market Research Director', 'Policy Advisor', 'Statistician']
+  };
+
+  const recommendedCareers = new Set<string>();
+  sortedSubtags.slice(0, 2).forEach(s => {
+    const careers = careerMapping[s.name.toLowerCase()] || [];
+    careers.forEach(c => recommendedCareers.add(c));
+  });
+
+  const section = `
+## ADAPTIVE APTITUDE TEST RESULTS (Pre-Analyzed):
+- **Aptitude Level**: ${level}/5 (${levelLabels[level] || 'Unknown'})
+- **Overall Accuracy**: ${Math.round(accuracy)}%
+- **Confidence**: ${results.confidenceTag}
+- **Performance Trend**: ${results.pathClassification}
+
+**COGNITIVE STRENGTHS** (prioritize careers matching these):
+${topStrengths.length > 0 ? topStrengths.map(s => `- ${s}`).join('\n') : '- Balanced across all areas'}
+
+**AREAS FOR DEVELOPMENT**:
+${weakAreas.length > 0 ? weakAreas.map(s => `- ${s}`).join('\n') : '- No significant gaps'}
+
+**RECOMMENDED CAREER DIRECTIONS**:
+${Array.from(recommendedCareers).slice(0, 6).map(c => `- ${c}`).join('\n')}
+
+${isHighAptitude ? `
+**⭐ HIGH-APTITUDE STUDENT** (Level ${level}, ${Math.round(accuracy)}% accuracy)
+MUST include competitive/prestigious paths:
+- UPSC: IAS, IPS, IFS, IRS (start preparation in 11th-12th)
+- Defence: NDA, CDS, AFCAT pathways
+- Medical Elite: AIIMS, top medical colleges (NEET)
+- Engineering Elite: IIT (JEE Advanced), ISRO, DRDO
+- Legal: NLSIU, top NLUs (CLAT)
+- Finance: CA, CFA, Investment Banking
+- Research: PhD at IISc, IITs, international universities
+` : ''}`;
+
+  return { section, isHighAptitude, topStrengths };
+}
 
 export function buildHighSchoolPrompt(assessmentData: AssessmentData, answersHash: number): string {
-  const adaptiveSection = assessmentData.adaptiveAptitudeResults ? `
-## ADAPTIVE APTITUDE TEST RESULTS (AI-Powered Assessment):
-This student completed an adaptive aptitude test that dynamically adjusted difficulty based on their performance.
-${JSON.stringify(assessmentData.adaptiveAptitudeResults, null, 2)}
-
-**ADAPTIVE APTITUDE INTERPRETATION:**
-- aptitudeLevel (1-5): Final assessed aptitude level (1=Basic, 2=Developing, 3=Proficient, 4=Advanced, 5=Expert)
-- confidenceTag: How confident we are in this assessment (high/medium/low)
-- tier: Performance tier classification
-- overallAccuracy: Percentage of questions answered correctly
-- accuracyBySubtag: Breakdown by reasoning type (numerical, logical, verbal, spatial, data interpretation, pattern recognition)
-- pathClassification: How their difficulty path evolved (ascending=improving, stable=consistent, descending=struggling)
-
-**USE THIS DATA TO:**
-1. Enhance aptitude scores with objective test performance
-2. Identify specific cognitive strengths from accuracyBySubtag
-3. Provide more accurate career recommendations based on demonstrated (not self-reported) abilities
-4. Note if there's a gap between self-assessment and actual performance
-` : '';
+  const adaptiveData = assessmentData.adaptiveAptitudeResults 
+    ? processAdaptiveResults(assessmentData.adaptiveAptitudeResults)
+    : null;
+  
+  const adaptiveSection = adaptiveData?.section || '';
 
   return `You are a career counselor for high school and higher secondary students (grades 9-12). Analyze this student's career exploration assessment and provide guidance appropriate for their age and academic level.
 
@@ -58,26 +130,34 @@ You MUST use this mapping to calculate scores precisely:
 4. Calculate percentage for each type: (score / maxScore) × 100
 5. Identify top 3 types by score
 
-## Strengths & Character Responses:
+## Strengths & Character Responses (1-4 scale):
 ${JSON.stringify(assessmentData.bigFiveAnswers, null, 2)}
 
-## Aptitude Sampling (Rating-Based Self-Assessment):
+**STRENGTHS SCORING**: These are VIA character strengths (Curiosity, Perseverance, Honesty, Creativity, Resilience, Kindness, Self-Discipline, Responsibility, Leadership, Self-Awareness).
+- Rating 1 = Not me, 2 = A bit, 3 = Mostly, 4 = Strongly me
+- Identify top 3-4 strengths (ratings 3-4)
+- Note text responses about challenges overcome and what others appreciate
+
+## Aptitude Sampling (Self-Assessment of Task Types):
 ${JSON.stringify(assessmentData.aptitudeAnswers, null, 2)}
 Pre-calculated scores: ${JSON.stringify(assessmentData.aptitudeScores, null, 2)}
 
-**APTITUDE SCORING FOR HIGH SCHOOL:**
-High school aptitude is based on self-assessment ratings (1-4 scale) for ease and enjoyment of tasks:
-- Each task type (verbal, numerical, abstract) has multiple rating questions
-- Scores show averageRating (1-4 scale) and percentage (0-100%)
-- Higher ratings indicate stronger aptitude in that area
-- Use these ratings to identify top cognitive strengths for the aptitudeStrengths field
-- For the "scores" field in the response, convert ratings to a percentage format
+**APTITUDE SAMPLING SCORING**:
+Students rated EASE (1-4) and ENJOYMENT (1-4) for 4 task types:
+- Analytical (data interpretation, logic, stats)
+- Creative (design, storytelling, media)
+- Technical (coding, building, prototyping)
+- Social (leadership, conflict resolution, mentoring)
+Higher ratings = stronger aptitude and interest in that area
 ${adaptiveSection}
 
-## Career Pathways Responses:
+## Learning & Work Preferences:
 ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 
-**IMPORTANT**: Return ONLY a JSON object (no markdown). Use this structure and POPULATE all fields with specific, actionable content for high school students:
+**LEARNING PREFERENCES**: Reveals how they learn best, task preferences, work style, and team contribution.
+- Use to personalize career recommendations and development roadmap
+
+**IMPORTANT**: Return ONLY a JSON object (no markdown). Use this structure for HIGH SCHOOL (9-10):
 
 {
   "riasec": {
@@ -85,27 +165,50 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
     "scores": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
     "percentages": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
     "maxScore": 20,
-    "interpretation": "2-3 sentences about what their interests mean for college majors and career paths"
+    "interpretation": "2-3 sentences about what their interests mean for stream selection and career paths"
   },
   "aptitude": {
-    "scores": {
-      "Verbal": {"averageRating": 0, "total": 0, "percentage": 0},
-      "Numerical": {"averageRating": 0, "total": 0, "percentage": 0},
-      "Abstract": {"averageRating": 0, "total": 0, "percentage": 0}
+    "selfAssessment": {
+      "Analytical": {"ease": 0, "enjoyment": 0, "average": 0},
+      "Creative": {"ease": 0, "enjoyment": 0, "average": 0},
+      "Technical": {"ease": 0, "enjoyment": 0, "average": 0},
+      "Social": {"ease": 0, "enjoyment": 0, "average": 0}
     },
-    "topStrengths": ["2-3 cognitive strengths based on highest ratings AND adaptive test performance"],
+    "adaptiveTest": {
+      "numerical_reasoning": {"accuracy": 0},
+      "logical_reasoning": {"accuracy": 0},
+      "verbal_reasoning": {"accuracy": 0},
+      "spatial_reasoning": {"accuracy": 0},
+      "pattern_recognition": {"accuracy": 0}
+    },
+    "topStrengths": ["2-3 strengths combining self-assessment AND adaptive test results"],
     "overallScore": 0,
-    "cognitiveProfile": "How they think, learn, and solve problems based on self-assessment AND adaptive test results",
+    "cognitiveProfile": "How they think and solve problems based on both assessments",
     "adaptiveLevel": 0,
     "adaptiveConfidence": "high/medium/low"
   },
+  "characterStrengths": {
+    "topStrengths": ["Top 3-4 character strengths (Curiosity, Creativity, Perseverance, Leadership, etc.)"],
+    "strengthDescriptions": [
+      {"name": "Strength 1", "rating": 4, "description": "How this shows in their responses"},
+      {"name": "Strength 2", "rating": 4, "description": "Evidence from assessment"}
+    ],
+    "challengeOvercome": "Summary of challenge they described and strengths used",
+    "othersAppreciate": "What others appreciate about them"
+  },
+  "learningStyle": {
+    "preferredMethods": ["How they learn best"],
+    "taskPreferences": ["Structured vs open-ended, fast vs deep, solo vs collaborative"],
+    "startingApproach": "How they begin tasks",
+    "teamContribution": "Their strongest team role"
+  },
   "bigFive": {
     "O": 3.5, "C": 3.2, "E": 3.8, "A": 4.0, "N": 2.5,
-    "workStyleSummary": "Their work style, team dynamics, and how to leverage their personality in school and future careers"
+    "workStyleSummary": "Their work style and how to leverage their personality"
   },
   "workValues": {
     "topThree": [
-      {"value": "Top motivator (Achievement, Helping, Innovation, Security, etc.)", "score": 4.0},
+      {"value": "Inferred from interests, strengths, and preferences", "score": 4.0},
       {"value": "Second value", "score": 3.5},
       {"value": "Third value", "score": 3.0}
     ]
@@ -312,31 +415,94 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
   "overallSummary": "3-4 sentences: Acknowledge their readiness level, affirm their direction, highlight unique strengths, and provide clear encouragement for next steps"
 }
 
-**SERIOUS CAREER GUIDANCE - JOB ROLES FOR HIGH SCHOOL (After 12th):**
+**JOB ROLE GUIDELINES FOR HIGH SCHOOL (Gen Z Focus - 2030+ Workforce):**
 
-### PROFESSIONAL CAREER PATHS BY STREAM:
+**FUTURISTIC & EMERGING CAREERS (Prioritize these):**
+- AI/ML Engineer, Prompt Engineer, AI Ethics Officer, Robotics Engineer, Computer Vision Specialist
+- Metaverse Developer, VR/AR Designer, Digital Twin Engineer, Extended Reality Architect
+- Space Tech: Satellite Engineer, Space Tourism Manager, Asteroid Mining Specialist, Mars Habitat Designer
+- Autonomous Systems: Self-Driving Car Engineer, Drone Fleet Manager, Smart City Planner
+- Biotech: Gene Therapy Researcher, Synthetic Biologist, Longevity Scientist, Personalized Medicine Specialist
+- Climate Tech: Carbon Capture Engineer, Renewable Energy Consultant, Sustainability Analyst
+- Web3/Blockchain: Smart Contract Developer, DeFi Analyst, Tokenomics Designer
+- Cybersecurity: Ethical Hacker, Security Architect, Digital Forensics Expert, Zero Trust Specialist
+- Quantum Computing: Quantum Software Developer, Quantum Cryptographer
+- Creator Economy: Professional Content Creator, Influencer Marketing Director, Community Manager
+
+**HIGH-PAYING TRADITIONAL CAREERS (For studious/high-aptitude students):**
+- Government Services: IAS Officer (₹56K-2.5L/month + perks), IPS Officer, IFS Diplomat, IRS Officer
+- Defence: Army/Navy/Air Force Officer, DRDO Scientist, ISRO Scientist, Intelligence Officer (RAW/IB)
+- Judiciary: High Court Judge, Supreme Court Advocate, Corporate Lawyer, Legal Counsel
+- Medical Elite: Surgeon (₹15-50L/year), Cardiologist, Neurologist, Oncologist, Medical Researcher
+- Engineering Elite: IIT Professor, Senior Scientist, Nuclear Engineer, Aerospace Engineer at HAL/ISRO
+- Finance Elite: Investment Banker (₹20-80L/year), Hedge Fund Manager, Chartered Accountant, Actuary
+- Management: IIM Graduate roles, Management Consultant (McKinsey/BCG), Strategy Director
+- Research: PhD at top universities, Research Fellow, Think Tank Analyst, Policy Advisor
+
+**🎨 CREATIVE + SOCIAL CAREERS (For students high in Artistic 'A' + Social 'S' RIASEC):**
+
+MUSIC & ENTERTAINMENT INDUSTRY:
+- Music Producer (₹5-50L/year), Sound Designer, Audio Engineer, DJ/Electronic Music Artist
+- Spotify/Apple Music Curator, Music Licensing Manager, Concert Tour Manager, Artist Manager
+- Film Score Composer, Jingle Writer for Ads, Podcast Sound Designer, Foley Artist
+- K-Pop/Bollywood Choreographer, Music Video Director, Live Event Producer
+- AI Music Creator, Virtual Concert Designer, Hologram Performance Director
+- Music Therapist, Sound Healing Practitioner, Music Education Director
+
+ART & VISUAL MEDIA:
+- Art Gallery Curator (₹4-15L/year), Museum Experience Designer, Art Auction Specialist (Christie's/Sotheby's)
+- Digital Artist, NFT Creator, AI Art Director, Generative Art Designer
+- Animation Director (₹8-40L/year), Pixar/DreamWorks Animator, Anime Creator, VFX Supervisor
+- Fashion Designer (₹5-30L/year), Costume Designer for Films, Sustainable Fashion Innovator
+- Art Therapist, Creative Director at Ad Agencies, Brand Visual Strategist
+- Art Restoration Specialist, Cultural Heritage Consultant, Art Investment Advisor
+
+ENTERTAINMENT & MEDIA:
+- Film Director, Cinematographer (₹10-80L/year), Documentary Filmmaker, OTT Content Creator
+- YouTuber (₹2L-2Cr/year), Instagram Creator, TikTok Influencer, Podcast Host
+- Screenwriter (₹5-50L/year), Dialogue Writer, Story Artist, Narrative Designer for Games
+- Talent Manager, Celebrity Stylist, Entertainment Lawyer, Casting Director
+- Virtual Influencer Creator, Metaverse Event Planner, Digital Experience Designer
+- Film Critic, Entertainment Journalist, Red Carpet Correspondent
+
+SOCIAL + CREATIVE HYBRID:
+- Community Manager for Gaming/Music Brands (₹6-20L/year), Fan Experience Designer
+- Social Media Strategist for Artists, Influencer Marketing Director
+- Event Designer (₹4-25L/year), Destination Wedding Planner, Festival Curator
+- Creative Therapist, Drama Therapist, Expressive Arts Therapist
+- Cultural Ambassador, Arts Education Director, Creative Writing Coach
+- Brand Storyteller, Content Strategist, User Experience Designer
+
+**PROFESSIONAL CAREER PATHS BY STREAM:**
 
 **SCIENCE STREAM (PCM/PCB):**
-- Engineering: Software Engineer, Mechanical Engineer, Civil Engineer, Electrical Engineer
-- Medical: Doctor (MBBS), Dentist (BDS), Physiotherapist, Pharmacist
-- Research: Research Scientist, Data Scientist, Biotechnologist
-- Technology: AI/ML Engineer, Cybersecurity Analyst, Cloud Architect
+- Engineering: Software Engineer, AI/ML Engineer, Data Scientist, Robotics Engineer, Aerospace Engineer
+- Medical: Doctor (MBBS), Surgeon, Dentist, Pharmacist, Medical Researcher
+- Research: ISRO Scientist, DRDO Scientist, Biotechnologist, Quantum Researcher
+- Technology: Cloud Architect, Cybersecurity Specialist, Blockchain Developer
 
 **COMMERCE STREAM:**
-- Finance: Chartered Accountant, Financial Analyst, Investment Banker
-- Business: Business Analyst, Management Consultant, Operations Manager
-- Banking: Bank Manager, Credit Analyst, Risk Analyst
+- Finance: Chartered Accountant, CFA, Investment Banker, Financial Analyst, Actuary
+- Business: Management Consultant, Business Analyst, Product Manager, Startup Founder
+- Banking: Bank Manager, Credit Analyst, Risk Manager, Fintech Specialist
 
 **ARTS/HUMANITIES STREAM:**
-- Law: Corporate Lawyer, Civil Lawyer, Legal Advisor
-- Media: Journalist, News Anchor, Documentary Filmmaker
-- Psychology: Clinical Psychologist, Counselor, HR Specialist
+- Law: Corporate Lawyer, Civil Rights Lawyer, Legal Tech Specialist, International Law Expert
+- Civil Services: IAS, IFS, IPS through UPSC
+- Media: Digital Journalist, Documentary Filmmaker, Podcast Producer, Content Strategist
+- Psychology: Clinical Psychologist, UX Researcher, Organizational Psychologist
+- Creative Arts: Film Director, Music Producer, Fashion Designer, Art Gallery Curator
 
-### ROLE SELECTION RULES:
-1. Show ASPIRATIONAL yet ACHIEVABLE career paths after proper education
-2. PERSONALIZE based on RIASEC profile
-3. Include EDUCATION PATH for each career (degree requirements)
-4. Show realistic SALARY expectations for entry-level in India (2024-2025)
+**GUIDELINES:**
+- Suggest FUTURISTIC roles that will dominate 2030-2040 job market
+- For HIGH APTITUDE students (level 4-5): Include competitive exam pathways (UPSC, JEE Advanced, NEET, CLAT, CAT, GATE)
+- For CREATIVE + SOCIAL students (high A + S in RIASEC): Prioritize Music, Entertainment, Art, Media careers
+- Include DIVERSE options: Tech, Government, Defence, Healthcare, Finance, Research, Creative, Entertainment
+- Show EDUCATION PATH for each career (specific degrees, entrance exams, portfolio requirements)
+- PERSONALIZE based on RIASEC interests AND adaptive aptitude results
+- Salary ranges should reflect 2025-2030 projections in India
+- For studious students: Emphasize careers requiring dedication, discipline, and competitive preparation
+- For creative students: Emphasize portfolio-building, internships, and industry connections
 
 CRITICAL: You MUST provide exactly 3 career clusters with ALL fields filled including evidence, roles, and domains!`;
 }

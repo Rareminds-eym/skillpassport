@@ -8,7 +8,8 @@ import {
   RoadmapPhase,
   RecommendedCourse,
   FreeResource,
-  ActionItem
+  ActionItem,
+  SuggestedProject
 } from '../services/aiCareerPathService';
 
 /**
@@ -18,6 +19,7 @@ interface CacheEntry {
   data: RoleOverviewData;
   timestamp: number;
   clusterTitle: string;
+  isFallback: boolean; // Track if this is fallback data
 }
 
 interface RoleOverviewCache {
@@ -37,15 +39,21 @@ function getCacheKey(roleName: string, clusterTitle: string): string {
 }
 
 /**
- * Check if a cache entry exists and is valid
+ * Check if a cache entry exists and is valid (only return non-fallback data)
  */
 function checkCache(roleName: string, clusterTitle: string): RoleOverviewData | null {
   const key = getCacheKey(roleName, clusterTitle);
   const entry = sessionCache[key];
   
-  if (entry && entry.data) {
-    console.log(`[RoleOverview] Cache hit for ${roleName}`);
+  // Only return cached data if it's not fallback data
+  if (entry && entry.data && !entry.isFallback) {
+    console.log(`[RoleOverview] Cache hit for ${roleName} (real API data)`);
     return entry.data;
+  }
+  
+  if (entry && entry.isFallback) {
+    console.log(`[RoleOverview] Cache contains fallback data for ${roleName}, will retry API`);
+    return null; // Don't return fallback data from cache, try API again
   }
   
   console.log(`[RoleOverview] Cache miss for ${roleName}`);
@@ -55,14 +63,15 @@ function checkCache(roleName: string, clusterTitle: string): RoleOverviewData | 
 /**
  * Store role overview in cache
  */
-function setCache(roleName: string, clusterTitle: string, data: RoleOverviewData): void {
+function setCache(roleName: string, clusterTitle: string, data: RoleOverviewData, isFallback: boolean = false): void {
   const key = getCacheKey(roleName, clusterTitle);
   sessionCache[key] = {
     data,
     timestamp: Date.now(),
     clusterTitle,
+    isFallback,
   };
-  console.log(`[RoleOverview] Cached data for ${roleName}:`, data);
+  console.log(`[RoleOverview] Cached ${isFallback ? 'fallback' : 'API'} data for ${roleName}:`, data);
 }
 
 /**
@@ -83,6 +92,7 @@ interface UseRoleOverviewReturn {
   recommendedCourses: RecommendedCourse[];
   freeResources: FreeResource[];
   actionItems: ActionItem[];
+  suggestedProjects: SuggestedProject[];
   loading: boolean;
   error: Error | null;
 }
@@ -106,6 +116,7 @@ export function useRoleOverview(
   const [recommendedCourses, setRecommendedCourses] = useState<RecommendedCourse[]>([]);
   const [freeResources, setFreeResources] = useState<FreeResource[]>([]);
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
+  const [suggestedProjects, setSuggestedProjects] = useState<SuggestedProject[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   
@@ -125,6 +136,7 @@ export function useRoleOverview(
       setRecommendedCourses(cached.recommendedCourses);
       setFreeResources(cached.freeResources);
       setActionItems(cached.actionItems);
+      setSuggestedProjects(cached.suggestedProjects || []);
       setLoading(false);
       setError(null);
       return;
@@ -134,9 +146,11 @@ export function useRoleOverview(
     setError(null);
 
     try {
+      console.log(`[RoleOverview Hook] Fetching overview for: ${role}`);
       const result = await generateRoleOverview(role, cluster);
       
       if (currentRequestRef.current === requestKey) {
+        console.log(`[RoleOverview Hook] Successfully received data for: ${role}`);
         setResponsibilities(result.responsibilities);
         setDemandData(result.industryDemand);
         setCareerProgression(result.careerProgression);
@@ -144,15 +158,18 @@ export function useRoleOverview(
         setRecommendedCourses(result.recommendedCourses);
         setFreeResources(result.freeResources);
         setActionItems(result.actionItems);
-        setCache(role, cluster, result);
+        setSuggestedProjects(result.suggestedProjects || []);
+        setCache(role, cluster, result, false); // Cache as real API data
         setLoading(false);
+        setError(null);
       }
     } catch (err) {
       if (currentRequestRef.current === requestKey) {
-        console.error('Error fetching role overview:', err);
+        console.error('[RoleOverview Hook] Error fetching role overview:', err);
         setError(err instanceof Error ? err : new Error('Failed to generate role overview'));
         
         // Return fallback without exposing error to user
+        console.log(`[RoleOverview Hook] Using fallback data for: ${role}`);
         const fallback = getFallbackRoleOverview(role);
         setResponsibilities(fallback.responsibilities);
         setDemandData(fallback.industryDemand);
@@ -161,6 +178,8 @@ export function useRoleOverview(
         setRecommendedCourses(fallback.recommendedCourses);
         setFreeResources(fallback.freeResources);
         setActionItems(fallback.actionItems);
+        setSuggestedProjects(fallback.suggestedProjects || []);
+        // Don't cache fallback data - we want to retry API next time
         setLoading(false);
       }
     }
@@ -175,6 +194,7 @@ export function useRoleOverview(
       setRecommendedCourses([]);
       setFreeResources([]);
       setActionItems([]);
+      setSuggestedProjects([]);
       setLoading(false);
       setError(null);
       currentRequestRef.current = null;
@@ -192,6 +212,7 @@ export function useRoleOverview(
     recommendedCourses,
     freeResources,
     actionItems,
+    suggestedProjects,
     loading,
     error,
   };
