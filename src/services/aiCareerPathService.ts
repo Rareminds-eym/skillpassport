@@ -22,13 +22,6 @@ function getOpenAIClient(): OpenAI {
   return openaiInstance;
 }
 
-// For backward compatibility, create a getter
-const openai = {
-  get chat() {
-    return getOpenAIClient().chat;
-  }
-};
-
 export interface StudentProfile {
   id: string;
   name: string;
@@ -696,6 +689,17 @@ export interface ActionItem {
 }
 
 /**
+ * Suggested project structure
+ */
+export interface SuggestedProject {
+  title: string;
+  description: string;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+  skills: string[];
+  estimatedTime: string;
+}
+
+/**
  * Combined role overview data structure
  */
 export interface RoleOverviewData {
@@ -706,6 +710,7 @@ export interface RoleOverviewData {
   recommendedCourses: RecommendedCourse[];
   freeResources: FreeResource[];
   actionItems: ActionItem[];
+  suggestedProjects: SuggestedProject[];
 }
 
 /**
@@ -721,29 +726,44 @@ export function getFallbackCareerProgression(roleName: string): CareerStage[] {
 }
 
 /**
- * Get fallback learning roadmap
+ * Get fallback learning roadmap - more role-specific content
  */
 export function getFallbackLearningRoadmap(roleName: string): RoadmapPhase[] {
   return [
     {
       month: 'Month 1-2',
-      title: 'Foundation Building',
-      description: `Learn core ${roleName} concepts and fundamentals`,
-      tasks: ['Complete foundational courses', 'Understand key concepts', 'Set up learning environment', 'Join communities'],
+      title: `${roleName} Foundations`,
+      description: `Master the core concepts, tools, and fundamentals required for ${roleName} roles`,
+      tasks: [
+        `Learn essential ${roleName} concepts and terminology`,
+        `Set up your ${roleName} development environment`,
+        `Complete beginner tutorials and exercises`,
+        `Study industry best practices for ${roleName}`
+      ],
       color: '#22c55e'
     },
     {
       month: 'Month 3-4',
-      title: 'Skill Development',
-      description: 'Build practical skills through projects',
-      tasks: ['Work on guided projects', 'Practice real-world scenarios', 'Build portfolio piece', 'Get mentor feedback'],
+      title: `Hands-on ${roleName} Practice`,
+      description: `Build practical ${roleName} skills through real projects and exercises`,
+      tasks: [
+        `Build 2-3 guided ${roleName} projects`,
+        `Practice solving real-world ${roleName} problems`,
+        `Learn advanced ${roleName} tools and techniques`,
+        `Get feedback from ${roleName} mentors or peers`
+      ],
       color: '#3b82f6'
     },
     {
       month: 'Month 5-6',
-      title: 'Portfolio & Applications',
-      description: 'Create portfolio and apply for positions',
-      tasks: ['Complete 2-3 portfolio projects', 'Optimize resume & LinkedIn', 'Apply for internships/jobs', 'Prepare for interviews'],
+      title: `${roleName} Portfolio & Career`,
+      description: `Create an impressive ${roleName} portfolio and prepare for job applications`,
+      tasks: [
+        `Complete 2-3 portfolio-worthy ${roleName} projects`,
+        `Optimize resume with ${roleName} keywords and achievements`,
+        `Apply for ${roleName} internships or entry-level positions`,
+        `Practice ${roleName} interview questions and scenarios`
+      ],
       color: '#a855f7'
     }
   ];
@@ -825,6 +845,35 @@ export function getFallbackActionItems(roleName: string): ActionItem[] {
 }
 
 /**
+ * Get fallback suggested projects
+ */
+export function getFallbackSuggestedProjects(roleName: string): SuggestedProject[] {
+  return [
+    {
+      title: `Build Your First ${roleName} Project`,
+      description: `Start with a simple beginner project to understand the fundamentals. You'll learn the basic tools, workflows, and concepts that every ${roleName} needs to know. This is your foundation for more complex work!`,
+      difficulty: 'Beginner',
+      skills: ['Core Concepts', 'Basic Tools', 'Problem Solving'],
+      estimatedTime: '2-4 hours',
+    },
+    {
+      title: `${roleName} Portfolio Piece`,
+      description: `Create a real-world project that solves an actual problem. This intermediate project will challenge you to apply multiple skills together and give you something impressive to show potential employers or clients.`,
+      difficulty: 'Intermediate',
+      skills: ['Applied Skills', 'Project Planning', 'Documentation', 'Best Practices'],
+      estimatedTime: '1-2 weeks',
+    },
+    {
+      title: `Advanced ${roleName} Challenge`,
+      description: `Take on a complex project that pushes your boundaries. You'll integrate advanced techniques, optimize for performance, and create something that demonstrates mastery of ${roleName} skills.`,
+      difficulty: 'Advanced',
+      skills: ['Advanced Techniques', 'Optimization', 'System Design', 'Leadership'],
+      estimatedTime: '2-4 weeks',
+    },
+  ];
+}
+
+/**
  * Get fallback role overview when AI is unavailable
  */
 export function getFallbackRoleOverview(roleName: string): RoleOverviewData {
@@ -835,7 +884,8 @@ export function getFallbackRoleOverview(roleName: string): RoleOverviewData {
     learningRoadmap: getFallbackLearningRoadmap(roleName),
     recommendedCourses: getFallbackRecommendedCourses(roleName),
     freeResources: getFallbackFreeResources(roleName),
-    actionItems: getFallbackActionItems(roleName)
+    actionItems: getFallbackActionItems(roleName),
+    suggestedProjects: getFallbackSuggestedProjects(roleName),
   };
 }
 
@@ -959,6 +1009,28 @@ function parseRoleOverviewResponse(content: string, roleName: string): RoleOverv
         actionItems = getFallbackActionItems(roleName);
       }
       
+      // Parse suggested projects
+      const validDifficulties = ['Beginner', 'Intermediate', 'Advanced'];
+      let suggestedProjects: SuggestedProject[] = [];
+      if (Array.isArray(parsed.suggestedProjects) && parsed.suggestedProjects.length >= 3) {
+        suggestedProjects = parsed.suggestedProjects.slice(0, 3).map((project: any) => {
+          let difficulty = project.difficulty || 'Beginner';
+          if (!validDifficulties.includes(difficulty)) {
+            difficulty = 'Beginner';
+          }
+          return {
+            title: project.title || 'Project',
+            description: project.description || 'Build something amazing',
+            difficulty: difficulty as SuggestedProject['difficulty'],
+            skills: Array.isArray(project.skills) ? project.skills.slice(0, 4) : [],
+            estimatedTime: project.estimatedTime || '1-2 weeks'
+          };
+        });
+      }
+      if (suggestedProjects.length < 3) {
+        suggestedProjects = getFallbackSuggestedProjects(roleName);
+      }
+      
       return {
         responsibilities,
         industryDemand: {
@@ -970,7 +1042,8 @@ function parseRoleOverviewResponse(content: string, roleName: string): RoleOverv
         learningRoadmap,
         recommendedCourses,
         freeResources,
-        actionItems
+        actionItems,
+        suggestedProjects
       };
     }
   } catch (e) {
@@ -980,9 +1053,13 @@ function parseRoleOverviewResponse(content: string, roleName: string): RoleOverv
   return getFallbackRoleOverview(roleName);
 }
 
+// Worker API URL for role overview
+const ROLE_OVERVIEW_API_URL = import.meta.env.VITE_ROLE_OVERVIEW_API_URL || 
+  'https://role-overview-api.dark-mode-d021.workers.dev';
+
 /**
- * Generate combined role overview data (responsibilities + industry demand) in a single API call
- * This is more efficient than making two separate calls
+ * Generate combined role overview data via Cloudflare Worker
+ * The worker handles the fallback chain: OpenRouter → Gemini → Static fallback
  * @param roleName - The specific job role name
  * @param clusterTitle - The career cluster context
  * @returns Promise<RoleOverviewData> - Combined responsibilities and industry demand
@@ -992,100 +1069,145 @@ export async function generateRoleOverview(
   clusterTitle: string
 ): Promise<RoleOverviewData> {
   if (!roleName || roleName.trim() === '') {
+    console.warn('[RoleOverview] Empty role name provided, using fallback');
     return getFallbackRoleOverview('professional');
   }
 
+  console.log(`[RoleOverview] Calling worker API for: ${roleName} in ${clusterTitle}`);
+
   try {
-    // Get OpenAI client (will throw if API key not configured)
-    const client = getOpenAIClient();
-
-    const prompt = `For a ${roleName} role in the ${clusterTitle} career cluster, provide:
-
-1. RESPONSIBILITIES: Exactly 3 key job responsibilities
-   - Each must start with an action verb
-   - Each should be 10-20 words, specific to this role
-
-2. INDUSTRY DEMAND:
-   - demandDescription: 2 short sentences (max 25 words)
-   - demandLevel: "Low", "Medium", "High", or "Very High"
-   - demandPercentage: Low=20-40, Medium=41-65, High=66-85, Very High=86-100
-
-3. CAREER PROGRESSION: 4 career stages with role-specific titles
-   - Each: title, yearsExperience (e.g., "0-2 yrs")
-
-4. LEARNING ROADMAP: 3 phases for 6-month learning plan
-   - Each phase: month (e.g., "Month 1-2"), title, description (1 sentence), tasks (4 specific actionable items)
-
-5. RECOMMENDED COURSES: 4 courses specific to this role
-   - Each: title (specific course name), description (1 sentence), duration (e.g., "4 weeks"), level ("Beginner"/"Intermediate"/"Advanced"/"Professional"), skills (3 skills learned)
-
-6. FREE RESOURCES: 3 free learning resources with real URLs
-   - Each: title (specific resource name), description (1 sentence), type ("YouTube"/"Documentation"/"Certification"/"Community"/"Tool"), url (real working URL)
-
-7. ACTION ITEMS: 4 immediate action items specific to becoming a ${roleName}
-   - Each: title (2-3 words), description (specific actionable step, 5-10 words)
-
-Return ONLY this JSON:
-{
-  "responsibilities": ["...", "...", "..."],
-  "demandDescription": "...",
-  "demandLevel": "High",
-  "demandPercentage": 78,
-  "careerProgression": [
-    {"title": "...", "yearsExperience": "0-2 yrs"},
-    {"title": "...", "yearsExperience": "2-5 yrs"},
-    {"title": "...", "yearsExperience": "5-8 yrs"},
-    {"title": "...", "yearsExperience": "8+ yrs"}
-  ],
-  "learningRoadmap": [
-    {"month": "Month 1-2", "title": "...", "description": "...", "tasks": ["...", "...", "...", "..."]},
-    {"month": "Month 3-4", "title": "...", "description": "...", "tasks": ["...", "...", "...", "..."]},
-    {"month": "Month 5-6", "title": "...", "description": "...", "tasks": ["...", "...", "...", "..."]}
-  ],
-  "recommendedCourses": [
-    {"title": "...", "description": "...", "duration": "4 weeks", "level": "Beginner", "skills": ["...", "...", "..."]},
-    {"title": "...", "description": "...", "duration": "6 weeks", "level": "Intermediate", "skills": ["...", "...", "..."]},
-    {"title": "...", "description": "...", "duration": "8 weeks", "level": "Advanced", "skills": ["...", "...", "..."]},
-    {"title": "...", "description": "...", "duration": "4 weeks", "level": "Professional", "skills": ["...", "...", "..."]}
-  ],
-  "freeResources": [
-    {"title": "...", "description": "...", "type": "YouTube", "url": "https://..."},
-    {"title": "...", "description": "...", "type": "Documentation", "url": "https://..."},
-    {"title": "...", "description": "...", "type": "Certification", "url": "https://..."}
-  ],
-  "actionItems": [
-    {"title": "...", "description": "..."},
-    {"title": "...", "description": "..."},
-    {"title": "...", "description": "..."},
-    {"title": "...", "description": "..."}
-  ]
-}`;
-
-    const completion = await client.chat.completions.create({
-      model: 'openai/gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a career advisor. Return valid JSON only. Make all recommendations specific to the role.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      max_tokens: 1500,
-      temperature: 0.7,
+    const response = await fetch(`${ROLE_OVERVIEW_API_URL}/role-overview`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        roleName: roleName.trim(),
+        clusterTitle: clusterTitle.trim(),
+      }),
     });
 
-    const responseContent = completion.choices[0]?.message?.content || '';
-    
-    if (!responseContent) {
-      return getFallbackRoleOverview(roleName);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[RoleOverview] Worker API error ${response.status}:`, errorText);
+      throw new Error(`Worker API error: ${response.status}`);
     }
 
-    return parseRoleOverviewResponse(responseContent, roleName);
-  } catch (error) {
-    console.error('Error generating role overview:', error);
+    const result = await response.json() as {
+      success: boolean;
+      data?: RoleOverviewData;
+      source?: string;
+      error?: string;
+    };
+
+    if (!result.success || !result.data) {
+      console.error('[RoleOverview] Worker returned error:', result.error);
+      throw new Error(result.error || 'Worker returned no data');
+    }
+
+    console.log(`[RoleOverview] Success via ${result.source} for: ${roleName}`);
+    return result.data;
+  } catch (error: any) {
+    console.error('[RoleOverview] Worker API call failed:', error.message);
+    
+    // Fallback to local static data if worker is unavailable
+    console.log(`[RoleOverview] Using local fallback for: ${roleName}`);
     return getFallbackRoleOverview(roleName);
+  }
+}
+
+/**
+ * Course input for AI matching
+ */
+export interface CourseForMatching {
+  id: string;
+  title: string;
+  description: string;
+  skills?: string[];
+  category?: string;
+}
+
+/**
+ * Course matching result from AI
+ */
+export interface CourseMatchingResult {
+  matchedCourseIds: string[];
+  reasoning: string;
+}
+
+/**
+ * Match platform courses to a role using AI
+ * Calls the /match-courses endpoint on the role-overview-api worker
+ * 
+ * @param roleName - The job role name (e.g., "Software Engineer")
+ * @param clusterTitle - The career cluster (e.g., "Technology")
+ * @param courses - Array of available platform courses
+ * @returns Promise<CourseMatchingResult> - Matched course IDs and reasoning
+ */
+export async function matchCoursesForRole(
+  roleName: string,
+  clusterTitle: string,
+  courses: CourseForMatching[]
+): Promise<CourseMatchingResult> {
+  // Validate inputs
+  if (!roleName || roleName.trim() === '') {
+    console.warn('[CourseMatching] Empty role name provided');
+    return { matchedCourseIds: [], reasoning: 'No role specified' };
+  }
+
+  if (!courses || courses.length === 0) {
+    console.warn('[CourseMatching] No courses provided');
+    return { matchedCourseIds: [], reasoning: 'No courses available' };
+  }
+
+  console.log(`[CourseMatching] Matching ${courses.length} courses for: ${roleName}`);
+
+  try {
+    const response = await fetch(`${ROLE_OVERVIEW_API_URL}/match-courses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        roleName: roleName.trim(),
+        clusterTitle: (clusterTitle || '').trim(),
+        courses: courses.slice(0, 20).map(c => ({
+          id: c.id,
+          title: c.title,
+          description: c.description || '',
+          skills: c.skills || [],
+          category: c.category || '',
+        })),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[CourseMatching] Worker API error ${response.status}:`, errorText);
+      throw new Error(`Worker API error: ${response.status}`);
+    }
+
+    const result = await response.json() as {
+      success: boolean;
+      data?: CourseMatchingResult;
+      source?: string;
+      error?: string;
+    };
+
+    if (!result.success || !result.data) {
+      console.error('[CourseMatching] Worker returned error:', result.error);
+      throw new Error(result.error || 'Worker returned no data');
+    }
+
+    console.log(`[CourseMatching] Success via ${result.source}:`, result.data.matchedCourseIds);
+    return result.data;
+  } catch (error: any) {
+    console.error('[CourseMatching] Worker API call failed:', error.message);
+    
+    // Return empty result on failure - let the UI handle fallback
+    return { 
+      matchedCourseIds: [], 
+      reasoning: 'AI matching unavailable' 
+    };
   }
 }
