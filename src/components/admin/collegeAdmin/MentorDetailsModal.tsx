@@ -1,0 +1,611 @@
+import React, { useState } from 'react';
+import { XMarkIcon, UserIcon, AcademicCapIcon, DocumentTextIcon, ExclamationTriangleIcon, PhoneIcon, MapPinIcon, ClockIcon, EnvelopeIcon, ChatBubbleLeftEllipsisIcon, UserMinusIcon, CalendarIcon, ChevronDownIcon, ChevronUpIcon, CogIcon } from '@heroicons/react/24/outline';
+
+interface Student {
+  id: number;
+  name: string;
+  rollNo: string;
+  department: string;
+  semester: number;
+  cgpa: number;
+  atRisk: boolean;
+  email: string;
+  batch: string;
+  riskFactors?: string[];
+  lastInteraction?: string;
+  interventionCount?: number;
+}
+
+interface MentorAllocation {
+  id: number;
+  mentorId: number;
+  students: Student[];
+  allocationPeriod: {
+    startDate: string;
+    endDate: string;
+  };
+  capacity: number;
+  officeLocation: string;
+  availableHours: string;
+  status: 'active' | 'completed' | 'cancelled';
+  createdAt: string;
+  createdBy: string;
+  academicYear: string;
+  semester: string;
+}
+
+interface Mentor {
+  id: number;
+  name: string;
+  email: string;
+  department: string;
+  designation: string;
+  specializations?: string[];
+  contactNumber?: string;
+  allocations: MentorAllocation[];
+}
+
+interface MentorNote {
+  id: number;
+  mentorId: number;
+  studentId: number;
+  note: string;
+  date: string;
+  outcome: string;
+  isPrivate: boolean;
+  interventionType: 'academic' | 'personal' | 'career' | 'attendance' | 'behavioral' | 'financial' | 'other';
+  status: 'pending' | 'in-progress' | 'completed' | 'escalated';
+}
+
+interface MentorDetailsDrawerProps {
+  mentor: Mentor;
+  notes: MentorNote[];
+  onClose: () => void;
+  onLogIntervention?: (student: Student) => void;
+  onReassignStudent?: (student: Student) => void;
+  onConfigureAllocation?: (allocation: MentorAllocation) => void;
+}
+
+const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({ 
+  mentor, 
+  notes, 
+  onClose, 
+  onLogIntervention,
+  onReassignStudent,
+  onConfigureAllocation
+}) => {
+  // State for accordion management
+  const [expandedAllocations, setExpandedAllocations] = useState<Set<number>>(new Set());
+
+  const toggleAllocation = (allocationId: number) => {
+    const newExpanded = new Set(expandedAllocations);
+    if (newExpanded.has(allocationId)) {
+      newExpanded.delete(allocationId);
+    } else {
+      newExpanded.add(allocationId);
+    }
+    setExpandedAllocations(newExpanded);
+  };
+
+  const expandAll = () => {
+    const activeAllocations = mentor.allocations.filter(a => a.status === 'active');
+    setExpandedAllocations(new Set(activeAllocations.map(a => a.id)));
+  };
+
+  const collapseAll = () => {
+    setExpandedAllocations(new Set());
+  };
+  // Helper functions to work with new allocation structure
+  const getAllocatedStudents = () => {
+    return mentor.allocations
+      .filter(allocation => allocation.status === 'active')
+      .flatMap(allocation => allocation.students);
+  };
+
+  const getAtRiskStudents = () => {
+    return getAllocatedStudents().filter(student => student.atRisk);
+  };
+
+  const getLatestAllocation = () => {
+    const activeAllocations = mentor.allocations.filter(allocation => allocation.status === 'active');
+    return activeAllocations.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  };
+  const getInterventionTypeColor = (type: string) => {
+    const colors = {
+      academic: 'bg-blue-100 text-blue-700',
+      personal: 'bg-purple-100 text-purple-700',
+      career: 'bg-green-100 text-green-700',
+      attendance: 'bg-orange-100 text-orange-700',
+      behavioral: 'bg-red-100 text-red-700',
+      financial: 'bg-yellow-100 text-yellow-700',
+      other: 'bg-gray-100 text-gray-700'
+    };
+    return colors[type as keyof typeof colors] || colors.other;
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors = {
+      pending: 'bg-gray-100 text-gray-700',
+      'in-progress': 'bg-blue-100 text-blue-700',
+      completed: 'bg-green-100 text-green-700',
+      escalated: 'bg-red-100 text-red-700'
+    };
+    return colors[status as keyof typeof colors] || colors.pending;
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity inset-y-0 right-0 pl-10 max-w-full flex sm:pl-16" onClick={onClose}></div>
+
+        <div className="fixed inset-y-0 right-0 pl-10 max-w-full flex sm:pl-16">
+          <div className="w-screen max-w-4xl">
+            <div className="h-full flex flex-col bg-white shadow-xl">
+              {/* Header */}
+              <div className="bg-indigo-600 text-white p-6 flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                    <UserIcon className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold">{mentor.name}</h2>
+                    <p className="text-indigo-100">{mentor.designation} • {mentor.department}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={onClose} 
+                  className="text-white/80 hover:text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-6 space-y-8">
+                  {/* Mentor Information */}
+                  <div className="bg-gray-50 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3">
+                        <EnvelopeIcon className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-gray-500">Email</p>
+                          <p className="text-sm font-medium text-gray-900">{mentor.email}</p>
+                        </div>
+                      </div>
+                      
+                      {mentor.contactNumber && (
+                        <div className="flex items-center gap-3">
+                          <PhoneIcon className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <p className="text-sm text-gray-500">Phone</p>
+                            <p className="text-sm font-medium text-gray-900">{mentor.contactNumber}</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {(() => {
+                        const latestAllocation = getLatestAllocation();
+                        return latestAllocation?.officeLocation && (
+                          <div className="flex items-center gap-3">
+                            <MapPinIcon className="h-5 w-5 text-gray-400" />
+                            <div>
+                              <p className="text-sm text-gray-500">Office Location</p>
+                              <p className="text-sm font-medium text-gray-900">{latestAllocation.officeLocation}</p>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      
+                      {(() => {
+                        const latestAllocation = getLatestAllocation();
+                        return latestAllocation?.availableHours && (
+                          <div className="flex items-center gap-3">
+                            <ClockIcon className="h-5 w-5 text-gray-400" />
+                            <div>
+                              <p className="text-sm text-gray-500">Available Hours</p>
+                              <p className="text-sm font-medium text-gray-900">{latestAllocation.availableHours}</p>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {mentor.specializations && mentor.specializations.length > 0 && (
+                      <div className="mt-6">
+                        <h4 className="text-sm font-medium text-gray-700 mb-3">Specializations</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {mentor.specializations.map((spec: string, index: number) => (
+                            <span key={index} className="px-3 py-1 bg-indigo-100 text-indigo-700 text-sm rounded-full">
+                              {spec}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Active Allocations - Accordion Style */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Active Allocations</h3>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-gray-500">{mentor.allocations.filter(a => a.status === 'active').length} allocation periods</span>
+                        {getAtRiskStudents().length > 0 && (
+                          <div className="flex items-center gap-1">
+                            <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />
+                            <span className="text-sm text-red-600">
+                              {getAtRiskStudents().length} at-risk
+                            </span>
+                          </div>
+                        )}
+                        {mentor.allocations.filter(a => a.status === 'active').length > 1 && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={expandAll}
+                              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                            >
+                              Expand All
+                            </button>
+                            <span className="text-gray-300">|</span>
+                            <button
+                              onClick={collapseAll}
+                              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                            >
+                              Collapse All
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {mentor.allocations.filter(allocation => allocation.status === 'active').length === 0 ? (
+                      <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-xl">
+                        <AcademicCapIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                        <p className="text-lg font-medium">No active allocations</p>
+                        <p className="text-sm">Allocations will appear here once students are assigned to this mentor</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {mentor.allocations
+                          .filter(allocation => allocation.status === 'active')
+                          .sort((a, b) => new Date(b.allocationPeriod.startDate).getTime() - new Date(a.allocationPeriod.startDate).getTime())
+                          .map((allocation: MentorAllocation) => {
+                            const isExpanded = expandedAllocations.has(allocation.id);
+                            return (
+                              <div key={allocation.id} className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                                {/* Allocation Header - Always Visible */}
+                                <div 
+                                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                                  onClick={() => toggleAllocation(allocation.id)}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    {(() => {
+                                      const currentDate = new Date();
+                                      const startDate = new Date(allocation.allocationPeriod.startDate);
+                                      const endDate = new Date(allocation.allocationPeriod.endDate);
+                                      const isCurrentPeriod = currentDate >= startDate && currentDate <= endDate;
+                                      const isPastPeriod = currentDate > endDate;
+                                      const isFuturePeriod = currentDate < startDate;
+                                      
+                                      return (
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                          isCurrentPeriod 
+                                            ? 'bg-green-100' 
+                                            : isPastPeriod 
+                                            ? 'bg-gray-100' 
+                                            : 'bg-blue-100'
+                                        }`}>
+                                          <CalendarIcon className={`h-4 w-4 ${
+                                            isCurrentPeriod 
+                                              ? 'text-green-600' 
+                                              : isPastPeriod 
+                                              ? 'text-gray-500' 
+                                              : 'text-blue-600'
+                                          }`} />
+                                        </div>
+                                      );
+                                    })()}
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <h4 className="font-semibold text-gray-900 text-sm">
+                                          {allocation.allocationPeriod.startDate} to {allocation.allocationPeriod.endDate}
+                                        </h4>
+                                        {(() => {
+                                          const currentDate = new Date();
+                                          const startDate = new Date(allocation.allocationPeriod.startDate);
+                                          const endDate = new Date(allocation.allocationPeriod.endDate);
+                                          const isCurrentPeriod = currentDate >= startDate && currentDate <= endDate;
+                                          const isPastPeriod = currentDate > endDate;
+                                          const isFuturePeriod = currentDate < startDate;
+                                          
+                                          if (isCurrentPeriod) {
+                                            return (
+                                              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+                                                Active Now
+                                              </span>
+                                            );
+                                          } else if (isPastPeriod) {
+                                            return (
+                                              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-medium">
+                                                Completed
+                                              </span>
+                                            );
+                                          } else if (isFuturePeriod) {
+                                            return (
+                                              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
+                                                Upcoming
+                                              </span>
+                                            );
+                                          }
+                                          return null;
+                                        })()}
+                                      </div>
+                                      <p className="text-xs text-gray-600">
+                                        {allocation.academicYear} • {allocation.semester}
+                                      </p>
+                                    </div>
+                                  </div>
+                                    <div className="flex items-center gap-3">
+                                      <div className="text-right">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className="text-sm font-medium text-gray-900">
+                                            {allocation.students.length}/{allocation.capacity}
+                                          </span>
+                                          <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                                            allocation.students.length >= allocation.capacity
+                                              ? "bg-red-100 text-red-700"
+                                              : allocation.students.length >= allocation.capacity * 0.8
+                                              ? "bg-yellow-100 text-yellow-700"
+                                              : "bg-green-100 text-green-700"
+                                          }`}>
+                                            {allocation.students.length >= allocation.capacity
+                                              ? "Full"
+                                              : allocation.students.length >= allocation.capacity * 0.8
+                                              ? "Near Full"
+                                              : "Available"
+                                            }
+                                          </span>
+                                        </div>
+                                        <p className="text-xs text-gray-500">
+                                          {allocation.students.filter(s => s.atRisk).length > 0 && 
+                                            `${allocation.students.filter(s => s.atRisk).length} at-risk`
+                                          }
+                                        </p>
+                                      </div>
+                                      {(() => {
+                                        const currentDate = new Date();
+                                        const startDate = new Date(allocation.allocationPeriod.startDate);
+                                        const endDate = new Date(allocation.allocationPeriod.endDate);
+                                        const isCurrentPeriod = currentDate >= startDate && currentDate <= endDate;
+                                        const isFuturePeriod = currentDate < startDate;
+                                        
+                                        // Only show configure button for current or future periods
+                                        return (isCurrentPeriod || isFuturePeriod) && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onConfigureAllocation?.(allocation);
+                                            }}
+                                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                            title="Configure this allocation"
+                                          >
+                                            <CogIcon className="h-4 w-4" />
+                                          </button>
+                                        );
+                                      })()}
+                                      <div className="ml-2">
+                                        {isExpanded ? (
+                                          <ChevronUpIcon className="h-5 w-5 text-gray-400" />
+                                        ) : (
+                                          <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+                                        )}
+                                      </div>
+                                    </div>
+                                </div>
+
+                                {/* Allocation Details - Expandable */}
+                                {isExpanded && (
+                                  <div className="px-4 pb-4 border-t border-gray-100">
+                                    {/* Allocation Details */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 mt-3 text-sm">
+                                      <div className="flex items-center gap-2">
+                                        <MapPinIcon className="h-4 w-4 text-gray-400" />
+                                        <span className="text-gray-600">Office:</span>
+                                        <span className="font-medium text-gray-900">{allocation.officeLocation}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <ClockIcon className="h-4 w-4 text-gray-400" />
+                                        <span className="text-gray-600">Hours:</span>
+                                        <span className="font-medium text-gray-900">{allocation.availableHours}</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Students in this Allocation */}
+                                    <div>
+                                      <h5 className="text-sm font-medium text-gray-700 mb-3">
+                                        Students ({allocation.students.length})
+                                      </h5>
+                                      {allocation.students.length === 0 ? (
+                                        <div className="text-center py-4 text-gray-400 bg-gray-50 rounded-lg">
+                                          <p className="text-sm">No students in this allocation period</p>
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                                          {allocation.students.map((student: Student) => (
+                                            <div key={student.id} className="bg-gray-50 border border-gray-100 rounded-lg p-3 hover:shadow-sm transition-shadow">
+                                              <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                  <div className="flex items-center gap-2 mb-2">
+                                                    <h6 className="font-medium text-gray-900 text-sm">{student.name}</h6>
+                                                    {student.atRisk && (
+                                                      <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full flex items-center gap-1">
+                                                        <ExclamationTriangleIcon className="h-3 w-3" />
+                                                        At Risk
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-600 mb-2">
+                                                    <div>
+                                                      <span className="text-gray-500">Roll No:</span>
+                                                      <p className="font-medium">{student.rollNo}</p>
+                                                    </div>
+                                                    <div>
+                                                      <span className="text-gray-500">Batch:</span>
+                                                      <p className="font-medium">{student.batch}</p>
+                                                    </div>
+                                                    <div>
+                                                      <span className="text-gray-500">CGPA:</span>
+                                                      <p className="font-medium">{student.cgpa}</p>
+                                                    </div>
+                                                    <div>
+                                                      <span className="text-gray-500">Semester:</span>
+                                                      <p className="font-medium">{student.semester}</p>
+                                                    </div>
+                                                  </div>
+                                                  
+                                                  {student.riskFactors && student.riskFactors.length > 0 && (
+                                                    <div className="mb-2">
+                                                      <p className="text-xs text-gray-500 mb-1">Risk Factors:</p>
+                                                      <div className="flex flex-wrap gap-1">
+                                                        {student.riskFactors.map((factor, index) => (
+                                                          <span key={index} className="px-2 py-1 bg-red-50 text-red-600 text-xs rounded">
+                                                            {factor}
+                                                          </span>
+                                                        ))}
+                                                      </div>
+                                                    </div>
+                                                  )}
+
+                                                  {student.lastInteraction && (
+                                                    <p className="text-xs text-gray-500">
+                                                      Last interaction: {new Date(student.lastInteraction).toLocaleDateString()}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                                
+                                                <div className="flex items-center gap-1 ml-3">
+                                                  {onLogIntervention && (
+                                                    <button
+                                                      onClick={() => onLogIntervention(student)}
+                                                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                                      title="Add Mentoring Note"
+                                                    >
+                                                      <ChatBubbleLeftEllipsisIcon className="h-3.5 w-3.5" />
+                                                    </button>
+                                                  )}
+                                                  {onReassignStudent && (
+                                                    <button
+                                                      onClick={() => onReassignStudent(student)}
+                                                      className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-md transition-colors"
+                                                      title="Reassign Student"
+                                                    >
+                                                      <UserMinusIcon className="h-3.5 w-3.5" />
+                                                    </button>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Allocation Metadata */}
+                                    <div className="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                                      <div className="flex items-center justify-between">
+                                        <span>Created: {new Date(allocation.createdAt).toLocaleDateString()}</span>
+                                        <span>Created by: {allocation.createdBy}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Recent Interventions */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Recent Interventions</h3>
+                      <span className="text-sm text-gray-500">{notes.length} total interventions</span>
+                    </div>
+                    
+                    {notes.length === 0 ? (
+                      <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-xl">
+                        <DocumentTextIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                        <p className="text-lg font-medium">No interventions recorded yet</p>
+                        <p className="text-sm">Intervention logs will appear here once recorded</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {notes.slice(0, 20).map((note: MentorNote) => {
+                          const student = getAllocatedStudents().find((s: Student) => s.id === note.studentId);
+                          return (
+                            <div key={note.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <div>
+                                  <h4 className="font-medium text-gray-900">{student?.name || 'Unknown Student'}</h4>
+                                  <p className="text-sm text-gray-500">{new Date(note.date).toLocaleDateString('en-US', { 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric' 
+                                  })}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${getStatusColor(note.status)}`}>
+                                    {note.status.replace('-', ' ')}
+                                  </span>
+                                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${getInterventionTypeColor(note.interventionType)}`}>
+                                    {note.interventionType}
+                                  </span>
+                                  {note.isPrivate && (
+                                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-medium">
+                                      Private
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-3">
+                                <div>
+                                  <p className="text-sm font-medium text-gray-700 mb-1">Intervention Notes:</p>
+                                  <p className="text-sm text-gray-600 bg-gray-50 rounded p-3">{note.note}</p>
+                                </div>
+                                
+                                {note.outcome && (
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-700 mb-1">Outcome:</p>
+                                    <p className="text-sm text-green-700 bg-green-50 rounded p-3">{note.outcome}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        
+                        {notes.length > 20 && (
+                          <div className="text-center py-4">
+                            <p className="text-sm text-gray-500">
+                              Showing 20 of {notes.length} interventions
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default MentorDetailsDrawer;

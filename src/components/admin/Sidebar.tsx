@@ -770,7 +770,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             <div
               className={classNames(
                 "overflow-hidden transition-all duration-500 ease-in-out",
-                openGroups[group.key] ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                openGroups[group.key] ? "max-h-auto opacity-100" : "max-h-0 opacity-0"
               )}
             >
               <div className="mt-1 space-y-1 pl-2 border-l border-gray-100">
