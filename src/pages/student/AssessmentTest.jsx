@@ -1279,7 +1279,7 @@ const AssessmentTest = () => {
         setGradeLevel(level);
         setShowGradeSelection(false);
 
-        // For middle school, high school, and higher secondary, skip stream selection and go directly to assessment
+        // For middle school, high school, skip stream selection and go directly to assessment
         if (level === 'middle') {
             setAssessmentStarted(true);
             const streamId = 'middle_school'; // Use a generic stream for middle school
@@ -1322,11 +1322,31 @@ const AssessmentTest = () => {
             }
 
             setShowSectionIntro(true);
-        } else if (level === 'after10') {
-            // For after 10th, show category selection (Science/Commerce/Arts) similar to after12
-            setShowCategorySelection(true);
+        } else if (level === 'after10' || level === 'higher_secondary') {
+            // For after 10th (11th grade), skip category selection - go directly to assessment
+            // The AI will recommend the best stream based on assessment results
+            setAssessmentStarted(true);
+            const streamId = 'general';
+            setStudentStream(streamId);
+
+            // Load questions and create attempt
+            await loadQuestionsFromDatabase(streamId, level);
+
+            if (studentRecordId) {
+                try {
+                    console.log('Creating assessment attempt for after10/higher_secondary with studentRecordId:', studentRecordId);
+                    await startAssessment(streamId, level);
+                    setUseDatabase(true);
+                } catch (err) {
+                    console.log('Could not create database attempt:', err.message);
+                }
+            } else {
+                console.log('No studentRecordId available, skipping database attempt creation');
+            }
+
+            setShowSectionIntro(true);
         } else if (level === 'college') {
-            // For college students (UG/PG), go directly to assessment using their program
+            // For college students (UG/PG), skip category selection - go directly to assessment using their program
             setAssessmentStarted(true);
             
             // Use student's program as the stream, normalize it to match STREAM_KNOWLEDGE_PROMPTS
@@ -1348,47 +1368,50 @@ const AssessmentTest = () => {
             }
 
             setShowSectionIntro(true);
-        } else if (level === 'higher_secondary') {
-            // For higher secondary (11-12), show category selection (Science/Commerce/Arts)
-            setShowCategorySelection(true);
         } else {
-            // For after 12th, show category selection (Science/Commerce/Arts)
+            // For after 12th ONLY, show category selection (Science/Commerce/Arts)
             setShowCategorySelection(true);
         }
     };
 
     // Handle category selection (Science/Commerce/Arts)
-    // After selecting category, go directly to assessment (no stream selection)
+    // For after12: Go directly to assessment (no program selection)
+    // For college and other levels: Show program selection screen
     const handleCategorySelect = async (categoryId) => {
         setSelectedCategory(categoryId);
         setShowCategorySelection(false);
         
-        // Mark that user has started an assessment
-        setAssessmentStarted(true);
-        
-        // Use category as the stream - for after10, use the specific stream like 'science_pcmb'
-        const streamId = categoryId;
-        setStudentStream(streamId);
-
         // Determine the effective grade level for database
-        // Use the current gradeLevel state which was set in handleGradeSelect
         const effectiveGradeLevel = gradeLevel || 'after12';
         console.log('📚 handleCategorySelect - gradeLevel:', gradeLevel, 'effectiveGradeLevel:', effectiveGradeLevel, 'categoryId:', categoryId);
 
-        // Load questions from database
-        await loadQuestionsFromDatabase(streamId, effectiveGradeLevel);
+        // For after12 students: Skip program selection, go directly to assessment
+        if (effectiveGradeLevel === 'after12') {
+            // Mark that user has started an assessment
+            setAssessmentStarted(true);
+            
+            // Use category as the stream
+            const streamId = categoryId;
+            setStudentStream(streamId);
 
-        setShowSectionIntro(true);
+            // Load questions from database
+            await loadQuestionsFromDatabase(streamId, effectiveGradeLevel);
 
-        // Try to create a database attempt if student record exists
-        if (studentRecordId) {
-            try {
-                await startAssessment(streamId, effectiveGradeLevel);
-                setUseDatabase(true);
-                console.log('Assessment attempt created in database for category:', categoryId, 'gradeLevel:', effectiveGradeLevel);
-            } catch (err) {
-                console.log('Could not create database attempt, using localStorage mode:', err.message);
+            setShowSectionIntro(true);
+
+            // Try to create a database attempt if student record exists
+            if (studentRecordId) {
+                try {
+                    await startAssessment(streamId, effectiveGradeLevel);
+                    setUseDatabase(true);
+                    console.log('Assessment attempt created in database for category:', categoryId, 'gradeLevel:', effectiveGradeLevel);
+                } catch (err) {
+                    console.log('Could not create database attempt, using localStorage mode:', err.message);
+                }
             }
+        } else {
+            // For college and other levels: Show program selection screen
+            setShowStreamSelection(true);
         }
     };
 

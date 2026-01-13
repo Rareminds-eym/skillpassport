@@ -8,8 +8,9 @@
  * - API communication with the worker
  * - Response validation
  * - Course recommendations (requires authenticated Supabase client)
+ * - Rule-based stream recommendation (for After 10th students)
  * 
- * @version 2.0.0 - Refactored to use modular Cloudflare Worker
+ * @version 2.1.0 - Added hybrid stream recommendation
  */
 
 import {
@@ -17,6 +18,9 @@ import {
   getRecommendedCourses,
   getRecommendedCoursesByType
 } from './courseRecommendationService';
+
+// Import stream matching engine for After 10th students
+import { calculateStreamRecommendations } from '../features/assessment/assessment-result/utils/streamMatchingEngine';
 
 // ============================================================================
 // PROGRESS TRACKING
@@ -531,6 +535,67 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log('RIASEC answers:', Object.keys(riasecAnswers).length);
   console.log('Aptitude scores:', aptitudeScores);
 
+  // ============================================================================
+  // RULE-BASED STREAM RECOMMENDATION (For After 10th students)
+  // ============================================================================
+  let ruleBasedStreamHint = null;
+  
+  if (gradeLevel === 'after10') {
+    try {
+      console.log('🎯 Calculating rule-based stream recommendation for After 10th student...');
+      
+      // Calculate RIASEC scores from answers for rule-based engine
+      const riasecScores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+      Object.values(riasecAnswers).forEach(answer => {
+        const { answer: value, categoryMapping, type } = answer;
+        
+        if (type === 'multiselect' && Array.isArray(value)) {
+          value.forEach(option => {
+            const riasecType = categoryMapping?.[option];
+            if (riasecType) riasecScores[riasecType] = (riasecScores[riasecType] || 0) + 2;
+          });
+        } else if (type === 'singleselect') {
+          const riasecType = categoryMapping?.[value];
+          if (riasecType) riasecScores[riasecType] = (riasecScores[riasecType] || 0) + 2;
+        } else if (type === 'rating' && typeof value === 'number') {
+          // Rating 1-3: 0 points, 4: 1 point, 5: 2 points
+          const points = value >= 4 ? (value === 5 ? 2 : 1) : 0;
+          // Need to determine RIASEC type from question context
+          // For now, distribute evenly or skip
+        }
+      });
+      
+      // Calculate rule-based recommendation
+      const ruleBasedRecommendation = calculateStreamRecommendations(
+        { riasec: { scores: riasecScores } },
+        { subjectMarks: [], projects: [], experiences: [] }
+      );
+      
+      ruleBasedStreamHint = {
+        stream: ruleBasedRecommendation.recommendedStream,
+        streamId: ruleBasedRecommendation.allStreamScores?.[0]?.streamId || 'pcms',
+        confidence: ruleBasedRecommendation.confidenceScore,
+        matchLevel: ruleBasedRecommendation.streamFit,
+        reasoning: ruleBasedRecommendation.reasoning,
+        riasecScores: riasecScores,
+        alternativeStream: ruleBasedRecommendation.alternativeStream,
+        allScores: ruleBasedRecommendation.allStreamScores?.slice(0, 3).map(s => ({
+          stream: s.streamName,
+          score: s.matchScore,
+          category: s.category
+        }))
+      };
+      
+      console.log('✅ Rule-based recommendation:', ruleBasedStreamHint.stream);
+      console.log('   Confidence:', ruleBasedStreamHint.confidence + '%');
+      console.log('   RIASEC Scores:', riasecScores);
+      console.log('   Alternative:', ruleBasedStreamHint.alternativeStream);
+    } catch (error) {
+      console.error('❌ Error calculating rule-based stream recommendation:', error);
+      // Continue without rule-based hint
+    }
+  }
+
   return {
     stream,
     gradeLevel,
@@ -544,6 +609,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     totalKnowledgeQuestions: streamQuestions.length,
     totalAptitudeQuestions,
     sectionTimings: timingData,
+    ruleBasedStreamHint, // Add rule-based hint for After 10th students
     adaptiveAptitudeResults: answers.adaptive_aptitude_results || null
   };
 };
@@ -575,11 +641,17 @@ export const analyzeAssessmentWithOpenRouter = async (
   updateProgress('preparing', 'Preparing your assessment data...');
   
   try {
-    // Prepare the assessment data
+    // Prepare the assessment data (includes rule-based stream hint for after10)
     const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings, gradeLevel);
 
     // Call the Cloudflare Worker (handles prompt building and AI call)
-    const parsedResults = await callOpenRouterAssessment(assessmentData);
+    let parsedResults = await callOpenRouterAssessment(assessmentData);
+
+    // Validate stream recommendation for After 10th students
+    if (gradeLevel === 'after10') {
+      const { validateStreamRecommendation } = await import('./assessmentService');
+      parsedResults = validateStreamRecommendation(parsedResults);
+    }
 
     // Validate the results
     const { isValid, missingFields } = validateResults(parsedResults);

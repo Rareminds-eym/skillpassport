@@ -26,6 +26,8 @@ import { useAssessment } from '../../../hooks/useAssessment';
 import { useAdaptiveAptitude } from '../../../hooks/useAdaptiveAptitude';
 // @ts-ignore - JS service
 import * as assessmentService from '../../../services/assessmentService';
+// @ts-ignore - JS service
+import { normalizeStreamId } from '../../../services/careerAssessmentAIService';
 
 // Hooks
 import { useAssessmentFlow } from './hooks/useAssessmentFlow';
@@ -376,13 +378,13 @@ const AssessmentTestPage: React.FC = () => {
     flow.setGradeLevel(level);
     
     // Determine next screen based on grade level
-    // Students in grades 11-12 and above need to select their stream (Science/Commerce/Arts)
-    // Students below 10th class (middle school 6-8, high school 9-10) go directly to assessment
-    // After 10th students also go directly to assessment (stream recommendation comes from AI analysis)
-    if (['higher_secondary', 'after12', 'college'].includes(level)) {
+    // after12 ONLY: Show category selection (Science/Commerce/Arts)
+    // after10, college, and below: Skip category selection, go directly to assessment
+    if (level === 'after12') {
+      // Show category selection ONLY for after12 students
       flow.setCurrentScreen('category_selection');
-    } else if (level === 'after10') {
-      // After 10th students skip stream selection - use 'general' stream for AI questions
+    } else if (level === 'after10' || level === 'higher_secondary') {
+      // After 10th (11th grade) students skip category selection - use 'general' stream
       // The AI analysis will recommend the best stream based on their assessment results
       flow.setStudentStream('general');
       setAssessmentStarted(true);
@@ -398,17 +400,54 @@ const AssessmentTestPage: React.FC = () => {
       }
       
       flow.setCurrentScreen('section_intro');
+    } else if (level === 'college') {
+      // College students (UG/PG) skip category selection - use their program directly
+      setAssessmentStarted(true);
+      
+      // Normalize the program name to fit database constraints (max 20 chars)
+      const normalizedStreamId = normalizeStreamId(studentProgram || 'college');
+      console.log(`🎓 College student: ${studentProgram} -> normalized: ${normalizedStreamId}`);
+      
+      flow.setStudentStream(normalizedStreamId);
+      
+      // Start database attempt with normalized stream ID
+      if (studentRecordId) {
+        try {
+          setUseDatabase(true);
+          await dbStartAssessment(normalizedStreamId, 'college');
+        } catch (err) {
+          console.error('Error starting assessment:', err);
+        }
+      }
+      
+      flow.setCurrentScreen('section_intro');
     } else {
       // Middle school (6-8), High school (9-10) - start directly without stream selection
       setAssessmentStarted(true);
       flow.setCurrentScreen('section_intro');
     }
-  }, [flow, studentRecordId, dbStartAssessment]);
+  }, [flow, studentRecordId, dbStartAssessment, studentProgram]);
   
-  const handleCategorySelect = useCallback((category: string) => {
+  const handleCategorySelect = useCallback(async (category: string) => {
     flow.setSelectedCategory(category);
-    flow.setCurrentScreen('stream_selection');
-  }, [flow]);
+    
+    // Skip stream selection - go directly to assessment
+    // Use category as the stream (science/commerce/arts)
+    flow.setStudentStream(category);
+    setAssessmentStarted(true);
+    
+    // Start database attempt with category as stream
+    if (studentRecordId) {
+      try {
+        setUseDatabase(true);
+        await dbStartAssessment(category, flow.gradeLevel || 'after12');
+      } catch (err) {
+        console.error('Error starting assessment:', err);
+      }
+    }
+    
+    flow.setCurrentScreen('section_intro');
+  }, [flow, studentRecordId, dbStartAssessment]);
   
   const handleStreamSelect = useCallback(async (stream: string) => {
     flow.setStudentStream(stream);
@@ -620,8 +659,9 @@ const AssessmentTestPage: React.FC = () => {
     return true;
   }, [currentSection, adaptiveAptitudeAnswer, flow.answers, questionId, currentQuestion]);
   
-  // Loading state - add debug logging
-  const showLoading = checkingExistingAttempt || questionsLoading || (!assessmentStarted && dbLoading);
+  // Loading state - only show loading screen for initial checks, not for AI questions
+  // AI questions can load in the background while showing section intro
+  const showLoading = checkingExistingAttempt || (!assessmentStarted && dbLoading);
   
   // Debug: Log loading states
   if (showLoading) {
