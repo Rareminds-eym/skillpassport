@@ -15,6 +15,7 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
 
   useEffect(() => {
     if (!studentIdOrUserId || !enabled) {
+      console.log('⏸️ useAssessmentRecommendations: Skipping (studentId:', studentIdOrUserId, 'enabled:', enabled, ')');
       setLoading(false);
       return;
     }
@@ -24,48 +25,35 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
         setLoading(true);
         setError(null);
 
+        console.log('🔍 useAssessmentRecommendations: Checking for student:', studentIdOrUserId);
+        console.log('🔍 Type of studentIdOrUserId:', typeof studentIdOrUserId);
+
         // Check for in-progress assessment first
         // getInProgressAttempt expects student.id (from students table)
         try {
+          console.log('🔍 Calling getInProgressAttempt with studentId:', studentIdOrUserId);
           const inProgress = await getInProgressAttempt(studentIdOrUserId);
+          console.log('📊 getInProgressAttempt result:', inProgress);
+          
           if (inProgress) {
+            console.log('✅ Found in-progress attempt:', inProgress.id);
             setHasInProgressAssessment(true);
             setInProgressAttempt(inProgress);
           } else {
+            console.log('❌ No in-progress attempt found');
             setHasInProgressAssessment(false);
             setInProgressAttempt(null);
           }
         } catch (err) {
-          console.warn('Error checking in-progress assessment:', err);
+          console.error('❌ Error checking in-progress assessment:', err);
           setHasInProgressAssessment(false);
         }
 
         // getLatestResult can handle both student.id and user.id
-        // It will try to find the student record if needed
         let result = await getLatestResult(studentIdOrUserId);
         
-        // If no result found and we might have been passed student.id instead of user.id,
-        // try querying directly with student_id
         if (!result) {
-          try {
-            const { data: directResult } = await supabase
-              .from('personal_assessment_results')
-              .select('*')
-              .eq('student_id', studentIdOrUserId)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            
-            if (directResult) {
-              result = directResult;
-              console.log('✅ Found assessment result using student_id directly');
-            }
-          } catch (directErr) {
-            console.warn('Direct student_id lookup also failed:', directErr);
-          }
-        }
-        
-        if (!result) {
+          console.log('❌ No assessment result found');
           setRecommendations(null);
           setHasCompletedAssessment(false);
           setLoading(false);

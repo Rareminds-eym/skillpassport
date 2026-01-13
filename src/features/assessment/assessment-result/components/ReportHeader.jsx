@@ -11,14 +11,31 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
     // Determine the label and value for the grade/course field based on grade level
     const getGradeCourseField = () => {
         const level = gradeLevel?.toLowerCase();
-        if (level === 'middle' || level === 'high' || level === 'middleschool' || level === 'highschool' || level === 'higher_secondary') {
-            return { label: 'Grade', value: studentInfo.grade || '—' };
-        } else if (level === 'after12' || level === 'after12th' || level === '12th') {
-            return { label: 'Grade', value: studentInfo.grade || '12th' };
-        } else if (level === 'college' || level === 'university') {
+        
+        // For college/university students, show course name instead of grade
+        if (level === 'college' || level === 'university') {
             return { label: 'Course', value: studentInfo.courseName || '—' };
         }
-        // Default fallback
+        
+        // For after12 students, check if they have a course name (college) or grade (12th)
+        if (level === 'after12' || level === 'after12th' || level === '12th') {
+            // If they have a course name, they're in college - show course
+            if (studentInfo.courseName && studentInfo.courseName !== '—') {
+                return { label: 'Course', value: studentInfo.courseName };
+            }
+            // Otherwise show grade (12th or whatever is in the field)
+            return { label: 'Grade', value: studentInfo.grade || '12th' };
+        }
+        
+        // For school students (middle, high school), show grade
+        if (level === 'middle' || level === 'high' || level === 'middleschool' || level === 'highschool' || level === 'higher_secondary') {
+            return { label: 'Grade', value: studentInfo.grade || '—' };
+        }
+        
+        // Default fallback - check if course name exists
+        if (studentInfo.courseName && studentInfo.courseName !== '—') {
+            return { label: 'Course', value: studentInfo.courseName };
+        }
         return { label: 'Grade', value: studentInfo.grade || '—' };
     };
 
