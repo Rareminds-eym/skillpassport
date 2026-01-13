@@ -2,9 +2,10 @@
  * Hook to fetch and process assessment-based training recommendations
  */
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
 import { getLatestResult, getInProgressAttempt } from '../services/assessmentService';
 
-export const useAssessmentRecommendations = (studentId, enabled = true) => {
+export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) => {
   const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,7 +14,7 @@ export const useAssessmentRecommendations = (studentId, enabled = true) => {
   const [inProgressAttempt, setInProgressAttempt] = useState(null);
 
   useEffect(() => {
-    if (!studentId || !enabled) {
+    if (!studentIdOrUserId || !enabled) {
       setLoading(false);
       return;
     }
@@ -24,8 +25,9 @@ export const useAssessmentRecommendations = (studentId, enabled = true) => {
         setError(null);
 
         // Check for in-progress assessment first
+        // getInProgressAttempt expects student.id (from students table)
         try {
-          const inProgress = await getInProgressAttempt(studentId);
+          const inProgress = await getInProgressAttempt(studentIdOrUserId);
           if (inProgress) {
             setHasInProgressAssessment(true);
             setInProgressAttempt(inProgress);
@@ -38,7 +40,30 @@ export const useAssessmentRecommendations = (studentId, enabled = true) => {
           setHasInProgressAssessment(false);
         }
 
-        const result = await getLatestResult(studentId);
+        // getLatestResult can handle both student.id and user.id
+        // It will try to find the student record if needed
+        let result = await getLatestResult(studentIdOrUserId);
+        
+        // If no result found and we might have been passed student.id instead of user.id,
+        // try querying directly with student_id
+        if (!result) {
+          try {
+            const { data: directResult } = await supabase
+              .from('personal_assessment_results')
+              .select('*')
+              .eq('student_id', studentIdOrUserId)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            
+            if (directResult) {
+              result = directResult;
+              console.log('✅ Found assessment result using student_id directly');
+            }
+          } catch (directErr) {
+            console.warn('Direct student_id lookup also failed:', directErr);
+          }
+        }
         
         if (!result) {
           setRecommendations(null);
@@ -116,7 +141,7 @@ export const useAssessmentRecommendations = (studentId, enabled = true) => {
     };
 
     fetchRecommendations();
-  }, [studentId, enabled]);
+  }, [studentIdOrUserId, enabled]);
 
   return {
     recommendations,

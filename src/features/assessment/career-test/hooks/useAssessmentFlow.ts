@@ -314,6 +314,9 @@ export const useAssessmentFlow = ({
     
     // Actions
     setCurrentScreen,
+    setCurrentSectionIndex, // Added for resume functionality
+    setCurrentQuestionIndex, // Added for resume functionality
+    setShowSectionIntro, // Added for resume functionality
     setGradeLevel,
     setStudentStream,
     setSelectedCategory,
