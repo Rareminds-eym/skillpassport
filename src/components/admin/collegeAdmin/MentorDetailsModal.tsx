@@ -55,6 +55,15 @@ interface MentorNote {
   isPrivate: boolean;
   interventionType: 'academic' | 'personal' | 'career' | 'attendance' | 'behavioral' | 'financial' | 'other';
   status: 'pending' | 'in-progress' | 'completed' | 'escalated';
+  // New fields for 2-way communication
+  priority?: string;
+  educator_response?: string;
+  action_taken?: string;
+  next_steps?: string;
+  admin_feedback?: string;
+  follow_up_required?: boolean;
+  follow_up_date?: string;
+  _fullNote?: any; // Reference to full note data
 }
 
 interface MentorDetailsDrawerProps {
@@ -64,6 +73,7 @@ interface MentorDetailsDrawerProps {
   onLogIntervention?: (student: Student) => void;
   onReassignStudent?: (student: Student) => void;
   onConfigureAllocation?: (allocation: MentorAllocation) => void;
+  onViewConversation?: (note: MentorNote) => void;
 }
 
 const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({ 
@@ -72,7 +82,8 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
   onClose, 
   onLogIntervention,
   onReassignStudent,
-  onConfigureAllocation
+  onConfigureAllocation,
+  onViewConversation
 }) => {
   // State for accordion management
   const [expandedAllocations, setExpandedAllocations] = useState<Set<number>>(new Set());
@@ -165,8 +176,10 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                 <div className="p-6 space-y-8">
                   {/* Mentor Information */}
                   <div className="bg-gray-50 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Faculty Information</h3>
+                    
+                    {/* Basic Contact Information */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                       <div className="flex items-center gap-3">
                         <EnvelopeIcon className="h-5 w-5 text-gray-400" />
                         <div>
@@ -184,37 +197,93 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                           </div>
                         </div>
                       )}
-                      
-                      {(() => {
-                        const latestAllocation = getLatestAllocation();
-                        return latestAllocation?.officeLocation && (
-                          <div className="flex items-center gap-3">
-                            <MapPinIcon className="h-5 w-5 text-gray-400" />
-                            <div>
-                              <p className="text-sm text-gray-500">Office Location</p>
-                              <p className="text-sm font-medium text-gray-900">{latestAllocation.officeLocation}</p>
-                            </div>
+
+                      {mentor.employeeId && (
+                        <div className="flex items-center gap-3">
+                          <UserIcon className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <p className="text-sm text-gray-500">Employee ID</p>
+                            <p className="text-sm font-medium text-gray-900">{mentor.employeeId}</p>
                           </div>
-                        );
-                      })()}
-                      
-                      {(() => {
-                        const latestAllocation = getLatestAllocation();
-                        return latestAllocation?.availableHours && (
-                          <div className="flex items-center gap-3">
-                            <ClockIcon className="h-5 w-5 text-gray-400" />
-                            <div>
-                              <p className="text-sm text-gray-500">Available Hours</p>
-                              <p className="text-sm font-medium text-gray-900">{latestAllocation.availableHours}</p>
-                            </div>
+                        </div>
+                      )}
+
+                      {mentor.gender && (
+                        <div className="flex items-center gap-3">
+                          <UserIcon className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <p className="text-sm text-gray-500">Gender</p>
+                            <p className="text-sm font-medium text-gray-900 capitalize">{mentor.gender}</p>
                           </div>
-                        );
-                      })()}
+                        </div>
+                      )}
                     </div>
 
+                    {/* Professional Information */}
+                    <div className="border-t border-gray-200 pt-4 mb-6">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Professional Details</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {mentor.qualification && (
+                          <div className="flex items-start gap-3">
+                            <AcademicCapIcon className="h-5 w-5 text-gray-400 mt-0.5" />
+                            <div>
+                              <p className="text-sm text-gray-500">Qualification</p>
+                              <p className="text-sm font-medium text-gray-900">{mentor.qualification}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {mentor.specialization && (
+                          <div className="flex items-start gap-3">
+                            <DocumentTextIcon className="h-5 w-5 text-gray-400 mt-0.5" />
+                            <div>
+                              <p className="text-sm text-gray-500">Specialization</p>
+                              <p className="text-sm font-medium text-gray-900">{mentor.specialization}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {mentor.experienceYears && (
+                          <div className="flex items-start gap-3">
+                            <CalendarIcon className="h-5 w-5 text-gray-400 mt-0.5" />
+                            <div>
+                              <p className="text-sm text-gray-500">Experience</p>
+                              <p className="text-sm font-medium text-gray-900">{mentor.experienceYears} years</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {mentor.dateOfJoining && (
+                          <div className="flex items-start gap-3">
+                            <CalendarIcon className="h-5 w-5 text-gray-400 mt-0.5" />
+                            <div>
+                              <p className="text-sm text-gray-500">Date of Joining</p>
+                              <p className="text-sm font-medium text-gray-900">
+                                {new Date(mentor.dateOfJoining).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Address */}
+                    {mentor.address && (
+                      <div className="border-t border-gray-200 pt-4 mb-6">
+                        <div className="flex items-start gap-3">
+                          <MapPinIcon className="h-5 w-5 text-gray-400 mt-0.5" />
+                          <div>
+                            <p className="text-sm text-gray-500">Address</p>
+                            <p className="text-sm font-medium text-gray-900">{mentor.address}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Subject Expertise */}
                     {mentor.specializations && mentor.specializations.length > 0 && (
-                      <div className="mt-6">
-                        <h4 className="text-sm font-medium text-gray-700 mb-3">Specializations</h4>
+                      <div className="border-t border-gray-200 pt-4">
+                        <h4 className="text-sm font-medium text-gray-700 mb-3">Subject Expertise</h4>
                         <div className="flex flex-wrap gap-2">
                           {mentor.specializations.map((spec: string, index: number) => (
                             <span key={index} className="px-3 py-1 bg-indigo-100 text-indigo-700 text-sm rounded-full">
@@ -545,45 +614,165 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                       <div className="space-y-4">
                         {notes.slice(0, 20).map((note: MentorNote) => {
                           const student = getAllocatedStudents().find((s: Student) => s.id === note.studentId);
+                          const hasEducatorResponse = note.educator_response || note.action_taken || note.next_steps;
+                          const needsResponse = !hasEducatorResponse && note.status === 'pending';
+                          
+                          const getPriorityColor = (priority?: string) => {
+                            const colors = {
+                              urgent: 'bg-red-50 text-red-700 border-red-200',
+                              high: 'bg-orange-50 text-orange-700 border-orange-200',
+                              medium: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+                              low: 'bg-green-50 text-green-700 border-green-200',
+                            };
+                            return colors[priority as keyof typeof colors] || colors.medium;
+                          };
+                          
                           return (
-                            <div key={note.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                              <div className="flex items-start justify-between mb-3">
-                                <div>
-                                  <h4 className="font-medium text-gray-900">{student?.name || 'Unknown Student'}</h4>
-                                  <p className="text-sm text-gray-500">{new Date(note.date).toLocaleDateString('en-US', { 
-                                    year: 'numeric', 
-                                    month: 'long', 
-                                    day: 'numeric' 
-                                  })}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${getStatusColor(note.status)}`}>
-                                    {note.status.replace('-', ' ')}
-                                  </span>
-                                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${getInterventionTypeColor(note.interventionType)}`}>
-                                    {note.interventionType}
-                                  </span>
-                                  {note.isPrivate && (
-                                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-medium">
-                                      Private
+                            <div 
+                              key={note.id} 
+                              className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+                            >
+                              {/* Header Section */}
+                              <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-100">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                                      <UserIcon className="h-5 w-5 text-indigo-600" />
+                                    </div>
+                                    <div>
+                                      <h4 className="font-semibold text-gray-900 text-base">{student?.name || 'Unknown Student'}</h4>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <CalendarIcon className="h-3.5 w-3.5 text-gray-400" />
+                                        <p className="text-sm text-gray-500">
+                                          {new Date(note.date).toLocaleDateString('en-US', { 
+                                            year: 'numeric', 
+                                            month: 'short', 
+                                            day: 'numeric' 
+                                          })}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex flex-wrap gap-2 justify-end max-w-md">
+                                    {note.priority && (
+                                      <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${getPriorityColor(note.priority)}`}>
+                                        {note.priority.toUpperCase()}
+                                      </span>
+                                    )}
+                                    <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(note.status)}`}>
+                                      {note.status.replace('-', ' ').toUpperCase()}
                                     </span>
-                                  )}
-                                </div>
-                              </div>
-                              
-                              <div className="space-y-3">
-                                <div>
-                                  <p className="text-sm font-medium text-gray-700 mb-1">Intervention Notes:</p>
-                                  <p className="text-sm text-gray-600 bg-gray-50 rounded p-3">{note.note}</p>
+                                    <span className={`px-3 py-1 text-xs font-medium rounded-full ${getInterventionTypeColor(note.interventionType)}`}>
+                                      {note.interventionType.charAt(0).toUpperCase() + note.interventionType.slice(1)}
+                                    </span>
+                                    {note.isPrivate && (
+                                      <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                                        Private
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                                 
-                                {note.outcome && (
-                                  <div>
-                                    <p className="text-sm font-medium text-gray-700 mb-1">Outcome:</p>
-                                    <p className="text-sm text-green-700 bg-green-50 rounded p-3">{note.outcome}</p>
+                                {/* Status Indicator */}
+                                {hasEducatorResponse && (
+                                  <div className="mt-3 flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                    <span className="font-medium">Educator has responded</span>
+                                  </div>
+                                )}
+                                {needsResponse && (
+                                  <div className="mt-3 flex items-center gap-2 text-sm text-orange-700 bg-orange-50 px-3 py-2 rounded-lg border border-orange-200">
+                                    <ClockIcon className="h-4 w-4" />
+                                    <span className="font-medium">Awaiting educator response</span>
+                                  </div>
+                                )}
+                                
+                                {/* Follow-up Alert */}
+                                {note.follow_up_required && note.follow_up_date && (
+                                  <div className="mt-3 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
+                                    <ExclamationTriangleIcon className="h-4 w-4" />
+                                    <span className="font-medium">
+                                      Follow-up required by {new Date(note.follow_up_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    </span>
                                   </div>
                                 )}
                               </div>
+                              
+                              {/* Content Section */}
+                              <div className="px-6 py-5 space-y-4">
+                                {/* Admin's Note */}
+                                <div>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Your Note</p>
+                                  </div>
+                                  <p className="text-sm text-gray-700 leading-relaxed pl-3">{note.note}</p>
+                                </div>
+                                
+                                {/* Initial Outcome */}
+                                {note.outcome && (
+                                  <div className="pt-4 border-t border-gray-100">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <div className="w-1 h-4 bg-green-500 rounded-full"></div>
+                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Initial Outcome</p>
+                                    </div>
+                                    <p className="text-sm text-gray-700 leading-relaxed pl-3">{note.outcome}</p>
+                                  </div>
+                                )}
+                                
+                                {/* Educator's Response */}
+                                {note.educator_response && (
+                                  <div className="pt-4 border-t border-gray-100">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <ChatBubbleLeftEllipsisIcon className="h-4 w-4 text-green-600" />
+                                      <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Educator's Response</p>
+                                    </div>
+                                    <div className="bg-green-50 border border-green-100 rounded-lg p-3">
+                                      <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">{note.educator_response}</p>
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Action Taken */}
+                                {note.action_taken && (
+                                  <div className={note.educator_response ? '' : 'pt-4 border-t border-gray-100'}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <div className="w-1 h-4 bg-purple-500 rounded-full"></div>
+                                      <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Action Taken</p>
+                                    </div>
+                                    <div className="bg-purple-50 border border-purple-100 rounded-lg p-3">
+                                      <p className="text-sm text-gray-700 leading-relaxed line-clamp-2">{note.action_taken}</p>
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Admin's Feedback */}
+                                {note.admin_feedback && (
+                                  <div className="pt-4 border-t border-gray-100">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <div className="w-1 h-4 bg-indigo-500 rounded-full"></div>
+                                      <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Your Feedback</p>
+                                    </div>
+                                    <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3">
+                                      <p className="text-sm text-gray-700 leading-relaxed line-clamp-2">{note.admin_feedback}</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Action Button */}
+                              {onViewConversation && (
+                                <div className="px-6 pb-5">
+                                  <button
+                                    onClick={() => onViewConversation(note)}
+                                    className="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-sm font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
+                                  >
+                                    <ChatBubbleLeftEllipsisIcon className="h-5 w-5" />
+                                    {hasEducatorResponse ? 'View Full Conversation & Respond' : 'View Details & Provide Feedback'}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           );
                         })}

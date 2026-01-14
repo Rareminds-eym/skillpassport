@@ -47,7 +47,7 @@ interface ReassignModalProps {
   student: Student;
   mentors: Mentor[];
   onClose: () => void;
-  onReassign: (mentorId: number) => void;
+  onReassign: (mentorId: number, periodId: number) => void;
   // Helper functions passed from parent
   getMentorCurrentLoad: (mentorId: number) => number;
   getMentorActiveAllocations: (mentorId: number) => MentorAllocation[];
@@ -62,36 +62,40 @@ const ReassignModal: React.FC<ReassignModalProps> = ({
   getMentorActiveAllocations 
 }) => {
   const [selectedMentorId, setSelectedMentorId] = useState<number | null>(null);
+  const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
+
+  // Get available periods for selected mentor
+  const availablePeriods = selectedMentorId 
+    ? getMentorActiveAllocations(selectedMentorId)
+    : [];
 
   const availableMentors = mentors.filter((m: Mentor) => {
-    const currentLoad = getMentorCurrentLoad(m.id);
     const activeAllocations = getMentorActiveAllocations(m.id);
-    const maxCapacity = activeAllocations.length > 0 
-      ? Math.max(...activeAllocations.map(a => a.capacity))
-      : 0;
     
-    // Check if mentor has capacity and doesn't already have this student
-    const hasCapacity = currentLoad < maxCapacity;
+    // Check if mentor doesn't already have this student
     const hasStudent = activeAllocations.some(allocation => 
       allocation.students.some(s => s.id === student.id)
     );
     
-    return hasCapacity && !hasStudent && activeAllocations.length > 0;
+    return !hasStudent && activeAllocations.length > 0;
   });
 
   const selectedMentor = availableMentors.find((m: Mentor) => m.id === selectedMentorId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        {/* Fixed Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900">Reassign Student</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="space-y-6">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="space-y-6">
           {/* Student Information */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -141,7 +145,7 @@ const ReassignModal: React.FC<ReassignModalProps> = ({
                 availableMentors.map((mentor: Mentor) => (
                   <label
                     key={mentor.id}
-                    className={`flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
+                    className={`flex items-center p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
                       selectedMentorId === mentor.id ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200'
                     }`}
                   >
@@ -165,120 +169,110 @@ const ReassignModal: React.FC<ReassignModalProps> = ({
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">
-                        {getMentorCurrentLoad(mentor.id)}/{(() => {
-                          const activeAllocations = getMentorActiveAllocations(mentor.id);
-                          return activeAllocations.length > 0 
-                            ? Math.max(...activeAllocations.map(a => a.capacity))
-                            : 0;
-                        })()}
-                      </p>
-                      <p className="text-xs text-gray-500">Capacity</p>
-                      <div className="w-16 bg-gray-200 rounded-full h-1.5 mt-1">
-                        <div
-                          className={`h-1.5 rounded-full ${
-                            (() => {
-                              const currentLoad = getMentorCurrentLoad(mentor.id);
-                              const activeAllocations = getMentorActiveAllocations(mentor.id);
-                              const maxCapacity = activeAllocations.length > 0 
-                                ? Math.max(...activeAllocations.map(a => a.capacity))
-                                : 1;
-                              return currentLoad >= maxCapacity * 0.8 ? 'bg-yellow-500' : 'bg-green-500';
-                            })()
-                          }`}
-                          style={{
-                            width: `${(() => {
-                              const currentLoad = getMentorCurrentLoad(mentor.id);
-                              const activeAllocations = getMentorActiveAllocations(mentor.id);
-                              const maxCapacity = activeAllocations.length > 0 
-                                ? Math.max(...activeAllocations.map(a => a.capacity))
-                                : 1;
-                              return (currentLoad / maxCapacity) * 100;
-                            })()}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
                   </label>
                 ))
               )}
             </div>
           </div>
 
-          {/* Selected Mentor Details */}
-          {selectedMentor && (
-            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-indigo-900 mb-2">Selected Mentor Details</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-indigo-700">
-                    <strong>Email:</strong> {selectedMentor.email}
-                  </p>
-                  {selectedMentor.contactNumber && (
-                    <p className="text-indigo-700">
-                      <strong>Phone:</strong> {selectedMentor.contactNumber}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  {(() => {
-                    const activeAllocations = getMentorActiveAllocations(selectedMentor.id);
-                    const latestAllocation = activeAllocations.sort((a, b) => 
-                      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-                    )[0];
-                    
-                    return (
-                      <>
-                        {latestAllocation?.officeLocation && (
-                          <p className="text-indigo-700">
-                            <strong>Office:</strong> {latestAllocation.officeLocation}
+          {/* Period Selection - Show only if mentor is selected */}
+          {selectedMentorId && availablePeriods.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Select Mentoring Period
+              </label>
+              <div className="space-y-3">
+                {availablePeriods.map((allocation: MentorAllocation) => {
+                  const currentLoad = allocation.students.length;
+                  const maxCapacity = allocation.capacity;
+                  const hasCapacity = currentLoad < maxCapacity;
+                  const isCurrentPeriod = new Date() >= new Date(allocation.allocationPeriod.startDate) && 
+                                         new Date() <= new Date(allocation.allocationPeriod.endDate);
+                  
+                  return (
+                    <label
+                      key={allocation.id}
+                      className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
+                        !hasCapacity ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                      } ${
+                        selectedPeriodId === allocation.id ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4 flex-1">
+                        <input
+                          type="radio"
+                          name="period"
+                          value={allocation.id}
+                          checked={selectedPeriodId === allocation.id}
+                          onChange={() => setSelectedPeriodId(allocation.id)}
+                          disabled={!hasCapacity}
+                          className="h-4 w-4 text-indigo-600"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-900">{allocation.academicYear}</p>
+                            {isCurrentPeriod && (
+                              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                                Current
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            {new Date(allocation.allocationPeriod.startDate).toLocaleDateString()} - {new Date(allocation.allocationPeriod.endDate).toLocaleDateString()}
                           </p>
-                        )}
-                        <p className="text-indigo-700">
-                          <strong>Available Slots:</strong> {(() => {
-                            const currentLoad = getMentorCurrentLoad(selectedMentor.id);
-                            const maxCapacity = activeAllocations.length > 0 
-                              ? Math.max(...activeAllocations.map(a => a.capacity))
-                              : 0;
-                            return maxCapacity - currentLoad;
-                          })()}
+                          {allocation.officeLocation && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Office: {allocation.officeLocation}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right ml-4">
+                        <p className={`text-sm font-medium ${hasCapacity ? 'text-gray-900' : 'text-red-600'}`}>
+                          {currentLoad}/{maxCapacity}
                         </p>
-                      </>
-                    );
-                  })()}
-                </div>
+                        <p className="text-xs text-gray-500">Capacity</p>
+                        <div className="w-16 bg-gray-200 rounded-full h-1.5 mt-1">
+                          <div
+                            className={`h-1.5 rounded-full ${
+                              !hasCapacity ? 'bg-red-500' : 
+                              currentLoad >= maxCapacity * 0.8 ? 'bg-yellow-500' : 'bg-green-500'
+                            }`}
+                            style={{
+                              width: `${Math.min((currentLoad / maxCapacity) * 100, 100)}%`,
+                            }}
+                          />
+                        </div>
+                        {!hasCapacity && (
+                          <p className="text-xs text-red-600 mt-1">Full</p>
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
-              {selectedMentor.specializations && selectedMentor.specializations.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-indigo-700 text-sm mb-2"><strong>Specializations:</strong></p>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedMentor.specializations.map((spec: string, index: number) => (
-                      <span key={index} className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full">
-                        {spec}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
+          </div>
         </div>
 
-        <div className="mt-8 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => selectedMentorId && onReassign(selectedMentorId)}
-            disabled={!selectedMentorId}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Reassign Student
-          </button>
+        {/* Fixed Footer */}
+        <div className="p-6 border-t border-gray-200 bg-gray-50">
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={onClose}
+              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 bg-white transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => selectedMentorId && selectedPeriodId && onReassign(selectedMentorId, selectedPeriodId)}
+              disabled={!selectedMentorId || !selectedPeriodId}
+              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Reassign Student
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -98,6 +98,11 @@ const Sidebar: React.FC<SidebarProps> = ({
           icon: PencilSquareIcon,
         },
         {
+          name: "My Mentees",
+          path: "/educator/my-mentees",
+          icon: UserGroupIcon,
+        },
+        {
           name: "Verification",
           path: "/educator/activities",
           icon: CheckCircleIcon,
