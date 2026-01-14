@@ -384,6 +384,11 @@ export const getAttemptResponses = async (attemptId) => {
 
 /**
  * Complete an assessment attempt and save results
+ * 
+ * IMPORTANT: This function saves results FIRST, then marks the attempt as completed.
+ * This ensures that if the results insert fails, the attempt remains "in_progress"
+ * and can be retried, rather than being orphaned as "completed" with no results.
+ * 
  * @param {string} attemptId - Attempt UUID
  * @param {string} studentId - Student's user_id
  * @param {string} streamId - Selected stream
@@ -405,19 +410,56 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   console.log('  riasec.scores:', JSON.stringify(geminiResults?.riasec?.scores));
   console.log('  riasec.code:', geminiResults?.riasec?.code);
 
-  // Update attempt status
-  const { error: attemptError } = await supabase
-    .from('personal_assessment_attempts')
-    .update({
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      section_timings: sectionTimings
-    })
-    .eq('id', attemptId);
+  // ============================================================================
+  // CRITICAL VALIDATION: Ensure AI returned complete data
+  // ============================================================================
+  
+  const requiredFields = [
+    'riasec',
+    'aptitude', 
+    'bigFive',
+    'workValues',
+    'employability',
+    'knowledge',
+    'careerFit',
+    'skillGap',
+    'roadmap'
+  ];
+  
+  const missingFields = requiredFields.filter(field => !geminiResults[field]);
+  
+  if (missingFields.length > 0) {
+    console.error('❌ CRITICAL: AI returned incomplete data!');
+    console.error('❌ Missing required fields:', missingFields);
+    console.error('❌ AI Response Keys:', Object.keys(geminiResults));
+    console.error('❌ Full AI Response:', JSON.stringify(geminiResults, null, 2));
+    
+    throw new Error(
+      `AI analysis incomplete. Missing ${missingFields.length} required fields: ${missingFields.join(', ')}. ` +
+      `Please try again or contact support if the issue persists.`
+    );
+  }
 
-  if (attemptError) {
-    console.error('Error updating attempt:', attemptError);
-    throw attemptError;
+  // Validate nested required fields
+  const nestedValidation = [
+    { path: 'workValues.scores', value: geminiResults.workValues?.scores },
+    { path: 'employability.skillScores', value: geminiResults.employability?.skillScores },
+    { path: 'employability.overallReadiness', value: geminiResults.employability?.overallReadiness },
+    { path: 'careerFit.clusters', value: geminiResults.careerFit?.clusters },
+    { path: 'skillGap.priorityA', value: geminiResults.skillGap?.priorityA },
+    { path: 'roadmap.projects', value: geminiResults.roadmap?.projects }
+  ];
+  
+  const missingNested = nestedValidation.filter(v => !v.value).map(v => v.path);
+  
+  if (missingNested.length > 0) {
+    console.error('❌ CRITICAL: AI returned incomplete nested data!');
+    console.error('❌ Missing nested fields:', missingNested);
+    
+    throw new Error(
+      `AI analysis incomplete. Missing nested fields: ${missingNested.join(', ')}. ` +
+      `Please try again or contact support if the issue persists.`
+    );
   }
 
   // Prepare data for insertion - explicitly extract each field
@@ -480,40 +522,57 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   console.log('  skill_gap exists:', !!dataToInsert.skill_gap);
   console.log('  roadmap exists:', !!dataToInsert.roadmap);
 
-  // Save results
-  console.log('=== Inserting into personal_assessment_results ===');
+  // STEP 1: Save results FIRST (before marking attempt as completed)
+  // This ensures if insert fails, the attempt stays "in_progress" and can be retried
+  console.log('=== STEP 1: Inserting into personal_assessment_results ===');
   console.log('Attempt ID:', attemptId);
   console.log('Student ID:', studentId);
   console.log('Stream ID:', streamId);
   
   const { data: results, error: resultsError } = await supabase
     .from('personal_assessment_results')
-    .insert(dataToInsert)
+    .upsert(dataToInsert, {
+      onConflict: 'attempt_id',
+      ignoreDuplicates: false
+    })
     .select()
     .single();
 
   if (resultsError) {
-    console.error('❌ Error inserting results:', resultsError);
+    console.error('❌ Error upserting results:', resultsError);
     console.error('Full error object:', JSON.stringify(resultsError, null, 2));
-    console.error('Error details:', {
-      code: resultsError.code,
-      message: resultsError.message,
-      details: resultsError.details,
-      hint: resultsError.hint,
-      status: resultsError.status,
-      statusText: resultsError.statusText
-    });
     
     // Check if it's an RLS error
     if (resultsError.code === '42501' || resultsError.message?.includes('policy')) {
       console.error('🔒 This appears to be an RLS (Row Level Security) policy error');
-      console.error('The student_id in the insert must match auth.uid()');
+      console.error('The student_id in the upsert must match auth.uid()');
     }
     
+    // Don't mark attempt as completed if results failed to save
     throw resultsError;
   }
 
   console.log('✅ Results saved successfully:', results.id);
+
+  // STEP 2: Only mark attempt as completed AFTER results are saved successfully
+  console.log('=== STEP 2: Marking attempt as completed ===');
+  const { error: attemptError } = await supabase
+    .from('personal_assessment_attempts')
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      section_timings: sectionTimings
+    })
+    .eq('id', attemptId);
+
+  if (attemptError) {
+    console.error('⚠️ Warning: Results saved but failed to update attempt status:', attemptError);
+    // Results are saved, so we don't throw here - the data is safe
+    // The attempt status can be fixed manually if needed
+  } else {
+    console.log('✅ Attempt marked as completed');
+  }
+
   return results;
 };
 
@@ -546,11 +605,7 @@ export const getAttemptWithResults = async (attemptId) => {
     .select(`
       *,
       stream:personal_assessment_streams(*),
-      results:personal_assessment_results(*),
-      responses:personal_assessment_responses(
-        *,
-        question:personal_assessment_questions(*)
-      )
+      results:personal_assessment_results(*)
     `)
     .eq('id', attemptId)
     .single();

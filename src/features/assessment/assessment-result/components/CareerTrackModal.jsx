@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, Download, Bell, ChevronRight, Calendar } from 'lucide-react';
+import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, Download, Bell, ChevronRight, Calendar, Loader2 } from 'lucide-react';
 import { useRoleOverview } from '../../../../hooks/useRoleOverview';
+import { matchCoursesForRole } from '../../../../services/aiCareerPathService';
 import jsPDF from 'jspdf';
 
 /**
@@ -15,6 +16,11 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
     const [selectedRole, setSelectedRole] = useState(null);
     const [currentPage, setCurrentPage] = useState(0); // 0 = role selection, 1-5 = wizard pages
     const [showReminderModal, setShowReminderModal] = useState(false);
+    
+    // AI Course Matching State
+    const [aiMatchedCourses, setAiMatchedCourses] = useState([]);
+    const [courseMatchingLoading, setCourseMatchingLoading] = useState(false);
+    const [courseMatchingError, setCourseMatchingError] = useState(null);
 
     const accentColor = selectedTrack.index === 0 ? '#2563eb' : 
                        selectedTrack.index === 1 ? '#3b82f6' : '#60a5fa';
@@ -65,54 +71,150 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
     // Helper function to get role name
     const getRoleName = (role) => {
         if (typeof role === 'string') return role;
+        // Check for 'role' property first (from COURSE_KNOWLEDGE_BASE)
+        if (role?.role) return role.role;
+        // Fallback to 'name' property (from other sources)
         return role?.name || '';
     };
 
-    // Get AI-generated role overview (responsibilities + industry demand + career progression + learning roadmap + action items) in a single API call
-    const { responsibilities, demandData, careerProgression, learningRoadmap, actionItems, loading: overviewLoading } = useRoleOverview(
+    // Get AI-generated role overview (responsibilities + industry demand + career progression + learning roadmap + action items + suggested projects) in a single API call
+    const { responsibilities, demandData, careerProgression, learningRoadmap, actionItems, suggestedProjects, loading: overviewLoading, error: overviewError } = useRoleOverview(
         selectedRole ? getRoleName(selectedRole) : null,
         selectedTrack.cluster?.title || ''
     );
 
-    // Filter and sort platform courses based on relevance to selected role
-    const getRelevantPlatformCourses = () => {
-        if (!results?.platformCourses || results.platformCourses.length === 0) return [];
-        if (!selectedRole) return results.platformCourses.slice(0, 4);
+    // Log error for debugging
+    if (overviewError) {
+        console.warn('[CareerTrackModal] API error, using fallback data:', overviewError.message);
+    }
+
+    // AI-powered course matching - fetch when role is selected and platform courses are available
+    useEffect(() => {
+        const fetchAIMatchedCourses = async () => {
+            if (!selectedRole || !results?.platformCourses || results.platformCourses.length === 0) {
+                setAiMatchedCourses([]);
+                return;
+            }
+
+            const roleName = getRoleName(selectedRole);
+            const clusterTitle = selectedTrack.cluster?.title || '';
+
+            setCourseMatchingLoading(true);
+            setCourseMatchingError(null);
+
+            try {
+                // Prepare courses for AI matching
+                const coursesForMatching = results.platformCourses.map(course => ({
+                    id: course.course_id || course.id || String(Math.random()),
+                    title: course.title || course.name || '',
+                    description: course.description || '',
+                    skills: course.skills || [],
+                    category: course.category || '',
+                }));
+
+                console.log(`[CareerTrackModal] Calling AI course matching for: ${roleName}`);
+                const matchResult = await matchCoursesForRole(roleName, clusterTitle, coursesForMatching);
+
+                let finalCourses = [];
+
+                if (matchResult.matchedCourseIds && matchResult.matchedCourseIds.length > 0) {
+                    // Filter platform courses by matched IDs
+                    const matched = results.platformCourses.filter(course => {
+                        const courseId = course.course_id || course.id;
+                        return matchResult.matchedCourseIds.includes(courseId);
+                    });
+                    console.log(`[CareerTrackModal] AI matched ${matched.length} courses:`, matchResult.reasoning);
+                    finalCourses = matched;
+                }
+
+                // ALWAYS ensure we have exactly 4 courses
+                finalCourses = ensureFourCourses(finalCourses, roleName, clusterTitle, results.platformCourses);
+                setAiMatchedCourses(finalCourses);
+            } catch (error) {
+                console.error('[CareerTrackModal] AI course matching failed:', error);
+                setCourseMatchingError(error);
+                // Use fallback on error - still ensure 4 courses
+                const roleName = getRoleName(selectedRole);
+                const clusterTitle = selectedTrack.cluster?.title || '';
+                const fallbackCourses = ensureFourCourses([], roleName, clusterTitle, results.platformCourses);
+                setAiMatchedCourses(fallbackCourses);
+            } finally {
+                setCourseMatchingLoading(false);
+            }
+        };
+
+        fetchAIMatchedCourses();
+    }, [selectedRole, results?.platformCourses, selectedTrack.cluster?.title]);
+
+    // Ensure we ALWAYS return exactly 4 courses
+    const ensureFourCourses = (aiMatchedCourses, roleName, clusterTitle, platformCourses) => {
+        if (!platformCourses || platformCourses.length === 0) return [];
         
-        const roleName = getRoleName(selectedRole).toLowerCase();
-        const clusterTitle = (selectedTrack.cluster?.title || '').toLowerCase();
+        // If AI already matched 4 or more, return top 4
+        if (aiMatchedCourses.length >= 4) {
+            return aiMatchedCourses.slice(0, 4);
+        }
+
+        // Get IDs of already matched courses to avoid duplicates
+        const matchedIds = new Set(aiMatchedCourses.map(c => c.course_id || c.id));
         
-        // Score each course based on relevance to the role
-        const scoredCourses = results.platformCourses.map(course => {
-            let relevanceScore = course.relevance_score || 0;
-            const title = (course.title || course.name || '').toLowerCase();
-            const description = (course.description || '').toLowerCase();
-            const skills = (course.skills || []).map(s => s.toLowerCase());
+        // Get remaining courses not yet matched
+        const remainingCourses = platformCourses.filter(c => !matchedIds.has(c.course_id || c.id));
+        
+        // Score remaining courses for relevance
+        const roleNameLower = (roleName || '').toLowerCase();
+        const clusterLower = (clusterTitle || '').toLowerCase();
+        const isInternOrEntry = roleNameLower.includes('intern') || roleNameLower.includes('trainee') || roleNameLower.includes('junior');
+        
+        const softSkillKeywords = ['communication', 'excel', 'presentation', 'teamwork', 'leadership', 'soft skill', 'professional', 'workplace', 'essential', 'basic', 'fundamental'];
+        const domainKeywords = {
+            'technology': ['programming', 'software', 'coding', 'tech', 'computer', 'it', 'digital', 'cyber', 'data'],
+            'information technology': ['programming', 'software', 'coding', 'tech', 'computer', 'it', 'digital'],
+            'business': ['business', 'management', 'finance', 'marketing', 'excel', 'leadership'],
+            'finance': ['finance', 'accounting', 'bookkeeping', 'excel', 'financial'],
+            'arts': ['design', 'creative', 'art', 'media'],
+            'science': ['research', 'data', 'analysis', 'scientific'],
+        };
+        
+        const scored = remainingCourses.map(course => {
+            const text = `${course.title || ''} ${course.description || ''} ${(course.skills || []).join(' ')}`.toLowerCase();
+            let score = 0;
             
-            // Boost score if course title/description/skills match role or cluster
-            if (title.includes(roleName) || roleName.split(' ').some(word => title.includes(word))) {
-                relevanceScore += 50;
-            }
-            if (description.includes(roleName) || roleName.split(' ').some(word => description.includes(word))) {
-                relevanceScore += 30;
-            }
-            if (skills.some(skill => roleName.includes(skill) || skill.includes(roleName.split(' ')[0]))) {
-                relevanceScore += 40;
-            }
-            if (title.includes(clusterTitle) || description.includes(clusterTitle)) {
-                relevanceScore += 20;
+            // Role keyword matching
+            roleNameLower.split(/\s+/).forEach(word => {
+                if (word.length > 2 && text.includes(word)) score += 50;
+            });
+            
+            // Domain/cluster matching
+            const domainWords = domainKeywords[clusterLower] || [];
+            domainWords.forEach(word => {
+                if (text.includes(word)) score += 20;
+            });
+            
+            // Soft skills boost for interns/entry-level
+            if (isInternOrEntry) {
+                softSkillKeywords.forEach(word => {
+                    if (text.includes(word)) score += 15;
+                });
             }
             
-            return { ...course, calculatedRelevance: relevanceScore };
+            // Give a small random factor to avoid always showing same courses
+            score += Math.random() * 5;
+            
+            return { ...course, _fillScore: score };
         });
         
-        // Sort by relevance and return top 4
-        return scoredCourses
-            .sort((a, b) => b.calculatedRelevance - a.calculatedRelevance)
-            .slice(0, 4);
+        // Sort by score and take what we need to fill up to 4
+        const sortedRemaining = scored.sort((a, b) => b._fillScore - a._fillScore);
+        const needed = 4 - aiMatchedCourses.length;
+        const fillers = sortedRemaining.slice(0, needed);
+        
+        // Combine AI matches with fillers
+        return [...aiMatchedCourses, ...fillers].slice(0, 4);
     };
 
-    const relevantCourses = getRelevantPlatformCourses();
+    // Use AI-matched courses (or empty array while loading)
+    const relevantCourses = aiMatchedCourses;
 
     const getSalary = (role) => {
         if (typeof role === 'object' && role?.salary) {
@@ -992,25 +1094,78 @@ END:VCALENDAR`;
                                     </div>
                                 )}
 
-                                {getRoadmapProjects().length > 0 && (
+                                {/* AI-Generated Suggested Projects */}
+                                {(suggestedProjects?.length > 0 || getRoadmapProjects().length > 0) && (
                                     <div className="mt-6">
                                         <h4 className="text-base font-semibold text-gray-800 mb-3">Suggested Projects</h4>
-                                        <div className="grid md:grid-cols-3 gap-3">
-                                            {getRoadmapProjects().map((project, idx) => (
-                                                <div key={idx} className="p-3 rounded-lg bg-white border border-gray-200 shadow-sm">
-                                                    <h5 className="text-gray-800 font-medium text-sm">{project.title}</h5>
-                                                    {project.description && (
-                                                        <p className="text-gray-500 text-xs mt-1">{project.description}</p>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
+                                        {overviewLoading ? (
+                                            // Loading skeleton for projects
+                                            <div className="grid md:grid-cols-3 gap-3 animate-pulse">
+                                                {[1, 2, 3].map((i) => (
+                                                    <div key={i} className="p-4 rounded-lg bg-white border border-gray-200">
+                                                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                                                        <div className="h-3 bg-gray-100 rounded w-full mb-1" />
+                                                        <div className="h-3 bg-gray-100 rounded w-2/3 mb-3" />
+                                                        <div className="flex gap-2">
+                                                            <div className="h-5 bg-gray-100 rounded-full w-16" />
+                                                            <div className="h-5 bg-gray-100 rounded-full w-20" />
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : suggestedProjects?.length > 0 ? (
+                                            // AI-generated projects with full details
+                                            <div className="grid md:grid-cols-3 gap-3">
+                                                {suggestedProjects.map((project, idx) => (
+                                                    <div key={idx} className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                                                        <div className="flex items-start justify-between mb-2">
+                                                            <h5 className="text-gray-800 font-medium text-sm flex-1">{project.title}</h5>
+                                                            <span className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 ml-2 ${
+                                                                project.difficulty === 'Beginner' ? 'bg-green-100 text-green-700' :
+                                                                project.difficulty === 'Intermediate' ? 'bg-yellow-100 text-yellow-700' :
+                                                                'bg-red-100 text-red-700'
+                                                            }`}>
+                                                                {project.difficulty}
+                                                            </span>
+                                                        </div>
+                                                        {project.description && (
+                                                            <p className="text-gray-500 text-xs mt-1 line-clamp-3">{project.description}</p>
+                                                        )}
+                                                        {project.skills?.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                                {project.skills.slice(0, 3).map((skill, sIdx) => (
+                                                                    <span key={sIdx} className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">{skill}</span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        {project.estimatedTime && (
+                                                            <p className="text-gray-400 text-xs mt-2 flex items-center gap-1">
+                                                                <Calendar className="w-3 h-3" />
+                                                                {project.estimatedTime}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            // Fallback to roadmap projects if no AI projects
+                                            <div className="grid md:grid-cols-3 gap-3">
+                                                {getRoadmapProjects().map((project, idx) => (
+                                                    <div key={idx} className="p-3 rounded-lg bg-white border border-gray-200 shadow-sm">
+                                                        <h5 className="text-gray-800 font-medium text-sm">{project.title}</h5>
+                                                        {project.description && (
+                                                            <p className="text-gray-500 text-xs mt-1">{project.description}</p>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </motion.div>
                         )}
 
-                        {/* Page 3: Recommended Courses & Resources */}
+                        {/* Page 3: Recommended Courses */}
                         {currentPage === 3 && (
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
@@ -1019,20 +1174,48 @@ END:VCALENDAR`;
                             >
                                 <div className="mb-6">
                                     <h3 className="text-2xl font-bold text-gray-800 mb-1">
-                                        Recommended Courses & Resources
+                                        Recommended Courses
                                     </h3>
                                     <p className="text-gray-500">
-                                        Platform courses relevant to your {getRoleName(selectedRole)} career path
+                                        AI-matched platform courses for your {getRoleName(selectedRole)} career path
                                     </p>
                                 </div>
 
+                                {/* Platform Courses - AI filtered by relevance to role */}
                                 <div className="mb-6">
                                     <h4 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                         <BookOpen className="w-5 h-5" style={{ color: accentColor }} />
                                         Rareminds Courses
+                                        {courseMatchingLoading && (
+                                            <span className="flex items-center gap-1 text-xs text-gray-400 font-normal">
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                Finding best matches...
+                                            </span>
+                                        )}
                                     </h4>
                                     
-                                    {relevantCourses.length > 0 ? (
+                                    {courseMatchingLoading ? (
+                                        // Loading skeleton while AI is matching
+                                        <div className="grid md:grid-cols-2 gap-4 animate-pulse">
+                                            {[1, 2, 3, 4].map((i) => (
+                                                <div key={i} className="p-4 rounded-xl bg-white border border-gray-200">
+                                                    <div className="flex items-start justify-between mb-2">
+                                                        <div className="flex-1">
+                                                            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                                                            <div className="h-3 bg-gray-100 rounded w-1/4" />
+                                                        </div>
+                                                        <div className="h-6 bg-gray-200 rounded w-16" />
+                                                    </div>
+                                                    <div className="h-3 bg-gray-100 rounded w-full mb-1" />
+                                                    <div className="h-3 bg-gray-100 rounded w-2/3 mb-3" />
+                                                    <div className="flex gap-2">
+                                                        <div className="h-5 bg-gray-100 rounded w-16" />
+                                                        <div className="h-5 bg-gray-100 rounded w-20" />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : relevantCourses.length > 0 ? (
                                         <div className="grid md:grid-cols-2 gap-4">
                                             {relevantCourses.map((course, idx) => (
                                                 <div 
@@ -1046,7 +1229,12 @@ END:VCALENDAR`;
                                                             {course.duration && <p className="text-gray-500 text-xs mt-1">{course.duration}</p>}
                                                         </div>
                                                         {course.level && (
-                                                            <span className="px-2 py-1 rounded text-xs font-medium shrink-0" style={{ backgroundColor: `${accentColor}20`, color: accentColor }}>
+                                                            <span className={`px-2 py-1 rounded text-xs font-medium shrink-0 ${
+                                                                course.level === 'Beginner' ? 'bg-green-100 text-green-700' :
+                                                                course.level === 'Intermediate' ? 'bg-yellow-100 text-yellow-700' :
+                                                                course.level === 'Advanced' ? 'bg-orange-100 text-orange-700' :
+                                                                'bg-purple-100 text-purple-700'
+                                                            }`}>
                                                                 {course.level}
                                                             </span>
                                                         )}
@@ -1066,11 +1254,17 @@ END:VCALENDAR`;
                                                 </div>
                                             ))}
                                         </div>
-                                    ) : (
-                                        // No platform courses available
+                                    ) : !results?.platformCourses || results.platformCourses.length === 0 ? (
                                         <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 text-center">
                                             <p className="text-gray-500 text-sm">
-                                                No platform courses available for this role yet. Check back soon!
+                                                No platform courses available yet. Check back soon!
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        // This shouldn't happen since we always ensure 4 courses, but just in case
+                                        <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 text-center">
+                                            <p className="text-gray-500 text-sm">
+                                                Loading courses...
                                             </p>
                                         </div>
                                     )}
