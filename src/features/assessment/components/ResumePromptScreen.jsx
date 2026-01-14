@@ -54,9 +54,37 @@ const formatDate = (dateString) => {
  * Calculate progress percentage
  */
 const calculateProgress = (attempt) => {
-  const answeredCount = Object.keys(attempt.restoredResponses || {}).length;
+  // Count UUID-based responses (from personal_assessment_responses table)
+  const uuidResponsesCount = Object.keys(attempt.restoredResponses || {}).length;
+  
+  // Count non-UUID responses (from all_responses column - RIASEC, BigFive, etc.)
+  const allResponsesCount = attempt.all_responses ? Object.keys(attempt.all_responses).length : 0;
+  
+  // Total answered questions
+  const answeredCount = uuidResponsesCount + allResponsesCount;
+  
   // Estimate total questions based on grade level
-  const estimatedTotal = attempt.grade_level === 'middle' ? 41 : 53;
+  let estimatedTotal = 50; // Default
+  
+  switch (attempt.grade_level) {
+    case 'middle':
+      estimatedTotal = 41; // Middle school: ~41 questions
+      break;
+    case 'highschool':
+    case 'higher_secondary':
+      estimatedTotal = 53; // High school: ~53 questions
+      break;
+    case 'after10':
+      estimatedTotal = 100; // After 10th: ~100 questions
+      break;
+    case 'after12':
+      estimatedTotal = 120; // After 12th: ~120 questions
+      break;
+    case 'college':
+      estimatedTotal = 120; // College: ~120 questions
+      break;
+  }
+  
   return Math.min(100, Math.round((answeredCount / estimatedTotal) * 100));
 };
 
@@ -77,7 +105,12 @@ export const ResumePromptScreen = ({
 
   const streamLabel = getStreamLabel(pendingAttempt.stream_id);
   const progress = calculateProgress(pendingAttempt);
-  const answeredCount = Object.keys(pendingAttempt.restoredResponses || {}).length;
+  
+  // Count total answered questions (UUID + non-UUID responses)
+  const uuidResponsesCount = Object.keys(pendingAttempt.restoredResponses || {}).length;
+  const allResponsesCount = pendingAttempt.all_responses ? Object.keys(pendingAttempt.all_responses).length : 0;
+  const answeredCount = uuidResponsesCount + allResponsesCount;
+  
   const startedAt = formatDate(pendingAttempt.started_at);
 
   return (

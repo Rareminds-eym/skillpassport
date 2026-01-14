@@ -18,6 +18,7 @@ export type FlowScreen =
   | 'category_selection'
   | 'stream_selection'
   | 'section_intro'
+  | 'assessment'
   | 'question'
   | 'section_complete'
   | 'submitting'
@@ -80,6 +81,9 @@ interface UseAssessmentFlowResult {
   
   // Actions
   setCurrentScreen: (screen: FlowScreen) => void;
+  setCurrentSectionIndex: (index: number) => void;
+  setCurrentQuestionIndex: (index: number) => void;
+  setShowSectionIntro: (show: boolean) => void;
   setGradeLevel: (level: GradeLevel) => void;
   setStudentStream: (stream: string) => void;
   setSelectedCategory: (category: string) => void;
@@ -96,6 +100,7 @@ interface UseAssessmentFlowResult {
   setError: (error: string | null) => void;
   setIsSubmitting: (submitting: boolean) => void;
   setIsSaving: (saving: boolean) => void;
+  setSectionTimings: (timings: Record<string, number>) => void;
   resetFlow: () => void;
   
   // Computed
@@ -333,6 +338,7 @@ export const useAssessmentFlow = ({
     setError,
     setIsSubmitting,
     setIsSaving,
+    setSectionTimings, // Added for resume functionality
     resetFlow,
     
     // Computed
