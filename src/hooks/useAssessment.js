@@ -171,6 +171,16 @@ export const useAssessment = () => {
           restoredResponses[`${section.name}_${r.question_id}`] = r.response_value;
         }
       });
+      
+      // CRITICAL FIX: Also restore from all_responses column (RIASEC, BigFive, Values, etc.)
+      if (attempt.all_responses) {
+        console.log('🔄 Restoring answers from all_responses column:', Object.keys(attempt.all_responses).length);
+        Object.entries(attempt.all_responses).forEach(([key, value]) => {
+          restoredResponses[key] = value;
+        });
+        console.log('✅ Total restored responses:', Object.keys(restoredResponses).length);
+      }
+      
       setResponses(restoredResponses);
 
       return attempt;

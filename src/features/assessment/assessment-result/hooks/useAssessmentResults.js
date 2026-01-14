@@ -72,6 +72,7 @@ export const useAssessmentResults = () => {
 
             if (user) {
                 // First, try to fetch student data with relationships
+                // Query students table - skip relationships that don't exist
                 let { data: studentData, error: fetchError } = await supabase
                     .from('students')
                     .select(`
@@ -89,57 +90,41 @@ export const useAssessmentResults = () => {
                         school_class_id,
                         branch_field,
                         course_name,
-                        grade_start_date,
-                        colleges(name),
-                        schools(name),
-                        school_classes(grade, academic_year)
+                        grade_start_date
                     `)
                     .eq('user_id', user.id)
                     .maybeSingle();
 
-                // If the query with relationships fails, try without relationships
-                if (fetchError) {
-                    console.warn('Query with relationships failed, trying without:', fetchError.message);
-                    const simpleQuery = await supabase
-                        .from('students')
-                        .select('*')
-                        .eq('user_id', user.id)
-                        .maybeSingle();
-                    
-                    studentData = simpleQuery.data;
-                    fetchError = simpleQuery.error;
-                    
-                    // If we got data, fetch related college/school names separately from organizations table
-                    if (studentData) {
-                        if (studentData.college_id) {
-                            const { data: orgData } = await supabase
-                                .from('organizations')
-                                .select('name')
-                                .eq('id', studentData.college_id)
-                                .maybeSingle();
-                            if (orgData) {
-                                studentData.colleges = { name: orgData.name };
-                            }
+                // If we got student data, fetch related college/school names separately
+                if (studentData && !fetchError) {
+                    if (studentData.college_id) {
+                        const { data: orgData } = await supabase
+                            .from('organizations')
+                            .select('name')
+                            .eq('id', studentData.college_id)
+                            .maybeSingle();
+                        if (orgData) {
+                            studentData.colleges = { name: orgData.name };
                         }
-                        if (studentData.school_id) {
-                            const { data: orgData } = await supabase
-                                .from('organizations')
-                                .select('name')
-                                .eq('id', studentData.school_id)
-                                .maybeSingle();
-                            if (orgData) {
-                                studentData.schools = { name: orgData.name };
-                            }
+                    }
+                    if (studentData.school_id) {
+                        const { data: orgData } = await supabase
+                            .from('organizations')
+                            .select('name')
+                            .eq('id', studentData.school_id)
+                            .maybeSingle();
+                        if (orgData) {
+                            studentData.schools = { name: orgData.name };
                         }
-                        if (studentData.school_class_id) {
-                            const { data: classData } = await supabase
-                                .from('school_classes')
-                                .select('grade')
-                                .eq('id', studentData.school_class_id)
-                                .maybeSingle();
-                            if (classData) {
-                                studentData.school_classes = { grade: classData.grade };
-                            }
+                    }
+                    if (studentData.school_class_id) {
+                        const { data: classData } = await supabase
+                            .from('school_classes')
+                            .select('grade')
+                            .eq('id', studentData.school_class_id)
+                            .maybeSingle();
+                        if (classData) {
+                            studentData.school_classes = { grade: classData.grade };
                         }
                     }
                 }
@@ -253,13 +238,52 @@ export const useAssessmentResults = () => {
                     }
                     console.log('Derived gradeLevel from student data:', derivedGradeLevel, 'grade:', studentGrade, 'school_id:', studentData.school_id, 'college_id:', studentData.college_id);
 
+                    // Derive stream from branch_field or course_name
+                    let derivedStream = localStorage.getItem('assessment_stream') || '—';
+                    
+                    // If we have branch_field or course_name, derive the stream
+                    if (studentData.branch_field || studentData.course_name) {
+                        const fieldText = (studentData.branch_field || studentData.course_name || '').toLowerCase();
+                        
+                        // Science stream indicators
+                        if (fieldText.includes('science') || fieldText.includes('engineering') || 
+                            fieldText.includes('tech') || fieldText.includes('bca') || 
+                            fieldText.includes('computer') || fieldText.includes('physics') || 
+                            fieldText.includes('chemistry') || fieldText.includes('biology') || 
+                            fieldText.includes('mathematics') || fieldText.includes('medical') ||
+                            fieldText.includes('mbbs') || fieldText.includes('bsc') || 
+                            fieldText.includes('b.sc') || fieldText.includes('b.tech') ||
+                            fieldText.includes('m.tech') || fieldText.includes('mtech')) {
+                            derivedStream = 'SCIENCE';
+                        }
+                        // Commerce stream indicators
+                        else if (fieldText.includes('commerce') || fieldText.includes('business') || 
+                                 fieldText.includes('bba') || fieldText.includes('bcom') || 
+                                 fieldText.includes('b.com') || fieldText.includes('finance') || 
+                                 fieldText.includes('accounting') || fieldText.includes('economics') ||
+                                 fieldText.includes('management') || fieldText.includes('marketing')) {
+                            derivedStream = 'COMMERCE';
+                        }
+                        // Arts stream indicators
+                        else if (fieldText.includes('arts') || fieldText.includes('humanities') || 
+                                 fieldText.includes('ba ') || fieldText.includes('b.a') || 
+                                 fieldText.includes('law') || fieldText.includes('llb') || 
+                                 fieldText.includes('english') || fieldText.includes('history') || 
+                                 fieldText.includes('political') || fieldText.includes('sociology') ||
+                                 fieldText.includes('psychology') || fieldText.includes('literature')) {
+                            derivedStream = 'ARTS';
+                        }
+                        
+                        console.log('📚 Derived stream from database:', derivedStream, 'from field:', fieldText);
+                    }
+
                     setStudentInfo({
                         name: fullName,
                         regNo: rollNumber,
                         rollNumberType: rollNumberType,
                         college: institutionName,
                         school: schoolName,
-                        stream: (localStorage.getItem('assessment_stream') || '—').toUpperCase(),
+                        stream: derivedStream.toUpperCase(),
                         grade: studentGrade,
                         branchField: studentData.branch_field || '—',
                         courseName: studentData.course_name || '—'
@@ -440,6 +464,15 @@ export const useAssessmentResults = () => {
                 if (latestResult?.gemini_results) {
                     console.log('Loaded results from database');
                     const geminiResults = latestResult.gemini_results;
+                    
+                    // DEBUG: Log the structure of loaded results
+                    console.log('🔍 Loaded gemini_results structure:', {
+                        hasRiasec: !!geminiResults.riasec,
+                        riasecKeys: geminiResults.riasec ? Object.keys(geminiResults.riasec) : [],
+                        riasecScores: geminiResults.riasec?.scores,
+                        sampleData: geminiResults.riasec ? JSON.stringify(geminiResults.riasec).substring(0, 200) : 'none'
+                    });
+                    
                     setResults(geminiResults);
 
                     // Set grade level from result

@@ -766,14 +766,70 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
             }
         };
         
+        // DEBUG: Log RIASEC data structure
+        console.log('🔍 RIASEC Debug:', {
+            hasResults: !!results,
+            hasRiasec: !!results?.riasec,
+            riasecKeys: results?.riasec ? Object.keys(results.riasec) : [],
+            scores: results?.riasec?.scores,
+            fullRiasec: results?.riasec
+        });
+        
+        // STREAM FILTERING: Get student's stream from assessment results or profile
+        // Priority: 1) Stream recommendation from after10 assessment, 2) Profile stream, 3) No filter
+        let studentStream = null;
+        
+        console.log('🔍 Stream Detection - Checking sources:', {
+            'has streamRecommendation': !!results?.streamRecommendation?.recommendedStream,
+            'streamRecommendation value': results?.streamRecommendation?.recommendedStream,
+            'studentInfo exists': !!studentInfo,
+            'studentInfo.stream': studentInfo?.stream,
+            'stream check': studentInfo?.stream && studentInfo.stream !== '—' && studentInfo.stream.toUpperCase() !== 'N/A',
+            'academicData.stream': studentAcademicData?.stream
+        });
+        
+        // Check if student has completed after10 assessment and has stream recommendation
+        // IMPORTANT: Validate that the stream recommendation is not a placeholder value
+        const hasValidStreamRecommendation = results?.streamRecommendation?.recommendedStream && 
+                                            results.streamRecommendation.recommendedStream !== 'N/A' &&
+                                            results.streamRecommendation.recommendedStream !== '—' &&
+                                            results.streamRecommendation.recommendedStream !== '';
+        
+        if (hasValidStreamRecommendation) {
+            studentStream = results.streamRecommendation.recommendedStream;
+            console.log('📚 Using stream from after10 assessment:', studentStream);
+        } 
+        // Check if student has stream in their profile (for after12/college students)
+        else if (studentInfo?.stream && studentInfo.stream !== '—' && studentInfo.stream.toUpperCase() !== 'N/A') {
+            studentStream = studentInfo.stream;
+            console.log('📚 Using stream from student profile:', studentStream);
+        }
+        // Check academic data for stream indicators
+        else if (studentAcademicData?.stream) {
+            studentStream = studentAcademicData.stream;
+            console.log('📚 Using stream from academic data:', studentStream);
+        }
+        else {
+            console.log('⚠️ No valid stream found in any source!');
+        }
+        
+        // Debug: Log all stream sources
+        console.log('🔍 Stream Detection Debug:', {
+            'results.streamRecommendation': results?.streamRecommendation?.recommendedStream,
+            'studentInfo.stream': studentInfo?.stream,
+            'academicData.stream': studentAcademicData?.stream,
+            'finalStream': studentStream
+        });
+        
+        console.log('🎯 About to call calculateCourseMatchScores with stream:', studentStream);
+        
         return calculateCourseMatchScores(
             DEGREE_PROGRAMS,
             results?.riasec?.scores || {},
-            assessmentBasedAcademicData
+            assessmentBasedAcademicData,
+            studentStream // Pass student's stream for filtering
         );
-        
-        return [];
-    }, [gradeLevel, monthsInGrade, results, studentAcademicData]);
+    }, [gradeLevel, monthsInGrade, results, studentAcademicData, studentInfo?.grade, studentInfo?.stream]);
 
     // Calculate stream recommendations for after 10th students using academic data
     const enhancedStreamRecommendation = useMemo(() => {
@@ -1688,8 +1744,43 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                     {shouldShowProgramRecommendations && (!enhancedCourseRecommendations || enhancedCourseRecommendations.length === 0) && (
                                         <div className="bg-slate-50 rounded-xl p-8 text-center border border-slate-200">
                                             <GraduationCap className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                                            <h3 className="text-lg font-semibold text-slate-700 mb-2">Program Recommendations Loading...</h3>
-                                            <p className="text-slate-500 text-sm">Your personalized degree program recommendations are being calculated based on your assessment results.</p>
+                                            {results?.riasec?.scores && Object.values(results.riasec.scores).some(score => score > 0) ? (
+                                                <>
+                                                    <h3 className="text-lg font-semibold text-slate-700 mb-2">Program Recommendations Loading...</h3>
+                                                    <p className="text-slate-500 text-sm">Your personalized degree program recommendations are being calculated based on your assessment results.</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <h3 className="text-lg font-semibold text-slate-700 mb-2">Complete Your Assessment</h3>
+                                                    <p className="text-slate-500 text-sm mb-4">
+                                                        To receive personalized degree program recommendations, please complete all sections of the assessment including:
+                                                    </p>
+                                                    <ul className="text-slate-600 text-sm text-left max-w-md mx-auto space-y-2">
+                                                        <li className="flex items-start gap-2">
+                                                            <span className="text-slate-400 mt-0.5">•</span>
+                                                            <span>Career Interest Assessment (RIASEC)</span>
+                                                        </li>
+                                                        <li className="flex items-start gap-2">
+                                                            <span className="text-slate-400 mt-0.5">•</span>
+                                                            <span>Personality Assessment (Big Five)</span>
+                                                        </li>
+                                                        <li className="flex items-start gap-2">
+                                                            <span className="text-slate-400 mt-0.5">•</span>
+                                                            <span>Work Values Assessment</span>
+                                                        </li>
+                                                        <li className="flex items-start gap-2">
+                                                            <span className="text-slate-400 mt-0.5">•</span>
+                                                            <span>Aptitude & Knowledge Tests</span>
+                                                        </li>
+                                                    </ul>
+                                                    <button
+                                                        onClick={() => navigate('/student/assessment/test')}
+                                                        className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                                    >
+                                                        Complete Assessment
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     )}
                                 </>

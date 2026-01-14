@@ -6,6 +6,61 @@ import type { AssessmentData } from '../types';
 
 export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: number): string {
   const isAfter10 = assessmentData.gradeLevel === 'after10';
+  const isAfter12 = assessmentData.gradeLevel === 'after12';
+  const studentStream = assessmentData.stream?.toLowerCase() || 'general';
+
+  // After 12th stream context section
+  const after12StreamSection = isAfter12 ? `
+## ⚠️ CRITICAL: STUDENT'S CURRENT STREAM CONTEXT (AFTER 12TH) ⚠️
+This student has ALREADY completed 12th grade in the **${studentStream.toUpperCase()}** stream.
+
+**IMPORTANT CAREER RECOMMENDATION RULES:**
+1. **Primary Focus**: Career recommendations should be PRIMARILY from their **${studentStream.toUpperCase()}** stream background
+2. **Stream-Specific Careers**: 
+   - **Science Stream**: Engineering, Medicine, Research, Technology, Data Science, Biotechnology, etc.
+   - **Commerce Stream**: Business, Finance, Accounting, Economics, Management, Banking, etc.
+   - **Arts/Humanities Stream**: Law, Psychology, Social Sciences, Media, Design, Education, etc.
+3. **RIASEC Interpretation**: Interpret RIASEC scores IN THE CONTEXT of their stream:
+   - Science student with high E (Enterprising): Tech entrepreneurship, Product Management, Engineering Management
+   - Commerce student with high I (Investigative): Financial Analysis, Economic Research, Data Analytics
+   - Arts student with high C (Conventional): Legal Documentation, Administrative Law, Policy Research
+4. **Career Clusters**: At least 2 out of 3 career clusters MUST be from their stream background
+5. **Cross-Stream Options**: Only suggest careers outside their stream if:
+   - Their RIASEC scores STRONGLY indicate a mismatch (e.g., Science student with A=90%, I=30%)
+   - You provide clear reasoning for the cross-stream recommendation
+   - You explain how their current education can still be leveraged
+
+**Stream-Specific Career Mapping:**
+
+**For SCIENCE Stream Students:**
+- High I + High R: Engineering (Mechanical, Civil, Electrical), Research Scientist
+- High I + High A: Product Design, UX Research, Creative Technology
+- High I + High S: Healthcare (Doctor, Nurse, Physiotherapist), Biomedical Engineering
+- High I + High E: Tech Entrepreneurship, Product Management, Engineering Management
+- High I + High C: Data Science, Systems Engineering, Quality Assurance
+- High R + High I: Mechanical Engineering, Robotics, Manufacturing
+- High A + High I: Architecture, Industrial Design, Game Development
+
+**For COMMERCE Stream Students:**
+- High E + High C: Business Management, Entrepreneurship, Finance
+- High C + High E: Accounting, Auditing, Tax Consulting
+- High I + High E: Financial Analysis, Economic Research, Market Research
+- High S + High E: Human Resources, Marketing, Sales Management
+- High A + High E: Advertising, Brand Management, Creative Direction
+- High E alone: Business Development, Consulting, Investment Banking
+- High C alone: Banking Operations, Insurance, Financial Planning
+
+**For ARTS/HUMANITIES Stream Students:**
+- High S + High A: Psychology, Counseling, Social Work
+- High A + High I: Research, Academia, Think Tanks
+- High E + High S: Public Relations, Event Management, NGO Leadership
+- High I + High E: Policy Analysis, Civil Services, Journalism
+- High A alone: Creative Arts, Design, Content Creation
+- High S alone: Teaching, Training, Community Development
+- High C + High I: Legal Services, Documentation, Compliance
+
+**CRITICAL**: Use the student's stream as the PRIMARY filter for career recommendations!
+` : '';
 
   // After 10th stream recommendation section
   const after10StreamSection = isAfter10 ? `
@@ -217,6 +272,7 @@ This analysis must be DETERMINISTIC and CONSISTENT. Given the same input data, y
 
 ## Student Grade Level: ${assessmentData.gradeLevel.toUpperCase()}
 ## Student Stream: ${assessmentData.stream.toUpperCase()}
+${after12StreamSection}
 ${after10StreamSection}
 
 ## RIASEC Career Interest Responses (1-5 scale):
