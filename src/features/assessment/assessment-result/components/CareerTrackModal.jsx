@@ -71,6 +71,9 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
     // Helper function to get role name
     const getRoleName = (role) => {
         if (typeof role === 'string') return role;
+        // Check for 'role' property first (from COURSE_KNOWLEDGE_BASE)
+        if (role?.role) return role.role;
+        // Fallback to 'name' property (from other sources)
         return role?.name || '';
     };
 

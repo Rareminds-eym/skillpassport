@@ -60,7 +60,7 @@ export const printStyles = {
     borderRadius: '6px',
     padding: '12px',
     marginBottom: '10px',
-    background: '#fafafa',
+    background: '#ffffff',
     pageBreakInside: 'avoid',
     breakInside: 'avoid',
   },

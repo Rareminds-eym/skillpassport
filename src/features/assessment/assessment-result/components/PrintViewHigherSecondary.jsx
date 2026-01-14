@@ -340,64 +340,54 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
       <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>2. Cognitive Abilities</h2>
       <h3 style={printStyles.subTitle}>Aptitude Test Results</h3>
 
-      <table style={printStyles.table}>
-        <thead>
-          <tr>
-            <th style={printStyles.th}>Ability</th>
-            <th style={{ ...printStyles.th, width: '100px', textAlign: 'center' }}>Score</th>
-            <th style={{ ...printStyles.th, width: '120px' }}>Performance</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(aptitude.scores).map(([ability, scoreData]) => {
-            const correct = scoreData.correct || 0;
-            const total = scoreData.total || 0;
-            const percentage = scoreData.percentage || (total > 0 ? Math.round((correct / total) * 100) : 0);
-            const scoreStyle = getScoreStyle(percentage);
+      <div style={printStyles.twoCol}>
+        {Object.entries(aptitude.scores).map(([ability, scoreData]) => {
+          const correct = scoreData.correct || 0;
+          const total = scoreData.total || 0;
+          const percentage = scoreData.percentage || (total > 0 ? Math.round((correct / total) * 100) : 0);
+          const scoreStyle = getScoreStyle(percentage);
 
-            return (
-              <tr key={ability}>
-                <td style={printStyles.td}>
-                  <span style={{ fontWeight: '600', fontSize: '10px' }}>
-                    {ability}
-                  </span>
-                </td>
-                <td style={{ ...printStyles.td, textAlign: 'center', fontWeight: '600' }}>
+          return (
+            <div key={ability} style={printStyles.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b' }}>
+                  {ability}
+                </div>
+                <span style={{
+                  ...printStyles.badge,
+                  background: scoreStyle.bg,
+                  color: scoreStyle.color,
+                  border: `1px solid ${scoreStyle.border}`
+                }}>
                   {correct}/{total}
-                </td>
-                <td style={printStyles.td}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={printStyles.progressBar}>
-                        <div style={{
-                          width: `${percentage}%`,
-                          height: '100%',
-                          background: percentage >= 70 ? '#22c55e' : percentage >= 40 ? '#eab308' : '#ef4444'
-                        }}></div>
-                      </div>
-                    </div>
-                    <span style={{
-                      ...printStyles.badge,
-                      background: scoreStyle.bg,
-                      color: scoreStyle.color,
-                      border: `1px solid ${scoreStyle.border}`
-                    }}>
-                      {percentage}%
-                    </span>
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={printStyles.progressBar}>
+                    <div style={{
+                      width: `${percentage}%`,
+                      height: '100%',
+                      background: percentage >= 70 ? '#22c55e' : percentage >= 40 ? '#eab308' : '#ef4444',
+                      borderRadius: '4px'
+                    }}></div>
                   </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                </div>
+                <span style={{ fontSize: '9px', fontWeight: '600', color: scoreStyle.color }}>
+                  {percentage}%
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </>
   );
 };
 
 /**
  * BigFivePersonalitySection Component
- * Renders Big Five personality traits with circular progress indicators
+ * Renders Big Five personality traits with card-based layout
  * Requirements: 1.2 - Big Five personality traits
  */
 const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
@@ -416,36 +406,41 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
     <>
       <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>3. Big Five Personality Traits</h2>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginTop: '10px' }}>
+      <div style={printStyles.twoCol}>
         {traits.map((trait) => {
           const score = bigFive[trait] || 0;
           const percentage = Math.round(score);
           const scoreStyle = getScoreStyle(percentage);
 
           return (
-            <div key={trait} style={{ textAlign: 'center' }}>
-              {/* Circular Progress Indicator */}
-              <div style={{
-                width: '60px',
-                height: '60px',
-                borderRadius: '50%',
-                border: `4px solid ${scoreStyle.border}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 8px',
-                background: scoreStyle.bg,
-                position: 'relative'
-              }}>
-                <span style={{ fontSize: '14px', fontWeight: 'bold', color: scoreStyle.color }}>
+            <div key={trait} style={printStyles.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <div>
+                  <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '2px' }}>
+                    {safeTraitNames[trait] || trait}
+                  </div>
+                  <div style={{ fontSize: '8px', color: '#6b7280' }}>
+                    {traitDescriptions[trait]}
+                  </div>
+                </div>
+                <span style={{
+                  ...printStyles.badge,
+                  background: scoreStyle.bg,
+                  color: scoreStyle.color,
+                  border: `1px solid ${scoreStyle.border}`,
+                  fontSize: '10px',
+                  fontWeight: 'bold'
+                }}>
                   {percentage}%
                 </span>
               </div>
-              <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '2px' }}>
-                {safeTraitNames[trait] || trait}
-              </div>
-              <div style={{ fontSize: '8px', color: '#6b7280' }}>
-                {traitDescriptions[trait]}
+              <div style={printStyles.progressBar}>
+                <div style={{
+                  width: `${percentage}%`,
+                  height: '100%',
+                  background: scoreStyle.color,
+                  borderRadius: '4px'
+                }}></div>
               </div>
             </div>
           );
@@ -454,10 +449,10 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
 
       {/* Work Style Summary */}
       {bigFive.workStyleSummary && (
-        <div style={{ ...printStyles.summaryBox, marginTop: '15px' }}>
-          <h4 style={{ margin: '0 0 8px 0', fontSize: '10px', fontWeight: 'bold', color: '#0369a1' }}>
+        <div style={{ ...printStyles.card, marginTop: '15px', background: '#f0f9ff', border: '1px solid #bae6fd' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#0369a1', marginBottom: '6px' }}>
             Work Style Summary
-          </h4>
+          </div>
           <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#475569' }}>
             {bigFive.workStyleSummary}
           </p>
@@ -480,7 +475,7 @@ const WorkValuesSection = ({ workValues }) => {
       <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>4. Work Values</h2>
       <h3 style={printStyles.subTitle}>Your Top Work Motivations</h3>
 
-      <div style={{ marginTop: '10px' }}>
+      <div style={printStyles.twoCol}>
         {workValues.topThree.map((item, idx) => {
           const value = safeRender(item.value || item);
           const score = item.score || 0;
@@ -493,17 +488,10 @@ const WorkValuesSection = ({ workValues }) => {
           const colors = priorityColors[idx] || priorityColors[2];
 
           return (
-            <div key={idx} style={{ ...printStyles.card, marginBottom: '10px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
-                    {value}
-                  </div>
-                  {score > 0 && (
-                    <div style={{ fontSize: '9px', color: '#6b7280' }}>
-                      Score: {score}
-                    </div>
-                  )}
+            <div key={idx} style={printStyles.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b' }}>
+                  {value}
                 </div>
                 <span style={{
                   ...printStyles.badge,
@@ -514,6 +502,11 @@ const WorkValuesSection = ({ workValues }) => {
                   {priorityLabels[idx]}
                 </span>
               </div>
+              {score > 0 && (
+                <div style={{ fontSize: '9px', color: '#6b7280' }}>
+                  Score: {score}
+                </div>
+              )}
             </div>
           );
         })}
@@ -633,42 +626,36 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
       {skillGap.gaps && skillGap.gaps.length > 0 && (
         <div>
           <h3 style={printStyles.subTitle}>Priority Skills to Develop</h3>
-          <table style={printStyles.table}>
-            <thead>
-              <tr>
-                <th style={printStyles.th}>Skill</th>
-                <th style={{ ...printStyles.th, width: '100px' }}>Priority</th>
-              </tr>
-            </thead>
-            <tbody>
-              {skillGap.gaps.map((gap, idx) => {
-                const skill = safeRender(gap.skill || gap);
-                const priority = gap.priority || 'Medium';
-                const priorityColors = {
-                  High: { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
-                  Medium: { bg: '#fef9c3', color: '#854d0e', border: '#fde047' },
-                  Low: { bg: '#dcfce7', color: '#166534', border: '#86efac' }
-                };
-                const colors = priorityColors[priority] || priorityColors.Medium;
+          <div style={printStyles.twoCol}>
+            {skillGap.gaps.map((gap, idx) => {
+              const skill = safeRender(gap.skill || gap);
+              const priority = gap.priority || 'Medium';
+              const priorityColors = {
+                High: { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+                Medium: { bg: '#fef9c3', color: '#854d0e', border: '#fde047' },
+                Low: { bg: '#dcfce7', color: '#166534', border: '#86efac' }
+              };
+              const colors = priorityColors[priority] || priorityColors.Medium;
 
-                return (
-                  <tr key={idx}>
-                    <td style={printStyles.td}>{skill}</td>
-                    <td style={printStyles.td}>
-                      <span style={{
-                        ...printStyles.badge,
-                        background: colors.bg,
-                        color: colors.color,
-                        border: `1px solid ${colors.border}`
-                      }}>
-                        {priority}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+              return (
+                <div key={idx} style={printStyles.card}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b' }}>
+                      {skill}
+                    </div>
+                    <span style={{
+                      ...printStyles.badge,
+                      background: colors.bg,
+                      color: colors.color,
+                      border: `1px solid ${colors.border}`
+                    }}>
+                      {priority}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </>
