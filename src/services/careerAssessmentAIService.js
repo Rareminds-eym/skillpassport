@@ -987,6 +987,13 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
 
       const data = await response.json();
       console.log('✅ Knowledge questions generated:', data.questions?.length || 0);
+      
+      // If API returned questions but didn't save them, save from frontend as fallback
+      if (data.questions?.length > 0 && studentId && !data.cached) {
+        console.log('💾 Saving knowledge questions from frontend as fallback...');
+        await saveKnowledgeQuestions(studentId, effectiveStreamId, attemptId, data.questions);
+      }
+      
       return data.questions;
     } catch (error) {
       console.error(`Error generating knowledge questions (attempt ${attempt}):`, error);
@@ -1053,6 +1060,14 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
 
       const data = await response.json();
       console.log('✅ Aptitude questions generated:', data.questions?.length || 0);
+      
+      // If API returned questions but didn't save them (cached: false, generated: true),
+      // save them from frontend as a fallback
+      if (data.questions?.length > 0 && studentId && !data.cached) {
+        console.log('💾 Saving questions from frontend as fallback...');
+        await saveAptitudeQuestions(studentId, streamId, attemptId, data.questions);
+      }
+      
       return data.questions || [];
     } catch (error) {
       console.error(`Error generating aptitude questions (attempt ${attempt}):`, error.message);
@@ -1065,13 +1080,18 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
 }
 
 /**
- * Save aptitude questions to database
+ * Save aptitude questions to database (fallback if API doesn't save)
  */
 async function saveAptitudeQuestions(studentId, streamId, attemptId, questions) {
-  if (!studentId) return;
+  if (!studentId) {
+    console.log('⚠️ No studentId provided, skipping save');
+    return;
+  }
+  
+  console.log(`💾 [Frontend] Saving ${questions.length} aptitude questions for student:`, studentId, 'stream:', streamId);
   
   try {
-    await supabase.from('career_assessment_ai_questions').upsert({
+    const { data, error } = await supabase.from('career_assessment_ai_questions').upsert({
       student_id: studentId,
       stream_id: streamId,
       question_type: 'aptitude',
@@ -1079,10 +1099,49 @@ async function saveAptitudeQuestions(studentId, streamId, attemptId, questions) 
       questions: questions,
       generated_at: new Date().toISOString(),
       is_active: true
-    }, { onConflict: 'student_id,stream_id,question_type' });
-    console.log('✅ All aptitude questions saved:', questions.length);
+    }, { onConflict: 'student_id,stream_id,question_type' })
+    .select('id');
+    
+    if (error) {
+      console.error('❌ [Frontend] Database error saving questions:', error.message, error.details, error.hint);
+    } else {
+      console.log('✅ [Frontend] Aptitude questions saved:', questions.length, 'record:', data);
+    }
   } catch (e) {
-    console.warn('⚠️ Could not save questions:', e.message);
+    console.error('❌ [Frontend] Exception saving questions:', e.message);
+  }
+}
+
+/**
+ * Save knowledge questions to database (fallback if API doesn't save)
+ */
+async function saveKnowledgeQuestions(studentId, streamId, attemptId, questions) {
+  if (!studentId) {
+    console.log('⚠️ No studentId provided, skipping knowledge save');
+    return;
+  }
+  
+  console.log(`💾 [Frontend] Saving ${questions.length} knowledge questions for student:`, studentId, 'stream:', streamId);
+  
+  try {
+    const { data, error } = await supabase.from('career_assessment_ai_questions').upsert({
+      student_id: studentId,
+      stream_id: streamId,
+      question_type: 'knowledge',
+      attempt_id: attemptId || null,
+      questions: questions,
+      generated_at: new Date().toISOString(),
+      is_active: true
+    }, { onConflict: 'student_id,stream_id,question_type' })
+    .select('id');
+    
+    if (error) {
+      console.error('❌ [Frontend] Database error saving knowledge questions:', error.message, error.details, error.hint);
+    } else {
+      console.log('✅ [Frontend] Knowledge questions saved:', questions.length, 'record:', data);
+    }
+  } catch (e) {
+    console.error('❌ [Frontend] Exception saving knowledge questions:', e.message);
   }
 }
 

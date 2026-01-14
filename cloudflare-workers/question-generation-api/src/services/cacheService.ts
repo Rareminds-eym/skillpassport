@@ -66,10 +66,13 @@ export async function saveCareerQuestions(
   questions: CareerQuestion[],
   attemptId?: string
 ): Promise<void> {
-  const supabase = getReadClient(env);
+  // Use write client for insert/upsert operations
+  const supabase = getWriteClient(env);
+  
+  console.log(`💾 [saveCareerQuestions] Saving ${questions.length} ${questionType} questions for student:`, studentId, 'stream:', streamId);
   
   try {
-    await supabase.from('career_assessment_ai_questions').upsert({
+    const { data, error } = await supabase.from('career_assessment_ai_questions').upsert({
       student_id: studentId,
       stream_id: streamId,
       question_type: questionType,
@@ -77,10 +80,16 @@ export async function saveCareerQuestions(
       questions,
       generated_at: new Date().toISOString(),
       is_active: true
-    }, { onConflict: 'student_id,stream_id,question_type' });
-    console.log(`✅ ${questionType} questions saved for student:`, studentId);
+    }, { onConflict: 'student_id,stream_id,question_type' })
+    .select('id');
+    
+    if (error) {
+      console.error(`❌ [saveCareerQuestions] Database error:`, error.message, error.details, error.hint);
+    } else {
+      console.log(`✅ [saveCareerQuestions] ${questionType} questions saved for student:`, studentId, 'record:', data);
+    }
   } catch (e: any) {
-    console.warn('⚠️ Could not save career questions:', e.message);
+    console.error('❌ [saveCareerQuestions] Exception:', e.message, e.stack);
   }
 }
 

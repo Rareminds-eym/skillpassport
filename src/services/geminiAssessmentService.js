@@ -303,10 +303,21 @@ const calculateAptitudeScore = (answers) => {
     };
   }
   
-  // MCQ questions (college)
+  // MCQ questions (college/after10/after12)
+  // Count answers where isCorrect is explicitly true (not null or undefined)
+  const correctCount = answers.filter(a => a.isCorrect === true).length;
+  const scoredCount = answers.filter(a => a.isCorrect !== null && a.isCorrect !== undefined).length;
+  
+  // Debug logging for troubleshooting
+  if (scoredCount < answers.length) {
+    console.warn(`⚠️ ${answers.length - scoredCount} answers could not be scored (missing correct answer data)`);
+  }
+  
   return {
-    correct: answers.filter(a => a.isCorrect).length,
-    total: answers.length
+    correct: correctCount,
+    total: answers.length,
+    scored: scoredCount,
+    percentage: answers.length > 0 ? Math.round((correctCount / answers.length) * 100) : 0
   };
 };
 
@@ -383,7 +394,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     console.log('   Sample extracted keys:', Object.keys(riasecAnswers).slice(0, 5));
   }
 
-  // Extract Aptitude answers
+  // Extract Aptitude answers - IMPROVED: Handle AI-generated questions with correct answers
   const aptitudeAnswers = {
     verbal: [],
     numerical: [],
@@ -392,44 +403,166 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     clerical: []
   };
 
-  if (aptitudeQuestions) {
-    const aptitudePrefix = getSectionPrefix('aptitude', gradeLevel);
-    Object.entries(answers).forEach(([key, value]) => {
-      if (key.startsWith(`${aptitudePrefix}_`)) {
-        const questionId = key.replace(`${aptitudePrefix}_`, '');
-        const question = aptitudeQuestions.find(q => q.id === questionId);
-        if (question) {
-          const isRatingQuestion = question.type === 'rating' || !question.correct;
+  // For AI-generated aptitude questions, the correct answer is stored in the question object
+  const aptitudePrefix = getSectionPrefix('aptitude', gradeLevel);
+  console.log('Aptitude prefix:', aptitudePrefix);
+  console.log('📊 Aptitude questions available for scoring:', aptitudeQuestions?.length || 0);
+  if (aptitudeQuestions?.length > 0) {
+    console.log('📊 Sample question IDs:', aptitudeQuestions.slice(0, 3).map(q => q.id));
+    console.log('📊 Sample question has correct_answer:', !!aptitudeQuestions[0]?.correct_answer, 'correct:', !!aptitudeQuestions[0]?.correct);
+    console.log('📊 Sample question type:', aptitudeQuestions[0]?.type);
+  } else {
+    console.warn('⚠️ NO APTITUDE QUESTIONS AVAILABLE - Scoring will fail!');
+    console.warn('⚠️ This usually means fetchAIAptitudeQuestions() did not return questions');
+    console.warn('⚠️ Check if userId is correct and questions exist in career_assessment_ai_questions table');
+  }
+  
+  // Track scoring statistics
+  let questionsFound = 0;
+  let questionsNotFound = 0;
+  let correctAnswers = 0;
+  let incorrectAnswers = 0;
+  
+  Object.entries(answers).forEach(([key, value]) => {
+    if (key.startsWith(`${aptitudePrefix}_`)) {
+      const questionId = key.replace(`${aptitudePrefix}_`, '');
+      const question = aptitudeQuestions?.find(q => q.id === questionId);
+      
+      if (question) {
+        questionsFound++;
+        const isRatingQuestion = question.type === 'rating' || !question.correct;
 
-          if (isRatingQuestion) {
-            const answerData = {
-              questionId,
-              question: question.text,
-              rating: value,
-              taskType: question.taskType || question.task_type,
-              type: question.type
-            };
-            const taskCategory = (question.taskType || question.task_type || 'verbal').toLowerCase();
-            if (aptitudeAnswers[taskCategory]) {
-              aptitudeAnswers[taskCategory].push(answerData);
+        if (isRatingQuestion) {
+          const answerData = {
+            questionId,
+            question: question.text,
+            rating: value,
+            taskType: question.taskType || question.task_type,
+            type: question.type
+          };
+          const taskCategory = (question.taskType || question.task_type || 'verbal').toLowerCase();
+          if (aptitudeAnswers[taskCategory]) {
+            aptitudeAnswers[taskCategory].push(answerData);
+          }
+        } else {
+          // MCQ question with correct answer
+          // Handle different field names: correct, correctAnswer, correct_answer, answer
+          const correctAnswer = question.correct || question.correctAnswer || question.correct_answer || question.answer;
+          
+          // Normalize both values for comparison (handle JSONB strings, trim whitespace, etc.)
+          const normalizeValue = (v) => {
+            if (v === null || v === undefined) return '';
+            // Convert to string and trim
+            let str = String(v).trim();
+            // Remove surrounding quotes if present (from JSONB)
+            if (str.startsWith('"') && str.endsWith('"')) {
+              str = str.slice(1, -1);
             }
+            return str;
+          };
+          
+          const normalizedStudentAnswer = normalizeValue(value);
+          const normalizedCorrectAnswer = normalizeValue(correctAnswer);
+          const isCorrect = normalizedStudentAnswer === normalizedCorrectAnswer;
+          
+          // Track statistics
+          if (isCorrect) {
+            correctAnswers++;
           } else {
-            const answerData = {
-              questionId,
-              question: question.text,
-              studentAnswer: value,
-              correctAnswer: question.correct,
-              isCorrect: value === question.correct,
-              subtype: question.subtype
-            };
-            if (aptitudeAnswers[question.subtype]) {
-              aptitudeAnswers[question.subtype].push(answerData);
-            }
+            incorrectAnswers++;
+          }
+          
+          // Debug log for troubleshooting (only log first few mismatches to avoid spam)
+          if (!isCorrect && normalizedStudentAnswer && normalizedCorrectAnswer && incorrectAnswers <= 3) {
+            console.log(`📝 Answer mismatch: "${normalizedStudentAnswer}" vs "${normalizedCorrectAnswer}" (question: ${questionId})`);
+          }
+          
+          const answerData = {
+            questionId,
+            question: question.text || question.question,
+            studentAnswer: normalizedStudentAnswer,
+            correctAnswer: normalizedCorrectAnswer,
+            isCorrect: isCorrect,
+            subtype: question.subtype || question.category || 'verbal'
+          };
+          const category = (question.subtype || question.category || 'verbal').toLowerCase();
+          
+          // Map category to aptitude category
+          // AI-generated questions use subtypes like 'english', 'mathematics', 'science', 'social_studies'
+          // These need to be mapped to standard aptitude categories: verbal, numerical, abstract, spatial, clerical
+          const categoryMap = {
+            // Standard aptitude categories
+            'mathematics': 'numerical',
+            'math': 'numerical',
+            'numerical_reasoning': 'numerical',
+            'numerical': 'numerical',
+            'verbal_reasoning': 'verbal',
+            'verbal': 'verbal',
+            'logical_reasoning': 'abstract',
+            'logical': 'abstract',
+            'abstract': 'abstract',
+            'spatial_reasoning': 'spatial',
+            'spatial': 'spatial',
+            'clerical_speed': 'clerical',
+            'clerical': 'clerical',
+            'data_interpretation': 'numerical',
+            // AI-generated question subtypes (from question-generation-api)
+            'english': 'verbal',           // English comprehension → Verbal reasoning
+            'science': 'abstract',         // Science reasoning → Abstract/Logical reasoning
+            'social_studies': 'verbal',    // Social studies → Verbal (reading comprehension)
+            'history': 'verbal',           // History → Verbal
+            'geography': 'spatial',        // Geography → Spatial reasoning
+            'civics': 'verbal',            // Civics → Verbal
+            'economics': 'numerical',      // Economics → Numerical reasoning
+            'general_knowledge': 'verbal', // GK → Verbal
+            'reasoning': 'abstract',       // General reasoning → Abstract
+            'aptitude': 'numerical'        // General aptitude → Numerical
+          };
+          const mappedCategory = categoryMap[category] || category;
+          
+          if (aptitudeAnswers[mappedCategory]) {
+            aptitudeAnswers[mappedCategory].push(answerData);
+          } else {
+            // Default to verbal if category not found
+            aptitudeAnswers.verbal.push(answerData);
           }
         }
+      } else {
+        // FALLBACK: For AI-generated questions without questionBank lookup
+        // Store the answer without scoring (will be sent to AI for analysis)
+        questionsNotFound++;
+        if (questionsNotFound <= 3) {
+          console.log(`⚠️ Aptitude answer without question bank: ${questionId} = ${value}`);
+        }
+        aptitudeAnswers.verbal.push({
+          questionId,
+          question: `Aptitude question ${questionId}`,
+          studentAnswer: value,
+          correctAnswer: null, // Unknown
+          isCorrect: null, // Unknown - cannot score without correct answer
+          subtype: 'unknown'
+        });
       }
-    });
+    }
+  });
+  
+  // Log scoring summary
+  console.log('📊 Aptitude Scoring Summary:');
+  console.log(`   Questions found: ${questionsFound}`);
+  console.log(`   Questions NOT found: ${questionsNotFound}`);
+  console.log(`   Correct answers: ${correctAnswers}`);
+  console.log(`   Incorrect answers: ${incorrectAnswers}`);
+  if (questionsNotFound > 0) {
+    console.warn(`⚠️ ${questionsNotFound} questions could not be scored - check if aptitudeQuestions were properly fetched`);
   }
+  
+  console.log('Aptitude answers extracted:', {
+    verbal: aptitudeAnswers.verbal.length,
+    numerical: aptitudeAnswers.numerical.length,
+    abstract: aptitudeAnswers.abstract.length,
+    spatial: aptitudeAnswers.spatial.length,
+    clerical: aptitudeAnswers.clerical.length
+  });
 
   // Extract Big Five answers - IMPROVED: Extract even if bigFiveQuestions is empty
   const bigFiveAnswers = {};
@@ -563,21 +696,63 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   const knowledgeAnswers = {};
   const streamQuestions = streamKnowledgeQuestions?.[stream] || [];
   const knowledgePrefix = getSectionPrefix('knowledge', gradeLevel);
+  console.log('📚 Knowledge prefix:', knowledgePrefix);
+  console.log('📚 Stream questions available:', streamQuestions.length);
+  if (streamQuestions.length === 0) {
+    console.warn('⚠️ NO KNOWLEDGE QUESTIONS AVAILABLE - Scoring will fail!');
+    console.warn('⚠️ Check if fetchAIKnowledgeQuestions() returned questions');
+  }
+  
+  let knowledgeFound = 0;
+  let knowledgeNotFound = 0;
+  let knowledgeCorrect = 0;
+  
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith(`${knowledgePrefix}_`)) {
       const questionId = key.replace(`${knowledgePrefix}_`, '');
       const question = streamQuestions.find(q => q.id === questionId);
       if (question) {
+        knowledgeFound++;
+        // Handle different field names for correct answer
+        const correctAnswer = question.correct || question.correctAnswer || question.correct_answer;
+        
+        // Normalize values for comparison
+        const normalizeValue = (v) => {
+          if (v === null || v === undefined) return '';
+          let str = String(v).trim();
+          if (str.startsWith('"') && str.endsWith('"')) {
+            str = str.slice(1, -1);
+          }
+          return str;
+        };
+        
+        const normalizedStudentAnswer = normalizeValue(value);
+        const normalizedCorrectAnswer = normalizeValue(correctAnswer);
+        const isCorrect = normalizedStudentAnswer === normalizedCorrectAnswer;
+        
+        if (isCorrect) knowledgeCorrect++;
+        
         knowledgeAnswers[questionId] = {
-          question: question.text,
-          studentAnswer: value,
-          correctAnswer: question.correct,
-          isCorrect: value === question.correct,
+          question: question.text || question.question,
+          studentAnswer: normalizedStudentAnswer,
+          correctAnswer: normalizedCorrectAnswer,
+          isCorrect: isCorrect,
           options: question.options
         };
+      } else {
+        knowledgeNotFound++;
+        if (knowledgeNotFound <= 3) {
+          console.log(`⚠️ Knowledge question not found: ${questionId}`);
+        }
       }
     }
   });
+  
+  console.log('📚 Knowledge Scoring Summary:');
+  console.log(`   Questions found: ${knowledgeFound}`);
+  console.log(`   Questions NOT found: ${knowledgeNotFound}`);
+  console.log(`   Correct answers: ${knowledgeCorrect}`);
+  console.log('📚 Knowledge answers extracted:', Object.keys(knowledgeAnswers).length);
 
   // Calculate aptitude scores
   const aptitudeScores = {
@@ -587,6 +762,18 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     spatial: calculateAptitudeScore(aptitudeAnswers.spatial),
     clerical: calculateAptitudeScore(aptitudeAnswers.clerical)
   };
+  
+  // Log calculated scores
+  console.log('📊 Calculated Aptitude Scores:', JSON.stringify(aptitudeScores, null, 2));
+  const totalCorrect = Object.values(aptitudeScores).reduce((sum, s) => sum + (s.correct || 0), 0);
+  const totalQuestions = Object.values(aptitudeScores).reduce((sum, s) => sum + (s.total || 0), 0);
+  console.log(`📊 Total Aptitude: ${totalCorrect}/${totalQuestions} correct (${totalQuestions > 0 ? Math.round((totalCorrect/totalQuestions)*100) : 0}%)`);
+  
+  // Calculate knowledge score
+  const knowledgeCorrectCount = Object.values(knowledgeAnswers).filter(a => a.isCorrect).length;
+  const knowledgeTotalCount = Object.keys(knowledgeAnswers).length;
+  console.log(`📚 Total Knowledge: ${knowledgeCorrectCount}/${knowledgeTotalCount} correct (${knowledgeTotalCount > 0 ? Math.round((knowledgeCorrectCount/knowledgeTotalCount)*100) : 0}%)`);
+
 
   // Calculate timing metrics
   const totalAptitudeQuestions = aptitudeQuestions?.length || 50;
@@ -691,17 +878,47 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
         }
       });
       
+      // ========================================================================
+      // FLAT PROFILE DETECTION
+      // ========================================================================
+      // Check if RIASEC scores are too similar (flat profile)
+      const riasecValues = Object.values(riasecScores);
+      const maxRiasec = Math.max(...riasecValues);
+      const minRiasec = Math.min(...riasecValues);
+      const riasecRange = maxRiasec - minRiasec;
+      const avgRiasec = riasecValues.reduce((a, b) => a + b, 0) / riasecValues.length;
+      
+      // Calculate variance to detect flat profile
+      const riasecVariance = riasecValues.reduce((sum, val) => sum + Math.pow(val - avgRiasec, 2), 0) / riasecValues.length;
+      const riasecStdDev = Math.sqrt(riasecVariance);
+      
+      // Flat profile: low standard deviation (all scores within ~3 points of each other)
+      const isFlatProfile = riasecStdDev < 2 || riasecRange < 4;
+      
+      console.log('📊 RIASEC Profile Analysis:');
+      console.log('   Range:', riasecRange, '(max:', maxRiasec, '- min:', minRiasec, ')');
+      console.log('   Std Dev:', riasecStdDev.toFixed(2));
+      console.log('   Is Flat Profile:', isFlatProfile);
+      
       // Calculate rule-based recommendation
       const ruleBasedRecommendation = calculateStreamRecommendations(
         { riasec: { scores: riasecScores } },
         { subjectMarks: [], projects: [], experiences: [] }
       );
       
+      // Adjust confidence for flat profiles
+      let adjustedConfidence = ruleBasedRecommendation.confidenceScore;
+      if (isFlatProfile) {
+        // Lower confidence for flat profiles - max 70%
+        adjustedConfidence = Math.min(70, adjustedConfidence);
+        console.log('⚠️ Flat profile detected - lowering confidence from', ruleBasedRecommendation.confidenceScore, 'to', adjustedConfidence);
+      }
+      
       ruleBasedStreamHint = {
         stream: ruleBasedRecommendation.recommendedStream,
         streamId: ruleBasedRecommendation.allStreamScores?.[0]?.streamId || 'pcms',
-        confidence: ruleBasedRecommendation.confidenceScore,
-        matchLevel: ruleBasedRecommendation.streamFit,
+        confidence: adjustedConfidence,
+        matchLevel: isFlatProfile ? 'Medium' : ruleBasedRecommendation.streamFit,
         reasoning: ruleBasedRecommendation.reasoning,
         riasecScores: riasecScores,
         alternativeStream: ruleBasedRecommendation.alternativeStream,
@@ -709,7 +926,14 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
           stream: s.streamName,
           score: s.matchScore,
           category: s.category
-        }))
+        })),
+        // Add flat profile info for AI to consider
+        profileAnalysis: {
+          isFlatProfile,
+          riasecRange,
+          riasecStdDev: riasecStdDev.toFixed(2),
+          warning: isFlatProfile ? 'Student has undifferentiated interests - multiple streams may be equally valid' : null
+        }
       };
       
       console.log('✅ Rule-based recommendation:', ruleBasedStreamHint.stream);

@@ -642,6 +642,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
         monthsInGrade,
         studentInfo,
         studentAcademicData,
+        validationWarnings,
         handleRetry,
         validateResults,
         navigate
@@ -1100,6 +1101,26 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                         </>
                                     )}
                                 </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Aptitude Data Quality Warning Banner */}
+                {results?._aptitudeWarning && !results._aptitudeWarning.isValid && (
+                    <div className="max-w-6xl mx-auto mb-6 print:hidden print-hidden">
+                        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-start gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
+                                <AlertCircle className="w-5 h-5 text-orange-600" />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-semibold text-orange-800 mb-1">Aptitude Data Quality Notice</h4>
+                                <p className="text-orange-700 text-sm mb-2">
+                                    {results._aptitudeWarning.message}
+                                </p>
+                                <p className="text-orange-600 text-xs">
+                                    {results._aptitudeWarning.recommendation}
+                                </p>
                             </div>
                         </div>
                     </div>

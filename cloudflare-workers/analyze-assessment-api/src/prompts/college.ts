@@ -6,79 +6,43 @@ import type { AssessmentData } from '../types';
 
 export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: number): string {
   const isAfter10 = assessmentData.gradeLevel === 'after10';
-  const isAfter12 = assessmentData.gradeLevel === 'after12';
-  const studentStream = assessmentData.stream?.toLowerCase() || 'general';
-
-  // After 12th stream context section
-  const after12StreamSection = isAfter12 ? `
-## ⚠️ CRITICAL: STUDENT'S CURRENT STREAM CONTEXT (AFTER 12TH) ⚠️
-This student has ALREADY completed 12th grade in the **${studentStream.toUpperCase()}** stream.
-
-**IMPORTANT CAREER RECOMMENDATION RULES:**
-1. **Primary Focus**: Career recommendations should be PRIMARILY from their **${studentStream.toUpperCase()}** stream background
-2. **Stream-Specific Careers**: 
-   - **Science Stream**: Engineering, Medicine, Research, Technology, Data Science, Biotechnology, etc.
-   - **Commerce Stream**: Business, Finance, Accounting, Economics, Management, Banking, etc.
-   - **Arts/Humanities Stream**: Law, Psychology, Social Sciences, Media, Design, Education, etc.
-3. **RIASEC Interpretation**: Interpret RIASEC scores IN THE CONTEXT of their stream:
-   - Science student with high E (Enterprising): Tech entrepreneurship, Product Management, Engineering Management
-   - Commerce student with high I (Investigative): Financial Analysis, Economic Research, Data Analytics
-   - Arts student with high C (Conventional): Legal Documentation, Administrative Law, Policy Research
-4. **Career Clusters**: At least 2 out of 3 career clusters MUST be from their stream background
-5. **Cross-Stream Options**: Only suggest careers outside their stream if:
-   - Their RIASEC scores STRONGLY indicate a mismatch (e.g., Science student with A=90%, I=30%)
-   - You provide clear reasoning for the cross-stream recommendation
-   - You explain how their current education can still be leveraged
-
-**Stream-Specific Career Mapping:**
-
-**For SCIENCE Stream Students:**
-- High I + High R: Engineering (Mechanical, Civil, Electrical), Research Scientist
-- High I + High A: Product Design, UX Research, Creative Technology
-- High I + High S: Healthcare (Doctor, Nurse, Physiotherapist), Biomedical Engineering
-- High I + High E: Tech Entrepreneurship, Product Management, Engineering Management
-- High I + High C: Data Science, Systems Engineering, Quality Assurance
-- High R + High I: Mechanical Engineering, Robotics, Manufacturing
-- High A + High I: Architecture, Industrial Design, Game Development
-
-**For COMMERCE Stream Students:**
-- High E + High C: Business Management, Entrepreneurship, Finance
-- High C + High E: Accounting, Auditing, Tax Consulting
-- High I + High E: Financial Analysis, Economic Research, Market Research
-- High S + High E: Human Resources, Marketing, Sales Management
-- High A + High E: Advertising, Brand Management, Creative Direction
-- High E alone: Business Development, Consulting, Investment Banking
-- High C alone: Banking Operations, Insurance, Financial Planning
-
-**For ARTS/HUMANITIES Stream Students:**
-- High S + High A: Psychology, Counseling, Social Work
-- High A + High I: Research, Academia, Think Tanks
-- High E + High S: Public Relations, Event Management, NGO Leadership
-- High I + High E: Policy Analysis, Civil Services, Journalism
-- High A alone: Creative Arts, Design, Content Creation
-- High S alone: Teaching, Training, Community Development
-- High C + High I: Legal Services, Documentation, Compliance
-
-**CRITICAL**: Use the student's stream as the PRIMARY filter for career recommendations!
-` : '';
+  const ruleBasedHint = (assessmentData as any).ruleBasedStreamHint;
+  const profileAnalysis = ruleBasedHint?.profileAnalysis;
+  const isFlatProfile = profileAnalysis?.isFlatProfile;
 
   // After 10th stream recommendation section
   const after10StreamSection = isAfter10 ? `
 ## ⚠️ CRITICAL: AFTER 10TH STREAM RECOMMENDATION (MANDATORY FOR THIS STUDENT) ⚠️
 This student is completing 10th grade and needs guidance on which 11th/12th stream to choose.
 
-${assessmentData.ruleBasedStreamHint ? `
+${ruleBasedHint ? `
 ## 🎯 RULE-BASED RECOMMENDATION (STRONGLY CONSIDER THIS):
 Our precise scoring algorithm analyzed this student's RIASEC scores and suggests:
 
-**Recommended Stream**: ${assessmentData.ruleBasedStreamHint.stream}
-**Confidence**: ${assessmentData.ruleBasedStreamHint.confidence}%
-**Match Level**: ${assessmentData.ruleBasedStreamHint.matchLevel}
-**RIASEC Scores**: ${JSON.stringify(assessmentData.ruleBasedStreamHint.riasecScores)}
-**Alternative**: ${assessmentData.ruleBasedStreamHint.alternativeStream || 'N/A'}
+**Recommended Stream**: ${ruleBasedHint.stream}
+**Confidence**: ${ruleBasedHint.confidence}%
+**Match Level**: ${ruleBasedHint.matchLevel}
+**RIASEC Scores**: ${JSON.stringify(ruleBasedHint.riasecScores)}
+**Alternative**: ${ruleBasedHint.alternativeStream || 'N/A'}
 
 **Top 3 Stream Matches**:
-${assessmentData.ruleBasedStreamHint.allScores?.map((s, i) => `${i + 1}. ${s.stream} (${s.score}% match, ${s.category})`).join('\n') || 'N/A'}
+${ruleBasedHint.allScores?.map((s: any, i: number) => `${i + 1}. ${s.stream} (${s.score}% match, ${s.category})`).join('\n') || 'N/A'}
+
+${isFlatProfile ? `
+## ⚠️ FLAT PROFILE WARNING ⚠️
+**This student has an UNDIFFERENTIATED interest profile!**
+- RIASEC Score Range: ${profileAnalysis.riasecRange} points
+- Standard Deviation: ${profileAnalysis.riasecStdDev}
+- Warning: ${profileAnalysis.warning}
+
+**IMPORTANT INSTRUCTIONS FOR FLAT PROFILES:**
+1. DO NOT give high confidence (max 70%) - the student's interests are too similar across all areas
+2. MUST present MULTIPLE valid stream options (at least 2-3 equally valid choices)
+3. Emphasize that the student should explore different fields before deciding
+4. Recommend the student consider their APTITUDE scores more heavily since interests are undifferentiated
+5. Suggest the student talk to counselors, attend career fairs, or try internships in different fields
+6. In the streamRecommendation.reasoning, explicitly mention that interests are undifferentiated
+` : ''}
 
 ⚠️ IMPORTANT: This recommendation is based on ACTUAL assessment scores using a validated algorithm.
 You should STRONGLY AGREE with this recommendation unless you have compelling evidence otherwise.
@@ -283,6 +247,14 @@ RIASEC SCORING RULES:
 - Response 4: 1 point
 - Response 5: 2 points
 - Maximum score per type = 20
+
+⚠️ CRITICAL RIASEC topThree CALCULATION:
+1. Calculate the total score for each of the 6 RIASEC types (R, I, A, S, E, C)
+2. Sort ALL 6 types by their scores in DESCENDING order (highest first)
+3. The "topThree" array MUST contain the 3 types with the HIGHEST scores
+4. The "code" string MUST be these 3 letters joined (e.g., if C=19, E=17, S=15, then code="CES")
+5. VERIFY: The first letter in topThree MUST have the highest score, second letter the second-highest, etc.
+6. DO NOT guess or assume - calculate from the actual responses above
 
 ## MULTI-APTITUDE BATTERY RESULTS:
 Pre-calculated Scores:
