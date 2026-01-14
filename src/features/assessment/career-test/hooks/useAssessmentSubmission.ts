@@ -20,6 +20,23 @@ import { supabase } from '../../../../lib/supabaseClient';
 import type { GradeLevel } from '../config/sections';
 import { generateCourseRecommendations } from '../utils/courseRecommendations';
 
+// Import question data directly
+import {
+  riasecQuestions,
+  bigFiveQuestions,
+  workValuesQuestions,
+  employabilityQuestions,
+  // Middle School questions
+  interestExplorerQuestions,
+  strengthsCharacterQuestions,
+  learningPreferencesQuestions,
+  // High School questions
+  highSchoolInterestQuestions,
+  highSchoolStrengthsQuestions,
+  highSchoolLearningQuestions,
+  highSchoolAptitudeQuestions,
+} from '../../../assessment/data/questions';
+
 interface Section {
   id: string;
   title: string;
@@ -72,10 +89,18 @@ const getSectionId = (baseSection: string, gradeLevel: GradeLevel | null): strin
 
 /**
  * Get questions for a specific section
+ * FIXED: Import questions directly from data files instead of relying on sections array
  */
 const getQuestionsForSection = (sections: Section[], sectionId: string): any[] => {
   const section = sections.find(s => s.id === sectionId);
-  return section?.questions || [];
+  
+  // If section has questions, use them
+  if (section?.questions && section.questions.length > 0) {
+    return section.questions;
+  }
+  
+  // FALLBACK: Return empty array - questions will be imported directly below
+  return [];
 };
 
 /**
@@ -119,16 +144,41 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
       localStorage.removeItem('assessment_gemini_results');
 
       // Prepare question banks for Gemini analysis
+      // FIXED: Use imported question data directly instead of relying on sections array
+      let riasecQuestionsData: any[] = [];
+      let aptitudeQuestionsData: any[] = [];
+      let bigFiveQuestionsData: any[] = [];
+      let knowledgeQuestionsData: any[] = [];
+      
+      // Select questions based on grade level
+      if (gradeLevel === 'middle') {
+        riasecQuestionsData = interestExplorerQuestions || [];
+        bigFiveQuestionsData = strengthsCharacterQuestions || [];
+        knowledgeQuestionsData = learningPreferencesQuestions || [];
+        aptitudeQuestionsData = []; // No aptitude for middle school
+      } else if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
+        riasecQuestionsData = highSchoolInterestQuestions || [];
+        bigFiveQuestionsData = highSchoolStrengthsQuestions || [];
+        knowledgeQuestionsData = highSchoolLearningQuestions || [];
+        aptitudeQuestionsData = highSchoolAptitudeQuestions || [];
+      } else {
+        // after10, after12, college
+        riasecQuestionsData = riasecQuestions || [];
+        bigFiveQuestionsData = bigFiveQuestions || [];
+        aptitudeQuestionsData = getQuestionsForSection(sections, getSectionId('aptitude', gradeLevel));
+        knowledgeQuestionsData = getQuestionsForSection(sections, getSectionId('knowledge', gradeLevel));
+      }
+      
       const questionBanks = {
-        riasecQuestions: getQuestionsForSection(sections, getSectionId('riasec', gradeLevel)),
-        aptitudeQuestions: getQuestionsForSection(sections, getSectionId('aptitude', gradeLevel)),
-        bigFiveQuestions: getQuestionsForSection(sections, getSectionId('bigfive', gradeLevel)),
-        workValuesQuestions: getQuestionsForSection(sections, 'values'),
-        employabilityQuestions: getQuestionsForSection(sections, 'employability'),
-        streamKnowledgeQuestions: { [studentStream || '']: getQuestionsForSection(sections, getSectionId('knowledge', gradeLevel)) }
+        riasecQuestions: riasecQuestionsData,
+        aptitudeQuestions: aptitudeQuestionsData,
+        bigFiveQuestions: bigFiveQuestionsData,
+        workValuesQuestions: workValuesQuestions || [],
+        employabilityQuestions: employabilityQuestions || [],
+        streamKnowledgeQuestions: { [studentStream || '']: knowledgeQuestionsData }
       };
 
-      console.log('📚 Question banks prepared:', {
+      console.log('📚 Question banks prepared (FIXED - using imported data):', {
         riasec: questionBanks.riasecQuestions?.length || 0,
         aptitude: questionBanks.aptitudeQuestions?.length || 0,
         bigFive: questionBanks.bigFiveQuestions?.length || 0,
@@ -149,6 +199,14 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
       console.log('🔑 Employability keys:', answerKeys.filter(k => k.startsWith('employability_')).length);
       console.log('🔑 Aptitude keys:', answerKeys.filter(k => k.startsWith('aptitude_')).length);
       console.log('🔑 Knowledge keys:', answerKeys.filter(k => k.startsWith('knowledge_')).length);
+      
+      // Debug: Log sample answers to see the values
+      console.log('📊 Sample RIASEC answers:', 
+        Object.entries(answers)
+          .filter(([k]) => k.startsWith('riasec_'))
+          .slice(0, 5)
+          .map(([k, v]) => `${k}=${v}`)
+      );
 
       // Include adaptive aptitude results if available
       const answersWithAdaptive = { ...answers };
@@ -171,9 +229,27 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         throw new Error('AI analysis returned empty results. Please try again.');
       }
       
+      // Log what the AI actually returned
+      console.log('🔍 AI Response Analysis:');
+      console.log('  Keys returned:', Object.keys(geminiResults));
+      console.log('  Has riasec:', !!geminiResults.riasec);
+      console.log('  Has aptitude:', !!geminiResults.aptitude);
+      console.log('  Has bigFive:', !!geminiResults.bigFive);
+      console.log('  Has workValues:', !!geminiResults.workValues);
+      console.log('  Has employability:', !!geminiResults.employability);
+      console.log('  Has knowledge:', !!geminiResults.knowledge);
+      console.log('  Has careerFit:', !!geminiResults.careerFit);
+      console.log('  Has skillGap:', !!geminiResults.skillGap);
+      console.log('  Has roadmap:', !!geminiResults.roadmap);
+      console.log('  Has profileSnapshot:', !!geminiResults.profileSnapshot);
+      console.log('  Has timingAnalysis:', !!geminiResults.timingAnalysis);
+      console.log('  Has finalNote:', !!geminiResults.finalNote);
+      console.log('  Has overallSummary:', !!geminiResults.overallSummary);
+      
       // Validate that we have essential fields
       if (!geminiResults.riasec && !geminiResults.careerFit) {
         console.error('❌ AI analysis missing essential fields:', Object.keys(geminiResults));
+        console.error('❌ Full AI response:', JSON.stringify(geminiResults, null, 2));
         throw new Error('AI analysis returned incomplete results. Please try again.');
       }
       
