@@ -28,12 +28,12 @@ export async function callOpenRouter(
       'X-Title': 'Role Overview API',
     },
     body: JSON.stringify({
-      model: 'openai/gpt-4o-mini',
+      model: 'xiaomi/mimo-v2-flash:free',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: prompt },
       ],
-      max_tokens: 1500,
+      max_tokens: 4000,
       temperature: 0.7,
     }),
   });
@@ -41,6 +41,7 @@ export async function callOpenRouter(
   if (!response.ok) {
     const errorText = await response.text();
     console.error(`[OpenRouter] Error ${response.status}:`, errorText);
+    console.error(`[OpenRouter] API Key present: ${!!apiKey}, Key prefix: ${apiKey?.substring(0, 10)}...`);
     
     // Throw specific errors for different status codes
     if (response.status === 402) {
@@ -52,8 +53,11 @@ export async function callOpenRouter(
     if (response.status === 429) {
       throw new Error('RATE_LIMITED');
     }
+    if (response.status === 400) {
+      throw new Error(`BAD_REQUEST: ${errorText}`);
+    }
     
-    throw new Error(`OpenRouter API error: ${response.status}`);
+    throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json() as {
