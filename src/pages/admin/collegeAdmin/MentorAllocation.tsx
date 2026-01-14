@@ -3,16 +3,23 @@ import React, { useState, useMemo } from "react";
 import {
   UserGroupIcon,
   PlusCircleIcon,
-  MagnifyingGlassIcon,
-  XMarkIcon,
-  CheckCircleIcon,
   ExclamationTriangleIcon,
-  PencilSquareIcon,
-  TrashIcon,
   UserIcon,
   AcademicCapIcon,
+  CalendarIcon,
+  DocumentTextIcon,
+  UserPlusIcon,
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../../components/common/SearchBar";
+import KPICard from "../../../components/admin/KPICard";
+import Pagination from "../../../components/admin/Pagination";
+import StudentSelectionModal from "../../../components/admin/collegeAdmin/StudentSelectionModal";
+import MentorSelectionModal from "../../../components/admin/collegeAdmin/MentorSelectionModal";
+import AllocationConfigurationModal from "../../../components/admin/collegeAdmin/AllocationConfigurationModal";
+import InterventionModal from "../../../components/admin/collegeAdmin/InterventionModal";
+import MentorDetailsDrawer from "../../../components/admin/collegeAdmin/MentorDetailsModal";
+import ReassignModal from "../../../components/admin/collegeAdmin/ReassignModal";
+import MentorCapacityModal from "../../../components/admin/collegeAdmin/MentorCapacityModal";
 
 interface Student {
   id: number;
@@ -24,7 +31,26 @@ interface Student {
   atRisk: boolean;
   email: string;
   batch: string;
-  mentorId?: number;
+  riskFactors?: string[];
+  lastInteraction?: string;
+  interventionCount?: number;
+}
+
+interface MentorAllocation {
+  id: number;
+  mentorId: number;
+  students: Student[];
+  allocationPeriod: {
+    startDate: string;
+    endDate: string;
+  };
+  capacity: number;
+  officeLocation: string;
+  availableHours: string;
+  status: 'active' | 'completed' | 'cancelled';
+  createdAt: string;
+  createdBy: string;
+  academicYear: string;
 }
 
 interface Mentor {
@@ -33,13 +59,10 @@ interface Mentor {
   email: string;
   department: string;
   designation: string;
-  capacity: number;
-  currentLoad: number;
-  students: Student[];
-  allocationPeriod?: {
-    startDate: string;
-    endDate: string;
-  };
+  specializations?: string[];
+  contactNumber?: string;
+  // Current allocations (can have multiple active allocations)
+  allocations: MentorAllocation[];
 }
 
 interface MentorNote {
@@ -50,10 +73,12 @@ interface MentorNote {
   date: string;
   outcome: string;
   isPrivate: boolean;
-  interventionType: 'academic' | 'personal' | 'career' | 'attendance' | 'other';
+  interventionType: 'academic' | 'personal' | 'career' | 'attendance' | 'behavioral' | 'financial' | 'other';
+  status: 'pending' | 'in-progress' | 'completed' | 'escalated';
 }
 
 const MentorAllocation: React.FC = () => {
+  // Sample Data - Updated to use allocation-based structure
   const [mentors, setMentors] = useState<Mentor[]>([
     {
       id: 1,
@@ -61,13 +86,117 @@ const MentorAllocation: React.FC = () => {
       email: "rajesh.kumar@college.edu",
       department: "Computer Science",
       designation: "Associate Professor",
-      capacity: 15,
-      currentLoad: 12,
-      students: [],
-      allocationPeriod: {
-        startDate: "2024-01-01",
-        endDate: "2024-06-30",
-      },
+      specializations: ["Data Structures", "Algorithms", "Machine Learning"],
+      contactNumber: "+91-9876543210",
+      allocations: [
+        {
+          id: 1,
+          mentorId: 1,
+          students: [
+            {
+              id: 101,
+              name: "Amit Patel",
+              rollNo: "CS2021001",
+              department: "Computer Science",
+              semester: 5,
+              cgpa: 7.2,
+              atRisk: true,
+              email: "amit.patel@student.edu",
+              batch: "2021-2025",
+              riskFactors: ["Low CGPA", "Poor Attendance"],
+              lastInteraction: "2024-01-10",
+              interventionCount: 2,
+            },
+            {
+              id: 102,
+              name: "Sneha Reddy",
+              rollNo: "CS2021002",
+              department: "Computer Science",
+              semester: 5,
+              cgpa: 8.5,
+              atRisk: false,
+              email: "sneha.reddy@student.edu",
+              batch: "2021-2025",
+              riskFactors: [],
+              lastInteraction: "2024-01-15",
+              interventionCount: 0,
+            },
+          ],
+          allocationPeriod: {
+            startDate: "2026-01-01",
+            endDate: "2026-06-30",
+          },
+          capacity: 15,
+          officeLocation: "CS Block, Room 301",
+          availableHours: "Mon-Fri 10:00-12:00, 14:00-16:00",
+          status: 'active',
+          createdAt: "2026-01-01T00:00:00Z",
+          createdBy: "admin",
+          academicYear: "2025-2026",
+        },
+        {
+          id: 4,
+          mentorId: 1,
+          students: [
+            {
+              id: 105,
+              name: "Rahul Sharma",
+              rollNo: "CS2020001",
+              department: "Computer Science",
+              semester: 7,
+              cgpa: 8.1,
+              atRisk: false,
+              email: "rahul.sharma@student.edu",
+              batch: "2020-2024",
+              riskFactors: [],
+              lastInteraction: "2023-12-15",
+              interventionCount: 1,
+            },
+          ],
+          allocationPeriod: {
+            startDate: "2023-07-01",
+            endDate: "2023-12-31",
+          },
+          capacity: 12,
+          officeLocation: "CS Block, Room 301",
+          availableHours: "Mon-Fri 09:00-11:00, 15:00-17:00",
+          status: 'active',
+          createdAt: "2023-07-01T00:00:00Z",
+          createdBy: "admin",
+          academicYear: "2023-2024",
+        },
+        {
+          id: 5,
+          mentorId: 1,
+          students: [
+            {
+              id: 106,
+              name: "Priya Singh",
+              rollNo: "CS2022003",
+              department: "Computer Science",
+              semester: 4,
+              cgpa: 7.8,
+              atRisk: false,
+              email: "priya.singh@student.edu",
+              batch: "2022-2026",
+              riskFactors: [],
+              lastInteraction: "2025-11-20",
+              interventionCount: 0,
+            },
+          ],
+          allocationPeriod: {
+            startDate: "2025-07-01",
+            endDate: "2025-12-31",
+          },
+          capacity: 18,
+          officeLocation: "CS Block, Room 301",
+          availableHours: "Mon-Wed-Fri 11:00-13:00, 14:00-16:00",
+          status: 'active',
+          createdAt: "2025-07-01T00:00:00Z",
+          createdBy: "admin",
+          academicYear: "2025-2026",
+        }
+      ],
     },
     {
       id: 2,
@@ -75,41 +204,154 @@ const MentorAllocation: React.FC = () => {
       email: "priya.sharma@college.edu",
       department: "Electronics",
       designation: "Assistant Professor",
-      capacity: 12,
-      currentLoad: 8,
-      students: [],
-      allocationPeriod: {
-        startDate: "2024-01-01",
-        endDate: "2024-06-30",
-      },
+      specializations: ["Digital Electronics", "VLSI Design", "Embedded Systems"],
+      contactNumber: "+91-9876543211",
+      allocations: [
+        {
+          id: 2,
+          mentorId: 2,
+          students: [
+            {
+              id: 103,
+              name: "Priya Gupta",
+              rollNo: "ECE2021001",
+              department: "Electronics",
+              semester: 5,
+              cgpa: 7.8,
+              atRisk: false,
+              email: "priya.gupta@student.edu",
+              batch: "2021-2025",
+              riskFactors: [],
+              lastInteraction: "2024-01-12",
+              interventionCount: 1,
+            },
+          ],
+          allocationPeriod: {
+            startDate: "2024-07-01",
+            endDate: "2024-12-31",
+          },
+          capacity: 12,
+          officeLocation: "ECE Block, Room 205",
+          availableHours: "Mon-Wed-Fri 11:00-13:00, 15:00-17:00",
+          status: 'active',
+          createdAt: "2024-07-01T00:00:00Z",
+          createdBy: "admin",
+          academicYear: "2024-2025",
+        },
+        {
+          id: 6,
+          mentorId: 2,
+          students: [
+            {
+              id: 107,
+              name: "Arjun Patel",
+              rollNo: "ECE2023001",
+              department: "Electronics",
+              semester: 2,
+              cgpa: 8.3,
+              atRisk: false,
+              email: "arjun.patel@student.edu",
+              batch: "2023-2027",
+              riskFactors: [],
+              lastInteraction: "2026-01-10",
+              interventionCount: 0,
+            },
+            {
+              id: 108,
+              name: "Kavya Reddy",
+              rollNo: "ECE2023002",
+              department: "Electronics",
+              semester: 2,
+              cgpa: 6.9,
+              atRisk: true,
+              email: "kavya.reddy@student.edu",
+              batch: "2023-2027",
+              riskFactors: ["Low CGPA"],
+              lastInteraction: "2026-01-08",
+              interventionCount: 2,
+            },
+          ],
+          allocationPeriod: {
+            startDate: "2026-01-10",
+            endDate: "2026-07-15",
+          },
+          capacity: 15,
+          officeLocation: "ECE Block, Room 205",
+          availableHours: "Tue-Thu 10:00-12:00, 14:00-16:00",
+          status: 'active',
+          createdAt: "2026-01-10T00:00:00Z",
+          createdBy: "admin",
+          academicYear: "2025-2026",
+        }
+      ],
+    },
+    {
+      id: 3,
+      name: "Dr. Amit Patel",
+      email: "amit.patel@college.edu",
+      department: "Mechanical",
+      designation: "Professor",
+      specializations: ["Thermodynamics", "Manufacturing", "CAD/CAM"],
+      contactNumber: "+91-9876543212",
+      allocations: [
+        {
+          id: 3,
+          mentorId: 3,
+          students: [
+            {
+              id: 104,
+              name: "Karan Mehta",
+              rollNo: "MECH2022001",
+              department: "Mechanical",
+              semester: 3,
+              cgpa: 6.5,
+              atRisk: true,
+              email: "karan.mehta@student.edu",
+              batch: "2022-2026",
+              riskFactors: ["Low CGPA", "Behavioral Issues"],
+              lastInteraction: "2024-01-05",
+              interventionCount: 4,
+            },
+          ],
+          allocationPeriod: {
+            startDate: "2024-01-01",
+            endDate: "2024-06-30",
+          },
+          capacity: 20,
+          officeLocation: "Mech Block, Room 101",
+          availableHours: "Tue-Thu 09:00-11:00, 14:00-16:00",
+          status: 'active',
+          createdAt: "2024-01-01T00:00:00Z",
+          createdBy: "admin",
+          academicYear: "2023-2024",
+        }
+      ],
+    },
+    {
+      id: 4,
+      name: "Dr. Kavitha Nair",
+      email: "kavitha.nair@college.edu",
+      department: "Information Technology",
+      designation: "Assistant Professor",
+      specializations: ["Database Management", "Web Development", "Cloud Computing"],
+      contactNumber: "+91-9876543213",
+      allocations: [],
+    },
+    {
+      id: 5,
+      name: "Prof. Suresh Reddy",
+      email: "suresh.reddy@college.edu",
+      department: "Civil Engineering",
+      designation: "Professor",
+      specializations: ["Structural Engineering", "Construction Management", "Environmental Engineering"],
+      contactNumber: "+91-9876543214",
+      allocations: [],
     },
   ]);
 
   const [availableStudents] = useState<Student[]>([
     {
-      id: 1,
-      name: "Amit Patel",
-      rollNo: "CS2021001",
-      department: "Computer Science",
-      semester: 5,
-      cgpa: 7.2,
-      atRisk: true,
-      email: "amit.patel@student.edu",
-      batch: "2021-2025",
-    },
-    {
-      id: 2,
-      name: "Sneha Reddy",
-      rollNo: "CS2021002",
-      department: "Computer Science",
-      semester: 5,
-      cgpa: 8.5,
-      atRisk: false,
-      email: "sneha.reddy@student.edu",
-      batch: "2021-2025",
-    },
-    {
-      id: 3,
+      id: 201,
       name: "Rahul Singh",
       rollNo: "CS2022001",
       department: "Computer Science",
@@ -118,70 +360,322 @@ const MentorAllocation: React.FC = () => {
       atRisk: true,
       email: "rahul.singh@student.edu",
       batch: "2022-2026",
+      riskFactors: ["Academic Struggles", "Financial Issues"],
+      lastInteraction: "2024-01-08",
+      interventionCount: 3,
+    },
+    {
+      id: 202,
+      name: "Anita Sharma",
+      rollNo: "ECE2022002",
+      department: "Electronics",
+      semester: 3,
+      cgpa: 8.2,
+      atRisk: false,
+      email: "anita.sharma@student.edu",
+      batch: "2022-2026",
+      riskFactors: [],
+      lastInteraction: "2024-01-14",
+      interventionCount: 0,
+    },
+    {
+      id: 203,
+      name: "Vikram Joshi",
+      rollNo: "MECH2021003",
+      department: "Mechanical",
+      semester: 5,
+      cgpa: 7.5,
+      atRisk: false,
+      email: "vikram.joshi@student.edu",
+      batch: "2021-2025",
+      riskFactors: [],
+      lastInteraction: "2024-01-11",
+      interventionCount: 1,
     },
   ]);
 
-  const [notes, setNotes] = useState<MentorNote[]>([]);
+  const [notes, setNotes] = useState<MentorNote[]>([
+    {
+      id: 1,
+      mentorId: 1,
+      studentId: 101,
+      note: "Student struggling with Data Structures concepts. Provided additional study materials and scheduled weekly review sessions.",
+      date: "2024-01-15",
+      outcome: "Improved understanding of linked lists and trees. CGPA increased from 7.2 to 7.8",
+      isPrivate: false,
+      interventionType: 'academic',
+      status: 'in-progress',
+    },
+    {
+      id: 2,
+      mentorId: 1,
+      studentId: 102,
+      note: "Career counseling session regarding internship opportunities in machine learning domain.",
+      date: "2024-01-12",
+      outcome: "Student applied to 5 ML internships. Received 2 interview calls.",
+      isPrivate: false,
+      interventionType: 'career',
+      status: 'completed',
+    },
+    {
+      id: 3,
+      mentorId: 2,
+      studentId: 103,
+      note: "Addressed attendance issues and personal challenges affecting academic performance.",
+      date: "2024-01-10",
+      outcome: "Attendance improved from 65% to 85%. Student more engaged in classes.",
+      isPrivate: true,
+      interventionType: 'personal',
+      status: 'completed',
+    },
+    {
+      id: 4,
+      mentorId: 2,
+      studentId: 103,
+      note: "Discussed financial aid options and scholarship opportunities for the student.",
+      date: "2024-01-08",
+      outcome: "Applied for merit scholarship. Referred to financial aid office.",
+      isPrivate: true,
+      interventionType: 'financial',
+      status: 'pending',
+    },
+    {
+      id: 5,
+      mentorId: 3,
+      studentId: 104,
+      note: "Behavioral counseling session regarding classroom disruptions and peer conflicts.",
+      date: "2024-01-05",
+      outcome: "Student showed improved behavior. No recent incidents reported.",
+      isPrivate: true,
+      interventionType: 'behavioral',
+      status: 'completed',
+    },
+  ]);
+
+  // All allocations across all mentors (for audit trail)
+  const [allAllocations, setAllAllocations] = useState<MentorAllocation[]>(() => {
+    return mentors.flatMap(mentor => mentor.allocations);
+  });
+
+  // State Management
   const [searchQuery, setSearchQuery] = useState("");
-  const [showAllocationModal, setShowAllocationModal] = useState(false);
-  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
+  const [selectedBatch, setSelectedBatch] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(6); // 6 mentors per page
+
+  // Modal States
+  const [showStudentSelectionModal, setShowStudentSelectionModal] = useState(false);
+  const [showMentorSelectionModal, setShowMentorSelectionModal] = useState(false);
+  const [showAllocationConfigModal, setShowAllocationConfigModal] = useState(false);
+  const [showInterventionModal, setShowInterventionModal] = useState(false);
+  const [showMentorDetailsModal, setShowMentorDetailsModal] = useState(false);
+  const [showReassignModal, setShowReassignModal] = useState(false);
+  const [showCapacityModal, setShowCapacityModal] = useState(false);
+  const [showAddStudentsModal, setShowAddStudentsModal] = useState(false);
+
+  // Selected Items
   const [selectedMentor, setSelectedMentor] = useState<Mentor | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [selectedStudentsForAllocation, setSelectedStudentsForAllocation] = useState<number[]>([]);
+  const [selectedMentorForAllocation, setSelectedMentorForAllocation] = useState<Mentor | null>(null);
+  const [studentToReassign, setStudentToReassign] = useState<Student | null>(null);
+  const [mentorForCapacityConfig, setMentorForCapacityConfig] = useState<Mentor | null>(null);
+  const [allocationForConfig, setAllocationForConfig] = useState<MentorAllocation | null>(null);
+  const [mentorForAddingStudents, setMentorForAddingStudents] = useState<Mentor | null>(null);
+
+  // Intervention Form States
   const [noteText, setNoteText] = useState("");
   const [noteOutcome, setNoteOutcome] = useState("");
-  const [selectedBatch, setSelectedBatch] = useState<string>("all");
-  const [showReassignModal, setShowReassignModal] = useState(false);
-  const [studentToReassign, setStudentToReassign] = useState<Student | null>(null);
-  const [interventionType, setInterventionType] = useState<'academic' | 'personal' | 'career' | 'attendance' | 'other'>('academic');
+  const [interventionType, setInterventionType] = useState<'academic' | 'personal' | 'career' | 'attendance' | 'behavioral' | 'financial' | 'other'>('academic');
   const [isPrivateNote, setIsPrivateNote] = useState(false);
+  const [noteStatus, setNoteStatus] = useState<'pending' | 'in-progress' | 'completed' | 'escalated'>('pending');
 
+  // Computed Values - Updated for allocation-based structure
   const filteredMentors = useMemo(() => {
     return mentors.filter(
       (m) =>
-        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.department.toLowerCase().includes(searchQuery.toLowerCase())
+        // Only show mentors who have active allocations with students
+        m.allocations.some(allocation => 
+          allocation.status === 'active' && allocation.students.length > 0
+        ) &&
+        (m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.designation.toLowerCase().includes(searchQuery.toLowerCase())) &&
+        (selectedDepartment === "all" || m.department === selectedDepartment)
     );
-  }, [mentors, searchQuery]);
+  }, [mentors, searchQuery, selectedDepartment]);
 
-  const filteredStudents = useMemo(() => {
-    return availableStudents.filter(student => 
-      selectedBatch === "all" || student.batch === selectedBatch
-    );
-  }, [availableStudents, selectedBatch]);
+  // Pagination calculations
+  const totalMentors = filteredMentors.length;
+  const totalPages = Math.ceil(totalMentors / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedMentors = filteredMentors.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedDepartment]);
 
   const uniqueBatches = useMemo(() => {
-    return Array.from(new Set(availableStudents.map(s => s.batch)));
-  }, [availableStudents]);
+    const allStudents = allAllocations.flatMap(allocation => allocation.students);
+    return Array.from(new Set([...availableStudents.map(s => s.batch), ...allStudents.map(s => s.batch)]));
+  }, [availableStudents, allAllocations]);
 
-  const handleAllocateStudents = (mentorId: number, studentIds: number[]) => {
+  const uniqueDepartments = useMemo(() => {
+    return Array.from(new Set([...mentors.map(m => m.department), ...availableStudents.map(s => s.department)]));
+  }, [mentors, availableStudents]);
+
+  const atRiskStudents = useMemo(() => {
+    const allStudents = [...availableStudents, ...allAllocations.flatMap(allocation => allocation.students)];
+    return allStudents.filter(s => s.atRisk);
+  }, [availableStudents, allAllocations]);
+
+  const unallocatedStudents = useMemo(() => {
+    const allocatedStudentIds = allAllocations
+      .filter(allocation => allocation.status === 'active')
+      .flatMap(allocation => allocation.students.map(s => s.id));
+    return availableStudents.filter(student => !allocatedStudentIds.includes(student.id));
+  }, [availableStudents, allAllocations]);
+
+  const totalInterventions = useMemo(() => {
+    return notes.length;
+  }, [notes]);
+
+  // Helper functions for mentor statistics
+  const getMentorCurrentLoad = (mentorId: number) => {
+    return allAllocations
+      .filter(allocation => allocation.mentorId === mentorId && allocation.status === 'active')
+      .reduce((total, allocation) => total + allocation.students.length, 0);
+  };
+
+  const getMentorActiveAllocations = (mentorId: number) => {
+    return allAllocations.filter(allocation => allocation.mentorId === mentorId && allocation.status === 'active');
+  };
+
+  const getMentorAtRiskStudents = (mentorId: number) => {
+    return allAllocations
+      .filter(allocation => allocation.mentorId === mentorId && allocation.status === 'active')
+      .flatMap(allocation => allocation.students)
+      .filter(student => student.atRisk);
+  };
+
+  // Event Handlers
+  const handleStartAllocation = () => {
+    setSelectedStudentsForAllocation([]);
+    setShowStudentSelectionModal(true);
+  };
+
+  const handleStudentSelectionComplete = (studentIds: number[]) => {
+    setSelectedStudentsForAllocation(studentIds);
+    setShowStudentSelectionModal(false);
+    setShowMentorSelectionModal(true);
+  };
+
+  const handleMentorSelectionComplete = (mentorId: number) => {
+    const mentor = mentors.find(m => m.id === mentorId);
+    if (mentor) {
+      setSelectedMentorForAllocation(mentor);
+      setShowMentorSelectionModal(false);
+      setShowAllocationConfigModal(true);
+    }
+  };
+
+  const handleBackToMentorSelection = () => {
+    setShowAllocationConfigModal(false);
+    setShowMentorSelectionModal(true);
+    // Keep selectedStudentsForAllocation and selectedMentorForAllocation for navigation
+  };
+
+  const handleBackToStudentSelection = () => {
+    setShowMentorSelectionModal(false);
+    setShowStudentSelectionModal(true);
+    // Keep selectedStudentsForAllocation for navigation
+  };
+
+  const handleAllocateStudents = (
+    mentorId: number, 
+    studentIds: number[], 
+    allocationPeriod: {startDate: string; endDate: string},
+    capacityConfig: {capacity: number; officeLocation: string; availableHours: string}
+  ) => {
     const mentor = mentors.find(m => m.id === mentorId);
     if (!mentor) return;
 
-    const newStudentsCount = studentIds.length;
-    if (mentor.currentLoad + newStudentsCount > mentor.capacity) {
-      alert(`Cannot allocate ${newStudentsCount} students. Mentor capacity exceeded. Available slots: ${mentor.capacity - mentor.currentLoad}`);
+    const studentsToAllocate = availableStudents.filter(s => studentIds.includes(s.id));
+    const currentLoad = getMentorCurrentLoad(mentorId);
+
+    // Check capacity
+    if (currentLoad + studentsToAllocate.length > capacityConfig.capacity) {
+      alert(`Cannot allocate ${studentsToAllocate.length} students. Mentor capacity exceeded. Available slots: ${capacityConfig.capacity - currentLoad}`);
       return;
     }
 
-    setMentors((prev) =>
-      prev.map((m) => {
-        if (m.id === mentorId) {
-          const newStudents = availableStudents.filter((s) =>
-            studentIds.includes(s.id)
-          );
-          return {
-            ...m,
-            students: [...m.students, ...newStudents],
-            currentLoad: m.currentLoad + newStudents.length,
-          };
-        }
-        return m;
-      })
-    );
-    setShowAllocationModal(false);
+    // Check for overlapping periods for this mentor
+    const newStartDate = new Date(allocationPeriod.startDate);
+    const newEndDate = new Date(allocationPeriod.endDate);
+    
+    const hasOverlap = allAllocations.some(allocation => {
+      if (allocation.mentorId !== mentorId || allocation.status !== 'active') {
+        return false;
+      }
+      
+      const existingStartDate = new Date(allocation.allocationPeriod.startDate);
+      const existingEndDate = new Date(allocation.allocationPeriod.endDate);
+      
+      // Check if periods overlap
+      // Two periods overlap if: start1 <= end2 && start2 <= end1
+      return newStartDate <= existingEndDate && existingStartDate <= newEndDate;
+    });
+
+    if (hasOverlap) {
+      // Don't show alert, let the modal handle validation
+      return;
+    }
+
+    // Create new allocation record
+    const newAllocation: MentorAllocation = {
+      id: Date.now(), // In real app, this would be generated by backend
+      mentorId: mentorId,
+      students: studentsToAllocate,
+      allocationPeriod: allocationPeriod,
+      capacity: capacityConfig.capacity,
+      officeLocation: capacityConfig.officeLocation,
+      availableHours: capacityConfig.availableHours,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      createdBy: 'admin', // In real app, this would be current user
+      academicYear: '2023-2024', // This should come from system settings
+    };
+
+    // Add to allocations list
+    setAllAllocations(prev => [...prev, newAllocation]);
+
+    // Update mentor's allocations
+    setMentors(prev => prev.map(m => {
+      if (m.id === mentorId) {
+        return {
+          ...m,
+          allocations: [...m.allocations, newAllocation]
+        };
+      }
+      return m;
+    }));
+    
+    // Show success message
+    alert(`Successfully created new allocation for ${mentor.name} with ${studentsToAllocate.length} students for period ${allocationPeriod.startDate} to ${allocationPeriod.endDate}`);
+    
+    // Reset all states
+    setShowAllocationConfigModal(false);
+    setSelectedStudentsForAllocation([]);
+    setSelectedMentorForAllocation(null);
   };
 
-  const handleAddNote = () => {
+  const handleAddIntervention = () => {
     if (!selectedMentor || !selectedStudent || !noteText) return;
 
     const newNote: MentorNote = {
@@ -193,34 +687,85 @@ const MentorAllocation: React.FC = () => {
       outcome: noteOutcome,
       isPrivate: isPrivateNote,
       interventionType: interventionType,
+      status: noteStatus,
     };
 
     setNotes([...notes, newNote]);
+    
+    // Reset form
     setNoteText("");
     setNoteOutcome("");
     setInterventionType('academic');
     setIsPrivateNote(false);
-    setShowNoteModal(false);
+    setNoteStatus('pending');
+    setShowInterventionModal(false);
   };
 
   const handleReassignStudent = (newMentorId: number) => {
     if (!studentToReassign) return;
 
+    // Find the current allocation containing this student
+    const currentAllocation = allAllocations.find(allocation => 
+      allocation.status === 'active' && 
+      allocation.students.some(s => s.id === studentToReassign.id)
+    );
+
+    if (!currentAllocation) return;
+
+    // Remove student from current allocation
+    const updatedCurrentAllocation = {
+      ...currentAllocation,
+      students: currentAllocation.students.filter(s => s.id !== studentToReassign.id)
+    };
+
+    // Find target mentor's latest allocation to use same settings
+    const targetMentorAllocations = allAllocations.filter(
+      allocation => allocation.mentorId === newMentorId && allocation.status === 'active'
+    );
+    
+    const latestTargetAllocation = targetMentorAllocations.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )[0];
+
+    if (!latestTargetAllocation) {
+      alert("Target mentor has no active allocations. Please create an allocation first.");
+      return;
+    }
+
+    // Create new allocation for the reassigned student
+    const newAllocation: MentorAllocation = {
+      id: Date.now(),
+      mentorId: newMentorId,
+      students: [studentToReassign],
+      allocationPeriod: latestTargetAllocation.allocationPeriod,
+      capacity: latestTargetAllocation.capacity,
+      officeLocation: latestTargetAllocation.officeLocation,
+      availableHours: latestTargetAllocation.availableHours,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      createdBy: 'admin',
+      academicYear: latestTargetAllocation.academicYear,
+    };
+
+    // Update allocations
+    setAllAllocations(prev => prev.map(allocation => 
+      allocation.id === currentAllocation.id ? updatedCurrentAllocation : allocation
+    ).concat(newAllocation));
+
+    // Update mentors' allocations
     setMentors(prev => prev.map(mentor => {
-      // Remove student from current mentor
-      if (mentor.students.some(s => s.id === studentToReassign.id)) {
+      if (mentor.id === currentAllocation.mentorId) {
         return {
           ...mentor,
-          students: mentor.students.filter(s => s.id !== studentToReassign.id),
-          currentLoad: mentor.currentLoad - 1
+          allocations: mentor.allocations.map(allocation => 
+            allocation.id === currentAllocation.id ? updatedCurrentAllocation : allocation
+          )
         };
       }
-      // Add student to new mentor
       if (mentor.id === newMentorId) {
         return {
           ...mentor,
-          students: [...mentor.students, studentToReassign],
-          currentLoad: mentor.currentLoad + 1
+          allocations: [...mentor.allocations, newAllocation]
         };
       }
       return mentor;
@@ -230,10 +775,154 @@ const MentorAllocation: React.FC = () => {
     setStudentToReassign(null);
   };
 
+  const handleCapacityConfiguration = (allocationId: number, config: {
+    capacity: number;
+    officeLocation: string;
+    availableHours: string;
+  }) => {
+    // Update the specific allocation
+    const updatedAllocation = allAllocations.find(allocation => allocation.id === allocationId);
+    if (!updatedAllocation) return;
+
+    const newAllocation = {
+      ...updatedAllocation,
+      capacity: config.capacity,
+      officeLocation: config.officeLocation,
+      availableHours: config.availableHours,
+    };
+
+    // Update allocations state
+    setAllAllocations(prev => prev.map(allocation => 
+      allocation.id === allocationId ? newAllocation : allocation
+    ));
+
+    // Update mentor's allocations state
+    const updatedMentors = mentors.map(mentor => {
+      if (mentor.id === updatedAllocation.mentorId) {
+        return {
+          ...mentor,
+          allocations: mentor.allocations.map(allocation => 
+            allocation.id === allocationId ? newAllocation : allocation
+          )
+        };
+      }
+      return mentor;
+    });
+    
+    setMentors(updatedMentors);
+
+    // Update selectedMentor if it's the one being configured
+    if (selectedMentor && selectedMentor.id === updatedAllocation.mentorId) {
+      const updatedSelectedMentor = updatedMentors.find(m => m.id === selectedMentor.id);
+      if (updatedSelectedMentor) {
+        setSelectedMentor(updatedSelectedMentor);
+      }
+    }
+
+    // Show success message
+    alert(`Allocation configuration updated successfully for period ${updatedAllocation.allocationPeriod.startDate} to ${updatedAllocation.allocationPeriod.endDate}`);
+
+    // Close modal and reset states
+    setShowCapacityModal(false);
+    setMentorForCapacityConfig(null);
+    setAllocationForConfig(null);
+  };
+
+  const handleConfigureAllocation = (allocation: MentorAllocation) => {
+    const mentor = mentors.find(m => m.id === allocation.mentorId);
+    if (mentor) {
+      setMentorForCapacityConfig(mentor);
+      setAllocationForConfig(allocation);
+      setShowCapacityModal(true);
+    }
+  };
+
+  const handleAddStudentsToMentor = (mentor: Mentor) => {
+    setMentorForAddingStudents(mentor);
+    setShowAddStudentsModal(true);
+  };
+
+  const handleAddStudentsComplete = (studentIds: number[]) => {
+    if (!mentorForAddingStudents) return;
+
+    const studentsToAdd = availableStudents.filter(s => studentIds.includes(s.id));
+    const currentLoad = getMentorCurrentLoad(mentorForAddingStudents.id);
+    
+    // Get the most recent active allocation for this mentor to use its capacity
+    const activeAllocations = getMentorActiveAllocations(mentorForAddingStudents.id);
+    const latestAllocation = activeAllocations.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    
+    if (!latestAllocation) {
+      alert("No active allocation found for this mentor. Please create a new allocation first.");
+      return;
+    }
+
+    if (currentLoad + studentsToAdd.length > latestAllocation.capacity) {
+      alert(`Cannot add ${studentsToAdd.length} students. Mentor capacity exceeded. Available slots: ${latestAllocation.capacity - currentLoad}`);
+      return;
+    }
+
+    // Check for overlapping periods when using the same period as latest allocation
+    const newStartDate = new Date(latestAllocation.allocationPeriod.startDate);
+    const newEndDate = new Date(latestAllocation.allocationPeriod.endDate);
+    
+    const hasOverlap = allAllocations.some(allocation => {
+      if (allocation.mentorId !== mentorForAddingStudents.id || 
+          allocation.status !== 'active' || 
+          allocation.id === latestAllocation.id) {
+        return false;
+      }
+      
+      const existingStartDate = new Date(allocation.allocationPeriod.startDate);
+      const existingEndDate = new Date(allocation.allocationPeriod.endDate);
+      
+      // Check if periods overlap
+      return newStartDate <= existingEndDate && existingStartDate <= newEndDate;
+    });
+
+    if (hasOverlap) {
+      // Don't show alert, validation should be handled in the modal
+      return;
+    }
+
+    // Create new allocation record for the additional students
+    const newAllocation: MentorAllocation = {
+      id: Date.now(),
+      mentorId: mentorForAddingStudents.id,
+      students: studentsToAdd,
+      allocationPeriod: latestAllocation.allocationPeriod, // Use same period as latest allocation
+      capacity: latestAllocation.capacity,
+      officeLocation: latestAllocation.officeLocation,
+      availableHours: latestAllocation.availableHours,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      createdBy: 'admin',
+      academicYear: latestAllocation.academicYear,
+    };
+
+    // Add to allocations list
+    setAllAllocations(prev => [...prev, newAllocation]);
+
+    // Update mentor's allocations
+    setMentors(prev => prev.map(m => {
+      if (m.id === mentorForAddingStudents.id) {
+        return {
+          ...m,
+          allocations: [...m.allocations, newAllocation]
+        };
+      }
+      return m;
+    }));
+
+    setShowAddStudentsModal(false);
+    setMentorForAddingStudents(null);
+  };
+
   return (
-    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 rounded-2xl p-6 border border-purple-100">
+    <div className="min-h-screen bg-gray-50">
+      <div className="space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 rounded-2xl p-6 border border-purple-100">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
           Mentor Allocation
         </h1>
@@ -242,547 +931,533 @@ const MentorAllocation: React.FC = () => {
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm mb-1">Total Mentors</p>
-              <p className="text-2xl font-bold text-gray-900">{mentors.length}</p>
-            </div>
-            <UserGroupIcon className="h-8 w-8 text-purple-600" />
-          </div>
-        </div>
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KPICard
+            title="Total Mentors"
+            value={mentors.length}
+            icon={<UserGroupIcon className="h-6 w-6" />}
+            color="blue"
+          />
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm mb-1">Students Allocated</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {mentors.reduce((sum, m) => sum + m.currentLoad, 0)}
-              </p>
-            </div>
-            <AcademicCapIcon className="h-8 w-8 text-blue-600" />
-          </div>
-        </div>
+          <KPICard
+            title="Students Allocated"
+            value={allAllocations
+              .filter(allocation => allocation.status === 'active')
+              .reduce((total, allocation) => total + allocation.students.length, 0)
+            }
+            icon={<AcademicCapIcon className="h-6 w-6" />}
+            color="green"
+          />
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm mb-1">At-Risk Students</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {availableStudents.filter((s) => s.atRisk).length}
-              </p>
-            </div>
-            <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
-          </div>
-        </div>
+          <KPICard
+            title="At-Risk Students"
+            value={atRiskStudents.length}
+            icon={<ExclamationTriangleIcon className="h-6 w-6" />}
+            color="red"
+          />
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm mb-1">Total Notes</p>
-              <p className="text-2xl font-bold text-gray-900">{notes.length}</p>
-            </div>
-            <PencilSquareIcon className="h-8 w-8 text-green-600" />
-          </div>
-        </div>
-      </div>
-
-      {/* Search & Actions */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1">
-            <SearchBar
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Search mentors..."
-            />
-          </div>
-          <div className="flex gap-3">
-            <select
-              value={selectedBatch}
-              onChange={(e) => setSelectedBatch(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="all">All Batches</option>
-              {uniqueBatches.map(batch => (
-                <option key={batch} value={batch}>{batch}</option>
-              ))}
-            </select>
-            <button
-              onClick={() => setShowAllocationModal(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
-            >
-              <PlusCircleIcon className="h-5 w-5" />
-              Allocate Students
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mentors List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredMentors.map((mentor) => (
-          <div
-            key={mentor.id}
-            className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-start gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center">
-                  <UserIcon className="h-6 w-6 text-purple-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{mentor.name}</h3>
-                  <p className="text-sm text-gray-600">{mentor.designation}</p>
-                  <p className="text-xs text-gray-500">{mentor.department}</p>
-                  {mentor.allocationPeriod && (
-                    <p className="text-xs text-blue-600 mt-1">
-                      Period: {new Date(mentor.allocationPeriod.startDate).toLocaleDateString()} - {new Date(mentor.allocationPeriod.endDate).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">
-                  {mentor.currentLoad}/{mentor.capacity}
-                </p>
-                <p className="text-xs text-gray-500">Capacity</p>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full ${
-                    mentor.currentLoad >= mentor.capacity
-                      ? "bg-red-500"
-                      : mentor.currentLoad >= mentor.capacity * 0.8
-                      ? "bg-yellow-500"
-                      : "bg-green-500"
-                  }`}
-                  style={{
-                    width: `${(mentor.currentLoad / mentor.capacity) * 100}%`,
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-700">
-                Allocated Students ({mentor.students.length})
-              </h4>
-              {mentor.students.length === 0 ? (
-                <p className="text-sm text-gray-500">No students allocated yet</p>
-              ) : (
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {mentor.students.map((student) => (
-                    <div
-                      key={student.id}
-                      className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">
-                          {student.name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {student.rollNo} • {student.batch}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {student.atRisk && (
-                          <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
-                        )}
-                        <button
-                          onClick={() => {
-                            setSelectedMentor(mentor);
-                            setSelectedStudent(student);
-                            setShowNoteModal(true);
-                          }}
-                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                          title="Add Note"
-                        >
-                          <PencilSquareIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setStudentToReassign(student);
-                            setShowReassignModal(true);
-                          }}
-                          className="p-1 text-orange-600 hover:bg-orange-50 rounded"
-                          title="Reassign"
-                        >
-                          <UserGroupIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => {
-                  setSelectedMentor(mentor);
-                  setShowAllocationModal(true);
-                }}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 transition text-sm"
-              >
-                <PlusCircleIcon className="h-4 w-4" />
-                Add Students
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Allocation Modal */}
-      {showAllocationModal && (
-        <AllocationModal
-          mentor={selectedMentor}
-          availableStudents={filteredStudents}
-          onClose={() => {
-            setShowAllocationModal(false);
-            setSelectedMentor(null);
-          }}
-          onAllocate={handleAllocateStudents}
-        />
-      )}
-
-      {/* Note Modal */}
-      {showNoteModal && (
-        <NoteModal
-          mentor={selectedMentor}
-          student={selectedStudent}
-          noteText={noteText}
-          noteOutcome={noteOutcome}
-          interventionType={interventionType}
-          isPrivateNote={isPrivateNote}
-          onNoteChange={setNoteText}
-          onOutcomeChange={setNoteOutcome}
-          onInterventionTypeChange={setInterventionType}
-          onPrivateChange={setIsPrivateNote}
-          onClose={() => {
-            setShowNoteModal(false);
-            setSelectedMentor(null);
-            setSelectedStudent(null);
-          }}
-          onSave={handleAddNote}
-        />
-      )}
-
-      {/* Reassign Modal */}
-      {showReassignModal && studentToReassign && (
-        <ReassignModal
-          student={studentToReassign}
-          mentors={mentors}
-          onClose={() => {
-            setShowReassignModal(false);
-            setStudentToReassign(null);
-          }}
-          onReassign={handleReassignStudent}
-        />
-      )}
-    </div>
-  );
-};
-
-// Allocation Modal Component
-const AllocationModal = ({ mentor, availableStudents, onClose, onAllocate }: any) => {
-  const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const filteredStudents = availableStudents.filter(
-    (s: Student) =>
-      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.rollNo.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleToggle = (id: number) => {
-    setSelectedStudents((prev) =>
-      prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]
-    );
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">
-            Allocate Students {mentor ? `to ${mentor.name}` : ""}
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <XMarkIcon className="h-6 w-6" />
-          </button>
-        </div>
-
-        <div className="mb-4">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search students..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+          <KPICard
+            title="Total Interventions"
+            value={totalInterventions}
+            icon={<DocumentTextIcon className="h-6 w-6" />}
+            color="purple"
           />
         </div>
 
-        <div className="max-h-96 overflow-y-auto space-y-2 mb-4">
-          {filteredStudents.map((student: Student) => (
-            <label
-              key={student.id}
-              className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={selectedStudents.includes(student.id)}
-                  onChange={() => handleToggle(student.id)}
-                  className="h-4 w-4 text-purple-600 rounded"
-                />
-                <div>
-                  <p className="font-medium text-gray-900">{student.name}</p>
-                  <p className="text-sm text-gray-600">
-                    {student.rollNo} • {student.department} • {student.batch} • CGPA: {student.cgpa}
-                  </p>
-                </div>
+        {/* Search & Filters */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex-1">
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search mentors by name, department, or designation..."
+              />
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <select
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+              >
+                <option value="all">All Departments</option>
+                {uniqueDepartments.map(dept => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
+              
+              <select
+                value={selectedBatch}
+                onChange={(e) => setSelectedBatch(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+              >
+                <option value="all">All Batches</option>
+                {uniqueBatches.map(batch => (
+                  <option key={batch} value={batch}>{batch}</option>
+                ))}
+              </select>
+
+              <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                    viewMode === 'grid' 
+                      ? 'bg-indigo-600 text-white' 
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Grid
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                    viewMode === 'list' 
+                      ? 'bg-indigo-600 text-white' 
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  List
+                </button>
               </div>
-              {student.atRisk && (
-                <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">
-                  At Risk
-                </span>
-              )}
-            </label>
-          ))}
-        </div>
 
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-gray-600">
-            {selectedStudents.length} student(s) selected
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                if (mentor) {
-                  onAllocate(mentor.id, selectedStudents);
-                }
-              }}
-              disabled={selectedStudents.length === 0}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-            >
-              Allocate
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Note Modal Component
-const NoteModal = ({
-  mentor,
-  student,
-  noteText,
-  noteOutcome,
-  interventionType,
-  isPrivateNote,
-  onNoteChange,
-  onOutcomeChange,
-  onInterventionTypeChange,
-  onPrivateChange,
-  onClose,
-  onSave,
-}: any) => {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Add Mentoring Note</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <XMarkIcon className="h-6 w-6" />
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Student
-            </label>
-            <p className="text-gray-900 font-medium">{student?.name}</p>
-            <p className="text-sm text-gray-600">{student?.rollNo} • {student?.batch}</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Intervention Type
-            </label>
-            <select
-              value={interventionType}
-              onChange={(e) => onInterventionTypeChange(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="academic">Academic Support</option>
-              <option value="personal">Personal Counseling</option>
-              <option value="career">Career Guidance</option>
-              <option value="attendance">Attendance Issues</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Note
-            </label>
-            <textarea
-              value={noteText}
-              onChange={(e) => onNoteChange(e.target.value)}
-              rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              placeholder="Enter detailed mentoring notes..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Outcome/Action Taken
-            </label>
-            <input
-              type="text"
-              value={noteOutcome}
-              onChange={(e) => onOutcomeChange(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              placeholder="e.g., Improved attendance, Career guidance provided"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="privateNote"
-              checked={isPrivateNote}
-              onChange={(e) => onPrivateChange(e.target.checked)}
-              className="h-4 w-4 text-purple-600 rounded"
-            />
-            <label htmlFor="privateNote" className="text-sm text-gray-700">
-              Mark as private note (visible only to mentor and admin)
-            </label>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onSave}
-            disabled={!noteText}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-          >
-            Save Note
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Reassign Modal Component
-const ReassignModal = ({ student, mentors, onClose, onReassign }: any) => {
-  const [selectedMentorId, setSelectedMentorId] = useState<number | null>(null);
-
-  const availableMentors = mentors.filter((m: Mentor) => 
-    m.currentLoad < m.capacity && !m.students.some(s => s.id === student.id)
-  );
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Reassign Student</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <XMarkIcon className="h-6 w-6" />
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Student to Reassign
-            </label>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="font-medium text-gray-900">{student.name}</p>
-              <p className="text-sm text-gray-600">{student.rollNo} • {student.batch}</p>
+              <button
+                onClick={handleStartAllocation}
+                disabled={unallocatedStudents.length === 0}
+                className="flex items-center justify-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <PlusCircleIcon className="h-5 w-5" />
+                Allocate Students
+              </button>
             </div>
           </div>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select New Mentor
-            </label>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {availableMentors.length === 0 ? (
-                <p className="text-sm text-gray-500 p-3 bg-gray-50 rounded-lg">
-                  No mentors available with capacity
-                </p>
-              ) : (
-                availableMentors.map((mentor: Mentor) => (
-                  <label
-                    key={mentor.id}
-                    className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        name="mentor"
-                        value={mentor.id}
-                        checked={selectedMentorId === mentor.id}
-                        onChange={() => setSelectedMentorId(mentor.id)}
-                        className="h-4 w-4 text-purple-600"
-                      />
-                      <div>
-                        <p className="font-medium text-gray-900">{mentor.name}</p>
-                        <p className="text-sm text-gray-600">{mentor.department}</p>
+        {/* Mentors List */}
+        <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6' : 'space-y-4'}`}>
+          {paginatedMentors.map((mentor) => (
+            <div
+              key={mentor.id}
+              className={`bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200 ${
+                viewMode === 'grid' ? 'p-6' : 'p-4'
+              }`}
+            >
+              {viewMode === 'grid' ? (
+                // Grid View
+                <>
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start gap-4 flex-1">
+                      <div className="w-14 h-14 bg-indigo-100 rounded-xl flex items-center justify-center">
+                        <UserIcon className="h-7 w-7 text-indigo-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 text-lg">{mentor.name}</h3>
+                        <p className="text-sm text-gray-600 font-medium">{mentor.designation}</p>
+                        <p className="text-xs text-gray-500">{mentor.department}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <CalendarIcon className="h-4 w-4 text-blue-500" />
+                          <div className="text-xs text-blue-600">
+                            {(() => {
+                              const activeAllocations = getMentorActiveAllocations(mentor.id);
+                              if (activeAllocations.length === 0) {
+                                return <span className="text-gray-400">No active allocations</span>;
+                              }
+                              
+                              // Find currently running allocation (current date falls within period)
+                              const currentDate = new Date();
+                              const currentAllocation = activeAllocations.find(allocation => {
+                                const startDate = new Date(allocation.allocationPeriod.startDate);
+                                const endDate = new Date(allocation.allocationPeriod.endDate);
+                                return currentDate >= startDate && currentDate <= endDate;
+                              });
+                              
+                              if (currentAllocation) {
+                                return (
+                                  <div>
+                                    <div className="font-medium">{currentAllocation.allocationPeriod.startDate} - {currentAllocation.allocationPeriod.endDate}</div>
+                                    <div className="text-xs text-gray-500">{currentAllocation.academicYear}</div>
+                                  </div>
+                                );
+                              }
+                              
+                              if (activeAllocations.length === 1) {
+                                const allocation = activeAllocations[0];
+                                return (
+                                  <div>
+                                    <div>{allocation.allocationPeriod.startDate} - {allocation.allocationPeriod.endDate}</div>
+                                    <div className="text-xs text-gray-500">{allocation.academicYear}</div>
+                                  </div>
+                                );
+                              }
+                              
+                              return (
+                                <div>
+                                  <div className="font-medium">{activeAllocations.length} active periods</div>
+                                  <div className="text-xs text-gray-500">Multiple allocation timeframes</div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                        {/* Risk Indicator */}
+                        {getMentorAtRiskStudents(mentor.id).length > 0 && (
+                          <div className="flex items-center gap-1 mt-2">
+                            <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />
+                            <span className="text-xs text-red-600 font-medium">
+                              {getMentorAtRiskStudents(mentor.id).length} at-risk student{getMentorAtRiskStudents(mentor.id).length > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
+                  </div>
+
+                  {/* Capacity Indicator */}
+                  <div className="mb-4">
+                    {(() => {
+                      const activeAllocations = getMentorActiveAllocations(mentor.id);
+                      
+                      // Find currently running allocation (current date falls within period)
+                      const currentDate = new Date();
+                      const currentAllocation = activeAllocations.find(allocation => {
+                        const startDate = new Date(allocation.allocationPeriod.startDate);
+                        const endDate = new Date(allocation.allocationPeriod.endDate);
+                        return currentDate >= startDate && currentDate <= endDate;
+                      });
+                      
+                      if (currentAllocation) {
+                        // Show capacity for current period only
+                        const currentLoad = currentAllocation.students.length;
+                        const maxCapacity = currentAllocation.capacity;
+                        
+                        return (
+                          <>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">
+                                Capacity: {currentLoad}/{maxCapacity}
+                              </span>
+                              <span className={`text-xs px-2 py-1 rounded-full ${
+                                currentLoad >= maxCapacity
+                                  ? "bg-red-100 text-red-700"
+                                  : currentLoad >= maxCapacity * 0.8
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-green-100 text-green-700"
+                              }`}>
+                                {currentLoad >= maxCapacity
+                                  ? "Full"
+                                  : currentLoad >= maxCapacity * 0.8
+                                  ? "Near Full"
+                                  : "Available"
+                                }
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-3">
+                              <div
+                                className={`h-3 rounded-full transition-all duration-300 ${
+                                  currentLoad >= maxCapacity
+                                    ? "bg-red-500"
+                                    : currentLoad >= maxCapacity * 0.8
+                                    ? "bg-yellow-500"
+                                    : "bg-green-500"
+                                }`}
+                                style={{
+                                  width: `${Math.min((currentLoad / maxCapacity) * 100, 100)}%`,
+                                }}
+                              />
+                            </div>
+                          </>
+                        );
+                      } else {
+                        // No current period, show total across all active allocations
+                        const currentLoad = getMentorCurrentLoad(mentor.id);
+                        const maxCapacity = activeAllocations.length > 0 
+                          ? Math.max(...activeAllocations.map(a => a.capacity))
+                          : 15; // Default capacity
+                        
+                        return (
+                          <>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">
+                                Total Capacity: {currentLoad}/{maxCapacity}
+                              </span>
+                              <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
+                                Historical Data
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-3">
+                              <div
+                                className="h-3 rounded-full transition-all duration-300 bg-gray-400"
+                                style={{
+                                  width: `${Math.min((currentLoad / maxCapacity) * 100, 100)}%`,
+                                }}
+                              />
+                            </div>
+                          </>
+                        );
+                      }
+                    })()}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedMentor(mentor);
+                        setShowMentorDetailsModal(true);
+                      }}
+                      className="flex-1 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                      View Details
+                    </button>
+                    <button
+                      onClick={() => handleAddStudentsToMentor(mentor)}
+                      disabled={(() => {
+                        const currentLoad = getMentorCurrentLoad(mentor.id);
+                        const activeAllocations = getMentorActiveAllocations(mentor.id);
+                        const maxCapacity = activeAllocations.length > 0 
+                          ? Math.max(...activeAllocations.map(a => a.capacity))
+                          : 15;
+                        return currentLoad >= maxCapacity || unallocatedStudents.length === 0 || activeAllocations.length === 0;
+                      })()}
+                      className="px-3 py-2 bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                      title="Add Students"
+                    >
+                      <UserPlusIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+
+
+                </>
+              ) : (
+                // List View
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                      <UserIcon className="h-6 w-6 text-indigo-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{mentor.name}</h3>
+                      <p className="text-sm text-gray-600">{mentor.designation} • {mentor.department}</p>
+                      {getMentorAtRiskStudents(mentor.id).length > 0 && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <ExclamationTriangleIcon className="h-3 w-3 text-red-500" />
+                          <span className="text-xs text-red-600">
+                            {getMentorAtRiskStudents(mentor.id).length} at-risk
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-6">
+                    <div className="text-center">
                       <p className="text-sm font-medium text-gray-900">
-                        {mentor.currentLoad}/{mentor.capacity}
+                        {getMentorCurrentLoad(mentor.id)}/{(() => {
+                          const activeAllocations = getMentorActiveAllocations(mentor.id);
+                          return activeAllocations.length > 0 
+                            ? Math.max(...activeAllocations.map(a => a.capacity))
+                            : 15;
+                        })()}
                       </p>
                       <p className="text-xs text-gray-500">Capacity</p>
                     </div>
-                  </label>
-                ))
+                    
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-red-600">
+                        {getMentorAtRiskStudents(mentor.id).length}
+                      </p>
+                      <p className="text-xs text-gray-500">At-Risk</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedMentor(mentor);
+                          setShowMentorDetailsModal(true);
+                        }}
+                        className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                      >
+                        View Details
+                      </button>
+                      <button
+                        onClick={() => handleAddStudentsToMentor(mentor)}
+                        disabled={(() => {
+                          const currentLoad = getMentorCurrentLoad(mentor.id);
+                          const activeAllocations = getMentorActiveAllocations(mentor.id);
+                          const maxCapacity = activeAllocations.length > 0 
+                            ? Math.max(...activeAllocations.map(a => a.capacity))
+                            : 15;
+                          return currentLoad >= maxCapacity || unallocatedStudents.length === 0 || activeAllocations.length === 0;
+                        })()}
+                        className="px-2 py-1.5 bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                        title="Add Students"
+                      >
+                        <UserPlusIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
-          </div>
+          ))}
         </div>
 
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => selectedMentorId && onReassign(selectedMentorId)}
-            disabled={!selectedMentorId}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-          >
-            Reassign
-          </button>
-        </div>
+        {/* Pagination */}
+        {totalMentors > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalMentors}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
+        )}
+
+        {/* Modals */}
+        {showStudentSelectionModal && (
+          <StudentSelectionModal
+            key="allocate-students"
+            availableStudents={unallocatedStudents.filter(student => 
+              (selectedBatch === "all" || student.batch === selectedBatch) &&
+              (selectedDepartment === "all" || student.department === selectedDepartment)
+            )}
+            onClose={() => setShowStudentSelectionModal(false)}
+            onNext={handleStudentSelectionComplete}
+            initialSelectedStudents={selectedStudentsForAllocation}
+          />
+        )}
+
+        {showMentorSelectionModal && (
+          <MentorSelectionModal
+            selectedStudents={selectedStudentsForAllocation.map(id => 
+              availableStudents.find(s => s.id === id)!
+            )}
+            mentors={mentors}
+            onClose={() => {
+              setShowMentorSelectionModal(false);
+              setSelectedStudentsForAllocation([]);
+            }}
+            onBack={handleBackToStudentSelection}
+            onNext={handleMentorSelectionComplete}
+            initialSelectedMentorId={selectedMentorForAllocation?.id || null}
+            getMentorCurrentLoad={getMentorCurrentLoad}
+            getMentorActiveAllocations={getMentorActiveAllocations}
+          />
+        )}
+
+        {showAllocationConfigModal && selectedMentorForAllocation && (
+          <AllocationConfigurationModal
+            selectedStudents={selectedStudentsForAllocation.map(id => 
+              availableStudents.find(s => s.id === id)!
+            )}
+            selectedMentor={selectedMentorForAllocation}
+            onClose={() => {
+              setShowAllocationConfigModal(false);
+              setSelectedStudentsForAllocation([]);
+              setSelectedMentorForAllocation(null);
+            }}
+            onBack={handleBackToMentorSelection}
+            onAllocate={handleAllocateStudents}
+            getMentorCurrentLoad={getMentorCurrentLoad}
+            getMentorActiveAllocations={getMentorActiveAllocations}
+            allAllocations={allAllocations}
+          />
+        )}
+
+        {showInterventionModal && (
+          <InterventionModal
+            student={selectedStudent}
+            noteText={noteText}
+            noteOutcome={noteOutcome}
+            interventionType={interventionType}
+            isPrivateNote={isPrivateNote}
+            noteStatus={noteStatus}
+            onNoteChange={setNoteText}
+            onOutcomeChange={setNoteOutcome}
+            onInterventionTypeChange={(value) => setInterventionType(value as any)}
+            onPrivateChange={setIsPrivateNote}
+            onStatusChange={(value) => setNoteStatus(value as any)}
+            onClose={() => {
+              setShowInterventionModal(false);
+              setSelectedMentor(null);
+              setSelectedStudent(null);
+            }}
+            onSave={handleAddIntervention}
+          />
+        )}
+
+        {showMentorDetailsModal && selectedMentor && (
+          <MentorDetailsDrawer
+            key={`mentor-${selectedMentor.id}-${selectedMentor.allocations.length}`}
+            mentor={selectedMentor}
+            notes={notes.filter(n => n.mentorId === selectedMentor.id)}
+            onClose={() => {
+              setShowMentorDetailsModal(false);
+              setSelectedMentor(null);
+            }}
+            onLogIntervention={(student) => {
+              setSelectedStudent(student);
+              setShowInterventionModal(true);
+            }}
+            onReassignStudent={(student) => {
+              setStudentToReassign(student);
+              setShowReassignModal(true);
+            }}
+            onConfigureAllocation={handleConfigureAllocation}
+          />
+        )}
+
+        {showReassignModal && studentToReassign && (
+          <ReassignModal
+            student={studentToReassign}
+            mentors={mentors}
+            onClose={() => {
+              setShowReassignModal(false);
+              setStudentToReassign(null);
+            }}
+            onReassign={handleReassignStudent}
+            getMentorCurrentLoad={getMentorCurrentLoad}
+            getMentorActiveAllocations={getMentorActiveAllocations}
+          />
+        )}
+
+        {showCapacityModal && mentorForCapacityConfig && allocationForConfig && (
+          <MentorCapacityModal
+            mentor={mentorForCapacityConfig}
+            allocation={allocationForConfig}
+            onClose={() => {
+              setShowCapacityModal(false);
+              setMentorForCapacityConfig(null);
+              setAllocationForConfig(null);
+            }}
+            onSave={handleCapacityConfiguration}
+          />
+        )}
+
+        {showAddStudentsModal && mentorForAddingStudents && (
+          <StudentSelectionModal
+            key={`add-students-${mentorForAddingStudents.id}`}
+            availableStudents={unallocatedStudents.filter(student => 
+              (selectedBatch === "all" || student.batch === selectedBatch) &&
+              (selectedDepartment === "all" || student.department === selectedDepartment)
+            )}
+            title={`Add Students to ${mentorForAddingStudents.name}`}
+            description={`Select students to assign to ${mentorForAddingStudents.name} (${mentorForAddingStudents.designation}). Available capacity: ${(() => {
+              const currentLoad = getMentorCurrentLoad(mentorForAddingStudents.id);
+              const activeAllocations = getMentorActiveAllocations(mentorForAddingStudents.id);
+              const maxCapacity = activeAllocations.length > 0 
+                ? Math.max(...activeAllocations.map(a => a.capacity))
+                : 15;
+              return maxCapacity - currentLoad;
+            })()} students`}
+            buttonText="Add Selected Students"
+            onClose={() => {
+              setShowAddStudentsModal(false);
+              setMentorForAddingStudents(null);
+            }}
+            onNext={handleAddStudentsComplete}
+          />
+        )}
       </div>
     </div>
   );
