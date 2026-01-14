@@ -67,6 +67,9 @@ const callOpenRouterAssessment = async (assessmentData) => {
   console.log(`📊 Grade Level: ${assessmentData.gradeLevel}, Stream: ${assessmentData.stream}`);
   console.log(`🔗 API URL: ${API_URL}/analyze-assessment`);
   console.log(`📝 Assessment data keys:`, Object.keys(assessmentData));
+  console.log(`🎯 STREAM CONTEXT: Student is in ${assessmentData.stream} stream, AI should recommend careers from this stream`);
+  console.log(`📋 RIASEC Answers Count:`, Object.keys(assessmentData.riasecAnswers || {}).length);
+  console.log(`📋 Aptitude Scores:`, assessmentData.aptitudeScores);
 
   updateProgress('analyzing', 'AI is processing your responses...');
 
@@ -113,6 +116,14 @@ const callOpenRouterAssessment = async (assessmentData) => {
 
     console.log('✅ Assessment analysis successful');
     console.log('📊 Response keys:', Object.keys(result.data));
+    
+    // Debug: Log career clusters to verify stream alignment
+    if (result.data.careerFit?.clusters) {
+      console.log('🎯 AI CAREER CLUSTERS (from worker):');
+      result.data.careerFit.clusters.forEach((cluster, idx) => {
+        console.log(`   ${idx + 1}. ${cluster.title} (${cluster.fit} - ${cluster.matchScore}%)`);
+      });
+    }
     
     return result.data;
   } catch (error) {
@@ -316,6 +327,9 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   // Debug: Log what we received
   console.log('=== prepareAssessmentData DEBUG ===');
   console.log('Total answers received:', Object.keys(answers).length);
+  console.log('Sample answer keys (first 10):', Object.keys(answers).slice(0, 10));
+  console.log('Sample answer entries (first 3):', Object.entries(answers).slice(0, 3));
+  console.log('Grade level:', gradeLevel);
   console.log('riasecQuestions provided:', riasecQuestions?.length || 0);
   console.log('bigFiveQuestions provided:', bigFiveQuestions?.length || 0);
   console.log('workValuesQuestions provided:', workValuesQuestions?.length || 0);
@@ -324,11 +338,14 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   // Extract RIASEC answers - IMPROVED: Extract even if riasecQuestions is empty
   const riasecAnswers = {};
   const riasecPrefix = getSectionPrefix('riasec', gradeLevel);
-  console.log('RIASEC prefix:', riasecPrefix);
+  console.log('🔍 RIASEC Extraction DEBUG:');
+  console.log('  - RIASEC prefix:', riasecPrefix);
+  console.log('  - Looking for keys starting with:', `${riasecPrefix}_`);
   
   // First, try to extract using question bank
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith(`${riasecPrefix}_`)) {
+      console.log('  - Found RIASEC key:', key, 'value:', value);
       const questionId = key.replace(`${riasecPrefix}_`, '');
       const question = riasecQuestions?.find(q => q.id === questionId);
       
@@ -358,6 +375,13 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   });
   
   console.log('RIASEC answers extracted:', Object.keys(riasecAnswers).length);
+  if (Object.keys(riasecAnswers).length === 0) {
+    console.error('❌ NO RIASEC ANSWERS EXTRACTED! This will cause zero scores.');
+    console.error('   Check if answer keys match expected format:', `${riasecPrefix}_r1`, `${riasecPrefix}_r2`, 'etc.');
+  } else {
+    console.log('✅ RIASEC answers extracted successfully');
+    console.log('   Sample extracted keys:', Object.keys(riasecAnswers).slice(0, 5));
+  }
 
   // Extract Aptitude answers
   const aptitudeAnswers = {

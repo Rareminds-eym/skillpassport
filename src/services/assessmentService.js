@@ -219,8 +219,35 @@ export const updateAttemptProgress = async (attemptId, progress) => {
   }
 
   // Include all_responses if provided (for non-UUID questions like RIASEC, BigFive, etc.)
+  // IMPORTANT: Merge with existing responses to preserve previous sections
   if (progress.allResponses) {
-    updateData.all_responses = progress.allResponses;
+    console.log('🔍 DEBUG: Saving all_responses to database');
+    console.log('🔍 DEBUG: allResponses count:', Object.keys(progress.allResponses).length);
+    console.log('🔍 DEBUG: Sample keys:', Object.keys(progress.allResponses).slice(0, 10));
+    console.log('🔍 DEBUG: Sample values:', Object.entries(progress.allResponses).slice(0, 3));
+    
+    // Load existing responses from database to merge
+    try {
+      const { data: existingAttempt } = await supabase
+        .from('personal_assessment_attempts')
+        .select('all_responses')
+        .eq('id', attemptId)
+        .single();
+      
+      // Merge existing responses with new ones (new ones override if same key)
+      const mergedResponses = {
+        ...(existingAttempt?.all_responses || {}),
+        ...progress.allResponses
+      };
+      
+      console.log('🔄 DEBUG: Merged responses count:', Object.keys(mergedResponses).length);
+      updateData.all_responses = mergedResponses;
+    } catch (mergeError) {
+      console.warn('⚠️ Could not merge responses, using new ones only:', mergeError);
+      updateData.all_responses = progress.allResponses;
+    }
+  } else {
+    console.warn('⚠️ DEBUG: allResponses is empty or undefined!');
   }
   
   const { data, error } = await supabase
@@ -552,11 +579,7 @@ export const getAttemptWithResults = async (attemptId) => {
     .select(`
       *,
       stream:personal_assessment_streams(*),
-      results:personal_assessment_results(*),
-      responses:personal_assessment_responses(
-        *,
-        question:personal_assessment_questions(*)
-      )
+      results:personal_assessment_results(*)
     `)
     .eq('id', attemptId)
     .single();
