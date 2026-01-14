@@ -384,7 +384,61 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   console.log('Student ID:', studentId);
   console.log('Stream ID:', streamId);
   console.log('Has geminiResults:', !!geminiResults);
-  console.log('Has profileSnapshot:', !!geminiResults?.profileSnapshot);
+  console.log('Gemini Results Keys:', geminiResults ? Object.keys(geminiResults) : []);
+
+  // ============================================================================
+  // CRITICAL VALIDATION: Ensure AI returned complete data
+  // ============================================================================
+  
+  const requiredFields = [
+    'riasec',
+    'aptitude', 
+    'bigFive',
+    'workValues',
+    'employability',
+    'knowledge',
+    'careerFit',
+    'skillGap',
+    'roadmap'
+  ];
+  
+  const missingFields = requiredFields.filter(field => !geminiResults[field]);
+  
+  if (missingFields.length > 0) {
+    console.error('❌ CRITICAL: AI returned incomplete data!');
+    console.error('❌ Missing required fields:', missingFields);
+    console.error('❌ AI Response Keys:', Object.keys(geminiResults));
+    console.error('❌ Full AI Response:', JSON.stringify(geminiResults, null, 2));
+    
+    throw new Error(
+      `AI analysis incomplete. Missing ${missingFields.length} required fields: ${missingFields.join(', ')}. ` +
+      `Please try again or contact support if the issue persists.`
+    );
+  }
+
+  // Validate nested required fields
+  const nestedValidation = [
+    { path: 'workValues.scores', value: geminiResults.workValues?.scores },
+    { path: 'employability.skillScores', value: geminiResults.employability?.skillScores },
+    { path: 'employability.overallReadiness', value: geminiResults.employability?.overallReadiness },
+    { path: 'careerFit.clusters', value: geminiResults.careerFit?.clusters },
+    { path: 'skillGap.priorityA', value: geminiResults.skillGap?.priorityA },
+    { path: 'roadmap.projects', value: geminiResults.roadmap?.projects }
+  ];
+  
+  const missingNested = nestedValidation.filter(v => !v.value).map(v => v.path);
+  
+  if (missingNested.length > 0) {
+    console.error('❌ CRITICAL: AI returned incomplete nested data!');
+    console.error('❌ Missing nested fields:', missingNested);
+    
+    throw new Error(
+      `AI analysis incomplete. Missing nested fields: ${missingNested.join(', ')}. ` +
+      `Please try again or contact support if the issue persists.`
+    );
+  }
+
+  console.log('✅ AI Response Validation Passed - All required fields present');
 
   // Update attempt status
   const { error: attemptError } = await supabase
@@ -401,72 +455,65 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
     throw attemptError;
   }
 
-  // Prepare data for insertion
+  // Prepare data for insertion - NO FALLBACKS, use actual AI data
   const dataToInsert = {
     attempt_id: attemptId,
     student_id: studentId,
     grade_level: gradeLevel,
     stream_id: streamId,
     status: 'completed',
-    riasec_scores: geminiResults.riasec?.scores || null,
-    riasec_code: geminiResults.riasec?.code || null,
-    aptitude_scores: geminiResults.aptitude?.scores || null,
-    aptitude_overall: geminiResults.aptitude?.overallScore || null,
-    bigfive_scores: geminiResults.bigFive || null,
-    work_values_scores: geminiResults.workValues?.scores || null,
-    employability_scores: geminiResults.employability?.skillScores || null,
-    employability_readiness: geminiResults.employability?.overallReadiness || null,
-    knowledge_score: geminiResults.knowledge?.score || null,
-    knowledge_details: geminiResults.knowledge || null,
-    career_fit: geminiResults.careerFit || null,
-    skill_gap: geminiResults.skillGap || null,
+    riasec_scores: geminiResults.riasec.scores,
+    riasec_code: geminiResults.riasec.code,
+    aptitude_scores: geminiResults.aptitude.scores,
+    aptitude_overall: geminiResults.aptitude.overallScore,
+    bigfive_scores: geminiResults.bigFive,
+    work_values_scores: geminiResults.workValues.scores,
+    employability_scores: geminiResults.employability.skillScores,
+    employability_readiness: geminiResults.employability.overallReadiness,
+    knowledge_score: geminiResults.knowledge.score,
+    knowledge_details: geminiResults.knowledge,
+    career_fit: geminiResults.careerFit,
+    skill_gap: geminiResults.skillGap,
     skill_gap_courses: geminiResults.skillGapCourses || null,
-    roadmap: geminiResults.roadmap || null,
+    roadmap: geminiResults.roadmap,
     profile_snapshot: geminiResults.profileSnapshot || null,
     timing_analysis: geminiResults.timingAnalysis || null,
     final_note: geminiResults.finalNote || null,
-    overall_summary: geminiResults.overallSummary || null,
+    overall_summary: geminiResults.overallSummary || 'Assessment completed successfully.',
     gemini_results: geminiResults
   };
 
-  console.log('Data to insert:', {
+  console.log('✅ Data prepared for insertion (all from AI):', {
     grade_level: dataToInsert.grade_level,
     stream_id: dataToInsert.stream_id,
     has_riasec: !!dataToInsert.riasec_scores,
-    has_profileSnapshot: !!dataToInsert.profile_snapshot,
+    has_work_values: !!dataToInsert.work_values_scores,
+    has_employability: !!dataToInsert.employability_scores,
     has_careerFit: !!dataToInsert.career_fit,
     has_skillGap: !!dataToInsert.skill_gap,
     has_roadmap: !!dataToInsert.roadmap
   });
 
-  // Save results
-  console.log('=== Inserting into personal_assessment_results ===');
-  console.log('Attempt ID:', attemptId);
-  console.log('Student ID:', studentId);
-  console.log('Stream ID:', streamId);
+  // Save results - Use UPSERT to handle duplicate attempts
+  console.log('=== Upserting into personal_assessment_results ===');
   
   const { data: results, error: resultsError } = await supabase
     .from('personal_assessment_results')
-    .insert(dataToInsert)
+    .upsert(dataToInsert, {
+      onConflict: 'attempt_id',
+      ignoreDuplicates: false
+    })
     .select()
     .single();
 
   if (resultsError) {
-    console.error('❌ Error inserting results:', resultsError);
+    console.error('❌ Error upserting results:', resultsError);
     console.error('Full error object:', JSON.stringify(resultsError, null, 2));
-    console.error('Error details:', {
-      code: resultsError.code,
-      message: resultsError.message,
-      details: resultsError.details,
-      hint: resultsError.hint,
-      status: resultsError.status,
-      statusText: resultsError.statusText
-    });
     
     // Check if it's an RLS error
     if (resultsError.code === '42501' || resultsError.message?.includes('policy')) {
       console.error('🔒 This appears to be an RLS (Row Level Security) policy error');
-      console.error('The student_id in the insert must match auth.uid()');
+      console.error('The student_id in the upsert must match auth.uid()');
     }
     
     throw resultsError;
