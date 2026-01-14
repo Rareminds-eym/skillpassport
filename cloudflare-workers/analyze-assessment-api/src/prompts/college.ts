@@ -6,24 +6,43 @@ import type { AssessmentData } from '../types';
 
 export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: number): string {
   const isAfter10 = assessmentData.gradeLevel === 'after10';
+  const ruleBasedHint = (assessmentData as any).ruleBasedStreamHint;
+  const profileAnalysis = ruleBasedHint?.profileAnalysis;
+  const isFlatProfile = profileAnalysis?.isFlatProfile;
 
   // After 10th stream recommendation section
   const after10StreamSection = isAfter10 ? `
 ## ⚠️ CRITICAL: AFTER 10TH STREAM RECOMMENDATION (MANDATORY FOR THIS STUDENT) ⚠️
 This student is completing 10th grade and needs guidance on which 11th/12th stream to choose.
 
-${assessmentData.ruleBasedStreamHint ? `
+${ruleBasedHint ? `
 ## 🎯 RULE-BASED RECOMMENDATION (STRONGLY CONSIDER THIS):
 Our precise scoring algorithm analyzed this student's RIASEC scores and suggests:
 
-**Recommended Stream**: ${assessmentData.ruleBasedStreamHint.stream}
-**Confidence**: ${assessmentData.ruleBasedStreamHint.confidence}%
-**Match Level**: ${assessmentData.ruleBasedStreamHint.matchLevel}
-**RIASEC Scores**: ${JSON.stringify(assessmentData.ruleBasedStreamHint.riasecScores)}
-**Alternative**: ${assessmentData.ruleBasedStreamHint.alternativeStream || 'N/A'}
+**Recommended Stream**: ${ruleBasedHint.stream}
+**Confidence**: ${ruleBasedHint.confidence}%
+**Match Level**: ${ruleBasedHint.matchLevel}
+**RIASEC Scores**: ${JSON.stringify(ruleBasedHint.riasecScores)}
+**Alternative**: ${ruleBasedHint.alternativeStream || 'N/A'}
 
 **Top 3 Stream Matches**:
-${assessmentData.ruleBasedStreamHint.allScores?.map((s, i) => `${i + 1}. ${s.stream} (${s.score}% match, ${s.category})`).join('\n') || 'N/A'}
+${ruleBasedHint.allScores?.map((s: any, i: number) => `${i + 1}. ${s.stream} (${s.score}% match, ${s.category})`).join('\n') || 'N/A'}
+
+${isFlatProfile ? `
+## ⚠️ FLAT PROFILE WARNING ⚠️
+**This student has an UNDIFFERENTIATED interest profile!**
+- RIASEC Score Range: ${profileAnalysis.riasecRange} points
+- Standard Deviation: ${profileAnalysis.riasecStdDev}
+- Warning: ${profileAnalysis.warning}
+
+**IMPORTANT INSTRUCTIONS FOR FLAT PROFILES:**
+1. DO NOT give high confidence (max 70%) - the student's interests are too similar across all areas
+2. MUST present MULTIPLE valid stream options (at least 2-3 equally valid choices)
+3. Emphasize that the student should explore different fields before deciding
+4. Recommend the student consider their APTITUDE scores more heavily since interests are undifferentiated
+5. Suggest the student talk to counselors, attend career fairs, or try internships in different fields
+6. In the streamRecommendation.reasoning, explicitly mention that interests are undifferentiated
+` : ''}
 
 ⚠️ IMPORTANT: This recommendation is based on ACTUAL assessment scores using a validated algorithm.
 You should STRONGLY AGREE with this recommendation unless you have compelling evidence otherwise.
@@ -227,6 +246,14 @@ RIASEC SCORING RULES:
 - Response 4: 1 point
 - Response 5: 2 points
 - Maximum score per type = 20
+
+⚠️ CRITICAL RIASEC topThree CALCULATION:
+1. Calculate the total score for each of the 6 RIASEC types (R, I, A, S, E, C)
+2. Sort ALL 6 types by their scores in DESCENDING order (highest first)
+3. The "topThree" array MUST contain the 3 types with the HIGHEST scores
+4. The "code" string MUST be these 3 letters joined (e.g., if C=19, E=17, S=15, then code="CES")
+5. VERIFY: The first letter in topThree MUST have the highest score, second letter the second-highest, etc.
+6. DO NOT guess or assume - calculate from the actual responses above
 
 ## MULTI-APTITUDE BATTERY RESULTS:
 Pre-calculated Scores:

@@ -20,6 +20,189 @@ import { supabase } from '../../../../lib/supabaseClient';
 import type { GradeLevel } from '../config/sections';
 import { generateCourseRecommendations } from '../utils/courseRecommendations';
 
+/**
+ * Fetch AI-generated aptitude questions from database
+ * These questions have correct_answer field needed for scoring
+ * 
+ * IMPORTANT: We need to find questions that match the IDs in the student's answers,
+ * not just the latest questions (which may have different IDs if regenerated)
+ */
+const fetchAIAptitudeQuestions = async (studentId: string, answerKeys?: string[]): Promise<any[]> => {
+  try {
+    // If we have answer keys, extract the question IDs to find the right question set
+    let targetQuestionIds: string[] = [];
+    if (answerKeys && answerKeys.length > 0) {
+      targetQuestionIds = answerKeys
+        .filter(k => k.startsWith('aptitude_'))
+        .map(k => k.replace('aptitude_', ''));
+      console.log(`🔍 Looking for questions matching ${targetQuestionIds.length} answer IDs`);
+      console.log(`🔍 Sample target IDs:`, targetQuestionIds.slice(0, 3));
+    }
+
+    console.log(`📡 Fetching aptitude questions for student_id: ${studentId}`);
+
+    // Fetch ALL aptitude question sets for this student (not just the latest)
+    const { data: allQuestionSets, error } = await supabase
+      .from('career_assessment_ai_questions')
+      .select('id, questions, created_at')
+      .eq('student_id', studentId)
+      .eq('question_type', 'aptitude')
+      .order('created_at', { ascending: false });
+    
+    console.log(`📡 Query result: ${allQuestionSets?.length || 0} question sets found, error: ${error?.message || 'none'}`);
+
+    // If no questions found with provided studentId, try with current auth user
+    if ((!allQuestionSets || allQuestionSets.length === 0) && !error) {
+      console.log('⚠️ No questions found with provided studentId, trying with current auth user...');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && user.id !== studentId) {
+        console.log(`📡 Retrying with auth user id: ${user.id}`);
+        const { data: retryData, error: retryError } = await supabase
+          .from('career_assessment_ai_questions')
+          .select('id, questions, created_at')
+          .eq('student_id', user.id)
+          .eq('question_type', 'aptitude')
+          .order('created_at', { ascending: false });
+        
+        if (!retryError && retryData && retryData.length > 0) {
+          console.log(`✅ Found ${retryData.length} question sets with auth user id`);
+          // Continue with retryData
+          const matchingSet = findMatchingQuestionSet(retryData, targetQuestionIds);
+          return transformQuestions(matchingSet);
+        }
+      }
+    }
+
+    if (error || !allQuestionSets || allQuestionSets.length === 0) {
+      console.log('No AI aptitude questions found in database');
+      return [];
+    }
+
+    const matchingSet = findMatchingQuestionSet(allQuestionSets, targetQuestionIds);
+    return transformQuestions(matchingSet);
+  } catch (err) {
+    console.error('Error fetching AI aptitude questions:', err);
+    return [];
+  }
+};
+
+// Helper function to find matching question set
+const findMatchingQuestionSet = (allQuestionSets: any[], targetQuestionIds: string[]): any => {
+  let matchingQuestionSet = null;
+  
+  if (targetQuestionIds.length > 0) {
+    for (const questionSet of allQuestionSets) {
+      const questionIds = questionSet.questions.map((q: any) => q.id);
+      const matchCount = targetQuestionIds.filter(id => questionIds.includes(id)).length;
+      
+      if (matchCount > 0) {
+        console.log(`✅ Found question set with ${matchCount}/${targetQuestionIds.length} matching IDs (created: ${questionSet.created_at})`);
+        matchingQuestionSet = questionSet;
+        break;
+      }
+    }
+  }
+  
+  if (!matchingQuestionSet) {
+    console.log('⚠️ No matching question set found, using latest');
+    matchingQuestionSet = allQuestionSets[0];
+  }
+  
+  return matchingQuestionSet;
+};
+
+// Helper function to transform questions
+const transformQuestions = (questionSet: any): any[] => {
+  if (!questionSet || !questionSet.questions) return [];
+  
+  const questions = questionSet.questions.map((q: any) => ({
+    ...q,
+    correct: q.correct_answer,
+    correctAnswer: q.correct_answer,
+    subtype: q.subtype || q.category || 'verbal'
+  }));
+
+  console.log(`📚 Fetched ${questions.length} AI aptitude questions from database`);
+  return questions;
+};
+
+/**
+ * Fetch AI-generated knowledge questions from database
+ * 
+ * IMPORTANT: We need to find questions that match the IDs in the student's answers,
+ * not just the latest questions (which may have different IDs if regenerated)
+ */
+const fetchAIKnowledgeQuestions = async (studentId: string, answerKeys?: string[]): Promise<any[]> => {
+  try {
+    // If we have answer keys, extract the question IDs to find the right question set
+    let targetQuestionIds: string[] = [];
+    if (answerKeys && answerKeys.length > 0) {
+      targetQuestionIds = answerKeys
+        .filter(k => k.startsWith('knowledge_'))
+        .map(k => k.replace('knowledge_', ''));
+      console.log(`🔍 Looking for knowledge questions matching ${targetQuestionIds.length} answer IDs`);
+    }
+
+    console.log(`📡 Fetching knowledge questions for student_id: ${studentId}`);
+
+    // Fetch ALL knowledge question sets for this student (not just the latest)
+    const { data: allQuestionSets, error } = await supabase
+      .from('career_assessment_ai_questions')
+      .select('id, questions, created_at')
+      .eq('student_id', studentId)
+      .eq('question_type', 'knowledge')
+      .order('created_at', { ascending: false });
+
+    console.log(`📡 Knowledge query result: ${allQuestionSets?.length || 0} question sets found, error: ${error?.message || 'none'}`);
+
+    // If no questions found with provided studentId, try with current auth user
+    if ((!allQuestionSets || allQuestionSets.length === 0) && !error) {
+      console.log('⚠️ No knowledge questions found with provided studentId, trying with current auth user...');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && user.id !== studentId) {
+        console.log(`📡 Retrying knowledge with auth user id: ${user.id}`);
+        const { data: retryData, error: retryError } = await supabase
+          .from('career_assessment_ai_questions')
+          .select('id, questions, created_at')
+          .eq('student_id', user.id)
+          .eq('question_type', 'knowledge')
+          .order('created_at', { ascending: false });
+        
+        if (!retryError && retryData && retryData.length > 0) {
+          console.log(`✅ Found ${retryData.length} knowledge question sets with auth user id`);
+          const matchingSet = findMatchingQuestionSet(retryData, targetQuestionIds);
+          return transformKnowledgeQuestions(matchingSet);
+        }
+      }
+    }
+
+    if (error || !allQuestionSets || allQuestionSets.length === 0) {
+      console.log('No AI knowledge questions found in database');
+      return [];
+    }
+
+    const matchingSet = findMatchingQuestionSet(allQuestionSets, targetQuestionIds);
+    return transformKnowledgeQuestions(matchingSet);
+  } catch (err) {
+    console.error('Error fetching AI knowledge questions:', err);
+    return [];
+  }
+};
+
+// Helper function to transform knowledge questions
+const transformKnowledgeQuestions = (questionSet: any): any[] => {
+  if (!questionSet || !questionSet.questions) return [];
+  
+  const questions = questionSet.questions.map((q: any) => ({
+    ...q,
+    correct: q.correct_answer,
+    correctAnswer: q.correct_answer
+  }));
+
+  console.log(`📚 Fetched ${questions.length} AI knowledge questions from database`);
+  return questions;
+};
+
 interface Section {
   id: string;
   title: string;
@@ -119,7 +302,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
       localStorage.removeItem('assessment_gemini_results');
 
       // Prepare question banks for Gemini analysis
-      const questionBanks = {
+      let questionBanks = {
         riasecQuestions: getQuestionsForSection(sections, getSectionId('riasec', gradeLevel)),
         aptitudeQuestions: getQuestionsForSection(sections, getSectionId('aptitude', gradeLevel)),
         bigFiveQuestions: getQuestionsForSection(sections, getSectionId('bigfive', gradeLevel)),
@@ -127,6 +310,64 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         employabilityQuestions: getQuestionsForSection(sections, 'employability'),
         streamKnowledgeQuestions: { [studentStream || '']: getQuestionsForSection(sections, getSectionId('knowledge', gradeLevel)) }
       };
+
+      // Check if we need to fetch AI-generated questions from database
+      // This is needed because AI questions have correct_answer field for scoring
+      // IMPORTANT: For AI assessments (after10, after12, college, higher_secondary), 
+      // ALWAYS fetch from database because frontend questions don't have correct_answer
+      const aptitudeAnswerKeys = Object.keys(answers).filter(k => k.startsWith('aptitude_'));
+      const knowledgeAnswerKeys = Object.keys(answers).filter(k => k.startsWith('knowledge_'));
+      
+      // AI assessment grade levels that use AI-generated questions
+      const isAIAssessment = ['after10', 'after12', 'college', 'higher_secondary'].includes(gradeLevel || '');
+      
+      // For AI assessments, ALWAYS fetch from database (even if sections have questions)
+      // because frontend questions don't have correct_answer field needed for scoring
+      if (aptitudeAnswerKeys.length > 0 && userId) {
+        const shouldFetch = isAIAssessment || !questionBanks.aptitudeQuestions || questionBanks.aptitudeQuestions.length === 0;
+        
+        if (shouldFetch) {
+          console.log(`📡 Fetching AI-generated aptitude questions from database for scoring... (isAIAssessment: ${isAIAssessment}, userId: ${userId})`);
+          let aiAptitudeQuestions = await fetchAIAptitudeQuestions(userId, aptitudeAnswerKeys);
+          
+          // If no questions found, wait a bit and retry (questions might still be saving)
+          if (aiAptitudeQuestions.length === 0) {
+            console.log('⏳ No questions found, waiting 1s and retrying...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            aiAptitudeQuestions = await fetchAIAptitudeQuestions(userId, aptitudeAnswerKeys);
+          }
+          
+          if (aiAptitudeQuestions.length > 0) {
+            questionBanks.aptitudeQuestions = aiAptitudeQuestions;
+            console.log(`✅ Loaded ${aiAptitudeQuestions.length} AI aptitude questions with correct answers`);
+          } else {
+            console.warn('⚠️ No AI aptitude questions found in database - scoring may be inaccurate');
+          }
+        }
+      }
+
+      if (knowledgeAnswerKeys.length > 0 && userId) {
+        const shouldFetch = isAIAssessment || !questionBanks.streamKnowledgeQuestions?.[studentStream || ''] || questionBanks.streamKnowledgeQuestions[studentStream || ''].length === 0;
+        
+        if (shouldFetch) {
+          console.log(`📡 Fetching AI-generated knowledge questions from database for scoring... (isAIAssessment: ${isAIAssessment}, userId: ${userId})`);
+          let aiKnowledgeQuestions = await fetchAIKnowledgeQuestions(userId, knowledgeAnswerKeys);
+          
+          // If no questions found, wait a bit and retry (questions might still be saving)
+          if (aiKnowledgeQuestions.length === 0) {
+            console.log('⏳ No knowledge questions found, waiting 1s and retrying...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            aiKnowledgeQuestions = await fetchAIKnowledgeQuestions(userId, knowledgeAnswerKeys);
+          }
+          
+          if (aiKnowledgeQuestions.length > 0) {
+            questionBanks.streamKnowledgeQuestions = { [studentStream || '']: aiKnowledgeQuestions };
+            console.log(`✅ Loaded ${aiKnowledgeQuestions.length} AI knowledge questions with correct answers`);
+          } else {
+            console.warn('⚠️ No AI knowledge questions found in database - scoring may be inaccurate');
+          }
+        }
+      }
 
       console.log('📚 Question banks prepared:', {
         riasec: questionBanks.riasecQuestions?.length || 0,

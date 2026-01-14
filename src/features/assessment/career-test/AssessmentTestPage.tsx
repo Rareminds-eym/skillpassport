@@ -220,6 +220,7 @@ const AssessmentTestPage: React.FC = () => {
       console.log(`Section ${sectionId} completed in ${timeSpent}s`);
       if (useDatabase && currentAttempt?.id) {
         // Save all responses including non-UUID questions (RIASEC, BigFive, etc.)
+        // Note: flow.answers should be up-to-date here since section is complete
         dbUpdateProgress(flow.currentSectionIndex, 0, flow.sectionTimings, null, null, flow.answers);
       }
     },
@@ -236,11 +237,15 @@ const AssessmentTestPage: React.FC = () => {
           dbSaveResponse(sectionId, qId, answer);
         }
         // Note: Non-UUID questions (RIASEC, BigFive, etc.) are saved via all_responses
-        // in the updateProgress call below, which includes flow.answers
+        // in the updateProgress call below
+        
+        // IMPORTANT: flow.answers is stale here (React state is async)
+        // We need to include the current answer in the update
+        const updatedAnswers = { ...flow.answers, [questionId]: answer };
         
         // Update progress (current position) after every answer
         // Also save all responses to the all_responses column
-        dbUpdateProgress(flow.currentSectionIndex, flow.currentQuestionIndex, flow.sectionTimings, null, null, flow.answers);
+        dbUpdateProgress(flow.currentSectionIndex, flow.currentQuestionIndex, flow.sectionTimings, null, null, updatedAnswers);
       }
     }
   });
@@ -275,10 +280,21 @@ const AssessmentTestPage: React.FC = () => {
     },
   });
   
+  // Track if initial check has been done (prevents re-running after assessment starts)
+  const initialCheckDoneRef = React.useRef(false);
+  
   // Check for existing in-progress attempt on mount
   // OPTIMIZED: Start checking as soon as studentRecordId is available
+  // FIXED: Only run ONCE on initial mount, not on every dependency change
   useEffect(() => {
     const checkExisting = async () => {
+      // CRITICAL: Skip if we've already done the initial check
+      // This prevents showing "Resume Your Assessment?" after user clicks "Start Section"
+      if (initialCheckDoneRef.current) {
+        console.log('⏭️ Skipping checkExisting - already done initial check');
+        return;
+      }
+      
       // If still loading student record, wait
       if (dbLoading) {
         return;
@@ -287,6 +303,7 @@ const AssessmentTestPage: React.FC = () => {
       // If no student record found, proceed to grade selection immediately
       if (!studentRecordId) {
         console.log('🚀 No student record, skipping to grade selection');
+        initialCheckDoneRef.current = true;
         setCheckingExistingAttempt(false);
         flow.setCurrentScreen('grade_selection');
         return;
@@ -299,6 +316,9 @@ const AssessmentTestPage: React.FC = () => {
         const endTime = performance.now();
         console.log(`✅ In-progress check completed in ${Math.round(endTime - startTime)}ms`);
         
+        // Mark initial check as done BEFORE setting state
+        initialCheckDoneRef.current = true;
+        
         if (attempt) {
           setPendingAttempt(attempt);
           setShowResumePrompt(true);
@@ -307,6 +327,7 @@ const AssessmentTestPage: React.FC = () => {
         }
       } catch (err) {
         console.error('Error checking existing attempt:', err);
+        initialCheckDoneRef.current = true;
         flow.setCurrentScreen('grade_selection');
       } finally {
         setCheckingExistingAttempt(false);
@@ -433,15 +454,8 @@ const AssessmentTestPage: React.FC = () => {
       flow.setStudentStream('general');
       setAssessmentStarted(true);
       
-      // Start database attempt with 'general' stream
-      if (studentRecordId) {
-        try {
-          setUseDatabase(true);
-          await dbStartAssessment('general', level);
-        } catch (err) {
-          console.error('Error starting assessment:', err);
-        }
-      }
+      // DON'T create attempt here - wait until user clicks "Start Section"
+      // This prevents orphan attempts when user just browses
       
       flow.setCurrentScreen('section_intro');
     } else if (level === 'college') {
@@ -454,15 +468,8 @@ const AssessmentTestPage: React.FC = () => {
       
       flow.setStudentStream(normalizedStreamId);
       
-      // Start database attempt with normalized stream ID
-      if (studentRecordId) {
-        try {
-          setUseDatabase(true);
-          await dbStartAssessment(normalizedStreamId, 'college');
-        } catch (err) {
-          console.error('Error starting assessment:', err);
-        }
-      }
+      // DON'T create attempt here - wait until user clicks "Start Section"
+      // This prevents orphan attempts when user just browses
       
       flow.setCurrentScreen('section_intro');
     } else {
@@ -480,15 +487,8 @@ const AssessmentTestPage: React.FC = () => {
     flow.setStudentStream(category);
     setAssessmentStarted(true);
     
-    // Start database attempt with category as stream
-    if (studentRecordId) {
-      try {
-        setUseDatabase(true);
-        await dbStartAssessment(category, flow.gradeLevel || 'after12');
-      } catch (err) {
-        console.error('Error starting assessment:', err);
-      }
-    }
+    // DON'T create attempt here - wait until user clicks "Start Section"
+    // This prevents orphan attempts when user just browses
     
     flow.setCurrentScreen('section_intro');
   }, [flow, studentRecordId, dbStartAssessment]);
@@ -497,15 +497,8 @@ const AssessmentTestPage: React.FC = () => {
     flow.setStudentStream(stream);
     setAssessmentStarted(true);
     
-    // Start database attempt
-    if (studentRecordId) {
-      try {
-        setUseDatabase(true);
-        await dbStartAssessment(stream, flow.gradeLevel || 'after12');
-      } catch (err) {
-        console.error('Error starting assessment:', err);
-      }
-    }
+    // DON'T create attempt here - wait until user clicks "Start Section"
+    // This prevents orphan attempts when user just browses
     
     flow.setCurrentScreen('section_intro');
   }, [flow, studentRecordId, dbStartAssessment]);
@@ -561,8 +554,26 @@ const AssessmentTestPage: React.FC = () => {
     flow.setCurrentScreen('grade_selection');
   }, [pendingAttempt, flow]);
   
-  const handleStartSection = useCallback(() => {
+  const handleStartSection = useCallback(async () => {
     const currentSection = sections[flow.currentSectionIndex];
+    
+    // SAFEGUARD: Ensure resume prompt is hidden when starting a section
+    // This prevents any race conditions from showing the prompt
+    if (showResumePrompt) {
+      setShowResumePrompt(false);
+      setPendingAttempt(null);
+    }
+    
+    // Create database attempt on first section start (if not already created)
+    if (flow.currentSectionIndex === 0 && !currentAttempt && studentRecordId) {
+      try {
+        console.log('📝 Creating assessment attempt on first section start...');
+        setUseDatabase(true);
+        await dbStartAssessment(flow.studentStream || 'general', flow.gradeLevel || 'after10');
+      } catch (err) {
+        console.error('Error starting assessment:', err);
+      }
+    }
     
     // Initialize timer for timed sections
     if (currentSection?.isTimed && currentSection.timeLimit) {
@@ -583,7 +594,7 @@ const AssessmentTestPage: React.FC = () => {
     }
     
     flow.startSection();
-  }, [sections, flow, adaptiveAptitude]);
+  }, [sections, flow, adaptiveAptitude, currentAttempt, studentRecordId, dbStartAssessment, showResumePrompt]);
   
   const handleNextQuestion = useCallback(() => {
     const currentSection = sections[flow.currentSectionIndex];
