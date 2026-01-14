@@ -1,0 +1,19 @@
+{
+  "name": "role-overview-api",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for generating career role overview data (responsibilities, roadmap, courses, etc.)",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.91.0"
+  }
+}

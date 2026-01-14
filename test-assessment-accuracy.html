@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessment Accuracy Checker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .test-profile {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        .test-profile h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .test-profile .answers {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .expected {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        .riasec-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .riasec-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        .riasec-card.active {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        .riasec-card h4 {
+            color: #667eea;
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
+        .riasec-card .score {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+        }
+        .riasec-card .label {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .manual-counter {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .manual-counter h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+        .counter-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+        }
+        .counter-item {
+            text-align: center;
+        }
+        .counter-item input {
+            width: 60px;
+            height: 60px;
+            font-size: 24px;
+            text-align: center;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .counter-item label {
+            display: block;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #856404;
+            font-weight: 600;
+        }
+        .result-box {
+            background: #d1ecf1;
+            border: 2px solid #17a2b8;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .result-box h3 {
+            color: #0c5460;
+            margin-bottom: 10px;
+        }
+        .result-box .stream {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0c5460;
+            margin: 10px 0;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .checklist {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .checklist h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .checklist-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+        }
+        .checklist-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status.pass { background: #d4edda; color: #155724; }
+        .status.fail { background: #f8d7da; color: #721c24; }
+        .status.warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Assessment Accuracy Verification Tool</h1>
+        <p class="subtitle">Cross-check if your assessment answers match the recommended stream</p>
+
+        <!-- Manual Counter -->
+        <div class="manual-counter">
+            <h3>📊 Step 1: Count Your "Yes" Answers Manually</h3>
+            <p style="margin-bottom: 15px; color: #856404;">
+                Go through your assessment answers and count how many times you said "Yes" to each type:
+            </p>
+            <div class="counter-grid">
+                <div class="counter-item">
+                    <input type="number" id="r-count" min="0" max="8" value="0" />
+                    <label>R - Realistic<br>(Hands-on)</label>
+                </div>
+                <div class="counter-item">
+                    <input type="number" id="i-count" min="0" max="8" value="0" />
+                    <label>I - Investigative<br>(Science)</label>
+                </div>
+                <div class="counter-item">
+                    <input type="number" id="a-count" min="0" max="8" value="0" />
+                    <label>A - Artistic<br>(Creative)</label>
+                </div>
+                <div class="counter-item">
+                    <input type="number" id="s-count" min="0" max="8" value="0" />
+                    <label>S - Social<br>(Helping)</label>
+                </div>
+                <div class="counter-item">
+                    <input type="number" id="e-count" min="0" max="8" value="0" />
+                    <label>E - Enterprising<br>(Business)</label>
+                </div>
+                <div class="counter-item">
+                    <input type="number" id="c-count" min="0" max="8" value="0" />
+                    <label>C - Conventional<br>(Organized)</label>
+                </div>
+            </div>
+            <button onclick="calculateStream()" style="margin-top: 20px;">Calculate Expected Stream</button>
+        </div>
+
+        <!-- Result Display -->
+        <div class="result-box" id="result-box" style="display: none;">
+            <h3>🎓 Expected Stream Based on Your Counts:</h3>
+            <div class="stream" id="expected-stream"></div>
+            <p id="reasoning"></p>
+        </div>
+
+        <!-- Test Profiles -->
+        <h2 style="margin: 30px 0 20px 0; color: #333;">🧪 Quick Test Profiles</h2>
+        
+        <div class="test-profile">
+            <h3>Test 1: Medical Student Profile</h3>
+            <div class="answers">
+                Answer "Yes" to all I questions (i1-i8) + all S questions (s1-s8)<br>
+                RIASEC Scores: R=0, I=8, A=0, S=8, E=0, C=0
+            </div>
+            <div class="expected">✅ Expected: PCMB or PCB (Medical/Biology stream)</div>
+        </div>
+
+        <div class="test-profile">
+            <h3>Test 2: Tech/Engineering Student Profile</h3>
+            <div class="answers">
+                Answer "Yes" to all I questions (i1-i8) + all R questions (r1-r8)<br>
+                RIASEC Scores: R=8, I=8, A=0, S=0, E=0, C=0
+            </div>
+            <div class="expected">✅ Expected: PCMS or PCM (Tech/Engineering stream)</div>
+        </div>
+
+        <div class="test-profile">
+            <h3>Test 3: Business Student Profile</h3>
+            <div class="answers">
+                Answer "Yes" to all E questions (e1-e8) + all C questions (c1-c8)<br>
+                RIASEC Scores: R=0, I=0, A=0, S=0, E=8, C=8
+            </div>
+            <div class="expected">✅ Expected: Commerce (Business stream)</div>
+        </div>
+
+        <div class="test-profile">
+            <h3>Test 4: Creative/Arts Student Profile</h3>
+            <div class="answers">
+                Answer "Yes" to all A questions (a1-a8) + all S questions (s1-s8)<br>
+                RIASEC Scores: R=0, I=0, A=8, S=8, E=0, C=0
+            </div>
+            <div class="expected">✅ Expected: Arts/Humanities stream</div>
+        </div>
+
+        <!-- Verification Checklist -->
+        <div class="checklist">
+            <h3>✅ Verification Checklist</h3>
+            <div class="checklist-item">
+                <input type="checkbox" id="check1">
+                <label for="check1">Different test profiles give different stream recommendations</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="check2">
+                <label for="check2">RIASEC scores in console match my manual count</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="check3">
+                <label for="check3">Recommended stream matches my top 2 RIASEC types</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="check4">
+                <label for="check4">Confidence score is between 75-100%</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="check5">
+                <label for="check5">Career paths shown are relevant to the stream</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="check6">
+                <label for="check6">No console errors during assessment</label>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div style="background: #e7f3ff; border-left: 4px solid #2196F3; padding: 20px; border-radius: 8px; margin-top: 30px;">
+            <h3 style="color: #1976D2; margin-bottom: 10px;">📝 How to Use This Tool:</h3>
+            <ol style="color: #333; line-height: 1.8; margin-left: 20px;">
+                <li>Take the assessment in your app</li>
+                <li>Open browser console (F12) and note the RIASEC scores</li>
+                <li>Enter those scores in the counter above</li>
+                <li>Click "Calculate Expected Stream"</li>
+                <li>Compare with what your app recommended</li>
+                <li>Try the 4 test profiles to verify different inputs give different outputs</li>
+                <li>Check all items in the verification checklist</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function calculateStream() {
+            const scores = {
+                R: parseInt(document.getElementById('r-count').value) || 0,
+                I: parseInt(document.getElementById('i-count').value) || 0,
+                A: parseInt(document.getElementById('a-count').value) || 0,
+                S: parseInt(document.getElementById('s-count').value) || 0,
+                E: parseInt(document.getElementById('e-count').value) || 0,
+                C: parseInt(document.getElementById('c-count').value) || 0
+            };
+
+            // Sort to get top 2
+            const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+            const top1 = sorted[0][0];
+            const top2 = sorted[1][0];
+            const top1Score = sorted[0][1];
+            const top2Score = sorted[1][1];
+
+            let stream = '';
+            let reasoning = '';
+
+            // Determine stream based on top 2 types
+            if ((top1 === 'I' && top2 === 'S') || (top1 === 'S' && top2 === 'I')) {
+                stream = 'PCMB or PCB (Medical/Biology)';
+                reasoning = 'High Investigative + Social scores indicate interest in medical sciences and helping people.';
+            } else if ((top1 === 'I' && top2 === 'R') || (top1 === 'R' && top2 === 'I')) {
+                stream = 'PCMS or PCM (Tech/Engineering)';
+                reasoning = 'High Investigative + Realistic scores indicate interest in technology and engineering.';
+            } else if ((top1 === 'E' && top2 === 'C') || (top1 === 'C' && top2 === 'E')) {
+                stream = 'Commerce';
+                reasoning = 'High Enterprising + Conventional scores indicate interest in business and finance.';
+            } else if ((top1 === 'A' && top2 === 'S') || (top1 === 'S' && top2 === 'A')) {
+                stream = 'Arts/Humanities';
+                reasoning = 'High Artistic + Social scores indicate interest in creative and social fields.';
+            } else if (top1 === 'I' && top2 === 'E') {
+                stream = 'Arts with Economics or Commerce';
+                reasoning = 'High Investigative + Enterprising scores indicate analytical business thinking.';
+            } else if (top1 === 'S' && top2 === 'I') {
+                stream = 'Arts with Psychology or PCB';
+                reasoning = 'High Social + Investigative scores indicate interest in understanding human behavior.';
+            } else if (top1 === 'I') {
+                stream = 'Science stream (PCM/PCMS/PCMB)';
+                reasoning = 'High Investigative score indicates strong analytical and scientific thinking.';
+            } else if (top1 === 'R') {
+                stream = 'PCM (Engineering)';
+                reasoning = 'High Realistic score indicates hands-on and practical orientation.';
+            } else if (top1 === 'E' || top1 === 'C') {
+                stream = 'Commerce';
+                reasoning = 'High Enterprising or Conventional score indicates business orientation.';
+            } else if (top1 === 'A' || top1 === 'S') {
+                stream = 'Arts/Humanities';
+                reasoning = 'High Artistic or Social score indicates creative or people-oriented interests.';
+            } else {
+                stream = 'Unable to determine';
+                reasoning = 'Please enter your RIASEC scores above.';
+            }
+
+            document.getElementById('result-box').style.display = 'block';
+            document.getElementById('expected-stream').textContent = stream;
+            document.getElementById('reasoning').innerHTML = `
+                <strong>Top 2 Types:</strong> ${top1} (${top1Score}) and ${top2} (${top2Score})<br>
+                <strong>Reasoning:</strong> ${reasoning}
+            `;
+        }
+    </script>
+</body>
+</html>

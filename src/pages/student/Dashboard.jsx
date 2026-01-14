@@ -213,6 +213,12 @@ const StudentDashboard = () => {
     hasInProgressAssessment,
   } = useAssessmentRecommendations(studentId, !!studentId && !isViewingOthersProfile);
 
+  // Debug: Log student ID being passed to assessment hook
+  useEffect(() => {
+    console.log('📋 Dashboard: studentId for assessment hook:', studentId);
+    console.log('📋 Dashboard: enabled?', !!studentId && !isViewingOthersProfile);
+  }, [studentId, isViewingOthersProfile]);
+
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
     education: educationData,

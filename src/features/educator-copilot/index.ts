@@ -4,7 +4,7 @@
  */
 
 export { default as EducatorCopilot } from './components/EducatorCopilot';
-export { educatorIntelligenceEngine } from './services/educatorIntelligenceEngine';
+export { educatorIntelligence } from './services/educatorIntelligence';
 export { educatorWelcomeConfig, educatorChatConfig } from './config/educatorConfig';
 export { 
   StudentInsightCard,

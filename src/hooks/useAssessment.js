@@ -1,10 +1,13 @@
 /**
  * useAssessment Hook
  * Provides assessment functionality with database integration
+ * 
+ * OPTIMIZED: All initial data is loaded in parallel for faster startup
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabaseClient';
 import * as assessmentService from '../services/assessmentService';
 
 export const useAssessment = () => {
@@ -16,18 +19,54 @@ export const useAssessment = () => {
   const [currentAttempt, setCurrentAttempt] = useState(null);
   const [questions, setQuestions] = useState({});
   const [responses, setResponses] = useState({});
+  const [studentRecordId, setStudentRecordId] = useState(null);
+  
+  // Track if initial load is complete
+  const initialLoadComplete = useRef(false);
 
-  // Load sections and streams on mount
+  // OPTIMIZED: Load ALL initial data in parallel (sections, streams, student ID)
   useEffect(() => {
-    const loadInitialData = async () => {
+    const loadAllInitialData = async () => {
+      // Skip if no user or already loaded
+      if (!user?.id || initialLoadComplete.current) {
+        if (!user?.id) setLoading(false);
+        return;
+      }
+      
       try {
         setLoading(true);
-        const [sectionsData, streamsData] = await Promise.all([
+        console.log('🚀 useAssessment: Loading all initial data in parallel...');
+        const startTime = performance.now();
+        
+        // Run ALL queries in parallel for maximum speed
+        const [sectionsData, streamsData, studentData] = await Promise.all([
+          // 1. Fetch sections
           assessmentService.fetchSections(),
-          assessmentService.fetchStreams()
+          // 2. Fetch streams
+          assessmentService.fetchStreams(),
+          // 3. Fetch student ID (optimized single query with OR condition)
+          supabase
+            .from('students')
+            .select('id')
+            .or(`user_id.eq.${user.id},id.eq.${user.id}`)
+            .maybeSingle()
         ]);
-        setSections(sectionsData);
-        setStreams(streamsData);
+        
+        const endTime = performance.now();
+        console.log(`✅ useAssessment: All data loaded in ${Math.round(endTime - startTime)}ms`);
+        
+        // Set all state at once
+        setSections(sectionsData || []);
+        setStreams(streamsData || []);
+        
+        if (studentData.data?.id) {
+          console.log('useAssessment: Found student record:', studentData.data.id);
+          setStudentRecordId(studentData.data.id);
+        } else {
+          console.log('useAssessment: No student record found for user:', user.id);
+        }
+        
+        initialLoadComplete.current = true;
       } catch (err) {
         console.error('Error loading assessment data:', err);
         setError(err.message);
@@ -36,62 +75,7 @@ export const useAssessment = () => {
       }
     };
 
-    loadInitialData();
-  }, []);
-
-  // Get student record ID from students table (not auth user ID)
-  const [studentRecordId, setStudentRecordId] = useState(null);
-  
-  // Fetch student record ID on mount
-  useEffect(() => {
-    const fetchStudentId = async () => {
-      if (!user?.id) {
-        console.log('useAssessment: No user.id, skipping student fetch');
-        return;
-      }
-      
-      console.log('useAssessment: Fetching student record for user.id:', user.id);
-      
-      try {
-        const { supabase } = await import('../lib/supabaseClient');
-        
-        // First try to find student by user_id (auth user ID)
-        let { data, error } = await supabase
-          .from('students')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        console.log('useAssessment: Student fetch by user_id result:', { data, error });
-        
-        // If not found by user_id, check if user.id IS the student table ID directly
-        if (!data && !error) {
-          console.log('useAssessment: No student found by user_id, checking if user.id is student table ID...');
-          const { data: directData, error: directError } = await supabase
-            .from('students')
-            .select('id')
-            .eq('id', user.id)
-            .maybeSingle();
-          
-          console.log('useAssessment: Student fetch by id result:', { directData, directError });
-          
-          if (directData?.id) {
-            data = directData;
-          }
-        }
-        
-        if (data?.id) {
-          console.log('useAssessment: Setting studentRecordId to:', data.id);
-          setStudentRecordId(data.id);
-        } else {
-          console.log('useAssessment: No student record found for user.id:', user.id);
-        }
-      } catch (err) {
-        console.error('Error fetching student record ID:', err);
-      }
-    };
-    
-    fetchStudentId();
+    loadAllInitialData();
   }, [user?.id]);
 
   // Check for in-progress attempt
@@ -105,6 +89,15 @@ export const useAssessment = () => {
         // Restore responses from the attempt
         const restoredResponses = {};
         
+        // IMPORTANT: First restore all_responses (RIASEC, BigFive, Values, Employability, etc.)
+        // These are stored directly in the attempt record, not in personal_assessment_responses
+        if (attempt.all_responses && typeof attempt.all_responses === 'object') {
+          Object.entries(attempt.all_responses).forEach(([key, value]) => {
+            restoredResponses[key] = value;
+          });
+          console.log('✅ Restored', Object.keys(attempt.all_responses).length, 'responses from all_responses');
+        }
+        
         // Get sections to map IDs to names (for regular database questions)
         let sectionIdToName = {};
         try {
@@ -116,6 +109,7 @@ export const useAssessment = () => {
           console.warn('Could not fetch sections for response restoration:', e);
         }
         
+        // Then restore AI-generated question responses from personal_assessment_responses table
         attempt.responses?.forEach(r => {
           if (r.question_id && r.response_value !== null) {
             // For regular questions with section info, use sectionName_questionId format
@@ -187,6 +181,16 @@ export const useAssessment = () => {
           restoredResponses[`${section.name}_${r.question_id}`] = r.response_value;
         }
       });
+      
+      // CRITICAL FIX: Also restore from all_responses column (RIASEC, BigFive, Values, etc.)
+      if (attempt.all_responses) {
+        console.log('🔄 Restoring answers from all_responses column:', Object.keys(attempt.all_responses).length);
+        Object.entries(attempt.all_responses).forEach(([key, value]) => {
+          restoredResponses[key] = value;
+        });
+        console.log('✅ Total restored responses:', Object.keys(restoredResponses).length);
+      }
+      
       setResponses(restoredResponses);
 
       return attempt;
@@ -227,7 +231,7 @@ export const useAssessment = () => {
   }, [currentAttempt?.id]);
 
   // Update progress
-  const updateProgress = useCallback(async (sectionIndex, questionIndex, sectionTimings, timerRemaining = null, elapsedTime = null) => {
+  const updateProgress = useCallback(async (sectionIndex, questionIndex, sectionTimings, timerRemaining = null, elapsedTime = null, allResponses = null) => {
     if (!currentAttempt?.id) return { success: false, error: 'No active attempt' };
 
     try {
@@ -236,7 +240,8 @@ export const useAssessment = () => {
         questionIndex,
         sectionTimings,
         timerRemaining,
-        elapsedTime
+        elapsedTime,
+        allResponses
       });
       return { success: true };
     } catch (err) {

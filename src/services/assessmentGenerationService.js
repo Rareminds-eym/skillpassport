@@ -153,7 +153,9 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
     console.log('🎯 Generating assessment for:', courseName, 'Level:', level);
 
     // Call backend API (Cloudflare Worker) to generate assessment
-    const backendUrl = import.meta.env.VITE_EXTERNAL_API_KEY || 'http://localhost:3001';
+    // Use unified question generation API
+    const backendUrl = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
+      'https://question-generation-api.dark-mode-d021.workers.dev';
     const apiUrl = `${backendUrl}/api/assessment/generate`;
 
     console.log('📡 Calling backend API:', apiUrl);

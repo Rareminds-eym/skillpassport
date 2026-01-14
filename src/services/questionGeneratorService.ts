@@ -6,8 +6,14 @@
  * 
  * Requirements: 4.1, 4.2, 1.4, 6.1, 2.5, 6.2, 3.1, 3.2, 7.1
  * 
- * NOTE: This service now uses a Cloudflare Worker for secure API key handling.
- * The worker is deployed at: adaptive-aptitude-api.dark-mode-d021.workers.dev
+ * NOTE: This service uses the unified question-generation-api Cloudflare Worker.
+ * The worker is deployed at: question-generation-api.dark-mode-d021.workers.dev
+ * 
+ * Endpoints used:
+ * - POST /generate/diagnostic - Diagnostic screener questions
+ * - POST /generate/adaptive - Adaptive core questions
+ * - POST /generate/stability - Stability confirmation questions
+ * - POST /generate/single - Single question generation
  */
 
 import { supabase } from '../lib/supabaseClient';
@@ -25,8 +31,8 @@ import {
 // =============================================================================
 
 // Use environment variable or fallback to production URL
-const ADAPTIVE_APTITUDE_API_URL = import.meta.env.VITE_ADAPTIVE_APTITUDE_API_URL || 
-  'https://adaptive-aptitude-api.dark-mode-d021.workers.dev';
+const ADAPTIVE_APTITUDE_API_URL = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
+  'https://question-generation-api.dark-mode-d021.workers.dev';
 
 /**
  * Makes a request to the Cloudflare Worker API
