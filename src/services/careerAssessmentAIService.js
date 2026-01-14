@@ -48,6 +48,18 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
     name: 'Science (PCB)',
     topics: ['Physics fundamentals', 'Chemistry basics', 'Biology concepts', 'Medical sciences basics', 'Laboratory techniques', 'Scientific method']
   },
+  'commerce_maths': {
+    name: 'Commerce with Maths',
+    topics: ['Accountancy basics', 'Business Studies', 'Economics fundamentals', 'Mathematics for Commerce', 'Statistics', 'Financial literacy']
+  },
+  'commerce_general': {
+    name: 'Commerce without Maths',
+    topics: ['Accountancy basics', 'Business Studies', 'Economics fundamentals', 'Business Communication', 'Entrepreneurship', 'Financial literacy']
+  },
+  'arts_humanities': {
+    name: 'Arts & Humanities',
+    topics: ['English Literature', 'History concepts', 'Political Science basics', 'Psychology fundamentals', 'Sociology', 'Critical thinking']
+  },
   
   // ═══════════════════════════════════════════════════════════════════════════
   // B.TECH / ENGINEERING SPECIALIZATIONS (College/University)
@@ -183,6 +195,50 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
   'b.tech': {
     name: 'B.Tech Engineering',
     topics: ['Engineering Mathematics', 'Physics Applications', 'Problem Solving', 'Technical Analysis', 'Design Thinking', 'Project Management']
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // M.TECH / POSTGRADUATE ENGINEERING (Masters)
+  // ═══════════════════════════════════════════════════════════════════════════
+  'mtech_cse': {
+    name: 'M.Tech Computer Science',
+    topics: ['Advanced Algorithms', 'Machine Learning', 'Distributed Systems', 'Cloud Computing', 'Research Methodology', 'Advanced Database Systems']
+  },
+  'mtech_cs': {
+    name: 'M.Tech Computer Science',
+    topics: ['Advanced Algorithms', 'Machine Learning', 'Distributed Systems', 'Cloud Computing', 'Research Methodology', 'Advanced Database Systems']
+  },
+  'mtech_ece': {
+    name: 'M.Tech Electronics',
+    topics: ['VLSI Design', 'Advanced Signal Processing', 'Wireless Communication', 'Embedded Systems Design', 'Microwave Engineering', 'Research Methods']
+  },
+  'mtech_electronics': {
+    name: 'M.Tech Electronics',
+    topics: ['VLSI Design', 'Advanced Signal Processing', 'Wireless Communication', 'Embedded Systems Design', 'Microwave Engineering', 'Research Methods']
+  },
+  'mtech_mechanical': {
+    name: 'M.Tech Mechanical',
+    topics: ['Advanced Thermodynamics', 'Computational Fluid Dynamics', 'Finite Element Analysis', 'Advanced Manufacturing', 'Robotics', 'Research Methodology']
+  },
+  'mtech_mech': {
+    name: 'M.Tech Mechanical',
+    topics: ['Advanced Thermodynamics', 'Computational Fluid Dynamics', 'Finite Element Analysis', 'Advanced Manufacturing', 'Robotics', 'Research Methodology']
+  },
+  'mtech_civil': {
+    name: 'M.Tech Civil',
+    topics: ['Advanced Structural Analysis', 'Geotechnical Engineering', 'Transportation Planning', 'Environmental Engineering', 'Construction Technology', 'Research Methods']
+  },
+  'mtech_aiml': {
+    name: 'M.Tech AI & ML',
+    topics: ['Deep Learning', 'Natural Language Processing', 'Computer Vision', 'Reinforcement Learning', 'Neural Networks', 'AI Research']
+  },
+  'mtech_ds': {
+    name: 'M.Tech Data Science',
+    topics: ['Big Data Analytics', 'Advanced Machine Learning', 'Data Mining', 'Statistical Modeling', 'Data Visualization', 'Research Methodology']
+  },
+  mtech: {
+    name: 'M.Tech Engineering',
+    topics: ['Advanced Engineering Concepts', 'Research Methodology', 'Technical Analysis', 'Innovation', 'Project Management', 'Specialized Engineering']
   },
   
   // ═══════════════════════════════════════════════════════════════════════════
@@ -548,6 +604,10 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
   // ═══════════════════════════════════════════════════════════════════════════
   // GENERIC/FALLBACK STREAMS
   // ═══════════════════════════════════════════════════════════════════════════
+  general: {
+    name: 'General Assessment',
+    topics: ['Logical Reasoning', 'Verbal Ability', 'Numerical Aptitude', 'General Knowledge', 'Critical Thinking', 'Problem Solving']
+  },
   college: {
     name: 'College/University',
     topics: ['Critical Thinking', 'Communication Skills', 'Problem Solving', 'Research Methods', 'Professional Ethics', 'Career Planning']
@@ -645,6 +705,41 @@ export function normalizeStreamId(programName) {
     
     'b.tech chemical': 'btech_chem',
     'chemical engineering': 'btech_chem',
+    
+    // M.Tech variations -> short keys
+    'master of technology in computer science': 'mtech_cse',
+    'master of technology in computer science and engineering': 'mtech_cse',
+    'm.tech computer science': 'mtech_cse',
+    'm.tech cse': 'mtech_cse',
+    'mtech cse': 'mtech_cse',
+    'mtech computer science': 'mtech_cse',
+    'm.tech cs': 'mtech_cs',
+    'mtech cs': 'mtech_cs',
+    
+    'master of technology in electronics': 'mtech_ece',
+    'master of technology in electronics and communication': 'mtech_ece',
+    'm.tech electronics': 'mtech_ece',
+    'm.tech ece': 'mtech_ece',
+    'mtech ece': 'mtech_ece',
+    'mtech electronics': 'mtech_electronics',
+    
+    'master of technology in mechanical': 'mtech_mech',
+    'm.tech mechanical': 'mtech_mech',
+    'mtech mechanical': 'mtech_mechanical',
+    
+    'master of technology in civil': 'mtech_civil',
+    'm.tech civil': 'mtech_civil',
+    'mtech civil': 'mtech_civil',
+    
+    'master of technology in ai': 'mtech_aiml',
+    'master of technology in artificial intelligence': 'mtech_aiml',
+    'm.tech ai': 'mtech_aiml',
+    'm.tech ml': 'mtech_aiml',
+    'mtech aiml': 'mtech_aiml',
+    
+    'master of technology in data science': 'mtech_ds',
+    'm.tech data science': 'mtech_ds',
+    'mtech data science': 'mtech_ds',
     
     // B.Sc variations
     'b.sc physics': 'bsc_physics',
@@ -858,7 +953,9 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
 
   console.log('🎯 Generating fresh knowledge questions for:', effectiveStreamInfo.name, '(stream:', effectiveStreamId, ')');
 
-  const apiUrl = import.meta.env.VITE_EXTERNAL_API_KEY || 'https://assessment-api.dark-mode-d021.workers.dev';
+  // Use unified question generation API
+  const apiUrl = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
+    'https://question-generation-api.dark-mode-d021.workers.dev';
   const maxRetries = 3;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -890,6 +987,13 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
 
       const data = await response.json();
       console.log('✅ Knowledge questions generated:', data.questions?.length || 0);
+      
+      // If API returned questions but didn't save them, save from frontend as fallback
+      if (data.questions?.length > 0 && studentId && !data.cached) {
+        console.log('💾 Saving knowledge questions from frontend as fallback...');
+        await saveKnowledgeQuestions(studentId, effectiveStreamId, attemptId, data.questions);
+      }
+      
       return data.questions;
     } catch (error) {
       console.error(`Error generating knowledge questions (attempt ${attempt}):`, error);
@@ -924,7 +1028,9 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
 
   console.log('🎯 Generating aptitude questions for stream:', streamId, 'gradeLevel:', gradeLevel);
 
-  const apiUrl = import.meta.env.VITE_EXTERNAL_API_KEY || 'https://assessment-api.dark-mode-d021.workers.dev';
+  // Use unified question generation API
+  const apiUrl = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
+    'https://question-generation-api.dark-mode-d021.workers.dev';
   const maxRetries = 3;
   const questionsPerCategory = Math.ceil(questionCount / APTITUDE_CATEGORIES.length); // 10 per category for 50 total
   
@@ -954,6 +1060,14 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
 
       const data = await response.json();
       console.log('✅ Aptitude questions generated:', data.questions?.length || 0);
+      
+      // If API returned questions but didn't save them (cached: false, generated: true),
+      // save them from frontend as a fallback
+      if (data.questions?.length > 0 && studentId && !data.cached) {
+        console.log('💾 Saving questions from frontend as fallback...');
+        await saveAptitudeQuestions(studentId, streamId, attemptId, data.questions);
+      }
+      
       return data.questions || [];
     } catch (error) {
       console.error(`Error generating aptitude questions (attempt ${attempt}):`, error.message);
@@ -966,13 +1080,18 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
 }
 
 /**
- * Save aptitude questions to database
+ * Save aptitude questions to database (fallback if API doesn't save)
  */
 async function saveAptitudeQuestions(studentId, streamId, attemptId, questions) {
-  if (!studentId) return;
+  if (!studentId) {
+    console.log('⚠️ No studentId provided, skipping save');
+    return;
+  }
+  
+  console.log(`💾 [Frontend] Saving ${questions.length} aptitude questions for student:`, studentId, 'stream:', streamId);
   
   try {
-    await supabase.from('career_assessment_ai_questions').upsert({
+    const { data, error } = await supabase.from('career_assessment_ai_questions').upsert({
       student_id: studentId,
       stream_id: streamId,
       question_type: 'aptitude',
@@ -980,10 +1099,49 @@ async function saveAptitudeQuestions(studentId, streamId, attemptId, questions) 
       questions: questions,
       generated_at: new Date().toISOString(),
       is_active: true
-    }, { onConflict: 'student_id,stream_id,question_type' });
-    console.log('✅ All aptitude questions saved:', questions.length);
+    }, { onConflict: 'student_id,stream_id,question_type' })
+    .select('id');
+    
+    if (error) {
+      console.error('❌ [Frontend] Database error saving questions:', error.message, error.details, error.hint);
+    } else {
+      console.log('✅ [Frontend] Aptitude questions saved:', questions.length, 'record:', data);
+    }
   } catch (e) {
-    console.warn('⚠️ Could not save questions:', e.message);
+    console.error('❌ [Frontend] Exception saving questions:', e.message);
+  }
+}
+
+/**
+ * Save knowledge questions to database (fallback if API doesn't save)
+ */
+async function saveKnowledgeQuestions(studentId, streamId, attemptId, questions) {
+  if (!studentId) {
+    console.log('⚠️ No studentId provided, skipping knowledge save');
+    return;
+  }
+  
+  console.log(`💾 [Frontend] Saving ${questions.length} knowledge questions for student:`, studentId, 'stream:', streamId);
+  
+  try {
+    const { data, error } = await supabase.from('career_assessment_ai_questions').upsert({
+      student_id: studentId,
+      stream_id: streamId,
+      question_type: 'knowledge',
+      attempt_id: attemptId || null,
+      questions: questions,
+      generated_at: new Date().toISOString(),
+      is_active: true
+    }, { onConflict: 'student_id,stream_id,question_type' })
+    .select('id');
+    
+    if (error) {
+      console.error('❌ [Frontend] Database error saving knowledge questions:', error.message, error.details, error.hint);
+    } else {
+      console.log('✅ [Frontend] Knowledge questions saved:', questions.length, 'record:', data);
+    }
+  } catch (e) {
+    console.error('❌ [Frontend] Exception saving knowledge questions:', e.message);
   }
 }
 
