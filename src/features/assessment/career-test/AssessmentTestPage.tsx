@@ -344,8 +344,9 @@ const AssessmentTestPage: React.FC = () => {
     const currentSection = sections[flow.currentSectionIndex];
     if (!currentSection) return;
     
-    // Elapsed time counter for non-timed sections
-    if (!currentSection.isTimed && !currentSection.isAdaptive) {
+    // Elapsed time counter for non-timed sections (including adaptive sections)
+    // Adaptive sections need elapsed time tracking for section timing records
+    if (!currentSection.isTimed) {
       const interval = setInterval(() => {
         flow.setElapsedTime(flow.elapsedTime + 1);
       }, 1000);
@@ -416,6 +417,29 @@ const AssessmentTestPage: React.FC = () => {
       setAdaptiveQuestionTimer(90);
     }
   }, [adaptiveAptitude.currentQuestion?.id]);
+  
+  // Link adaptive aptitude session to assessment attempt when session is created
+  useEffect(() => {
+    const linkAdaptiveSession = async () => {
+      if (adaptiveAptitude.session?.id && currentAttempt?.id && useDatabase) {
+        console.log('🔗 Linking adaptive session to attempt:', {
+          adaptiveSessionId: adaptiveAptitude.session.id,
+          attemptId: currentAttempt.id
+        });
+        try {
+          await assessmentService.updateAttemptAdaptiveSession(
+            currentAttempt.id,
+            adaptiveAptitude.session.id
+          );
+          console.log('✅ Adaptive session linked to attempt');
+        } catch (err) {
+          console.warn('⚠️ Could not link adaptive session to attempt:', err);
+        }
+      }
+    };
+    
+    linkAdaptiveSession();
+  }, [adaptiveAptitude.session?.id, currentAttempt?.id, useDatabase]);
   
   // Handlers
   const handleGradeSelect = useCallback(async (level: GradeLevel) => {

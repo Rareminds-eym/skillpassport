@@ -134,6 +134,19 @@ You MUST use this mapping to calculate scores precisely:
 4. Calculate percentage for each type: (score / maxScore) × 100
 5. Identify top 3 types by score
 
+## ⚠️ CRITICAL: ARTISTIC (A) RIASEC CAREER MATCHING ⚠️
+**IF the student's RIASEC scores show 'A' (Artistic) in their top 3 types, you MUST include at least ONE career cluster from these categories:**
+
+**MANDATORY for High Artistic (A) Students:**
+- Music & Entertainment: Music Producer, Sound Designer, DJ, Singer, Musician, Concert Manager
+- Visual Arts: Digital Artist, Animator, Art Director, Fashion Designer, Art Gallery Curator
+- Performing Arts: Actor, Dancer, Choreographer, Theatre Director, Voice Actor
+- Media & Content: YouTuber, Content Creator, Podcast Host, Film Director, Screenwriter
+- Design: Graphic Designer, Game Designer, Interior Designer, Brand Designer
+
+**DO NOT default to only Technology/Science careers for Artistic students!**
+**The student's creative interests MUST be reflected in their career recommendations.**
+
 ## Strengths & Character Responses (1-4 scale):
 ${JSON.stringify(assessmentData.bigFiveAnswers, null, 2)}
 
@@ -457,5 +470,12 @@ SOCIAL + CREATIVE HYBRID:
 - Salary ranges should reflect 2030+ projections (higher for emerging tech and entertainment roles)
 - For studious students: Emphasize careers requiring dedication, discipline, and long-term preparation
 
-CRITICAL: You MUST provide exactly 3 career clusters with ALL fields filled including evidence, roles, and domains!`;
+CRITICAL: You MUST provide exactly 3 career clusters with ALL fields filled including evidence, roles, and domains!
+
+**⚠️ FINAL CHECK - ARTISTIC CAREER REQUIREMENT:**
+Before returning your response, verify:
+1. What is the student's 'A' (Artistic) RIASEC score?
+2. Is 'A' in their top 3 RIASEC types?
+3. If YES → At least ONE career cluster MUST be from Music/Art/Entertainment/Design/Media
+4. If you only suggest Tech/Science/Business careers for an Artistic student, YOUR RESPONSE IS WRONG!`;
 }

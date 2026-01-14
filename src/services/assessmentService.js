@@ -371,6 +371,11 @@ export const getAttemptResponses = async (attemptId) => {
 
 /**
  * Complete an assessment attempt and save results
+ * 
+ * IMPORTANT: This function saves results FIRST, then marks the attempt as completed.
+ * This ensures that if the results insert fails, the attempt remains "in_progress"
+ * and can be retried, rather than being orphaned as "completed" with no results.
+ * 
  * @param {string} attemptId - Attempt UUID
  * @param {string} studentId - Student's user_id
  * @param {string} streamId - Selected stream
@@ -440,22 +445,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
 
   console.log('✅ AI Response Validation Passed - All required fields present');
 
-  // Update attempt status
-  const { error: attemptError } = await supabase
-    .from('personal_assessment_attempts')
-    .update({
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      section_timings: sectionTimings
-    })
-    .eq('id', attemptId);
-
-  if (attemptError) {
-    console.error('Error updating attempt:', attemptError);
-    throw attemptError;
-  }
-
-  // Prepare data for insertion - NO FALLBACKS, use actual AI data
+  // Prepare data for insertion
   const dataToInsert = {
     attempt_id: attemptId,
     student_id: studentId,
@@ -494,8 +484,12 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
     has_roadmap: !!dataToInsert.roadmap
   });
 
-  // Save results - Use UPSERT to handle duplicate attempts
-  console.log('=== Upserting into personal_assessment_results ===');
+  // STEP 1: Save results FIRST (before marking attempt as completed)
+  // This ensures if insert fails, the attempt stays "in_progress" and can be retried
+  console.log('=== STEP 1: Inserting into personal_assessment_results ===');
+  console.log('Attempt ID:', attemptId);
+  console.log('Student ID:', studentId);
+  console.log('Stream ID:', streamId);
   
   const { data: results, error: resultsError } = await supabase
     .from('personal_assessment_results')
@@ -516,10 +510,31 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
       console.error('The student_id in the upsert must match auth.uid()');
     }
     
+    // Don't mark attempt as completed if results failed to save
     throw resultsError;
   }
 
   console.log('✅ Results saved successfully:', results.id);
+
+  // STEP 2: Only mark attempt as completed AFTER results are saved successfully
+  console.log('=== STEP 2: Marking attempt as completed ===');
+  const { error: attemptError } = await supabase
+    .from('personal_assessment_attempts')
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      section_timings: sectionTimings
+    })
+    .eq('id', attemptId);
+
+  if (attemptError) {
+    console.error('⚠️ Warning: Results saved but failed to update attempt status:', attemptError);
+    // Results are saved, so we don't throw here - the data is safe
+    // The attempt status can be fixed manually if needed
+  } else {
+    console.log('✅ Attempt marked as completed');
+  }
+
   return results;
 };
 
