@@ -648,18 +648,20 @@ export const curriculumService = {
 
       if (fetchError) throw fetchError;
 
-      // Check if college is affiliated (should not allow direct publish for affiliated colleges)
-      if (curriculum.university_id) {
-        return {
-          success: false,
-          error: {
-            code: 'AFFILIATED_COLLEGE',
-            message: 'Affiliated colleges cannot directly publish curriculum. Please request approval from your university.',
-          },
-        };
-      }
-
+      // Check curriculum status
       if (curriculum.status !== 'approved') {
+        // If affiliated college and not approved, suggest requesting approval
+        if (curriculum.university_id) {
+          return {
+            success: false,
+            error: {
+              code: 'REQUIRES_APPROVAL',
+              message: 'This curriculum requires university approval before publishing. Please request approval first.',
+            },
+          };
+        }
+        
+        // For autonomous colleges, they can publish without approval
         return {
           success: false,
           error: {

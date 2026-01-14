@@ -74,7 +74,7 @@ class CurriculumApprovalService {
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
-        console.log('❌ No authenticated user found');
+        console.log('❌ No authenticated user found', userError);
         return {
           success: true,
           data: {
@@ -85,6 +85,8 @@ class CurriculumApprovalService {
           }
         };
       }
+      
+      console.log('✅ User authenticated:', user.email);
 
       // Get user's organization (college)
       const { data: userData, error: userDataError } = await supabase
@@ -93,8 +95,10 @@ class CurriculumApprovalService {
         .eq('id', user.id)
         .single();
 
+      console.log('📊 User data query result:', { userData, error: userDataError });
+
       if (userDataError || !userData?.organizationId) {
-        console.log('❌ User has no organization assigned');
+        console.log('❌ User has no organization assigned', userDataError);
         return {
           success: true,
           data: {
@@ -109,26 +113,33 @@ class CurriculumApprovalService {
       const collegeId = userData.organizationId;
       console.log('✅ User college ID:', collegeId);
 
-      // Simple logic: Check if college_id exists in university_colleges table with active status
+      // Simple query without foreign key reference - just get university_id first
       const { data: affiliationData, error: affiliationError } = await supabase
         .from('university_colleges')
-        .select(`
-          university_id,
-          account_status,
-          organizations!university_colleges_university_id_fkey(name)
-        `)
+        .select('university_id, account_status')
         .eq('college_id', collegeId)
         .eq('account_status', 'active')
         .limit(1);
 
+      console.log('📊 Affiliation query result:', { 
+        affiliationData, 
+        error: affiliationError,
+        collegeId: collegeId,
+        query: 'university_colleges where college_id = ' + collegeId + ' and account_status = active'
+      });
+
       if (affiliationError) {
-        console.log('❌ Error checking affiliation:', affiliationError.message);
+        console.log('❌ Error checking affiliation:', affiliationError.message, affiliationError);
         return { success: false, error: affiliationError.message };
       }
 
       // If no records found or empty result, college is not affiliated
       if (!affiliationData || affiliationData.length === 0) {
         console.log('❌ No active affiliation found for college:', collegeId);
+        console.log('   This means either:');
+        console.log('   1. College is not in university_colleges table');
+        console.log('   2. account_status is not "active"');
+        console.log('   3. RLS policy is blocking the query');
         return {
           success: true,
           data: {
@@ -140,9 +151,32 @@ class CurriculumApprovalService {
         };
       }
 
-      // College is affiliated!
+      // College is affiliated! Now get university name
       const affiliation = affiliationData[0];
       console.log('✅ College is affiliated with university:', affiliation.university_id);
+      
+      // Get university name in a separate query
+      let universityName = 'University';
+      if (affiliation.university_id) {
+        const { data: universityData, error: universityError } = await supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', affiliation.university_id)
+          .single();
+        
+        console.log('📊 University name query result:', { universityData, error: universityError });
+        
+        if (universityData) {
+          universityName = universityData.name;
+        }
+      }
+      
+      console.log('✅ Final affiliation result:', {
+        isAffiliated: true,
+        collegeId: collegeId,
+        universityId: affiliation.university_id,
+        universityName: universityName
+      });
       
       return {
         success: true,
@@ -150,7 +184,7 @@ class CurriculumApprovalService {
           isAffiliated: true,
           collegeId: collegeId,
           universityId: affiliation.university_id,
-          universityName: affiliation.organizations?.name || 'University',
+          universityName: universityName,
         }
       };
 

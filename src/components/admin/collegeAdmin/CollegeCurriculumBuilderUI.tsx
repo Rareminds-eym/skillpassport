@@ -20,7 +20,7 @@ import Pagination from "../Pagination";
 import KPICard from "../KPICard";
 import toast from "react-hot-toast";
 import { curriculumApprovalService } from "../../../services/curriculumApprovalService";
-import { supabase } from "../../../lib/supabaseClient";
+import { curriculumChangeRequestService } from "../../../services/curriculumChangeRequestService";
 
 /* ==============================
    TYPES & INTERFACES (College-adapted)
@@ -1065,6 +1065,7 @@ interface CollegeCurriculumBuilderProps {
   onDeleteOutcome?: (id: string) => Promise<void>;
   onSaveDraft?: () => Promise<void>;
   onApprove?: () => Promise<void>;
+  onPublish?: () => Promise<void>;
   onRequestApproval?: (message?: string) => Promise<void>;
   onClone?: (sourceId: string, targetData: any) => Promise<void>;
   onExport?: (format: 'csv' | 'pdf') => Promise<void>;
@@ -1076,6 +1077,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   // College affiliation state
   const [collegeAffiliation, setCollegeAffiliation] = useState<{
     isAffiliated: boolean;
+    collegeId?: string;
     universityId?: string;
     universityName?: string;
     loading: boolean;
@@ -1087,6 +1089,16 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   // Request approval modal state
   const [showRequestApprovalModal, setShowRequestApprovalModal] = useState(false);
   const [approvalMessage, setApprovalMessage] = useState("");
+
+  // NEW: Pending changes tracking and change request modal
+  const [pendingChanges, setPendingChanges] = useState<any[]>([]);
+  const [showPendingChangesModal, setShowPendingChangesModal] = useState(false);
+  const [showChangeRequestModal, setShowChangeRequestModal] = useState(false);
+  const [changeRequestMessage, setChangeRequestMessage] = useState("");
+  const [pendingChangeAction, setPendingChangeAction] = useState<{
+    type: string;
+    data: any;
+  } | null>(null);
 
   // College-specific assessment types (as per requirements)
   const defaultCollegeAssessmentTypes: AssessmentType[] = [];
@@ -1181,7 +1193,16 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         // Use the improved service function
         const affiliationResult = await curriculumApprovalService.checkCollegeAffiliation();
         
+        console.log('🔍 Affiliation Check Result:', affiliationResult);
+        
         if (affiliationResult.success && affiliationResult.data) {
+          console.log('✅ College Affiliation Data:', {
+            isAffiliated: affiliationResult.data.isAffiliated,
+            collegeId: affiliationResult.data.collegeId,
+            universityId: affiliationResult.data.universityId,
+            universityName: affiliationResult.data.universityName
+          });
+          
           setCollegeAffiliation({
             isAffiliated: affiliationResult.data.isAffiliated,
             collegeId: affiliationResult.data.collegeId || undefined,
@@ -1190,16 +1211,32 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             loading: false
           });
         } else {
+          console.log('❌ Affiliation check failed or no data');
           setCollegeAffiliation({ isAffiliated: false, loading: false });
         }
       } catch (error) {
-        console.error('Error checking college affiliation:', error);
+        console.error('❌ Error checking college affiliation:', error);
         setCollegeAffiliation({ isAffiliated: false, loading: false });
       }
     };
 
     checkAffiliation();
   }, []); // Check once on component mount
+
+  // NEW: Fetch pending changes for this curriculum
+  useEffect(() => {
+    const fetchPendingChanges = async () => {
+      if (props.curriculumId && status === 'published') {
+        const result = await curriculumChangeRequestService.getPendingChanges(props.curriculumId);
+        if (result.success && result.data) {
+          setPendingChanges(result.data);
+        }
+      }
+    };
+    
+    fetchPendingChanges();
+  }, [props.curriculumId, status]);
+
   // Enhanced validation for different button states
   const validateForApproval = (): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
@@ -1359,6 +1396,20 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
 
   // Unit handlers
   const handleAddUnit = async (unit: Unit) => {
+    // Check if curriculum is published and affiliated - requires approval
+    if (status === 'published' && collegeAffiliation.isAffiliated && props.curriculumId) {
+      // Store the action and show modal
+      setPendingChangeAction({
+        type: editingUnit ? 'unit_edit' : 'unit_add',
+        data: { unit, editingUnit }
+      });
+      setShowChangeRequestModal(true);
+      setShowAddUnitModal(false);
+      setEditingUnit(null);
+      return;
+    }
+
+    // For draft or non-affiliated, proceed normally
     if (props.onAddUnit) {
       await props.onAddUnit(unit);
       setShowAddUnitModal(false);
@@ -1406,6 +1457,21 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   };
 
   const handleDeleteUnit = async (id: string) => {
+    // Check if curriculum is published and affiliated - requires approval
+    if (status === 'published' && collegeAffiliation.isAffiliated && props.curriculumId) {
+      const unitToDelete = units.find(u => u.id === id);
+      if (!unitToDelete) return;
+      
+      // Store the action and show modal
+      setPendingChangeAction({
+        type: 'unit_delete',
+        data: { unit: unitToDelete }
+      });
+      setShowChangeRequestModal(true);
+      return;
+    }
+
+    // For draft or non-affiliated, proceed normally
     if (props.onDeleteUnit) {
       await props.onDeleteUnit(id);
     }
@@ -1413,6 +1479,21 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
 
   // Learning outcome handlers
   const handleAddOutcome = async (outcome: LearningOutcome) => {
+    // Check if curriculum is published and affiliated - requires approval
+    if (status === 'published' && collegeAffiliation.isAffiliated && props.curriculumId) {
+      // Store the action and show modal
+      setPendingChangeAction({
+        type: editingOutcome ? 'outcome_edit' : 'outcome_add',
+        data: { outcome, editingOutcome }
+      });
+      setShowChangeRequestModal(true);
+      setShowAddOutcomeModal(false);
+      setEditingOutcome(null);
+      setSelectedUnitForOutcome(null);
+      return;
+    }
+
+    // For draft or non-affiliated, proceed normally
     if (props.onAddOutcome) {
       await props.onAddOutcome(outcome);
       setShowAddOutcomeModal(false);
@@ -1459,6 +1540,21 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   };
 
   const handleDeleteOutcome = async (id: string) => {
+    // Check if curriculum is published and affiliated - requires approval
+    if (status === 'published' && collegeAffiliation.isAffiliated && props.curriculumId) {
+      const outcomeToDelete = learningOutcomes.find(o => o.id === id);
+      if (!outcomeToDelete) return;
+      
+      // Store the action and show modal
+      setPendingChangeAction({
+        type: 'outcome_delete',
+        data: { outcome: outcomeToDelete }
+      });
+      setShowChangeRequestModal(true);
+      return;
+    }
+
+    // For draft or non-affiliated, proceed normally
     if (props.onDeleteOutcome) {
       await props.onDeleteOutcome(id);
     }
@@ -1467,6 +1563,124 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   const handleAddOutcomeToUnit = (unitId: string) => {
     setSelectedUnitForOutcome(unitId);
     setShowAddOutcomeModal(true);
+  };
+
+  // NEW: Handle change request submission
+  const handleSubmitChangeRequest = async () => {
+    if (!pendingChangeAction || !props.curriculumId) {
+      toast.error('Invalid change request');
+      return;
+    }
+
+    if (!changeRequestMessage.trim()) {
+      toast.error('Please provide a reason for this change');
+      return;
+    }
+
+    try {
+      let result;
+      
+      switch (pendingChangeAction.type) {
+        case 'unit_add':
+          result = await curriculumChangeRequestService.submitUnitAdd(
+            props.curriculumId,
+            pendingChangeAction.data.unit,
+            changeRequestMessage
+          );
+          break;
+          
+        case 'unit_edit':
+          result = await curriculumChangeRequestService.submitUnitEdit(
+            props.curriculumId,
+            pendingChangeAction.data.unit.id,
+            pendingChangeAction.data.editingUnit,
+            pendingChangeAction.data.unit,
+            changeRequestMessage
+          );
+          break;
+          
+        case 'unit_delete':
+          result = await curriculumChangeRequestService.submitUnitDelete(
+            props.curriculumId,
+            pendingChangeAction.data.unit.id,
+            pendingChangeAction.data.unit,
+            changeRequestMessage
+          );
+          break;
+          
+        case 'outcome_add':
+          result = await curriculumChangeRequestService.submitOutcomeAdd(
+            props.curriculumId,
+            pendingChangeAction.data.outcome,
+            changeRequestMessage
+          );
+          break;
+          
+        case 'outcome_edit':
+          result = await curriculumChangeRequestService.submitOutcomeEdit(
+            props.curriculumId,
+            pendingChangeAction.data.outcome.id,
+            pendingChangeAction.data.editingOutcome,
+            pendingChangeAction.data.outcome,
+            changeRequestMessage
+          );
+          break;
+          
+        case 'outcome_delete':
+          result = await curriculumChangeRequestService.submitOutcomeDelete(
+            props.curriculumId,
+            pendingChangeAction.data.outcome.id,
+            pendingChangeAction.data.outcome,
+            changeRequestMessage
+          );
+          break;
+          
+        default:
+          toast.error('Unknown change type');
+          return;
+      }
+      
+      if (result.success) {
+        toast.success('Change request submitted for approval!');
+        
+        // Refresh pending changes
+        const updatedChanges = await curriculumChangeRequestService.getPendingChanges(props.curriculumId);
+        if (updatedChanges.success && updatedChanges.data) {
+          setPendingChanges(updatedChanges.data);
+        }
+        
+        setShowChangeRequestModal(false);
+        setChangeRequestMessage('');
+        setPendingChangeAction(null);
+      } else {
+        toast.error(result.error || 'Failed to submit change request');
+      }
+    } catch (error) {
+      console.error('Error submitting change request:', error);
+      toast.error('Failed to submit change request');
+    }
+  };
+
+  // NEW: Handle cancel change request
+  const handleCancelChangeRequest = async (changeId: string) => {
+    if (!props.curriculumId) return;
+    
+    const result = await curriculumChangeRequestService.cancelChange(
+      props.curriculumId,
+      changeId
+    );
+    
+    if (result.success) {
+      toast.success('Change request cancelled');
+      
+      // Refresh pending changes
+      const updatedChanges = await curriculumChangeRequestService.getPendingChanges(props.curriculumId);
+      if (updatedChanges.success && updatedChanges.data) {
+        setPendingChanges(updatedChanges.data);
+      }
+    } else {
+      toast.error(result.error || 'Failed to cancel change request');
+    }
   };
 
   // Action handlers
@@ -1960,6 +2174,79 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
 
         {/* MAIN CONTENT */}
         <main className="flex-1 space-y-6">
+          {/* Pending Changes Panel */}
+          {pendingChanges.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <ExclamationTriangleIcon className="h-5 w-5 text-amber-600" />
+                  <span className="font-semibold text-amber-900">
+                    {pendingChanges.length} Change{pendingChanges.length > 1 ? 's' : ''} Pending Approval
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowPendingChangesModal(true)}
+                  className="text-sm text-amber-700 underline hover:text-amber-800"
+                >
+                  View All
+                </button>
+              </div>
+              
+              {/* Show first 3 pending changes */}
+              <div className="space-y-2">
+                {pendingChanges.slice(0, 3).map((change) => {
+                  const getChangeIcon = (type: string) => {
+                    const icons: Record<string, string> = {
+                      'unit_edit': '📝',
+                      'unit_add': '➕',
+                      'unit_delete': '🗑️',
+                      'outcome_add': '➕',
+                      'outcome_edit': '📝',
+                      'outcome_delete': '🗑️',
+                      'curriculum_edit': '📋'
+                    };
+                    return icons[type] || '📄';
+                  };
+
+                  return (
+                  <div key={change.id} className="flex items-center justify-between bg-white rounded p-3 text-sm">
+                    <div className="flex items-center gap-3 flex-1">
+                      <span className="text-xl">
+                        {getChangeIcon(change.change_type)}
+                      </span>
+                      <div className="flex-1">
+                        <p className="text-gray-900 font-medium">
+                          {change.change_type.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {change.request_message || 'No message provided'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">
+                        {new Date(change.timestamp).toLocaleDateString()}
+                      </span>
+                      <button
+                        onClick={() => handleCancelChangeRequest(change.id)}
+                        className="text-xs text-red-600 hover:text-red-700 underline"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                  );
+                })}
+              </div>
+              
+              {pendingChanges.length > 3 && (
+                <p className="text-xs text-amber-700 mt-2">
+                  +{pendingChanges.length - 3} more pending changes
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Units Section */}
           <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-200 bg-gray-50">
@@ -2307,7 +2594,16 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                     
                     {isCollegeAdmin && (
                       <>
-                        {/* Show Request Approval for affiliated colleges */}
+                        {/* Debug: Log affiliation status */}
+                        {console.log('🎯 Button Render - Affiliation Status:', {
+                          isAffiliated: collegeAffiliation.isAffiliated,
+                          loading: collegeAffiliation.loading,
+                          universityName: collegeAffiliation.universityName,
+                          showRequestButton: collegeAffiliation.isAffiliated && !collegeAffiliation.loading,
+                          showPublishButton: !collegeAffiliation.isAffiliated && !collegeAffiliation.loading
+                        })}
+                        
+                        {/* Show Request for Approval button for affiliated colleges */}
                         {collegeAffiliation.isAffiliated && !collegeAffiliation.loading && (
                           <button
                             onClick={handleRequestApproval}
@@ -2320,11 +2616,11 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                             title={isApproveDisabled ? getApprovalTooltip() : `Request approval from ${collegeAffiliation.universityName}`}
                           >
                             <PaperAirplaneIcon className="h-4 w-4" />
-                            {isApproveDisabled ? 'Complete Steps Above' : 'Request Approval'}
+                            {isApproveDisabled ? 'Complete Steps Above' : 'Request for Approval'}
                           </button>
                         )}
                         
-                        {/* Show direct Approve for private colleges */}
+                        {/* Show direct Publish for private/non-affiliated colleges */}
                         {!collegeAffiliation.isAffiliated && !collegeAffiliation.loading && (
                           <button
                             onClick={async () => {
@@ -2387,6 +2683,40 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                       </p>
                     </div>
                   </div>
+                )}
+
+                {/* Approved Status - Ready to Publish */}
+                {status === "approved" && isCollegeAdmin && (
+                  <>
+                    <div className="flex items-center gap-3 px-4 py-2.5 bg-green-50 border border-green-200 rounded-lg">
+                      <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                      <div>
+                        <p className="text-sm font-medium text-green-800">Approved by University</p>
+                        <p className="text-xs text-green-600">
+                          Ready to publish - click the button to make it active
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          if (props.onPublish) {
+                            await props.onPublish();
+                          } else {
+                            setStatus("published");
+                            toast.success("Curriculum published successfully! It is now active and available.");
+                          }
+                        } catch (error) {
+                          console.error('Error publishing curriculum:', error);
+                          toast.error("Failed to publish curriculum");
+                        }
+                      }}
+                      className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition font-medium shadow-md hover:shadow-lg text-sm"
+                    >
+                      <CheckCircleIcon className="h-4 w-4" />
+                      Publish Curriculum
+                    </button>
+                  </>
                 )}
 
                 {/* Rejected Status */}
@@ -2511,6 +2841,110 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             <button
               onClick={confirmRequestApproval}
               className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Submit Request
+            </button>
+          </div>
+        </div>
+      </ModalWrapper>
+
+      {/* Change Request Modal - For editing published curriculum */}
+      <ModalWrapper
+        title="Request Change Approval"
+        subtitle={`Submit to ${collegeAffiliation.universityName || 'University Admin'} for review`}
+        isOpen={showChangeRequestModal}
+        onClose={() => {
+          setShowChangeRequestModal(false);
+          setChangeRequestMessage('');
+          setPendingChangeAction(null);
+        }}
+      >
+        <div className="space-y-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-amber-800">
+                <p className="font-medium mb-1">Published Curriculum</p>
+                <p className="text-xs">
+                  This curriculum is currently published. Changes require approval from the university before they take effect.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {pendingChangeAction && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <p className="text-xs font-medium text-gray-700 mb-2">Change Summary:</p>
+              <div className="text-xs text-gray-600">
+                {pendingChangeAction.type === 'unit_add' && (
+                  <p>• Adding new unit: <span className="font-medium">{pendingChangeAction.data.unit.name}</span></p>
+                )}
+                {pendingChangeAction.type === 'unit_edit' && (
+                  <p>• Editing unit: <span className="font-medium">{pendingChangeAction.data.unit.name}</span></p>
+                )}
+                {pendingChangeAction.type === 'unit_delete' && (
+                  <p>• Deleting unit: <span className="font-medium">{pendingChangeAction.data.unit.name}</span></p>
+                )}
+                {pendingChangeAction.type === 'outcome_add' && (
+                  <p>• Adding new learning outcome</p>
+                )}
+                {pendingChangeAction.type === 'outcome_edit' && (
+                  <p>• Editing learning outcome</p>
+                )}
+                {pendingChangeAction.type === 'outcome_delete' && (
+                  <p>• Deleting learning outcome</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="change-message" className="block text-sm font-medium text-gray-700 mb-2">
+              Reason for Change <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              id="change-message"
+              value={changeRequestMessage}
+              onChange={(e) => setChangeRequestMessage(e.target.value)}
+              placeholder="Explain why this change is needed..."
+              rows={4}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              This helps university admins understand and review your request faster
+            </p>
+          </div>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <InformationCircleIcon className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">What happens next?</p>
+                <ul className="space-y-1 text-xs">
+                  <li>• Your change request will be sent to {collegeAffiliation.universityName || 'University Admin'}</li>
+                  <li>• The published curriculum remains active during review</li>
+                  <li>• Changes will be applied only after approval</li>
+                  <li>• You can track the status in the pending changes panel</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+            <button
+              onClick={() => {
+                setShowChangeRequestModal(false);
+                setChangeRequestMessage('');
+                setPendingChangeAction(null);
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmitChangeRequest}
+              disabled={!changeRequestMessage.trim()}
+              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               Submit Request
             </button>
