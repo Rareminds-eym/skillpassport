@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { uploadMultipleFiles } from "./fileUploadService";
 
 /**
  * COLLEGE ASSIGNMENT SYSTEM FLOW DOCUMENTATION
@@ -106,6 +107,12 @@ export interface CollegeAssignment {
   available_from: string;
   allow_late_submission: boolean;
   document_pdf?: string;
+  instruction_files?: Array<{
+    name: string;
+    url: string;
+    size: number;
+    type: string;
+  }>;
   created_date: string;
   status: string;
   program_name?: string;
@@ -138,46 +145,132 @@ export interface CreateAssignmentData {
 type ServiceResponse<T> = { data: T; error: null } | { data: null; error: string };
 
 /**
- * Fetch departments for a college
+ * Fetch departments assigned to a college educator
+ * 
+ * PERMISSION-CONTROLLED DEPARTMENTS:
+ * - Only returns departments where the educator is assigned via department_faculty_assignments
+ * - Ensures educators only see departments they're authorized to work with
+ * 
+ * @param educatorUserId - The user_id of the college lecturer
+ * @returns Promise<ServiceResponse<Department[]>> - Departments assigned to this educator
  */
-export const fetchCollegeDepartments = async (collegeId: string): Promise<ServiceResponse<Department[]>> => {
+export const fetchEducatorDepartments = async (educatorUserId: string): Promise<ServiceResponse<Department[]>> => {
   try {
+    console.log('🏢 SERVICE: Fetching departments for educator:', educatorUserId);
+    
+    // First get the lecturer_id from college_lecturers table
+    const { data: lecturer, error: lecturerError } = await supabase
+      .from('college_lecturers')
+      .select('id')
+      .eq('user_id', educatorUserId)
+      .single();
+
+    console.log('👤 SERVICE: Lecturer lookup result:', { lecturer, lecturerError });
+
+    if (lecturerError) throw lecturerError;
+    if (!lecturer) {
+      console.log('⚠️ SERVICE: No lecturer found for user');
+      return { data: [], error: null };
+    }
+
+    console.log('✅ SERVICE: Found lecturer ID:', lecturer.id);
+
+    // Fetch departments where educator is assigned
     const { data, error } = await supabase
-      .from('departments')
-      .select('id, name, code, college_id')
-      .eq('college_id', collegeId)
-      .eq('status', 'active')
-      .order('name');
+      .from('department_faculty_assignments')
+      .select(`
+        department_id,
+        departments!inner(id, name, code, college_id, status)
+      `)
+      .eq('lecturer_id', lecturer.id)
+      .eq('is_active', true)
+      .eq('departments.status', 'active')
+      .order('departments(name)');
+
+    console.log('📊 SERVICE: Department assignments query result:', { data, error });
 
     if (error) throw error;
-    return { data: data || [], error: null };
+
+    // Transform the response to extract department details
+    const departments = (data || []).map(assignment => {
+      const dept = Array.isArray(assignment.departments) ? assignment.departments[0] : assignment.departments;
+      return {
+        id: dept.id,
+        name: dept.name,
+        code: dept.code,
+        college_id: dept.college_id
+      };
+    });
+
+    console.log('✅ SERVICE: Returning', departments.length, 'departments');
+    console.log('🏢 SERVICE: Departments:', departments);
+
+    return { data: departments, error: null };
   } catch (err: any) {
-    console.error('Error fetching departments:', err);
+    console.error('❌ SERVICE: Error fetching educator departments:', err);
     return { data: null, error: err.message || 'Failed to fetch departments' };
   }
 };
 
 /**
- * Fetch programs for a college/department
+ * Fetch programs for a department where educator has sections assigned
+ * 
+ * PERMISSION-CONTROLLED PROGRAMS:
+ * - Only returns programs where the educator has at least one section assigned
+ * - Filtered by department_id if provided
+ * 
+ * @param educatorUserId - The user_id of the college lecturer
+ * @param departmentId - Optional department filter
+ * @returns Promise<ServiceResponse<Program[]>> - Programs where educator has sections
  */
-export const fetchCollegePrograms = async (collegeId: string, departmentId?: string): Promise<ServiceResponse<Program[]>> => {
+export const fetchEducatorPrograms = async (educatorUserId: string, departmentId?: string): Promise<ServiceResponse<Program[]>> => {
   try {
+    console.log('🎓 SERVICE: Fetching programs for educator:', educatorUserId, 'department:', departmentId);
+    
+    // Get distinct programs from program_sections where educator is faculty
     let query = supabase
-      .from('programs')
-      .select('id, name, code, department_id')
+      .from('program_sections')
+      .select(`
+        program_id,
+        programs!inner(id, name, code, department_id, status)
+      `)
+      .eq('faculty_id', educatorUserId)
       .eq('status', 'active')
-      .order('name');
+      .eq('programs.status', 'active');
 
     if (departmentId) {
-      query = query.eq('department_id', departmentId);
+      console.log('🔍 SERVICE: Filtering by department:', departmentId);
+      query = query.eq('programs.department_id', departmentId);
     }
 
     const { data, error } = await query;
 
+    console.log('📊 SERVICE: Program sections query result:', { data, error });
+
     if (error) throw error;
-    return { data: data || [], error: null };
+
+    // Extract unique programs
+    const programsMap = new Map();
+    (data || []).forEach(section => {
+      const prog = Array.isArray(section.programs) ? section.programs[0] : section.programs;
+      if (!programsMap.has(prog.id)) {
+        programsMap.set(prog.id, {
+          id: prog.id,
+          name: prog.name,
+          code: prog.code,
+          department_id: prog.department_id
+        });
+      }
+    });
+
+    const programs = Array.from(programsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+    console.log('✅ SERVICE: Returning', programs.length, 'unique programs');
+    console.log('🎓 SERVICE: Programs:', programs);
+
+    return { data: programs, error: null };
   } catch (err: any) {
-    console.error('Error fetching programs:', err);
+    console.error('❌ SERVICE: Error fetching educator programs:', err);
     return { data: null, error: err.message || 'Failed to fetch programs' };
   }
 };
@@ -200,6 +293,8 @@ export const fetchCollegePrograms = async (collegeId: string, departmentId?: str
  */
 export const fetchEducatorProgramSections = async (educatorUserId: string): Promise<ServiceResponse<ProgramSection[]>> => {
   try {
+    console.log('📑 SERVICE: Fetching program sections for educator:', educatorUserId);
+    
     // PERMISSION CHECK: Only fetch sections where this educator is the assigned faculty
     // This ensures educators can only see semester-section combinations they're authorized to teach
     const { data, error } = await supabase
@@ -223,37 +318,131 @@ export const fetchEducatorProgramSections = async (educatorUserId: string): Prom
       .order('semester')  // Order by semester first
       .order('section');  // Then by section (A, B, C, etc.)
 
-    if (error) throw error;
+    console.log('📊 SERVICE: Program sections query result:', { 
+      dataCount: data?.length || 0, 
+      error,
+      rawData: data 
+    });
+
+    if (error) {
+      console.error('❌ SERVICE: Query error:', error);
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      console.warn('⚠️ SERVICE: No program sections found for educator:', educatorUserId);
+      console.warn('💡 SERVICE: Check if faculty_id in program_sections matches this user_id');
+      return { data: [], error: null };
+    }
 
     // Transform the response to include nested program and department info
-    const sectionsWithDetails = (data || []).map(section => ({
-      ...section,
-      program: Array.isArray(section.programs) ? section.programs[0] : section.programs,
-      department: Array.isArray(section.departments) ? section.departments[0] : section.departments
-    }));
+    const sectionsWithDetails: ProgramSection[] = (data || []).map((section: any) => {
+      console.log('🔄 SERVICE: Transforming section:', section.id, {
+        program: section.programs,
+        department: section.departments
+      });
+      
+      return {
+        id: section.id,
+        department_id: section.department_id,
+        program_id: section.program_id,
+        semester: section.semester,
+        section: section.section,
+        academic_year: section.academic_year,
+        max_students: section.max_students,
+        current_students: section.current_students,
+        faculty_id: section.faculty_id,
+        status: section.status,
+        program: {
+          id: section.programs.id,
+          name: section.programs.name,
+          code: section.programs.code,
+          department_id: section.programs.department_id || section.department_id,
+          college_id: section.programs.college_id || ''
+        },
+        department: {
+          id: section.departments.id,
+          name: section.departments.name,
+          code: section.departments.code,
+          college_id: section.departments.college_id || ''
+        }
+      };
+    });
+
+    console.log('✅ SERVICE: Returning', sectionsWithDetails.length, 'transformed sections');
+    console.log('📋 SERVICE: Sections summary:', sectionsWithDetails.map(s => ({
+      id: s.id,
+      program: s.program?.name,
+      semester: s.semester,
+      section: s.section,
+      academic_year: s.academic_year
+    })));
 
     return { data: sectionsWithDetails, error: null };
   } catch (err: any) {
-    console.error('Error fetching program sections:', err);
+    console.error('❌ SERVICE: Error fetching program sections:', err);
     return { data: null, error: err.message || 'Failed to fetch program sections' };
   }
 };
 
 /**
- * Fetch courses for a college
+ * Fetch courses for a program where educator is assigned
+ * 
+ * PERMISSION-CONTROLLED COURSES:
+ * - Only returns courses mapped to the program where educator is faculty_id
+ * - Uses college_course_mappings table for permission control
+ * - Returns all courses across all semesters for the program
+ * 
+ * @param educatorUserId - The user_id of the college lecturer
+ * @param programId - The program ID
+ * @returns Promise<ServiceResponse<Course[]>> - Courses assigned to educator for this program
  */
-export const fetchCollegeCourses = async (collegeId: string): Promise<ServiceResponse<Course[]>> => {
+export const fetchEducatorCoursesByProgram = async (
+  educatorUserId: string,
+  programId: string
+): Promise<ServiceResponse<Course[]>> => {
   try {
+    console.log('🔍 SERVICE: Fetching courses for educator:', educatorUserId, 'program:', programId);
+    
     const { data, error } = await supabase
-      .from('college_courses')
-      .select('id, course_name, course_code, college_id')
-      .eq('college_id', collegeId)
-      .order('course_name');
+      .from('college_course_mappings')
+      .select(`
+        course_id,
+        semester,
+        college_courses!inner(id, course_name, course_code, college_id)
+      `)
+      .eq('faculty_id', educatorUserId)
+      .eq('program_id', programId);
 
-    if (error) throw error;
-    return { data: data || [], error: null };
+    console.log('📊 SERVICE: Raw query result:', { data, error });
+
+    if (error) {
+      console.error('❌ SERVICE: Query error:', error);
+      throw error;
+    }
+
+    // Extract unique courses (same course might be in multiple semesters)
+    const coursesMap = new Map();
+    (data || []).forEach(mapping => {
+      const course = Array.isArray(mapping.college_courses) ? mapping.college_courses[0] : mapping.college_courses;
+      if (!coursesMap.has(course.id)) {
+        coursesMap.set(course.id, {
+          id: course.id,
+          course_name: course.course_name,
+          course_code: course.course_code,
+          college_id: course.college_id
+        });
+      }
+    });
+
+    const courses = Array.from(coursesMap.values()).sort((a, b) => a.course_name.localeCompare(b.course_name));
+    
+    console.log('✅ SERVICE: Returning', courses.length, 'unique courses');
+    console.log('📚 SERVICE: Courses:', courses);
+
+    return { data: courses, error: null };
   } catch (err: any) {
-    console.error('Error fetching courses:', err);
+    console.error('❌ SERVICE: Error fetching educator courses:', err);
     return { data: null, error: err.message || 'Failed to fetch courses' };
   }
 };
@@ -279,6 +468,8 @@ export const fetchCollegeCourses = async (collegeId: string): Promise<ServiceRes
  */
 export const fetchProgramSectionStudents = async (sectionId: string): Promise<ServiceResponse<CollegeStudent[]>> => {
   try {
+    console.log('🔍 Fetching students for section:', sectionId);
+    
     // STEP 1: Get the section details to extract matching criteria
     const { data: section, error: sectionError } = await supabase
       .from('program_sections')
@@ -286,7 +477,12 @@ export const fetchProgramSectionStudents = async (sectionId: string): Promise<Se
       .eq('id', sectionId)
       .single();
 
-    if (sectionError) throw sectionError;
+    if (sectionError) {
+      console.error('❌ Error fetching section details:', sectionError);
+      throw sectionError;
+    }
+
+    console.log('📋 Section details:', section);
 
     // STEP 2: Fetch students matching the exact academic criteria
     // This ensures we get students from the specific semester-section combination
@@ -299,7 +495,21 @@ export const fetchProgramSectionStudents = async (sectionId: string): Promise<Se
       .eq('is_deleted', false)
       .order('name');
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error fetching students:', error);
+      throw error;
+    }
+    
+    console.log(`✅ Found ${data?.length || 0} students matching criteria:`, {
+      program_id: section.program_id,
+      semester: section.semester,
+      section: section.section
+    });
+    
+    if (data && data.length > 0) {
+      console.log('👥 Sample student:', data[0]);
+    }
+
     return { data: data || [], error: null };
   } catch (err: any) {
     console.error('Error fetching program section students:', err);
@@ -308,13 +518,15 @@ export const fetchProgramSectionStudents = async (sectionId: string): Promise<Se
 };
 
 /**
- * Create a new college assignment
+ * Create a new college assignment with file uploads
  * 
  * ASSIGNMENT CREATION FLOW:
  * 1. Educator selects: Department → Program → Section (Semester + Section + Academic Year)
  * 2. System validates educator has permission (faculty_id matches)
- * 3. Assignment is created with program_section_id linking to specific semester-section
- * 4. Students are automatically determined by the section's academic criteria
+ * 3. Assignment is created WITHOUT files initially
+ * 4. Files are uploaded to R2 storage (college_assignments_tasks/{educatorId}/{assignmentId})
+ * 5. Assignment is updated with file metadata
+ * 6. Students are automatically determined by the section's academic criteria
  * 
  * SECTION LINKAGE:
  * - program_section_id links assignment to specific semester-section combination
@@ -323,14 +535,21 @@ export const fetchProgramSectionStudents = async (sectionId: string): Promise<Se
  * 
  * @param assignmentData - Assignment details including program_section_id
  * @param educatorUserId - The user_id of the creating educator
- * @returns Promise<ServiceResponse<CollegeAssignment>> - Created assignment
+ * @param instructionFiles - Optional array of instruction files to upload
+ * @returns Promise<ServiceResponse<CollegeAssignment>> - Created assignment with file URLs
  */
 export const createCollegeAssignment = async (
   assignmentData: CreateAssignmentData,
-  educatorUserId: string
+  educatorUserId: string,
+  instructionFiles?: File[]
 ): Promise<ServiceResponse<CollegeAssignment>> => {
   try {
-    // Get educator details for assignment attribution
+    console.log('📝 Creating college assignment with files:', {
+      title: assignmentData.title,
+      fileCount: instructionFiles?.length || 0
+    });
+
+    // STEP 1: Get educator details for assignment attribution
     const { data: educator, error: educatorError } = await supabase
       .from('college_lecturers')
       .select('first_name, last_name')
@@ -345,39 +564,87 @@ export const createCollegeAssignment = async (
       ? `${educator.first_name} ${educator.last_name}`.trim() 
       : 'Unknown Educator';
 
-    // Prepare assignment data with section linkage
+    // STEP 2: Prepare assignment data with section linkage (WITHOUT files initially)
     const insertData = {
       ...assignmentData,
-      college_educator_id: educatorUserId,  // Use college_educator_id for college assignments
+      college_educator_id: educatorUserId,
       educator_name: educatorName,
       available_from: assignmentData.available_from || new Date().toISOString(),
-      assign_classes: assignmentData.program_section_id // For compatibility with existing code
+      instruction_files: []  // Empty initially, will be updated after upload
     };
 
-    // Create the assignment with program_section_id linking to specific semester-section
+    // STEP 3: Create the assignment with program_section_id linking to specific semester-section
     const { data, error } = await supabase
-      .from('assignments')
+      .from('college_assignments')
       .insert([insertData])
       .select(`
         *,
-        programs!assignments_program_id_fkey(name),
-        departments!assignments_department_id_fkey(name)
+        programs!college_assignments_program_id_fkey(name),
+        departments!college_assignments_department_id_fkey(name)
       `)
       .single();
 
     if (error) throw error;
 
-    // Transform the response to include related data
+    console.log('✅ Assignment created:', data.assignment_id);
+
+    // STEP 4: Upload files to R2 if provided
+    let uploadedFiles: Array<{ name: string; url: string; size: number; type: string }> = [];
+    
+    if (instructionFiles && instructionFiles.length > 0) {
+      console.log('📤 Uploading', instructionFiles.length, 'instruction files...');
+      
+      // Use structured folder: college_assignments_tasks/{educatorId}/{assignmentId}
+      const folder = `college_assignments_tasks/${educatorUserId}/${data.assignment_id}`;
+      
+      const results = await uploadMultipleFiles(instructionFiles, folder);
+      
+      // Filter successful uploads and map to file metadata
+      uploadedFiles = results
+        .map((result, index) => {
+          if (result.success && result.url) {
+            const file = instructionFiles[index];
+            return {
+              name: file.name,
+              url: result.url,
+              size: file.size,
+              type: file.type
+            };
+          }
+          return null;
+        })
+        .filter((file): file is { name: string; url: string; size: number; type: string } => file !== null);
+
+      console.log('✅ Successfully uploaded', uploadedFiles.length, 'files');
+
+      // STEP 5: Update assignment with file URLs
+      if (uploadedFiles.length > 0) {
+        const { error: updateError } = await supabase
+          .from('college_assignments')
+          .update({ instruction_files: uploadedFiles })
+          .eq('assignment_id', data.assignment_id);
+
+        if (updateError) {
+          console.error('⚠️ Failed to update assignment with file URLs:', updateError);
+          // Don't throw error - assignment is created, just files not linked
+        } else {
+          console.log('✅ Assignment updated with file metadata');
+        }
+      }
+    }
+
+    // Transform the response to include related data and uploaded files
     const assignment: CollegeAssignment = {
       ...data,
       program_name: data.programs?.name,
       department_name: data.departments?.name,
-      status: 'active' // Default status for new assignments
+      status: 'active',
+      instruction_files: uploadedFiles  // Include uploaded files in response
     };
 
     return { data: assignment, error: null };
   } catch (err: any) {
-    console.error('Error creating assignment:', err);
+    console.error('❌ Error creating assignment:', err);
     return { data: null, error: err.message || 'Failed to create assignment' };
   }
 };
@@ -398,7 +665,7 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
     // Fallback to direct query if RPC function is not available
     try {
       const { data: fallbackData, error: fallbackError } = await supabase
-        .from('assignments')
+        .from('college_assignments')  // Use college_assignments table
         .select(`
           assignment_id,
           title,
@@ -410,22 +677,43 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
           assignment_type,
           skill_outcomes,
           created_date,
-          program_sections!assignments_program_section_id_fkey(semester, section, academic_year),
-          programs!assignments_program_id_fkey(name),
-          departments!assignments_department_id_fkey(name)
+          program_section_id,
+          instruction_files,
+          program_sections!college_assignments_program_section_id_fkey(semester, section, academic_year),
+          programs!college_assignments_program_id_fkey(name),
+          departments!college_assignments_department_id_fkey(name)
         `)
-        .eq('college_educator_id', educatorUserId)  // Updated to use college_educator_id
+        .eq('college_educator_id', educatorUserId)
         .eq('is_deleted', false)
-        .not('college_id', 'is', null)
         .order('created_date', { ascending: false });
 
       if (fallbackError) throw fallbackError;
 
-      const assignments = (fallbackData || []).map(assignment => ({
-        ...assignment,
+      const assignments = (fallbackData || []).map((assignment: any) => ({
+        assignment_id: assignment.assignment_id,
+        title: assignment.title,
+        description: assignment.description || '',
+        instructions: assignment.instructions || '',
+        course_name: assignment.course_name,
+        course_code: assignment.course_code || '',
+        college_educator_id: assignment.college_educator_id,
+        educator_name: assignment.educator_name || '',
+        college_id: assignment.college_id,
+        program_section_id: assignment.program_section_id,
+        department_id: assignment.department_id,
+        program_id: assignment.program_id,
+        total_points: assignment.total_points,
+        assignment_type: assignment.assignment_type,
+        skill_outcomes: assignment.skill_outcomes || [],
+        due_date: assignment.due_date,
+        available_from: assignment.available_from || '',
+        allow_late_submission: assignment.allow_late_submission || false,
+        document_pdf: assignment.document_pdf,
+        instruction_files: assignment.instruction_files || [],
+        created_date: assignment.created_date,
         status: assignment.due_date < new Date().toISOString() ? 'completed' : 'active',
-        program_name: assignment.programs?.name,
-        department_name: assignment.departments?.name,
+        program_name: assignment.programs?.name || '',
+        department_name: assignment.departments?.name || '',
         semester: assignment.program_sections?.semester,
         section: assignment.program_sections?.section,
         academic_year: assignment.program_sections?.academic_year,
@@ -456,7 +744,7 @@ export const assignTaskToStudents = async (
     }));
 
     const { error } = await supabase
-      .from('student_assignments')
+      .from('college_student_assignments')  // Use college_student_assignments table
       .insert(studentAssignments);
 
     if (error) throw error;
@@ -480,11 +768,10 @@ export const getAssignmentStatistics = async (educatorUserId: string): Promise<S
   try {
     // Get basic assignment counts
     const { data: assignments, error: assignmentsError } = await supabase
-      .from('assignments')
+      .from('college_assignments')  // Use college_assignments table
       .select('assignment_id, due_date')
-      .eq('college_educator_id', educatorUserId)  // Updated to use college_educator_id
-      .eq('is_deleted', false)
-      .not('college_id', 'is', null);
+      .eq('college_educator_id', educatorUserId)
+      .eq('is_deleted', false);
 
     if (assignmentsError) throw assignmentsError;
 
@@ -500,7 +787,7 @@ export const getAssignmentStatistics = async (educatorUserId: string): Promise<S
 
     if (assignmentIds.length > 0) {
       const { data: submissions, error: submissionsError } = await supabase
-        .from('student_assignments')
+        .from('college_student_assignments')  // Use college_student_assignments table
         .select('status, grade_percentage')
         .in('assignment_id', assignmentIds)
         .eq('is_deleted', false);
@@ -538,7 +825,7 @@ export const getAssignmentStatistics = async (educatorUserId: string): Promise<S
 export const deleteAssignment = async (assignmentId: string): Promise<ServiceResponse<boolean>> => {
   try {
     const { error } = await supabase
-      .from('assignments')
+      .from('college_assignments')  // Use college_assignments table
       .update({ is_deleted: true })
       .eq('assignment_id', assignmentId);
 
@@ -559,13 +846,13 @@ export const updateAssignment = async (
 ): Promise<ServiceResponse<CollegeAssignment>> => {
   try {
     const { data, error } = await supabase
-      .from('assignments')
+      .from('college_assignments')  // Use college_assignments table
       .update(updateData)
       .eq('assignment_id', assignmentId)
       .select(`
         *,
-        programs!assignments_program_id_fkey(name),
-        departments!assignments_department_id_fkey(name)
+        programs!college_assignments_program_id_fkey(name),
+        departments!college_assignments_department_id_fkey(name)
       `)
       .single();
 

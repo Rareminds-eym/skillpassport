@@ -7,12 +7,15 @@ import {
   Paperclip as PaperClipIcon,
   Tag as TagIcon,
   BookOpen as BookOpenIcon,
-  GraduationCap as AcademicCapIcon
+  GraduationCap as AcademicCapIcon,
+  MoreVertical,
+  Trash2
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useEducatorSchool } from "../../hooks/useEducatorSchool";
 import toast from "react-hot-toast";
 import * as collegeAssignmentService from "../../services/collegeAssignmentService";
+import { getDocumentUrl } from "../../services/fileUploadService";
 
 // Types
 interface Department {
@@ -78,6 +81,12 @@ interface TaskAssignment {
     section?: string;
     academic_year?: string;
     program_section_id?: string;
+    instruction_files?: Array<{
+        name: string;
+        url: string;
+        size: number;
+        type: string;
+    }>;
 }
 
 const assignmentTypes = [
@@ -118,6 +127,10 @@ export default function CollegeSkillTasks() {
     const [createTaskModal, setCreateTaskModal] = useState(false);
     const [assignStudentsModal, setAssignStudentsModal] = useState(false);
     const [selectedAssignment, setSelectedAssignment] = useState<TaskAssignment | null>(null);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    const [viewDetailsModal, setViewDetailsModal] = useState(false);
+    const [editTaskModal, setEditTaskModal] = useState(false);
+    const [deleteConfirmModal, setDeleteConfirmModal] = useState(false);
     
     // Form states
     const [taskForm, setTaskForm] = useState({
@@ -189,7 +202,11 @@ export default function CollegeSkillTasks() {
     const fetchDepartments = async () => {
         if (!educatorCollege?.id) return;
         
-        const { data, error } = await collegeAssignmentService.fetchCollegeDepartments(educatorCollege.id);
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data, error } = await collegeAssignmentService.fetchEducatorDepartments(user.id);
         if (error) {
             console.error('Error fetching departments:', error);
             toast.error('Failed to load departments');
@@ -201,7 +218,14 @@ export default function CollegeSkillTasks() {
     const fetchPrograms = async () => {
         if (!educatorCollege?.id) return;
         
-        const { data, error } = await collegeAssignmentService.fetchCollegePrograms(educatorCollege.id);
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data, error } = await collegeAssignmentService.fetchEducatorPrograms(
+            user.id,
+            taskForm.department_id || undefined
+        );
         if (error) {
             console.error('Error fetching programs:', error);
             toast.error('Failed to load programs');
@@ -211,25 +235,22 @@ export default function CollegeSkillTasks() {
     };
 
     const fetchProgramSections = async (userId: string) => {
+        console.log('📑 COMPONENT: Fetching program sections for user:', userId);
         const { data, error } = await collegeAssignmentService.fetchEducatorProgramSections(userId);
         if (error) {
-            console.error('Error fetching program sections:', error);
+            console.error('❌ COMPONENT: Error fetching program sections:', error);
             toast.error('Failed to load program sections');
         } else {
+            console.log('✅ COMPONENT: Received', data?.length || 0, 'program sections');
+            console.log('📋 COMPONENT: Program sections data:', data);
             setProgramSections(data || []);
         }
     };
 
     const fetchCourses = async () => {
-        if (!educatorCollege?.id) return;
-        
-        const { data, error } = await collegeAssignmentService.fetchCollegeCourses(educatorCollege.id);
-        if (error) {
-            console.error('Error fetching courses:', error);
-            toast.error('Failed to load courses');
-        } else {
-            setCourses(data || []);
-        }
+        // Courses are now fetched based on program and semester selection
+        // This will be called when section is selected
+        setCourses([]);
     };
 
     const fetchAssignments = async (userId: string) => {
@@ -258,24 +279,111 @@ export default function CollegeSkillTasks() {
     };
 
     const fetchStudentsForSection = async (sectionId: string) => {
+        console.log('🎯 Component: Fetching students for section:', sectionId);
         const { data, error } = await collegeAssignmentService.fetchProgramSectionStudents(sectionId);
         if (error) {
-            console.error('Error fetching students:', error);
+            console.error('❌ Component: Error fetching students:', error);
             toast.error('Failed to load students');
             setStudents([]);
         } else {
+            console.log('✅ Component: Received students:', data?.length || 0, 'students');
+            console.log('📦 Component: Student data:', data);
             setStudents(data || []);
         }
     };
 
     // Filtered data
     const filteredSections = useMemo(() => {
-        return programSections.filter(section => {
-            if (selectedDepartment !== "all" && section.department_id !== selectedDepartment) return false;
-            if (selectedProgram !== "all" && section.program_id !== selectedProgram) return false;
-            return true;
+        console.log('🔍 COMPONENT: Filtering sections...');
+        console.log('📊 COMPONENT: Total sections:', programSections.length);
+        console.log('🏢 COMPONENT: Selected department:', selectedDepartment);
+        console.log('🎓 COMPONENT: Selected program (form):', taskForm.program_id);
+        
+        const filtered = programSections.filter(section => {
+            const deptMatch = selectedDepartment === "all" || section.department_id === selectedDepartment;
+            const progMatch = selectedProgram === "all" || section.program_id === selectedProgram;
+            
+            console.log('🔎 COMPONENT: Section', section.id, {
+                program: section.program?.name,
+                semester: section.semester,
+                section: section.section,
+                department_id: section.department_id,
+                program_id: section.program_id,
+                deptMatch,
+                progMatch,
+                included: deptMatch && progMatch
+            });
+            
+            return deptMatch && progMatch;
         });
+        
+        console.log('✅ COMPONENT: Filtered sections count:', filtered.length);
+        console.log('📋 COMPONENT: Filtered sections:', filtered.map(s => ({
+            id: s.id,
+            program: s.program?.name,
+            semester: s.semester,
+            section: s.section
+        })));
+        
+        return filtered;
     }, [programSections, selectedDepartment, selectedProgram]);
+
+    // Sections for dropdown (filtered by form program_id)
+    const sectionsForDropdown = useMemo(() => {
+        console.log('\n' + '='.repeat(70));
+        console.log('📝 DROPDOWN COMPUTATION START');
+        console.log('='.repeat(70));
+        console.log('🎓 Form program_id:', taskForm.program_id);
+        console.log('📊 Total programSections:', programSections.length);
+        console.log('📊 Filtered sections available:', filteredSections.length);
+        
+        console.log('\n📋 ALL PROGRAM SECTIONS:');
+        programSections.forEach((s, i) => {
+            console.log(`  ${i + 1}. ID: ${s.id}`);
+            console.log(`     Program: ${s.program?.name} (${s.program_id})`);
+            console.log(`     Semester: ${s.semester}, Section: ${s.section}`);
+            console.log(`     Academic Year: ${s.academic_year}`);
+        });
+        
+        console.log('\n📋 FILTERED SECTIONS (after dept/prog filter):');
+        filteredSections.forEach((s, i) => {
+            console.log(`  ${i + 1}. ID: ${s.id}`);
+            console.log(`     Program: ${s.program?.name} (${s.program_id})`);
+            console.log(`     Semester: ${s.semester}, Section: ${s.section}`);
+            console.log(`     Matches form program? ${s.program_id === taskForm.program_id ? '✅ YES' : '❌ NO'}`);
+        });
+        
+        if (!taskForm.program_id) {
+            console.log('\n⚠️ NO PROGRAM SELECTED - Returning empty array');
+            console.log('='.repeat(70) + '\n');
+            return [];
+        }
+        
+        const sections = filteredSections.filter(section => {
+            const matches = section.program_id === taskForm.program_id;
+            console.log(`\n🔍 Checking section ${section.id}:`);
+            console.log(`   section.program_id: "${section.program_id}"`);
+            console.log(`   taskForm.program_id: "${taskForm.program_id}"`);
+            console.log(`   Match: ${matches ? '✅ YES' : '❌ NO'}`);
+            return matches;
+        });
+        
+        console.log('\n✅ FINAL SECTIONS FOR DROPDOWN:', sections.length);
+        sections.forEach((s, i) => {
+            console.log(`  ${i + 1}. Sem ${s.semester} - ${s.section} (${s.academic_year})`);
+        });
+        
+        if (sections.length === 0 && taskForm.program_id) {
+            console.log('\n❌ WARNING: No sections match the selected program!');
+            console.log('🔍 Possible reasons:');
+            console.log('   1. program_id mismatch (check exact UUID values)');
+            console.log('   2. Sections filtered out by department/program filter');
+            console.log('   3. No sections assigned to this program');
+        }
+        
+        console.log('='.repeat(70) + '\n');
+        return sections;
+    }, [filteredSections, taskForm.program_id, programSections]);
 
     const filteredAssignments = useMemo(() => {
         return assignments.filter(assignment => {
@@ -299,6 +407,93 @@ export default function CollegeSkillTasks() {
             ...prev,
             [field]: value
         }));
+    };
+
+    const handleDepartmentChange = async (departmentId: string) => {
+        console.log('🏢 COMPONENT: Department changed to:', departmentId);
+        
+        setTaskForm(prev => ({
+            ...prev,
+            department_id: departmentId,
+            program_id: "", // Reset dependent fields
+            section_id: "",
+            course_name: "",
+            course_code: ""
+        }));
+        
+        // Clear dependent data (but NOT programSections - they're filtered client-side!)
+        setPrograms([]);
+        // setProgramSections([]); // ❌ DON'T clear sections!
+        setCourses([]);
+        setStudents([]);
+        
+        // Fetch programs for this department
+        if (departmentId) {
+            console.log('📞 COMPONENT: Fetching programs for department:', departmentId);
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                console.log('👤 COMPONENT: User ID:', user.id);
+                const { data, error } = await collegeAssignmentService.fetchEducatorPrograms(user.id, departmentId);
+                if (error) {
+                    console.error('❌ COMPONENT: Error fetching programs:', error);
+                    toast.error('Failed to load programs');
+                } else {
+                    console.log('✅ COMPONENT: Loaded', data?.length || 0, 'programs');
+                    console.log('📋 COMPONENT: Programs:', data);
+                    setPrograms(data || []);
+                }
+            }
+        } else {
+            console.log('⚠️ COMPONENT: No department selected, clearing data');
+        }
+    };
+
+    const handleProgramChange = async (programId: string) => {
+        console.log('\n' + '🎓'.repeat(35));
+        console.log('🎓 PROGRAM CHANGE EVENT');
+        console.log('🎓'.repeat(35));
+        console.log('Selected program ID:', programId);
+        console.log('Previous program ID:', taskForm.program_id);
+        
+        setTaskForm(prev => {
+            console.log('📝 Updating form state...');
+            console.log('   Old program_id:', prev.program_id);
+            console.log('   New program_id:', programId);
+            return {
+                ...prev,
+                program_id: programId,
+                section_id: "", // Reset dependent fields
+                course_name: "",
+                course_code: ""
+            };
+        });
+        
+        // Clear dependent data
+        setCourses([]);
+        setStudents([]);
+        
+        // Fetch courses for this program
+        if (programId) {
+            console.log('📚 COMPONENT: Fetching courses for program:', programId);
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                console.log('👤 COMPONENT: User ID:', user.id);
+                const { data, error } = await collegeAssignmentService.fetchEducatorCoursesByProgram(user.id, programId);
+                if (error) {
+                    console.error('❌ COMPONENT: Error fetching courses:', error);
+                    toast.error('Failed to load courses');
+                    setCourses([]);
+                } else {
+                    console.log('✅ COMPONENT: Loaded', data?.length || 0, 'courses');
+                    console.log('📚 COMPONENT: Courses:', data);
+                    setCourses(data || []);
+                }
+            }
+        } else {
+            console.log('⚠️ COMPONENT: No program selected, clearing courses');
+        }
+        
+        console.log('🎓'.repeat(35) + '\n');
     };
 
     const handleFileUpload = (files: FileList | null) => {
@@ -338,7 +533,8 @@ export default function CollegeSkillTasks() {
         }
     };
 
-    const handleSectionChange = (sectionId: string) => {
+    const handleSectionChange = async (sectionId: string) => {
+        console.log('� COcMPONENT: Section changed to:', sectionId);
         setTaskForm(prev => ({
             ...prev,
             section_id: sectionId
@@ -346,7 +542,11 @@ export default function CollegeSkillTasks() {
         
         // Fetch students for this section
         if (sectionId) {
-            fetchStudentsForSection(sectionId);
+            console.log('� COMPOnNENT: Fetching students for section:', sectionId);
+            await fetchStudentsForSection(sectionId);
+        } else {
+            console.log('⚠️ COMPONENT: No section ID provided, clearing students');
+            setStudents([]);
         }
     };
 
@@ -394,9 +594,11 @@ export default function CollegeSkillTasks() {
                 document_pdf: taskForm.document_pdf
             };
 
+            // Pass instruction files to the service
             const { data: assignment, error } = await collegeAssignmentService.createCollegeAssignment(
                 assignmentData,
-                user.id
+                user.id,
+                taskForm.instruction_files  // Pass files here
             );
 
             if (error) {
@@ -472,6 +674,147 @@ export default function CollegeSkillTasks() {
             console.error('Error assigning task to students:', error);
             toast.error('Failed to assign task to students');
         }
+    };
+
+    const handleViewDetails = (assignment: TaskAssignment) => {
+        setSelectedAssignment(assignment);
+        setViewDetailsModal(true);
+        setOpenMenuId(null);
+    };
+
+    const handleEditTask = (assignment: TaskAssignment) => {
+        setSelectedAssignment(assignment);
+        setTaskForm({
+            title: assignment.title,
+            description: assignment.description,
+            instructions: "",
+            course_name: assignment.course_name,
+            course_code: assignment.course_code,
+            department_id: "",
+            program_id: "",
+            section_id: assignment.program_section_id || "",
+            assignment_type: assignment.assignment_type,
+            total_points: assignment.total_points,
+            skill_outcomes: assignment.skill_outcomes || [],
+            due_date: assignment.due_date,
+            available_from: "",
+            allow_late_submission: true,
+            document_pdf: "",
+            instruction_files: []
+        });
+        setEditTaskModal(true);
+        setOpenMenuId(null);
+    };
+
+    const handleUpdateTask = async () => {
+        try {
+            if (!selectedAssignment) return;
+            
+            if (!taskForm.title.trim()) {
+                toast.error("Task title is required");
+                return;
+            }
+            if (!taskForm.due_date) {
+                toast.error("Due date is required");
+                return;
+            }
+
+            const updateData: any = {
+                title: taskForm.title.trim(),
+                description: taskForm.description,
+                course_name: taskForm.course_name,
+                course_code: taskForm.course_code,
+                total_points: taskForm.total_points,
+                assignment_type: taskForm.assignment_type,
+                skill_outcomes: taskForm.skill_outcomes,
+                due_date: taskForm.due_date,
+                allow_late_submission: taskForm.allow_late_submission
+            };
+
+            // Only add document_pdf if it has a value
+            if (taskForm.document_pdf) {
+                updateData.document_pdf = taskForm.document_pdf;
+            }
+
+            console.log('Updating assignment with data:', updateData);
+
+            const { error } = await supabase
+                .from('college_assignments')
+                .update(updateData)
+                .eq('assignment_id', selectedAssignment.assignment_id);
+
+            if (error) {
+                console.error('Supabase update error:', error);
+                throw error;
+            }
+
+            toast.success('Task updated successfully');
+            setEditTaskModal(false);
+            setSelectedAssignment(null);
+            
+            // Reset form
+            setTaskForm({
+                title: "",
+                description: "",
+                instructions: "",
+                course_name: "",
+                course_code: "",
+                department_id: "",
+                program_id: "",
+                section_id: "",
+                assignment_type: "homework",
+                total_points: 100,
+                skill_outcomes: [],
+                due_date: "",
+                available_from: "",
+                allow_late_submission: true,
+                document_pdf: "",
+                instruction_files: []
+            });
+            
+            // Refresh assignments
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await fetchAssignments(user.id);
+                await fetchStatistics(user.id);
+            }
+        } catch (error: any) {
+            console.error('Error updating task:', error);
+            toast.error(error?.message || 'Failed to update task');
+        }
+    };
+
+    const handleDeleteTask = async () => {
+        try {
+            if (!selectedAssignment) return;
+
+            const { error } = await supabase
+                .from('college_assignments')
+                .delete()
+                .eq('assignment_id', selectedAssignment.assignment_id);
+
+            if (error) throw error;
+
+            toast.success('Task deleted successfully');
+            setDeleteConfirmModal(false);
+            setSelectedAssignment(null);
+            
+            // Refresh assignments
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await fetchAssignments(user.id);
+                await fetchStatistics(user.id);
+            }
+        } catch (error) {
+            console.error('Error deleting task:', error);
+            toast.error('Failed to delete task');
+        }
+    };
+
+    const openDeleteConfirm = (assignment: TaskAssignment) => {
+        setSelectedAssignment(assignment);
+        setDeleteConfirmModal(true);
+        setOpenMenuId(null);
     };
 
     if (loading) {
@@ -639,72 +982,119 @@ export default function CollegeSkillTasks() {
                                 </div>
                             </div>
                         ) : (
-                            <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredAssignments.map((assignment) => (
-                                    <div key={assignment.assignment_id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex-1">
-                                                <h3 className="text-lg font-medium text-gray-900">{assignment.title}</h3>
-                                                <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
-                                                <div className="flex items-center gap-4 mt-2">
-                                                    <span className="text-sm text-gray-500">
-                                                        <Calendar className="inline w-4 h-4 mr-1" />
-                                                        Due: {new Date(assignment.due_date).toLocaleDateString()}
-                                                    </span>
-                                                    <span className="text-sm text-gray-500">
-                                                        <Trophy className="inline w-4 h-4 mr-1" />
-                                                        {assignment.total_points} points
-                                                    </span>
-                                                    <span className="text-sm text-gray-500">
-                                                        <BookOpenIcon className="inline w-4 h-4 mr-1" />
-                                                        {assignment.course_name}
-                                                    </span>
-                                                    {assignment.program_name && (
-                                                        <span className="text-sm text-gray-500">
-                                                            <AcademicCapIcon className="inline w-4 h-4 mr-1" />
-                                                            {assignment.program_name}
-                                                        </span>
-                                                    )}
-                                                    {assignment.semester && assignment.section && (
-                                                        <span className="text-sm text-gray-500">
-                                                            Sem {assignment.semester} - {assignment.section}
-                                                        </span>
-                                                    )}
+                                    <div key={assignment.assignment_id} className="border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-shadow bg-white relative">
+                                        {/* 3-Dot Menu */}
+                                        <div className="absolute top-4 right-4">
+                                            <button
+                                                onClick={() => setOpenMenuId(openMenuId === assignment.assignment_id ? null : assignment.assignment_id)}
+                                                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                            >
+                                                <MoreVertical size={20} className="text-gray-600" />
+                                            </button>
+                                            
+                                            {openMenuId === assignment.assignment_id && (
+                                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                                                    <button
+                                                        onClick={() => handleViewDetails(assignment)}
+                                                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
+                                                    >
+                                                        <Eye size={16} />
+                                                        View Details
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleEditTask(assignment)}
+                                                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                                    >
+                                                        <Edit size={16} />
+                                                        Edit Task
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openDeleteConfirm(assignment)}
+                                                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-b-lg"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                        Delete Task
+                                                    </button>
                                                 </div>
-                                                {assignment.skill_outcomes && assignment.skill_outcomes.length > 0 && (
-                                                    <div className="flex flex-wrap gap-1 mt-2">
-                                                        {assignment.skill_outcomes.map((skill, index) => (
-                                                            <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                                {skill}
-                                                            </span>
-                                                        ))}
+                                            )}
+                                        </div>
+
+                                        <div className="pr-8">
+                                            <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">{assignment.title}</h3>
+                                            <p className="text-sm text-gray-600 mb-3 line-clamp-2">{assignment.description}</p>
+                                            
+                                            <div className="space-y-2 mb-4">
+                                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                                    <Calendar className="w-4 h-4" />
+                                                    <span>Due: {new Date(assignment.due_date).toLocaleDateString()}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                                    <Trophy className="w-4 h-4" />
+                                                    <span>{assignment.total_points} points</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                                    <BookOpenIcon className="w-4 h-4" />
+                                                    <span className="truncate">{assignment.course_name}</span>
+                                                </div>
+                                                {assignment.program_name && (
+                                                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                                                        <AcademicCapIcon className="w-4 h-4" />
+                                                        <span className="truncate">{assignment.program_name}</span>
+                                                    </div>
+                                                )}
+                                                {assignment.semester && assignment.section && (
+                                                    <div className="text-sm text-gray-500">
+                                                        Sem {assignment.semester} - {assignment.section}
+                                                    </div>
+                                                )}
+                                                {/* Show file count if files exist */}
+                                                {assignment.instruction_files && assignment.instruction_files.length > 0 && (
+                                                    <div className="flex items-center gap-2 text-sm text-blue-600">
+                                                        <PaperClipIcon className="w-4 h-4" />
+                                                        <span>{assignment.instruction_files.length} file(s) attached</span>
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => {
-                                                        setSelectedAssignment(assignment);
-                                                        const section = programSections.find(s => s.id === assignment.program_section_id);
-                                                        if (section) {
-                                                            fetchStudentsForSection(section.id);
-                                                        }
-                                                        setAssignStudentsModal(true);
-                                                    }}
-                                                    className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100"
-                                                >
-                                                    <UserPlus size={16} />
-                                                    Assign to Section
-                                                </button>
-                                                <button className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-50 text-gray-700 rounded-md hover:bg-gray-100">
-                                                    <Eye size={16} />
-                                                    View
-                                                </button>
-                                                <button className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-50 text-gray-700 rounded-md hover:bg-gray-100">
-                                                    <Edit size={16} />
-                                                    Edit
-                                                </button>
-                                            </div>
+                                            
+                                            {assignment.skill_outcomes && assignment.skill_outcomes.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mb-4">
+                                                    {assignment.skill_outcomes.slice(0, 3).map((skill, index) => (
+                                                        <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                            {skill}
+                                                        </span>
+                                                    ))}
+                                                    {assignment.skill_outcomes.length > 3 && (
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                                            +{assignment.skill_outcomes.length - 3}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            
+                                            <button
+                                                onClick={async () => {
+                                                    console.log('🎯 Assign button clicked for assignment:', assignment.assignment_id);
+                                                    console.log('📋 Assignment program_section_id:', assignment.program_section_id);
+                                                    
+                                                    setSelectedAssignment(assignment);
+                                                    
+                                                    if (assignment.program_section_id) {
+                                                        console.log('✅ Fetching students for section:', assignment.program_section_id);
+                                                        await fetchStudentsForSection(assignment.program_section_id);
+                                                    } else {
+                                                        console.error('❌ No program_section_id found in assignment');
+                                                        toast.error('Assignment is missing section information');
+                                                    }
+                                                    
+                                                    setAssignStudentsModal(true);
+                                                }}
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                            >
+                                                <UserPlus size={16} />
+                                                Assign to Section
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -775,7 +1165,7 @@ export default function CollegeSkillTasks() {
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Department *</label>
                                             <select
                                                 value={taskForm.department_id}
-                                                onChange={(e) => handleTaskFormChange('department_id', e.target.value)}
+                                                onChange={(e) => handleDepartmentChange(e.target.value)}
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             >
                                                 <option value="">Select Department</option>
@@ -789,16 +1179,18 @@ export default function CollegeSkillTasks() {
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Program *</label>
                                             <select
                                                 value={taskForm.program_id}
-                                                onChange={(e) => handleTaskFormChange('program_id', e.target.value)}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                onChange={(e) => handleProgramChange(e.target.value)}
+                                                disabled={!taskForm.department_id}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                                             >
                                                 <option value="">Select Program</option>
-                                                {programs
-                                                    .filter(prog => !taskForm.department_id || prog.department_id === taskForm.department_id)
-                                                    .map(prog => (
-                                                        <option key={prog.id} value={prog.id}>{prog.name}</option>
-                                                    ))}
+                                                {programs.map(prog => (
+                                                    <option key={prog.id} value={prog.id}>{prog.name}</option>
+                                                ))}
                                             </select>
+                                            {!taskForm.department_id && (
+                                                <p className="text-xs text-gray-500 mt-1">Select a department first</p>
+                                            )}
                                         </div>
                                         
                                         <div>
@@ -806,30 +1198,46 @@ export default function CollegeSkillTasks() {
                                             <select
                                                 value={taskForm.section_id}
                                                 onChange={(e) => handleSectionChange(e.target.value)}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                disabled={!taskForm.program_id}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                                             >
                                                 <option value="">Select Section</option>
-                                                {filteredSections
-                                                    .filter(section => !taskForm.program_id || section.program_id === taskForm.program_id)
-                                                    .map(section => (
+                                                {sectionsForDropdown.map(section => {
+                                                    console.log('🎨 COMPONENT: Rendering section option:', {
+                                                        id: section.id,
+                                                        display: `Sem ${section.semester} - ${section.section} (${section.academic_year})`,
+                                                        program_id: section.program_id
+                                                    });
+                                                    return (
                                                         <option key={section.id} value={section.id}>
                                                             Sem {section.semester} - {section.section} ({section.academic_year})
                                                         </option>
-                                                    ))}
+                                                    );
+                                                })}
                                             </select>
+                                            {!taskForm.program_id && (
+                                                <p className="text-xs text-gray-500 mt-1">Select a program first</p>
+                                            )}
+                                            {taskForm.program_id && sectionsForDropdown.length === 0 && (
+                                                <p className="text-xs text-red-500 mt-1">No sections found for this program</p>
+                                            )}
                                         </div>
                                         
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Course *</label>
                                             <select
                                                 onChange={(e) => handleCourseChange(e.target.value)}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                disabled={!taskForm.program_id}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                                             >
                                                 <option value="">Select Course</option>
                                                 {courses.map(course => (
                                                     <option key={course.id} value={course.id}>{course.course_name} ({course.course_code})</option>
                                                 ))}
                                             </select>
+                                            {!taskForm.program_id && (
+                                                <p className="text-xs text-gray-500 mt-1">Select a program first</p>
+                                            )}
                                         </div>
                                         
                                         <div>
@@ -1121,6 +1529,401 @@ export default function CollegeSkillTasks() {
                                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                                 >
                                     Assign to {selectedStudents.length} Student{selectedStudents.length !== 1 ? 's' : ''}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* View Details Modal */}
+            {viewDetailsModal && selectedAssignment && (
+                <div className="fixed inset-0 z-50 overflow-y-auto">
+                    <div className="flex items-center justify-center min-h-screen px-4 py-8 text-center sm:block sm:p-0">
+                        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => setViewDetailsModal(false)} />
+                        <div className="inline-block w-full max-w-3xl align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:p-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-semibold text-gray-900">Task Details</h2>
+                                <button onClick={() => setViewDetailsModal(false)} className="text-gray-400 hover:text-gray-600">
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedAssignment.title}</h3>
+                                    <p className="text-gray-600">{selectedAssignment.description}</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-sm text-gray-500 mb-1">Course</p>
+                                        <p className="font-medium text-gray-900">{selectedAssignment.course_name}</p>
+                                        <p className="text-sm text-gray-500">{selectedAssignment.course_code}</p>
+                                    </div>
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-sm text-gray-500 mb-1">Due Date</p>
+                                        <p className="font-medium text-gray-900">{new Date(selectedAssignment.due_date).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-sm text-gray-500 mb-1">Total Points</p>
+                                        <p className="font-medium text-gray-900">{selectedAssignment.total_points}</p>
+                                    </div>
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-sm text-gray-500 mb-1">Type</p>
+                                        <p className="font-medium text-gray-900 capitalize">{selectedAssignment.assignment_type}</p>
+                                    </div>
+                                </div>
+
+                                {selectedAssignment.skill_outcomes && selectedAssignment.skill_outcomes.length > 0 && (
+                                    <div>
+                                        <h4 className="text-sm font-medium text-gray-700 mb-2">Skill Outcomes</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedAssignment.skill_outcomes.map((skill, index) => (
+                                                <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                                    {skill}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedAssignment.program_name && (
+                                    <div className="bg-blue-50 p-4 rounded-lg">
+                                        <p className="text-sm text-blue-600 mb-1">Program</p>
+                                        <p className="font-medium text-blue-900">{selectedAssignment.program_name}</p>
+                                        {selectedAssignment.semester && selectedAssignment.section && (
+                                            <p className="text-sm text-blue-700">Semester {selectedAssignment.semester} - Section {selectedAssignment.section}</p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Instruction Files Display */}
+                                {/* DEBUG INFO - Remove this after testing */}
+                                <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-4">
+                                    <h4 className="text-sm font-bold text-yellow-800 mb-2">🐛 DEBUG INFO:</h4>
+                                    <pre className="text-xs text-yellow-900 overflow-auto">
+                                        {JSON.stringify({
+                                            has_instruction_files: !!selectedAssignment.instruction_files,
+                                            is_array: Array.isArray(selectedAssignment.instruction_files),
+                                            length: selectedAssignment.instruction_files?.length || 0,
+                                            data: selectedAssignment.instruction_files
+                                        }, null, 2)}
+                                    </pre>
+                                </div>
+                                
+                                {selectedAssignment.instruction_files && selectedAssignment.instruction_files.length > 0 && (
+                                    <div>
+                                        <h4 className="text-sm font-medium text-gray-700 mb-3">Instruction Files</h4>
+                                        <div className="space-y-2">
+                                            {selectedAssignment.instruction_files.map((file: { name: string; url: string; size: number; type: string }, idx: number) => {
+                                                // Use document-access API for secure file access
+                                                const accessUrl = getDocumentUrl(file.url, 'inline');
+                                                
+                                                return (
+                                                    <a
+                                                        key={idx}
+                                                        href={accessUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                                                    >
+                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                            <PaperClipIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+                                                                <p className="text-xs text-gray-500">
+                                                                    {(file.size / 1024).toFixed(0)} KB • {file.type.split('/')[1]?.toUpperCase() || 'FILE'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <Eye className="w-4 h-4 text-gray-400 group-hover:text-blue-600 flex-shrink-0" />
+                                                    </a>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="mt-6 flex items-center justify-end">
+                                <button
+                                    onClick={() => setViewDetailsModal(false)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirmModal && selectedAssignment && (
+                <div className="fixed inset-0 z-50 overflow-y-auto">
+                    <div className="flex items-center justify-center min-h-screen px-4 py-8 text-center sm:block sm:p-0">
+                        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => setDeleteConfirmModal(false)} />
+                        <div className="inline-block w-full max-w-md align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:p-6">
+                            <div className="flex items-center justify-center mb-4">
+                                <div className="bg-red-100 rounded-full p-3">
+                                    <Trash2 className="w-6 h-6 text-red-600" />
+                                </div>
+                            </div>
+                            
+                            <div className="text-center mb-6">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Task</h3>
+                                <p className="text-sm text-gray-600">
+                                    Are you sure you want to delete "<span className="font-medium">{selectedAssignment.title}</span>"? This action cannot be undone.
+                                </p>
+                            </div>
+
+                            <div className="flex items-center justify-end space-x-3">
+                                <button
+                                    onClick={() => setDeleteConfirmModal(false)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDeleteTask}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700"
+                                >
+                                    Delete Task
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* View Details Modal */}
+            {viewDetailsModal && selectedAssignment && (
+                <div className="fixed inset-0 z-50 overflow-y-auto">
+                    <div className="flex items-center justify-center min-h-screen px-4 py-8 text-center sm:block sm:p-0">
+                        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => setViewDetailsModal(false)} />
+                        <div className="inline-block w-full max-w-3xl align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:p-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-semibold text-gray-900">Task Details</h2>
+                                <button onClick={() => setViewDetailsModal(false)} className="text-gray-400 hover:text-gray-600">
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedAssignment.title}</h3>
+                                    <p className="text-gray-600">{selectedAssignment.description}</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-sm text-gray-500 mb-1">Course</p>
+                                        <p className="font-medium text-gray-900">{selectedAssignment.course_name}</p>
+                                        <p className="text-sm text-gray-500">{selectedAssignment.course_code}</p>
+                                    </div>
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-sm text-gray-500 mb-1">Due Date</p>
+                                        <p className="font-medium text-gray-900">{new Date(selectedAssignment.due_date).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-sm text-gray-500 mb-1">Total Points</p>
+                                        <p className="font-medium text-gray-900">{selectedAssignment.total_points}</p>
+                                    </div>
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-sm text-gray-500 mb-1">Type</p>
+                                        <p className="font-medium text-gray-900 capitalize">{selectedAssignment.assignment_type}</p>
+                                    </div>
+                                </div>
+
+                                {selectedAssignment.skill_outcomes && selectedAssignment.skill_outcomes.length > 0 && (
+                                    <div>
+                                        <h4 className="text-sm font-medium text-gray-700 mb-2">Skill Outcomes</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedAssignment.skill_outcomes.map((skill, index) => (
+                                                <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                                    {skill}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedAssignment.program_name && (
+                                    <div className="bg-blue-50 p-4 rounded-lg">
+                                        <p className="text-sm text-blue-600 mb-1">Program</p>
+                                        <p className="font-medium text-blue-900">{selectedAssignment.program_name}</p>
+                                        {selectedAssignment.semester && selectedAssignment.section && (
+                                            <p className="text-sm text-blue-700">Semester {selectedAssignment.semester} - Section {selectedAssignment.section}</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="mt-6 flex items-center justify-end">
+                                <button
+                                    onClick={() => setViewDetailsModal(false)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Task Modal */}
+            {editTaskModal && selectedAssignment && (
+                <div className="fixed inset-0 z-50 overflow-y-auto">
+                    <div className="flex items-center justify-center min-h-screen px-4 py-8 text-center sm:block sm:p-0">
+                        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => setEditTaskModal(false)} />
+                        <div className="inline-block w-full max-w-4xl align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:p-6 max-h-[90vh] overflow-y-auto">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-semibold text-gray-900">Edit Task</h2>
+                                <button onClick={() => setEditTaskModal(false)} className="text-gray-400 hover:text-gray-600">
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                {/* Basic Information */}
+                                <div>
+                                    <h3 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
+                                    <div className="grid grid-cols-1 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Assignment Title *</label>
+                                            <input
+                                                type="text"
+                                                value={taskForm.title}
+                                                onChange={(e) => handleTaskFormChange('title', e.target.value)}
+                                                placeholder="e.g., Creative Problem Solving Challenge"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                            <textarea
+                                                value={taskForm.description}
+                                                onChange={(e) => handleTaskFormChange('description', e.target.value)}
+                                                placeholder="Brief overview of the assignment"
+                                                rows={3}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Instructions</label>
+                                            <textarea
+                                                value={taskForm.instructions}
+                                                onChange={(e) => handleTaskFormChange('instructions', e.target.value)}
+                                                placeholder="Detailed instructions for students..."
+                                                rows={4}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Assignment Configuration */}
+                                <div>
+                                    <h3 className="text-lg font-medium text-gray-900 mb-4">Assignment Configuration</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Assignment Type *</label>
+                                            <select
+                                                value={taskForm.assignment_type}
+                                                onChange={(e) => handleTaskFormChange('assignment_type', e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            >
+                                                {assignmentTypes.map(type => (
+                                                    <option key={type.value} value={type.value}>{type.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Total Points *</label>
+                                            <input
+                                                type="number"
+                                                value={taskForm.total_points}
+                                                onChange={(e) => handleTaskFormChange('total_points', parseInt(e.target.value))}
+                                                min="1"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date *</label>
+                                            <input
+                                                type="datetime-local"
+                                                value={taskForm.due_date}
+                                                onChange={(e) => handleTaskFormChange('due_date', e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                        
+                                        <div className="md:col-span-3">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Reference Document URL</label>
+                                            <input
+                                                type="url"
+                                                value={taskForm.document_pdf}
+                                                onChange={(e) => handleTaskFormChange('document_pdf', e.target.value)}
+                                                placeholder="https://..."
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-4">
+                                        <label className="flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={taskForm.allow_late_submission}
+                                                onChange={(e) => handleTaskFormChange('allow_late_submission', e.target.checked)}
+                                                className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                            />
+                                            <span className="ml-2 text-sm text-gray-700">Allow late submissions</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {/* Skill Tags */}
+                                <div>
+                                    <h3 className="text-lg font-medium text-gray-900 mb-4">Skill Tags</h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                        {defaultSkills.map((skill) => (
+                                            <button
+                                                key={skill}
+                                                type="button"
+                                                onClick={() => toggleSkill(skill)}
+                                                className={`inline-flex items-center justify-center px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
+                                                    taskForm.skill_outcomes.includes(skill)
+                                                        ? "border-blue-600 bg-blue-50 text-blue-700"
+                                                        : "border-gray-200 bg-white text-gray-600 hover:border-blue-200"
+                                                }`}
+                                            >
+                                                <TagIcon className="h-4 w-4 mr-2" />
+                                                {skill}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex items-center justify-end space-x-3">
+                                <button
+                                    onClick={() => setEditTaskModal(false)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleUpdateTask}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+                                >
+                                    Update Task
                                 </button>
                             </div>
                         </div>
