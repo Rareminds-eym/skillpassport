@@ -612,7 +612,7 @@ const calculateDetailedScore = (courseId, courseProfile, interestDNA, academicPr
 export const calculateCourseMatchScores = (courseRecommendations, riasecScores, academicData = {}) => {
   if (!courseRecommendations || courseRecommendations.length === 0) return courseRecommendations || [];
 
-  const { subjectMarks = [], projects = [], experiences = [], education = [] } = academicData;
+  const { subjectMarks = [], projects = [], experiences = [], education = [], _assessmentResults } = academicData;
 
   // ═══════════════════════════════════════════════════════════════════════════
   // STEP 1: Deep Profile Analysis (All Layers)
@@ -622,32 +622,32 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
   const skillSignature = extractSkillSignature(projects);
   const experiencePattern = recognizeExperiencePatterns(experiences);
 
+  // ENHANCED: Use assessment results if profile data is missing
+  const hasAssessmentResults = _assessmentResults?.riasec?.scores && Object.keys(_assessmentResults.riasec.scores).length > 0;
+  const enhancedInterestDNA = interestDNA.hasData ? interestDNA : 
+    (hasAssessmentResults ? analyzeInterestDNA(_assessmentResults.riasec.scores || {}) : interestDNA);
+
+  // ENHANCED: Use assessment aptitude/knowledge for academic profile if missing
+  const enhancedAcademicProfile = academicProfile.hasData ? academicProfile : 
+    (hasAssessmentResults && _assessmentResults.aptitude ? {
+      hasData: true,
+      dominantStream: _assessmentResults.knowledge?.dominantArea || 'general',
+      academicStrength: _assessmentResults.aptitude.overallScore || 50,
+      subjectScores: {},  // Empty but defined
+      streamAffinity: { science: 0, commerce: 0, arts: 0 },  // Match the structure
+      topSubjects: [],
+      consistencyScore: 70
+    } : academicProfile);
+
   // Log analysis summary for debugging
   console.log('🧠 AI Course Matching Engine v2.0');
-  console.log('├─ Interest DNA:', interestDNA.hasData ? `${interestDNA.dominantTypes.join('-')} (strength: ${Math.round(interestDNA.strengthLevel)}%)` : 'No data');
-  console.log('├─ Academic Profile:', academicProfile.hasData ? `${academicProfile.dominantStream} stream (${academicProfile.academicStrength}% avg)` : 'No data');
+  console.log('├─ Interest DNA:', enhancedInterestDNA.hasData ? `${enhancedInterestDNA.dominantTypes.join('-')} (strength: ${Math.round(enhancedInterestDNA.strengthLevel)}%)` : 'No data');
+  console.log('├─ Academic Profile:', enhancedAcademicProfile.hasData ? `${enhancedAcademicProfile.dominantStream} stream (${enhancedAcademicProfile.academicStrength}% avg)` : 'No data');
   console.log('├─ Skill Signature:', skillSignature.hasData ? `${skillSignature.projectCount} projects, ${skillSignature.technologies.length} techs` : 'No data');
   console.log('└─ Experience Pattern:', experiencePattern.hasData ? `${experiencePattern.experienceTypes.length} types, ${experiencePattern.verifiedCount} verified` : 'No data');
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // STEP 2: Handle No Data Scenario
-  // ═══════════════════════════════════════════════════════════════════════════
-  const hasAnyData = interestDNA.hasData || academicProfile.hasData || skillSignature.hasData || experiencePattern.hasData;
   
-  if (!hasAnyData) {
-    console.log('⚠️ No profile data available - using baseline recommendations');
-    const defaultScores = { bsc: 52, bba: 50, dm: 48, finance: 50, ba: 45, bca: 55, bcom: 48, engineering: 54, medical: 56, law: 46 };
-    return courseRecommendations.map(course => {
-      const courseId = course.courseId?.toLowerCase() || '';
-      return {
-        ...course,
-        matchScore: defaultScores[courseId] || 48,
-        matchLevel: 'Moderate',
-        matchEmoji: '📊',
-        reasons: ['Complete your profile for personalized AI recommendations', 'Add subjects, projects, or experiences'],
-        careerPaths: COURSE_KNOWLEDGE_BASE[courseId]?.careerPaths?.map(c => c.role) || []
-      };
-    }).sort((a, b) => b.matchScore - a.matchScore);
+  if (hasAssessmentResults) {
+    console.log('✅ Using assessment results as data source - RIASEC scores:', Object.keys(_assessmentResults.riasec.scores || {}).length);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -672,8 +672,8 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
     const result = calculateDetailedScore(
       courseId,
       courseProfile,
-      interestDNA,
-      academicProfile,
+      enhancedInterestDNA,  // Use enhanced interest DNA
+      enhancedAcademicProfile,  // Use enhanced academic profile
       skillSignature,
       experiencePattern
     );

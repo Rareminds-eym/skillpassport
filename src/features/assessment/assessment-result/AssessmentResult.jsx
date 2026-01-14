@@ -750,10 +750,26 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
         
         // For eligible students - use DEGREE_PROGRAMS
         // Use degree programs from knowledge base for proper scoring
+        // FIXED: Pass assessment results as academic data if profile is empty
+        const assessmentBasedAcademicData = {
+            subjectMarks: studentAcademicData?.subjectMarks || [],
+            projects: studentAcademicData?.projects || [],
+            experiences: studentAcademicData?.experiences || [],
+            // Add assessment results as fallback data source
+            _assessmentResults: {
+                riasec: results?.riasec,
+                aptitude: results?.aptitude,
+                bigFive: results?.bigFive,
+                workValues: results?.workValues,
+                employability: results?.employability,
+                knowledge: results?.knowledge
+            }
+        };
+        
         return calculateCourseMatchScores(
             DEGREE_PROGRAMS,
             results?.riasec?.scores || {},
-            studentAcademicData
+            assessmentBasedAcademicData
         );
         
         return [];
