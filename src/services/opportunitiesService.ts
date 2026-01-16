@@ -311,6 +311,99 @@ class OpportunitiesService {
     return this.getAllOpportunities(filters);
   }
 
+  // Get paginated opportunities with server-side pagination
+  async getPaginatedOpportunities(options: {
+    page?: number;
+    pageSize?: number;
+    searchTerm?: string;
+    sortBy?: string;
+    filters?: any;
+    activeOnly?: boolean;
+  }): Promise<{ data: Opportunity[]; count: number }> {
+    try {
+      const {
+        page = 1,
+        pageSize = 6,
+        searchTerm = '',
+        sortBy = 'newest',
+        filters = {},
+        activeOnly = true
+      } = options;
+
+      // Calculate offset
+      const offset = (page - 1) * pageSize;
+
+      // Build query
+      let query = supabase
+        .from('opportunities')
+        .select('*', { count: 'exact' });
+
+      // Apply active filter
+      if (activeOnly) {
+        query = query.eq('is_active', true);
+      }
+
+      // Apply search term
+      if (searchTerm && searchTerm.trim()) {
+        query = query.or(`title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`);
+      }
+
+      // Apply filters
+      if (filters.employmentType && filters.employmentType.length > 0) {
+        query = query.in('employment_type', filters.employmentType);
+      }
+
+      if (filters.experienceLevel && filters.experienceLevel.length > 0) {
+        query = query.in('experience_level', filters.experienceLevel);
+      }
+
+      if (filters.mode && filters.mode.length > 0) {
+        query = query.in('mode', filters.mode);
+      }
+
+      if (filters.department && filters.department.length > 0) {
+        query = query.in('department', filters.department);
+      }
+
+      if (filters.salaryMin) {
+        query = query.gte('salary_range_min', parseInt(filters.salaryMin));
+      }
+
+      if (filters.salaryMax) {
+        query = query.lte('salary_range_max', parseInt(filters.salaryMax));
+      }
+
+      if (filters.postedWithin) {
+        const daysAgo = parseInt(filters.postedWithin);
+        const dateThreshold = new Date();
+        dateThreshold.setDate(dateThreshold.getDate() - daysAgo);
+        query = query.gte('created_at', dateThreshold.toISOString());
+      }
+
+      // Apply sorting
+      const ascending = sortBy === 'oldest';
+      query = query.order('created_at', { ascending });
+
+      // Apply pagination
+      query = query.range(offset, offset + pageSize - 1);
+
+      const { data, error, count } = await query;
+
+      if (error) {
+        console.error('Error fetching paginated opportunities:', error);
+        throw error;
+      }
+
+      return {
+        data: data || [],
+        count: count || 0
+      };
+    } catch (error) {
+      console.error('Error in getPaginatedOpportunities:', error);
+      throw error;
+    }
+  }
+
   // Get opportunities statistics
   async getOpportunitiesStats(): Promise<{
     total: number;

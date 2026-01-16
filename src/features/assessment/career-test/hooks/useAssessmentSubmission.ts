@@ -20,14 +20,52 @@ import { supabase } from '../../../../lib/supabaseClient';
 import type { GradeLevel } from '../config/sections';
 import { generateCourseRecommendations } from '../utils/courseRecommendations';
 
+// Import static question banks for fallback (same as useAssessmentResults uses)
+// @ts-ignore - JS exports
+import {
+  riasecQuestions,
+  bigFiveQuestions,
+  workValuesQuestions,
+  employabilityQuestions,
+  streamKnowledgeQuestions,
+} from '../../index';
+
+/**
+ * Get the student record ID from auth user ID
+ * Questions are saved with students.id, not auth.user.id
+ */
+const getStudentRecordId = async (authUserId: string): Promise<string | null> => {
+  try {
+    const { data: student, error } = await supabase
+      .from('students')
+      .select('id')
+      .eq('user_id', authUserId)
+      .maybeSingle();
+    
+    if (error || !student) {
+      console.log(`⚠️ No student record found for auth user: ${authUserId}`);
+      return null;
+    }
+    
+    console.log(`✅ Found student record: ${student.id} for auth user: ${authUserId}`);
+    return student.id;
+  } catch (err) {
+    console.error('Error looking up student record:', err);
+    return null;
+  }
+};
+
 /**
  * Fetch AI-generated aptitude questions from database
  * These questions have correct_answer field needed for scoring
  * 
  * IMPORTANT: We need to find questions that match the IDs in the student's answers,
  * not just the latest questions (which may have different IDs if regenerated)
+ * 
+ * NOTE: Questions are saved with students.id (from students table), not auth.user.id
+ * So we need to look up the student record first if an auth user ID is provided
  */
-const fetchAIAptitudeQuestions = async (studentId: string, answerKeys?: string[]): Promise<any[]> => {
+const fetchAIAptitudeQuestions = async (authUserId: string, answerKeys?: string[]): Promise<any[]> => {
   try {
     // If we have answer keys, extract the question IDs to find the right question set
     let targetQuestionIds: string[] = [];
@@ -39,47 +77,47 @@ const fetchAIAptitudeQuestions = async (studentId: string, answerKeys?: string[]
       console.log(`🔍 Sample target IDs:`, targetQuestionIds.slice(0, 3));
     }
 
-    console.log(`📡 Fetching aptitude questions for student_id: ${studentId}`);
-
-    // Fetch ALL aptitude question sets for this student (not just the latest)
-    const { data: allQuestionSets, error } = await supabase
-      .from('career_assessment_ai_questions')
-      .select('id, questions, created_at')
-      .eq('student_id', studentId)
-      .eq('question_type', 'aptitude')
-      .order('created_at', { ascending: false });
+    // First, look up the student record ID from the auth user ID
+    // Questions are saved with students.id, not auth.user.id
+    const studentRecordId = await getStudentRecordId(authUserId);
     
-    console.log(`📡 Query result: ${allQuestionSets?.length || 0} question sets found, error: ${error?.message || 'none'}`);
+    // Try with student record ID first (this is how questions are saved)
+    if (studentRecordId) {
+      console.log(`📡 Fetching aptitude questions for student_id: ${studentRecordId}`);
+      
+      const { data: allQuestionSets, error } = await supabase
+        .from('career_assessment_ai_questions')
+        .select('id, questions, created_at')
+        .eq('student_id', studentRecordId)
+        .eq('question_type', 'aptitude')
+        .order('created_at', { ascending: false });
+      
+      console.log(`📡 Query result: ${allQuestionSets?.length || 0} question sets found, error: ${error?.message || 'none'}`);
 
-    // If no questions found with provided studentId, try with current auth user
-    if ((!allQuestionSets || allQuestionSets.length === 0) && !error) {
-      console.log('⚠️ No questions found with provided studentId, trying with current auth user...');
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && user.id !== studentId) {
-        console.log(`📡 Retrying with auth user id: ${user.id}`);
-        const { data: retryData, error: retryError } = await supabase
-          .from('career_assessment_ai_questions')
-          .select('id, questions, created_at')
-          .eq('student_id', user.id)
-          .eq('question_type', 'aptitude')
-          .order('created_at', { ascending: false });
-        
-        if (!retryError && retryData && retryData.length > 0) {
-          console.log(`✅ Found ${retryData.length} question sets with auth user id`);
-          // Continue with retryData
-          const matchingSet = findMatchingQuestionSet(retryData, targetQuestionIds);
-          return transformQuestions(matchingSet);
-        }
+      if (!error && allQuestionSets && allQuestionSets.length > 0) {
+        const matchingSet = findMatchingQuestionSet(allQuestionSets, targetQuestionIds);
+        return transformQuestions(matchingSet);
       }
     }
 
-    if (error || !allQuestionSets || allQuestionSets.length === 0) {
-      console.log('No AI aptitude questions found in database');
-      return [];
+    // Fallback: Try with auth user ID directly (in case questions were saved with auth ID)
+    console.log(`📡 Fallback: Fetching aptitude questions with auth user id: ${authUserId}`);
+    const { data: fallbackQuestionSets, error: fallbackError } = await supabase
+      .from('career_assessment_ai_questions')
+      .select('id, questions, created_at')
+      .eq('student_id', authUserId)
+      .eq('question_type', 'aptitude')
+      .order('created_at', { ascending: false });
+    
+    console.log(`📡 Fallback query result: ${fallbackQuestionSets?.length || 0} question sets found`);
+
+    if (!fallbackError && fallbackQuestionSets && fallbackQuestionSets.length > 0) {
+      const matchingSet = findMatchingQuestionSet(fallbackQuestionSets, targetQuestionIds);
+      return transformQuestions(matchingSet);
     }
 
-    const matchingSet = findMatchingQuestionSet(allQuestionSets, targetQuestionIds);
-    return transformQuestions(matchingSet);
+    console.log('No AI aptitude questions found in database');
+    return [];
   } catch (err) {
     console.error('Error fetching AI aptitude questions:', err);
     return [];
@@ -89,23 +127,36 @@ const fetchAIAptitudeQuestions = async (studentId: string, answerKeys?: string[]
 // Helper function to find matching question set
 const findMatchingQuestionSet = (allQuestionSets: any[], targetQuestionIds: string[]): any => {
   let matchingQuestionSet = null;
+  let bestMatchCount = 0;
   
   if (targetQuestionIds.length > 0) {
+    console.log(`🔍 Searching through ${allQuestionSets.length} question sets for best match...`);
+    
     for (const questionSet of allQuestionSets) {
       const questionIds = questionSet.questions.map((q: any) => q.id);
       const matchCount = targetQuestionIds.filter(id => questionIds.includes(id)).length;
       
-      if (matchCount > 0) {
-        console.log(`✅ Found question set with ${matchCount}/${targetQuestionIds.length} matching IDs (created: ${questionSet.created_at})`);
+      console.log(`   Set created ${questionSet.created_at}: ${matchCount}/${targetQuestionIds.length} matches`);
+      
+      if (matchCount > bestMatchCount) {
+        bestMatchCount = matchCount;
         matchingQuestionSet = questionSet;
+      }
+      
+      // If we found a perfect or near-perfect match, use it
+      if (matchCount >= targetQuestionIds.length * 0.9) {
+        console.log(`✅ Found excellent match: ${matchCount}/${targetQuestionIds.length} IDs (${Math.round(matchCount/targetQuestionIds.length*100)}%)`);
         break;
       }
     }
   }
   
   if (!matchingQuestionSet) {
-    console.log('⚠️ No matching question set found, using latest');
+    console.warn('⚠️ No matching question set found, using latest');
     matchingQuestionSet = allQuestionSets[0];
+  } else if (bestMatchCount < targetQuestionIds.length * 0.5) {
+    console.warn(`⚠️ Poor match quality: only ${bestMatchCount}/${targetQuestionIds.length} IDs matched (${Math.round(bestMatchCount/targetQuestionIds.length*100)}%)`);
+    console.warn('⚠️ This will result in incomplete scoring - questions may have been regenerated');
   }
   
   return matchingQuestionSet;
@@ -131,8 +182,11 @@ const transformQuestions = (questionSet: any): any[] => {
  * 
  * IMPORTANT: We need to find questions that match the IDs in the student's answers,
  * not just the latest questions (which may have different IDs if regenerated)
+ * 
+ * NOTE: Questions are saved with students.id (from students table), not auth.user.id
+ * So we need to look up the student record first if an auth user ID is provided
  */
-const fetchAIKnowledgeQuestions = async (studentId: string, answerKeys?: string[]): Promise<any[]> => {
+const fetchAIKnowledgeQuestions = async (authUserId: string, answerKeys?: string[]): Promise<any[]> => {
   try {
     // If we have answer keys, extract the question IDs to find the right question set
     let targetQuestionIds: string[] = [];
@@ -143,46 +197,47 @@ const fetchAIKnowledgeQuestions = async (studentId: string, answerKeys?: string[
       console.log(`🔍 Looking for knowledge questions matching ${targetQuestionIds.length} answer IDs`);
     }
 
-    console.log(`📡 Fetching knowledge questions for student_id: ${studentId}`);
+    // First, look up the student record ID from the auth user ID
+    // Questions are saved with students.id, not auth.user.id
+    const studentRecordId = await getStudentRecordId(authUserId);
+    
+    // Try with student record ID first (this is how questions are saved)
+    if (studentRecordId) {
+      console.log(`📡 Fetching knowledge questions for student_id: ${studentRecordId}`);
 
-    // Fetch ALL knowledge question sets for this student (not just the latest)
-    const { data: allQuestionSets, error } = await supabase
-      .from('career_assessment_ai_questions')
-      .select('id, questions, created_at')
-      .eq('student_id', studentId)
-      .eq('question_type', 'knowledge')
-      .order('created_at', { ascending: false });
+      const { data: allQuestionSets, error } = await supabase
+        .from('career_assessment_ai_questions')
+        .select('id, questions, created_at')
+        .eq('student_id', studentRecordId)
+        .eq('question_type', 'knowledge')
+        .order('created_at', { ascending: false });
 
-    console.log(`📡 Knowledge query result: ${allQuestionSets?.length || 0} question sets found, error: ${error?.message || 'none'}`);
+      console.log(`📡 Knowledge query result: ${allQuestionSets?.length || 0} question sets found, error: ${error?.message || 'none'}`);
 
-    // If no questions found with provided studentId, try with current auth user
-    if ((!allQuestionSets || allQuestionSets.length === 0) && !error) {
-      console.log('⚠️ No knowledge questions found with provided studentId, trying with current auth user...');
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && user.id !== studentId) {
-        console.log(`📡 Retrying knowledge with auth user id: ${user.id}`);
-        const { data: retryData, error: retryError } = await supabase
-          .from('career_assessment_ai_questions')
-          .select('id, questions, created_at')
-          .eq('student_id', user.id)
-          .eq('question_type', 'knowledge')
-          .order('created_at', { ascending: false });
-        
-        if (!retryError && retryData && retryData.length > 0) {
-          console.log(`✅ Found ${retryData.length} knowledge question sets with auth user id`);
-          const matchingSet = findMatchingQuestionSet(retryData, targetQuestionIds);
-          return transformKnowledgeQuestions(matchingSet);
-        }
+      if (!error && allQuestionSets && allQuestionSets.length > 0) {
+        const matchingSet = findMatchingQuestionSet(allQuestionSets, targetQuestionIds);
+        return transformKnowledgeQuestions(matchingSet);
       }
     }
 
-    if (error || !allQuestionSets || allQuestionSets.length === 0) {
-      console.log('No AI knowledge questions found in database');
-      return [];
+    // Fallback: Try with auth user ID directly (in case questions were saved with auth ID)
+    console.log(`📡 Fallback: Fetching knowledge questions with auth user id: ${authUserId}`);
+    const { data: fallbackQuestionSets, error: fallbackError } = await supabase
+      .from('career_assessment_ai_questions')
+      .select('id, questions, created_at')
+      .eq('student_id', authUserId)
+      .eq('question_type', 'knowledge')
+      .order('created_at', { ascending: false });
+    
+    console.log(`📡 Fallback knowledge query result: ${fallbackQuestionSets?.length || 0} question sets found`);
+
+    if (!fallbackError && fallbackQuestionSets && fallbackQuestionSets.length > 0) {
+      const matchingSet = findMatchingQuestionSet(fallbackQuestionSets, targetQuestionIds);
+      return transformKnowledgeQuestions(matchingSet);
     }
 
-    const matchingSet = findMatchingQuestionSet(allQuestionSets, targetQuestionIds);
-    return transformKnowledgeQuestions(matchingSet);
+    console.log('No AI knowledge questions found in database');
+    return [];
   } catch (err) {
     console.error('Error fetching AI knowledge questions:', err);
     return [];
@@ -315,212 +370,21 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
     }
 
     try {
-      // Save to localStorage for backward compatibility
+      console.log('📝 Submitting assessment...');
+      console.log('   Grade:', gradeLevel, 'Stream:', studentStream);
+      console.log('   Total answers:', Object.keys(answers).length);
+      
+      // Save to localStorage (same as Regenerate uses)
       localStorage.setItem('assessment_answers', JSON.stringify(answers));
       localStorage.setItem('assessment_stream', studentStream || '');
       localStorage.setItem('assessment_grade_level', gradeLevel || 'after12');
       localStorage.setItem('assessment_section_timings', JSON.stringify(finalTimings));
-      localStorage.removeItem('assessment_gemini_results');
-
-      // Prepare question banks for Gemini analysis
-      let questionBanks = {
-        riasecQuestions: getQuestionsForSection(sections, getSectionId('riasec', gradeLevel)),
-        aptitudeQuestions: getQuestionsForSection(sections, getSectionId('aptitude', gradeLevel)),
-        bigFiveQuestions: getQuestionsForSection(sections, getSectionId('bigfive', gradeLevel)),
-        workValuesQuestions: getQuestionsForSection(sections, 'values'),
-        employabilityQuestions: getQuestionsForSection(sections, 'employability'),
-        streamKnowledgeQuestions: { [studentStream || '']: getQuestionsForSection(sections, getSectionId('knowledge', gradeLevel)) }
-      };
-
-      // Check if we need to fetch AI-generated questions from database
-      // This is needed because AI questions have correct_answer field for scoring
-      // IMPORTANT: For AI assessments (after10, after12, college, higher_secondary), 
-      // ALWAYS fetch from database because frontend questions don't have correct_answer
-      const aptitudeAnswerKeys = Object.keys(answers).filter(k => k.startsWith('aptitude_'));
-      const knowledgeAnswerKeys = Object.keys(answers).filter(k => k.startsWith('knowledge_'));
+      localStorage.removeItem('assessment_gemini_results'); // Clear old results
       
-      // AI assessment grade levels that use AI-generated questions
-      const isAIAssessment = ['after10', 'after12', 'college', 'higher_secondary'].includes(gradeLevel || '');
-      
-      // For AI assessments, ALWAYS fetch from database (even if sections have questions)
-      // because frontend questions don't have correct_answer field needed for scoring
-      if (aptitudeAnswerKeys.length > 0 && userId) {
-        const shouldFetch = isAIAssessment || !questionBanks.aptitudeQuestions || questionBanks.aptitudeQuestions.length === 0;
-        
-        if (shouldFetch) {
-          console.log(`📡 Fetching AI-generated aptitude questions from database for scoring... (isAIAssessment: ${isAIAssessment}, userId: ${userId})`);
-          let aiAptitudeQuestions = await fetchAIAptitudeQuestions(userId, aptitudeAnswerKeys);
-          
-          // If no questions found, wait a bit and retry (questions might still be saving)
-          if (aiAptitudeQuestions.length === 0) {
-            console.log('⏳ No questions found, waiting 1s and retrying...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            aiAptitudeQuestions = await fetchAIAptitudeQuestions(userId, aptitudeAnswerKeys);
-          }
-          
-          if (aiAptitudeQuestions.length > 0) {
-            questionBanks.aptitudeQuestions = aiAptitudeQuestions;
-            console.log(`✅ Loaded ${aiAptitudeQuestions.length} AI aptitude questions with correct answers`);
-          } else {
-            console.warn('⚠️ No AI aptitude questions found in database - scoring may be inaccurate');
-          }
-        }
-      }
+      console.log('💾 Saved assessment data to localStorage');
 
-      if (knowledgeAnswerKeys.length > 0 && userId) {
-        const shouldFetch = isAIAssessment || !questionBanks.streamKnowledgeQuestions?.[studentStream || ''] || questionBanks.streamKnowledgeQuestions[studentStream || ''].length === 0;
-        
-        if (shouldFetch) {
-          console.log(`📡 Fetching AI-generated knowledge questions from database for scoring... (isAIAssessment: ${isAIAssessment}, userId: ${userId})`);
-          let aiKnowledgeQuestions = await fetchAIKnowledgeQuestions(userId, knowledgeAnswerKeys);
-          
-          // If no questions found, wait a bit and retry (questions might still be saving)
-          if (aiKnowledgeQuestions.length === 0) {
-            console.log('⏳ No knowledge questions found, waiting 1s and retrying...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            aiKnowledgeQuestions = await fetchAIKnowledgeQuestions(userId, knowledgeAnswerKeys);
-          }
-          
-          if (aiKnowledgeQuestions.length > 0) {
-            questionBanks.streamKnowledgeQuestions = { [studentStream || '']: aiKnowledgeQuestions };
-            console.log(`✅ Loaded ${aiKnowledgeQuestions.length} AI knowledge questions with correct answers`);
-          } else {
-            console.warn('⚠️ No AI knowledge questions found in database - scoring may be inaccurate');
-          }
-        }
-      }
-
-      console.log('📚 Question banks prepared:', {
-        riasec: questionBanks.riasecQuestions?.length || 0,
-        aptitude: questionBanks.aptitudeQuestions?.length || 0,
-        bigFive: questionBanks.bigFiveQuestions?.length || 0,
-        workValues: questionBanks.workValuesQuestions?.length || 0,
-        employability: questionBanks.employabilityQuestions?.length || 0,
-        knowledge: questionBanks.streamKnowledgeQuestions?.[studentStream || '']?.length || 0
-      });
-      console.log('📝 Total answers:', Object.keys(answers).length);
-      console.log('🎓 Grade level:', gradeLevel);
-      console.log('📖 Stream:', studentStream);
-      
-      // Debug: Log sample answer keys to verify format
-      const answerKeys = Object.keys(answers);
-      console.log('🔑 Sample answer keys:', answerKeys.slice(0, 20));
-      console.log('🔑 RIASEC keys:', answerKeys.filter(k => k.startsWith('riasec_')).length);
-      console.log('🔑 BigFive keys:', answerKeys.filter(k => k.startsWith('bigfive_')).length);
-      console.log('🔑 Values keys:', answerKeys.filter(k => k.startsWith('values_')).length);
-      console.log('🔑 Employability keys:', answerKeys.filter(k => k.startsWith('employability_')).length);
-      console.log('🔑 Aptitude keys:', answerKeys.filter(k => k.startsWith('aptitude_')).length);
-      console.log('🔑 Knowledge keys:', answerKeys.filter(k => k.startsWith('knowledge_')).length);
-      
-      // Debug: Log sample answers to see the values
-      console.log('📊 Sample RIASEC answers:', 
-        Object.entries(answers)
-          .filter(([k]) => k.startsWith('riasec_'))
-          .slice(0, 5)
-          .map(([k, v]) => `${k}=${v}`)
-      );
-
-      // Include adaptive aptitude results if available
-      const answersWithAdaptive = { ...answers };
-      if ((gradeLevel === 'highschool' || gradeLevel === 'middle') && answers.adaptive_aptitude_results) {
-        console.log('📊 Including adaptive aptitude results in analysis:', answers.adaptive_aptitude_results);
-      }
-
-      // Analyze with Gemini AI
-      const geminiResults = await analyzeAssessmentWithGemini(
-        answersWithAdaptive,
-        studentStream,
-        questionBanks,
-        finalTimings,
-        gradeLevel
-      );
-
-      // Check for empty or invalid results
-      if (!geminiResults || Object.keys(geminiResults).length === 0) {
-        console.error('❌ AI analysis returned empty results:', geminiResults);
-        throw new Error('AI analysis returned empty results. Please try again.');
-      }
-      
-      // Log what the AI actually returned
-      console.log('🔍 AI Response Analysis:');
-      console.log('  Keys returned:', Object.keys(geminiResults));
-      console.log('  Has riasec:', !!geminiResults.riasec);
-      console.log('  Has aptitude:', !!geminiResults.aptitude);
-      console.log('  Has bigFive:', !!geminiResults.bigFive);
-      console.log('  Has workValues:', !!geminiResults.workValues);
-      console.log('  Has employability:', !!geminiResults.employability);
-      console.log('  Has knowledge:', !!geminiResults.knowledge);
-      console.log('  Has careerFit:', !!geminiResults.careerFit);
-      console.log('  Has skillGap:', !!geminiResults.skillGap);
-      console.log('  Has roadmap:', !!geminiResults.roadmap);
-      console.log('  Has profileSnapshot:', !!geminiResults.profileSnapshot);
-      console.log('  Has timingAnalysis:', !!geminiResults.timingAnalysis);
-      console.log('  Has finalNote:', !!geminiResults.finalNote);
-      console.log('  Has overallSummary:', !!geminiResults.overallSummary);
-      
-      // Validate that we have essential fields
-      if (!geminiResults.riasec && !geminiResults.careerFit) {
-        console.error('❌ AI analysis missing essential fields:', Object.keys(geminiResults));
-        console.error('❌ Full AI response:', JSON.stringify(geminiResults, null, 2));
-        throw new Error('AI analysis returned incomplete results. Please try again.');
-      }
-      
-      console.log('✅ AI analysis successful, keys:', Object.keys(geminiResults));
-
-      // Enhance results with adaptive aptitude data for high school students
-      if ((gradeLevel === 'highschool' || gradeLevel === 'middle') && answers.adaptive_aptitude_results) {
-        const adaptiveResults = answers.adaptive_aptitude_results;
-        console.log('🎯 Enhancing results with adaptive aptitude data');
-        
-        geminiResults.adaptiveAptitude = {
-          aptitudeLevel: adaptiveResults.aptitudeLevel,
-          confidenceTag: adaptiveResults.confidenceTag,
-          tier: adaptiveResults.tier,
-          overallAccuracy: adaptiveResults.overallAccuracy,
-          accuracyBySubtag: adaptiveResults.accuracyBySubtag,
-          pathClassification: adaptiveResults.pathClassification,
-          totalQuestions: adaptiveResults.totalQuestions,
-          totalCorrect: adaptiveResults.totalCorrect
-        };
-        
-        // Enhance aptitude scores with adaptive test results
-        if (geminiResults.aptitude) {
-          geminiResults.aptitude.adaptiveLevel = adaptiveResults.aptitudeLevel;
-          geminiResults.aptitude.adaptiveConfidence = adaptiveResults.confidenceTag;
-          
-          if (adaptiveResults.accuracyBySubtag) {
-            const subtagMapping: Record<string, string> = {
-              numerical_reasoning: 'numerical',
-              logical_reasoning: 'abstract',
-              verbal_reasoning: 'verbal',
-              spatial_reasoning: 'spatial',
-              data_interpretation: 'numerical',
-              pattern_recognition: 'abstract'
-            };
-            
-            Object.entries(adaptiveResults.accuracyBySubtag).forEach(([subtag, data]: [string, any]) => {
-              const category = subtagMapping[subtag];
-              if (category && geminiResults.aptitude.scores?.[category]) {
-                geminiResults.aptitude.scores[category].adaptiveAccuracy = data.accuracy;
-              }
-            });
-          }
-        }
-        
-        console.log('✅ Adaptive aptitude data integrated into results');
-      }
-      
-      // Add course recommendations for after12 students
-      if (gradeLevel === 'after12') {
-        geminiResults.courseRecommendations = generateCourseRecommendations(geminiResults);
-        console.log('✅ Course recommendations generated:', geminiResults.courseRecommendations);
-      }
-
-      // Save AI-analyzed results to localStorage
-      localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
-      console.log('Gemini analysis complete:', geminiResults);
-
-      // Save results to database
+      // Save to database WITHOUT AI analysis
+      // AI analysis will be generated on-demand when viewing result (same as Regenerate)
       let attemptId = currentAttempt?.id;
       
       if (!attemptId && userId) {
@@ -544,22 +408,27 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         }
       }
       
-      // Save to database if we have an attempt
+      // Save completion to database
       if (attemptId && userId) {
         try {
-          console.log('Attempting to save results to database with attemptId:', attemptId);
+          console.log('💾 Saving assessment completion to database...');
+          console.log('   Attempt ID:', attemptId);
+          console.log('   Using completeAttemptWithoutAI (AI analysis will be generated on result page)');
           
-          const dbResults = await assessmentService.completeAttempt(
+          const dbResults = await assessmentService.completeAttemptWithoutAI(
             attemptId,
             userId,
             studentStream,
             gradeLevel || 'after12',
-            geminiResults,
             finalTimings
           );
-          console.log('✅ Results saved to database:', dbResults);
           
-          // Navigate with attemptId for database retrieval
+          console.log('✅ Assessment completion saved to database');
+          console.log('   Result ID:', dbResults.id);
+          console.log('   Navigating to result page...');
+          console.log('   AI analysis will be generated automatically (same as Regenerate)');
+          
+          // Navigate with attemptId
           navigate(`/student/assessment/result?attemptId=${attemptId}`);
         } catch (dbErr: any) {
           console.error('❌ Failed to save to database:', dbErr);
@@ -574,14 +443,10 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
       console.error('Error submitting assessment:', err);
       setIsSubmitting(false);
       
-      // Show a more detailed error message
-      const errorMessage = err.message || 'Failed to analyze assessment with AI. Please try again.';
+      const errorMessage = err.message || 'Failed to submit assessment. Please try again.';
       console.error('❌ Assessment submission failed:', errorMessage);
       
-      // Alert the user about the error (in addition to the error state)
-      alert(`Assessment Analysis Error: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
-      
-      setError(errorMessage);
+      alert(`Assessment Submission Error: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
     }
   }, [navigate]);
 
