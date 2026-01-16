@@ -10,13 +10,16 @@ import { buildAnalysisPrompt, getSystemMessage } from '../prompts';
 
 // AI Models to try (in order of preference)
 const AI_MODELS = [
-  'xiaomi/mimo-v2-flash:free'  // Xiaomi's free model - fast and reliable
+  'google/gemini-2.0-flash-exp:free',  // Google's Gemini 2.0 - free, fast, 1M context
+  'google/gemini-flash-1.5-8b',        // Gemini 1.5 Flash 8B - fast and efficient
+  'anthropic/claude-3.5-sonnet',       // Claude 3.5 Sonnet - best quality (paid)
+  'xiaomi/mimo-v2-flash:free'          // Fallback: Xiaomi's free model
 ];
 
 // Configuration
 const AI_CONFIG = {
   temperature: 0.1,  // Low temperature for consistent, deterministic results
-  maxTokens: 8000,
+  maxTokens: 16000,  // Increased from 8000 to handle complete responses
 };
 
 interface OpenRouterResponse {

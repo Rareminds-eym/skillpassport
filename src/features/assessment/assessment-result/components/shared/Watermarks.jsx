@@ -36,13 +36,13 @@ const Watermarks = () => (
       />
     </div>
 
-    {/* Additional Logo Watermarks for Pattern - PRINT ONLY */}
+    {/* Top-left watermark - matches other pages position */}
     <div
       className="print-only-watermark"
       style={{
         position: 'fixed',
         top: '20%',
-        left: '20%',
+        left: '16%',
         transform: 'translate(-50%, -50%)',
         pointerEvents: 'none',
         zIndex: 0,
@@ -60,59 +60,14 @@ const Watermarks = () => (
       />
     </div>
 
+    {/* Top-right watermark - matches other pages position */}
     <div
       className="print-only-watermark"
       style={{
         position: 'fixed',
         top: '20%',
-        right: '10%',
+        right: '16%',
         transform: 'translate(50%, -50%)',
-        pointerEvents: 'none',
-        zIndex: 0,
-        opacity: 0.05,
-      }}
-    >
-      <img
-        src="/RMLogo.webp"
-        alt="Rareminds Watermark"
-        style={{
-          width: '200px',
-          height: '200px',
-          objectFit: 'contain',
-        }}
-      />
-    </div>
-
-    <div
-      className="print-only-watermark"
-      style={{
-        position: 'fixed',
-        bottom: '15%',
-        left: '20%',
-        transform: 'translate(-50%, 50%)',
-        pointerEvents: 'none',
-        zIndex: 0,
-        opacity: 0.05,
-      }}
-    >
-      <img
-        src="/RMLogo.webp"
-        alt="Rareminds Watermark"
-        style={{
-          width: '200px',
-          height: '200px',
-          objectFit: 'contain',
-        }}
-      />
-    </div>
-
-    <div
-      className="print-only-watermark"
-      style={{
-        position: 'fixed',
-        bottom: '15%',
-        right: '10%',
-        transform: 'translate(50%, 50%)',
         pointerEvents: 'none',
         zIndex: 0,
         opacity: 0.05,

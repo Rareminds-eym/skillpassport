@@ -52,7 +52,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
     const initialState: Record<string, boolean> = {};
     const allGroups = [
       "students", "teachers", "academics", "communication", "finance", "skills", // school_admin
-      "colleges", "courses", "faculty", "placements", "analytics", "library", // university_admin
+      "colleges", "courses", "faculty", "placements", "analytics", "library", "hr-payroll", // university_admin
       "department", "student", "examinations", "operations", "administration" // college_admin
     ];
     allGroups.forEach(group => {
@@ -451,6 +451,42 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
           ],
         },
         {
+          title: "HR & Payroll",
+          key: "hr-payroll",
+          items: [
+            {
+              name: "Faculty Lifecycle",
+              path: "/university-admin/hr/faculty-lifecycle",
+              icon: UserGroupIcon,
+            },
+            {
+              name: "Staff Management",
+              path: "/university-admin/hr/staff-management",
+              icon: UserIcon,
+            },
+            {
+              name: "Payroll Processing",
+              path: "/university-admin/hr/payroll",
+              icon: BanknotesIcon,
+            },
+            {
+              name: "Statutory Deductions",
+              path: "/university-admin/hr/statutory-deductions",
+              icon: CreditCardIcon,
+            },
+            {
+              name: "Employee Records",
+              path: "/university-admin/hr/employee-records",
+              icon: FolderOpenIcon,
+            },
+            {
+              name: "Leave Management",
+              path: "/university-admin/hr/leave-management",
+              icon: CalendarDaysIcon,
+            },
+          ],
+        },
+        {
           title: "Communication & Announcements",
           key: "communication",
           items: [
@@ -770,7 +806,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             <div
               className={classNames(
                 "overflow-hidden transition-all duration-500 ease-in-out",
-                openGroups[group.key] ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                openGroups[group.key] ? "max-h-auto opacity-100" : "max-h-0 opacity-0"
               )}
             >
               <div className="mt-1 space-y-1 pl-2 border-l border-gray-100">

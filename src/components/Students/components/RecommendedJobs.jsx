@@ -128,7 +128,7 @@ const RecommendedJobsContent = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="relative z-0 mb-6 h-[400px] overflow-hidden"
+        className="relative h-[400px] overflow-hidden"
         style={{
           width: '100vw',
           marginLeft: 'calc(-50vw + 50%)',
@@ -455,11 +455,15 @@ const RecommendedJobsContent = ({
 
 /**
  * Wrapped RecommendedJobs with FeatureGate for ai_job_matching add-on
+ * Uses blurContent={false} to show a centered card instead of overlay
+ * This prevents the FeatureGate from covering other page content
  */
 const RecommendedJobs = (props) => (
-  <FeatureGate featureKey="ai_job_matching" showUpgradePrompt={true} blurContent={true}>
-    <RecommendedJobsContent {...props} />
-  </FeatureGate>
+  <div className="relative mb-6">
+    <FeatureGate featureKey="ai_job_matching" showUpgradePrompt={true} blurContent={false}>
+      <RecommendedJobsContent {...props} />
+    </FeatureGate>
+  </div>
 );
 
 export default RecommendedJobs;

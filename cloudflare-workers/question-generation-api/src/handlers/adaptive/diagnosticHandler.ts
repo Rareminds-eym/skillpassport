@@ -1,6 +1,7 @@
 /**
  * Adaptive Assessment - Diagnostic Screener Handler
- * Generates 6 diagnostic questions to determine starting difficulty
+ * Generates exactly 6 diagnostic questions at Level 3 (Phase 1: Q1-Q6)
+ * All questions are at medium difficulty to establish baseline ability
  */
 
 import type { Env, AdaptiveQuestion, DifficultyLevel, Subtag, TestPhase, AdaptiveQuestionGenerationResult } from '../../types';
@@ -115,13 +116,14 @@ async function generateDiagnosticScreenerQuestions(
   const phase: TestPhase = 'diagnostic_screener';
   const selectedSubtags = selectSubtagsForScreener(6, 3);
   
+  // Phase 1: All 6 questions at Level 3 (baseline) to establish starting ability
   const questionSpecs: { difficulty: DifficultyLevel; subtag: Subtag }[] = [
-    { difficulty: 2, subtag: selectedSubtags[0] },
-    { difficulty: 2, subtag: selectedSubtags[1] },
+    { difficulty: 3, subtag: selectedSubtags[0] },
+    { difficulty: 3, subtag: selectedSubtags[1] },
     { difficulty: 3, subtag: selectedSubtags[2] },
     { difficulty: 3, subtag: selectedSubtags[3] },
-    { difficulty: 4, subtag: selectedSubtags[4] },
-    { difficulty: 4, subtag: selectedSubtags[5] },
+    { difficulty: 3, subtag: selectedSubtags[4] },
+    { difficulty: 3, subtag: selectedSubtags[5] },
   ];
 
   const usedQuestionIds = new Set<string>(excludeQuestionIds);

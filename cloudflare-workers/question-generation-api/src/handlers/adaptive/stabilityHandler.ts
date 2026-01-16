@@ -1,6 +1,7 @@
 /**
  * Adaptive Assessment - Stability Confirmation Handler
- * Generates 4-6 stability confirmation questions
+ * Generates exactly 4 stability confirmation questions (Phase 3: Q18-Q21)
+ * Questions are at or near the student's provisional aptitude band
  */
 
 import type { Env, AdaptiveQuestion, DifficultyLevel, Subtag, TestPhase, AdaptiveQuestionGenerationResult } from '../../types';
@@ -135,7 +136,8 @@ async function generateStabilityConfirmationQuestions(
   }
 
   const phase: TestPhase = 'stability_confirmation';
-  const questionCount = Math.min(Math.max(count, 4), 6);
+  // Phase 3: Exactly 4 stability confirmation questions (Q18-Q21)
+  const questionCount = 4;
 
   const difficulties = generateStabilityDifficulties(provisionalBand, questionCount);
   const subtags = generateMixedFormatSubtags(questionCount, 2);

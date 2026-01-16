@@ -1,108 +1,99 @@
 import { useState, useEffect } from 'react';
-import { permissionService, PermissionCheck } from '@/services/permissionService';
-import { UserRole, Permission } from '@/types/Permissions';
+import { permissionService, UserPermissions, PermissionCheck } from '../services/permissionService';
+import { Permission } from '../types/Permissions';
 
-// Hook to get current user role
-export function useUserRole() {
-  const [role, setRole] = useState<UserRole | null>(null);
+export function usePermissions(userId?: string) {
+  const [permissions, setPermissions] = useState<UserPermissions>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    async function fetchRole() {
-      const userRole = await permissionService.getCurrentUserRole();
-      setRole(userRole);
-      setLoading(false);
-    }
-    fetchRole();
-  }, []);
+    let mounted = true;
 
-  return { role, loading };
+    const loadPermissions = async () => {
+      try {
+        setLoading(true);
+        const perms = await permissionService.getUserPermissions(userId);
+        if (mounted) {
+          setPermissions(perms);
+          setError(null);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err : new Error('Failed to load permissions'));
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadPermissions();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userId]);
+
+  const hasPermission = (module: string, permission: Permission): boolean => {
+    return permissions[module]?.includes(permission) || false;
+  };
+
+  const hasAnyPermission = (module: string, permissionList: Permission[]): boolean => {
+    return permissionList.some(permission => hasPermission(module, permission));
+  };
+
+  const hasAllPermissions = (module: string, permissionList: Permission[]): boolean => {
+    return permissionList.every(permission => hasPermission(module, permission));
+  };
+
+  return {
+    permissions,
+    loading,
+    error,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
+  };
 }
 
-// Hook to check a specific permission
-export function usePermission(feature: string, permission: Permission) {
-  const [check, setCheck] = useState<PermissionCheck>({ allowed: false });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function checkPerm() {
-      const result = await permissionService.checkPermission(feature, permission);
-      setCheck(result);
-      setLoading(false);
-    }
-    checkPerm();
-  }, [feature, permission]);
-
-  return { ...check, loading };
-}
-
-// Hook to get all feature access permissions
-export function useFeatureAccess() {
-  const [access, setAccess] = useState({
-    canAddStudent: false,
-    canEditProfile: false,
-    canMarkAttendance: false,
-    canEditAttendance: false,
-    canTransferStudent: false,
-    canGenerateReport: false,
-    canChangeClassSection: false
+/**
+ * Hook for checking a specific permission with detailed result
+ * Returns { allowed, reason, loading }
+ */
+export function usePermission(module: string, permission: Permission) {
+  const [result, setResult] = useState<PermissionCheck & { loading: boolean }>({
+    allowed: false,
+    loading: true,
   });
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchAccess() {
-      const featureAccess = await permissionService.getFeatureAccess();
-      setAccess(featureAccess);
-      setLoading(false);
-    }
-    fetchAccess();
-  }, []);
+    let mounted = true;
 
-  return { access, loading };
-}
-
-// Hook to check student access (for parents)
-export function useStudentAccess(studentId: string | null) {
-  const [check, setCheck] = useState<PermissionCheck>({ allowed: false });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function checkAccess() {
-      if (!studentId) {
-        setCheck({ allowed: false, reason: 'No student ID provided' });
-        setLoading(false);
-        return;
+    const checkPermission = async () => {
+      try {
+        const check = await permissionService.checkPermission(module, permission);
+        if (mounted) {
+          setResult({ ...check, loading: false });
+        }
+      } catch (err) {
+        if (mounted) {
+          setResult({
+            allowed: false,
+            reason: 'Error checking permission',
+            loading: false,
+          });
+        }
       }
+    };
 
-      const result = await permissionService.canAccessStudent(studentId);
-      setCheck(result);
-      setLoading(false);
-    }
-    checkAccess();
-  }, [studentId]);
+    checkPermission();
 
-  return { ...check, loading };
-}
+    return () => {
+      mounted = false;
+    };
+  }, [module, permission]);
 
-// Hook for attendance edit permission with date check
-export function useAttendanceEditPermission(attendanceDate: string | null) {
-  const [check, setCheck] = useState<PermissionCheck>({ allowed: false });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function checkPerm() {
-      if (!attendanceDate) {
-        setCheck({ allowed: false, reason: 'No date provided' });
-        setLoading(false);
-        return;
-      }
-
-      const result = await permissionService.canEditAttendance(attendanceDate);
-      setCheck(result);
-      setLoading(false);
-    }
-    checkPerm();
-  }, [attendanceDate]);
-
-  return { ...check, loading };
+  return result;
 }

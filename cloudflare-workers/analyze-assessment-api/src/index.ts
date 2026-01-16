@@ -16,6 +16,7 @@ import { corsHeaders, jsonResponse, handleCorsPreFlight } from './utils/cors';
 import { getOpenRouterKey } from './utils/auth';
 import { handleAnalyzeAssessment } from './handlers/analyzeHandler';
 import { handleHealthCheck } from './handlers/healthHandler';
+import { handleGenerateProgramCareerPaths } from './handlers/generateProgramCareerPaths';
 
 /**
  * Validate environment configuration
@@ -45,6 +46,9 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     case '/analyze-assessment':
       return handleAnalyzeAssessment(request, env);
 
+    case '/generate-program-career-paths':
+      return handleGenerateProgramCareerPaths(request, env);
+
     case '/health':
       return handleHealthCheck();
 
@@ -54,6 +58,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
         message: 'Use POST /analyze-assessment to analyze assessment data',
         availableEndpoints: [
           'POST /analyze-assessment - Analyze student assessment',
+          'POST /generate-program-career-paths - Generate AI career paths for programs',
           'GET /health - Health check'
         ]
       }, 404);

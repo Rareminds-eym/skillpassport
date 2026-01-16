@@ -67,6 +67,9 @@ const callOpenRouterAssessment = async (assessmentData) => {
   console.log(`📊 Grade Level: ${assessmentData.gradeLevel}, Stream: ${assessmentData.stream}`);
   console.log(`🔗 API URL: ${API_URL}/analyze-assessment`);
   console.log(`📝 Assessment data keys:`, Object.keys(assessmentData));
+  console.log(`🎯 STREAM CONTEXT: Student is in ${assessmentData.stream} stream, AI should recommend careers from this stream`);
+  console.log(`📋 RIASEC Answers Count:`, Object.keys(assessmentData.riasecAnswers || {}).length);
+  console.log(`📋 Aptitude Scores:`, assessmentData.aptitudeScores);
 
   updateProgress('analyzing', 'AI is processing your responses...');
 
@@ -113,6 +116,14 @@ const callOpenRouterAssessment = async (assessmentData) => {
 
     console.log('✅ Assessment analysis successful');
     console.log('📊 Response keys:', Object.keys(result.data));
+    
+    // Debug: Log career clusters to verify stream alignment
+    if (result.data.careerFit?.clusters) {
+      console.log('🎯 AI CAREER CLUSTERS (from worker):');
+      result.data.careerFit.clusters.forEach((cluster, idx) => {
+        console.log(`   ${idx + 1}. ${cluster.title} (${cluster.fit} - ${cluster.matchScore}%)`);
+      });
+    }
     
     return result.data;
   } catch (error) {
@@ -325,69 +336,26 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   } = questionBanks;
 
   console.log('=== prepareAssessmentData DEBUG ===');
-  console.log('📊 INPUT SUMMARY:');
-  console.log('   Total answers received:', Object.keys(answers).length);
-  console.log('   Grade level:', gradeLevel);
-  console.log('   Stream:', stream);
-  
-  // CRITICAL FIX: Check for pre-calculated scores
-  // These are calculated and saved when sections complete (while questions are still available)
-  const preCalculatedScores = answers._preCalculatedScores;
-  if (preCalculatedScores) {
-    console.log('✅ Using pre-calculated scores from attempt:');
-    if (preCalculatedScores.aptitude) {
-      console.log('   Aptitude:', preCalculatedScores.aptitude);
-    }
-    if (preCalculatedScores.knowledge) {
-      console.log('   Knowledge:', preCalculatedScores.knowledge);
-    }
-  } else {
-    console.log('⚠️ No pre-calculated scores found - will attempt to calculate from questions');
-  }
-  console.log('📚 QUESTION BANKS PROVIDED:');
-  console.log('   riasecQuestions:', riasecQuestions?.length || 0);
-  console.log('   aptitudeQuestions:', aptitudeQuestions?.length || 0);
-  console.log('   bigFiveQuestions:', bigFiveQuestions?.length || 0);
-  console.log('   workValuesQuestions:', workValuesQuestions?.length || 0);
-  console.log('   employabilityQuestions:', employabilityQuestions?.length || 0);
-  console.log('   streamKnowledgeQuestions[' + stream + ']:', streamKnowledgeQuestions?.[stream]?.length || 0);
-  
-  // CRITICAL: Check if aptitude questions have correct_answer field
-  if (aptitudeQuestions?.length > 0) {
-    const sample = aptitudeQuestions[0];
-    console.log('📊 APTITUDE QUESTION SAMPLE:', {
-      id: sample.id,
-      hasCorrectAnswer: !!sample.correct_answer,
-      hasCorrect: !!sample.correct,
-      hasCorrectAnswerField: !!sample.correctAnswer,
-      allKeys: Object.keys(sample)
-    });
-  } else {
-    console.warn('⚠️ NO APTITUDE QUESTIONS PROVIDED - Scoring will fail!');
-  }
-  
-  // Check knowledge questions
-  if (streamKnowledgeQuestions?.[stream]?.length > 0) {
-    const sample = streamKnowledgeQuestions[stream][0];
-    console.log('📚 KNOWLEDGE QUESTION SAMPLE:', {
-      id: sample.id,
-      hasCorrectAnswer: !!sample.correct_answer,
-      hasCorrect: !!sample.correct,
-      hasCorrectAnswerField: !!sample.correctAnswer,
-      allKeys: Object.keys(sample)
-    });
-  } else {
-    console.warn('⚠️ NO KNOWLEDGE QUESTIONS PROVIDED - Scoring will fail!');
-  }
+  console.log('Total answers received:', Object.keys(answers).length);
+  console.log('Sample answer keys (first 10):', Object.keys(answers).slice(0, 10));
+  console.log('Sample answer entries (first 3):', Object.entries(answers).slice(0, 3));
+  console.log('Grade level:', gradeLevel);
+  console.log('riasecQuestions provided:', riasecQuestions?.length || 0);
+  console.log('bigFiveQuestions provided:', bigFiveQuestions?.length || 0);
+  console.log('workValuesQuestions provided:', workValuesQuestions?.length || 0);
+  console.log('employabilityQuestions provided:', employabilityQuestions?.length || 0);
 
   // Extract RIASEC answers - IMPROVED: Extract even if riasecQuestions is empty
   const riasecAnswers = {};
   const riasecPrefix = getSectionPrefix('riasec', gradeLevel);
-  console.log('RIASEC prefix:', riasecPrefix);
+  console.log('🔍 RIASEC Extraction DEBUG:');
+  console.log('  - RIASEC prefix:', riasecPrefix);
+  console.log('  - Looking for keys starting with:', `${riasecPrefix}_`);
   
   // First, try to extract using question bank
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith(`${riasecPrefix}_`)) {
+      console.log('  - Found RIASEC key:', key, 'value:', value);
       const questionId = key.replace(`${riasecPrefix}_`, '');
       const question = riasecQuestions?.find(q => q.id === questionId);
       
@@ -417,6 +385,13 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   });
   
   console.log('RIASEC answers extracted:', Object.keys(riasecAnswers).length);
+  if (Object.keys(riasecAnswers).length === 0) {
+    console.error('❌ NO RIASEC ANSWERS EXTRACTED! This will cause zero scores.');
+    console.error('   Check if answer keys match expected format:', `${riasecPrefix}_r1`, `${riasecPrefix}_r2`, 'etc.');
+  } else {
+    console.log('✅ RIASEC answers extracted successfully');
+    console.log('   Sample extracted keys:', Object.keys(riasecAnswers).slice(0, 5));
+  }
 
   // Extract Aptitude answers - IMPROVED: Handle AI-generated questions with correct answers
   const aptitudeAnswers = {

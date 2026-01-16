@@ -2,9 +2,105 @@
  * Middle School (Grades 6-8) Assessment Prompt Builder
  */
 
-import type { AssessmentData } from '../types';
+import type { AssessmentData, AdaptiveAptitudeResults } from '../types';
+
+/**
+ * Pre-process adaptive aptitude results into actionable insights
+ * This reduces token usage and gives AI clearer direction
+ */
+function processAdaptiveResults(results: AdaptiveAptitudeResults): {
+  section: string;
+  isHighAptitude: boolean;
+  topStrengths: string[];
+  weakAreas: string[];
+} {
+  const level = results.aptitudeLevel;
+  const accuracy = results.overallAccuracy;
+  const isHighAptitude = level >= 4 || accuracy >= 75;
+  
+  // Map aptitude level to label
+  const levelLabels: Record<number, string> = {
+    1: 'Emerging',
+    2: 'Developing', 
+    3: 'Capable',
+    4: 'Strong',
+    5: 'Exceptional'
+  };
+  
+  // Extract top strengths and weak areas from accuracyBySubtag
+  const subtags = results.accuracyBySubtag || {};
+  const sortedSubtags = Object.entries(subtags)
+    .map(([name, data]: [string, any]) => ({
+      name: name.replace(/_/g, ' '),
+      accuracy: typeof data === 'number' ? data : data?.accuracy || 0
+    }))
+    .sort((a, b) => b.accuracy - a.accuracy);
+  
+  const topStrengths = sortedSubtags
+    .filter(s => s.accuracy >= 70)
+    .slice(0, 3)
+    .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
+  
+  const weakAreas = sortedSubtags
+    .filter(s => s.accuracy < 50)
+    .slice(0, 2)
+    .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
+
+  // Career mapping based on cognitive strengths
+  const careerMapping: Record<string, string[]> = {
+    'numerical reasoning': ['Data Scientist', 'Financial Analyst', 'Actuary', 'Quantitative Researcher', 'ISRO Scientist', 'Algorithmic Trader'],
+    'logical reasoning': ['Software Engineer', 'AI/ML Engineer', 'Lawyer', 'Management Consultant', 'IAS Officer', 'Game Developer'],
+    'verbal reasoning': ['Content Creator', 'Journalist', 'Lawyer', 'Diplomat (IFS)', 'Professor', 'Podcast Host', 'Screenwriter'],
+    'spatial reasoning': ['Architect', 'Game Designer', 'VR/AR Developer', 'Surgeon', 'Aerospace Engineer', '3D Artist', 'Film Director'],
+    'pattern recognition': ['Data Scientist', 'Cybersecurity Expert', 'Researcher', 'Cryptographer', 'Music Producer', 'AI Artist'],
+    'data interpretation': ['Business Analyst', 'Market Researcher', 'Economist', 'Policy Analyst', 'Statistician', 'Sports Analyst']
+  };
+
+  // Get recommended careers based on top strengths
+  const recommendedCareers = new Set<string>();
+  sortedSubtags.slice(0, 2).forEach(s => {
+    const careers = careerMapping[s.name.toLowerCase()] || [];
+    careers.forEach(c => recommendedCareers.add(c));
+  });
+
+  const section = `
+## ADAPTIVE APTITUDE TEST RESULTS (Pre-Analyzed):
+- **Aptitude Level**: ${level}/5 (${levelLabels[level] || 'Unknown'})
+- **Overall Accuracy**: ${Math.round(accuracy)}%
+- **Confidence**: ${results.confidenceTag}
+- **Performance Trend**: ${results.pathClassification} (${results.pathClassification === 'ascending' ? 'improving throughout test' : results.pathClassification === 'stable' ? 'consistent performance' : 'needs support'})
+
+**COGNITIVE STRENGTHS** (use these for career matching):
+${topStrengths.length > 0 ? topStrengths.map(s => `- ${s}`).join('\n') : '- No standout strengths identified'}
+
+**AREAS FOR GROWTH**:
+${weakAreas.length > 0 ? weakAreas.map(s => `- ${s}`).join('\n') : '- No significant weak areas'}
+
+**RECOMMENDED CAREER DIRECTIONS** (based on cognitive profile):
+${Array.from(recommendedCareers).slice(0, 6).map(c => `- ${c}`).join('\n')}
+
+${isHighAptitude ? `
+**⭐ HIGH-APTITUDE STUDENT DETECTED** (Level ${level}, ${Math.round(accuracy)}% accuracy)
+MUST include these prestigious career paths:
+- Government: IAS, IPS, IFS, IRS Officers (UPSC pathway)
+- Defence: Army/Navy/Air Force Officer, DRDO/ISRO Scientist
+- Medical: Surgeon, Specialist Doctor (NEET pathway)
+- Engineering Elite: IIT Professor, Research Scientist (JEE Advanced pathway)
+- Legal: Supreme Court Advocate, Judge (CLAT pathway)
+- Finance: Investment Banker, CA, CFA
+` : ''}`;
+
+  return { section, isHighAptitude, topStrengths, weakAreas };
+}
 
 export function buildMiddleSchoolPrompt(assessmentData: AssessmentData, answersHash: number): string {
+  // Pre-process adaptive results for efficiency
+  const adaptiveData = assessmentData.adaptiveAptitudeResults 
+    ? processAdaptiveResults(assessmentData.adaptiveAptitudeResults)
+    : null;
+  
+  const adaptiveSection = adaptiveData?.section || '';
+
   return `You are a career counselor for middle school students (grades 6-8). Analyze this student's interest exploration assessment using the EXACT scoring rules below.
 
 ## CRITICAL: This must be DETERMINISTIC - same input = same output always
@@ -38,15 +134,35 @@ You MUST use this mapping to calculate scores precisely:
 4. Calculate percentage for each type: (score / maxScore) × 100
 5. Identify top 3 types by score
 
+## ⚠️ CRITICAL: ARTISTIC (A) RIASEC CAREER MATCHING ⚠️
+**IF the student's RIASEC scores show 'A' (Artistic) in their top 3 types, you MUST include at least ONE career cluster from these categories:**
+
+**MANDATORY for High Artistic (A) Students:**
+- Music & Entertainment: Music Producer, Sound Designer, DJ, Singer, Musician, Concert Manager
+- Visual Arts: Digital Artist, Animator, Art Director, Fashion Designer, Art Gallery Curator
+- Performing Arts: Actor, Dancer, Choreographer, Theatre Director, Voice Actor
+- Media & Content: YouTuber, Content Creator, Podcast Host, Film Director, Screenwriter
+- Design: Graphic Designer, Game Designer, Interior Designer, Brand Designer
+
+**DO NOT default to only Technology/Science careers for Artistic students!**
+**The student's creative interests MUST be reflected in their career recommendations.**
+
 ## Strengths & Character Responses (1-4 scale):
 ${JSON.stringify(assessmentData.bigFiveAnswers, null, 2)}
 
-**SCORING**: Map responses to Big Five traits (O, C, E, A, N) and calculate averages on 1-5 scale
-
-## Career Discovery Responses:
+**STRENGTHS SCORING**: These are VIA character strengths (Curiosity, Perseverance, Kindness, Creativity, Leadership, Love of Learning, Honesty, Helpfulness, Humor, Self-Discipline).
+- Rating 1 = Not like me, 2 = Sometimes, 3 = Mostly me, 4 = Very me
+- Identify top 3-4 strengths (ratings 3-4)
+- Note any text responses for deeper insight
+${adaptiveSection}
+## Learning & Work Preferences:
 ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 
-**IMPORTANT**: Return ONLY a JSON object (no markdown). Use this EXACT structure and POPULATE all fields:
+**LEARNING PREFERENCES**: These reveal HOW the student learns best (visual, hands-on, discussion, etc.) and their work style (alone vs group, leader vs supporter).
+- Use this to personalize career recommendations and learning roadmap
+- NOT a scored test - just preferences
+
+**IMPORTANT**: Return ONLY a JSON object (no markdown). Use this EXACT structure for MIDDLE SCHOOL (6-8):
 
 {
   "riasec": {
@@ -57,41 +173,63 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
     "interpretation": "Brief, encouraging explanation of what their interests mean for future careers"
   },
   "aptitude": {
-    "scores": {},
-    "topStrengths": ["2-3 character strengths like Curiosity, Creativity, Persistence, Problem-solving"],
+    "scores": {
+      "numerical_reasoning": {"accuracy": 0, "description": "Math and number skills"},
+      "logical_reasoning": {"accuracy": 0, "description": "Problem-solving ability"},
+      "verbal_reasoning": {"accuracy": 0, "description": "Language and word skills"},
+      "spatial_reasoning": {"accuracy": 0, "description": "Visual thinking"},
+      "pattern_recognition": {"accuracy": 0, "description": "Finding patterns"}
+    },
+    "topStrengths": ["2-3 strengths from adaptive test results above"],
     "overallScore": 0,
-    "cognitiveProfile": "Age-appropriate description of how they think and learn best"
+    "cognitiveProfile": "How they think and solve problems based on adaptive test",
+    "adaptiveLevel": 0,
+    "adaptiveConfidence": "high/medium/low"
+  },
+  "characterStrengths": {
+    "topStrengths": ["Top 3-4 character strengths from Strengths & Character section (e.g., Curiosity, Creativity, Perseverance)"],
+    "strengthDescriptions": [
+      {"name": "Strength 1", "rating": 4, "description": "How this shows in their responses"},
+      {"name": "Strength 2", "rating": 4, "description": "Evidence from assessment"}
+    ],
+    "growthAreas": ["1-2 areas they rated lower that could be developed"]
+  },
+  "learningStyle": {
+    "preferredMethods": ["How they learn best (visual, hands-on, discussion, etc.)"],
+    "workPreference": "Solo / With partner / In groups",
+    "teamRole": "Their natural role in group work",
+    "problemSolvingApproach": "How they handle challenges"
   },
   "bigFive": {
     "O": 3.5, "C": 3.2, "E": 3.8, "A": 4.0, "N": 2.5,
-    "workStyleSummary": "How they work and learn best based on their personality traits"
+    "workStyleSummary": "How they work and learn best based on their character traits"
   },
   "workValues": {
     "topThree": [
-      {"value": "Helping Others / Creativity / Learning / Achievement / Independence", "score": 4.0},
-      {"value": "Second most important value", "score": 3.5},
+      {"value": "Inferred from interests and strengths (e.g., Helping Others, Creativity, Learning)", "score": 4.0},
+      {"value": "Second value", "score": 3.5},
       {"value": "Third value", "score": 3.0}
     ]
   },
   "employability": {
-    "strengthAreas": ["2-3 soft skills they're already showing (e.g., Teamwork, Communication, Curiosity)"],
-    "improvementAreas": ["1-2 areas to grow (phrase positively and encouragingly)"]
+    "strengthAreas": ["2-3 soft skills they're showing (from character strengths and learning preferences)"],
+    "improvementAreas": ["1-2 areas to grow (phrase positively)"]
   },
-  "knowledge": { "score": 70, "correctCount": 7, "totalQuestions": 10 },
+  "knowledge": { "score": 0, "correctCount": 0, "totalQuestions": 0 },
   "careerFit": {
     "clusters": [
       {
         "title": "Broad career area #1 (e.g., Creative Arts & Design, Science & Technology, Helping People)",
         "matchScore": 85,
         "fit": "High",
-        "description": "2-3 sentences explaining WHY this career area matches their interests and strengths. Make it personal and specific to their assessment results.",
-        "examples": ["4-5 specific jobs in this area they can understand (e.g., Video Game Designer, App Developer)"],
+        "description": "2-3 sentences explaining WHY this career area matches their interests AND aptitude test results. Make it personal and specific.",
+        "examples": ["4-5 specific jobs in this area they can understand"],
         "whatYoullDo": "Brief description of typical activities in this career area",
-        "whyItFits": "Connects to their top interests and character strengths",
+        "whyItFits": "Connects to their RIASEC interests, adaptive aptitude strengths, and character traits",
         "evidence": {
           "interest": "How their RIASEC scores support this path",
-          "aptitude": "Which character strengths make them a good fit",
-          "personality": "Personality traits that align with success in this field"
+          "aptitude": "Which adaptive test strengths (numerical, logical, verbal, spatial, pattern) make them a good fit",
+          "personality": "Character strengths that align with success in this field"
         },
         "roles": {
           "entry": ["3-4 jobs they could do right after school or training (e.g., Camp Counselor, Junior Designer)"],
@@ -103,13 +241,13 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
         "title": "Broad career area #2",
         "matchScore": 75,
         "fit": "Medium",
-        "description": "Specific explanation of how their assessment connects to this career path",
+        "description": "Specific explanation of how their assessment AND adaptive aptitude connects to this career path",
         "examples": ["3-4 specific jobs"],
         "whatYoullDo": "What work in this area looks like",
-        "whyItFits": "How their strengths apply here",
+        "whyItFits": "How their interests and cognitive strengths apply here",
         "evidence": {
           "interest": "Interest alignment",
-          "aptitude": "Relevant strengths",
+          "aptitude": "Relevant cognitive strengths from adaptive test",
           "personality": "Personality fit"
         },
         "roles": {
@@ -264,13 +402,80 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
   "overallSummary": "3-4 sentences: Affirm their interests, celebrate their strengths, paint an exciting picture of possible futures, encourage continued exploration"
 }
 
-**JOB ROLE GUIDELINES FOR MIDDLE SCHOOL:**
-- Suggest EXCITING, RELATABLE career names that middle schoolers can understand
-- Focus on MODERN roles they see in media/daily life (e.g., "Video Game Designer" not "Software Engineer")
-- Include DIVERSE options: tech, creative, helping, business, science
-- Use SIMPLE, engaging job titles (e.g., "App Creator", "Animal Doctor", "YouTuber/Content Creator")
-- PERSONALIZE based on their RIASEC interests
-- Salary ranges should be aspirational but realistic for future reference
+**JOB ROLE GUIDELINES FOR MIDDLE SCHOOL (Gen Z & Gen Alpha Focus):**
 
-CRITICAL: You MUST provide exactly 3 career clusters with ALL fields filled including evidence, roles, and domains!`;
+**FUTURISTIC & EMERGING CAREERS (Prioritize these):**
+- AI/ML Engineer, Prompt Engineer, AI Ethics Officer, Robotics Designer
+- Metaverse Architect, VR/AR Experience Designer, Digital Twin Engineer
+- Space Tourism Guide, Asteroid Mining Engineer, Mars Colony Planner
+- Drone Pilot, Autonomous Vehicle Designer, Flying Car Engineer
+- Biotechnology Scientist, Gene Therapist, Biohacker, Longevity Researcher
+- Climate Tech Innovator, Renewable Energy Engineer, Carbon Capture Specialist
+- Blockchain Developer, Cryptocurrency Analyst, NFT Artist, Web3 Developer
+- Esports Athlete, Gaming Streamer, Content Creator, Influencer Marketing Manager
+- Cybersecurity Specialist, Ethical Hacker, Digital Forensics Expert
+- Quantum Computing Researcher, Nanotechnology Engineer
+
+**HIGH-PAYING TRADITIONAL CAREERS (For studious/high-aptitude students):**
+- Government Services: IAS Officer, IPS Officer, IFS Diplomat, IRS Officer, State Civil Services
+- Defence: Army/Navy/Air Force Officer, Defence Scientist (DRDO), Intelligence Officer (RAW/IB)
+- Judiciary: Judge, Public Prosecutor, Legal Advisor, Supreme Court Advocate
+- Medical: Surgeon, Cardiologist, Neurologist, Oncologist, Medical Researcher
+- Engineering Elite: IIT Professor, ISRO Scientist, Nuclear Engineer, Aerospace Engineer
+- Finance Elite: Investment Banker, Hedge Fund Manager, Chartered Accountant, Actuary
+- Research: PhD Researcher, University Professor, Think Tank Analyst, Policy Advisor
+
+**🎨 CREATIVE + SOCIAL CAREERS (For students high in Artistic 'A' + Social 'S' RIASEC):**
+MUSIC & ENTERTAINMENT INDUSTRY:
+- Music Producer, Sound Designer, Audio Engineer, DJ/Electronic Music Artist
+- Spotify/Apple Music Curator, Music Licensing Manager, Concert Tour Manager
+- Film Score Composer, Jingle Writer, Podcast Sound Designer
+- K-Pop/Bollywood Choreographer, Music Video Director, Live Event Producer
+- AI Music Creator, Virtual Concert Designer, Hologram Performance Director
+
+ART & VISUAL MEDIA:
+- Art Gallery Curator, Museum Experience Designer, Art Auction Specialist
+- Digital Artist, NFT Creator, AI Art Director, Generative Art Designer
+- Animation Director, Pixar/DreamWorks Animator, Anime Creator
+- Fashion Designer, Costume Designer for Films, Sustainable Fashion Innovator
+- Art Therapist, Creative Director, Brand Visual Strategist
+
+ENTERTAINMENT & MEDIA:
+- Film Director, Cinematographer, Documentary Filmmaker, OTT Content Creator
+- YouTuber, Instagram Creator, TikTok Influencer, Podcast Host
+- Screenwriter, Dialogue Writer, Story Artist, Narrative Designer for Games
+- Talent Manager, Celebrity Stylist, Entertainment Lawyer
+- Virtual Influencer Creator, Metaverse Event Planner, Digital Experience Designer
+
+SOCIAL + CREATIVE HYBRID:
+- Community Manager for Gaming/Music Brands, Fan Experience Designer
+- Social Media Strategist for Artists, Influencer Marketing Director
+- Event Designer, Wedding Planner, Festival Curator
+- Creative Therapist, Drama Therapist, Music Therapist
+- Cultural Ambassador, Arts Education Director, Creative Writing Coach
+
+**CREATIVE & SOCIAL IMPACT CAREERS:**
+- Sustainable Fashion Designer, Eco-Architect, Green Building Consultant
+- Mental Health Tech Developer, Wellness App Creator, Digital Therapist
+- Social Entrepreneur, Impact Investor, NGO Director, UN Officer
+- Documentary Filmmaker, Podcast Producer, Digital Journalist
+
+**GUIDELINES:**
+- Suggest FUTURISTIC roles that will exist/grow in 2030-2040 (when they enter workforce)
+- For HIGH APTITUDE students (level 4-5): Include competitive exam pathways (UPSC, JEE, NEET, CLAT, CAT)
+- For CREATIVE + SOCIAL students (high A + S in RIASEC): Prioritize Music, Entertainment, Art Gallery, Media careers
+- Include DIVERSE options across: Tech, Creative, Government, Defence, Healthcare, Business, Research, Entertainment
+- Use EXCITING job titles that Gen Z/Alpha relate to
+- PERSONALIZE based on their RIASEC interests AND adaptive aptitude results
+- Salary ranges should reflect 2030+ projections (higher for emerging tech and entertainment roles)
+- For studious students: Emphasize careers requiring dedication, discipline, and long-term preparation
+
+CRITICAL: You MUST provide exactly 3 career clusters with ALL fields filled including evidence, roles, and domains!
+
+**⚠️ FINAL CHECK - ARTISTIC CAREER REQUIREMENT:**
+Before returning your response, verify:
+1. What is the student's 'A' (Artistic) RIASEC score?
+2. Is 'A' in their top 3 RIASEC types?
+3. If YES → At least ONE career cluster MUST be from Music/Art/Entertainment/Design/Media
+4. If you only suggest Tech/Science/Business careers for an Artistic student, YOUR RESPONSE IS WRONG!`;
 }

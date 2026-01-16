@@ -5,7 +5,9 @@ import {
     CheckIcon,
     ChevronDownIcon,
     ClockIcon,
+    Cog6ToothIcon,
     DocumentDuplicateIcon,
+    EllipsisVerticalIcon,
     GlobeAltIcon,
     MapPinIcon,
     PlusIcon,
@@ -26,6 +28,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FileText, Rocket, Sprout, Star, Wrench } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
 import { supabase } from "../../../lib/supabaseClient";
 import { generateBadges } from "../../../services/badgeService";
@@ -213,6 +216,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
   }, []);
+
+  // Navigation hook
+  const navigate = useNavigate();
 
   // Get logged-in user's email from localStorage
   const userEmail = localStorage.getItem("userEmail");
@@ -588,6 +594,15 @@ const ProfileHeroEdit = ({ onEditClick }) => {
             boxShadow: '0 8px 32px 0 rgba(59, 130, 246, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.8)'
           }}
         >
+          {/* Three-dot menu button - Top Right Corner */}
+          <button
+            onClick={() => navigate('/student/settings')}
+            className="absolute top-4 right-4 z-20 p-2 hover:bg-white/50 rounded-lg transition-colors group"
+            title="Edit Profile Settings"
+          >
+            <EllipsisVerticalIcon className="w-6 h-6 text-gray-700 group-hover:text-blue-700" />
+          </button>
+          
           {/* <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500 z-10" /> */}
           <CardContent className="py-4 relative z-10">
             {/* Sidebar Layout: Flex on Desktop, Stack on Mobile */}
