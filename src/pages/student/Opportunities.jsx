@@ -79,7 +79,7 @@ const Opportunities = () => {
     postedWithin: '',
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const opportunitiesPerPage = 12;
+  const opportunitiesPerPage = 6;
 
   // My Applications state
   const [applications, setApplications] = useState([]);
