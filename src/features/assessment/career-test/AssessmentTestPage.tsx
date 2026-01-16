@@ -622,7 +622,59 @@ const AssessmentTestPage: React.FC = () => {
     flow.goToNextQuestion();
   }, [sections, flow, adaptiveAptitude, adaptiveAptitudeAnswer]);
   
-  const handleNextSection = useCallback(() => {
+  const handleNextSection = useCallback(async () => {
+    // Calculate and save scores for completed section
+    const completedSection = sections[flow.currentSectionIndex];
+    
+    try {
+      // For aptitude sections, calculate and save scores
+      if (completedSection?.isAptitude && aiQuestions?.aptitude && currentAttempt?.id) {
+        console.log('🧮 Calculating aptitude scores for completed section...');
+        
+        // Get answers for this section
+        const aptitudeAnswers = Object.entries(flow.answers)
+          .filter(([key]) => key.startsWith('aptitude_'))
+          .map(([key, value]) => ({
+            question_id: key.replace('aptitude_', ''),
+            selected_answer: value
+          }));
+        
+        if (aptitudeAnswers.length > 0) {
+          const scores = assessmentService.calculateAptitudeScores(
+            aptitudeAnswers,
+            aiQuestions.aptitude
+          );
+          await assessmentService.saveAptitudeScores(currentAttempt.id, scores);
+          console.log('✅ Aptitude scores saved:', scores);
+        }
+      }
+      
+      // For knowledge sections, calculate and save scores
+      if (completedSection?.id?.includes('knowledge') && aiQuestions?.knowledge && currentAttempt?.id) {
+        console.log('🧮 Calculating knowledge scores for completed section...');
+        
+        // Get answers for this section
+        const knowledgeAnswers = Object.entries(flow.answers)
+          .filter(([key]) => key.startsWith('knowledge_'))
+          .map(([key, value]) => ({
+            question_id: key.replace('knowledge_', ''),
+            selected_answer: value
+          }));
+        
+        if (knowledgeAnswers.length > 0) {
+          const scores = assessmentService.calculateKnowledgeScores(
+            knowledgeAnswers,
+            aiQuestions.knowledge
+          );
+          await assessmentService.saveKnowledgeScores(currentAttempt.id, scores);
+          console.log('✅ Knowledge scores saved:', scores);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error calculating/saving scores:', error);
+      // Don't block progression if scoring fails
+    }
+    
     if (flow.isLastSection) {
       // Submit assessment
       submission.submit({
@@ -639,7 +691,7 @@ const AssessmentTestPage: React.FC = () => {
     } else {
       flow.goToNextSection();
     }
-  }, [flow, sections, submission, currentAttempt, user]);
+  }, [flow, sections, submission, currentAttempt, user, aiQuestions]);
   
   const handleAnswerChange = useCallback((value: any) => {
     const currentSection = sections[flow.currentSectionIndex];

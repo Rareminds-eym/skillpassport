@@ -14,48 +14,112 @@ import {
 } from '../../index';
 
 /**
- * Fetch AI-generated aptitude questions from database for scoring
- * @param {string} studentId - Student's user_id
- * @param {string[]} answerKeys - Answer keys to match question IDs
+ * Get the student record ID from auth user ID
+ * Questions are saved with students.id, not auth.user.id
  */
-const fetchAIAptitudeQuestions = async (studentId, answerKeys = []) => {
+const getStudentRecordId = async (authUserId) => {
+    try {
+        const { data: student, error } = await supabase
+            .from('students')
+            .select('id')
+            .eq('user_id', authUserId)
+            .maybeSingle();
+        
+        if (error || !student) {
+            console.log(`⚠️ No student record found for auth user: ${authUserId}`);
+            return null;
+        }
+        
+        console.log(`✅ Found student record: ${student.id} for auth user: ${authUserId}`);
+        return student.id;
+    } catch (err) {
+        console.error('Error looking up student record:', err);
+        return null;
+    }
+};
+
+/**
+ * Fetch AI-generated aptitude questions from database for scoring
+ * @param {string} authUserId - Auth user ID (will be converted to student record ID)
+ * @param {string[]} answerKeys - Answer keys to match question IDs
+ * 
+ * NOTE: Questions are saved with students.id (from students table), not auth.user.id
+ * So we need to look up the student record first
+ */
+const fetchAIAptitudeQuestions = async (authUserId, answerKeys = []) => {
     try {
         const targetQuestionIds = answerKeys
             .filter(k => k.startsWith('aptitude_'))
             .map(k => k.replace('aptitude_', ''));
 
-        const { data: allQuestionSets, error } = await supabase
+        // First, look up the student record ID from the auth user ID
+        const studentRecordId = await getStudentRecordId(authUserId);
+        
+        // Try with student record ID first (this is how questions are saved)
+        if (studentRecordId) {
+            const { data: allQuestionSets, error } = await supabase
+                .from('career_assessment_ai_questions')
+                .select('id, questions, created_at')
+                .eq('student_id', studentRecordId)
+                .eq('question_type', 'aptitude')
+                .order('created_at', { ascending: false });
+
+            if (!error && allQuestionSets && allQuestionSets.length > 0) {
+                // Find matching question set
+                let matchingQuestionSet = null;
+                if (targetQuestionIds.length > 0) {
+                    for (const questionSet of allQuestionSets) {
+                        const questionIds = questionSet.questions.map(q => q.id);
+                        const matchCount = targetQuestionIds.filter(id => questionIds.includes(id)).length;
+                        if (matchCount > 0) {
+                            matchingQuestionSet = questionSet;
+                            break;
+                        }
+                    }
+                }
+                if (!matchingQuestionSet) matchingQuestionSet = allQuestionSets[0];
+
+                return matchingQuestionSet.questions.map(q => ({
+                    ...q,
+                    correct: q.correct_answer,
+                    correctAnswer: q.correct_answer,
+                    subtype: q.subtype || q.category || 'verbal'
+                }));
+            }
+        }
+
+        // Fallback: Try with auth user ID directly
+        const { data: fallbackQuestionSets, error: fallbackError } = await supabase
             .from('career_assessment_ai_questions')
             .select('id, questions, created_at')
-            .eq('student_id', studentId)
+            .eq('student_id', authUserId)
             .eq('question_type', 'aptitude')
             .order('created_at', { ascending: false });
 
-        if (error || !allQuestionSets || allQuestionSets.length === 0) {
-            console.log('No AI aptitude questions found in database');
-            return [];
-        }
-
-        // Find matching question set
-        let matchingQuestionSet = null;
-        if (targetQuestionIds.length > 0) {
-            for (const questionSet of allQuestionSets) {
-                const questionIds = questionSet.questions.map(q => q.id);
-                const matchCount = targetQuestionIds.filter(id => questionIds.includes(id)).length;
-                if (matchCount > 0) {
-                    matchingQuestionSet = questionSet;
-                    break;
+        if (!fallbackError && fallbackQuestionSets && fallbackQuestionSets.length > 0) {
+            let matchingQuestionSet = null;
+            if (targetQuestionIds.length > 0) {
+                for (const questionSet of fallbackQuestionSets) {
+                    const questionIds = questionSet.questions.map(q => q.id);
+                    const matchCount = targetQuestionIds.filter(id => questionIds.includes(id)).length;
+                    if (matchCount > 0) {
+                        matchingQuestionSet = questionSet;
+                        break;
+                    }
                 }
             }
-        }
-        if (!matchingQuestionSet) matchingQuestionSet = allQuestionSets[0];
+            if (!matchingQuestionSet) matchingQuestionSet = fallbackQuestionSets[0];
 
-        return matchingQuestionSet.questions.map(q => ({
-            ...q,
-            correct: q.correct_answer,
-            correctAnswer: q.correct_answer,
-            subtype: q.subtype || q.category || 'verbal'
-        }));
+            return matchingQuestionSet.questions.map(q => ({
+                ...q,
+                correct: q.correct_answer,
+                correctAnswer: q.correct_answer,
+                subtype: q.subtype || q.category || 'verbal'
+            }));
+        }
+
+        console.log('No AI aptitude questions found in database');
+        return [];
     } catch (err) {
         console.error('Error fetching AI aptitude questions:', err);
         return [];
@@ -64,43 +128,81 @@ const fetchAIAptitudeQuestions = async (studentId, answerKeys = []) => {
 
 /**
  * Fetch AI-generated knowledge questions from database for scoring
+ * 
+ * NOTE: Questions are saved with students.id (from students table), not auth.user.id
+ * So we need to look up the student record first
  */
-const fetchAIKnowledgeQuestions = async (studentId, answerKeys = []) => {
+const fetchAIKnowledgeQuestions = async (authUserId, answerKeys = []) => {
     try {
         const targetQuestionIds = answerKeys
             .filter(k => k.startsWith('knowledge_'))
             .map(k => k.replace('knowledge_', ''));
 
-        const { data: allQuestionSets, error } = await supabase
+        // First, look up the student record ID from the auth user ID
+        const studentRecordId = await getStudentRecordId(authUserId);
+        
+        // Try with student record ID first (this is how questions are saved)
+        if (studentRecordId) {
+            const { data: allQuestionSets, error } = await supabase
+                .from('career_assessment_ai_questions')
+                .select('id, questions, created_at')
+                .eq('student_id', studentRecordId)
+                .eq('question_type', 'knowledge')
+                .order('created_at', { ascending: false });
+
+            if (!error && allQuestionSets && allQuestionSets.length > 0) {
+                let matchingQuestionSet = null;
+                if (targetQuestionIds.length > 0) {
+                    for (const questionSet of allQuestionSets) {
+                        const questionIds = questionSet.questions.map(q => q.id);
+                        const matchCount = targetQuestionIds.filter(id => questionIds.includes(id)).length;
+                        if (matchCount > 0) {
+                            matchingQuestionSet = questionSet;
+                            break;
+                        }
+                    }
+                }
+                if (!matchingQuestionSet) matchingQuestionSet = allQuestionSets[0];
+
+                return matchingQuestionSet.questions.map(q => ({
+                    ...q,
+                    correct: q.correct_answer,
+                    correctAnswer: q.correct_answer
+                }));
+            }
+        }
+
+        // Fallback: Try with auth user ID directly
+        const { data: fallbackQuestionSets, error: fallbackError } = await supabase
             .from('career_assessment_ai_questions')
             .select('id, questions, created_at')
-            .eq('student_id', studentId)
+            .eq('student_id', authUserId)
             .eq('question_type', 'knowledge')
             .order('created_at', { ascending: false });
 
-        if (error || !allQuestionSets || allQuestionSets.length === 0) {
-            console.log('No AI knowledge questions found in database');
-            return [];
-        }
-
-        let matchingQuestionSet = null;
-        if (targetQuestionIds.length > 0) {
-            for (const questionSet of allQuestionSets) {
-                const questionIds = questionSet.questions.map(q => q.id);
-                const matchCount = targetQuestionIds.filter(id => questionIds.includes(id)).length;
-                if (matchCount > 0) {
-                    matchingQuestionSet = questionSet;
-                    break;
+        if (!fallbackError && fallbackQuestionSets && fallbackQuestionSets.length > 0) {
+            let matchingQuestionSet = null;
+            if (targetQuestionIds.length > 0) {
+                for (const questionSet of fallbackQuestionSets) {
+                    const questionIds = questionSet.questions.map(q => q.id);
+                    const matchCount = targetQuestionIds.filter(id => questionIds.includes(id)).length;
+                    if (matchCount > 0) {
+                        matchingQuestionSet = questionSet;
+                        break;
+                    }
                 }
             }
-        }
-        if (!matchingQuestionSet) matchingQuestionSet = allQuestionSets[0];
+            if (!matchingQuestionSet) matchingQuestionSet = fallbackQuestionSets[0];
 
-        return matchingQuestionSet.questions.map(q => ({
-            ...q,
-            correct: q.correct_answer,
-            correctAnswer: q.correct_answer
-        }));
+            return matchingQuestionSet.questions.map(q => ({
+                ...q,
+                correct: q.correct_answer,
+                correctAnswer: q.correct_answer
+            }));
+        }
+
+        console.log('No AI knowledge questions found in database');
+        return [];
     } catch (err) {
         console.error('Error fetching AI knowledge questions:', err);
         return [];
@@ -503,43 +605,64 @@ export const useAssessmentResults = () => {
             // Load results from database - ALWAYS prefer database over localStorage
             try {
                 const attempt = await assessmentService.getAttemptWithResults(attemptId);
-                if (attempt?.results?.[0]?.gemini_results) {
-                    const geminiResults = attempt.results[0].gemini_results;
-                    // Apply validation to correct RIASEC topThree and detect aptitude patterns
-                    const validatedResults = applyValidation(geminiResults, attempt.all_responses || {});
-                    setResults(validatedResults);
+                
+                // Check if we have a result record (even if AI analysis is missing)
+                if (attempt?.results?.[0]) {
+                    const result = attempt.results[0];
+                    
+                    // If AI analysis exists, use it
+                    if (result.gemini_results) {
+                        const geminiResults = result.gemini_results;
+                        // Apply validation to correct RIASEC topThree and detect aptitude patterns
+                        const validatedResults = applyValidation(geminiResults, attempt.all_responses || {});
+                        setResults(validatedResults);
 
-                    // Set grade level from attempt
-                    if (attempt.grade_level) {
-                        setGradeLevel(attempt.grade_level);
-                        setGradeLevelFromAttempt(true);
-                        gradeLevelFromAttemptRef.current = true; // Set ref synchronously to prevent race condition
-                    }
-
-                    // Clear localStorage to prevent stale data issues
-                    localStorage.removeItem('assessment_gemini_results');
-                    localStorage.setItem('assessment_gemini_results', JSON.stringify(validatedResults));
-
-                    // Ensure recommendations are saved (in case they weren't before)
-                    if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
-                        try {
-                            const { data: { user } } = await supabase.auth.getUser();
-                            if (user) {
-                                await saveRecommendations(
-                                    user.id,
-                                    geminiResults.platformCourses,
-                                    attempt.results[0].id,
-                                    'assessment'
-                                );
-                            }
-                        } catch (recError) {
-                            // Silently fail - recommendations may already exist
-                            console.log('Recommendations sync:', recError.message);
+                        // Set grade level from attempt
+                        if (attempt.grade_level) {
+                            setGradeLevel(attempt.grade_level);
+                            setGradeLevelFromAttempt(true);
+                            gradeLevelFromAttemptRef.current = true; // Set ref synchronously to prevent race condition
                         }
-                    }
 
-                    setLoading(false);
-                    return;
+                        // Clear localStorage to prevent stale data issues
+                        localStorage.removeItem('assessment_gemini_results');
+                        localStorage.setItem('assessment_gemini_results', JSON.stringify(validatedResults));
+
+                        // Ensure recommendations are saved (in case they weren't before)
+                        if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
+                            try {
+                                const { data: { user } } = await supabase.auth.getUser();
+                                if (user) {
+                                    await saveRecommendations(
+                                        user.id,
+                                        geminiResults.platformCourses,
+                                        result.id,
+                                        'assessment'
+                                    );
+                                }
+                            } catch (recError) {
+                                // Silently fail - recommendations may already exist
+                                console.log('Recommendations sync:', recError.message);
+                            }
+                        }
+
+                        setLoading(false);
+                        return;
+                    } else {
+                        // Result exists but no AI analysis - this happens when Submit saves without AI
+                        // Fall through to generate AI analysis from localStorage data
+                        console.log('📊 Database result exists but missing AI analysis');
+                        console.log('   Will generate AI analysis from localStorage (Submit → Auto-generate flow)');
+                        
+                        // Set grade level from attempt before falling through
+                        if (attempt.grade_level) {
+                            setGradeLevel(attempt.grade_level);
+                            setGradeLevelFromAttempt(true);
+                            gradeLevelFromAttemptRef.current = true;
+                        }
+                        
+                        // Don't return - fall through to localStorage logic which will generate AI
+                    }
                 }
             } catch (e) {
                 console.error('Error loading results from database:', e);
@@ -718,38 +841,91 @@ export const useAssessmentResults = () => {
                     try {
                         const { data: { user } } = await supabase.auth.getUser();
                         if (user) {
-                            // Check if there's an in-progress attempt to complete
-                            const inProgressAttempt = await assessmentService.getInProgressAttempt(user.id);
-                            if (inProgressAttempt) {
-                                const completedAttempt = await assessmentService.completeAttempt(
-                                    inProgressAttempt.id,
-                                    user.id,
-                                    stream,
-                                    inProgressAttempt.grade_level || 'after12', // Use grade_level from attempt or default to after12
-                                    validatedResults,
-                                    sectionTimings
-                                );
-                                console.log('Results saved to database');
+                            // First, check if there's a completed result that needs AI analysis
+                            const latestResult = await assessmentService.getLatestResult(user.id);
+                            if (latestResult && !latestResult.gemini_results) {
+                                // Update the existing result with AI analysis
+                                console.log('📊 Updating completed result with AI analysis');
+                                const { error: updateError } = await supabase
+                                    .from('personal_assessment_results')
+                                    .update({ 
+                                        gemini_results: validatedResults,
+                                        riasec_scores: validatedResults.riasec?.scores || null,
+                                        riasec_code: validatedResults.riasec?.code || null,
+                                        aptitude_scores: validatedResults.aptitude?.scores || null,
+                                        aptitude_overall: validatedResults.aptitude?.overallScore ?? null,
+                                        bigfive_scores: validatedResults.bigFive || null,
+                                        work_values_scores: validatedResults.workValues?.scores || null,
+                                        employability_scores: validatedResults.employability?.skillScores || null,
+                                        employability_readiness: validatedResults.employability?.overallReadiness || null,
+                                        knowledge_score: validatedResults.knowledge?.score ?? null,
+                                        knowledge_details: validatedResults.knowledge || null,
+                                        career_fit: validatedResults.careerFit || null,
+                                        skill_gap: validatedResults.skillGap || null,
+                                        skill_gap_courses: validatedResults.skillGapCourses || null,
+                                        roadmap: validatedResults.roadmap || null,
+                                        profile_snapshot: validatedResults.profileSnapshot || null,
+                                        timing_analysis: validatedResults.timingAnalysis || null,
+                                        final_note: validatedResults.finalNote || null,
+                                        overall_summary: validatedResults.overallSummary || null,
+                                        updated_at: new Date().toISOString()
+                                    })
+                                    .eq('id', latestResult.id);
                                 
-                                // Save course recommendations to database
+                                if (updateError) {
+                                    console.warn('Could not update database result:', updateError.message);
+                                } else {
+                                    console.log('✅ Database result updated with AI analysis');
+                                }
+                                
+                                // Save course recommendations
                                 if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
                                     try {
-                                        // Get the assessment result ID
-                                        const { data: resultData } = await supabase
-                                            .from('personal_assessment_results')
-                                            .select('id')
-                                            .eq('attempt_id', inProgressAttempt.id)
-                                            .maybeSingle();
-                                        
                                         await saveRecommendations(
                                             user.id,
                                             validatedResults.platformCourses,
-                                            resultData?.id || null,
+                                            latestResult.id,
                                             'assessment'
                                         );
                                         console.log('Course recommendations saved to database');
                                     } catch (recError) {
                                         console.warn('Could not save recommendations:', recError.message);
+                                    }
+                                }
+                            } else {
+                                // Fallback: Check if there's an in-progress attempt to complete
+                                const inProgressAttempt = await assessmentService.getInProgressAttempt(user.id);
+                                if (inProgressAttempt) {
+                                    const completedAttempt = await assessmentService.completeAttempt(
+                                        inProgressAttempt.id,
+                                        user.id,
+                                        stream,
+                                        inProgressAttempt.grade_level || 'after12',
+                                        validatedResults,
+                                        sectionTimings
+                                    );
+                                    console.log('Results saved to database');
+                                    
+                                    // Save course recommendations to database
+                                    if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
+                                        try {
+                                            // Get the assessment result ID
+                                            const { data: resultData } = await supabase
+                                                .from('personal_assessment_results')
+                                                .select('id')
+                                                .eq('attempt_id', inProgressAttempt.id)
+                                                .maybeSingle();
+                                            
+                                            await saveRecommendations(
+                                                user.id,
+                                                validatedResults.platformCourses,
+                                                resultData?.id || null,
+                                                'assessment'
+                                            );
+                                            console.log('Course recommendations saved to database');
+                                        } catch (recError) {
+                                            console.warn('Could not save recommendations:', recError.message);
+                                        }
                                     }
                                 }
                             }
@@ -844,12 +1020,43 @@ export const useAssessmentResults = () => {
                 }
             }
             
-            console.log('Regenerating AI analysis...');
+            console.log('=== REGENERATE: Starting AI analysis ===');
             console.log('Stream:', stream);
             console.log('Grade Level:', storedGradeLevel);
             console.log('Answer keys:', Object.keys(answers));
             console.log('Total answers:', Object.keys(answers).length);
-            console.log('Aptitude questions loaded:', questionBanks.aptitudeQuestions?.length || 0);
+            console.log('📚 Question bank counts:', {
+                riasec: questionBanks.riasecQuestions?.length || 0,
+                aptitude: questionBanks.aptitudeQuestions?.length || 0,
+                bigFive: questionBanks.bigFiveQuestions?.length || 0,
+                workValues: questionBanks.workValuesQuestions?.length || 0,
+                employability: questionBanks.employabilityQuestions?.length || 0,
+                knowledge: questionBanks.streamKnowledgeQuestions?.[stream]?.length || 0
+            });
+            
+            // CRITICAL DEBUG: Check if questions have correct_answer field
+            if (questionBanks.aptitudeQuestions?.length > 0) {
+                const sampleAptQ = questionBanks.aptitudeQuestions[0];
+                console.log('📊 REGENERATE: Sample aptitude question structure:', {
+                    id: sampleAptQ.id,
+                    hasCorrectAnswer: !!sampleAptQ.correct_answer,
+                    hasCorrect: !!sampleAptQ.correct,
+                    hasCorrectAnswerField: !!sampleAptQ.correctAnswer,
+                    keys: Object.keys(sampleAptQ)
+                });
+            }
+            
+            if (questionBanks.streamKnowledgeQuestions?.[stream]?.length > 0) {
+                const sampleKnowQ = questionBanks.streamKnowledgeQuestions[stream][0];
+                console.log('📚 REGENERATE: Sample knowledge question structure:', {
+                    id: sampleKnowQ.id,
+                    hasCorrectAnswer: !!sampleKnowQ.correct_answer,
+                    hasCorrect: !!sampleKnowQ.correct,
+                    hasCorrectAnswerField: !!sampleKnowQ.correctAnswer,
+                    keys: Object.keys(sampleKnowQ)
+                });
+            }
+            
             console.log('Sample answers:', JSON.stringify(answers).substring(0, 500));
             
             // Force regenerate with AI - pass gradeLevel

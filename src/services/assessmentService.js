@@ -888,6 +888,332 @@ export const transformQuestionsForUI = (dbQuestions, sectionName) => {
   });
 };
 
+/**
+ * Calculate aptitude scores from answers and questions
+ * @param {Array} answers - Array of answer objects
+ * @param {Array} questions - Array of question objects with correct_answer
+ * @returns {Object} Scores object broken down by category
+ */
+export const calculateAptitudeScores = (answers, questions) => {
+  console.log('🧮 Calculating aptitude scores...');
+  console.log('📝 Answers count:', answers?.length);
+  console.log('❓ Questions count:', questions?.length);
+
+  if (!answers || !questions || answers.length === 0 || questions.length === 0) {
+    console.warn('⚠️ Missing answers or questions for aptitude scoring');
+    return {
+      verbal: { correct: 0, total: 0, percentage: 0 },
+      numerical: { correct: 0, total: 0, percentage: 0 },
+      abstract: { correct: 0, total: 0, percentage: 0 },
+      spatial: { correct: 0, total: 0, percentage: 0 },
+      clerical: { correct: 0, total: 0, percentage: 0 }
+    };
+  }
+
+  // Create a map of question ID to question details
+  const questionMap = new Map();
+  questions.forEach(q => {
+    questionMap.set(q.id, {
+      correct_answer: q.correct_answer,
+      subtype: q.subtype || q.category || 'verbal'
+    });
+  });
+
+  // Category mapping for AI-generated questions
+  const categoryMap = {
+    'mathematics': 'numerical',
+    'math': 'numerical',
+    'numerical_reasoning': 'numerical',
+    'numerical': 'numerical',
+    'verbal_reasoning': 'verbal',
+    'verbal': 'verbal',
+    'logical_reasoning': 'abstract',
+    'logical': 'abstract',
+    'abstract': 'abstract',
+    'spatial_reasoning': 'spatial',
+    'spatial': 'spatial',
+    'clerical_speed': 'clerical',
+    'clerical': 'clerical',
+    'data_interpretation': 'numerical',
+    'english': 'verbal',
+    'science': 'abstract',
+    'social_studies': 'verbal',
+    'history': 'verbal',
+    'geography': 'spatial',
+    'civics': 'verbal',
+    'economics': 'numerical',
+    'general_knowledge': 'verbal',
+    'reasoning': 'abstract',
+    'aptitude': 'numerical'
+  };
+
+  // Initialize scores by category
+  const scoresByCategory = {
+    verbal: { correct: 0, total: 0, details: [] },
+    numerical: { correct: 0, total: 0, details: [] },
+    abstract: { correct: 0, total: 0, details: [] },
+    spatial: { correct: 0, total: 0, details: [] },
+    clerical: { correct: 0, total: 0, details: [] }
+  };
+
+  answers.forEach(answer => {
+    const questionDetails = questionMap.get(answer.question_id);
+    if (questionDetails) {
+      const rawCategory = questionDetails.subtype.toLowerCase();
+      const category = categoryMap[rawCategory] || 'verbal';
+      
+      scoresByCategory[category].total++;
+      
+      const isCorrect = answer.selected_answer === questionDetails.correct_answer;
+      if (isCorrect) {
+        scoresByCategory[category].correct++;
+      }
+      
+      scoresByCategory[category].details.push({
+        question_id: answer.question_id,
+        selected_answer: answer.selected_answer,
+        correct_answer: questionDetails.correct_answer,
+        is_correct: isCorrect
+      });
+    }
+  });
+
+  // Calculate percentages
+  Object.keys(scoresByCategory).forEach(category => {
+    const scores = scoresByCategory[category];
+    scores.percentage = scores.total > 0 ? Math.round((scores.correct / scores.total) * 100) : 0;
+  });
+
+  console.log(`✅ Aptitude scores by category:`, scoresByCategory);
+
+  return {
+    verbal: {
+      correct: scoresByCategory.verbal.correct,
+      total: scoresByCategory.verbal.total,
+      percentage: scoresByCategory.verbal.percentage
+    },
+    numerical: {
+      correct: scoresByCategory.numerical.correct,
+      total: scoresByCategory.numerical.total,
+      percentage: scoresByCategory.numerical.percentage
+    },
+    abstract: {
+      correct: scoresByCategory.abstract.correct,
+      total: scoresByCategory.abstract.total,
+      percentage: scoresByCategory.abstract.percentage
+    },
+    spatial: {
+      correct: scoresByCategory.spatial.correct,
+      total: scoresByCategory.spatial.total,
+      percentage: scoresByCategory.spatial.percentage
+    },
+    clerical: {
+      correct: scoresByCategory.clerical.correct,
+      total: scoresByCategory.clerical.total,
+      percentage: scoresByCategory.clerical.percentage
+    }
+  };
+};
+
+/**
+ * Calculate knowledge scores from answers and questions
+ * @param {Array} answers - Array of answer objects
+ * @param {Array} questions - Array of question objects with correct_answer
+ * @returns {Object} Scores object with correct/total counts
+ */
+export const calculateKnowledgeScores = (answers, questions) => {
+  console.log('🧮 Calculating knowledge scores...');
+  console.log('📝 Answers count:', answers?.length);
+  console.log('❓ Questions count:', questions?.length);
+
+  if (!answers || !questions || answers.length === 0 || questions.length === 0) {
+    console.warn('⚠️ Missing answers or questions for knowledge scoring');
+    return { correct: 0, total: 0, percentage: 0 };
+  }
+
+  // Create a map of question ID to correct answer
+  const questionMap = new Map();
+  questions.forEach(q => {
+    questionMap.set(q.id, q.correct_answer);
+  });
+
+  let correct = 0;
+  let total = 0;
+
+  answers.forEach(answer => {
+    const correctAnswer = questionMap.get(answer.question_id);
+    if (correctAnswer !== undefined) {
+      total++;
+      if (answer.selected_answer === correctAnswer) {
+        correct++;
+      }
+    }
+  });
+
+  const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+  console.log(`✅ Knowledge: ${correct}/${total} correct (${percentage}%)`);
+
+  return {
+    correct,
+    total,
+    percentage,
+    details: answers.map(answer => ({
+      question_id: answer.question_id,
+      selected_answer: answer.selected_answer,
+      correct_answer: questionMap.get(answer.question_id),
+      is_correct: answer.selected_answer === questionMap.get(answer.question_id)
+    }))
+  };
+};
+
+/**
+ * Complete an assessment attempt WITHOUT AI analysis
+ * This is used by Submit button - AI analysis will be generated on-demand on result page
+ * @param {string} attemptId - Attempt UUID
+ * @param {string} studentId - Student's user_id
+ * @param {string} streamId - Selected stream
+ * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
+ * @param {object} sectionTimings - Time spent on each section
+ */
+export const completeAttemptWithoutAI = async (attemptId, studentId, streamId, gradeLevel, sectionTimings) => {
+  console.log('=== completeAttemptWithoutAI ===');
+  console.log('Grade Level:', gradeLevel);
+  console.log('Student ID:', studentId);
+  console.log('Stream ID:', streamId);
+  console.log('Attempt ID:', attemptId);
+  
+  // Update attempt status to completed
+  const { error: attemptError } = await supabase
+    .from('personal_assessment_attempts')
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      section_timings: sectionTimings
+    })
+    .eq('id', attemptId);
+
+  if (attemptError) {
+    console.error('Error updating attempt:', attemptError);
+    throw attemptError;
+  }
+
+  // Create a minimal result record WITHOUT AI analysis
+  // AI analysis will be generated on-demand when viewing result page
+  const dataToInsert = {
+    attempt_id: attemptId,
+    student_id: studentId,
+    grade_level: gradeLevel,
+    stream_id: streamId,
+    status: 'completed',
+    // All AI fields are null - will be populated when AI analysis runs
+    riasec_scores: null,
+    riasec_code: null,
+    aptitude_scores: null,
+    aptitude_overall: null,
+    bigfive_scores: null,
+    work_values_scores: null,
+    employability_scores: null,
+    employability_readiness: null,
+    knowledge_score: null,
+    knowledge_details: null,
+    career_fit: null,
+    skill_gap: null,
+    skill_gap_courses: null,
+    roadmap: null,
+    profile_snapshot: null,
+    timing_analysis: null,
+    final_note: null,
+    overall_summary: null,
+    gemini_results: null
+  };
+
+  console.log('📝 Inserting minimal result record (AI analysis will be generated on result page)');
+  
+  const { data: results, error: resultsError } = await supabase
+    .from('personal_assessment_results')
+    .insert(dataToInsert)
+    .select()
+    .single();
+
+  if (resultsError) {
+    console.error('❌ Error inserting minimal result:', resultsError);
+    throw resultsError;
+  }
+
+  console.log('✅ Minimal result saved successfully:', results.id);
+  console.log('   AI analysis will be generated automatically on result page');
+  return results;
+};
+
+/**
+ * Save aptitude scores to assessment attempt
+ * @param {string} attemptId - Assessment attempt ID
+ * @param {Object} scores - Aptitude scores object
+ * @returns {Promise<Object>} Updated attempt
+ */
+export const saveAptitudeScores = async (attemptId, scores) => {
+  try {
+    console.log('💾 Saving aptitude scores to attempt:', attemptId);
+    console.log('📊 Scores:', scores);
+
+    const { data, error } = await supabase
+      .from('personal_assessment_attempts')
+      .update({
+        aptitude_scores: scores,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', attemptId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error saving aptitude scores:', error);
+      throw error;
+    }
+
+    console.log('✅ Aptitude scores saved successfully');
+    return data;
+  } catch (error) {
+    console.error('❌ Failed to save aptitude scores:', error);
+    throw error;
+  }
+};
+
+/**
+ * Save knowledge scores to assessment attempt
+ * @param {string} attemptId - Assessment attempt ID
+ * @param {Object} scores - Knowledge scores object
+ * @returns {Promise<Object>} Updated attempt
+ */
+export const saveKnowledgeScores = async (attemptId, scores) => {
+  try {
+    console.log('💾 Saving knowledge scores to attempt:', attemptId);
+    console.log('📊 Scores:', scores);
+
+    const { data, error } = await supabase
+      .from('personal_assessment_attempts')
+      .update({
+        knowledge_scores: scores,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', attemptId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error saving knowledge scores:', error);
+      throw error;
+    }
+
+    console.log('✅ Knowledge scores saved successfully');
+    return data;
+  } catch (error) {
+    console.error('❌ Failed to save knowledge scores:', error);
+    throw error;
+  }
+};
+
 export default {
   fetchSections,
   fetchStreams,
@@ -899,11 +1225,16 @@ export default {
   saveAllResponses,
   getAttemptResponses,
   completeAttempt,
+  completeAttemptWithoutAI,
   getStudentAttempts,
   getAttemptWithResults,
   getLatestResult,
   getInProgressAttempt,
   abandonAttempt,
   transformQuestionsForUI,
-  canTakeAssessment
+  canTakeAssessment,
+  calculateAptitudeScores,
+  calculateKnowledgeScores,
+  saveAptitudeScores,
+  saveKnowledgeScores
 };
