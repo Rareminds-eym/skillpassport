@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import CreatePoolModal, { PoolFormData } from '../../components/Subscription/Organization/CreatePoolModal';
 import OrganizationSubscriptionDashboard from '../../components/Subscription/Organization/OrganizationSubscriptionDashboard';
 import { useOrganizationSubscription } from '../../hooks/Subscription/useOrganizationSubscription';
 import useAuth from '../../hooks/useAuth';
@@ -61,12 +62,12 @@ function OrganizationSubscriptionPage() {
       console.log('[OrganizationSubscriptionPage] Fetching organization ID, user:', user);
       
       // First check user object for organization IDs
-      if (user?.school_id) { console.log('[OrganizationSubscriptionPage] Found school_id in user:', user.school_id); setOrganizationId(user.school_id); return; }
-      if (user?.college_id) { console.log('[OrganizationSubscriptionPage] Found college_id in user:', user.college_id); setOrganizationId(user.college_id); return; }
-      if (user?.university_id) { console.log('[OrganizationSubscriptionPage] Found university_id in user:', user.university_id); setOrganizationId(user.university_id); return; }
-      if (user?.schoolId) { console.log('[OrganizationSubscriptionPage] Found schoolId in user:', user.schoolId); setOrganizationId(user.schoolId); return; }
-      if (user?.collegeId) { console.log('[OrganizationSubscriptionPage] Found collegeId in user:', user.collegeId); setOrganizationId(user.collegeId); return; }
-      if (user?.universityId) { console.log('[OrganizationSubscriptionPage] Found universityId in user:', user.universityId); setOrganizationId(user.universityId); return; }
+      if (user?.school_id) { console.log('[OrganizationSubscriptionPage] Found school_id in user:', user.school_id); setOrganizationId(String(user.school_id)); return; }
+      if (user?.college_id) { console.log('[OrganizationSubscriptionPage] Found college_id in user:', user.college_id); setOrganizationId(String(user.college_id)); return; }
+      if (user?.university_id) { console.log('[OrganizationSubscriptionPage] Found university_id in user:', user.university_id); setOrganizationId(String(user.university_id)); return; }
+      if (user?.schoolId) { console.log('[OrganizationSubscriptionPage] Found schoolId in user:', user.schoolId); setOrganizationId(String(user.schoolId)); return; }
+      if (user?.collegeId) { console.log('[OrganizationSubscriptionPage] Found collegeId in user:', user.collegeId); setOrganizationId(String(user.collegeId)); return; }
+      if (user?.universityId) { console.log('[OrganizationSubscriptionPage] Found universityId in user:', user.universityId); setOrganizationId(String(user.universityId)); return; }
       
       // Fallback to localStorage for school admins
       const storedUser = localStorage.getItem('user');
@@ -84,7 +85,12 @@ function OrganizationSubscriptionPage() {
       
       // If still not found, try to fetch from database based on user email/id
       const userId = user?.id;
-      const userEmail = user?.email;
+      let userEmail = user?.email;
+      
+      // Fallback to localStorage for email
+      if (!userEmail) {
+        userEmail = localStorage.getItem('userEmail') || undefined;
+      }
       
       if (!userId && !userEmail) {
         console.log('[OrganizationSubscriptionPage] No user ID or email, cannot fetch organization');
@@ -107,6 +113,24 @@ function OrganizationSubscriptionPage() {
           if (educatorData?.school_id) {
             console.log('[OrganizationSubscriptionPage] Found school_id from school_educators:', educatorData.school_id);
             setOrganizationId(educatorData.school_id);
+            return;
+          }
+        }
+        
+        // Try organizations table by email for school_admin
+        if (organizationType === 'school' && userEmail) {
+          const { data: orgByEmail, error: emailError } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('organization_type', 'school')
+            .ilike('email', userEmail)
+            .maybeSingle();
+          
+          console.log('[OrganizationSubscriptionPage] organizations by email (school) query result:', orgByEmail, emailError);
+          
+          if (orgByEmail?.id) {
+            console.log('[OrganizationSubscriptionPage] Found organization by email:', orgByEmail.id);
+            setOrganizationId(orgByEmail.id);
             return;
           }
         }
@@ -179,6 +203,10 @@ function OrganizationSubscriptionPage() {
   // State for organization details
   const [organizationDetails, setOrganizationDetails] = useState<OrganizationDetails | null>(null);
   
+  // State for Create Pool Modal
+  const [isCreatePoolModalOpen, setIsCreatePoolModalOpen] = useState(false);
+  const [isCreatingPool, setIsCreatingPool] = useState(false);
+  
   // Fetch organization details from database
   useEffect(() => {
     const fetchOrganizationDetails = async () => {
@@ -234,9 +262,13 @@ function OrganizationSubscriptionPage() {
   const {
     subscriptions,
     licensePools,
+    members: organizationMembers,
+    memberCounts,
     isLoading,
+    isMembersLoading,
     error,
     refresh,
+    refreshMembers,
   } = useOrganizationSubscription({
     organizationId,
     organizationType,
@@ -272,8 +304,26 @@ function OrganizationSubscriptionPage() {
     }));
   }, [licensePools]);
   
-  // Mock members data - in production, fetch from member service
-  const members = useMemo(() => [], []);
+  // Transform members data for dashboard component
+  const dashboardMembers = useMemo(() => {
+    return organizationMembers.map(member => ({
+      id: member.id,
+      name: member.name,
+      email: member.email,
+      memberType: member.memberType as 'educator' | 'student',
+      department: member.department || member.designation,
+      hasLicense: member.hasLicense,
+      assignedAt: member.assignedAt,
+      poolName: member.poolName,
+    }));
+  }, [organizationMembers]);
+  
+  // Log member counts for debugging
+  useEffect(() => {
+    if (memberCounts.total > 0) {
+      console.log('[OrganizationSubscriptionPage] Member counts:', memberCounts);
+    }
+  }, [memberCounts]);
   
   // Handlers
   const handleAddSeats = useCallback((subscriptionId: string) => {
@@ -299,8 +349,75 @@ function OrganizationSubscriptionPage() {
   }, []);
   
   const handleCreatePool = useCallback(() => {
-    toast.success('Opening pool creation wizard...');
-  }, []);
+    // Check if there's an active subscription
+    const activeSubscription = subscriptions.find(s => s.status === 'active');
+    if (!activeSubscription) {
+      toast.error('No active subscription found. Please purchase a subscription first.');
+      return;
+    }
+    
+    // Check if there are available seats
+    const totalSeats = subscriptions.reduce((sum, s) => sum + (s.totalSeats || 0), 0);
+    const assignedSeats = subscriptions.reduce((sum, s) => sum + (s.assignedSeats || 0), 0);
+    const poolAllocatedSeats = licensePools.reduce((sum, p) => sum + (p.allocatedSeats || 0), 0);
+    const availableSeats = totalSeats - assignedSeats - poolAllocatedSeats;
+    
+    if (availableSeats <= 0) {
+      toast.error('No available seats to allocate. Please purchase more seats.');
+      return;
+    }
+    
+    setIsCreatePoolModalOpen(true);
+  }, [subscriptions, licensePools]);
+  
+  const handleCreatePoolSubmit = useCallback(async (poolData: PoolFormData) => {
+    if (!organizationId) {
+      throw new Error('Organization ID not found');
+    }
+    
+    const activeSubscription = subscriptions.find(s => s.status === 'active');
+    if (!activeSubscription) {
+      throw new Error('No active subscription found');
+    }
+    
+    setIsCreatingPool(true);
+    
+    try {
+      // Create the pool via Supabase
+      const { error } = await supabase
+        .from('license_pools')
+        .insert({
+          organization_id: organizationId,
+          organization_type: organizationType,
+          organization_subscription_id: activeSubscription.id,
+          pool_name: poolData.poolName,
+          member_type: poolData.memberType,
+          allocated_seats: poolData.allocatedSeats,
+          assigned_seats: 0,
+          auto_assign_new_members: poolData.autoAssignNewMembers,
+          is_active: true,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('[CreatePool] Error:', error);
+        throw new Error(error.message || 'Failed to create pool');
+      }
+      
+      toast.success(`Pool "${poolData.poolName}" created successfully!`);
+      setIsCreatePoolModalOpen(false);
+      
+      // Refresh data
+      await refresh();
+    } catch (err) {
+      console.error('[CreatePool] Error:', err);
+      throw err;
+    } finally {
+      setIsCreatingPool(false);
+    }
+  }, [organizationId, organizationType, subscriptions, user?.id, refresh]);
   
   const handleEditPool = useCallback((_poolId: string) => {
     toast.success('Opening pool editor...');
@@ -318,21 +435,170 @@ function OrganizationSubscriptionPage() {
     toast.success('Loading pool assignments...');
   }, []);
   
-  const handleAssignLicenses = useCallback((memberIds: string[]) => {
-    toast.success(`Assigning licenses to ${memberIds.length} members...`);
-  }, []);
+  const handleAssignLicenses = useCallback(async (memberIds: string[]) => {
+    if (!user?.id) {
+      toast.error('User not authenticated');
+      return;
+    }
+    
+    // Find the first active license pool with available seats
+    const availablePool = dashboardPools.find(p => p.isActive && p.availableSeats > 0);
+    
+    if (!availablePool) {
+      toast.error('No license pool with available seats. Please purchase more seats or create a license pool.');
+      return;
+    }
+    
+    try {
+      toast.loading(`Assigning licenses to ${memberIds.length} member(s)...`);
+      
+      // Import the service dynamically to avoid circular dependencies
+      const { licenseManagementService } = await import('@/services/organization/licenseManagementService');
+      
+      // Map member IDs to user IDs (the license system uses auth user IDs)
+      const membersToAssign = organizationMembers.filter(m => memberIds.includes(m.id) && !m.hasLicense);
+      const userIds = membersToAssign.map(m => m.userId).filter(Boolean);
+      
+      if (userIds.length === 0) {
+        toast.dismiss();
+        toast.error('No valid members to assign licenses to');
+        return;
+      }
+      
+      const result = await licenseManagementService.bulkAssignLicenses(
+        availablePool.id,
+        userIds,
+        user.id
+      );
+      
+      toast.dismiss();
+      
+      if (result.successful.length > 0) {
+        toast.success(`Successfully assigned licenses to ${result.successful.length} member(s)`);
+      }
+      
+      if (result.failed.length > 0) {
+        toast.error(`Failed to assign ${result.failed.length} license(s): ${result.failed[0].error}`);
+      }
+      
+      // Refresh data
+      await refreshMembers();
+      await refresh();
+    } catch (err) {
+      toast.dismiss();
+      toast.error(err instanceof Error ? err.message : 'Failed to assign licenses');
+    }
+  }, [user?.id, dashboardPools, organizationMembers, refreshMembers, refresh]);
   
-  const handleUnassignLicenses = useCallback((memberIds: string[]) => {
-    toast.success(`Unassigning licenses from ${memberIds.length} members...`);
-  }, []);
+  const handleUnassignLicenses = useCallback(async (memberIds: string[]) => {
+    if (!user?.id) {
+      toast.error('User not authenticated');
+      return;
+    }
+    
+    try {
+      toast.loading(`Unassigning licenses from ${memberIds.length} member(s)...`);
+      
+      const { licenseManagementService } = await import('@/services/organization/licenseManagementService');
+      
+      // Find the license assignments for these members
+      const membersToUnassign = organizationMembers.filter(
+        m => memberIds.includes(m.id) && m.hasLicense && m.licenseAssignmentId
+      );
+      
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (const member of membersToUnassign) {
+        try {
+          if (member.licenseAssignmentId) {
+            await licenseManagementService.unassignLicense(
+              member.licenseAssignmentId,
+              'Unassigned by admin',
+              user.id
+            );
+            successCount++;
+          }
+        } catch {
+          failCount++;
+        }
+      }
+      
+      toast.dismiss();
+      
+      if (successCount > 0) {
+        toast.success(`Successfully unassigned ${successCount} license(s)`);
+      }
+      
+      if (failCount > 0) {
+        toast.error(`Failed to unassign ${failCount} license(s)`);
+      }
+      
+      // Refresh data
+      await refreshMembers();
+      await refresh();
+    } catch (err) {
+      toast.dismiss();
+      toast.error(err instanceof Error ? err.message : 'Failed to unassign licenses');
+    }
+  }, [user?.id, organizationMembers, refreshMembers, refresh]);
   
-  const handleTransferLicense = useCallback((_fromMemberId: string, _toMemberId: string) => {
-    toast.success('Transferring license...');
-  }, []);
+  const handleTransferLicense = useCallback(async (fromMemberId: string, toMemberId: string) => {
+    if (!user?.id) {
+      toast.error('User not authenticated');
+      return;
+    }
+    
+    try {
+      toast.loading('Transferring license...');
+      
+      const { licenseManagementService } = await import('@/services/organization/licenseManagementService');
+      
+      // Find the source member to get their user_id and subscription
+      const fromMember = organizationMembers.find(m => m.id === fromMemberId);
+      const toMember = organizationMembers.find(m => m.id === toMemberId);
+      
+      if (!fromMember || !toMember) {
+        toast.dismiss();
+        toast.error('Member not found');
+        return;
+      }
+      
+      // Get the organization subscription ID from the first active subscription
+      const activeSubscription = subscriptions.find(s => s.status === 'active');
+      
+      if (!activeSubscription) {
+        toast.dismiss();
+        toast.error('No active subscription found');
+        return;
+      }
+      
+      await licenseManagementService.transferLicense(
+        fromMember.userId,
+        toMember.userId,
+        user.id,
+        activeSubscription.id
+      );
+      
+      toast.dismiss();
+      toast.success('License transferred successfully');
+      
+      // Refresh data
+      await refreshMembers();
+      await refresh();
+    } catch (err) {
+      toast.dismiss();
+      toast.error(err instanceof Error ? err.message : 'Failed to transfer license');
+    }
+  }, [user?.id, organizationMembers, subscriptions, refreshMembers, refresh]);
   
-  const handleViewMemberHistory = useCallback((_memberId: string) => {
-    toast.success('Loading member history...');
-  }, []);
+  const handleViewMemberHistory = useCallback(async (memberId: string) => {
+    const member = organizationMembers.find(m => m.id === memberId);
+    if (member) {
+      toast.success(`Viewing history for ${member.name}`);
+      // TODO: Open a modal or navigate to member history page
+    }
+  }, [organizationMembers]);
   
   // Check if user is authenticated and is an admin
   if (!isAuthenticated || !user) {
@@ -392,6 +658,15 @@ function OrganizationSubscriptionPage() {
     );
   }
   
+  // Calculate available seats for pool creation
+  const totalSeats = subscriptions.reduce((sum, s) => sum + (s.totalSeats || 0), 0);
+  const assignedSeats = subscriptions.reduce((sum, s) => sum + (s.assignedSeats || 0), 0);
+  const poolAllocatedSeats = licensePools.reduce((sum, p) => sum + (p.allocatedSeats || 0), 0);
+  const availableSeatsForPool = Math.max(0, totalSeats - assignedSeats - poolAllocatedSeats);
+  
+  // Get active subscription for pool creation
+  const activeSubscription = subscriptions.find(s => s.status === 'active');
+  
   return (
     <div className="p-6">
       <OrganizationSubscriptionDashboard
@@ -400,8 +675,8 @@ function OrganizationSubscriptionPage() {
         organizationDetails={organizationDetails || undefined}
         subscriptions={dashboardSubscriptions}
         licensePools={dashboardPools}
-        members={members}
-        isLoading={isLoading}
+        members={dashboardMembers}
+        isLoading={isLoading || isMembersLoading}
         onAddSeats={handleAddSeats}
         onBrowsePlans={handleBrowsePlans}
         onManageSubscription={handleManageSubscription}
@@ -416,6 +691,18 @@ function OrganizationSubscriptionPage() {
         onUnassignLicenses={handleUnassignLicenses}
         onTransferLicense={handleTransferLicense}
         onViewMemberHistory={handleViewMemberHistory}
+        onMemberAdded={refreshMembers}
+      />
+      
+      {/* Create Pool Modal */}
+      <CreatePoolModal
+        isOpen={isCreatePoolModalOpen}
+        onClose={() => setIsCreatePoolModalOpen(false)}
+        onSubmit={handleCreatePoolSubmit}
+        totalAvailableSeats={availableSeatsForPool}
+        organizationId={organizationId}
+        subscriptionId={activeSubscription?.id || ''}
+        isLoading={isCreatingPool}
       />
     </div>
   );

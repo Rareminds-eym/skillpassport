@@ -61,6 +61,9 @@ const BulkPurchasePage = lazy(() =>
 const MemberSubscriptionPage = lazy(() =>
   import("../pages/subscription/MemberSubscriptionPage")
 );
+const OrganizationPaymentPage = lazy(() =>
+  import("../pages/subscription/OrganizationPaymentPage")
+);
 
 // Event Sales (no auth required)
 const EventSales = lazy(() =>
@@ -660,6 +663,7 @@ const AppRoutes = () => {
           <Route path="subscription/add-ons" element={<AddOns />} />
           <Route path="subscription/organization" element={<OrganizationSubscriptionPage />} />
           <Route path="subscription/bulk-purchase" element={<BulkPurchasePage />} />
+          <Route path="subscription/organization-payment" element={<OrganizationPaymentPage />} />
           <Route path="subscription/member-view" element={<MemberSubscriptionPage />} />
 
           <Route path="" element={<Navigate to="/college-admin/dashboard" replace />} />
@@ -720,6 +724,7 @@ const AppRoutes = () => {
           <Route path="subscription/add-ons" element={<AddOns />} />
           <Route path="subscription/organization" element={<OrganizationSubscriptionPage />} />
           <Route path="subscription/bulk-purchase" element={<BulkPurchasePage />} />
+          <Route path="subscription/organization-payment" element={<OrganizationPaymentPage />} />
           <Route path="subscription/member-view" element={<MemberSubscriptionPage />} />
           <Route
             path=""
@@ -783,6 +788,7 @@ const AppRoutes = () => {
           <Route path="subscription/add-ons" element={<AddOns />} />
           <Route path="subscription/organization" element={<OrganizationSubscriptionPage />} />
           <Route path="subscription/bulk-purchase" element={<BulkPurchasePage />} />
+          <Route path="subscription/organization-payment" element={<OrganizationPaymentPage />} />
           <Route path="subscription/member-view" element={<MemberSubscriptionPage />} />
           <Route
             path=""

@@ -17,6 +17,7 @@ import {
     X,
 } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
+import AddStudentModal from '../../educator/modals/Addstudentmodal';
 
 interface Member {
   id: string;
@@ -36,6 +37,7 @@ interface MemberAssignmentsProps {
   onUnassign: (memberIds: string[]) => void;
   onTransfer: (fromMemberId: string, toMemberId: string) => void;
   onViewHistory: (memberId: string) => void;
+  onMemberAdded?: () => void;
   isLoading?: boolean;
 }
 
@@ -46,8 +48,10 @@ function MemberAssignments({
   onUnassign,
   onTransfer,
   onViewHistory,
+  onMemberAdded,
   isLoading = false,
 }: MemberAssignmentsProps) {
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filterType, setFilterType] = useState<'all' | 'assigned' | 'unassigned'>('all');
@@ -172,6 +176,13 @@ function MemberAssignments({
               {availableSeats} seats available for assignment
             </p>
           </div>
+          <button
+            onClick={() => setShowAddStudentModal(true)}
+            className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+          >
+            <UserPlus className="w-4 h-4" />
+            Add Student
+          </button>
         </div>
 
         {/* Search and Filters */}
@@ -261,9 +272,24 @@ function MemberAssignments({
             <Users className="w-6 h-6 text-gray-400" />
           </div>
           <h4 className="font-medium text-gray-900 mb-1">No Members Found</h4>
-          <p className="text-sm text-gray-500">
-            {searchQuery ? 'Try adjusting your search or filters' : 'No members match the current filters'}
+          <p className="text-sm text-gray-500 mb-4">
+            {searchQuery 
+              ? 'Try adjusting your search or filters' 
+              : members.length === 0 
+                ? 'Add students and educators to your organization first'
+                : 'No members match the current filters'}
           </p>
+          {members.length === 0 && (
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <button
+                onClick={() => setShowAddStudentModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                <UserPlus className="w-4 h-4" />
+                Add Student
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="divide-y divide-gray-100">
@@ -410,6 +436,16 @@ function MemberAssignments({
           </div>
         </div>
       )}
+
+      {/* Add Student Modal */}
+      <AddStudentModal
+        isOpen={showAddStudentModal}
+        onClose={() => setShowAddStudentModal(false)}
+        onSuccess={() => {
+          setShowAddStudentModal(false);
+          onMemberAdded?.();
+        }}
+      />
     </div>
   );
 }
