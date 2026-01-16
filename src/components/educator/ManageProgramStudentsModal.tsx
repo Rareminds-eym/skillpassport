@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { XMarkIcon, UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { ProgramSection, ProgramStudent, getStudentsByProgramSection, getAvailableStudentsForProgram, addStudentToProgram, removeStudentFromProgram } from '../../services/programService'
 import { useEducatorSchool } from '../../hooks/useEducatorSchool'
+import { usePermission } from '../../hooks/usePermissions'
 import toast from 'react-hot-toast'
 
 interface ManageProgramStudentsModalProps {
@@ -18,6 +19,11 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
   onStudentsUpdated
 }) => {
   const { college } = useEducatorSchool()
+  
+  // Permission controls for Classroom Management module
+  const canCreate = usePermission("Classroom Management", "create")
+  const canEdit = usePermission("Classroom Management", "edit")
+  
   const [students, setStudents] = useState<ProgramStudent[]>([])
   const [availableStudents, setAvailableStudents] = useState<ProgramStudent[]>([])
   const [loading, setLoading] = useState(false)
@@ -132,34 +138,71 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
           </div>
 
           <div className="mt-6">
-            {/* Add Student Section */}
-            <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">Add Student to Program</h3>
-              <div className="flex gap-3">
-                <select
-                  value={selectedStudentId}
-                  onChange={(e) => setSelectedStudentId(e.target.value)}
-                  className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  disabled={addingStudent}
-                >
-                  <option value="">Select a student...</option>
-                  {availableStudents.map((student) => (
-                    <option key={student.id} value={student.id}>
-                      {student.name} ({student.email})
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleAddStudent}
-                  disabled={!selectedStudentId || addingStudent}
-                  className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-                  type="button"
-                >
-                  <UserPlusIcon className="h-4 w-4 mr-2" />
-                  {addingStudent ? 'Adding...' : 'Add Student'}
-                </button>
+            {/* Add Student Section - Only show if user has create permission */}
+            {canCreate.allowed ? (
+              <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Add Student to Program</h3>
+                <div className="flex gap-3">
+                  <select
+                    value={selectedStudentId}
+                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                    className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    disabled={addingStudent}
+                  >
+                    <option value="">Select a student...</option>
+                    {availableStudents.map((student) => (
+                      <option key={student.id} value={student.id}>
+                        {student.name} ({student.email})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => {
+                      console.log('🎓 [ManageProgramStudentsModal] Action: Add Student Button Clicked', {
+                        module: 'Classroom Management',
+                        action: 'Add Student',
+                        permissions: {
+                          canCreate: canCreate.allowed,
+                          canEdit: canEdit.allowed
+                        },
+                        selectedStudentId: selectedStudentId,
+                        programSectionId: programSection?.id,
+                        timestamp: new Date().toISOString()
+                      });
+                      alert('✅ Permission Test: Add student to program allowed for College Educator');
+                      handleAddStudent();
+                    }}
+                    disabled={!selectedStudentId || addingStudent}
+                    className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                    type="button"
+                  >
+                    <UserPlusIcon className="h-4 w-4 mr-2" />
+                    {addingStudent ? 'Adding...' : 'Add Student'}
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="mb-6 rounded-lg border border-gray-200 bg-gray-100 p-4 opacity-50 blur-sm">
+                <h3 className="text-sm font-medium text-gray-500 mb-3">Add Student to Program</h3>
+                <div className="flex gap-3">
+                  <select
+                    disabled
+                    className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm bg-gray-100 text-gray-500 cursor-not-allowed"
+                  >
+                    <option value="">❌ No CREATE Permission</option>
+                  </select>
+                  <button
+                    disabled
+                    className="inline-flex items-center rounded-md bg-gray-300 px-4 py-2 text-sm font-medium text-gray-500 cursor-not-allowed"
+                    type="button"
+                    title="❌ No CREATE permission to add students"
+                  >
+                    <UserPlusIcon className="h-4 w-4 mr-2" />
+                    No Permission
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Current Students */}
             <div>
@@ -200,14 +243,47 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
                           )}
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleRemoveStudent(student.id)}
-                        className="inline-flex items-center rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
-                        type="button"
-                      >
-                        <TrashIcon className="h-4 w-4 mr-1" />
-                        Remove
-                      </button>
+                      {/* Remove button - permission-based styling */}
+                      {canEdit.allowed ? (
+                        <button
+                          onClick={() => {
+                            console.log('🎓 [ManageProgramStudentsModal] Action: Remove Student Button Clicked', {
+                              module: 'Classroom Management',
+                              action: 'Remove Student',
+                              permissions: {
+                                canCreate: canCreate.allowed,
+                                canEdit: canEdit.allowed
+                              },
+                              studentId: student.id,
+                              studentName: student.name,
+                              programSectionId: programSection?.id,
+                              timestamp: new Date().toISOString()
+                            });
+                            alert('✅ Permission Test: Remove student from program allowed for College Educator');
+                            handleRemoveStudent(student.id);
+                          }}
+                          className="inline-flex items-center rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 transition-all"
+                          type="button"
+                          title="Remove student from program"
+                        >
+                          <TrashIcon className="h-4 w-4 mr-1" />
+                          Remove
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            console.log('❌ [ManageProgramStudentsModal] Action Blocked: Remove Student - No Edit Permission');
+                            alert('❌ Access Denied: You need EDIT permission to remove students');
+                          }}
+                          disabled
+                          className="inline-flex items-center rounded-md border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500 cursor-not-allowed opacity-50 blur-sm transition-all"
+                          type="button"
+                          title="❌ No EDIT permission to remove students"
+                        >
+                          <TrashIcon className="h-4 w-4 mr-1" />
+                          No Permission
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>

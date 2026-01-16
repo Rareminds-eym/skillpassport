@@ -12,6 +12,8 @@ import {
   Ban,
   User
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { usePermission } from '../../hooks/usePermissions';
 import type { ClassSwapRequestWithDetails } from '../../types/classSwap';
 
 interface SwapRequestCardProps {
@@ -81,6 +83,12 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
   onCancel,
   onViewDetails,
 }) => {
+  const { user } = useAuth();
+  
+  // Permission controls for Classroom Management module - same as MyTimetable
+  const canView = usePermission("Classroom Management", "view");
+  const canEdit = usePermission("Classroom Management", "edit");
+  
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -113,6 +121,24 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
 
   const handleAccept = async () => {
     if (!onAccept) return;
+    if (!canEdit.allowed) {
+      console.log('❌ [SwapRequestCard] Action Blocked: Accept Request - No Edit Permission');
+      alert('❌ Access Denied: You need EDIT permission to accept swap requests');
+      return;
+    }
+    
+    console.log('📅 [SwapRequestCard] Action: Accept Swap Request', {
+      userRole: user?.role,
+      module: 'Classroom Management',
+      action: 'Accept Swap Request',
+      permissions: {
+        canView: canView.allowed,
+        canEdit: canEdit.allowed
+      },
+      requestId: request.id,
+      timestamp: new Date().toISOString()
+    });
+    
     setIsProcessing(true);
     try {
       await onAccept(request.id);
@@ -123,6 +149,25 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
 
   const handleReject = async () => {
     if (!onReject) return;
+    if (!canEdit.allowed) {
+      console.log('❌ [SwapRequestCard] Action Blocked: Reject Request - No Edit Permission');
+      alert('❌ Access Denied: You need EDIT permission to reject swap requests');
+      return;
+    }
+    
+    console.log('📅 [SwapRequestCard] Action: Reject Swap Request', {
+      userRole: user?.role,
+      module: 'Classroom Management',
+      action: 'Reject Swap Request',
+      permissions: {
+        canView: canView.allowed,
+        canEdit: canEdit.allowed
+      },
+      requestId: request.id,
+      rejectReason: rejectReason,
+      timestamp: new Date().toISOString()
+    });
+    
     setIsProcessing(true);
     try {
       await onReject(request.id, rejectReason);
@@ -135,7 +180,25 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
 
   const handleCancel = async () => {
     if (!onCancel) return;
+    if (!canEdit.allowed) {
+      console.log('❌ [SwapRequestCard] Action Blocked: Cancel Request - No Edit Permission');
+      alert('❌ Access Denied: You need EDIT permission to cancel swap requests');
+      return;
+    }
+    
     if (!confirm('Are you sure you want to cancel this swap request?')) return;
+    
+    console.log('📅 [SwapRequestCard] Action: Cancel Swap Request', {
+      userRole: user?.role,
+      module: 'Classroom Management',
+      action: 'Cancel Swap Request',
+      permissions: {
+        canView: canView.allowed,
+        canEdit: canEdit.allowed
+      },
+      requestId: request.id,
+      timestamp: new Date().toISOString()
+    });
     
     setIsProcessing(true);
     try {
@@ -143,6 +206,28 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleViewDetails = () => {
+    if (!canView.allowed) {
+      console.log('❌ [SwapRequestCard] Action Blocked: View Details - No View Permission');
+      alert('❌ Access Denied: You need VIEW permission to view swap request details');
+      return;
+    }
+    
+    console.log('📅 [SwapRequestCard] Action: View Details Clicked', {
+      userRole: user?.role,
+      module: 'Classroom Management',
+      action: 'View Swap Request Details',
+      permissions: {
+        canView: canView.allowed,
+        canEdit: canEdit.allowed
+      },
+      requestId: request.id,
+      timestamp: new Date().toISOString()
+    });
+    
+    onViewDetails?.(request.id);
   };
 
   return (
@@ -335,16 +420,33 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
             <>
               <button
                 onClick={handleAccept}
-                disabled={isProcessing}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled={isProcessing || !canEdit.allowed}
+                className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+                  canEdit.allowed
+                    ? 'text-white bg-green-600 hover:bg-green-700'
+                    : 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50 blur-sm'
+                }`}
+                title={canEdit.allowed ? 'Accept Request' : '❌ No EDIT permission'}
               >
                 <CheckCircle className="h-4 w-4" />
                 Accept
               </button>
               <button
-                onClick={() => setShowRejectModal(true)}
-                disabled={isProcessing}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                onClick={() => {
+                  if (!canEdit.allowed) {
+                    console.log('❌ [SwapRequestCard] Action Blocked: Reject Button - No Edit Permission');
+                    alert('❌ Access Denied: You need EDIT permission to reject swap requests');
+                    return;
+                  }
+                  setShowRejectModal(true);
+                }}
+                disabled={isProcessing || !canEdit.allowed}
+                className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+                  canEdit.allowed
+                    ? 'text-white bg-red-600 hover:bg-red-700'
+                    : 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50 blur-sm'
+                }`}
+                title={canEdit.allowed ? 'Reject Request' : '❌ No EDIT permission'}
               >
                 <XCircle className="h-4 w-4" />
                 Reject
@@ -355,8 +457,13 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
           {viewMode === 'sent' && request.status === 'pending' && (
             <button
               onClick={handleCancel}
-              disabled={isProcessing}
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-lg hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled={isProcessing || !canEdit.allowed}
+              className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+                canEdit.allowed
+                  ? 'text-white bg-gray-600 hover:bg-gray-700'
+                  : 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50 blur-sm'
+              }`}
+              title={canEdit.allowed ? 'Cancel Request' : '❌ No EDIT permission'}
             >
               <Ban className="h-4 w-4" />
               Cancel Request
@@ -364,8 +471,14 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
           )}
 
           <button
-            onClick={() => onViewDetails?.(request.id)}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
+            onClick={handleViewDetails}
+            disabled={!canView.allowed}
+            className={`px-4 py-2 text-sm font-medium border rounded-lg transition flex items-center gap-2 ${
+              canView.allowed
+                ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed opacity-50 blur-sm'
+            }`}
+            title={canView.allowed ? 'View Details' : '❌ No VIEW permission'}
           >
             <Eye className="h-4 w-4" />
             View Details

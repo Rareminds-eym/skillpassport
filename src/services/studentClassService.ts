@@ -67,7 +67,7 @@ export const getStudentClassInfo = async (studentId: string): Promise<ClassInfo 
         current_students,
         school_id,
         metadata,
-        schools (name)
+        organizations!school_id (name)
       `)
       .eq('id', student.school_class_id)
       .single();
@@ -89,7 +89,7 @@ export const getStudentClassInfo = async (studentId: string): Promise<ClassInfo 
       .maybeSingle();
 
     const educator = educatorAssignment?.school_educators as unknown as { first_name: string; last_name: string; email: string } | null;
-    const school = classData.schools as unknown as { name: string } | null;
+    const school = classData.organizations as unknown as { name: string } | null;
 
     return {
       id: classData.id,

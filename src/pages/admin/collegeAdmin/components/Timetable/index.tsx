@@ -119,7 +119,12 @@ const CalendarTimetable: React.FC<CalendarTimetableProps> = ({ collegeId }) => {
 
   // Cell click handler
   const handleCellClick = (dayIndex: number, period: TimePeriod, date: Date) => {
-    if (period.is_break) return;
+    // Check if this is a break period (by flag or name) - prevent clicking
+    const isBreakPeriod = period.is_break || 
+      period.period_name?.toLowerCase().includes('break') ||
+      period.period_name?.toLowerCase().includes('lunch');
+    
+    if (isBreakPeriod) return;
 
     const existingSlot = getSlotForCell(
       dayIndex,

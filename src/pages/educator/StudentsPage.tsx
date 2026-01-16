@@ -23,8 +23,8 @@ import DeleteStudentModal from '../../components/educator/modals/DeleteStudentMo
 import BulkDeleteStudentsModal from '../../components/educator/modals/BulkDeleteStudentsModal';
 import { UserPlusIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import MessageService from '../../services/messageService';
 import { useAuth } from '../../context/AuthContext';
+import { usePermission } from '../../hooks/usePermissions';
 
 const FilterSection = ({ title, children, defaultOpen = false }: {
   title: string;
@@ -78,124 +78,8 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: {
   );
 };
 
-const MentorNoteModal = ({ isOpen, onClose, student, onSuccess }: {
-  isOpen: boolean;
-  onClose: () => void;
-  student: UICandidate | null;
-  onSuccess?: () => void;
-}) => {
-  const [note, setNote] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setNote('');
-      setError(null);
-    }
-  }, [isOpen]);
-
-  const handleSubmit = async () => {
-    if (!note.trim()) {
-      setError('Please enter a note');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // TODO: Replace with actual API call to save mentor note
-      await new Promise(resolve => setTimeout(resolve, 500));
-      onSuccess?.();
-      onClose();
-    } catch (err) {
-      console.error('Error saving note:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save note');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
-
-        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">Add Mentor Note</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Add feedback or observation for <span className="font-medium">{student?.name}</span>
-              </p>
-            </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-              <XMarkIcon className="h-6 w-6" />
-            </button>
-          </div>
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
-          )}
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Note <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={6}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Enter your feedback, observations, or recommendations..."
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              This note will be attached to the student's profile for future reference.
-            </p>
-          </div>
-
-          <div className="flex items-center justify-end space-x-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={loading || !note.trim()}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center"
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <PencilSquareIcon className="h-4 w-4 mr-1" />
-                  Save Note
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const BadgeComponent = ({ badges }: { badges: string[] }) => {
-  const badgeConfig = {
+  const badgeConfig: Record<string, { color: string; label: string }> = {
     self_verified: { color: 'bg-gray-100 text-gray-800', label: 'Self' },
     institution_verified: { color: 'bg-blue-100 text-blue-800', label: 'Institution' },
     external_audited: { color: 'bg-yellow-100 text-yellow-800 border border-yellow-300', label: 'External' }
@@ -218,7 +102,7 @@ const BadgeComponent = ({ badges }: { badges: string[] }) => {
   );
 };
 
-const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSelected, onToggleSelect }: {
+const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSelected, onToggleSelect, permissions }: {
   student: UICandidate;
   onViewProfile: (student: UICandidate) => void;
   onEdit: (student: UICandidate) => void;
@@ -226,7 +110,24 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
   onMessage: (student: UICandidate) => void;
   isSelected?: boolean;
   onToggleSelect?: (studentId: string) => void;
+  permissions?: {
+    canEdit: boolean;
+    canDelete: boolean;
+    canMessage: boolean;
+    editReason?: string;
+    deleteReason?: string;
+    messageReason?: string;
+  };
 }) => {
+  const {
+    canEdit = true,
+    canDelete = true,
+    canMessage = true,
+    editReason,
+    deleteReason,
+    messageReason
+  } = permissions || {};
+
   return (
     <div 
       className={`bg-white border rounded-lg p-4 hover:shadow-md transition-all duration-200 flex flex-col h-full relative group ${
@@ -301,16 +202,6 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
 
         {/* Evidence snippets */}
         <div className="mb-4 space-y-1">
-          {student.hackathon && (
-            <p className="text-xs text-gray-600">
-              🏆 Rank #{student.hackathon.rank} in {student.hackathon.event_id}
-            </p>
-          )}
-          {student.internship && (
-            <p className="text-xs text-gray-600">
-              💼 {student.internship.org} ({student.internship.rating}⭐)
-            </p>
-          )}
           {student.projects && student.projects.length > 0 && (
             <p className="text-xs text-gray-600">
               🔬 {student.projects[0].title}
@@ -330,27 +221,66 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
             <EyeIcon className="h-3 w-3 mr-1.5" />
             View
           </button>
-          <button
-            onClick={() => onMessage(student)}
-            className="inline-flex items-center px-3 py-1.5 border border-green-300 rounded-md text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-400 transition-colors whitespace-nowrap"
-          >
-            <ChatBubbleLeftRightIcon className="h-3 w-3 mr-1.5" />
-            Message
-          </button>
-          <button
-            onClick={() => onEdit(student)}
-            className="inline-flex items-center px-3 py-1.5 border border-blue-300 rounded-md text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 transition-colors whitespace-nowrap"
-          >
-            <PencilSquareIcon className="h-3 w-3 mr-1.5" />
-            Edit
-          </button>
-          <button
-            onClick={() => onDelete(student)}
-            className="inline-flex items-center px-3 py-1.5 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 transition-colors whitespace-nowrap"
-          >
-            <TrashIcon className="h-3 w-3 mr-1.5" />
-            Delete
-          </button>
+          
+          <div className="relative group">
+            <button
+              onClick={() => canMessage ? onMessage(student) : undefined}
+              disabled={!canMessage}
+              className={`inline-flex items-center px-3 py-1.5 border rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
+                canMessage
+                  ? 'border-green-300 text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-400'
+                  : 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+              }`}
+            >
+              <ChatBubbleLeftRightIcon className="h-3 w-3 mr-1.5" />
+              Message
+            </button>
+            {!canMessage && messageReason && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                {messageReason}
+              </div>
+            )}
+          </div>
+          
+          <div className="relative group">
+            <button
+              onClick={() => canEdit ? onEdit(student) : undefined}
+              disabled={!canEdit}
+              className={`inline-flex items-center px-3 py-1.5 border rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
+                canEdit
+                  ? 'border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400'
+                  : 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+              }`}
+            >
+              <PencilSquareIcon className="h-3 w-3 mr-1.5" />
+              Edit
+            </button>
+            {!canEdit && editReason && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                {editReason}
+              </div>
+            )}
+          </div>
+          
+          <div className="relative group">
+            <button
+              onClick={() => canDelete ? onDelete(student) : undefined}
+              disabled={!canDelete}
+              className={`inline-flex items-center px-3 py-1.5 border rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
+                canDelete
+                  ? 'border-red-300 text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400'
+                  : 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+              }`}
+            >
+              <TrashIcon className="h-3 w-3 mr-1.5" />
+              Delete
+            </button>
+            {!canDelete && deleteReason && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                {deleteReason}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -367,8 +297,6 @@ const StudentsPage = () => {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
-  const [showNoteModal, setShowNoteModal] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<UICandidate | null>(null);
   const [sortBy, setSortBy] = useState('relevance');
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -384,14 +312,21 @@ const StudentsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(25);
 
+  // Permission hooks
+  const { allowed: canViewStudents, loading: viewLoading } = usePermission('Students', 'view');
+  const { allowed: canAddStudents, reason: addReason } = usePermission('Students', 'create');
+  const { allowed: canEditStudents, reason: editReason } = usePermission('Students', 'edit');
+  const { allowed: canDeleteStudents, reason: deleteReason } = usePermission('Students', 'edit'); // Using edit for delete
+  const { allowed: canMessageStudents, reason: messageReason } = usePermission('Communication', 'view');
+
   const [filters, setFilters] = useState({
-    skills: [],
-    courses: [],
-    grades: [], // For school educators
-    sections: [], // For school educators
-    badges: [],
-    locations: [],
-    years: [],
+    skills: [] as string[],
+    courses: [] as string[],
+    grades: [] as string[],
+    sections: [] as string[],
+    badges: [] as string[],
+    locations: [] as string[],
+    years: [] as string[],
     minScore: 0,
     maxScore: 100
   });
@@ -402,6 +337,38 @@ const StudentsPage = () => {
   // Get auth context for user ID
   const { user } = useAuth();
 
+  // Show access denied if user doesn't have view permission
+  if (!viewLoading && !canViewStudents) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-md">
+          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+            <XMarkIcon className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-4">
+            You don't have permission to view student management.
+          </p>
+          <button
+            onClick={() => navigate('/educator')}
+            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Log permissions on button clicks
+  const logPermissionAction = (action: string, allowed: boolean, reason?: string) => {
+    console.log(`🔐 Student Management - ${action}:`, {
+      allowed,
+      reason: reason || 'Permission granted',
+      timestamp: new Date().toISOString()
+    });
+  };
+
   // Fetch students filtered by educator's assigned classes or institution
   const { students, loading, error, refetch } = useStudents({ 
     schoolId: educatorSchool?.id,
@@ -411,6 +378,9 @@ const StudentsPage = () => {
     userId: educatorType === 'college' ? user?.id : undefined
   });
 
+  // Permission debug panel (development only)
+  const showDebugPanel = process.env.NODE_ENV === 'development';
+
   // Reset to page 1 when filters or search change
   useEffect(() => {
     setCurrentPage(1);
@@ -418,12 +388,12 @@ const StudentsPage = () => {
 
   // Dynamically generate filter options from actual data
   const skillOptions = useMemo(() => {
-    const skillCounts = {};
+    const skillCounts: Record<string, number> = {};
     students.forEach(student => {
       const skillsToCheck = student.skills;
       if (skillsToCheck && Array.isArray(skillsToCheck)) {
         skillsToCheck.forEach(skill => {
-            const skillName = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
+          const skillName = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
           if (skillName) {
             const normalizedSkill = skillName.toLowerCase();
             skillCounts[normalizedSkill] = (skillCounts[normalizedSkill] || 0) + 1;
@@ -441,237 +411,30 @@ const StudentsPage = () => {
       .slice(0, 20);
   }, [students]);
 
-  // Dynamic filter options based on educator type
-  const courseOptions = useMemo(() => {
-    if (educatorType === 'school') {
-      // For school educators, show branch/subject options
-      const branchCounts = {};
-      students.forEach(student => {
-        const branch = student.branch_field || student.course_name;
-        if (branch) {
-          const normalizedBranch = branch.toLowerCase();
-          branchCounts[normalizedBranch] = (branchCounts[normalizedBranch] || 0) + 1;
-        }
-      });
-      return Object.entries(branchCounts)
-        .map(([branch, count]) => ({
-          value: branch,
-          label: branch,
-          count
-        }))
-        .sort((a, b) => b.count - a.count);
-    } else {
-      // For college educators, show department/course options
-      const courseCounts = {};
-      students.forEach(student => {
-        const dept = student.dept;
-        if (dept) {
-          const normalizedCourse = dept.toLowerCase();
-          courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
-        }
-      });
-      return Object.entries(courseCounts)
-        .map(([course, count]) => ({
-          value: course,
-          label: course,
-          count
-        }))
-        .sort((a, b) => b.count - a.count);
-    }
-  }, [students, educatorType]);
-
-  // Grade options for school educators
-  const gradeOptions = useMemo(() => {
-    if (educatorType !== 'school') return [];
-    
-    const gradeCounts = {};
-    students.forEach(student => {
-      const grade = student.grade || student.class_grade;
-      if (grade) {
-        gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
-      }
-    });
-    return Object.entries(gradeCounts)
-      .map(([grade, count]) => ({
-        value: grade,
-        label: `Grade ${grade}`,
-        count
-      }))
-      .sort((a, b) => {
-        // Sort numerically if possible, otherwise alphabetically
-        const aNum = parseInt(a.value);
-        const bNum = parseInt(b.value);
-        if (!isNaN(aNum) && !isNaN(bNum)) {
-          return aNum - bNum;
-        }
-        return a.value.localeCompare(b.value);
-      });
-  }, [students, educatorType]);
-
-  // Section options for school educators
-  const sectionOptions = useMemo(() => {
-    if (educatorType !== 'school') return [];
-    
-    const sectionCounts = {};
-    students.forEach(student => {
-      const section = student.section || student.class_section;
-      if (section) {
-        sectionCounts[section] = (sectionCounts[section] || 0) + 1;
-      }
-    });
-    return Object.entries(sectionCounts)
-      .map(([section, count]) => ({
-        value: section,
-        label: `Section ${section}`,
-        count
-      }))
-      .sort((a, b) => a.value.localeCompare(b.value));
-  }, [students, educatorType]);
-
-  const badgeOptions = useMemo(() => {
-    const badgeCounts = {};
-    students.forEach(student => {
-      if (student.badges && Array.isArray(student.badges)) {
-        student.badges.forEach(badge => {
-          badgeCounts[badge] = (badgeCounts[badge] || 0) + 1;
-        });
-      }
-    });
-    return Object.entries(badgeCounts)
-      .map(([badge, count]) => ({
-        value: badge,
-        label: badge.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-        count
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [students]);
-
-  const locationOptions = useMemo(() => {
-    const locationCounts = {};
-    students.forEach(student => {
-      const location = student.location;
-      if (location) {
-        const normalizedLocation = location.toLowerCase();
-        locationCounts[normalizedLocation] = (locationCounts[normalizedLocation] || 0) + 1;
-      }
-    });
-    return Object.entries(locationCounts)
-      .map(([location, count]) => ({
-        value: location,
-        label: location.charAt(0).toUpperCase() + location.slice(1),
-        count
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [students]);
-
-  const yearOptions = useMemo(() => {
-    const yearCounts = {};
-    students.forEach(student => {
-      // Extract year from enrollmentDate or use created year as fallback
-      let year = null;
-      if (student.enrollmentDate) {
-        year = new Date(student.enrollmentDate).getFullYear().toString();
-      } else if (student.updated_at) {
-        year = new Date(student.updated_at).getFullYear().toString();
-      }
-      
-      if (year) {
-        yearCounts[year] = (yearCounts[year] || 0) + 1;
-      }
-    });
-    return Object.entries(yearCounts)
-      .map(([year, count]) => ({
-        value: year,
-        label: `Academic Year ${year}`,
-        count
-      }))
-      .sort((a, b) => parseInt(b.value) - parseInt(a.value)); // Sort by year descending
-  }, [students]);
-
-  // Enhanced filter and sort with comprehensive search - WITH LEXICOGRAPHICAL ORDERING
+  // Enhanced filter and sort with comprehensive search
   const filteredAndSortedStudents = useMemo(() => {
     let result = [...students];
-
-    // Helper function to check for a match
-    const getMatchField = (student: UICandidate, query: string): string | null => {
-      const q = query.toLowerCase();
-
-      const check = (field: unknown): boolean => field ? field.toString().toLowerCase().includes(q) : false;
-      
-      const checkArray = (arr: unknown[], fields: string[]): string | null => {
-        if (!arr || !Array.isArray(arr)) return null;
-        for (const item of arr) {
-          if (!item || typeof item !== 'object') continue;
-          for (const field of fields) {
-            const value = (item as Record<string, unknown>)[field];
-            if (value && value.toString().toLowerCase().includes(q)) {
-              return value.toString().toLowerCase();
-            }
-          }
-        }
-        return null;
-      };
-
-      if (check(student.name)) return student.name?.toLowerCase() ?? 'name';
-      if (check(student.email)) return student.email?.toLowerCase() ?? 'email';
-      if (check(student.age)) return 'age';
-      if (check(student.dept)) return student.dept.toLowerCase();
-      if (check(student.college)) return student.college.toLowerCase();
-      if (check(student.location)) return student.location.toLowerCase();
-      if (check(student.university)) return student.university.toLowerCase();
-      if (check(student.registration_number)) return 'registration';
-
-      // Skills array
-      const skillsToCheck = student.skills;
-      if (skillsToCheck && Array.isArray(skillsToCheck)) {
-        for (const skill of skillsToCheck) {
-          if (typeof skill === 'string') {
-            if (skill.toLowerCase().includes(q)) return skill.toLowerCase();
-          } else if (skill && typeof skill === 'object' && 'name' in skill && typeof skill.name === 'string') {
-            if (skill.name.toLowerCase().includes(q)) return skill.name.toLowerCase();
-          }
-        }
-      }
-      
-      const projectMatch = checkArray(student.projects, ['title', 'description', 'organization', 'status']);
-      if (projectMatch) return projectMatch;
-
-      const certificateMatch = checkArray(student.certificates, ['title', 'issuer', 'description', 'status']);
-      if (certificateMatch) return certificateMatch;
-
-      const trainingMatch = checkArray(student.trainings, ['title', 'organization', 'description']);
-      if (trainingMatch) return trainingMatch;
-      
-      // Experience needs special handling
-      if (student.experience && Array.isArray(student.experience)) {
-        for (const exp of student.experience) {
-          if (!exp || typeof exp !== 'object') continue;
-          if (check(exp.duration)) return 'experience duration';
-          if (check(exp.role)) return exp.role!.toLowerCase();
-          if (check(exp.organization)) return exp.organization!.toLowerCase();
-          if (exp.verified === true && (q.includes('verified') || q === 'true')) return 'verified experience';
-          if (exp.verified === false && (q.includes('unverified') || q.includes('not verified') || q === 'false')) return 'unverified experience';
-        }
-      }
-
-      return null;
-    };
 
     // Apply comprehensive search query filter
     if (searchQuery && searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase().trim();
       
-      const resultsWithScores = students
-        .map(student => ({
-          student,
-          matchedField: getMatchField(student, query),
-        }))
-        .filter((item): item is { student: UICandidate; matchedField: string } => item.matchedField !== null);
+      result = result.filter(student => {
+        // Check basic fields
+        if (student.name?.toLowerCase().includes(query)) return true;
+        if (student.email?.toLowerCase().includes(query)) return true;
+        if (student.dept?.toLowerCase().includes(query)) return true;
+        if (student.college?.toLowerCase().includes(query)) return true;
+        if (student.location?.toLowerCase().includes(query)) return true;
 
-      // Sort results lexicographically by matched field
-      resultsWithScores.sort((a, b) => a.matchedField.localeCompare(b.matchedField));
+        // Check skills
+        if (student.skills?.some(skill => {
+          const skillName = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
+          return skillName?.toLowerCase().includes(query);
+        })) return true;
 
-      result = resultsWithScores.map(item => item.student);
+        return false;
+      });
     }
 
     // Apply filters
@@ -680,68 +443,6 @@ const StudentsPage = () => {
       if (filters.skills.length > 0) {
         const studentSkills = student.skills?.map(s => (typeof s === 'string' ? s : s.name)?.toLowerCase()) ?? [];
         if (!filters.skills.every(fs => studentSkills.includes(fs.toLowerCase()))) {
-          return false;
-        }
-      }
-      
-      // Course/department/branch filters
-      if (filters.courses.length > 0) {
-        if (educatorType === 'school') {
-          // For school students, check branch_field or course_name
-          const branch = (student.branch_field || student.course_name)?.toLowerCase();
-          if (!branch || !filters.courses.includes(branch)) {
-            return false;
-          }
-        } else {
-          // For college students, check dept
-          const dept = student.dept?.toLowerCase();
-          if (!dept || !filters.courses.includes(dept)) {
-            return false;
-          }
-        }
-      }
-
-      // Grade filters (school only)
-      if (filters.grades.length > 0) {
-        const grade = student.grade || student.class_grade;
-        if (!grade || !filters.grades.includes(grade)) {
-          return false;
-        }
-      }
-
-      // Section filters (school only)
-      if (filters.sections.length > 0) {
-        const section = student.section || student.class_section;
-        if (!section || !filters.sections.includes(section)) {
-          return false;
-        }
-      }
-
-      // Badge filters
-      if (filters.badges.length > 0) {
-        if (!student.badges?.some(badge => filters.badges.includes(badge))) {
-          return false;
-        }
-      }
-
-      // Location filters
-      if (filters.locations.length > 0) {
-        const location = student.location?.toLowerCase();
-        if (!location || !filters.locations.includes(location)) {
-          return false;
-        }
-      }
-      
-      // Year filters
-      if (filters.years.length > 0) {
-        let studentYear = null;
-        if (student.enrollmentDate) {
-          studentYear = new Date(student.enrollmentDate).getFullYear().toString();
-        } else if (student.updated_at) {
-          studentYear = new Date(student.updated_at).getFullYear().toString();
-        }
-        
-        if (!studentYear || !filters.years.includes(studentYear)) {
           return false;
         }
       }
@@ -755,7 +456,7 @@ const StudentsPage = () => {
       return true;
     });
 
-    // Apply sorting (only if not already sorted by search relevance)
+    // Apply sorting
     if (!searchQuery || searchQuery.trim() === '') {
       const sortedResult = [...result];
       switch (sortBy) {
@@ -792,7 +493,6 @@ const StudentsPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-
   // Clear all filters
   const handleClearFilters = () => {
     setFilters({
@@ -808,14 +508,10 @@ const StudentsPage = () => {
     });
   };
 
-
-  const handleNoteSuccess = () => {
-    alert(`Note added for ${selectedStudent?.name}!`);
-    setShowNoteModal(false);
-    setSelectedStudent(null);
-  };
-
   const handleEditClick = (student: UICandidate) => {
+    logPermissionAction('Edit Student', canEditStudents, editReason);
+    if (!canEditStudents) return;
+    
     setStudentToEdit(student);
     setShowEditModal(true);
   };
@@ -826,6 +522,9 @@ const StudentsPage = () => {
   };
 
   const handleDeleteClick = (student: UICandidate) => {
+    logPermissionAction('Delete Student', canDeleteStudents, deleteReason);
+    if (!canDeleteStudents) return;
+    
     setStudentToDelete(student);
     setShowDeleteModal(true);
   };
@@ -856,6 +555,9 @@ const StudentsPage = () => {
   };
 
   const handleBulkDelete = () => {
+    logPermissionAction('Bulk Delete Students', canDeleteStudents, deleteReason);
+    if (!canDeleteStudents) return;
+    
     setShowBulkDeleteModal(true);
   };
 
@@ -866,17 +568,11 @@ const StudentsPage = () => {
 
   // Handle message student
   const handleMessageStudent = async (student: UICandidate) => {
+    logPermissionAction('Message Student', canMessageStudents, messageReason);
+    if (!canMessageStudents) return;
+    
     try {
-      // Get educator's user ID from auth context or localStorage
-      const educatorId = localStorage.getItem('userId') || localStorage.getItem('userEmail');
-      
-      if (!educatorId) {
-        alert('Unable to identify educator. Please log in again.');
-        return;
-      }
-
       // Navigate to Communication page with student info
-      // The Communication page will handle creating the conversation
       navigate('/educator/communication', {
         state: {
           targetStudentId: student.id,
@@ -890,6 +586,14 @@ const StudentsPage = () => {
     }
   };
 
+  // Handle add student button click
+  const handleAddStudentClick = () => {
+    logPermissionAction('Add Student', canAddStudents, addReason);
+    if (!canAddStudents) return;
+    
+    setShowAddStudentModal(true);
+  };
+
   const selectedStudents = students.filter(s => selectedStudentIds.has(s.id));
   const allOnPageSelected = paginatedStudents.length > 0 && paginatedStudents.every(s => selectedStudentIds.has(s.id));
 
@@ -901,20 +605,33 @@ const StudentsPage = () => {
           <h1 className="text-xl md:text-3xl font-bold text-gray-900">Students Management</h1>
           <p className="text-base md:text-lg mt-2 text-gray-600">Manage your students and their profiles.</p>
         </div>
-        <button
-          onClick={() => setShowAddStudentModal(true)}
-          className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700"
-        >
-          <UserPlusIcon className="h-5 w-5 mr-2" />
-          Add Student
-        </button>
+        <div className="relative group">
+          <button
+            onClick={handleAddStudentClick}
+            disabled={!canAddStudents}
+            className={`mt-3 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm transition-colors ${
+              canAddStudents
+                ? 'text-white bg-primary-600 hover:bg-primary-700'
+                : 'text-gray-400 bg-gray-200 cursor-not-allowed'
+            }`}
+          >
+            <UserPlusIcon className="h-5 w-5 mr-2" />
+            Add Student
+          </button>
+          {!canAddStudents && addReason && (
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+              {addReason}
+            </div>
+          )}
+        </div>
       </div>
+
       <div className="px-4 sm:px-6 lg:px-8 hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
         <div className="w-80 flex-shrink-0 pr-4 text-left">
           <div className="inline-flex items-baseline">
             <h1 className="text-xl font-semibold text-gray-900">Students</h1>
             <span className="ml-2 text-sm text-gray-500">
-              ({totalItems} {searchQuery || filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students)
+              ({totalItems} {searchQuery || filters.skills.length > 0 ? 'matching' : ''} students)
             </span>
           </div>
         </div>
@@ -934,60 +651,6 @@ const StudentsPage = () => {
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 relative"
-          >
-            <FunnelIcon className="h-4 w-4 mr-2" />
-            Filters
-            {(filters.skills.length + filters.courses.length + filters.grades.length + filters.sections.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
-              <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
-                {filters.skills.length + filters.courses.length + filters.grades.length + filters.sections.length + filters.badges.length + filters.locations.length + filters.years.length}
-              </span>
-            )}
-          </button>
-          <div className="flex rounded-md shadow-sm">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
-                ? 'bg-primary-50 border-primary-300 text-primary-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-            >
-              <Squares2X2Icon className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
-                ? 'bg-primary-50 border-primary-300 text-primary-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-            >
-              <TableCellsIcon className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile/Tablet: stacked layout */}
-      <div className="lg:hidden p-4 bg-white border-b border-gray-200 space-y-4">
-        <div className="text-left">
-          <h1 className="text-xl font-semibold text-gray-900">Students</h1>
-          <span className="text-sm text-gray-500">
-            {totalItems} {searchQuery || filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students
-          </span>
-        </div>
-
-        <div>
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Search students..."
-            size="md"
-          />
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 relative"
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
@@ -1044,72 +707,6 @@ const StudentsPage = () => {
                   />
                 </FilterSection>
 
-                {educatorType === 'school' ? (
-                  <>
-                    <FilterSection title="Subject/Branch">
-                      <CheckboxGroup
-                        options={courseOptions}
-                        selectedValues={filters.courses}
-                        onChange={(values) => setFilters({ ...filters, courses: values })}
-                      />
-                    </FilterSection>
-
-                    <FilterSection title="Grade">
-                      <CheckboxGroup
-                        options={gradeOptions}
-                        selectedValues={filters.grades}
-                        onChange={(values) => setFilters({ ...filters, grades: values })}
-                      />
-                    </FilterSection>
-
-                    <FilterSection title="Section">
-                      <CheckboxGroup
-                        options={sectionOptions}
-                        selectedValues={filters.sections}
-                        onChange={(values) => setFilters({ ...filters, sections: values })}
-                      />
-                    </FilterSection>
-                  </>
-                ) : (
-                  <FilterSection title="Course/Track">
-                    <CheckboxGroup
-                      options={courseOptions}
-                      selectedValues={filters.courses}
-                      onChange={(values) => setFilters({ ...filters, courses: values })}
-                    />
-                  </FilterSection>
-                )}
-
-                <FilterSection title="Verification Badge">
-                  <CheckboxGroup
-                    options={badgeOptions}
-                    selectedValues={filters.badges}
-                    onChange={(values) => setFilters({ ...filters, badges: values })}
-                  />
-                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                    <p className="text-xs text-blue-800">
-                      <strong>Institution:</strong> Verified by your institution<br />
-                      <strong>External:</strong> Third-party audited credentials
-                    </p>
-                  </div>
-                </FilterSection>
-
-                <FilterSection title="Location">
-                  <CheckboxGroup
-                    options={locationOptions}
-                    selectedValues={filters.locations}
-                    onChange={(values) => setFilters({ ...filters, locations: values })}
-                  />
-                </FilterSection>
-
-                <FilterSection title="Academic Year">
-                  <CheckboxGroup
-                    options={yearOptions}
-                    selectedValues={filters.years}
-                    onChange={(values) => setFilters({ ...filters, years: values })}
-                  />
-                </FilterSection>
-
                 <FilterSection title="AI Score Range">
                   <div className="space-y-3">
                     <div>
@@ -1150,17 +747,55 @@ const StudentsPage = () => {
                   </button>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <button
-                    onClick={handleBulkDelete}
-                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
-                  >
-                    <TrashIcon className="h-4 w-4 mr-2" />
-                    Delete {selectedStudentIds.size} Student{selectedStudentIds.size > 1 ? 's' : ''}
-                  </button>
+                  <div className="relative group">
+                    <button
+                      onClick={handleBulkDelete}
+                      disabled={!canDeleteStudents}
+                      className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md transition-colors ${
+                        canDeleteStudents
+                          ? 'text-white bg-red-600 hover:bg-red-700'
+                          : 'text-gray-400 bg-gray-200 cursor-not-allowed'
+                      }`}
+                    >
+                      <TrashIcon className="h-4 w-4 mr-2" />
+                      Delete {selectedStudentIds.size} Student{selectedStudentIds.size > 1 ? 's' : ''}
+                    </button>
+                    {!canDeleteStudents && deleteReason && (
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                        {deleteReason}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           )}
+
+          {/* Permission Debug Panel (Development Only) */}
+          {/* {showDebugPanel && (
+            <div className="px-4 sm:px-6 lg:px-8 py-3 bg-yellow-50 border-b border-yellow-200">
+              <div className="text-xs text-yellow-800">
+                <strong>🔐 Student Management Permissions:</strong>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-1">
+                  <span className={canViewStudents ? 'text-green-700' : 'text-red-700'}>
+                    View: {canViewStudents ? '✓' : '✗'}
+                  </span>
+                  <span className={canAddStudents ? 'text-green-700' : 'text-red-700'}>
+                    Add: {canAddStudents ? '✓' : '✗'}
+                  </span>
+                  <span className={canEditStudents ? 'text-green-700' : 'text-red-700'}>
+                    Edit: {canEditStudents ? '✓' : '✗'}
+                  </span>
+                  <span className={canDeleteStudents ? 'text-green-700' : 'text-red-700'}>
+                    Delete: {canDeleteStudents ? '✓' : '✗'}
+                  </span>
+                  <span className={canMessageStudents ? 'text-green-700' : 'text-red-700'}>
+                    Message: {canMessageStudents ? '✓' : '✗'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )} */}
 
           {/* Results header */}
           <div className="px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-b border-gray-200">
@@ -1215,29 +850,24 @@ const StudentsPage = () => {
                     onMessage={handleMessageStudent}
                     isSelected={selectedStudentIds.has(student.id)}
                     onToggleSelect={handleToggleStudent}
+                    permissions={{
+                      canEdit: canEditStudents,
+                      canDelete: canDeleteStudents,
+                      canMessage: canMessageStudents,
+                      editReason,
+                      deleteReason,
+                      messageReason
+                    }}
                   />
                 ))}
                 {!loading && !schoolLoading && paginatedStudents.length === 0 && !error && (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500">
-                      {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
-                        ? 'You have not been assigned to any classes yet'
-                        : searchQuery || filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0
+                      {searchQuery || filters.skills.length > 0
                         ? 'No students match your current filters'
-                        : educatorSchool 
-                          ? `No students found in ${educatorSchool.name}`
-                          : educatorCollege
-                            ? `No students found in ${educatorCollege.name}`
-                            : 'No students found.'}
+                        : 'No students found.'}
                     </p>
-                    <p className="text-xs text-gray-400 mt-2">
-                      {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
-                        ? 'Please contact your school administrator to assign you to classes.'
-                        : educatorSchool || educatorCollege
-                          ? `Students are filtered by your assigned ${educatorType === 'school' ? 'school' : 'college'}.`
-                          : 'Try adjusting your search terms or filters.'}
-                    </p>
-                    {(filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0) && (
+                    {filters.skills.length > 0 && (
                       <button
                         onClick={handleClearFilters}
                         className="mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium"
@@ -1326,27 +956,63 @@ const StudentsPage = () => {
                             >
                               View
                             </button>
-                            <button
-                              onClick={() => handleMessageStudent(student)}
-                              className="text-green-600 hover:text-green-900"
-                              title="Message Student"
-                            >
-                              Message
-                            </button>
-                            <button
-                              onClick={() => handleEditClick(student)}
-                              className="text-orange-600 hover:text-orange-900"
-                              title="Edit Student"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClick(student)}
-                              className="text-red-600 hover:text-red-900"
-                              title="Delete Student"
-                            >
-                              Delete
-                            </button>
+                            <div className="relative group">
+                              <button
+                                onClick={() => canMessageStudents ? handleMessageStudent(student) : undefined}
+                                disabled={!canMessageStudents}
+                                className={`transition-colors ${
+                                  canMessageStudents
+                                    ? 'text-green-600 hover:text-green-900'
+                                    : 'text-gray-400 cursor-not-allowed'
+                                }`}
+                                title={canMessageStudents ? "Message Student" : messageReason}
+                              >
+                                Message
+                              </button>
+                              {!canMessageStudents && messageReason && (
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                  {messageReason}
+                                </div>
+                              )}
+                            </div>
+                            <div className="relative group">
+                              <button
+                                onClick={() => canEditStudents ? handleEditClick(student) : undefined}
+                                disabled={!canEditStudents}
+                                className={`transition-colors ${
+                                  canEditStudents
+                                    ? 'text-orange-600 hover:text-orange-900'
+                                    : 'text-gray-400 cursor-not-allowed'
+                                }`}
+                                title={canEditStudents ? "Edit Student" : editReason}
+                              >
+                                Edit
+                              </button>
+                              {!canEditStudents && editReason && (
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                  {editReason}
+                                </div>
+                              )}
+                            </div>
+                            <div className="relative group">
+                              <button
+                                onClick={() => canDeleteStudents ? handleDeleteClick(student) : undefined}
+                                disabled={!canDeleteStudents}
+                                className={`transition-colors ${
+                                  canDeleteStudents
+                                    ? 'text-red-600 hover:text-red-900'
+                                    : 'text-gray-400 cursor-not-allowed'
+                                }`}
+                                title={canDeleteStudents ? "Delete Student" : deleteReason}
+                              >
+                                Delete
+                              </button>
+                              {!canDeleteStudents && deleteReason && (
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                  {deleteReason}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -1365,25 +1031,12 @@ const StudentsPage = () => {
               totalItems={totalItems}
               itemsPerPage={itemsPerPage}
               onPageChange={handlePageChange}
-              // onItemsPerPageChange={handleItemsPerPageChange}
-              // itemsPerPageOptions={[10, 25, 50, 100]}
             />
           )}
         </div>
       </div>
 
-      {/* Mentor Note Modal */}
-      <MentorNoteModal
-        isOpen={showNoteModal}
-        onClose={() => {
-          setShowNoteModal(false);
-          setSelectedStudent(null);
-        }}
-        student={selectedStudent}
-        onSuccess={handleNoteSuccess}
-      />
-
-       <AddStudentModal
+      <AddStudentModal
         isOpen={showAddStudentModal}
         onClose={() => setShowAddStudentModal(false)}
         onSuccess={() => {

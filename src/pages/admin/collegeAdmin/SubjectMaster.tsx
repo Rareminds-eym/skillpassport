@@ -13,7 +13,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { supabase } from '../../../lib/supabaseClient';
-import { usePermissions } from '../../../services/permissionService';
+import { usePermissions } from '../../../hooks/usePermissions';
 import { useAuth } from '../../../context/AuthContext';
 
 interface Subject {
