@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
-import { matchJobsWithAI } from '../services/aiJobMatchingService';
-import { opportunitiesService } from '../services/opportunitiesService';
+import { matchJobsWithAI, refreshJobMatches } from '../services/aiJobMatchingService';
 
 /**
  * Custom hook for AI-powered job matching
+ * Uses the career-api Cloudflare Worker which handles:
+ * - Vector similarity search against opportunities
+ * - Database-level caching (24-hour TTL)
+ * - Automatic cache invalidation
+ * 
  * @param {Object} studentProfile - Student profile data
  * @param {boolean} enabled - Whether to run matching (default: true)
  * @param {number} topN - Number of matches to return (default: 3)
- * @returns {Object} Hook state with matched jobs, loading, and error
+ * @returns {Object} Hook state with matched jobs, loading, error, cacheInfo, and refreshMatches
  */
 export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
   const [matchedJobs, setMatchedJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [cacheInfo, setCacheInfo] = useState({});
 
   useEffect(() => {
     const fetchMatches = async () => {
@@ -27,48 +32,25 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         setLoading(true);
         setError(null);
 
-        console.log({
+        console.log('[useAIJobMatching] Fetching matches for student:', {
           id: studentProfile?.id,
           email: studentProfile?.email,
-          name: studentProfile?.name,
-          department: studentProfile?.department,
-          hasProfile: !!studentProfile?.profile,
-          profileDept: studentProfile?.profile?.branch_field || studentProfile?.profile?.department
+          name: studentProfile?.name
         });
 
-        // Fetch all active opportunities
-        const opportunities = await opportunitiesService.getAllOpportunities();
+        // Call the API - it handles opportunities fetching internally
+        const matches = await matchJobsWithAI(studentProfile, topN, false);
 
-        // Filter only active opportunities
-        const activeOpportunities = opportunities.filter(opp => {
-          // Check if active flag is true
-          if (opp.is_active === false || opp.status === 'draft') {
-            return false;
-          }
-
-          // Check if deadline hasn't passed
-          if (opp.deadline) {
-            const deadline = new Date(opp.deadline);
-            const now = new Date();
-            if (deadline < now) {
-              return false;
-            }
-          }
-
-          return true;
-        });
-
-
-        if (activeOpportunities.length === 0) {
-          setMatchedJobs([]);
-          setLoading(false);
-          return;
+        // Extract cache info from first match if available
+        if (matches.length > 0) {
+          setCacheInfo({
+            cached: matches[0].cached,
+            computedAt: matches[0].computed_at
+          });
         }
 
-        // Run AI matching
-        const matches = await matchJobsWithAI(studentProfile, activeOpportunities, topN);
-
         setMatchedJobs(matches);
+        console.log('[useAIJobMatching] Got matches:', matches.length);
 
       } catch (err) {
         console.error('❌ Error in AI job matching:', err);
@@ -86,14 +68,12 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
     studentProfile?.department,
     studentProfile?.profile?.department,
     studentProfile?.profile?.branch_field,
-    JSON.stringify(studentProfile?.profile?.technicalSkills || []),
-    JSON.stringify(studentProfile?.profile?.technical_skills || []),
     enabled, 
     topN
-  ]); // Re-run when student profile or key fields change
+  ]);
 
   /**
-   * Manually refresh job matches
+   * Manually refresh job matches - forces cache bypass
    */
   const refreshMatches = async () => {
     if (!studentProfile) return;
@@ -102,14 +82,16 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
       setLoading(true);
       setError(null);
 
-      const opportunities = await opportunitiesService.getAllOpportunities();
-      const activeOpportunities = opportunities.filter(opp => 
-        opp.is_active !== false && 
-        opp.status !== 'draft' &&
-        (!opp.deadline || new Date(opp.deadline) >= new Date())
-      );
+      // Force refresh bypasses cache
+      const matches = await refreshJobMatches(studentProfile, topN);
+      
+      if (matches.length > 0) {
+        setCacheInfo({
+          cached: false,
+          computedAt: new Date().toISOString()
+        });
+      }
 
-      const matches = await matchJobsWithAI(studentProfile, activeOpportunities, topN);
       setMatchedJobs(matches);
     } catch (err) {
       console.error('Error refreshing matches:', err);
@@ -123,6 +105,7 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
     matchedJobs,
     loading,
     error,
+    cacheInfo,
     refreshMatches
   };
 };

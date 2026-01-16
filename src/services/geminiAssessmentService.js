@@ -335,7 +335,6 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     streamKnowledgeQuestions 
   } = questionBanks;
 
-  // Debug: Log what we received
   console.log('=== prepareAssessmentData DEBUG ===');
   console.log('Total answers received:', Object.keys(answers).length);
   console.log('Sample answer keys (first 10):', Object.keys(answers).slice(0, 10));
@@ -754,24 +753,39 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log(`   Correct answers: ${knowledgeCorrect}`);
   console.log('📚 Knowledge answers extracted:', Object.keys(knowledgeAnswers).length);
 
-  // Calculate aptitude scores
-  const aptitudeScores = {
-    verbal: calculateAptitudeScore(aptitudeAnswers.verbal),
-    numerical: calculateAptitudeScore(aptitudeAnswers.numerical),
-    abstract: calculateAptitudeScore(aptitudeAnswers.abstract),
-    spatial: calculateAptitudeScore(aptitudeAnswers.spatial),
-    clerical: calculateAptitudeScore(aptitudeAnswers.clerical)
-  };
+  // Calculate aptitude scores - USE PRE-CALCULATED if available
+  let aptitudeScores;
+  if (preCalculatedScores?.aptitude) {
+    console.log('✅ Using pre-calculated aptitude scores from attempt');
+    aptitudeScores = preCalculatedScores.aptitude;
+  } else {
+    console.log('⚠️ Calculating aptitude scores from questions (fallback)');
+    aptitudeScores = {
+      verbal: calculateAptitudeScore(aptitudeAnswers.verbal),
+      numerical: calculateAptitudeScore(aptitudeAnswers.numerical),
+      abstract: calculateAptitudeScore(aptitudeAnswers.abstract),
+      spatial: calculateAptitudeScore(aptitudeAnswers.spatial),
+      clerical: calculateAptitudeScore(aptitudeAnswers.clerical)
+    };
+  }
   
   // Log calculated scores
-  console.log('📊 Calculated Aptitude Scores:', JSON.stringify(aptitudeScores, null, 2));
+  console.log('📊 Final Aptitude Scores:', JSON.stringify(aptitudeScores, null, 2));
   const totalCorrect = Object.values(aptitudeScores).reduce((sum, s) => sum + (s.correct || 0), 0);
   const totalQuestions = Object.values(aptitudeScores).reduce((sum, s) => sum + (s.total || 0), 0);
   console.log(`📊 Total Aptitude: ${totalCorrect}/${totalQuestions} correct (${totalQuestions > 0 ? Math.round((totalCorrect/totalQuestions)*100) : 0}%)`);
   
-  // Calculate knowledge score
-  const knowledgeCorrectCount = Object.values(knowledgeAnswers).filter(a => a.isCorrect).length;
-  const knowledgeTotalCount = Object.keys(knowledgeAnswers).length;
+  // Calculate knowledge score - USE PRE-CALCULATED if available
+  let knowledgeCorrectCount, knowledgeTotalCount;
+  if (preCalculatedScores?.knowledge) {
+    console.log('✅ Using pre-calculated knowledge scores from attempt');
+    knowledgeCorrectCount = preCalculatedScores.knowledge.correct || 0;
+    knowledgeTotalCount = preCalculatedScores.knowledge.total || 0;
+  } else {
+    console.log('⚠️ Calculating knowledge scores from questions (fallback)');
+    knowledgeCorrectCount = Object.values(knowledgeAnswers).filter(a => a.isCorrect).length;
+    knowledgeTotalCount = Object.keys(knowledgeAnswers).length;
+  }
   console.log(`📚 Total Knowledge: ${knowledgeCorrectCount}/${knowledgeTotalCount} correct (${knowledgeTotalCount > 0 ? Math.round((knowledgeCorrectCount/knowledgeTotalCount)*100) : 0}%)`);
 
 
