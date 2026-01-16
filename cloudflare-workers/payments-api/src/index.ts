@@ -2197,6 +2197,93 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
   const { user, supabase } = auth;
   const now = new Date();
 
+  // ============================================================================
+  // STEP 1: Check for organization license assignment FIRST
+  // This allows members assigned by admins to bypass individual subscription check
+  // ============================================================================
+  const { data: licenseAssignment, error: licenseError } = await supabase
+    .from('license_assignments')
+    .select(`
+      id,
+      status,
+      expires_at,
+      assigned_at,
+      organization_subscription_id,
+      organization_subscriptions!inner (
+        id,
+        status,
+        start_date,
+        end_date,
+        organization_id,
+        organization_type,
+        subscription_plan_id,
+        subscription_plans (
+          id,
+          name,
+          plan_code
+        )
+      )
+    `)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (!licenseError && licenseAssignment) {
+    const orgSub = licenseAssignment.organization_subscriptions as any;
+    
+    // Check if organization subscription is active and not expired
+    if (orgSub && orgSub.status === 'active') {
+      const orgEndDate = new Date(orgSub.end_date);
+      
+      if (orgEndDate > now) {
+        // Check if license assignment has its own expiry
+        const licenseExpiry = licenseAssignment.expires_at ? new Date(licenseAssignment.expires_at) : null;
+        const effectiveEndDate = licenseExpiry && licenseExpiry < orgEndDate ? licenseExpiry : orgEndDate;
+        
+        if (effectiveEndDate > now) {
+          const daysUntilExpiry = Math.ceil((effectiveEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          const showExpiringWarning = daysUntilExpiry <= 7;
+          
+          // Build a subscription-like object for the response
+          const orgSubscriptionInfo = {
+            id: orgSub.id,
+            plan_id: orgSub.subscription_plan_id,
+            plan_name: orgSub.subscription_plans?.name || 'Organization Plan',
+            plan_code: orgSub.subscription_plans?.plan_code,
+            status: 'active',
+            subscription_start_date: orgSub.start_date,
+            subscription_end_date: effectiveEndDate.toISOString(),
+            is_organization_license: true,
+            organization_id: orgSub.organization_id,
+            organization_type: orgSub.organization_type,
+            license_assignment_id: licenseAssignment.id,
+          };
+
+          const response: SubscriptionAccessResponse = {
+            success: true,
+            hasAccess: true,
+            accessReason: 'active',
+            subscription: orgSubscriptionInfo,
+            showWarning: showExpiringWarning,
+            warningType: showExpiringWarning ? 'expiring_soon' : undefined,
+            warningMessage: showExpiringWarning 
+              ? `Your organization license expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`
+              : undefined,
+            daysUntilExpiry,
+            expiresAt: effectiveEndDate.toISOString(),
+          };
+
+          console.log(`[CheckAccess] User ${user.id} has active organization license from org ${orgSub.organization_id}`);
+          return jsonResponse(response);
+        }
+      }
+    }
+  }
+
+  // ============================================================================
+  // STEP 2: Check for individual subscription (original logic)
+  // ============================================================================
+
   // Get user's subscription - include recently expired for grace period
   const gracePeriodDate = new Date(now);
   gracePeriodDate.setDate(gracePeriodDate.getDate() - GRACE_PERIOD_DAYS);
