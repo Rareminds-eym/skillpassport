@@ -487,13 +487,15 @@ export class OrganizationMemberService {
    * @param memberType - Type of member ('student' or 'educator')
    * @param organizationType - Type of organization ('school', 'college', 'university')
    * @param organizationId - The organization's ID (for verification)
+   * @param revokedBy - Optional user ID of who is performing the removal
    * @returns Success status and message
    */
   async removeMember(
     memberId: string,
     memberType: 'educator' | 'student',
     organizationType: 'school' | 'college' | 'university',
-    organizationId: string
+    organizationId: string,
+    revokedBy?: string
   ): Promise<{ success: boolean; message: string }> {
     try {
       console.log('🗑️ Removing member from organization:', {
@@ -516,7 +518,7 @@ export class OrganizationMemberService {
         // Verify the student belongs to this organization before removing
         const { data: student, error: fetchError } = await supabase
           .from('students')
-          .select('id, school_id, college_id, email, name')
+          .select('id, school_id, college_id, email, name, user_id')
           .eq('id', memberId)
           .single();
 
@@ -545,7 +547,9 @@ export class OrganizationMemberService {
         }
 
         // Also revoke any license assignments for this user
-        await this.revokeMemberLicenses(student.id, organizationId);
+        // Use user_id if available, otherwise fall back to student.id
+        const userIdForLicense = student.user_id || student.id;
+        await this.revokeMemberLicenses(userIdForLicense, organizationId, revokedBy, 'Member removed from organization');
 
         console.log('✅ Student removed from organization:', student.email);
         return { success: true, message: `${student.name || 'Student'} has been removed from the organization` };
@@ -581,7 +585,7 @@ export class OrganizationMemberService {
 
           // Revoke licenses
           if (educator.user_id) {
-            await this.revokeMemberLicenses(educator.user_id, organizationId);
+            await this.revokeMemberLicenses(educator.user_id, organizationId, revokedBy, 'Educator removed from organization');
           }
 
           const educatorName = `${educator.first_name || ''} ${educator.last_name || ''}`.trim() || 'Educator';
@@ -617,7 +621,7 @@ export class OrganizationMemberService {
 
           // Revoke licenses
           if (lecturer.user_id) {
-            await this.revokeMemberLicenses(lecturer.user_id, organizationId);
+            await this.revokeMemberLicenses(lecturer.user_id, organizationId, revokedBy, 'Lecturer removed from organization');
           }
 
           const lecturerName = `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || 'Lecturer';
@@ -641,7 +645,9 @@ export class OrganizationMemberService {
    */
   private async revokeMemberLicenses(
     userId: string,
-    organizationId: string
+    organizationId: string,
+    revokedBy?: string,
+    reason: string = 'Member removed from organization'
   ): Promise<void> {
     try {
       // Get all license pools for this organization
@@ -659,7 +665,9 @@ export class OrganizationMemberService {
         .from('license_assignments')
         .update({ 
           status: 'revoked',
-          revoked_at: new Date().toISOString()
+          revoked_at: new Date().toISOString(),
+          revoked_by: revokedBy || null,
+          revocation_reason: reason
         })
         .eq('user_id', userId)
         .in('license_pool_id', poolIds)

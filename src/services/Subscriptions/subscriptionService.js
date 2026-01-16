@@ -116,6 +116,29 @@ export const getActiveSubscription = async () => {
     }
 
     // ============================================================================
+    // STEP 1.5: Check if user had a revoked license assignment (show as expired)
+    // This ensures members see "expired" status immediately when license is revoked
+    // ============================================================================
+    const { data: revokedLicense } = await supabase
+      .from('license_assignments')
+      .select(`
+        id,
+        status,
+        revoked_at,
+        organization_subscriptions (
+          subscription_plans (
+            name,
+            plan_code
+          )
+        )
+      `)
+      .eq('user_id', userId)
+      .eq('status', 'revoked')
+      .order('revoked_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // ============================================================================
     // STEP 2: Check for individual subscription (original logic)
     // ============================================================================
 
@@ -142,6 +165,26 @@ export const getActiveSubscription = async () => {
 
     // If no active/valid subscription, try to get the most recent one for display purposes
     if (!data) {
+      // If user had a revoked organization license, show as expired
+      if (revokedLicense) {
+        const revokedOrgSub = revokedLicense.organization_subscriptions;
+        console.log(`⚠️ User ${userId} had revoked organization license`);
+        return {
+          success: true,
+          data: {
+            id: revokedLicense.id,
+            user_id: userId,
+            status: 'expired',
+            plan_type: revokedOrgSub?.subscription_plans?.name || 'Organization License',
+            plan_code: revokedOrgSub?.subscription_plans?.plan_code,
+            is_organization_license: true,
+            was_revoked: true,
+            revoked_at: revokedLicense.revoked_at,
+          },
+          error: null
+        };
+      }
+
       const { data: recentSub, error: recentError } = await supabase
         .from('subscriptions')
         .select('*')

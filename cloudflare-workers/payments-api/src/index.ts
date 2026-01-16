@@ -2208,6 +2208,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
       status,
       expires_at,
       assigned_at,
+      revoked_at,
       organization_subscription_id,
       organization_subscriptions!inner (
         id,
@@ -2281,6 +2282,29 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
   }
 
   // ============================================================================
+  // STEP 1.5: Check if user had a revoked license assignment (show as expired)
+  // This ensures members see "expired" status immediately when license is revoked
+  // ============================================================================
+  const { data: revokedLicense } = await supabase
+    .from('license_assignments')
+    .select(`
+      id,
+      status,
+      revoked_at,
+      organization_subscriptions (
+        subscription_plans (
+          name,
+          plan_code
+        )
+      )
+    `)
+    .eq('user_id', user.id)
+    .eq('status', 'revoked')
+    .order('revoked_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // ============================================================================
   // STEP 2: Check for individual subscription (original logic)
   // ============================================================================
 
@@ -2321,6 +2345,28 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    // If user had a revoked organization license, show as expired
+    if (revokedLicense) {
+      const revokedOrgSub = revokedLicense.organization_subscriptions as any;
+      const response: SubscriptionAccessResponse = {
+        success: true,
+        hasAccess: false,
+        accessReason: 'expired',
+        subscription: {
+          id: revokedLicense.id,
+          status: 'expired',
+          plan_name: revokedOrgSub?.subscription_plans?.name || 'Organization License',
+          plan_code: revokedOrgSub?.subscription_plans?.plan_code,
+          is_organization_license: true,
+          was_revoked: true,
+          revoked_at: revokedLicense.revoked_at,
+        },
+        showWarning: false,
+      };
+      console.log(`[CheckAccess] User ${user.id} had revoked organization license`);
+      return jsonResponse(response);
+    }
 
     const response: SubscriptionAccessResponse = {
       success: true,
