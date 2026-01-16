@@ -8,11 +8,15 @@ import type { Subtag } from '../types';
 // API MODELS
 // =============================================================================
 
+// AI Models to try in order of preference (same as Assessment Evaluation/Analysis)
 export const FREE_MODELS = [
-  'xiaomi/mimo-v2-flash:free'
+  'google/gemini-2.0-flash-exp:free',  // Google's Gemini 2.0 - free, fast, 1M context
+  'google/gemini-flash-1.5-8b',        // Gemini 1.5 Flash 8B - fast and efficient
+  'anthropic/claude-3.5-sonnet',       // Claude 3.5 Sonnet - best quality (paid)
+  'xiaomi/mimo-v2-flash:free'          // Fallback: Xiaomi's free model
 ];
 
-export const OPENROUTER_MODEL = 'openai/gpt-4o-mini';
+export const OPENROUTER_MODEL = 'google/gemini-2.0-flash-exp:free';
 export const CLAUDE_MODEL = 'claude-3-haiku-20240307';
 
 // =============================================================================

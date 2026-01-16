@@ -196,10 +196,24 @@ export const createAttempt = async (studentId, streamId, gradeLevel) => {
  * @param {object} progress - Progress data including timerRemaining for timed sections and elapsedTime for non-timed
  */
 export const updateAttemptProgress = async (attemptId, progress) => {
+  // First fetch existing data to merge section_timings and all_responses
+  const { data: existingAttempt } = await supabase
+    .from('personal_assessment_attempts')
+    .select('section_timings, all_responses')
+    .eq('id', attemptId)
+    .single();
+
+  // IMPORTANT: Merge section_timings with existing timings instead of replacing
+  // This ensures all section timings are preserved across multiple updates
+  const mergedSectionTimings = {
+    ...(existingAttempt?.section_timings || {}),
+    ...(progress.sectionTimings || {})
+  };
+
   const updateData = {
     current_section_index: progress.sectionIndex,
     current_question_index: progress.questionIndex,
-    section_timings: progress.sectionTimings,
+    section_timings: mergedSectionTimings,
     updated_at: new Date().toISOString()
   };
   
@@ -221,12 +235,6 @@ export const updateAttemptProgress = async (attemptId, progress) => {
   // Include all_responses if provided (for non-UUID questions like RIASEC, BigFive, etc.)
   // IMPORTANT: Merge with existing all_responses instead of replacing
   if (progress.allResponses) {
-    // First fetch existing all_responses to merge
-    const { data: existingAttempt } = await supabase
-      .from('personal_assessment_attempts')
-      .select('all_responses')
-      .eq('id', attemptId)
-      .single();
     
     // Merge existing responses with new ones (new ones take precedence)
     const mergedResponses = {
@@ -412,19 +420,37 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
 
   // ============================================================================
   // CRITICAL VALIDATION: Ensure AI returned complete data
+  // Validation is grade-level specific since different grades have different sections
   // ============================================================================
   
-  const requiredFields = [
-    'riasec',
-    'aptitude', 
-    'bigFive',
-    'workValues',
-    'employability',
-    'knowledge',
-    'careerFit',
-    'skillGap',
-    'roadmap'
-  ];
+  // Define required fields based on grade level
+  let requiredFields;
+  
+  if (gradeLevel === 'middle' || gradeLevel === 'highschool') {
+    // Middle school and high school have simplified assessments
+    // They use adaptive aptitude instead of traditional aptitude/knowledge sections
+    requiredFields = [
+      'riasec',        // Interest explorer maps to RIASEC
+      'bigFive',       // Strengths & character maps to BigFive
+      'careerFit',     // Career recommendations
+      'roadmap'        // Development roadmap
+    ];
+    console.log('📊 Using simplified validation for grade:', gradeLevel);
+  } else {
+    // Comprehensive assessment for after10, after12, college, higher_secondary
+    requiredFields = [
+      'riasec',
+      'aptitude', 
+      'bigFive',
+      'workValues',
+      'employability',
+      'knowledge',
+      'careerFit',
+      'skillGap',
+      'roadmap'
+    ];
+    console.log('📊 Using comprehensive validation for grade:', gradeLevel);
+  }
   
   const missingFields = requiredFields.filter(field => !geminiResults[field]);
   
@@ -440,15 +466,26 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
     );
   }
 
-  // Validate nested required fields
-  const nestedValidation = [
-    { path: 'workValues.scores', value: geminiResults.workValues?.scores },
-    { path: 'employability.skillScores', value: geminiResults.employability?.skillScores },
-    { path: 'employability.overallReadiness', value: geminiResults.employability?.overallReadiness },
-    { path: 'careerFit.clusters', value: geminiResults.careerFit?.clusters },
-    { path: 'skillGap.priorityA', value: geminiResults.skillGap?.priorityA },
-    { path: 'roadmap.projects', value: geminiResults.roadmap?.projects }
-  ];
+  // Validate nested required fields (grade-level specific)
+  let nestedValidation;
+  
+  if (gradeLevel === 'middle' || gradeLevel === 'highschool') {
+    // Simplified nested validation for middle/high school
+    nestedValidation = [
+      { path: 'careerFit.clusters', value: geminiResults.careerFit?.clusters },
+      { path: 'roadmap.projects', value: geminiResults.roadmap?.projects }
+    ];
+  } else {
+    // Comprehensive nested validation
+    nestedValidation = [
+      { path: 'workValues.scores', value: geminiResults.workValues?.scores },
+      { path: 'employability.skillScores', value: geminiResults.employability?.skillScores },
+      { path: 'employability.overallReadiness', value: geminiResults.employability?.overallReadiness },
+      { path: 'careerFit.clusters', value: geminiResults.careerFit?.clusters },
+      { path: 'skillGap.priorityA', value: geminiResults.skillGap?.priorityA },
+      { path: 'roadmap.projects', value: geminiResults.roadmap?.projects }
+    ];
+  }
   
   const missingNested = nestedValidation.filter(v => !v.value).map(v => v.path);
   
@@ -571,6 +608,32 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
     // The attempt status can be fixed manually if needed
   } else {
     console.log('✅ Attempt marked as completed');
+  }
+
+  // STEP 3: Create notification for assessment completion
+  console.log('=== STEP 3: Creating assessment completion notification ===');
+  try {
+    const { error: notificationError } = await supabase
+      .from('notifications')
+      .insert({
+        recipient_id: studentId,
+        type: 'assessment_completed',
+        title: 'Career Assessment Completed',
+        message: `Your ${gradeLevel === 'middle' ? 'Middle School' : gradeLevel === 'highschool' ? 'High School' : gradeLevel === 'after10' ? 'After 10th' : gradeLevel === 'after12' ? 'After 12th' : 'College'} career assessment has been completed. View your personalized results and career recommendations.`,
+        assessment_id: attemptId,
+        read: false,
+        created_at: new Date().toISOString()
+      });
+
+    if (notificationError) {
+      console.warn('⚠️ Could not create notification:', notificationError.message);
+      // Don't throw - notification is not critical
+    } else {
+      console.log('✅ Assessment completion notification created');
+    }
+  } catch (notifErr) {
+    console.warn('⚠️ Notification creation failed:', notifErr.message);
+    // Don't throw - notification is not critical
   }
 
   return results;
@@ -756,7 +819,8 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
    * Helper function to check if an attempt has meaningful progress
    * An attempt is considered "started" if it has:
    * - At least one response in personal_assessment_responses table, OR
-   * - At least one answer in all_responses JSONB column
+   * - At least one answer in all_responses JSONB column, OR
+   * - An adaptive aptitude session with progress
    */
   const hasProgress = (attempt) => {
     if (!attempt) return false;
@@ -779,7 +843,42 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
       }
     }
     
+    // Check for adaptive aptitude session progress
+    if (attempt.adaptive_aptitude_session_id) {
+      return true;
+    }
+    
     return false;
+  };
+  
+  /**
+   * Helper function to fetch adaptive session progress
+   * Returns the number of questions answered in the adaptive session
+   */
+  const fetchAdaptiveProgress = async (sessionId) => {
+    if (!sessionId) return null;
+    
+    try {
+      const { data: sessionData, error } = await supabase
+        .from('adaptive_aptitude_sessions')
+        .select('current_question_index, status, current_phase')
+        .eq('id', sessionId)
+        .maybeSingle();
+      
+      if (error || !sessionData) {
+        console.warn('Could not fetch adaptive session progress:', error);
+        return null;
+      }
+      
+      return {
+        questionsAnswered: sessionData.current_question_index || 0,
+        status: sessionData.status,
+        currentPhase: sessionData.current_phase
+      };
+    } catch (err) {
+      console.warn('Error fetching adaptive progress:', err);
+      return null;
+    }
   };
 
   // Try direct lookup first (assuming it's student.id)
@@ -805,6 +904,16 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
   if (data) {
     if (hasProgress(data)) {
       console.log('✅ Found in-progress attempt with progress (direct lookup):', data.id);
+      
+      // Fetch adaptive progress if there's an adaptive session
+      if (data.adaptive_aptitude_session_id) {
+        const adaptiveProgress = await fetchAdaptiveProgress(data.adaptive_aptitude_session_id);
+        if (adaptiveProgress) {
+          data.adaptiveProgress = adaptiveProgress;
+          console.log('📊 Adaptive progress:', adaptiveProgress);
+        }
+      }
+      
       return data;
     } else {
       // Attempt exists but has no progress - abandon it silently
@@ -865,6 +974,16 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
     if (attemptData) {
       if (hasProgress(attemptData)) {
         console.log('✅ Found in-progress attempt with progress (via user_id lookup):', attemptData.id);
+        
+        // Fetch adaptive progress if there's an adaptive session
+        if (attemptData.adaptive_aptitude_session_id) {
+          const adaptiveProgress = await fetchAdaptiveProgress(attemptData.adaptive_aptitude_session_id);
+          if (adaptiveProgress) {
+            attemptData.adaptiveProgress = adaptiveProgress;
+            console.log('📊 Adaptive progress:', adaptiveProgress);
+          }
+        }
+        
         return attemptData;
       } else {
         // Attempt exists but has no progress - abandon it silently

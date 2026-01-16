@@ -211,6 +211,7 @@ const AssessmentTestPage: React.FC = () => {
   const [pendingAttempt, setPendingAttempt] = useState<any>(null);
   const [checkingExistingAttempt, setCheckingExistingAttempt] = useState(true);
   const [assessmentStarted, setAssessmentStarted] = useState(false);
+  const [skipResumeCheck, setSkipResumeCheck] = useState(false); // Flag to skip resume check after abandoning
   const [adaptiveAptitudeAnswer, setAdaptiveAptitudeAnswer] = useState<string | null>(null);
   const [adaptiveQuestionTimer, setAdaptiveQuestionTimer] = useState(90); // 90 seconds per question
   
@@ -224,8 +225,13 @@ const AssessmentTestPage: React.FC = () => {
       console.log('🔍 DEBUG: Sample keys:', Object.keys(flow.answers).slice(0, 10));
       if (useDatabase && currentAttempt?.id) {
         // Save all responses including non-UUID questions (RIASEC, BigFive, etc.)
-        // Note: flow.answers should be up-to-date here since section is complete
-        dbUpdateProgress(flow.currentSectionIndex, 0, flow.sectionTimings, null, null, flow.answers);
+        // Note: Use the timeSpent parameter directly since flow.sectionTimings may not be updated yet
+        const updatedTimings = {
+          ...flow.sectionTimings,
+          [sectionId]: timeSpent
+        };
+        console.log('📊 Saving section timings:', updatedTimings);
+        dbUpdateProgress(flow.currentSectionIndex, 0, updatedTimings, null, null, flow.answers);
       }
     },
     onAnswerChange: (questionId, answer) => {
@@ -270,13 +276,33 @@ const AssessmentTestPage: React.FC = () => {
   });
   
   // Adaptive Aptitude Hook
+  // Note: We need a ref to track if this is the last section since the callback
+  // is created before sections are built
+  const isAdaptiveLastSectionRef = React.useRef(false);
+  
   const adaptiveAptitude = useAdaptiveAptitude({
     studentId: studentId || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
     onTestComplete: (testResults) => {
       console.log('✅ Adaptive aptitude test completed:', testResults);
+      console.log('📊 DEBUG onTestComplete:', {
+        isAdaptiveLastSection: isAdaptiveLastSectionRef.current,
+        currentSectionIndex: flow.currentSectionIndex,
+        sectionsLength: sections.length,
+        isLastSection: flow.isLastSection,
+        showSectionComplete: flow.showSectionComplete
+      });
+      
       flow.setAnswer('adaptive_aptitude_results', testResults);
+      
+      // Always call completeSection to show the section complete screen
+      // The auto-submit useEffect will handle submission if it's the last section
+      console.log('🔄 Calling flow.completeSection()...');
       flow.completeSection();
+      
+      console.log('📊 DEBUG after completeSection:', {
+        showSectionComplete: flow.showSectionComplete
+      });
     },
     onError: (err) => {
       console.error('❌ Adaptive aptitude test error:', err);
@@ -286,6 +312,18 @@ const AssessmentTestPage: React.FC = () => {
   
   // Track if initial check has been done (prevents re-running after assessment starts)
   const initialCheckDoneRef = React.useRef(false);
+  
+  // Track if adaptive section start is pending (waiting for questions to load)
+  const adaptiveStartPendingRef = React.useRef(false);
+  
+  // Update the ref when sections change to track if adaptive is the last section
+  useEffect(() => {
+    if (sections.length > 0) {
+      const lastSection = sections[sections.length - 1];
+      isAdaptiveLastSectionRef.current = lastSection?.isAdaptive === true;
+      console.log('📊 isAdaptiveLastSection:', isAdaptiveLastSectionRef.current, 'sections:', sections.length);
+    }
+  }, [sections]);
   
   // Check for existing in-progress attempt on mount
   // OPTIMIZED: Start checking as soon as studentRecordId is available
@@ -339,7 +377,7 @@ const AssessmentTestPage: React.FC = () => {
     };
     
     checkExisting();
-  }, [studentRecordId, dbLoading, checkInProgressAttempt]);
+  }, [studentRecordId, dbLoading, checkInProgressAttempt, skipResumeCheck]);
   
   // Build sections when grade level, stream, or AI questions change
   useEffect(() => {
@@ -361,6 +399,75 @@ const AssessmentTestPage: React.FC = () => {
       setSections(builtSections);
     }
   }, [flow.gradeLevel, flow.studentStream, aiQuestions, flow.selectedCategory]);
+  
+  // FIX 2: Restore position after sections are built (handles race condition)
+  useEffect(() => {
+    // Only run if we have a pending attempt and sections are now built
+    if (!pendingAttempt || sections.length === 0) return;
+    
+    // Only run if we haven't restored position yet (check if we're still on loading/resume screen)
+    if (flow.currentScreen !== 'loading' && flow.currentScreen !== 'resume_prompt') return;
+    
+    const sectionIndex = pendingAttempt.current_section_index ?? 0;
+    const questionIndex = pendingAttempt.current_question_index ?? 0;
+    
+    // Validate that the section index is valid
+    if (sectionIndex >= sections.length) {
+      console.error('❌ Invalid section index:', sectionIndex, 'sections.length:', sections.length);
+      // Start from beginning if invalid
+      flow.setCurrentSectionIndex(0);
+      flow.setCurrentQuestionIndex(0);
+      flow.setCurrentScreen('section_intro');
+      return;
+    }
+    
+    const targetSection = sections[sectionIndex];
+    console.log('✅ Sections built, restoring position:', { 
+      sectionIndex, 
+      questionIndex, 
+      sectionsCount: sections.length,
+      sectionId: targetSection?.id,
+      isAdaptive: targetSection?.isAdaptive,
+      elapsedTime: pendingAttempt.elapsed_time,
+      timerRemaining: pendingAttempt.timer_remaining
+    });
+    
+    flow.setCurrentSectionIndex(sectionIndex);
+    
+    // FIX: Restore elapsed time when restoring position after sections are built
+    if (pendingAttempt.elapsed_time !== null && pendingAttempt.elapsed_time !== undefined) {
+      console.log('⏱️ Restoring elapsed_time after sections built:', pendingAttempt.elapsed_time);
+      flow.setElapsedTime(pendingAttempt.elapsed_time);
+    }
+    
+    // FIX: Restore timer remaining for timed sections
+    if (pendingAttempt.timer_remaining !== null && pendingAttempt.timer_remaining !== undefined) {
+      console.log('⏱️ Restoring timer_remaining after sections built:', pendingAttempt.timer_remaining);
+      flow.setTimeRemaining(pendingAttempt.timer_remaining);
+    }
+    
+    // FIX: For adaptive sections, don't set questionIndex
+    // The adaptive hook manages its own question state
+    if (targetSection?.isAdaptive) {
+      console.log('🎯 Adaptive section detected - letting adaptive hook manage questions');
+      // Adaptive session was already resumed in handleResumeAssessment
+      // Just set to question 0 and let adaptive hook take over
+      flow.setCurrentQuestionIndex(0);
+      flow.setShowSectionIntro(false);
+      flow.setCurrentScreen('assessment');
+    } else {
+      // For regular sections, restore the exact question index
+      flow.setCurrentQuestionIndex(questionIndex);
+      
+      // If we're in the middle of a section, skip the intro
+      if (questionIndex > 0) {
+        flow.setShowSectionIntro(false);
+        flow.setCurrentScreen('assessment');
+      } else {
+        flow.setCurrentScreen('section_intro');
+      }
+    }
+  }, [sections.length, pendingAttempt, flow.currentScreen]);
   
   // Timer effects
   useEffect(() => {
@@ -443,6 +550,25 @@ const AssessmentTestPage: React.FC = () => {
     }
   }, [adaptiveAptitude.currentQuestion?.id]);
   
+  // Auto-start adaptive section once questions are loaded
+  // This handles the case where user clicked "Start Section" but questions were still loading
+  useEffect(() => {
+    const currentSection = sections[flow.currentSectionIndex];
+    
+    // If we're on an adaptive section intro and questions just finished loading
+    if (
+      currentSection?.isAdaptive &&
+      flow.showSectionIntro &&
+      adaptiveStartPendingRef.current &&
+      !adaptiveAptitude.loading &&
+      adaptiveAptitude.currentQuestion
+    ) {
+      console.log('✅ Adaptive questions loaded, starting section...');
+      adaptiveStartPendingRef.current = false;
+      flow.startSection();
+    }
+  }, [adaptiveAptitude.loading, adaptiveAptitude.currentQuestion, flow.showSectionIntro, flow.currentSectionIndex, sections]);
+  
   // Link adaptive aptitude session to assessment attempt when session is created
   useEffect(() => {
     const linkAdaptiveSession = async () => {
@@ -465,6 +591,90 @@ const AssessmentTestPage: React.FC = () => {
     
     linkAdaptiveSession();
   }, [adaptiveAptitude.session?.id, currentAttempt?.id, useDatabase]);
+  
+  // FIX: Periodically save elapsed time to database (every 10 seconds)
+  // This ensures the timer can be restored accurately when resuming
+  useEffect(() => {
+    if (!useDatabase || !currentAttempt?.id) return;
+    if (flow.showSectionIntro || flow.showSectionComplete || flow.isSubmitting) return;
+    
+    // Save elapsed time every 10 seconds
+    if (flow.elapsedTime > 0 && flow.elapsedTime % 10 === 0) {
+      const currentSection = sections[flow.currentSectionIndex];
+      const timerRemaining = currentSection?.isTimed ? flow.timeRemaining : null;
+      
+      console.log('⏱️ Auto-saving timer state:', {
+        elapsedTime: flow.elapsedTime,
+        timerRemaining,
+        sectionIndex: flow.currentSectionIndex
+      });
+      
+      dbUpdateProgress(
+        flow.currentSectionIndex,
+        flow.currentQuestionIndex,
+        flow.sectionTimings,
+        timerRemaining,
+        flow.elapsedTime,
+        flow.answers
+      );
+    }
+  }, [
+    flow.elapsedTime,
+    flow.timeRemaining,
+    flow.currentSectionIndex,
+    flow.currentQuestionIndex,
+    flow.sectionTimings,
+    flow.answers,
+    flow.showSectionIntro,
+    flow.showSectionComplete,
+    flow.isSubmitting,
+    useDatabase,
+    currentAttempt?.id,
+    dbUpdateProgress,
+    sections
+  ]);
+  
+  // FIX: Update database progress when adaptive aptitude question changes
+  useEffect(() => {
+    const currentSection = sections[flow.currentSectionIndex];
+    
+    // Only update if we're in an adaptive section with an active session
+    if (!currentSection?.isAdaptive) return;
+    if (!adaptiveAptitude.session?.id) return;
+    if (!useDatabase || !currentAttempt?.id) return;
+    
+    // Update progress whenever the adaptive question changes (after answer is submitted)
+    const questionsAnswered = adaptiveAptitude.progress?.questionsAnswered || 0;
+    
+    if (questionsAnswered > 0) {
+      console.log('📊 Updating adaptive progress in database:', {
+        sectionIndex: flow.currentSectionIndex,
+        questionsAnswered,
+        phase: adaptiveAptitude.progress?.currentPhase
+      });
+      
+      // Update the attempt with current section index and adaptive progress
+      dbUpdateProgress(
+        flow.currentSectionIndex,
+        questionsAnswered, // Use questions answered as question index
+        flow.sectionTimings,
+        null, // No timer for adaptive
+        flow.elapsedTime,
+        flow.answers
+      );
+    }
+  }, [
+    adaptiveAptitude.progress?.questionsAnswered,
+    adaptiveAptitude.session?.id,
+    flow.currentSectionIndex,
+    sections,
+    useDatabase,
+    currentAttempt?.id,
+    dbUpdateProgress,
+    flow.sectionTimings,
+    flow.elapsedTime,
+    flow.answers
+  ]);
   
   // Handlers
   const handleGradeSelect = useCallback(async (level: GradeLevel) => {
@@ -500,8 +710,18 @@ const AssessmentTestPage: React.FC = () => {
       // This prevents orphan attempts when user just browses
       
       flow.setCurrentScreen('section_intro');
+    } else if (level === 'middle') {
+      // Middle school (6-8) - use 'middle_school' stream
+      flow.setStudentStream('middle_school');
+      setAssessmentStarted(true);
+      flow.setCurrentScreen('section_intro');
+    } else if (level === 'highschool') {
+      // High school (9-10) - use 'high_school' stream
+      flow.setStudentStream('high_school');
+      setAssessmentStarted(true);
+      flow.setCurrentScreen('section_intro');
     } else {
-      // Middle school (6-8), High school (9-10) - start directly without stream selection
+      // Fallback for any other grade level
       setAssessmentStarted(true);
       flow.setCurrentScreen('section_intro');
     }
@@ -534,6 +754,19 @@ const AssessmentTestPage: React.FC = () => {
   const handleResumeAssessment = useCallback(async () => {
     if (!pendingAttempt) return;
     
+    console.log('🔄 Starting assessment resume process...');
+    console.log('📋 Pending attempt:', {
+      id: pendingAttempt.id,
+      gradeLevel: pendingAttempt.grade_level,
+      stream: pendingAttempt.stream_id,
+      sectionIndex: pendingAttempt.current_section_index,
+      questionIndex: pendingAttempt.current_question_index,
+      hasAdaptiveSession: !!pendingAttempt.adaptive_aptitude_session_id,
+      hasTimerRemaining: pendingAttempt.timer_remaining !== null,
+      hasElapsedTime: pendingAttempt.elapsed_time !== null,
+      hasSectionTimings: !!pendingAttempt.section_timings
+    });
+    
     setShowResumePrompt(false);
     setAssessmentStarted(true);
     setUseDatabase(true);
@@ -542,11 +775,56 @@ const AssessmentTestPage: React.FC = () => {
     flow.setGradeLevel(pendingAttempt.grade_level as GradeLevel);
     flow.setStudentStream(pendingAttempt.stream_id);
     
-    // Restore answers
+    // FIX 4: Restore timer state
+    if (pendingAttempt.timer_remaining !== null && pendingAttempt.timer_remaining !== undefined) {
+      console.log('⏱️ Restoring timer_remaining:', pendingAttempt.timer_remaining);
+      flow.setTimeRemaining(pendingAttempt.timer_remaining);
+    }
+    if (pendingAttempt.elapsed_time !== null && pendingAttempt.elapsed_time !== undefined) {
+      console.log('⏱️ Restoring elapsed_time:', pendingAttempt.elapsed_time);
+      flow.setElapsedTime(pendingAttempt.elapsed_time);
+    }
+    
+    // FIX 5: Restore section timings
+    if (pendingAttempt.section_timings) {
+      console.log('📊 Restoring section timings:', pendingAttempt.section_timings);
+      flow.setSectionTimings(pendingAttempt.section_timings);
+    }
+    
+    // Restore answers from UUID-based responses (personal_assessment_responses table)
     if (pendingAttempt.restoredResponses) {
+      console.log('💾 Restoring', Object.keys(pendingAttempt.restoredResponses).length, 'UUID-based answers');
       Object.entries(pendingAttempt.restoredResponses).forEach(([key, value]) => {
         flow.setAnswer(key, value);
       });
+    }
+    
+    // FIX: Restore non-UUID answers from all_responses column (RIASEC, BigFive, Values, Employability)
+    if (pendingAttempt.all_responses) {
+      console.log('💾 Restoring', Object.keys(pendingAttempt.all_responses).length, 'non-UUID answers from all_responses');
+      Object.entries(pendingAttempt.all_responses).forEach(([key, value]) => {
+        flow.setAnswer(key, value);
+      });
+    }
+    
+    // FIX 1: Resume adaptive aptitude session if exists
+    if (pendingAttempt.adaptive_aptitude_session_id) {
+      console.log('🎯 Resuming adaptive aptitude session:', pendingAttempt.adaptive_aptitude_session_id);
+      try {
+        await adaptiveAptitude.resumeTest(pendingAttempt.adaptive_aptitude_session_id);
+        console.log('✅ Adaptive aptitude session resumed successfully');
+      } catch (err) {
+        console.warn('⚠️ Could not resume adaptive session:', err);
+        // Continue with regular resume - adaptive section will restart if needed
+      }
+    }
+    
+    // FIX 3: Check if we need to wait for AI questions
+    const needsAIQuestions = ['after10', 'after12', 'college'].includes(pendingAttempt.grade_level);
+    if (needsAIQuestions && questionsLoading) {
+      console.log('⏳ Waiting for AI questions to load before resuming position...');
+      // Position will be restored in the useEffect below once sections are built
+      return;
     }
     
     // Restore section and question indices from database columns
@@ -555,32 +833,79 @@ const AssessmentTestPage: React.FC = () => {
     
     console.log('📍 Resuming from section:', sectionIndex, 'question:', questionIndex);
     
-    // Restore position using the newly exposed setters
-    flow.setCurrentSectionIndex(sectionIndex);
-    flow.setCurrentQuestionIndex(questionIndex);
-    
-    // If we're in the middle of a section, skip the intro
-    if (questionIndex > 0) {
-      flow.setShowSectionIntro(false);
-      flow.setCurrentScreen('assessment');
+    // FIX 2: Only restore position if sections are already built
+    // Otherwise, let the useEffect below handle it once sections are ready
+    if (sections.length > 0) {
+      const targetSection = sections[sectionIndex];
+      console.log('✅ Sections already built, restoring position immediately', {
+        sectionIndex,
+        questionIndex,
+        sectionId: targetSection?.id,
+        isAdaptive: targetSection?.isAdaptive
+      });
+      
+      flow.setCurrentSectionIndex(sectionIndex);
+      
+      // FIX: For adaptive sections, don't set questionIndex
+      // The adaptive hook manages its own question state
+      if (targetSection?.isAdaptive) {
+        console.log('🎯 Adaptive section detected - letting adaptive hook manage questions');
+        // Adaptive session was already resumed above
+        // Just set to question 0 and let adaptive hook take over
+        flow.setCurrentQuestionIndex(0);
+        flow.setShowSectionIntro(false);
+        flow.setCurrentScreen('assessment');
+      } else {
+        // For regular sections, restore the exact question index
+        flow.setCurrentQuestionIndex(questionIndex);
+        
+        // If we're in the middle of a section, skip the intro
+        if (questionIndex > 0) {
+          flow.setShowSectionIntro(false);
+          flow.setCurrentScreen('assessment');
+        } else {
+          flow.setCurrentScreen('section_intro');
+        }
+      }
     } else {
-      flow.setCurrentScreen('section_intro');
+      console.log('⏳ Sections not built yet, will restore position once ready');
+      // Position will be restored in useEffect below
     }
-  }, [pendingAttempt, flow]);
+  }, [pendingAttempt, flow, adaptiveAptitude, questionsLoading, sections.length]);
   
   const handleStartNewAssessment = useCallback(async () => {
+    console.log('🔄 Starting new assessment (abandoning previous)...');
+    
     if (pendingAttempt?.id) {
       try {
+        console.log('🗑️ Abandoning attempt:', pendingAttempt.id);
         await assessmentService.abandonAttempt(pendingAttempt.id);
+        console.log('✅ Attempt abandoned successfully');
       } catch (err) {
-        console.error('Error abandoning attempt:', err);
+        console.error('❌ Error abandoning attempt:', err);
+        // Continue anyway - user wants to start fresh
       }
     }
     
+    // Clear all resume-related state
     setShowResumePrompt(false);
     setPendingAttempt(null);
+    setCheckingExistingAttempt(false);
+    setSkipResumeCheck(true); // Prevent resume check from running again
+    
+    // Clear current attempt from useAssessment hook
+    if (currentAttempt?.id) {
+      try {
+        await assessmentService.abandonAttempt(currentAttempt.id);
+      } catch (err) {
+        console.error('Error abandoning current attempt:', err);
+      }
+    }
+    
+    // Go to grade selection
     flow.setCurrentScreen('grade_selection');
-  }, [pendingAttempt, flow]);
+    console.log('✅ Ready to start new assessment');
+  }, [pendingAttempt, currentAttempt, flow]);
   
   const handleStartSection = useCallback(async () => {
     const currentSection = sections[flow.currentSectionIndex];
@@ -597,7 +922,25 @@ const AssessmentTestPage: React.FC = () => {
       try {
         console.log('📝 Creating assessment attempt on first section start...');
         setUseDatabase(true);
-        await dbStartAssessment(flow.studentStream || 'general', flow.gradeLevel || 'after10');
+        
+        // Determine the appropriate stream ID based on grade level
+        let streamId = flow.studentStream;
+        if (!streamId) {
+          // Fallback based on grade level if stream wasn't set
+          switch (flow.gradeLevel) {
+            case 'middle':
+              streamId = 'middle_school';
+              break;
+            case 'highschool':
+              streamId = 'high_school';
+              break;
+            default:
+              streamId = 'general';
+          }
+          console.log(`⚠️ Stream not set, using fallback: ${streamId} for grade level: ${flow.gradeLevel}`);
+        }
+        
+        await dbStartAssessment(streamId, flow.gradeLevel || 'after10');
       } catch (err) {
         console.error('Error starting assessment:', err);
       }
@@ -618,7 +961,12 @@ const AssessmentTestPage: React.FC = () => {
     
     // Initialize adaptive test
     if (currentSection?.isAdaptive && !adaptiveAptitude.session) {
+      // Set pending flag so useEffect knows to start section when questions load
+      adaptiveStartPendingRef.current = true;
+      // Start the adaptive test (async - questions will load in background)
       adaptiveAptitude.startTest();
+      // Don't call flow.startSection() here - the useEffect will do it once questions are ready
+      return;
     }
     
     flow.startSection();
@@ -651,44 +999,87 @@ const AssessmentTestPage: React.FC = () => {
   }, [sections, flow, adaptiveAptitude, adaptiveAptitudeAnswer]);
   
   const handleNextSection = useCallback(async () => {
-    if (flow.isLastSection) {
-      // CRITICAL FIX: Load answers from database before submitting
-      // Don't rely on flow.answers because of async state updates
+    // Compute isLastSection directly to avoid stale closure issues
+    const isLastSection = flow.currentSectionIndex === sections.length - 1;
+    
+    console.log('🔄 handleNextSection called!');
+    console.log('📊 handleNextSection state:', {
+      isLastSection,
+      flowIsLastSection: flow.isLastSection,
+      currentSectionIndex: flow.currentSectionIndex,
+      sectionsLength: sections.length,
+      gradeLevel: flow.gradeLevel,
+      useDatabase,
+      hasCurrentAttempt: !!currentAttempt?.id,
+      currentAttemptId: currentAttempt?.id
+    });
+    
+    if (isLastSection) {
+      console.log('✅ This IS the last section - proceeding to submit');
+      
+      // IMPORTANT: Set submitting state IMMEDIATELY so the UI shows loading
+      // This prevents the button from appearing unresponsive during database fetch
+      flow.setIsSubmitting(true);
+      
+      // CRITICAL FIX: Load answers and section timings from database before submitting
+      // Don't rely on flow.answers/flow.sectionTimings because of async state updates
       let answersToSubmit = flow.answers;
+      let timingsToSubmit = flow.sectionTimings;
       
       if (useDatabase && currentAttempt?.id) {
         try {
-          // Fetch the latest attempt data with all_responses
+          // Fetch the latest attempt data with all_responses and section_timings
           const { data: attemptData, error: fetchError } = await supabase
             .from('personal_assessment_attempts')
-            .select('all_responses')
+            .select('all_responses, section_timings')
             .eq('id', currentAttempt.id)
             .single();
           
-          if (!fetchError && attemptData?.all_responses) {
-            console.log('✅ Loaded answers from database for submission:', Object.keys(attemptData.all_responses).length);
-            answersToSubmit = attemptData.all_responses;
-          } else {
-            console.warn('⚠️ Could not load answers from database, using flow.answers');
+          if (!fetchError && attemptData) {
+            if (attemptData.all_responses) {
+              console.log('✅ Loaded answers from database for submission:', Object.keys(attemptData.all_responses).length);
+              answersToSubmit = attemptData.all_responses;
+            } else {
+              console.warn('⚠️ Could not load answers from database, using flow.answers');
+            }
+            
+            if (attemptData.section_timings) {
+              console.log('✅ Loaded section timings from database for submission:', attemptData.section_timings);
+              timingsToSubmit = attemptData.section_timings;
+            } else {
+              console.warn('⚠️ Could not load section timings from database, using flow.sectionTimings');
+            }
           }
         } catch (err) {
-          console.error('Error loading answers from database:', err);
+          console.error('Error loading data from database:', err);
         }
       }
       
-      // Submit assessment with the correct answers
+      // Submit assessment with the correct answers and timings
+      console.log('🚀 Calling submission.submit with:', {
+        answersCount: Object.keys(answersToSubmit).length,
+        sectionsCount: sections.length,
+        studentStream: flow.studentStream,
+        gradeLevel: flow.gradeLevel,
+        sectionTimingsKeys: Object.keys(timingsToSubmit),
+        currentAttemptId: currentAttempt?.id,
+        userId: user?.id
+      });
+      
       submission.submit({
         answers: answersToSubmit,
         sections,
         studentStream: flow.studentStream,
         gradeLevel: flow.gradeLevel,
-        sectionTimings: flow.sectionTimings,
+        sectionTimings: timingsToSubmit,
         currentAttempt,
         userId: user?.id || null,
         timeRemaining: flow.timeRemaining,
         elapsedTime: flow.elapsedTime
       });
     } else {
+      console.log('⏭️ NOT the last section - going to next section');
+      console.log('📊 Current section:', flow.currentSectionIndex, 'of', sections.length);
       flow.goToNextSection();
     }
   }, [flow, sections, submission, currentAttempt, user, useDatabase]);
@@ -895,7 +1286,7 @@ const AssessmentTestPage: React.FC = () => {
     return <AnalyzingScreen gradeLevel={flow.gradeLevel || undefined} />;
   }
   
-  // Calculate overall progress
+  // Calculate overall progress based on actual answered questions
   const calculateProgress = () => {
     if (sections.length === 0) return 0;
     
@@ -907,12 +1298,23 @@ const AssessmentTestPage: React.FC = () => {
       totalQuestions += sectionQuestions;
       
       if (idx < flow.currentSectionIndex) {
+        // For completed sections, count all questions as answered
         answeredQuestions += sectionQuestions;
       } else if (idx === flow.currentSectionIndex) {
         if (section.isAdaptive) {
+          // For adaptive sections, use the adaptive progress
           answeredQuestions += adaptiveAptitude.progress?.questionsAnswered || 0;
         } else {
-          answeredQuestions += flow.currentQuestionIndex;
+          // For current section, count actual answered questions from flow.answers
+          // This ensures progress is accurate after resume
+          const sectionAnswerCount = section.questions?.filter((q: any) => {
+            const questionId = `${section.id}_${q.id}`;
+            return flow.answers[questionId] !== undefined;
+          }).length || 0;
+          
+          // Use the higher of: answered count or current question index
+          // This handles both fresh progress and resumed progress
+          answeredQuestions += Math.max(sectionAnswerCount, flow.currentQuestionIndex);
         }
       }
     });
@@ -932,7 +1334,7 @@ const AssessmentTestPage: React.FC = () => {
           progress={calculateProgress()}
           adaptiveProgress={adaptiveAptitude.progress ? {
             questionsAnswered: adaptiveAptitude.progress.questionsAnswered,
-            estimatedTotalQuestions: 20
+            estimatedTotalQuestions: 21
           } : null}
           isDevMode={isDevMode}
           testMode={testMode}
@@ -1049,6 +1451,7 @@ const AssessmentTestPage: React.FC = () => {
               isAdaptive={currentSection.isAdaptive}
               isTimed={currentSection.isTimed}
               showAIPoweredBadge={currentSection.id === 'aptitude' || currentSection.id === 'knowledge'}
+              isLoading={currentSection.isAdaptive && adaptiveAptitude.loading}
               onStart={handleStartSection}
             />
           )}
@@ -1086,7 +1489,7 @@ const AssessmentTestPage: React.FC = () => {
                   ? (adaptiveAptitude.progress?.questionsAnswered || 0)
                   : flow.currentQuestionIndex}
                 totalQuestions={currentSection?.isAdaptive 
-                  ? (adaptiveAptitude.progress?.estimatedTotalQuestions || 20)
+                  ? (adaptiveAptitude.progress?.estimatedTotalQuestions || 21)
                   : (currentSection?.questions?.length || 0)}
                 elapsedTime={flow.elapsedTime}
                 showNoWrongAnswers={!currentSection?.isAptitude && !currentSection?.isAdaptive}

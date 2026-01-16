@@ -336,12 +336,14 @@ export async function generateDiagnosticScreenerQuestions(
 
 /**
  * Generates fallback diagnostic questions when worker is unavailable
+ * Phase 1: All 6 questions at Level 3 (baseline) to establish starting ability
  */
 function generateFallbackDiagnosticQuestions(gradeLevel: GradeLevel): QuestionGenerationResult {
   const phase: TestPhase = 'diagnostic_screener';
   const subtags: Subtag[] = ['numerical_reasoning', 'logical_reasoning', 'verbal_reasoning', 
                              'spatial_reasoning', 'data_interpretation', 'pattern_recognition'];
-  const difficulties: DifficultyLevel[] = [2, 2, 3, 3, 4, 4];
+  // All 6 questions at Level 3 for baseline assessment
+  const difficulties: DifficultyLevel[] = [3, 3, 3, 3, 3, 3];
   
   const questions: Question[] = difficulties.map((difficulty, i) => 
     getFallbackQuestion(gradeLevel, phase, difficulty, subtags[i])

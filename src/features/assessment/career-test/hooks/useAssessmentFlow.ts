@@ -18,6 +18,7 @@ export type FlowScreen =
   | 'category_selection'
   | 'stream_selection'
   | 'section_intro'
+  | 'assessment'
   | 'question'
   | 'section_complete'
   | 'submitting'
@@ -80,6 +81,9 @@ interface UseAssessmentFlowResult {
   
   // Actions
   setCurrentScreen: (screen: FlowScreen) => void;
+  setCurrentSectionIndex: (index: number) => void;
+  setCurrentQuestionIndex: (index: number) => void;
+  setShowSectionIntro: (show: boolean) => void;
   setGradeLevel: (level: GradeLevel) => void;
   setStudentStream: (stream: string) => void;
   setSelectedCategory: (category: string) => void;
@@ -96,6 +100,7 @@ interface UseAssessmentFlowResult {
   setError: (error: string | null) => void;
   setIsSubmitting: (submitting: boolean) => void;
   setIsSaving: (saving: boolean) => void;
+  setSectionTimings: (timings: Record<string, number>) => void;
   resetFlow: () => void;
   
   // Computed
@@ -153,9 +158,14 @@ export const useAssessmentFlow = ({
 
   // Computed values
   const isLastSection = currentSectionIndex === sections.length - 1;
-  const isLastQuestion = currentSection 
-    ? currentQuestionIndex === (currentSection.questions?.length || 1) - 1 
-    : false;
+  
+  // For adaptive sections, never show "Complete Section" - the adaptive hook handles completion
+  // For regular sections, check if we're on the last question
+  const isLastQuestion = currentSection?.isAdaptive
+    ? false // Adaptive section handles its own completion
+    : currentSection 
+      ? currentQuestionIndex === (currentSection.questions?.length || 1) - 1 
+      : false;
 
   // Check if current question is answered
   const isCurrentQuestionAnswered = useMemo(() => {
@@ -201,10 +211,25 @@ export const useAssessmentFlow = ({
     if (currentQuestionIndex < (currentSection.questions?.length || 0) - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
-      // End of section
+      // End of section - save timing and show complete screen
+      // Calculate time spent on this section
+      const timeSpent = currentSection.isTimed
+        ? (currentSection.timeLimit || 0) - (timeRemaining || 0)
+        : elapsedTime;
+      
+      // Save section timing
+      setSectionTimings(prev => ({
+        ...prev,
+        [currentSection.id]: timeSpent
+      }));
+      
+      // Notify parent component
+      onSectionComplete?.(currentSection.id, timeSpent);
+      
+      // Show section complete screen
       setShowSectionComplete(true);
     }
-  }, [currentSection, currentQuestionIndex]);
+  }, [currentSection, currentQuestionIndex, timeRemaining, elapsedTime, onSectionComplete]);
 
   const goToPreviousQuestion = useCallback(() => {
     if (currentQuestionIndex > 0) {
@@ -218,10 +243,23 @@ export const useAssessmentFlow = ({
   }, []);
 
   const completeSection = useCallback(() => {
+    console.log('🔄 completeSection called');
+    console.log('📊 completeSection state:', {
+      currentSectionId: currentSection?.id,
+      currentSectionIndex,
+      sectionsLength: sections.length,
+      isLastSection: currentSectionIndex === sections.length - 1,
+      isTimed: currentSection?.isTimed,
+      timeRemaining,
+      elapsedTime
+    });
+    
     if (currentSection) {
       const timeSpent = currentSection.isTimed
         ? (currentSection.timeLimit || 0) - (timeRemaining || 0)
         : elapsedTime;
+      
+      console.log('⏱️ Section time spent:', timeSpent);
       
       setSectionTimings(prev => ({
         ...prev,
@@ -230,8 +268,9 @@ export const useAssessmentFlow = ({
       
       onSectionComplete?.(currentSection.id, timeSpent);
     }
+    console.log('✅ Setting showSectionComplete to true');
     setShowSectionComplete(true);
-  }, [currentSection, timeRemaining, elapsedTime, onSectionComplete]);
+  }, [currentSection, timeRemaining, elapsedTime, onSectionComplete, currentSectionIndex, sections.length]);
 
   const goToNextSection = useCallback(() => {
     setShowSectionComplete(false);
@@ -333,6 +372,7 @@ export const useAssessmentFlow = ({
     setError,
     setIsSubmitting,
     setIsSaving,
+    setSectionTimings, // Added for resume functionality
     resetFlow,
     
     // Computed
