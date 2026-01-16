@@ -149,7 +149,7 @@ async function generateAdaptiveCoreQuestions(
 
   const phase: TestPhase = 'adaptive_core';
   // Phase 2: Exactly 11 adaptive questions (Q7-Q17)
-  const questionCount = Math.min(Math.max(count, 8), 11);
+  const questionCount = 11;
 
   const difficultyRange = generateDifficultyRange(startingDifficulty, questionCount);
   const subtagSequence = generateBalancedSubtagSequence(questionCount, 2);

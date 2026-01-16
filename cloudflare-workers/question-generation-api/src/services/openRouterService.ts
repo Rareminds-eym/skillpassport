@@ -3,7 +3,7 @@
  */
 
 import { delay } from '../utils/delay';
-import { FREE_MODELS, OPENROUTER_MODEL } from '../config';
+import { FREE_MODELS } from '../config';
 import type { AIMessage } from '../types';
 
 /**
@@ -74,46 +74,64 @@ export async function callOpenRouterWithRetry(
 }
 
 /**
- * Call OpenRouter for adaptive question generation (uses GPT-4o-mini)
+ * Call OpenRouter for adaptive question generation (with model fallback)
  */
 export async function callOpenRouterForAdaptive(
   apiKey: string,
   systemPrompt: string,
   userPrompt: string
 ): Promise<string> {
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://skillpassport.pages.dev',
-      'X-Title': 'Adaptive Aptitude Test Generator'
-    },
-    body: JSON.stringify({
-      model: OPENROUTER_MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      max_tokens: 4000,
-      temperature: 0.7,
-    })
-  });
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('❌ OpenRouter API failed:', response.status, errorText.substring(0, 200));
-    throw new Error(`OpenRouter API failed: ${response.status}`);
+  // Try each model until one succeeds
+  for (const model of FREE_MODELS) {
+    console.log(`🔄 [Adaptive] Trying model: ${model}`);
+    
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://skillpassport.pages.dev',
+          'X-Title': 'Adaptive Aptitude Test Generator'
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          max_tokens: 4000,
+          temperature: 0.7,
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        lastError = new Error(`${model} failed: ${response.status}`);
+        console.error(`❌ [Adaptive] Model ${model} failed:`, response.status, errorText.substring(0, 200));
+        continue;
+      }
+
+      const data = await response.json() as any;
+      const content = data.choices?.[0]?.message?.content;
+      
+      if (!content) {
+        lastError = new Error('Empty response from AI');
+        console.error(`❌ [Adaptive] Model ${model} returned empty content`);
+        continue;
+      }
+
+      console.log(`✅ [Adaptive] Success with model: ${model}`);
+      console.log('📝 AI response received, length:', content.length, 'chars');
+      return content;
+      
+    } catch (error) {
+      lastError = error as Error;
+      console.error(`❌ [Adaptive] Model ${model} error:`, (error as Error).message);
+    }
   }
 
-  const data = await response.json() as any;
-  const content = data.choices?.[0]?.message?.content;
-  
-  if (!content) {
-    console.error('❌ Empty response from AI. Full response:', JSON.stringify(data).substring(0, 500));
-    throw new Error('Empty response from AI');
-  }
-
-  console.log('📝 AI response received, length:', content.length, 'chars');
-  return content;
+  throw lastError || new Error('All models failed for adaptive question generation');
 }

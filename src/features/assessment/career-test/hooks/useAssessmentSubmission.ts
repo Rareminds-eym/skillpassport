@@ -288,6 +288,19 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
     timeRemaining,
     elapsedTime
   }: SubmissionOptions) => {
+    console.log('🚀 submission.submit called!');
+    console.log('📊 Submission params:', {
+      answersCount: Object.keys(answers).length,
+      sectionsCount: sections.length,
+      studentStream,
+      gradeLevel,
+      sectionTimingsKeys: Object.keys(sectionTimings),
+      currentAttemptId: currentAttempt?.id,
+      userId,
+      timeRemaining,
+      elapsedTime
+    });
+    
     setIsSubmitting(true);
     setError(null);
 

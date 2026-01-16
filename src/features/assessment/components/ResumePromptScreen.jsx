@@ -60,19 +60,25 @@ const calculateProgress = (attempt) => {
   // Count non-UUID responses (from all_responses column - RIASEC, BigFive, etc.)
   const allResponsesCount = attempt.all_responses ? Object.keys(attempt.all_responses).length : 0;
   
-  // Total answered questions
-  const answeredCount = uuidResponsesCount + allResponsesCount;
+  // Count adaptive aptitude progress (from adaptive session)
+  const adaptiveQuestionsAnswered = attempt.adaptiveProgress?.questionsAnswered || 0;
+  
+  // Total answered questions (including adaptive)
+  const answeredCount = uuidResponsesCount + allResponsesCount + adaptiveQuestionsAnswered;
   
   // Estimate total questions based on grade level
+  // These totals now include the adaptive aptitude section (~21 questions)
   let estimatedTotal = 50; // Default
   
   switch (attempt.grade_level) {
     case 'middle':
-      estimatedTotal = 41; // Middle school: ~41 questions
+      // Middle school: Interest Explorer (5) + Strengths (11) + Learning (4) + Adaptive (~21) = ~41
+      estimatedTotal = 41;
       break;
     case 'highschool':
     case 'higher_secondary':
-      estimatedTotal = 53; // High school: ~53 questions
+      // High school: Interest (5) + Strengths (12) + Learning (4) + Aptitude Sampling (11) + Adaptive (~21) = ~53
+      estimatedTotal = 53;
       break;
     case 'after10':
       estimatedTotal = 100; // After 10th: ~100 questions
@@ -106,10 +112,11 @@ export const ResumePromptScreen = ({
   const streamLabel = getStreamLabel(pendingAttempt.stream_id);
   const progress = calculateProgress(pendingAttempt);
   
-  // Count total answered questions (UUID + non-UUID responses)
+  // Count total answered questions (UUID + non-UUID + adaptive responses)
   const uuidResponsesCount = Object.keys(pendingAttempt.restoredResponses || {}).length;
   const allResponsesCount = pendingAttempt.all_responses ? Object.keys(pendingAttempt.all_responses).length : 0;
-  const answeredCount = uuidResponsesCount + allResponsesCount;
+  const adaptiveQuestionsAnswered = pendingAttempt.adaptiveProgress?.questionsAnswered || 0;
+  const answeredCount = uuidResponsesCount + allResponsesCount + adaptiveQuestionsAnswered;
   
   const startedAt = formatDate(pendingAttempt.started_at);
 
