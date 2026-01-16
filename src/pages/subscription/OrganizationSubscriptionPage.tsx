@@ -8,8 +8,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import AssignToPoolModal from '../../components/Subscription/Organization/AssignToPoolModal';
 import CreatePoolModal, { PoolFormData } from '../../components/Subscription/Organization/CreatePoolModal';
+import DeletePoolModal from '../../components/Subscription/Organization/DeletePoolModal';
+import EditPoolModal, { PoolUpdateData } from '../../components/Subscription/Organization/EditPoolModal';
 import OrganizationSubscriptionDashboard from '../../components/Subscription/Organization/OrganizationSubscriptionDashboard';
+import PoolAssignmentsModal from '../../components/Subscription/Organization/PoolAssignmentsModal';
 import { useOrganizationSubscription } from '../../hooks/Subscription/useOrganizationSubscription';
 import useAuth from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabaseClient';
@@ -207,6 +211,38 @@ function OrganizationSubscriptionPage() {
   const [isCreatePoolModalOpen, setIsCreatePoolModalOpen] = useState(false);
   const [isCreatingPool, setIsCreatingPool] = useState(false);
   
+  // State for Edit Pool Modal
+  const [isEditPoolModalOpen, setIsEditPoolModalOpen] = useState(false);
+  const [editingPool, setEditingPool] = useState<typeof dashboardPools[0] | null>(null);
+  const [isEditingPool, setIsEditingPool] = useState(false);
+  
+  // State for Delete Pool Modal
+  const [isDeletePoolModalOpen, setIsDeletePoolModalOpen] = useState(false);
+  const [deletingPool, setDeletingPool] = useState<typeof dashboardPools[0] | null>(null);
+  const [isDeletingPool, setIsDeletingPool] = useState(false);
+  
+  // State for Pool Assignments Modal
+  const [isPoolAssignmentsModalOpen, setIsPoolAssignmentsModalOpen] = useState(false);
+  const [viewingPool, setViewingPool] = useState<typeof dashboardPools[0] | null>(null);
+  const [poolAssignedMembers, setPoolAssignedMembers] = useState<Array<{
+    id: string;
+    name: string;
+    email: string;
+    assignedAt: string;
+    licenseAssignmentId?: string;
+  }>>([]);
+  const [isLoadingPoolAssignments, setIsLoadingPoolAssignments] = useState(false);
+  
+  // State for Assign to Pool Modal
+  const [isAssignToPoolModalOpen, setIsAssignToPoolModalOpen] = useState(false);
+  const [membersToAssign, setMembersToAssign] = useState<Array<{
+    id: string;
+    name: string;
+    email: string;
+    memberType: 'educator' | 'student';
+  }>>([]);
+  const [isAssigningToPool, setIsAssigningToPool] = useState(false);
+  
   // Fetch organization details from database
   useEffect(() => {
     const fetchOrganizationDetails = async () => {
@@ -279,7 +315,7 @@ function OrganizationSubscriptionPage() {
   const dashboardSubscriptions = useMemo(() => {
     return subscriptions.map(sub => ({
       id: sub.id,
-      planName: sub.subscriptionPlanId || 'Standard Plan',
+      planName: sub.planName || 'Standard Plan',
       totalSeats: sub.totalSeats || 0,
       assignedSeats: sub.assignedSeats || 0,
       status: sub.status as 'active' | 'paused' | 'cancelled' | 'expired' | 'grace_period',
@@ -419,21 +455,171 @@ function OrganizationSubscriptionPage() {
     }
   }, [organizationId, organizationType, subscriptions, user?.id, refresh]);
   
-  const handleEditPool = useCallback((_poolId: string) => {
-    toast.success('Opening pool editor...');
-  }, []);
+  const handleEditPool = useCallback((poolId: string) => {
+    const pool = dashboardPools.find(p => p.id === poolId);
+    if (pool) {
+      setEditingPool(pool);
+      setIsEditPoolModalOpen(true);
+    }
+  }, [dashboardPools]);
   
-  const handleDeletePool = useCallback((_poolId: string) => {
-    toast.success('Pool deletion requested...');
-  }, []);
+  const handleEditPoolSubmit = useCallback(async (poolId: string, updates: PoolUpdateData) => {
+    setIsEditingPool(true);
+    
+    try {
+      const { error } = await supabase
+        .from('license_pools')
+        .update({
+          pool_name: updates.poolName,
+          allocated_seats: updates.allocatedSeats,
+          auto_assign_new_members: updates.autoAssignNewMembers,
+          is_active: updates.isActive,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', poolId);
+      
+      if (error) {
+        console.error('[EditPool] Error:', error);
+        throw new Error(error.message || 'Failed to update pool');
+      }
+      
+      toast.success('Pool updated successfully!');
+      setIsEditPoolModalOpen(false);
+      setEditingPool(null);
+      
+      await refresh();
+    } catch (err) {
+      console.error('[EditPool] Error:', err);
+      throw err;
+    } finally {
+      setIsEditingPool(false);
+    }
+  }, [refresh]);
   
-  const handleConfigureAutoAssign = useCallback((_poolId: string) => {
-    toast.success('Opening auto-assign configuration...');
-  }, []);
+  const handleDeletePool = useCallback((poolId: string) => {
+    const pool = dashboardPools.find(p => p.id === poolId);
+    if (pool) {
+      setDeletingPool(pool);
+      setIsDeletePoolModalOpen(true);
+    }
+  }, [dashboardPools]);
   
-  const handleViewPoolAssignments = useCallback((_poolId: string) => {
-    toast.success('Loading pool assignments...');
-  }, []);
+  const handleDeletePoolConfirm = useCallback(async (poolId: string) => {
+    setIsDeletingPool(true);
+    
+    try {
+      const { error } = await supabase
+        .from('license_pools')
+        .delete()
+        .eq('id', poolId);
+      
+      if (error) {
+        console.error('[DeletePool] Error:', error);
+        throw new Error(error.message || 'Failed to delete pool');
+      }
+      
+      toast.success('Pool deleted successfully!');
+      setIsDeletePoolModalOpen(false);
+      setDeletingPool(null);
+      
+      await refresh();
+    } catch (err) {
+      console.error('[DeletePool] Error:', err);
+      throw err;
+    } finally {
+      setIsDeletingPool(false);
+    }
+  }, [refresh]);
+  
+  const handleConfigureAutoAssign = useCallback((poolId: string) => {
+    // Open edit modal with focus on auto-assign settings
+    const pool = dashboardPools.find(p => p.id === poolId);
+    if (pool) {
+      setEditingPool(pool);
+      setIsEditPoolModalOpen(true);
+    }
+  }, [dashboardPools]);
+  
+  const handleViewPoolAssignments = useCallback(async (poolId: string) => {
+    const pool = dashboardPools.find(p => p.id === poolId);
+    if (!pool) return;
+    
+    setViewingPool(pool);
+    setIsPoolAssignmentsModalOpen(true);
+    setIsLoadingPoolAssignments(true);
+    
+    try {
+      // Fetch license assignments for this pool
+      const { data: assignments, error } = await supabase
+        .from('license_assignments')
+        .select(`
+          id,
+          user_id,
+          assigned_at,
+          users:user_id (
+            id,
+            email,
+            first_name,
+            last_name
+          )
+        `)
+        .eq('license_pool_id', poolId)
+        .eq('status', 'active');
+      
+      if (error) {
+        console.error('[ViewPoolAssignments] Error:', error);
+        toast.error('Failed to load assignments');
+        return;
+      }
+      
+      // Transform the data
+      const members = (assignments || []).map((a: any) => ({
+        id: a.user_id,
+        name: a.users ? `${a.users.first_name || ''} ${a.users.last_name || ''}`.trim() || a.users.email : 'Unknown',
+        email: a.users?.email || '',
+        assignedAt: a.assigned_at,
+        licenseAssignmentId: a.id,
+      }));
+      
+      setPoolAssignedMembers(members);
+    } catch (err) {
+      console.error('[ViewPoolAssignments] Error:', err);
+      toast.error('Failed to load assignments');
+    } finally {
+      setIsLoadingPoolAssignments(false);
+    }
+  }, [dashboardPools]);
+  
+  const handleUnassignFromPool = useCallback(async (memberId: string, licenseAssignmentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('license_assignments')
+        .update({
+          status: 'revoked',
+          revoked_at: new Date().toISOString(),
+          revoked_by: user?.id,
+          revocation_reason: 'Unassigned by admin',
+        })
+        .eq('id', licenseAssignmentId);
+      
+      if (error) {
+        console.error('[UnassignFromPool] Error:', error);
+        throw new Error(error.message || 'Failed to unassign license');
+      }
+      
+      toast.success('License unassigned successfully');
+      
+      // Remove from local state
+      setPoolAssignedMembers(prev => prev.filter(m => m.id !== memberId));
+      
+      // Refresh data
+      await refresh();
+      await refreshMembers();
+    } catch (err) {
+      console.error('[UnassignFromPool] Error:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to unassign license');
+    }
+  }, [user?.id, refresh, refreshMembers]);
   
   const handleAssignLicenses = useCallback(async (memberIds: string[]) => {
     if (!user?.id) {
@@ -441,37 +627,58 @@ function OrganizationSubscriptionPage() {
       return;
     }
     
-    // Find the first active license pool with available seats
-    const availablePool = dashboardPools.find(p => p.isActive && p.availableSeats > 0);
+    // Check if there are any pools with available seats
+    const availablePools = dashboardPools.filter(p => p.isActive && p.availableSeats > 0);
     
-    if (!availablePool) {
+    if (availablePools.length === 0) {
       toast.error('No license pool with available seats. Please purchase more seats or create a license pool.');
       return;
     }
     
+    // Get the members to assign
+    const members = organizationMembers
+      .filter(m => memberIds.includes(m.id) && !m.hasLicense)
+      .map(m => ({
+        id: m.id,
+        name: m.name,
+        email: m.email,
+        memberType: m.memberType as 'educator' | 'student',
+      }));
+    
+    if (members.length === 0) {
+      toast.error('No valid members to assign licenses to');
+      return;
+    }
+    
+    // Open the pool selection modal
+    setMembersToAssign(members);
+    setIsAssignToPoolModalOpen(true);
+  }, [user?.id, dashboardPools, organizationMembers]);
+  
+  const handleAssignToPoolConfirm = useCallback(async (poolId: string, memberIds: string[]) => {
+    if (!user?.id) {
+      throw new Error('User not authenticated');
+    }
+    
+    setIsAssigningToPool(true);
+    
     try {
-      toast.loading(`Assigning licenses to ${memberIds.length} member(s)...`);
-      
       // Import the service dynamically to avoid circular dependencies
       const { licenseManagementService } = await import('@/services/organization/licenseManagementService');
       
       // Map member IDs to user IDs (the license system uses auth user IDs)
-      const membersToAssign = organizationMembers.filter(m => memberIds.includes(m.id) && !m.hasLicense);
-      const userIds = membersToAssign.map(m => m.userId).filter(Boolean);
+      const membersToAssignData = organizationMembers.filter(m => memberIds.includes(m.id) && !m.hasLicense);
+      const userIds = membersToAssignData.map(m => m.userId).filter(Boolean);
       
       if (userIds.length === 0) {
-        toast.dismiss();
-        toast.error('No valid members to assign licenses to');
-        return;
+        throw new Error('No valid members to assign licenses to');
       }
       
       const result = await licenseManagementService.bulkAssignLicenses(
-        availablePool.id,
+        poolId,
         userIds,
         user.id
       );
-      
-      toast.dismiss();
       
       if (result.successful.length > 0) {
         toast.success(`Successfully assigned licenses to ${result.successful.length} member(s)`);
@@ -481,14 +688,18 @@ function OrganizationSubscriptionPage() {
         toast.error(`Failed to assign ${result.failed.length} license(s): ${result.failed[0].error}`);
       }
       
-      // Refresh data
+      // Close modal and refresh data
+      setIsAssignToPoolModalOpen(false);
+      setMembersToAssign([]);
       await refreshMembers();
       await refresh();
     } catch (err) {
-      toast.dismiss();
-      toast.error(err instanceof Error ? err.message : 'Failed to assign licenses');
+      console.error('[AssignToPool] Error:', err);
+      throw err;
+    } finally {
+      setIsAssigningToPool(false);
     }
-  }, [user?.id, dashboardPools, organizationMembers, refreshMembers, refresh]);
+  }, [user?.id, organizationMembers, refreshMembers, refresh]);
   
   const handleUnassignLicenses = useCallback(async (memberIds: string[]) => {
     if (!user?.id) {
@@ -670,6 +881,7 @@ function OrganizationSubscriptionPage() {
   return (
     <div className="p-6">
       <OrganizationSubscriptionDashboard
+        organizationId={organizationId}
         organizationName={organizationName}
         organizationType={organizationType}
         organizationDetails={organizationDetails || undefined}
@@ -703,6 +915,58 @@ function OrganizationSubscriptionPage() {
         organizationId={organizationId}
         subscriptionId={activeSubscription?.id || ''}
         isLoading={isCreatingPool}
+      />
+      
+      {/* Edit Pool Modal */}
+      <EditPoolModal
+        isOpen={isEditPoolModalOpen}
+        onClose={() => {
+          setIsEditPoolModalOpen(false);
+          setEditingPool(null);
+        }}
+        onSubmit={handleEditPoolSubmit}
+        pool={editingPool}
+        maxAdditionalSeats={availableSeatsForPool}
+        isLoading={isEditingPool}
+      />
+      
+      {/* Delete Pool Modal */}
+      <DeletePoolModal
+        isOpen={isDeletePoolModalOpen}
+        onClose={() => {
+          setIsDeletePoolModalOpen(false);
+          setDeletingPool(null);
+        }}
+        onConfirm={handleDeletePoolConfirm}
+        pool={deletingPool}
+        isLoading={isDeletingPool}
+      />
+      
+      {/* Pool Assignments Modal */}
+      <PoolAssignmentsModal
+        isOpen={isPoolAssignmentsModalOpen}
+        onClose={() => {
+          setIsPoolAssignmentsModalOpen(false);
+          setViewingPool(null);
+          setPoolAssignedMembers([]);
+        }}
+        onUnassign={handleUnassignFromPool}
+        pool={viewingPool}
+        assignedMembers={poolAssignedMembers}
+        isLoading={isLoadingPoolAssignments}
+      />
+      
+      {/* Assign to Pool Modal */}
+      <AssignToPoolModal
+        isOpen={isAssignToPoolModalOpen}
+        onClose={() => {
+          setIsAssignToPoolModalOpen(false);
+          setMembersToAssign([]);
+        }}
+        onConfirm={handleAssignToPoolConfirm}
+        pools={dashboardPools}
+        membersToAssign={membersToAssign}
+        isLoading={isAssigningToPool}
       />
     </div>
   );

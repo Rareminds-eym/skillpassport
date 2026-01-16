@@ -1054,6 +1054,40 @@ async function checkFeatureAccess(
 - Coexistence of B2C and B2B models
 - Clear separation in UI and data
 
+## Database Triggers (IMPLEMENTED)
+
+The following database triggers have been implemented to automate license management:
+
+### Auto-Assign License Triggers
+
+When a new member is added to the organization, these triggers automatically assign a license if an eligible pool exists:
+
+| Trigger Name | Table | Event | Function |
+|-------------|-------|-------|----------|
+| `trigger_auto_assign_license_students` | `students` | INSERT | `auto_assign_license_to_member()` |
+| `trigger_auto_assign_license_school_educators` | `school_educators` | INSERT | `auto_assign_license_to_member()` |
+| `trigger_auto_assign_license_college_lecturers` | `college_lecturers` | INSERT | `auto_assign_license_to_member()` |
+
+**Auto-assign conditions:**
+- Pool has `auto_assign_new_members = true`
+- Pool has `is_active = true`
+- Pool has available seats (`assigned_seats < allocated_seats`)
+- Member doesn't already have an active license in the organization
+
+### Seat Sync Trigger
+
+Keeps the `assigned_seats` count synchronized automatically:
+
+| Trigger Name | Table | Event | Function |
+|-------------|-------|-------|----------|
+| `trigger_sync_pool_seats` | `license_assignments` | INSERT/UPDATE/DELETE | `sync_pool_assigned_seats()` |
+
+**Migration files:**
+- `implement_auto_assign_license_triggers` - Creates the triggers and functions
+- `cleanup_duplicate_pool_seat_triggers` - Removes any duplicate triggers
+
+**Frontend service reference:** `src/services/organization/licenseManagementService.ts`
+
 ### Existing Features
 - All current subscription features preserved
 - Add-on system works for both models

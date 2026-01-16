@@ -3,6 +3,37 @@
  * 
  * Handles license pool creation, seat allocation, and member assignment operations.
  * Supports bulk operations and auto-assignment rules.
+ * 
+ * ============================================================================
+ * DATABASE TRIGGERS (Important for other developers/agents)
+ * ============================================================================
+ * 
+ * The following database triggers handle automatic license assignment and seat counting.
+ * These are defined in Supabase migrations and run automatically - no frontend code needed.
+ * 
+ * 1. AUTO-ASSIGN TRIGGERS:
+ *    - trigger_auto_assign_license_students (on INSERT to `students` table)
+ *    - trigger_auto_assign_license_school_educators (on INSERT to `school_educators` table)
+ *    - trigger_auto_assign_license_college_lecturers (on INSERT to `college_lecturers` table)
+ *    
+ *    These call `auto_assign_license_to_member()` function which:
+ *    - Finds a license pool with `auto_assign_new_members = true` and `is_active = true`
+ *    - Checks if pool has available seats (assigned_seats < allocated_seats)
+ *    - Creates a license_assignment record if eligible
+ *    - Only assigns if user doesn't already have an active license
+ * 
+ * 2. SEAT SYNC TRIGGER:
+ *    - trigger_sync_pool_seats (on INSERT/UPDATE/DELETE to `license_assignments` table)
+ *    
+ *    Calls `sync_pool_assigned_seats()` function which:
+ *    - Automatically updates `assigned_seats` count on the license_pool
+ *    - Keeps seat counts synchronized without manual updates
+ * 
+ * Migration files:
+ *    - implement_auto_assign_license_triggers (creates the triggers and functions)
+ *    - cleanup_duplicate_pool_seat_triggers (removes any duplicate triggers)
+ * 
+ * ============================================================================
  */
 
 import { supabase } from '@/lib/supabaseClient';
