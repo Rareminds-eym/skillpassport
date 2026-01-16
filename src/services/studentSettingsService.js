@@ -288,6 +288,9 @@ export const updateStudentSettings = async (email, updates) => {
     // Define fields that might contain phone numbers (could be numeric in DB)
     const phoneFields = ['phone', 'alternatePhone', 'guardianPhone'];
 
+    // Define date fields that should be null instead of empty string
+    const dateFields = ['dateOfBirth', 'gradeStartDate', 'enrollmentDate', 'expectedGraduationDate'];
+
     // Process updates
     Object.keys(updates).forEach(key => {
       if (fieldMapping[key]) {
@@ -305,6 +308,11 @@ export const updateStudentSettings = async (email, updates) => {
 
         // Handle phone fields - convert empty strings to null (in case they're stored as numeric)
         if (phoneFields.includes(key) && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+
+        // Handle date fields - convert empty strings to null
+        if (dateFields.includes(key) && (value === '' || value === null || value === undefined)) {
           value = null;
         }
 
