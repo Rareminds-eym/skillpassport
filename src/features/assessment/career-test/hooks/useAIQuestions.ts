@@ -46,11 +46,21 @@ interface UseAIQuestionsResult {
 /**
  * Normalize AI question format to match UI expectations
  */
-const normalizeAIQuestion = (q: any): AIQuestion => ({
-  ...q,
-  text: q.question || q.text,
-  correct: q.correct_answer || q.correct
-});
+const normalizeAIQuestion = (q: any): AIQuestion => {
+  // Ensure options is always an array
+  let normalizedOptions = q.options;
+  if (q.options && typeof q.options === 'object' && !Array.isArray(q.options)) {
+    // Convert object options { A: "...", B: "...", ... } to array
+    normalizedOptions = Object.values(q.options);
+  }
+  
+  return {
+    ...q,
+    text: q.question || q.text,
+    correct: q.correct_answer || q.correct,
+    options: normalizedOptions || []
+  };
+};
 
 /**
  * Hook to load AI-generated questions for aptitude and knowledge sections

@@ -89,6 +89,15 @@ export const useAssessment = () => {
         // Restore responses from the attempt
         const restoredResponses = {};
         
+        // IMPORTANT: First restore all_responses (RIASEC, BigFive, Values, Employability, etc.)
+        // These are stored directly in the attempt record, not in personal_assessment_responses
+        if (attempt.all_responses && typeof attempt.all_responses === 'object') {
+          Object.entries(attempt.all_responses).forEach(([key, value]) => {
+            restoredResponses[key] = value;
+          });
+          console.log('✅ Restored', Object.keys(attempt.all_responses).length, 'responses from all_responses');
+        }
+        
         // Get sections to map IDs to names (for regular database questions)
         let sectionIdToName = {};
         try {
@@ -100,6 +109,7 @@ export const useAssessment = () => {
           console.warn('Could not fetch sections for response restoration:', e);
         }
         
+        // Then restore AI-generated question responses from personal_assessment_responses table
         attempt.responses?.forEach(r => {
           if (r.question_id && r.response_value !== null) {
             // For regular questions with section info, use sectionName_questionId format
@@ -171,6 +181,16 @@ export const useAssessment = () => {
           restoredResponses[`${section.name}_${r.question_id}`] = r.response_value;
         }
       });
+      
+      // CRITICAL FIX: Also restore from all_responses column (RIASEC, BigFive, Values, etc.)
+      if (attempt.all_responses) {
+        console.log('🔄 Restoring answers from all_responses column:', Object.keys(attempt.all_responses).length);
+        Object.entries(attempt.all_responses).forEach(([key, value]) => {
+          restoredResponses[key] = value;
+        });
+        console.log('✅ Total restored responses:', Object.keys(restoredResponses).length);
+      }
+      
       setResponses(restoredResponses);
 
       return attempt;

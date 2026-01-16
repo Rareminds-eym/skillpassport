@@ -219,8 +219,21 @@ export const updateAttemptProgress = async (attemptId, progress) => {
   }
 
   // Include all_responses if provided (for non-UUID questions like RIASEC, BigFive, etc.)
+  // IMPORTANT: Merge with existing all_responses instead of replacing
   if (progress.allResponses) {
-    updateData.all_responses = progress.allResponses;
+    // First fetch existing all_responses to merge
+    const { data: existingAttempt } = await supabase
+      .from('personal_assessment_attempts')
+      .select('all_responses')
+      .eq('id', attemptId)
+      .single();
+    
+    // Merge existing responses with new ones (new ones take precedence)
+    const mergedResponses = {
+      ...(existingAttempt?.all_responses || {}),
+      ...progress.allResponses
+    };
+    updateData.all_responses = mergedResponses;
   }
   
   const { data, error } = await supabase
@@ -389,7 +402,13 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   console.log('Student ID:', studentId);
   console.log('Stream ID:', streamId);
   console.log('Has geminiResults:', !!geminiResults);
-  console.log('Gemini Results Keys:', geminiResults ? Object.keys(geminiResults) : []);
+  console.log('geminiResults keys:', geminiResults ? Object.keys(geminiResults) : []);
+  
+  // Debug: Log the actual data being extracted
+  console.log('🔍 Extracting data from geminiResults:');
+  console.log('  riasec:', JSON.stringify(geminiResults?.riasec));
+  console.log('  riasec.scores:', JSON.stringify(geminiResults?.riasec?.scores));
+  console.log('  riasec.code:', geminiResults?.riasec?.code);
 
   // ============================================================================
   // CRITICAL VALIDATION: Ensure AI returned complete data
@@ -443,46 +462,65 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
     );
   }
 
-  console.log('✅ AI Response Validation Passed - All required fields present');
+  // Prepare data for insertion - explicitly extract each field
+  const riasecScores = geminiResults?.riasec?.scores || null;
+  const riasecCode = geminiResults?.riasec?.code || null;
+  const aptitudeScores = geminiResults?.aptitude?.scores || null;
+  const aptitudeOverall = geminiResults?.aptitude?.overallScore ?? null;
+  const bigfiveScores = geminiResults?.bigFive || null;
+  const workValuesScores = geminiResults?.workValues?.scores || null;
+  const employabilityScores = geminiResults?.employability?.skillScores || null;
+  const employabilityReadiness = geminiResults?.employability?.overallReadiness || null;
+  const knowledgeScore = geminiResults?.knowledge?.score ?? null;
+  const knowledgeDetails = geminiResults?.knowledge || null;
+  const careerFit = geminiResults?.careerFit || null;
+  const skillGap = geminiResults?.skillGap || null;
+  const skillGapCourses = geminiResults?.skillGapCourses || null;
+  const roadmap = geminiResults?.roadmap || null;
+  const profileSnapshot = geminiResults?.profileSnapshot || null;
+  const timingAnalysis = geminiResults?.timingAnalysis || null;
+  const finalNote = geminiResults?.finalNote || null;
+  const overallSummary = geminiResults?.overallSummary || null;
 
-  // Prepare data for insertion
+  console.log('📊 Extracted values:');
+  console.log('  riasecScores:', riasecScores);
+  console.log('  riasecCode:', riasecCode);
+  console.log('  bigfiveScores:', bigfiveScores);
+  console.log('  careerFit exists:', !!careerFit);
+
   const dataToInsert = {
     attempt_id: attemptId,
     student_id: studentId,
     grade_level: gradeLevel,
     stream_id: streamId,
     status: 'completed',
-    riasec_scores: geminiResults.riasec.scores,
-    riasec_code: geminiResults.riasec.code,
-    aptitude_scores: geminiResults.aptitude.scores,
-    aptitude_overall: geminiResults.aptitude.overallScore,
-    bigfive_scores: geminiResults.bigFive,
-    work_values_scores: geminiResults.workValues.scores,
-    employability_scores: geminiResults.employability.skillScores,
-    employability_readiness: geminiResults.employability.overallReadiness,
-    knowledge_score: geminiResults.knowledge.score,
-    knowledge_details: geminiResults.knowledge,
-    career_fit: geminiResults.careerFit,
-    skill_gap: geminiResults.skillGap,
-    skill_gap_courses: geminiResults.skillGapCourses || null,
-    roadmap: geminiResults.roadmap,
-    profile_snapshot: geminiResults.profileSnapshot || null,
-    timing_analysis: geminiResults.timingAnalysis || null,
-    final_note: geminiResults.finalNote || null,
-    overall_summary: geminiResults.overallSummary || 'Assessment completed successfully.',
+    riasec_scores: riasecScores,
+    riasec_code: riasecCode,
+    aptitude_scores: aptitudeScores,
+    aptitude_overall: aptitudeOverall,
+    bigfive_scores: bigfiveScores,
+    work_values_scores: workValuesScores,
+    employability_scores: employabilityScores,
+    employability_readiness: employabilityReadiness,
+    knowledge_score: knowledgeScore,
+    knowledge_details: knowledgeDetails,
+    career_fit: careerFit,
+    skill_gap: skillGap,
+    skill_gap_courses: skillGapCourses,
+    roadmap: roadmap,
+    profile_snapshot: profileSnapshot,
+    timing_analysis: timingAnalysis,
+    final_note: finalNote,
+    overall_summary: overallSummary,
     gemini_results: geminiResults
   };
 
-  console.log('✅ Data prepared for insertion (all from AI):', {
-    grade_level: dataToInsert.grade_level,
-    stream_id: dataToInsert.stream_id,
-    has_riasec: !!dataToInsert.riasec_scores,
-    has_work_values: !!dataToInsert.work_values_scores,
-    has_employability: !!dataToInsert.employability_scores,
-    has_careerFit: !!dataToInsert.career_fit,
-    has_skillGap: !!dataToInsert.skill_gap,
-    has_roadmap: !!dataToInsert.roadmap
-  });
+  console.log('📝 Final dataToInsert check:');
+  console.log('  riasec_scores:', dataToInsert.riasec_scores);
+  console.log('  riasec_code:', dataToInsert.riasec_code);
+  console.log('  career_fit exists:', !!dataToInsert.career_fit);
+  console.log('  skill_gap exists:', !!dataToInsert.skill_gap);
+  console.log('  roadmap exists:', !!dataToInsert.roadmap);
 
   // STEP 1: Save results FIRST (before marking attempt as completed)
   // This ensures if insert fails, the attempt stays "in_progress" and can be retried
@@ -567,11 +605,7 @@ export const getAttemptWithResults = async (attemptId) => {
     .select(`
       *,
       stream:personal_assessment_streams(*),
-      results:personal_assessment_results(*),
-      responses:personal_assessment_responses(
-        *,
-        question:personal_assessment_questions(*)
-      )
+      results:personal_assessment_results(*)
     `)
     .eq('id', attemptId)
     .single();
@@ -718,6 +752,36 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
     return null;
   }
 
+  /**
+   * Helper function to check if an attempt has meaningful progress
+   * An attempt is considered "started" if it has:
+   * - At least one response in personal_assessment_responses table, OR
+   * - At least one answer in all_responses JSONB column
+   */
+  const hasProgress = (attempt) => {
+    if (!attempt) return false;
+    
+    // Check for responses in the responses table
+    if (attempt.responses && attempt.responses.length > 0) {
+      return true;
+    }
+    
+    // Check for answers in all_responses JSONB
+    if (attempt.all_responses && typeof attempt.all_responses === 'object') {
+      const keys = Object.keys(attempt.all_responses);
+      // Filter out metadata keys that aren't actual answers
+      const answerKeys = keys.filter(k => 
+        !k.startsWith('_') && 
+        k !== 'adaptive_aptitude_results'
+      );
+      if (answerKeys.length > 0) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
   // Try direct lookup first (assuming it's student.id)
   let { data, error } = await supabase
     .from('personal_assessment_attempts')
@@ -737,13 +801,28 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
     throw error;
   }
 
-  // If found, return it
+  // If found, check if it has actual progress
   if (data) {
-    console.log('✅ Found in-progress attempt (direct lookup):', data.id);
-    return data;
+    if (hasProgress(data)) {
+      console.log('✅ Found in-progress attempt with progress (direct lookup):', data.id);
+      return data;
+    } else {
+      // Attempt exists but has no progress - abandon it silently
+      console.log('🗑️ Found empty in-progress attempt, abandoning:', data.id);
+      try {
+        await supabase
+          .from('personal_assessment_attempts')
+          .update({ status: 'abandoned' })
+          .eq('id', data.id);
+      } catch (abandonErr) {
+        console.warn('Could not abandon empty attempt:', abandonErr);
+      }
+      // Continue to check for other attempts or return null
+      data = null;
+    }
   }
 
-  // If not found, try looking up by user_id (in case we were passed auth.uid())
+  // If not found or abandoned, try looking up by user_id (in case we were passed auth.uid())
   console.log('🔄 No direct match, trying user_id lookup...');
   
   try {
@@ -784,7 +863,22 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
     }
 
     if (attemptData) {
-      console.log('✅ Found in-progress attempt (via user_id lookup):', attemptData.id);
+      if (hasProgress(attemptData)) {
+        console.log('✅ Found in-progress attempt with progress (via user_id lookup):', attemptData.id);
+        return attemptData;
+      } else {
+        // Attempt exists but has no progress - abandon it silently
+        console.log('🗑️ Found empty in-progress attempt, abandoning:', attemptData.id);
+        try {
+          await supabase
+            .from('personal_assessment_attempts')
+            .update({ status: 'abandoned' })
+            .eq('id', attemptData.id);
+        } catch (abandonErr) {
+          console.warn('Could not abandon empty attempt:', abandonErr);
+        }
+        return null;
+      }
     } else {
       console.log('❌ No in-progress attempt found for this student');
     }

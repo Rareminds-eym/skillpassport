@@ -7,6 +7,7 @@ import ConfirmationModal from '../../../components/ui/ConfirmationModal';
 // Import the college-adapted curriculum builder UI
 import CollegeCurriculumBuilderUI from '../../../components/admin/collegeAdmin/CollegeCurriculumBuilderUI';
 import { curriculumService, type CurriculumUnit, type CurriculumOutcome } from '../../../services/college/curriculumService';
+import { curriculumApprovalService } from '../../../services/curriculumApprovalService';
 
 /**
  * CollegeCurriculumBuilder - Curriculum management for college admins
@@ -34,7 +35,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
   const [curriculumId, setCurriculumId] = useState<string | null>(null);
   const [units, setUnits] = useState<CurriculumUnit[]>([]);
   const [learningOutcomes, setLearningOutcomes] = useState<CurriculumOutcome[]>([]);
-  const [status, setStatus] = useState<"draft" | "approved" | "published">("draft");
+  const [status, setStatus] = useState<"draft" | "approved" | "published" | "pending_approval" | "rejected">("draft");
   
   // UI state
   const [loading, setLoading] = useState(false);
@@ -591,6 +592,26 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
     });
   };
 
+  const handleRequestApproval = async (message?: string) => {
+    if (!curriculumId) {
+      toast.error('No curriculum to submit for approval');
+      return;
+    }
+
+    try {
+      const result = await curriculumApprovalService.submitForApproval(curriculumId, message);
+      if (result.success) {
+        setStatus("pending_approval");
+        toast.success('Curriculum submitted for approval! You will be notified when it is reviewed.');
+      } else {
+        toast.error(result.error || 'Failed to submit curriculum for approval');
+      }
+    } catch (error: any) {
+      console.error('Error submitting for approval:', error);
+      toast.error('Failed to submit curriculum for approval');
+    }
+  };
+
   const confirmPublish = async () => {
     if (!curriculumId) return;
     
@@ -814,6 +835,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         onSaveDraft={handleSaveDraft}
         onApprove={handleApprove}
         onPublish={handlePublish}
+        onRequestApproval={handleRequestApproval}
         onClone={handleClone}
         onExport={handleExport}
       />

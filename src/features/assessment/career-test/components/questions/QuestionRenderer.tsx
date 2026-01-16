@@ -144,12 +144,42 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
   }
 
   // MCQ Questions (Aptitude, Knowledge, or any with options)
-  if (question.options && Array.isArray(question.options)) {
+  // Handle both array options and object options (AI sometimes returns { A: "...", B: "...", ... })
+  // Also handle malformed keys like " options" (with leading space)
+  let optionsArray: string[] | null = null;
+  
+  // First check for options with leading space (AI malformed JSON bug)
+  const questionAny = question as any;
+  const rawOptions = question.options || questionAny[' options'];
+  
+  if (Array.isArray(rawOptions)) {
+    optionsArray = rawOptions.map(o => String(o));
+  } else if (rawOptions && typeof rawOptions === 'object') {
+    // Convert object to array - handles { A: "...", B: "..." } format
+    // Force convert all values to strings
+    const values = Object.values(rawOptions).map(v => String(v));
+    if (values.length > 0) {
+      optionsArray = values;
+      console.log('✅ Converted object options to array:', values);
+    }
+  }
+
+  // Debug log for troubleshooting - only if conversion failed
+  if (!optionsArray && (question.options || questionAny[' options'])) {
+    console.error('❌ Failed to convert options:', {
+      questionId,
+      optionsRaw: JSON.stringify(rawOptions),
+      isArray: Array.isArray(rawOptions),
+      typeOf: typeof rawOptions
+    });
+  }
+
+  if (optionsArray && optionsArray.length > 0) {
     return (
       <MCQQuestion
         questionId={questionId}
         questionText={question.text}
-        options={question.options}
+        options={optionsArray as string[]}
         selectedAnswer={answer}
         onAnswer={onAnswer}
         moduleTitle={question.moduleTitle}
@@ -158,7 +188,16 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
     );
   }
 
-  // Fallback: Simple text display
+  // Fallback: Simple text display with debug info in dev mode
+  console.warn('⚠️ Question type not recognized:', {
+    questionId,
+    questionText: question.text?.substring(0, 50),
+    type: question.type,
+    hasOptions: !!question.options,
+    optionsType: typeof question.options,
+    hasResponseScale: !!responseScale
+  });
+  
   return (
     <div className="space-y-4">
       <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">
@@ -167,6 +206,12 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
       <p className="text-gray-500 text-sm">
         Question type not recognized. Please contact support.
       </p>
+      {import.meta.env.DEV && (
+        <p className="text-xs text-red-400 font-mono">
+          Debug: type={question.type}, options={String(!!question.options)}, 
+          optionsType={typeof question.options}
+        </p>
+      )}
     </div>
   );
 };

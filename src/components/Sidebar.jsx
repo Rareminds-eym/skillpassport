@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
 import {
   LayoutDashboard,
   Users,
@@ -13,8 +14,15 @@ import {
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, closeSidebar }) => {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const location = useLocation();
+
+  // Fetch student data to check school/college association
+  const userEmail = user?.email || localStorage.getItem("userEmail");
+  const { studentData } = useStudentDataByEmail(userEmail);
+
+  // Check if student is part of a school or college
+  const isPartOfSchoolOrCollege = studentData?.school_id || studentData?.university_college_id;
 
   const adminLinks = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -30,7 +38,8 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
 
   const studentLinks = [
     { path: '/student/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/student/profile', label: 'My Profile', icon: User },
+    // Only show My Profile if student is NOT part of school or college
+    ...(!isPartOfSchoolOrCollege ? [{ path: '/student/profile', label: 'My Profile', icon: User }] : []),
     { path: '/student/applied-jobs', label: 'Applied Jobs', icon: ClipboardList },
     { path: '/student/browse-jobs', label: 'Browse Jobs', icon: FileCheck },
   ];

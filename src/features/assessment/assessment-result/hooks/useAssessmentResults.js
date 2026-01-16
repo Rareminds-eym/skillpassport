@@ -4,6 +4,7 @@ import { supabase } from '../../../../lib/supabaseClient';
 import * as assessmentService from '../../../../services/assessmentService';
 import { saveRecommendations } from '../../../../services/courseRecommendationService';
 import { analyzeAssessmentWithGemini } from '../../../../services/geminiAssessmentService';
+import { validateAssessmentResults } from '../utils/assessmentValidation';
 import {
     riasecQuestions,
     bigFiveQuestions,
@@ -11,6 +12,100 @@ import {
     employabilityQuestions,
     streamKnowledgeQuestions,
 } from '../../index';
+
+/**
+ * Fetch AI-generated aptitude questions from database for scoring
+ * @param {string} studentId - Student's user_id
+ * @param {string[]} answerKeys - Answer keys to match question IDs
+ */
+const fetchAIAptitudeQuestions = async (studentId, answerKeys = []) => {
+    try {
+        const targetQuestionIds = answerKeys
+            .filter(k => k.startsWith('aptitude_'))
+            .map(k => k.replace('aptitude_', ''));
+
+        const { data: allQuestionSets, error } = await supabase
+            .from('career_assessment_ai_questions')
+            .select('id, questions, created_at')
+            .eq('student_id', studentId)
+            .eq('question_type', 'aptitude')
+            .order('created_at', { ascending: false });
+
+        if (error || !allQuestionSets || allQuestionSets.length === 0) {
+            console.log('No AI aptitude questions found in database');
+            return [];
+        }
+
+        // Find matching question set
+        let matchingQuestionSet = null;
+        if (targetQuestionIds.length > 0) {
+            for (const questionSet of allQuestionSets) {
+                const questionIds = questionSet.questions.map(q => q.id);
+                const matchCount = targetQuestionIds.filter(id => questionIds.includes(id)).length;
+                if (matchCount > 0) {
+                    matchingQuestionSet = questionSet;
+                    break;
+                }
+            }
+        }
+        if (!matchingQuestionSet) matchingQuestionSet = allQuestionSets[0];
+
+        return matchingQuestionSet.questions.map(q => ({
+            ...q,
+            correct: q.correct_answer,
+            correctAnswer: q.correct_answer,
+            subtype: q.subtype || q.category || 'verbal'
+        }));
+    } catch (err) {
+        console.error('Error fetching AI aptitude questions:', err);
+        return [];
+    }
+};
+
+/**
+ * Fetch AI-generated knowledge questions from database for scoring
+ */
+const fetchAIKnowledgeQuestions = async (studentId, answerKeys = []) => {
+    try {
+        const targetQuestionIds = answerKeys
+            .filter(k => k.startsWith('knowledge_'))
+            .map(k => k.replace('knowledge_', ''));
+
+        const { data: allQuestionSets, error } = await supabase
+            .from('career_assessment_ai_questions')
+            .select('id, questions, created_at')
+            .eq('student_id', studentId)
+            .eq('question_type', 'knowledge')
+            .order('created_at', { ascending: false });
+
+        if (error || !allQuestionSets || allQuestionSets.length === 0) {
+            console.log('No AI knowledge questions found in database');
+            return [];
+        }
+
+        let matchingQuestionSet = null;
+        if (targetQuestionIds.length > 0) {
+            for (const questionSet of allQuestionSets) {
+                const questionIds = questionSet.questions.map(q => q.id);
+                const matchCount = targetQuestionIds.filter(id => questionIds.includes(id)).length;
+                if (matchCount > 0) {
+                    matchingQuestionSet = questionSet;
+                    break;
+                }
+            }
+        }
+        if (!matchingQuestionSet) matchingQuestionSet = allQuestionSets[0];
+
+        return matchingQuestionSet.questions.map(q => ({
+            ...q,
+            correct: q.correct_answer,
+            correctAnswer: q.correct_answer
+        }));
+    } catch (err) {
+        console.error('Error fetching AI knowledge questions:', err);
+        return [];
+    }
+};
 
 /**
  * Custom hook for managing assessment results
@@ -45,6 +140,23 @@ export const useAssessmentResults = () => {
         education: []
     });
     const [monthsInGrade, setMonthsInGrade] = useState(null);
+    const [validationWarnings, setValidationWarnings] = useState([]);
+
+    // Helper function to apply validation to results
+    const applyValidation = (geminiResults, rawAnswers = {}, sectionTimings = {}) => {
+        const { results: validatedResults, warnings } = validateAssessmentResults(
+            geminiResults,
+            rawAnswers,
+            sectionTimings
+        );
+        
+        if (warnings.length > 0) {
+            console.log('⚠️ Assessment validation warnings:', warnings);
+            setValidationWarnings(warnings);
+        }
+        
+        return validatedResults;
+    };
 
     // Calculate months between a start date and now
     const calculateMonthsInGrade = (startDate) => {
@@ -72,6 +184,7 @@ export const useAssessmentResults = () => {
 
             if (user) {
                 // First, try to fetch student data with relationships
+                // Query students table - skip relationships that don't exist
                 let { data: studentData, error: fetchError } = await supabase
                     .from('students')
                     .select(`
@@ -89,57 +202,41 @@ export const useAssessmentResults = () => {
                         school_class_id,
                         branch_field,
                         course_name,
-                        grade_start_date,
-                        colleges(name),
-                        schools(name),
-                        school_classes(grade, academic_year)
+                        grade_start_date
                     `)
                     .eq('user_id', user.id)
                     .maybeSingle();
 
-                // If the query with relationships fails, try without relationships
-                if (fetchError) {
-                    console.warn('Query with relationships failed, trying without:', fetchError.message);
-                    const simpleQuery = await supabase
-                        .from('students')
-                        .select('*')
-                        .eq('user_id', user.id)
-                        .maybeSingle();
-                    
-                    studentData = simpleQuery.data;
-                    fetchError = simpleQuery.error;
-                    
-                    // If we got data, fetch related college/school names separately from organizations table
-                    if (studentData) {
-                        if (studentData.college_id) {
-                            const { data: orgData } = await supabase
-                                .from('organizations')
-                                .select('name')
-                                .eq('id', studentData.college_id)
-                                .maybeSingle();
-                            if (orgData) {
-                                studentData.colleges = { name: orgData.name };
-                            }
+                // If we got student data, fetch related college/school names separately
+                if (studentData && !fetchError) {
+                    if (studentData.college_id) {
+                        const { data: orgData } = await supabase
+                            .from('organizations')
+                            .select('name')
+                            .eq('id', studentData.college_id)
+                            .maybeSingle();
+                        if (orgData) {
+                            studentData.colleges = { name: orgData.name };
                         }
-                        if (studentData.school_id) {
-                            const { data: orgData } = await supabase
-                                .from('organizations')
-                                .select('name')
-                                .eq('id', studentData.school_id)
-                                .maybeSingle();
-                            if (orgData) {
-                                studentData.schools = { name: orgData.name };
-                            }
+                    }
+                    if (studentData.school_id) {
+                        const { data: orgData } = await supabase
+                            .from('organizations')
+                            .select('name')
+                            .eq('id', studentData.school_id)
+                            .maybeSingle();
+                        if (orgData) {
+                            studentData.schools = { name: orgData.name };
                         }
-                        if (studentData.school_class_id) {
-                            const { data: classData } = await supabase
-                                .from('school_classes')
-                                .select('grade')
-                                .eq('id', studentData.school_class_id)
-                                .maybeSingle();
-                            if (classData) {
-                                studentData.school_classes = { grade: classData.grade };
-                            }
+                    }
+                    if (studentData.school_class_id) {
+                        const { data: classData } = await supabase
+                            .from('school_classes')
+                            .select('grade')
+                            .eq('id', studentData.school_class_id)
+                            .maybeSingle();
+                        if (classData) {
+                            studentData.school_classes = { grade: classData.grade };
                         }
                     }
                 }
@@ -253,13 +350,52 @@ export const useAssessmentResults = () => {
                     }
                     console.log('Derived gradeLevel from student data:', derivedGradeLevel, 'grade:', studentGrade, 'school_id:', studentData.school_id, 'college_id:', studentData.college_id);
 
+                    // Derive stream from branch_field or course_name
+                    let derivedStream = localStorage.getItem('assessment_stream') || '—';
+                    
+                    // If we have branch_field or course_name, derive the stream
+                    if (studentData.branch_field || studentData.course_name) {
+                        const fieldText = (studentData.branch_field || studentData.course_name || '').toLowerCase();
+                        
+                        // Science stream indicators
+                        if (fieldText.includes('science') || fieldText.includes('engineering') || 
+                            fieldText.includes('tech') || fieldText.includes('bca') || 
+                            fieldText.includes('computer') || fieldText.includes('physics') || 
+                            fieldText.includes('chemistry') || fieldText.includes('biology') || 
+                            fieldText.includes('mathematics') || fieldText.includes('medical') ||
+                            fieldText.includes('mbbs') || fieldText.includes('bsc') || 
+                            fieldText.includes('b.sc') || fieldText.includes('b.tech') ||
+                            fieldText.includes('m.tech') || fieldText.includes('mtech')) {
+                            derivedStream = 'SCIENCE';
+                        }
+                        // Commerce stream indicators
+                        else if (fieldText.includes('commerce') || fieldText.includes('business') || 
+                                 fieldText.includes('bba') || fieldText.includes('bcom') || 
+                                 fieldText.includes('b.com') || fieldText.includes('finance') || 
+                                 fieldText.includes('accounting') || fieldText.includes('economics') ||
+                                 fieldText.includes('management') || fieldText.includes('marketing')) {
+                            derivedStream = 'COMMERCE';
+                        }
+                        // Arts stream indicators
+                        else if (fieldText.includes('arts') || fieldText.includes('humanities') || 
+                                 fieldText.includes('ba ') || fieldText.includes('b.a') || 
+                                 fieldText.includes('law') || fieldText.includes('llb') || 
+                                 fieldText.includes('english') || fieldText.includes('history') || 
+                                 fieldText.includes('political') || fieldText.includes('sociology') ||
+                                 fieldText.includes('psychology') || fieldText.includes('literature')) {
+                            derivedStream = 'ARTS';
+                        }
+                        
+                        console.log('📚 Derived stream from database:', derivedStream, 'from field:', fieldText);
+                    }
+
                     setStudentInfo({
                         name: fullName,
                         regNo: rollNumber,
                         rollNumberType: rollNumberType,
                         college: institutionName,
                         school: schoolName,
-                        stream: (localStorage.getItem('assessment_stream') || '—').toUpperCase(),
+                        stream: derivedStream.toUpperCase(),
                         grade: studentGrade,
                         branchField: studentData.branch_field || '—',
                         courseName: studentData.course_name || '—'
@@ -393,7 +529,9 @@ export const useAssessmentResults = () => {
                 const attempt = await assessmentService.getAttemptWithResults(attemptId);
                 if (attempt?.results?.[0]?.gemini_results) {
                     const geminiResults = attempt.results[0].gemini_results;
-                    setResults(geminiResults);
+                    // Apply validation to correct RIASEC topThree and detect aptitude patterns
+                    const validatedResults = applyValidation(geminiResults, attempt.all_responses || {});
+                    setResults(validatedResults);
 
                     // Set grade level from attempt
                     if (attempt.grade_level) {
@@ -404,10 +542,10 @@ export const useAssessmentResults = () => {
 
                     // Clear localStorage to prevent stale data issues
                     localStorage.removeItem('assessment_gemini_results');
-                    localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
+                    localStorage.setItem('assessment_gemini_results', JSON.stringify(validatedResults));
 
                     // Ensure recommendations are saved (in case they weren't before)
-                    if (geminiResults.platformCourses && geminiResults.platformCourses.length > 0) {
+                    if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
                         try {
                             const { data: { user } } = await supabase.auth.getUser();
                             if (user) {
@@ -440,7 +578,9 @@ export const useAssessmentResults = () => {
                 if (latestResult?.gemini_results) {
                     console.log('Loaded results from database');
                     const geminiResults = latestResult.gemini_results;
-                    setResults(geminiResults);
+                    // Apply validation to correct RIASEC topThree and detect aptitude patterns
+                    const validatedResults = applyValidation(geminiResults);
+                    setResults(validatedResults);
 
                     // Set grade level from result
                     if (latestResult.grade_level) {
@@ -451,14 +591,14 @@ export const useAssessmentResults = () => {
 
                     // Sync localStorage with database results to prevent stale data
                     localStorage.removeItem('assessment_gemini_results');
-                    localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
+                    localStorage.setItem('assessment_gemini_results', JSON.stringify(validatedResults));
 
                     // Ensure recommendations are saved
-                    if (geminiResults.platformCourses && geminiResults.platformCourses.length > 0) {
+                    if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
                         try {
                             await saveRecommendations(
                                 user.id,
-                                geminiResults.platformCourses,
+                                validatedResults.platformCourses,
                                 latestResult.id,
                                 'assessment'
                             );
@@ -511,7 +651,9 @@ export const useAssessmentResults = () => {
                 console.log('Completeness check:', { hasCareerFit, needsStreamRecommendation, hasValidStreamRecommendation, isComplete });
                 
                 if (isComplete) {
-                    setResults(geminiResults);
+                    // Apply validation to correct RIASEC topThree and detect aptitude patterns
+                    const validatedResults = applyValidation(geminiResults);
+                    setResults(validatedResults);
                     // Set grade level from localStorage if available
                     if (storedGradeLevel) {
                         setGradeLevel(storedGradeLevel);
@@ -530,21 +672,64 @@ export const useAssessmentResults = () => {
         if (stream) {
             try {
                 const answers = JSON.parse(answersJson);
-                const questionBanks = {
+                
+                // Check if this is an AI assessment that needs questions from database
+                const effectiveGradeLevel = storedGradeLevel || 'after12';
+                const isAIAssessment = ['after10', 'after12', 'college', 'higher_secondary'].includes(effectiveGradeLevel);
+                
+                // Build question banks
+                let questionBanks = {
                     riasecQuestions,
+                    aptitudeQuestions: [], // Will be populated for AI assessments
                     bigFiveQuestions,
                     workValuesQuestions,
                     employabilityQuestions,
                     streamKnowledgeQuestions
                 };
+                
+                // For AI assessments, fetch questions from database for proper scoring
+                if (isAIAssessment) {
+                    try {
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (user) {
+                            const answerKeys = Object.keys(answers);
+                            
+                            // Fetch aptitude questions
+                            const aptitudeAnswerKeys = answerKeys.filter(k => k.startsWith('aptitude_'));
+                            if (aptitudeAnswerKeys.length > 0) {
+                                console.log('📡 Fetching AI aptitude questions for re-analysis...');
+                                const aiAptitudeQuestions = await fetchAIAptitudeQuestions(user.id, aptitudeAnswerKeys);
+                                if (aiAptitudeQuestions.length > 0) {
+                                    questionBanks.aptitudeQuestions = aiAptitudeQuestions;
+                                    console.log(`✅ Loaded ${aiAptitudeQuestions.length} AI aptitude questions`);
+                                }
+                            }
+                            
+                            // Fetch knowledge questions
+                            const knowledgeAnswerKeys = answerKeys.filter(k => k.startsWith('knowledge_'));
+                            if (knowledgeAnswerKeys.length > 0) {
+                                console.log('📡 Fetching AI knowledge questions for re-analysis...');
+                                const aiKnowledgeQuestions = await fetchAIKnowledgeQuestions(user.id, knowledgeAnswerKeys);
+                                if (aiKnowledgeQuestions.length > 0) {
+                                    questionBanks.streamKnowledgeQuestions = { [stream]: aiKnowledgeQuestions };
+                                    console.log(`✅ Loaded ${aiKnowledgeQuestions.length} AI knowledge questions`);
+                                }
+                            }
+                        }
+                    } catch (fetchErr) {
+                        console.warn('Could not fetch AI questions for re-analysis:', fetchErr.message);
+                    }
+                }
 
                 // Pass gradeLevel to get proper stream recommendations
-                const effectiveGradeLevel = storedGradeLevel || 'after12';
                 console.log('Re-analyzing with gradeLevel:', effectiveGradeLevel);
                 const geminiResults = await analyzeAssessmentWithGemini(answers, stream, questionBanks, {}, effectiveGradeLevel);
 
                 if (geminiResults) {
-                    localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
+                    // Apply validation to correct RIASEC topThree and detect aptitude patterns
+                    const sectionTimings = JSON.parse(localStorage.getItem('assessment_section_timings') || '{}');
+                    const validatedResults = applyValidation(geminiResults, answers, sectionTimings);
+                    localStorage.setItem('assessment_gemini_results', JSON.stringify(validatedResults));
                     
                     // Set grade level
                     if (storedGradeLevel) {
@@ -560,19 +745,18 @@ export const useAssessmentResults = () => {
                             // Check if there's an in-progress attempt to complete
                             const inProgressAttempt = await assessmentService.getInProgressAttempt(user.id);
                             if (inProgressAttempt) {
-                                const sectionTimings = JSON.parse(localStorage.getItem('assessment_section_timings') || '{}');
                                 const completedAttempt = await assessmentService.completeAttempt(
                                     inProgressAttempt.id,
                                     user.id,
                                     stream,
                                     inProgressAttempt.grade_level || 'after12', // Use grade_level from attempt or default to after12
-                                    geminiResults,
+                                    validatedResults,
                                     sectionTimings
                                 );
                                 console.log('Results saved to database');
                                 
                                 // Save course recommendations to database
-                                if (geminiResults.platformCourses && geminiResults.platformCourses.length > 0) {
+                                if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
                                     try {
                                         // Get the assessment result ID
                                         const { data: resultData } = await supabase
@@ -583,7 +767,7 @@ export const useAssessmentResults = () => {
                                         
                                         await saveRecommendations(
                                             user.id,
-                                            geminiResults.platformCourses,
+                                            validatedResults.platformCourses,
                                             resultData?.id || null,
                                             'assessment'
                                         );
@@ -598,7 +782,7 @@ export const useAssessmentResults = () => {
                         console.log('Could not save to database:', dbError.message);
                     }
                     
-                    setResults(geminiResults);
+                    setResults(validatedResults);
                     setLoading(false);
                     return;
                 } else {
@@ -636,19 +820,60 @@ export const useAssessmentResults = () => {
             }
             
             const answers = JSON.parse(answersJson);
-            const questionBanks = {
+            
+            // Check if this is an AI assessment that needs questions from database
+            const isAIAssessment = ['after10', 'after12', 'college', 'higher_secondary'].includes(storedGradeLevel);
+            
+            // Build question banks
+            let questionBanks = {
                 riasecQuestions,
+                aptitudeQuestions: [], // Will be populated for AI assessments
                 bigFiveQuestions,
                 workValuesQuestions,
                 employabilityQuestions,
                 streamKnowledgeQuestions
             };
             
+            // For AI assessments, fetch questions from database for proper scoring
+            if (isAIAssessment) {
+                try {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                        const answerKeys = Object.keys(answers);
+                        
+                        // Fetch aptitude questions
+                        const aptitudeAnswerKeys = answerKeys.filter(k => k.startsWith('aptitude_'));
+                        if (aptitudeAnswerKeys.length > 0) {
+                            console.log('📡 Fetching AI aptitude questions for retry...');
+                            const aiAptitudeQuestions = await fetchAIAptitudeQuestions(user.id, aptitudeAnswerKeys);
+                            if (aiAptitudeQuestions.length > 0) {
+                                questionBanks.aptitudeQuestions = aiAptitudeQuestions;
+                                console.log(`✅ Loaded ${aiAptitudeQuestions.length} AI aptitude questions`);
+                            }
+                        }
+                        
+                        // Fetch knowledge questions
+                        const knowledgeAnswerKeys = answerKeys.filter(k => k.startsWith('knowledge_'));
+                        if (knowledgeAnswerKeys.length > 0) {
+                            console.log('📡 Fetching AI knowledge questions for retry...');
+                            const aiKnowledgeQuestions = await fetchAIKnowledgeQuestions(user.id, knowledgeAnswerKeys);
+                            if (aiKnowledgeQuestions.length > 0) {
+                                questionBanks.streamKnowledgeQuestions = { [stream]: aiKnowledgeQuestions };
+                                console.log(`✅ Loaded ${aiKnowledgeQuestions.length} AI knowledge questions`);
+                            }
+                        }
+                    }
+                } catch (fetchErr) {
+                    console.warn('Could not fetch AI questions for retry:', fetchErr.message);
+                }
+            }
+            
             console.log('Regenerating AI analysis...');
             console.log('Stream:', stream);
             console.log('Grade Level:', storedGradeLevel);
             console.log('Answer keys:', Object.keys(answers));
             console.log('Total answers:', Object.keys(answers).length);
+            console.log('Aptitude questions loaded:', questionBanks.aptitudeQuestions?.length || 0);
             console.log('Sample answers:', JSON.stringify(answers).substring(0, 500));
             
             // Force regenerate with AI - pass gradeLevel
@@ -658,8 +883,12 @@ export const useAssessmentResults = () => {
                 throw new Error('AI analysis returned no results');
             }
             
+            // Apply validation to correct RIASEC topThree and detect aptitude patterns
+            const sectionTimings = JSON.parse(localStorage.getItem('assessment_section_timings') || '{}');
+            const validatedResults = applyValidation(geminiResults, answers, sectionTimings);
+            
             // Save to localStorage
-            localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
+            localStorage.setItem('assessment_gemini_results', JSON.stringify(validatedResults));
             
             // Update database if user is logged in
             try {
@@ -672,7 +901,7 @@ export const useAssessmentResults = () => {
                         const { error: updateError } = await supabase
                             .from('personal_assessment_results')
                             .update({ 
-                                gemini_results: geminiResults,
+                                gemini_results: validatedResults,
                                 updated_at: new Date().toISOString()
                             })
                             .eq('id', latestResult.id);
@@ -684,11 +913,11 @@ export const useAssessmentResults = () => {
                         }
                         
                         // Save course recommendations
-                        if (geminiResults.platformCourses && geminiResults.platformCourses.length > 0) {
+                        if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
                             try {
                                 await saveRecommendations(
                                     user.id,
-                                    geminiResults.platformCourses,
+                                    validatedResults.platformCourses,
                                     latestResult.id,
                                     'assessment'
                                 );
@@ -703,7 +932,7 @@ export const useAssessmentResults = () => {
             }
             
             // Update state with new results
-            setResults(geminiResults);
+            setResults(validatedResults);
             console.log('AI analysis regenerated successfully');
             
         } catch (e) {
@@ -776,6 +1005,7 @@ export const useAssessmentResults = () => {
         monthsInGrade, // Export months in grade for conditional display
         studentInfo,
         studentAcademicData, // Export academic data for course matching
+        validationWarnings, // Export validation warnings for display
         handleRetry,
         validateResults,
         navigate
