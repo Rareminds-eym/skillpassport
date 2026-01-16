@@ -1224,6 +1224,61 @@ const Settings = () => {
                         )}
                       </div>
                     </div>
+
+                    {/* Organization Membership Card - Shows when assigned via invitation */}
+                    {(studentData?.schoolOrganization || studentData?.collegeOrganization) && (
+                      <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-blue-100 rounded-lg">
+                            <Briefcase className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold text-gray-900">Organization Membership</h4>
+                              <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">
+                                Active
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-3">
+                              You are a member of the following organization through an accepted invitation.
+                            </p>
+                            <div className="bg-white/70 rounded-lg p-3 border border-blue-100">
+                              {studentData?.schoolOrganization && (
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-medium text-gray-900">{studentData.schoolOrganization.name}</p>
+                                    <p className="text-xs text-gray-500">
+                                      {studentData.schoolOrganization.organization_type === 'school' ? 'School' : 'Organization'}
+                                      {studentData.schoolOrganization.city && ` • ${studentData.schoolOrganization.city}`}
+                                      {studentData.schoolOrganization.state && `, ${studentData.schoolOrganization.state}`}
+                                    </p>
+                                  </div>
+                                  <div className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                                    Read-only
+                                  </div>
+                                </div>
+                              )}
+                              {studentData?.collegeOrganization && (
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-medium text-gray-900">{studentData.collegeOrganization.name}</p>
+                                    <p className="text-xs text-gray-500">
+                                      {studentData.collegeOrganization.organization_type === 'college' ? 'College' : 'Organization'}
+                                      {studentData.collegeOrganization.city && ` • ${studentData.collegeOrganization.city}`}
+                                      {studentData.collegeOrganization.state && `, ${studentData.collegeOrganization.state}`}
+                                    </p>
+                                  </div>
+                                  <div className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                                    Read-only
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* School */}
                       <div className="space-y-2">

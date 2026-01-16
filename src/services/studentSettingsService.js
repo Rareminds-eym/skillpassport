@@ -69,7 +69,23 @@ export const getStudentSettingsByEmail = async (email) => {
         user_id,
         approval_status,
         created_at,
-        updated_at
+        updated_at,
+        school:organizations!students_school_id_fkey (
+          id,
+          name,
+          code,
+          city,
+          state,
+          organization_type
+        ),
+        college:organizations!students_college_id_fkey (
+          id,
+          name,
+          code,
+          city,
+          state,
+          organization_type
+        )
       `)
       .eq('email', email)
       .maybeSingle();
@@ -180,6 +196,11 @@ export const getStudentSettingsByEmail = async (email) => {
       approvalStatus: data.approval_status || 'pending',
       createdAt: data.created_at,
       updatedAt: data.updated_at,
+
+      // Organization info (from invitation acceptance)
+      // These are populated when a student accepts an organization invitation
+      schoolOrganization: data.school || null,
+      collegeOrganization: data.college || null,
     };
 
     return { success: true, data: settingsData };

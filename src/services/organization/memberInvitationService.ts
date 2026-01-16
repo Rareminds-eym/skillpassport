@@ -292,7 +292,8 @@ export class MemberInvitationService {
         userId,
         invitation.organization_id,
         invitation.organization_type,
-        invitation.invitee_role
+        invitation.invitee_role,
+        invitation.invitee_email
       );
 
       // 5. Auto-assign license if configured (license_pool_id presence indicates auto-assign)
@@ -683,12 +684,14 @@ export class MemberInvitationService {
    * @param organizationId - The organization's ID
    * @param organizationType - Type of organization (school, college, university)
    * @param inviteeRole - Full role name (e.g., school_student, college_educator)
+   * @param inviteeEmail - The email address from the invitation (optional, for fallback matching)
    */
   private async linkUserToOrganization(
     userId: string,
     organizationId: string,
     organizationType: 'school' | 'college' | 'university',
-    inviteeRole: string
+    inviteeRole: string,
+    inviteeEmail?: string
   ): Promise<void> {
     try {
       // Determine if this is an educator or student based on the role
@@ -700,6 +703,7 @@ export class MemberInvitationService {
         organizationId,
         organizationType,
         inviteeRole,
+        inviteeEmail,
         isEducator,
         isStudent
       });
@@ -714,29 +718,63 @@ export class MemberInvitationService {
 
       // Update the appropriate member table
       if (isStudent && Object.keys(memberUpdateData).length > 0) {
-        const { error: studentError } = await supabase
+        // First try to update by user_id
+        const { data: updatedByUserId, error: studentError } = await supabase
           .from('students')
           .update(memberUpdateData)
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .select('id');
         
         if (studentError) {
-          console.warn('Could not update students table:', studentError.message);
-        } else {
-          console.log('✅ Updated students table with organization');
+          console.warn('Could not update students table by user_id:', studentError.message);
+        } else if (updatedByUserId && updatedByUserId.length > 0) {
+          console.log('✅ Updated students table with organization (by user_id)');
+        } else if (inviteeEmail) {
+          // Fallback: try to update by email if user_id didn't match any records
+          console.log('⚠️ No student found with user_id, trying email fallback...');
+          const { data: updatedByEmail, error: emailError } = await supabase
+            .from('students')
+            .update({ ...memberUpdateData, user_id: userId })
+            .eq('email', inviteeEmail.toLowerCase())
+            .select('id');
+          
+          if (emailError) {
+            console.warn('Could not update students table by email:', emailError.message);
+          } else if (updatedByEmail && updatedByEmail.length > 0) {
+            console.log('✅ Updated students table with organization (by email)');
+          } else {
+            console.warn('No student found with email:', inviteeEmail);
+          }
         }
       }
 
       if (isEducator && organizationType === 'school') {
         // For school educators, update school_educators table
-        const { error: educatorError } = await supabase
+        // First try by user_id
+        const { data: updatedByUserId, error: educatorError } = await supabase
           .from('school_educators')
           .update({ school_id: organizationId })
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .select('id');
         
         if (educatorError) {
-          console.warn('Could not update school_educators table:', educatorError.message);
-        } else {
-          console.log('✅ Updated school_educators table with organization');
+          console.warn('Could not update school_educators table by user_id:', educatorError.message);
+        } else if (updatedByUserId && updatedByUserId.length > 0) {
+          console.log('✅ Updated school_educators table with organization (by user_id)');
+        } else if (inviteeEmail) {
+          // Fallback: try by email
+          console.log('⚠️ No educator found with user_id, trying email fallback...');
+          const { data: updatedByEmail, error: emailError } = await supabase
+            .from('school_educators')
+            .update({ school_id: organizationId, user_id: userId })
+            .eq('email', inviteeEmail.toLowerCase())
+            .select('id');
+          
+          if (emailError) {
+            console.warn('Could not update school_educators table by email:', emailError.message);
+          } else if (updatedByEmail && updatedByEmail.length > 0) {
+            console.log('✅ Updated school_educators table with organization (by email)');
+          }
         }
       }
 
