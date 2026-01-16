@@ -334,12 +334,23 @@ const RecommendedJobsContent = ({
         {/* Grid Content */}
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {recommendations.slice(0, 3).map((currentJob, index) => {
-              const opportunity = currentJob?.opportunity;
+              // Support both nested opportunity and flat structure from API
+              const opportunity = currentJob?.opportunity || currentJob;
               if (!opportunity) return null;
+
+              // Get job details - handle both structures
+              const jobTitle = currentJob.job_title || opportunity.job_title || opportunity.title;
+              const companyName = currentJob.company_name || opportunity.company_name;
+              const matchScore = currentJob.match_score || Math.round((opportunity.similarity || opportunity.final_score || 0.5) * 100);
+              const location = opportunity.location;
+              const employmentType = opportunity.employment_type;
+              const skillsRequired = opportunity.skills_required || [];
+              const matchReason = currentJob.match_reason || `This opportunity matches your profile with ${matchScore}% similarity.`;
+              const jobId = currentJob.job_id || opportunity.id;
 
               return (
                 <motion.div
-                  key={currentJob.id || index}
+                  key={jobId || index}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.1 }}
@@ -349,42 +360,42 @@ const RecommendedJobsContent = ({
                   <div className="mb-3">
                     <div className="flex flex-col gap-2 mb-2">
                       <div className="flex justify-between items-start">
-                        <h3 className="text-lg font-bold text-gray-900 line-clamp-1" title={currentJob.job_title}>
-                          {currentJob.job_title}
+                        <h3 className="text-lg font-bold text-gray-900 line-clamp-1" title={jobTitle}>
+                          {jobTitle}
                         </h3>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${getMatchColor(currentJob.match_score)}`}>
-                          {currentJob.match_score}%
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${getMatchColor(matchScore)}`}>
+                          {matchScore}%
                         </span>
                       </div>
-                      <p className="text-sm text-gray-700 font-medium line-clamp-1">{currentJob.company_name}</p>
+                      <p className="text-sm text-gray-700 font-medium line-clamp-1">{companyName}</p>
                     </div>
                   </div>
 
                   {/* Job Details */}
                   <div className="flex flex-wrap gap-3 mb-3 text-xs text-gray-600">
-                    {opportunity.location && (
+                    {location && (
                       <div className="flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5" />
-                        <span className="truncate max-w-[100px]">{opportunity.location}</span>
+                        <span className="truncate max-w-[100px]">{location}</span>
                       </div>
                     )}
-                    {opportunity.employment_type && (
+                    {employmentType && (
                       <div className="flex items-center gap-1">
                         <Briefcase className="w-3.5 h-3.5" />
-                        <span className="capitalize">{opportunity.employment_type}</span>
+                        <span className="capitalize">{employmentType}</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Skills - Compact View */}
-                  {currentJob.key_matching_skills && currentJob.key_matching_skills.length > 0 && (
+                  {/* Skills - Show required skills from opportunity */}
+                  {skillsRequired && skillsRequired.length > 0 && (
                     <div className="mb-3 flex-grow">
                       <div className="flex items-center gap-1.5 mb-1.5">
                         <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                        <h4 className="font-semibold text-gray-900 text-xs">Matching Skills</h4>
+                        <h4 className="font-semibold text-gray-900 text-xs">Required Skills</h4>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {currentJob.key_matching_skills.slice(0, 3).map((skill, idx) => (
+                        {(Array.isArray(skillsRequired) ? skillsRequired : [skillsRequired]).slice(0, 3).map((skill, idx) => (
                           <span
                             key={idx}
                             className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-medium border border-emerald-100"
@@ -392,9 +403,9 @@ const RecommendedJobsContent = ({
                             {skill}
                           </span>
                         ))}
-                        {currentJob.key_matching_skills.length > 3 && (
+                        {Array.isArray(skillsRequired) && skillsRequired.length > 3 && (
                           <span className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-full text-[10px] font-medium border border-gray-100">
-                            +{currentJob.key_matching_skills.length - 3}
+                            +{skillsRequired.length - 3}
                           </span>
                         )}
                       </div>
@@ -405,8 +416,8 @@ const RecommendedJobsContent = ({
                   <div className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 mb-4 text-xs">
                     <div className="flex items-start gap-1.5 ">
                       <TrendingUp className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0" />
-                      <p className="text-indigo-900 line-clamp-2" title={currentJob.match_reason}>
-                        {currentJob.match_reason}
+                      <p className="text-indigo-900 line-clamp-2" title={matchReason}>
+                        {matchReason}
                       </p>
                     </div>
                   </div>
@@ -419,7 +430,7 @@ const RecommendedJobsContent = ({
                     >
                       Details
                     </button>
-                    {!appliedJobs.has(opportunity.id) ? (
+                    {!appliedJobs.has(jobId) ? (
                       <button
                         onClick={() => onApply(opportunity)}
                         className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
