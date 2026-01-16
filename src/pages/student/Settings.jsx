@@ -1162,67 +1162,6 @@ const Settings = () => {
                         <Briefcase className="w-5 h-5 text-blue-600" />
                         Institution Details
                       </h3>
-                      {/* Clear Path Buttons */}
-                      <div className="flex gap-2">
-                        {(profileData.schoolId || profileData.schoolClassId || showCustomSchool || customSchoolName || showCustomSchoolClass || customSchoolClassName) && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              // Clear all school-related fields
-                              setProfileData(prev => ({
-                                ...prev,
-                                schoolId: '',
-                                schoolClassId: '',
-                                college: '',
-                                section: '',
-                              }));
-                              setShowCustomSchool(false);
-                              setCustomSchoolName('');
-                              setShowCustomSchoolClass(false);
-                              setCustomSchoolClassName('');
-                              toast({
-                                title: "School path cleared",
-                                description: "You can now select university",
-                              });
-                            }}
-                            className="text-xs px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                          >
-                            Clear School Path
-                          </button>
-                        )}
-                        {(profileData.universityId || profileData.universityCollegeId || profileData.programId || showCustomUniversity || customUniversityName || showCustomCollege || customCollegeName || showCustomProgram || customProgramName) && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              // Clear all university-related fields
-                              setProfileData(prev => ({
-                                ...prev,
-                                universityId: '',
-                                universityCollegeId: '',
-                                programId: '',
-                                programSectionId: '',
-                                university: '',
-                                branch: '',
-                              }));
-                              setShowCustomUniversity(false);
-                              setCustomUniversityName('');
-                              setShowCustomCollege(false);
-                              setCustomCollegeName('');
-                              setShowCustomProgram(false);
-                              setCustomProgramName('');
-                              setShowCustomSemester(false);
-                              setCustomSemesterName('');
-                              toast({
-                                title: "University path cleared",
-                                description: "You can now select school",
-                              });
-                            }}
-                            className="text-xs px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                          >
-                            Clear University Path
-                          </button>
-                        )}
-                      </div>
                     </div>
 
                     {/* Organization Membership Card - Shows when assigned via invitation */}

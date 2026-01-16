@@ -810,6 +810,36 @@ function OrganizationSubscriptionPage() {
       // TODO: Open a modal or navigate to member history page
     }
   }, [organizationMembers]);
+
+  const handleRemoveMember = useCallback(async (memberId: string, memberType: 'educator' | 'student') => {
+    if (!organizationId) {
+      toast.error('Organization ID not found');
+      return;
+    }
+
+    try {
+      const { organizationMemberService } = await import('@/services/organization/organizationMemberService');
+      
+      const result = await organizationMemberService.removeMember(
+        memberId,
+        memberType,
+        organizationType,
+        organizationId
+      );
+
+      if (result.success) {
+        toast.success(result.message);
+        // Refresh members list
+        await refreshMembers();
+        await refresh();
+      } else {
+        toast.error(result.message);
+      }
+    } catch (err) {
+      console.error('Error removing member:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to remove member');
+    }
+  }, [organizationId, organizationType, refreshMembers, refresh]);
   
   // Check if user is authenticated and is an admin
   if (!isAuthenticated || !user) {
@@ -903,6 +933,7 @@ function OrganizationSubscriptionPage() {
         onUnassignLicenses={handleUnassignLicenses}
         onTransferLicense={handleTransferLicense}
         onViewMemberHistory={handleViewMemberHistory}
+        onRemoveMember={handleRemoveMember}
         onMemberAdded={refreshMembers}
       />
       

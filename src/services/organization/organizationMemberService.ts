@@ -478,6 +478,202 @@ export class OrganizationMemberService {
       return { students: 0, educators: 0, total: 0 };
     }
   }
+
+  /**
+   * Remove a member from the organization
+   * This removes the organization association but does NOT delete the user account
+   * 
+   * @param memberId - The member's ID (student or educator record ID)
+   * @param memberType - Type of member ('student' or 'educator')
+   * @param organizationType - Type of organization ('school', 'college', 'university')
+   * @param organizationId - The organization's ID (for verification)
+   * @returns Success status and message
+   */
+  async removeMember(
+    memberId: string,
+    memberType: 'educator' | 'student',
+    organizationType: 'school' | 'college' | 'university',
+    organizationId: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log('🗑️ Removing member from organization:', {
+        memberId,
+        memberType,
+        organizationType,
+        organizationId
+      });
+
+      if (memberType === 'student') {
+        // For students, clear the school_id or college_id
+        const updateData: Record<string, any> = {};
+        
+        if (organizationType === 'school') {
+          updateData.school_id = null;
+        } else if (organizationType === 'college' || organizationType === 'university') {
+          updateData.college_id = null;
+        }
+
+        // Verify the student belongs to this organization before removing
+        const { data: student, error: fetchError } = await supabase
+          .from('students')
+          .select('id, school_id, college_id, email, name')
+          .eq('id', memberId)
+          .single();
+
+        if (fetchError || !student) {
+          return { success: false, message: 'Student not found' };
+        }
+
+        // Verify organization ownership
+        const belongsToOrg = 
+          (organizationType === 'school' && student.school_id === organizationId) ||
+          ((organizationType === 'college' || organizationType === 'university') && student.college_id === organizationId);
+
+        if (!belongsToOrg) {
+          return { success: false, message: 'Student does not belong to this organization' };
+        }
+
+        // Remove organization association
+        const { error: updateError } = await supabase
+          .from('students')
+          .update(updateData)
+          .eq('id', memberId);
+
+        if (updateError) {
+          console.error('Error removing student from organization:', updateError);
+          return { success: false, message: updateError.message };
+        }
+
+        // Also revoke any license assignments for this user
+        await this.revokeMemberLicenses(student.id, organizationId);
+
+        console.log('✅ Student removed from organization:', student.email);
+        return { success: true, message: `${student.name || 'Student'} has been removed from the organization` };
+
+      } else {
+        // For educators
+        if (organizationType === 'school') {
+          // Verify the educator belongs to this school
+          const { data: educator, error: fetchError } = await supabase
+            .from('school_educators')
+            .select('id, school_id, email, first_name, last_name, user_id')
+            .eq('id', memberId)
+            .single();
+
+          if (fetchError || !educator) {
+            return { success: false, message: 'Educator not found' };
+          }
+
+          if (educator.school_id !== organizationId) {
+            return { success: false, message: 'Educator does not belong to this organization' };
+          }
+
+          // Remove organization association
+          const { error: updateError } = await supabase
+            .from('school_educators')
+            .update({ school_id: null })
+            .eq('id', memberId);
+
+          if (updateError) {
+            console.error('Error removing educator from organization:', updateError);
+            return { success: false, message: updateError.message };
+          }
+
+          // Revoke licenses
+          if (educator.user_id) {
+            await this.revokeMemberLicenses(educator.user_id, organizationId);
+          }
+
+          const educatorName = `${educator.first_name || ''} ${educator.last_name || ''}`.trim() || 'Educator';
+          console.log('✅ Educator removed from organization:', educator.email);
+          return { success: true, message: `${educatorName} has been removed from the organization` };
+
+        } else if (organizationType === 'college') {
+          // Verify the lecturer belongs to this college
+          const { data: lecturer, error: fetchError } = await supabase
+            .from('college_lecturers')
+            .select('id, collegeId, email, first_name, last_name, user_id')
+            .eq('id', memberId)
+            .single();
+
+          if (fetchError || !lecturer) {
+            return { success: false, message: 'Lecturer not found' };
+          }
+
+          if (lecturer.collegeId !== organizationId) {
+            return { success: false, message: 'Lecturer does not belong to this organization' };
+          }
+
+          // Remove organization association
+          const { error: updateError } = await supabase
+            .from('college_lecturers')
+            .update({ collegeId: null })
+            .eq('id', memberId);
+
+          if (updateError) {
+            console.error('Error removing lecturer from organization:', updateError);
+            return { success: false, message: updateError.message };
+          }
+
+          // Revoke licenses
+          if (lecturer.user_id) {
+            await this.revokeMemberLicenses(lecturer.user_id, organizationId);
+          }
+
+          const lecturerName = `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || 'Lecturer';
+          console.log('✅ Lecturer removed from organization:', lecturer.email);
+          return { success: true, message: `${lecturerName} has been removed from the organization` };
+        }
+
+        return { success: false, message: 'Unsupported organization type for educator removal' };
+      }
+    } catch (error) {
+      console.error('Error removing member:', error);
+      return { 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Failed to remove member' 
+      };
+    }
+  }
+
+  /**
+   * Revoke all license assignments for a user from a specific organization
+   */
+  private async revokeMemberLicenses(
+    userId: string,
+    organizationId: string
+  ): Promise<void> {
+    try {
+      // Get all license pools for this organization
+      const { data: pools } = await supabase
+        .from('license_pools')
+        .select('id')
+        .eq('organization_id', organizationId);
+
+      if (!pools || pools.length === 0) return;
+
+      const poolIds = pools.map(p => p.id);
+
+      // Revoke all active assignments for this user from these pools
+      const { error } = await supabase
+        .from('license_assignments')
+        .update({ 
+          status: 'revoked',
+          revoked_at: new Date().toISOString()
+        })
+        .eq('user_id', userId)
+        .in('license_pool_id', poolIds)
+        .eq('status', 'active');
+
+      if (error) {
+        console.warn('Could not revoke license assignments:', error.message);
+      } else {
+        console.log('✅ License assignments revoked for user:', userId);
+      }
+    } catch (error) {
+      console.warn('Error revoking member licenses:', error);
+    }
+  }
 }
 
 // Export singleton instance

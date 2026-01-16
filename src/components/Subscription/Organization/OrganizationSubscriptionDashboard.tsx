@@ -106,6 +106,7 @@ interface OrganizationSubscriptionDashboardProps {
   onUnassignLicenses: (memberIds: string[]) => void;
   onTransferLicense: (fromMemberId: string, toMemberId: string) => void;
   onViewMemberHistory: (memberId: string) => void;
+  onRemoveMember?: (memberId: string, memberType: 'educator' | 'student') => void;
   onMemberAdded?: () => void;
 }
 
@@ -133,6 +134,7 @@ function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashbo
     onUnassignLicenses,
     onTransferLicense,
     onViewMemberHistory,
+    onRemoveMember,
     onMemberAdded,
   } = props;
 
@@ -190,6 +192,7 @@ function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashbo
             onUnassign={onUnassignLicenses}
             onTransfer={onTransferLicense}
             onViewHistory={onViewMemberHistory}
+            onRemoveMember={onRemoveMember}
             onMemberAdded={onMemberAdded}
             isLoading={isLoading}
           />

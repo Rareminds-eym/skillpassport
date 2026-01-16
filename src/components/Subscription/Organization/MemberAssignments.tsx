@@ -11,6 +11,7 @@ import {
     ChevronDown,
     Clock,
     Search,
+    Trash2,
     UserMinus,
     UserPlus,
     Users,
@@ -37,6 +38,7 @@ interface MemberAssignmentsProps {
   onUnassign: (memberIds: string[]) => void;
   onTransfer: (fromMemberId: string, toMemberId: string) => void;
   onViewHistory: (memberId: string) => void;
+  onRemoveMember?: (memberId: string, memberType: 'educator' | 'student') => void;
   onMemberAdded?: () => void;
   isLoading?: boolean;
 }
@@ -48,6 +50,7 @@ function MemberAssignments({
   onUnassign,
   onTransfer,
   onViewHistory,
+  onRemoveMember,
   onMemberAdded,
   isLoading = false,
 }: MemberAssignmentsProps) {
@@ -58,6 +61,11 @@ function MemberAssignments({
   const [memberTypeFilter, setMemberTypeFilter] = useState<'all' | 'educator' | 'student'>('all');
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferSource, setTransferSource] = useState<string | null>(null);
+  
+  // Remove member confirmation modal state
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   // Filter members based on search and filters
   const filteredMembers = useMemo(() => {
@@ -149,6 +157,26 @@ function MemberAssignments({
     },
     [transferSource, onTransfer]
   );
+
+  const handleOpenRemoveModal = useCallback((member: Member) => {
+    setMemberToRemove(member);
+    setShowRemoveModal(true);
+  }, []);
+
+  const handleConfirmRemove = useCallback(async () => {
+    if (!memberToRemove || !onRemoveMember) return;
+    
+    setIsRemoving(true);
+    try {
+      await onRemoveMember(memberToRemove.id, memberToRemove.memberType);
+      setShowRemoveModal(false);
+      setMemberToRemove(null);
+    } catch (error) {
+      console.error('Error removing member:', error);
+    } finally {
+      setIsRemoving(false);
+    }
+  }, [memberToRemove, onRemoveMember]);
 
   if (isLoading) {
     return (
@@ -391,6 +419,15 @@ function MemberAssignments({
                   >
                     <Clock className="w-4 h-4" />
                   </button>
+                  {onRemoveMember && (
+                    <button
+                      onClick={() => handleOpenRemoveModal(member)}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                      title="Remove from organization"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -446,6 +483,94 @@ function MemberAssignments({
           onMemberAdded?.();
         }}
       />
+
+      {/* Remove Member Confirmation Modal */}
+      {showRemoveModal && memberToRemove && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-red-500 to-red-600">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="font-semibold text-white">Remove Member</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowRemoveModal(false);
+                  setMemberToRemove(null);
+                }}
+                disabled={isRemoving}
+                className="p-1 hover:bg-white/10 rounded disabled:opacity-50"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-gray-600 mb-4">
+                Are you sure you want to remove this member from your organization?
+              </p>
+              <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                <div className="font-medium text-gray-900">{memberToRemove.name}</div>
+                <div className="text-sm text-gray-500">{memberToRemove.email}</div>
+                <div className="mt-2">
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                    memberToRemove.memberType === 'educator'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {memberToRemove.memberType === 'educator' ? 'Educator' : 'Student'}
+                  </span>
+                  {memberToRemove.hasLicense && (
+                    <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">
+                      Has License
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-amber-800">
+                  <strong>Note:</strong> This will remove the member's association with your organization. 
+                  {memberToRemove.hasLicense && ' Their license will also be revoked.'}
+                  {' '}The member's account will not be deleted.
+                </p>
+              </div>
+            </div>
+            <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
+              <button
+                onClick={() => {
+                  setShowRemoveModal(false);
+                  setMemberToRemove(null);
+                }}
+                disabled={isRemoving}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmRemove}
+                disabled={isRemoving}
+                className="px-5 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isRemoving ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Removing...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Remove Member
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
