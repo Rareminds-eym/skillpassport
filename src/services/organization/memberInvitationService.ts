@@ -553,7 +553,10 @@ export class MemberInvitationService {
     customMessage?: string
   ): Promise<boolean> {
     const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
-    const APP_URL = 'https://skillpassport.rareminds.in';
+    // Use current origin in development, production URL otherwise
+    const APP_URL = import.meta.env.DEV 
+      ? window.location.origin 
+      : 'https://skillpassport.rareminds.in';
 
     try {
       // Get organization name for the email
@@ -670,42 +673,90 @@ export class MemberInvitationService {
 
   /**
    * Link user to organization
+   * 
+   * Updates the appropriate tables to associate the user with the organization:
+   * - students table: school_id or college_id
+   * - school_educators table: school_id (for school educators)
+   * - users table: organizationId and role
+   * 
+   * @param userId - The user's auth ID
+   * @param organizationId - The organization's ID
+   * @param organizationType - Type of organization (school, college, university)
+   * @param inviteeRole - Full role name (e.g., school_student, college_educator)
    */
   private async linkUserToOrganization(
     userId: string,
     organizationId: string,
     organizationType: 'school' | 'college' | 'university',
-    memberType: 'educator' | 'student'
+    inviteeRole: string
   ): Promise<void> {
     try {
-      // Update user's organization association based on type
-      const updateData: Record<string, any> = {};
+      // Determine if this is an educator or student based on the role
+      const isEducator = inviteeRole.includes('educator');
+      const isStudent = inviteeRole.includes('student');
 
+      console.log('🔗 Linking user to organization:', {
+        userId,
+        organizationId,
+        organizationType,
+        inviteeRole,
+        isEducator,
+        isStudent
+      });
+
+      // Build update data for students/educators tables
+      const memberUpdateData: Record<string, any> = {};
       if (organizationType === 'school') {
-        updateData.school_id = organizationId;
-      } else if (organizationType === 'college') {
-        updateData.college_id = organizationId;
+        memberUpdateData.school_id = organizationId;
+      } else if (organizationType === 'college' || organizationType === 'university') {
+        memberUpdateData.college_id = organizationId;
       }
-      // University would need additional handling
 
-      // Update the appropriate table based on member type
-      if (memberType === 'educator') {
-        await supabase
-          .from('educators')
-          .update(updateData)
-          .eq('user_id', userId);
-      } else {
-        await supabase
+      // Update the appropriate member table
+      if (isStudent && Object.keys(memberUpdateData).length > 0) {
+        const { error: studentError } = await supabase
           .from('students')
-          .update(updateData)
+          .update(memberUpdateData)
           .eq('user_id', userId);
+        
+        if (studentError) {
+          console.warn('Could not update students table:', studentError.message);
+        } else {
+          console.log('✅ Updated students table with organization');
+        }
       }
 
-      // Also update the users table if it has organization fields
-      await supabase
+      if (isEducator && organizationType === 'school') {
+        // For school educators, update school_educators table
+        const { error: educatorError } = await supabase
+          .from('school_educators')
+          .update({ school_id: organizationId })
+          .eq('user_id', userId);
+        
+        if (educatorError) {
+          console.warn('Could not update school_educators table:', educatorError.message);
+        } else {
+          console.log('✅ Updated school_educators table with organization');
+        }
+      }
+
+      // Update the users table with organizationId and role
+      const userUpdateData: Record<string, any> = {
+        organizationId: organizationId,
+        role: inviteeRole
+      };
+
+      const { error: userError } = await supabase
         .from('users')
-        .update(updateData)
+        .update(userUpdateData)
         .eq('id', userId);
+
+      if (userError) {
+        console.warn('Could not update users table:', userError.message);
+      } else {
+        console.log('✅ Updated users table with organization and role');
+      }
+
     } catch (error) {
       console.error('Error linking user to organization:', error);
       // Don't throw - this is a best-effort operation

@@ -64,6 +64,9 @@ const MemberSubscriptionPage = lazy(() =>
 const OrganizationPaymentPage = lazy(() =>
   import("../pages/subscription/OrganizationPaymentPage")
 );
+const AcceptInvitationPage = lazy(() =>
+  import("../pages/subscription/AcceptInvitationPage")
+);
 
 // Event Sales (no auth required)
 const EventSales = lazy(() =>
@@ -549,6 +552,7 @@ const AppRoutes = () => {
           <Route path="/subscription/payment" element={<PaymentCompletion />} />
           <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
+          <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
           <Route path="/debug-qr" element={<DebugQRTest />} />
           <Route
             path="/student/profile/:studentId"

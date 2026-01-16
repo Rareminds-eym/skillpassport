@@ -1,6 +1,6 @@
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucide-react';
 import { ChangeEvent, FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getUserRole } from '../../services/roleLookupService';
 import { signIn, UserRole } from '../../services/unifiedAuthService';
@@ -17,7 +17,11 @@ interface LoginState {
 
 const UnifiedLogin = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login } = useAuth();
+  
+  // Get return URL from query params or session storage (for invitation flow)
+  const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
   
   const [state, setState] = useState<LoginState>({
     email: '',
@@ -160,8 +164,14 @@ const UnifiedLogin = () => {
 
       login(userData);
 
-      // Step 5: Redirect to role-specific dashboard
-      redirectToRoleDashboard(state.selectedRole, navigate);
+      // Step 5: Check for return URL (invitation flow) or redirect to role-specific dashboard
+      if (returnUrl) {
+        // Clear the stored return URL
+        sessionStorage.removeItem('invitation_return_url');
+        navigate(returnUrl);
+      } else {
+        redirectToRoleDashboard(state.selectedRole, navigate);
+      }
 
     } catch (error) {
       console.error('Login error:', error);
