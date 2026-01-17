@@ -361,13 +361,16 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       const question = riasecQuestions?.find(q => q.id === questionId);
       
       if (question) {
+        // For after10/after12/college: questions have a 'type' field (R, I, A, S, E, C)
+        // This is the RIASEC category directly
         riasecAnswers[questionId] = {
           question: question.text,
           answer: value,
+          riasecType: question.type, // Use the type field as RIASEC category
           categoryMapping: question.categoryMapping,
-          type: question.type
+          questionType: question.categoryMapping ? 'multiselect' : 'rating' // Determine question type
         };
-        console.log(`  ✅ Extracted with question bank: ${questionId}`);
+        console.log(`  ✅ Extracted with question bank: ${questionId}, RIASEC type: ${question.type}`);
       } else {
         // FALLBACK: For middle/high school questions (ms1, hs1, etc.) or standard RIASEC (r1, i1, etc.)
         // Middle/high school questions have categoryMapping in the question bank, so we need the question
@@ -375,8 +378,9 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
         riasecAnswers[questionId] = {
           question: `Interest question ${questionId}`,
           answer: value,
-          type: 'rating', // Middle/high school use rating scale
-          categoryMapping: null // Will be analyzed by AI
+          questionType: 'rating', // Middle/high school use rating scale
+          categoryMapping: null, // Will be analyzed by AI
+          riasecType: null // Unknown without question bank
         };
         console.log(`  ⚠️ Extracted without question bank (fallback): ${questionId} = ${value}`);
       }
@@ -875,17 +879,27 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       // Calculate RIASEC scores from answers for rule-based engine
       const riasecScores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
       Object.values(riasecAnswers).forEach(answer => {
-        const { answer: value, categoryMapping, type } = answer;
+        const { answer: value, riasecType, categoryMapping, questionType } = answer;
         
-        if (type === 'multiselect' && Array.isArray(value)) {
+        // For after10/after12/college: Use riasecType directly from question
+        if (riasecType) {
+          // Rating-based scoring (1-5 scale)
+          if (typeof value === 'number') {
+            // Rating 1-2: 0 points, 3: 1 point, 4: 2 points, 5: 3 points
+            const points = value <= 2 ? 0 : (value === 3 ? 1 : (value === 4 ? 2 : 3));
+            riasecScores[riasecType] = (riasecScores[riasecType] || 0) + points;
+          }
+        }
+        // For middle/high school: Use categoryMapping
+        else if (questionType === 'multiselect' && Array.isArray(value)) {
           value.forEach(option => {
-            const riasecType = categoryMapping?.[option];
-            if (riasecType) riasecScores[riasecType] = (riasecScores[riasecType] || 0) + 2;
+            const mappedType = categoryMapping?.[option];
+            if (mappedType) riasecScores[mappedType] = (riasecScores[mappedType] || 0) + 2;
           });
-        } else if (type === 'singleselect') {
-          const riasecType = categoryMapping?.[value];
-          if (riasecType) riasecScores[riasecType] = (riasecScores[riasecType] || 0) + 2;
-        } else if (type === 'rating' && typeof value === 'number') {
+        } else if (questionType === 'singleselect') {
+          const mappedType = categoryMapping?.[value];
+          if (mappedType) riasecScores[mappedType] = (riasecScores[mappedType] || 0) + 2;
+        } else if (questionType === 'rating' && typeof value === 'number') {
           // Rating 1-3: 0 points, 4: 1 point, 5: 2 points
           const points = value >= 4 ? (value === 5 ? 2 : 1) : 0;
           // Need to determine RIASEC type from question context
