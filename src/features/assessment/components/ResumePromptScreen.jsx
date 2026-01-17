@@ -112,11 +112,15 @@ export const ResumePromptScreen = ({
   const streamLabel = getStreamLabel(pendingAttempt.stream_id);
   const progress = calculateProgress(pendingAttempt);
   
-  // Count total answered questions (UUID + non-UUID + adaptive responses)
-  const uuidResponsesCount = Object.keys(pendingAttempt.restoredResponses || {}).length;
+  // Count total answered questions
+  // Note: all_responses contains ALL answers (UUID + non-UUID), so we don't need to add them
+  // Only add adaptive questions if they're not already in all_responses
   const allResponsesCount = pendingAttempt.all_responses ? Object.keys(pendingAttempt.all_responses).length : 0;
   const adaptiveQuestionsAnswered = pendingAttempt.adaptiveProgress?.questionsAnswered || 0;
-  const answeredCount = uuidResponsesCount + allResponsesCount + adaptiveQuestionsAnswered;
+  
+  // Use all_responses count as the primary source (it contains everything)
+  // Adaptive questions are separate and tracked independently
+  const answeredCount = allResponsesCount || adaptiveQuestionsAnswered;
   
   const startedAt = formatDate(pendingAttempt.started_at);
 

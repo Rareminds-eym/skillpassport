@@ -214,6 +214,9 @@ const fetchAIKnowledgeQuestions = async (authUserId, answerKeys = []) => {
  * Database-only storage (localStorage removed for consistency)
  */
 export const useAssessmentResults = () => {
+    // 🔥 DEBUG: Verify new code is loaded
+    console.log('🔥🔥🔥 useAssessmentResults hook loaded - NEW CODE WITH FIXES 🔥🔥🔥');
+    
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [results, setResults] = useState(null);
@@ -294,7 +297,6 @@ export const useAssessmentResults = () => {
                         name, 
                         registration_number,
                         grade,
-                        year,
                         semester,
                         college_id, 
                         school_id,
@@ -557,20 +559,34 @@ export const useAssessmentResults = () => {
     // Fetch student's academic data: marks, projects, experiences
     const fetchStudentAcademicData = async (studentId) => {
         try {
-            // Fetch subject marks with subject names
-            const { data: marksData } = await supabase
-                .from('mark_entries')
-                .select(`
-                    id,
-                    subject_id,
-                    marks_obtained,
-                    total_marks,
-                    percentage,
-                    grade,
-                    curriculum_subjects(name)
-                `)
-                .eq('student_id', studentId)
-                .order('created_at', { ascending: false });
+            // Fetch subject marks with subject names (optional - may not exist for all students)
+            let marksData = [];
+            try {
+                const { data, error } = await supabase
+                    .from('mark_entries')
+                    .select(`
+                        id,
+                        subject_id,
+                        marks_obtained,
+                        total_marks,
+                        percentage,
+                        grade,
+                        curriculum_subjects(name)
+                    `)
+                    .eq('student_id', studentId)
+                    .order('created_at', { ascending: false });
+                
+                if (error) {
+                    // Silently handle error - marks are optional for career assessment
+                    console.log('📊 Academic marks not available (this is normal for career assessments)');
+                    console.log('   Error:', error.message);
+                } else if (data) {
+                    marksData = data;
+                }
+            } catch (marksError) {
+                // Catch any thrown errors
+                console.log('📊 Academic marks query failed (this is normal for career assessments)');
+            }
 
             // Fetch projects
             const { data: projectsData } = await supabase
@@ -610,6 +626,13 @@ export const useAssessmentResults = () => {
             });
         } catch (err) {
             console.error('Error fetching academic data:', err);
+            // Set empty data to prevent undefined errors
+            setStudentAcademicData({
+                subjectMarks: [],
+                projects: [],
+                experiences: [],
+                education: []
+            });
         }
     };
 
@@ -624,15 +647,31 @@ export const useAssessmentResults = () => {
 
         // Check if we have an attemptId in URL params (database mode)
         const attemptId = searchParams.get('attemptId');
+        console.log('🔥 loadResults called with attemptId:', attemptId);
+        console.log('🔥 Full URL search params:', searchParams.toString());
         
         if (attemptId) {
             // Load results from database - ALWAYS prefer database over localStorage
             try {
                 const attempt = await assessmentService.getAttemptWithResults(attemptId);
                 
+                console.log('🔥🔥🔥 ATTEMPT LOOKUP DEBUG 🔥🔥🔥');
+                console.log('   attempt exists:', !!attempt);
+                console.log('   attempt.results:', attempt?.results);
+                console.log('   attempt.results type:', Array.isArray(attempt?.results) ? 'array' : typeof attempt?.results);
+                console.log('   attempt.results[0]:', attempt?.results?.[0]);
+                console.log('   attempt.results length:', attempt?.results?.length);
+                
                 // Check if we have a result record (even if AI analysis is missing)
-                if (attempt?.results?.[0]) {
-                    const result = attempt.results[0];
+                // Supabase returns results as an ARRAY when using select with relationship
+                // BUT if the relationship is one-to-one, it might return an object instead
+                const result = Array.isArray(attempt?.results) ? attempt.results[0] : attempt?.results;
+                
+                console.log('🔥 Result after normalization:', result);
+                console.log('🔥 Result exists:', !!result);
+                
+                if (result && result.id) {
+                    console.log('🔥 Result found, checking AI analysis...');
                     
                     // If AI analysis exists AND is valid, use it
                     if (result.gemini_results && typeof result.gemini_results === 'object' && Object.keys(result.gemini_results).length > 0) {
@@ -693,17 +732,52 @@ export const useAssessmentResults = () => {
                             return;
                         }
                     } else {
-                        // Result exists but no AI analysis - this happens when Submit saves without AI
-                        // Redirect to assessment test to retake
+                        // Result exists but no AI analysis - show error with retry option
+                        console.log('🔥🔥🔥 NEW CODE: Database result exists but missing AI analysis 🔥🔥🔥');
                         console.log('📊 Database result exists but missing AI analysis');
-                        console.log('   Redirecting to assessment test...');
+                        console.log('   Result ID:', result.id);
+                        console.log('   Attempt ID:', attemptId);
+                        console.log('   gemini_results:', result.gemini_results);
+                        console.log('   Showing error state with retry option...');
                         
-                        navigate('/student/assessment/test');
+                        // Set grade level from attempt
+                        if (attempt.grade_level) {
+                            setGradeLevel(attempt.grade_level);
+                            setGradeLevelFromAttempt(true);
+                            gradeLevelFromAttemptRef.current = true;
+                        }
+                        
+                        console.log('🔥 Setting error message and stopping loading...');
+                        setError('Your assessment was saved successfully, but the AI analysis is missing. Click "Try Again" to generate your personalized career report.');
+                        setLoading(false);
+                        console.log('🔥 Error state set. Should show error screen now, NOT redirect!');
                         return;
                     }
+                } else {
+                    // Attempt exists but no result record found
+                    console.log('🔥🔥🔥 CRITICAL: Attempt exists but NO result record found! 🔥🔥🔥');
+                    console.log('   Attempt ID:', attemptId);
+                    console.log('   Attempt status:', attempt?.status);
+                    console.log('   attempt.results type:', typeof attempt?.results);
+                    console.log('   attempt.results value:', attempt?.results);
+                    console.log('   This should NOT happen - attempt is completed but no result!');
+                    
+                    // Set grade level from attempt
+                    if (attempt?.grade_level) {
+                        setGradeLevel(attempt.grade_level);
+                        setGradeLevelFromAttempt(true);
+                        gradeLevelFromAttemptRef.current = true;
+                    }
+                    
+                    // Show error with retry option
+                    setError('Your assessment was saved but the results are missing. Click "Try Again" to generate your personalized career report.');
+                    setLoading(false);
+                    return;
                 }
             } catch (e) {
-                console.error('Error loading results from database:', e);
+                console.error('🔥 Error in attemptId path:', e);
+                console.error('   This error was caught, execution will continue to latest result path');
+                // Don't return here - let it fall through to latest result path
             }
         }
 

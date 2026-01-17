@@ -113,6 +113,9 @@
 - **Console Logging** → Complete Guide, "Console Logging"
 - **Testing Checklist** → Complete Guide, "Manual Testing Checklist"
 - **Common Issues** → Complete Guide, "Common Issues & Solutions" + Quick Reference
+- **Test Mode Database Save** → [TEST_MODE_DATABASE_SAVE.md](./TEST_MODE_DATABASE_SAVE.md) - Auto-fill saves to database
+- **Test Mode Submit Button** → [TEST_MODE_SUBMIT_BUTTON_FIX.md](./TEST_MODE_SUBMIT_BUTTON_FIX.md) - ✅ FIXED - Submit button now works correctly
+- **Auto-Fill Merge Fix** → [AUTO_FILL_MERGE_FIX.md](./AUTO_FILL_MERGE_FIX.md) - ✅ FIXED - Auto-fill preserves existing answers
 
 ### Environment
 - **localhost** → Complete Guide, "Environment-Specific Behavior"

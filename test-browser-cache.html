@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Cache Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .test {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #ddd;
+            background: #f9f9f9;
+        }
+        .pass {
+            border-left-color: #4CAF50;
+            background: #f1f8f4;
+        }
+        .fail {
+            border-left-color: #f44336;
+            background: #fef1f0;
+        }
+        .status {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .pass .status {
+            color: #4CAF50;
+        }
+        .fail .status {
+            color: #f44336;
+        }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔍 Browser Cache Test</h1>
+        <p>This test helps you verify if your browser is using cached (old) code or new code.</p>
+        
+        <div class="warning">
+            <strong>⚠️ Important:</strong> Open this page in the same browser window where you're testing the assessment app.
+        </div>
+
+        <div id="tests">
+            <div class="test">
+                <div class="status">⏳ Running tests...</div>
+                <p>Please wait...</p>
+            </div>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <button onclick="runTests()">🔄 Run Tests Again</button>
+            <button onclick="clearCache()">🗑️ Clear Cache & Reload</button>
+            <button onclick="window.location.href='http://localhost:3000/student/assessment/test'">🚀 Go to Assessment</button>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #f9f9f9; border-radius: 5px;">
+            <h3>How to Fix Cache Issues:</h3>
+            <ol>
+                <li>Press <code>Ctrl + Shift + R</code> (Windows/Linux) or <code>Cmd + Shift + R</code> (Mac)</li>
+                <li>Or click "Clear Cache & Reload" button above</li>
+                <li>Or open DevTools (F12) → Application → Clear storage → Clear site data</li>
+                <li>Or restart your dev server: <code>npm run dev</code></li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function runTests() {
+            const testsDiv = document.getElementById('tests');
+            testsDiv.innerHTML = '<div class="test"><div class="status">⏳ Running tests...</div></div>';
+
+            setTimeout(() => {
+                let html = '';
+                let allPass = true;
+
+                // Test 1: Check if localStorage has old data
+                const hasOldLocalStorage = localStorage.getItem('assessmentAnswers') !== null;
+                html += `
+                    <div class="test ${hasOldLocalStorage ? 'fail' : 'pass'}">
+                        <div class="status">${hasOldLocalStorage ? '❌ FAIL' : '✅ PASS'}</div>
+                        <strong>Test 1: LocalStorage Check</strong>
+                        <p>${hasOldLocalStorage ? 
+                            'Found old assessment data in localStorage. This should have been removed.' : 
+                            'No old assessment data in localStorage. Good!'
+                        }</p>
+                    </div>
+                `;
+                if (hasOldLocalStorage) allPass = false;
+
+                // Test 2: Check cache storage
+                if ('caches' in window) {
+                    caches.keys().then(cacheNames => {
+                        const hasCaches = cacheNames.length > 0;
+                        html += `
+                            <div class="test ${hasCaches ? 'fail' : 'pass'}">
+                                <div class="status">${hasCaches ? '⚠️ WARNING' : '✅ PASS'}</div>
+                                <strong>Test 2: Cache Storage</strong>
+                                <p>${hasCaches ? 
+                                    `Found ${cacheNames.length} cache(s). These may contain old code.` : 
+                                    'No cache storage found. Good!'
+                                }</p>
+                            </div>
+                        `;
+                        testsDiv.innerHTML = html;
+                    });
+                } else {
+                    html += `
+                        <div class="test pass">
+                            <div class="status">✅ PASS</div>
+                            <strong>Test 2: Cache Storage</strong>
+                            <p>Cache API not available in this browser.</p>
+                        </div>
+                    `;
+                }
+
+                // Test 3: Check if service worker is active
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(registrations => {
+                        const hasServiceWorker = registrations.length > 0;
+                        html += `
+                            <div class="test ${hasServiceWorker ? 'fail' : 'pass'}">
+                                <div class="status">${hasServiceWorker ? '⚠️ WARNING' : '✅ PASS'}</div>
+                                <strong>Test 3: Service Worker</strong>
+                                <p>${hasServiceWorker ? 
+                                    `Found ${registrations.length} service worker(s). These may serve old cached code.` : 
+                                    'No service workers registered. Good!'
+                                }</p>
+                            </div>
+                        `;
+                        testsDiv.innerHTML = html;
+                    });
+                } else {
+                    html += `
+                        <div class="test pass">
+                            <div class="status">✅ PASS</div>
+                            <strong>Test 3: Service Worker</strong>
+                            <p>Service workers not available in this browser.</p>
+                        </div>
+                    `;
+                }
+
+                // Test 4: Check session storage
+                const hasSessionData = sessionStorage.length > 0;
+                html += `
+                    <div class="test ${hasSessionData ? 'fail' : 'pass'}">
+                        <div class="status">${hasSessionData ? '⚠️ INFO' : '✅ PASS'}</div>
+                        <strong>Test 4: Session Storage</strong>
+                        <p>${hasSessionData ? 
+                            `Found ${sessionStorage.length} item(s) in session storage.` : 
+                            'Session storage is empty.'
+                        }</p>
+                    </div>
+                `;
+
+                // Summary
+                html += `
+                    <div class="test ${allPass ? 'pass' : 'fail'}" style="margin-top: 20px; border-left-width: 6px;">
+                        <div class="status" style="font-size: 18px;">${allPass ? '✅ ALL TESTS PASSED' : '⚠️ CACHE ISSUES DETECTED'}</div>
+                        <p><strong>Recommendation:</strong> ${allPass ? 
+                            'Your browser cache looks clean. If you\'re still seeing errors, restart your dev server.' : 
+                            'Clear your browser cache using Ctrl+Shift+R or the button above.'
+                        }</p>
+                    </div>
+                `;
+
+                testsDiv.innerHTML = html;
+            }, 500);
+        }
+
+        function clearCache() {
+            // Clear localStorage
+            localStorage.clear();
+            
+            // Clear sessionStorage
+            sessionStorage.clear();
+            
+            // Clear caches
+            if ('caches' in window) {
+                caches.keys().then(cacheNames => {
+                    return Promise.all(
+                        cacheNames.map(cacheName => caches.delete(cacheName))
+                    );
+                }).then(() => {
+                    alert('✅ Cache cleared! The page will now reload with a hard refresh.');
+                    window.location.reload(true);
+                });
+            } else {
+                alert('✅ Storage cleared! The page will now reload with a hard refresh.');
+                window.location.reload(true);
+            }
+        }
+
+        // Run tests on page load
+        runTests();
+    </script>
+</body>
+</html>
