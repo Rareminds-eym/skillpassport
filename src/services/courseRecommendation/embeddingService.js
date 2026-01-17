@@ -42,10 +42,26 @@ export const generateEmbedding = async (text, skipCache = false) => {
  * @returns {Promise<number[]>} - Embedding vector
  */
 const generateEmbeddingDirect = async (text) => {
+  // Generate a simple hash for the ID
+  const generateSimpleHash = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(36);
+  };
+
   const response = await fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, returnEmbedding: true })
+    body: JSON.stringify({ 
+      text, 
+      id: generateSimpleHash(text),
+      table: 'embedding_cache',
+      returnEmbedding: true 
+    })
   });
 
   if (!response.ok) {

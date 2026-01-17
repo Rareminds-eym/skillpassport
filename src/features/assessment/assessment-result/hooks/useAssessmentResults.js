@@ -281,18 +281,28 @@ export const useAssessmentResults = () => {
 
     // Fetch student profile data from Supabase
     const fetchStudentInfo = async () => {
+        console.log('🔍 ========== FETCH STUDENT INFO START ==========');
         try {
             const { data: { user } } = await supabase.auth.getUser();
+            console.log('👤 Authenticated User:', {
+                id: user?.id,
+                email: user?.email,
+                metadata: user?.user_metadata
+            });
 
             if (user) {
+                console.log('📊 Querying students table with user_id:', user.id);
+                
                 // First, try to fetch student data with relationships
-                // Query students table - skip relationships that don't exist
+                // Query students table - using correct column names
                 let { data: studentData, error: fetchError } = await supabase
                     .from('students')
                     .select(`
                         id, 
-                        name, 
-                        registration_number,
+                        name,
+                        enrollment_number,
+                        admission_number,
+                        roll_number,
                         grade,
                         year,
                         semester,
@@ -301,48 +311,79 @@ export const useAssessmentResults = () => {
                         school_class_id,
                         branch_field,
                         course_name,
+                        college_school_name,
                         grade_start_date
                     `)
                     .eq('user_id', user.id)
                     .maybeSingle();
 
+                console.log('📦 Student Data Query Result:', {
+                    hasData: !!studentData,
+                    hasError: !!fetchError,
+                    studentData: studentData,
+                    error: fetchError
+                });
+
+                if (fetchError) {
+                    console.error('❌ Error fetching student data:', fetchError);
+                    console.error('❌ Error details:', {
+                        message: fetchError.message,
+                        details: fetchError.details,
+                        hint: fetchError.hint,
+                        code: fetchError.code
+                    });
+                }
+
+                if (!studentData) {
+                    console.warn('⚠️ No student data found for user_id:', user.id);
+                    console.warn('⚠️ This could mean:');
+                    console.warn('   1. No student record exists with this user_id');
+                    console.warn('   2. RLS policy is blocking access');
+                    console.warn('   3. The user_id in students table doesn\'t match auth user');
+                }
+
                 // If we got student data, fetch related college/school names separately
                 if (studentData && !fetchError) {
+                    console.log('✅ Student data found! Fetching related organization data...');
+                    
                     if (studentData.college_id) {
-                        const { data: orgData } = await supabase
+                        console.log('🏛️ Fetching college organization:', studentData.college_id);
+                        const { data: orgData, error: orgError } = await supabase
                             .from('organizations')
                             .select('name')
                             .eq('id', studentData.college_id)
                             .maybeSingle();
+                        console.log('🏛️ College org result:', { orgData, orgError });
                         if (orgData) {
                             studentData.colleges = { name: orgData.name };
                         }
                     }
+                    
                     if (studentData.school_id) {
-                        const { data: orgData } = await supabase
+                        console.log('🏫 Fetching school organization:', studentData.school_id);
+                        const { data: orgData, error: orgError } = await supabase
                             .from('organizations')
                             .select('name')
                             .eq('id', studentData.school_id)
                             .maybeSingle();
+                        console.log('🏫 School org result:', { orgData, orgError });
                         if (orgData) {
                             studentData.schools = { name: orgData.name };
                         }
                     }
+                    
                     if (studentData.school_class_id) {
-                        const { data: classData } = await supabase
+                        console.log('📚 Fetching school class:', studentData.school_class_id);
+                        const { data: classData, error: classError } = await supabase
                             .from('school_classes')
                             .select('grade')
                             .eq('id', studentData.school_class_id)
                             .maybeSingle();
+                        console.log('📚 School class result:', { classData, classError });
                         if (classData) {
                             studentData.school_classes = { grade: classData.grade };
                         }
                     }
-                }
-
-                if (fetchError) {
-                    console.error('Error fetching student data:', fetchError);
-                    console.error('Error details:', fetchError.message, fetchError.details, fetchError.hint);
                 }
 
                 console.log('Fetched student data:', studentData);
@@ -358,8 +399,13 @@ export const useAssessmentResults = () => {
                     // Get grade - prioritize students.grade, then school_classes.grade as fallback
                     let studentGrade = studentData.grade || studentData.school_classes?.grade;
                     
+                    // Format grade value
+                    if (studentGrade && studentGrade !== '—') {
+                        // Convert to string for consistent display
+                        studentGrade = studentGrade.toString();
+                    }
                     // If no grade and student is in college, try year or semester
-                    if (!studentGrade && studentData.college_id) {
+                    else if (studentData.college_id) {
                         if (studentData.year) {
                             studentGrade = `Year ${studentData.year}`;
                         } else if (studentData.semester) {
@@ -367,18 +413,29 @@ export const useAssessmentResults = () => {
                         } else {
                             studentGrade = '—';
                         }
-                    } else if (!studentGrade) {
+                    } else {
                         studentGrade = '—';
                     }
                     
                     console.log('Student grade:', studentGrade, 'from students.grade:', studentData.grade, 'from school_classes:', studentData.school_classes?.grade, 'year:', studentData.year, 'semester:', studentData.semester);
                     
-                    // Get institution name - school for school students, college for college students
-                    const institutionName = studentData.schools?.name || studentData.colleges?.name || '—';
-                    const schoolName = studentData.schools?.name || '—';
+                    // Get institution name - prioritize direct column, then relationships
+                    let institutionName = '—';
+                    let schoolName = '—';
                     
-                    console.log('Institution names - school:', studentData.schools?.name, 'college:', studentData.colleges?.name, 'final institution:', institutionName, 'final school:', schoolName);
-                    console.log('Roll numbers - school_roll_no:', studentData.school_roll_no, 'institute_roll_no:', studentData.institute_roll_no, 'university_roll_no:', studentData.university_roll_no);
+                    // Priority 1: Use college_school_name from students table (direct column)
+                    if (studentData.college_school_name && studentData.college_school_name !== '—') {
+                        institutionName = toTitleCase(studentData.college_school_name);
+                        schoolName = toTitleCase(studentData.college_school_name);
+                    }
+                    // Priority 2: Fallback to organizations table relationships
+                    else {
+                        institutionName = studentData.schools?.name || studentData.colleges?.name || '—';
+                        schoolName = studentData.schools?.name || '—';
+                    }
+                    
+                    console.log('Institution names - college_school_name:', studentData.college_school_name, 'school:', studentData.schools?.name, 'college:', studentData.colleges?.name, 'final institution:', institutionName, 'final school:', schoolName);
+                    console.log('Roll numbers - enrollment_number:', studentData.enrollment_number, 'admission_number:', studentData.admission_number, 'roll_number:', studentData.roll_number);
                     console.log('IDs - school_id:', studentData.school_id, 'college_id:', studentData.college_id, 'school_class_id:', studentData.school_class_id);
 
                     // Determine which roll number to use and roll number type
@@ -386,34 +443,26 @@ export const useAssessmentResults = () => {
                     let rollNumberType = 'school'; // default
                     const gradeNum = parseInt(studentGrade);
                     
-                    // Priority 1: Check if student has college_id (college student)
-                    if (studentData.college_id) {
-                        rollNumber = studentData.university_roll_no || '—';
-                        rollNumberType = 'university';
-                    } 
-                    // Priority 2: Check grade number for 11th/12th
-                    else if (!isNaN(gradeNum) && gradeNum >= 11 && gradeNum <= 12) {
-                        rollNumber = studentData.institute_roll_no || '—';
-                        rollNumberType = 'institute';
+                    // Priority 1: Use enrollment_number if available
+                    if (studentData.enrollment_number && studentData.enrollment_number !== '—') {
+                        rollNumber = studentData.enrollment_number;
+                        // Determine type based on student context
+                        if (studentData.college_id) {
+                            rollNumberType = 'university';
+                        } else if (!isNaN(gradeNum) && gradeNum >= 11) {
+                            rollNumberType = 'institute';
+                        } else {
+                            rollNumberType = 'school';
+                        }
                     }
-                    // Priority 3: Check if grade is "12th" or "after12" (string format)
-                    else if (studentGrade && (studentGrade.toString().toLowerCase().includes('12') || studentGrade.toString().toLowerCase().includes('after'))) {
-                        rollNumber = studentData.institute_roll_no || studentData.university_roll_no || '—';
-                        rollNumberType = studentData.university_roll_no ? 'university' : 'institute';
+                    // Priority 2: Fallback to admission_number
+                    else if (studentData.admission_number && studentData.admission_number !== '—') {
+                        rollNumber = studentData.admission_number;
+                        rollNumberType = studentData.college_id ? 'university' : 'school';
                     }
-                    // Priority 4: If no grade but has university_roll_no, assume university student
-                    else if (studentData.university_roll_no && studentData.university_roll_no !== '—') {
-                        rollNumber = studentData.university_roll_no;
-                        rollNumberType = 'university';
-                    }
-                    // Priority 5: If no grade but has institute_roll_no, assume 11th/12th student
-                    else if (studentData.institute_roll_no && studentData.institute_roll_no !== '—') {
-                        rollNumber = studentData.institute_roll_no;
-                        rollNumberType = 'institute';
-                    }
-                    // Default: School students
-                    else {
-                        rollNumber = studentData.school_roll_no || '—';
+                    // Priority 3: Fallback to roll_number
+                    else if (studentData.roll_number && studentData.roll_number !== '—') {
+                        rollNumber = studentData.roll_number;
                         rollNumberType = 'school';
                     }
 
