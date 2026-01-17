@@ -2197,6 +2197,8 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
   const { user, supabase } = auth;
   const now = new Date();
 
+  console.log(`[CheckAccess] Checking subscription access for user ${user.id}`);
+
   // ============================================================================
   // STEP 1: Check for organization license assignment FIRST
   // This allows members assigned by admins to bypass individual subscription check
@@ -2228,6 +2230,12 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
     .eq('user_id', user.id)
     .eq('status', 'active')
     .maybeSingle();
+
+  console.log(`[CheckAccess] Active license check result:`, { 
+    found: !!licenseAssignment, 
+    error: licenseError?.message,
+    status: licenseAssignment?.status 
+  });
 
   if (!licenseError && licenseAssignment) {
     const orgSub = licenseAssignment.organization_subscriptions as any;
@@ -2285,7 +2293,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
   // STEP 1.5: Check if user had a revoked license assignment (show as expired)
   // This ensures members see "expired" status immediately when license is revoked
   // ============================================================================
-  const { data: revokedLicense } = await supabase
+  const { data: revokedLicense, error: revokedError } = await supabase
     .from('license_assignments')
     .select(`
       id,
@@ -2303,6 +2311,12 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
     .order('revoked_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  console.log(`[CheckAccess] Revoked license check result:`, { 
+    found: !!revokedLicense, 
+    error: revokedError?.message,
+    revokedAt: revokedLicense?.revoked_at 
+  });
 
   // ============================================================================
   // STEP 2: Check for individual subscription (original logic)
