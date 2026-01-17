@@ -19,7 +19,7 @@ const AI_MODELS = [
 // Configuration
 const AI_CONFIG = {
   temperature: 0.1,  // Low temperature for consistent, deterministic results
-  maxTokens: 16000,  // Increased from 8000 to handle complete responses
+  maxTokens: 20000,  // Increased from 16000 to ensure streamRecommendation is not truncated
 };
 
 interface OpenRouterResponse {
@@ -103,7 +103,21 @@ export async function analyzeAssessment(
       console.log(`[AI] Success with model: ${model}`);
       
       // Parse and return the JSON response
-      return extractJsonFromResponse(content);
+      const result = extractJsonFromResponse(content);
+      
+      // Validate required fields for after10 students
+      if (assessmentData.gradeLevel === 'after10') {
+        if (!result.streamRecommendation?.recommendedStream || 
+            result.streamRecommendation.recommendedStream === 'N/A') {
+          console.error('[AI] Missing streamRecommendation for after10 student!');
+          console.error('[AI] Result keys:', Object.keys(result));
+          console.error('[AI] streamRecommendation:', result.streamRecommendation);
+          throw new Error('AI response missing required streamRecommendation field for after10 student');
+        }
+        console.log('[AI] ✅ streamRecommendation validated:', result.streamRecommendation.recommendedStream);
+      }
+      
+      return result;
       
     } catch (error) {
       lastError = (error as Error).message;

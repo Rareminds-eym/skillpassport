@@ -26,6 +26,23 @@ export const validateStreamRecommendation = (results) => {
     const ruleStream = ruleBasedStream.recommendedStream;
     const ruleConfidence = ruleBasedStream.confidenceScore;
     
+    // If streamRecommendation is missing or invalid, generate it from rule-based engine
+    if (!aiStream || aiStream === 'N/A' || aiStream === 'null' || aiStream === null) {
+      console.warn('⚠️ streamRecommendation missing from AI response!');
+      console.warn('   Generating from rule-based engine...');
+      
+      results.streamRecommendation = {
+        ...ruleBasedStream,
+        isAfter10: true,
+        source: 'rule-based-fallback',
+        reason: 'AI response did not include streamRecommendation',
+        aiSuggestion: null
+      };
+      
+      console.log('✅ Generated streamRecommendation:', results.streamRecommendation.recommendedStream);
+      return results;
+    }
+    
     console.log('AI Recommendation:', aiStream);
     console.log('Rule-Based Recommendation:', ruleStream, `(${ruleConfidence}% confidence)`);
     
