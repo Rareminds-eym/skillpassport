@@ -32,9 +32,12 @@
 ### Database
 - **Schema Overview** → Complete Guide, Section 5
 - **Table Definitions** → Complete Guide, "Database Schema"
+- **Complete Database Schema** → [DATABASE_SCHEMA_COMPLETE.md](./DATABASE_SCHEMA_COMPLETE.md) - All tables with complete column definitions
 - **Indexes** → Complete Guide, "Database Schema"
 - **Relationships** → Complete Guide, "Database Schema"
 - **Quick Table List** → Quick Reference, "Database Tables"
+- **Real-Time Response Saving** → [REAL_TIME_RESPONSE_SAVING.md](./REAL_TIME_RESPONSE_SAVING.md) - How responses are saved instantly
+- **Where Results Are Stored** → [WHERE_RESULTS_ARE_STORED.md](./WHERE_RESULTS_ARE_STORED.md) - Complete results storage documentation
 
 ### Configuration
 - **Grade Levels** → Complete Guide, "Configuration & Constants"
@@ -50,6 +53,7 @@
 - **Grade Selection** → Complete Guide, "Grade Selection"
 - **After 12th Flow** → [AFTER_12TH_FLOW_EXPLAINED.md](./AFTER_12TH_FLOW_EXPLAINED.md) - Category selection, stream-specific questions
 - **After 10th Flow** → [AFTER_10TH_FLOW_EXPLAINED.md](./AFTER_10TH_FLOW_EXPLAINED.md) - Stream-agnostic with AI stream recommendation
+- **AI Analysis Flow** → [AI_ANALYSIS_ARCHITECTURE.md](./AI_ANALYSIS_ARCHITECTURE.md) - Frontend → Worker → AI → Response
 - **Category Selection** → Complete Guide, "Category/Stream Selection"
 - **Question Loop** → Complete Guide, "Question Loop"
 - **Submission** → Complete Guide, "Submission & Analysis"
@@ -66,6 +70,17 @@
 - **Result Analysis** → Complete Guide, "AI Integration"
 - **API Endpoints** → Complete Guide, "API Endpoints"
 - **Request/Response Format** → Complete Guide, "AI Integration"
+- **AI Analysis Architecture** → [AI_ANALYSIS_ARCHITECTURE.md](./AI_ANALYSIS_ARCHITECTURE.md) - Complete 3-tier flow
+- **Where AI Happens** → AI_ANALYSIS_ARCHITECTURE.md, "Complete Data Flow"
+- **Where AI Generates Questions** → [WHERE_AI_GENERATES_QUESTIONS.md](./WHERE_AI_GENERATES_QUESTIONS.md) - Complete question generation flow
+- **Question Generation Flow** → WHERE_AI_GENERATES_QUESTIONS.md, "Complete Flow Breakdown"
+- **Frontend Processing** → AI_ANALYSIS_ARCHITECTURE.md, "Frontend Processing"
+- **Cloudflare Worker** → AI_ANALYSIS_ARCHITECTURE.md, "Cloudflare Worker Processing"
+- **OpenRouter AI** → AI_ANALYSIS_ARCHITECTURE.md, "OpenRouter AI Processing"
+- **After 10th Stream Logic** → AI_ANALYSIS_ARCHITECTURE.md, "After 10th Stream Recommendation Logic"
+- **Knowledge API Usage** → [KNOWLEDGE_API_USAGE.md](./KNOWLEDGE_API_USAGE.md) - Which sections use knowledge API and why
+- **Which Grade Levels Use Knowledge** → KNOWLEDGE_API_USAGE.md, "Which Grade Levels Use Knowledge API?"
+- **Why Knowledge API During Resume** → KNOWLEDGE_API_USAGE.md, "Why Knowledge API is Called During Resume"
 
 ### Timers
 - **Timer Types** → Complete Guide, "Timer System"
@@ -78,12 +93,19 @@
 - **Resume Process** → Complete Guide, "Resume Process"
 - **Restore State** → Complete Guide, "Resume Process"
 - **Abandoning Attempt** → Complete Guide, "Abandoning Attempt"
+- **Real-Time Saving** → [REAL_TIME_RESPONSE_SAVING.md](./REAL_TIME_RESPONSE_SAVING.md) - Every answer saved instantly
+- **Auto-Save Timer** → REAL_TIME_RESPONSE_SAVING.md, "Auto-Save Timer (Every 30 Seconds)"
+- **localStorage vs Database** → [LOCALSTORAGE_VS_DATABASE_ANALYSIS.md](./LOCALSTORAGE_VS_DATABASE_ANALYSIS.md) - Should we remove localStorage?
+- **localStorage Removal** → [LOCALSTORAGE_REMOVAL_COMPLETE.md](./LOCALSTORAGE_REMOVAL_COMPLETE.md) - ✅ COMPLETED - Database-only storage
 
 ### Restrictions & Validation
 - **6-Month Restriction** → Complete Guide, "6-Month Restriction"
 - **Answer Validation** → Complete Guide, "Answer Validation"
 - **Required Fields** → Complete Guide, "Answer Validation"
 - **Question-Specific Rules** → Complete Guide, "Answer Validation"
+- **Navigation Rules** → [QUESTION_NAVIGATION_RULES.md](./QUESTION_NAVIGATION_RULES.md) - Can students skip questions?
+- **Next Button Disabled** → QUESTION_NAVIGATION_RULES.md, "Navigation Button States"
+- **Validation by Question Type** → QUESTION_NAVIGATION_RULES.md, "Validation Rules by Question Type"
 
 ### Testing & Debugging
 - **Test Mode** → Complete Guide, "Testing & Debug Tools" + Quick Reference

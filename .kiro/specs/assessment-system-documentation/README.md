@@ -15,6 +15,7 @@ This Kiro spec contains complete technical documentation for the assessment syst
 | `ASSESSMENT_QUICK_REFERENCE.md` | Quick lookup reference | 150 | All Technical Staff |
 | `AFTER_12TH_FLOW_EXPLAINED.md` | After 12th specific flow details | ~400 | Developers, Product |
 | `AFTER_10TH_FLOW_EXPLAINED.md` | After 10th specific flow details | ~450 | Developers, Product |
+| `AI_ANALYSIS_ARCHITECTURE.md` | Complete AI analysis flow (3-tier) | ~800 | Developers, AI Agents |
 | `README.md` | This file - navigation guide | - | Everyone |
 | `INDEX.md` | Topic-based navigation index | ~240 | Everyone |
 
@@ -55,6 +56,18 @@ This Kiro spec contains complete technical documentation for the assessment syst
 - ✅ API endpoints reference
 - ✅ Future enhancements roadmap
 - ✅ Glossary of terms
+
+### AI Analysis Architecture Covers:
+- ✅ Complete 3-tier architecture (Frontend → Worker → AI)
+- ✅ Where AI analysis happens (frontend vs worker vs external API)
+- ✅ Frontend data preparation and score calculation
+- ✅ Cloudflare Worker prompt building and API calls
+- ✅ OpenRouter AI processing and model selection
+- ✅ After 10th hybrid stream recommendation (rule-based + AI)
+- ✅ Flat profile detection and handling
+- ✅ Response flow and validation
+- ✅ File locations and code examples
+- ✅ Environment variables and testing
 
 ### Quick Reference Covers:
 - ✅ Quick start instructions
@@ -101,6 +114,9 @@ This Kiro spec contains complete technical documentation for the assessment syst
 - **Timers**: See "Timer System" in Complete Guide
 - **Testing**: See "Testing & Debug Tools" in Complete Guide
 - **Issues**: See "Common Issues & Solutions" in Complete Guide
+- **AI Analysis**: See AI_ANALYSIS_ARCHITECTURE.md for complete flow
+- **After 10th Stream**: See AI_ANALYSIS_ARCHITECTURE.md, "After 10th Stream Recommendation Logic"
+- **Worker Code**: See AI_ANALYSIS_ARCHITECTURE.md, "Cloudflare Worker Processing"
 
 ### By Role
 - **Developer**: Complete Guide → Implementation sections
@@ -111,12 +127,13 @@ This Kiro spec contains complete technical documentation for the assessment syst
 
 ## 📊 Documentation Stats
 
-- **Total Lines**: ~1,900 lines
-- **Sections**: 13 major sections
-- **Code Examples**: 20+ examples
+- **Total Lines**: ~3,500 lines
+- **Files**: 8 documentation files
+- **Sections**: 13+ major sections
+- **Code Examples**: 30+ examples
 - **SQL Definitions**: 6 tables
-- **Diagrams**: 1 Mermaid flow diagram
-- **Tables**: 15+ reference tables
+- **Diagrams**: 3 flow diagrams (Mermaid + ASCII)
+- **Tables**: 20+ reference tables
 
 ## 🔄 Maintenance
 

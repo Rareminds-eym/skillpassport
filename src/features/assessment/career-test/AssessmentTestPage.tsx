@@ -263,7 +263,9 @@ const AssessmentTestPage: React.FC = () => {
   // Submission hook
   const submission = useAssessmentSubmission();
   
-  // AI Questions Hook - loads aptitude and knowledge questions for after10/after12/college
+  // AI Questions Hook
+  // - after10: Loads ONLY aptitude questions (stream-agnostic, no knowledge)
+  // - after12/college/higher_secondary: Loads BOTH aptitude AND knowledge questions
   const {
     aiQuestions,
     loading: questionsLoading,
