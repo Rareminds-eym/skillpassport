@@ -460,21 +460,47 @@ export const getPrograms = async (collegeId: string): Promise<Array<{id: string;
 };
 
 
-// Update mentor note with educator response
+// Update mentor note with educator response (ONE-TIME ONLY)
 export const updateMentorNoteResponse = async (
   noteId: string,
   updates: {
-    educator_response?: string;
+    educator_response: string;
     action_taken?: string;
     next_steps?: string;
-    status?: string;
     last_updated_by: string;
   }
 ): Promise<MentorNote> => {
+  // First, fetch the current note to validate
+  const { data: currentNote, error: fetchError } = await supabase
+    .from('college_mentor_notes')
+    .select('*')
+    .eq('id', noteId)
+    .single();
+
+  if (fetchError) {
+    console.error('Error fetching note for validation:', fetchError);
+    throw new Error('Failed to fetch note for validation');
+  }
+
+  // Validation 1: Check if status is 'pending'
+  if (currentNote.status !== 'pending') {
+    throw new Error(`Cannot respond: Note status must be 'pending' (current: '${currentNote.status}')`);
+  }
+
+  // Validation 2: Check if response already exists
+  if (currentNote.educator_response) {
+    throw new Error('Cannot respond: Response already submitted and is read-only');
+  }
+
+  // Update with auto-status change to 'acknowledged'
   const { data, error } = await supabase
     .from('college_mentor_notes')
     .update({
-      ...updates,
+      educator_response: updates.educator_response,
+      action_taken: updates.action_taken,
+      next_steps: updates.next_steps,
+      status: 'acknowledged', // Auto-update status
+      last_updated_by: updates.last_updated_by,
       last_updated_at: new Date().toISOString(),
     })
     .eq('id', noteId)
@@ -489,7 +515,7 @@ export const updateMentorNoteResponse = async (
   return data;
 };
 
-// Update mentor note with admin feedback
+// Update mentor note with admin feedback (ONLY when acknowledged)
 export const updateMentorNoteFeedback = async (
   noteId: string,
   updates: {
@@ -501,10 +527,33 @@ export const updateMentorNoteFeedback = async (
     last_updated_by: string;
   }
 ): Promise<MentorNote> => {
+  // First, fetch the current note to validate
+  const { data: currentNote, error: fetchError } = await supabase
+    .from('college_mentor_notes')
+    .select('*')
+    .eq('id', noteId)
+    .single();
+
+  if (fetchError) {
+    console.error('Error fetching note for validation:', fetchError);
+    throw new Error('Failed to fetch note for validation');
+  }
+
+  // Validation: Check if status is 'acknowledged'
+  if (currentNote.status !== 'acknowledged') {
+    throw new Error(`Cannot give feedback: Note must be in 'acknowledged' status (current: '${currentNote.status}')`);
+  }
+
+  // Update with auto-status change to 'in_progress'
   const { data, error } = await supabase
     .from('college_mentor_notes')
     .update({
-      ...updates,
+      admin_feedback: updates.admin_feedback,
+      priority: updates.priority,
+      follow_up_required: updates.follow_up_required,
+      follow_up_date: updates.follow_up_date,
+      status: 'in_progress', // Auto-update status
+      last_updated_by: updates.last_updated_by,
       last_updated_at: new Date().toISOString(),
     })
     .eq('id', noteId)
@@ -519,11 +568,28 @@ export const updateMentorNoteFeedback = async (
   return data;
 };
 
-// Mark note as resolved
+// Mark note as resolved (ONLY when in_progress)
 export const resolveNote = async (
   noteId: string,
   resolvedBy: string
 ): Promise<MentorNote> => {
+  // First, fetch the current note to validate
+  const { data: currentNote, error: fetchError } = await supabase
+    .from('college_mentor_notes')
+    .select('*')
+    .eq('id', noteId)
+    .single();
+
+  if (fetchError) {
+    console.error('Error fetching note for validation:', fetchError);
+    throw new Error('Failed to fetch note for validation');
+  }
+
+  // Validation: Check if status is 'in_progress'
+  if (currentNote.status !== 'in_progress') {
+    throw new Error(`Cannot resolve: Note must be in 'in_progress' status (current: '${currentNote.status}')`);
+  }
+
   const { data, error } = await supabase
     .from('college_mentor_notes')
     .update({
@@ -538,6 +604,32 @@ export const resolveNote = async (
 
   if (error) {
     console.error('Error resolving mentor note:', error);
+    throw error;
+  }
+
+  return data;
+};
+
+// Escalate note (CAN be done at any time)
+export const escalateNote = async (
+  noteId: string,
+  escalationReason: string,
+  escalatedBy: string
+): Promise<MentorNote> => {
+  const { data, error } = await supabase
+    .from('college_mentor_notes')
+    .update({
+      status: 'escalated',
+      admin_feedback: escalationReason,
+      last_updated_by: escalatedBy,
+      last_updated_at: new Date().toISOString(),
+    })
+    .eq('id', noteId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error escalating mentor note:', error);
     throw error;
   }
 

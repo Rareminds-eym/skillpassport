@@ -473,13 +473,14 @@ const MentorAllocation: React.FC = () => {
         return;
       }
 
-      // Use the hook's addMentorNote function which will find the allocation ID automatically
+      // IMPORTANT: Admin-created notes MUST always start with status = 'pending'
+      // This ensures the workflow starts correctly: pending → acknowledged → in_progress → completed
       await addMentorNote('', mentorUuid, studentUuid, {
         title: `Intervention - ${interventionType}`,
         note_text: noteText,
         outcome: noteOutcome,
         intervention_type: interventionType,
-        status: noteStatus,
+        status: 'pending', // ALWAYS 'pending' for admin-created notes
         is_private: isPrivateNote,
         priority: notePriority,
         follow_up_required: followUpRequired,
@@ -493,7 +494,7 @@ const MentorAllocation: React.FC = () => {
       setNoteOutcome("");
       setInterventionType('academic');
       setIsPrivateNote(false);
-      setNoteStatus('pending');
+      setNoteStatus('pending'); // Reset to pending
       setNotePriority('medium');
       setFollowUpRequired(false);
       setFollowUpDate('');
@@ -513,7 +514,6 @@ const MentorAllocation: React.FC = () => {
 
   const handleSaveFeedback = async (feedback: {
     admin_feedback?: string;
-    status?: string;
     priority?: string;
     follow_up_required?: boolean;
     follow_up_date?: string;
@@ -521,11 +521,16 @@ const MentorAllocation: React.FC = () => {
     if (!selectedNoteForFeedback) return;
 
     try {
+      // Server-side validation will check if status is 'acknowledged'
+      // and auto-transition to 'in_progress'
       await updateNoteFeedback(selectedNoteForFeedback.id, feedback);
       setShowFeedbackModal(false);
       setSelectedNoteForFeedback(null);
-    } catch (error) {
+      toast.success('Feedback saved successfully');
+    } catch (error: any) {
       console.error('Error saving feedback:', error);
+      const errorMessage = error?.message || 'Failed to save feedback. Please try again.';
+      toast.error(errorMessage);
       throw error;
     }
   };
@@ -534,11 +539,16 @@ const MentorAllocation: React.FC = () => {
     if (!selectedNoteForFeedback) return;
 
     try {
+      // Server-side validation will check if status is 'in_progress'
+      // before allowing resolution
       await markNoteResolved(selectedNoteForFeedback.id);
       setShowFeedbackModal(false);
       setSelectedNoteForFeedback(null);
-    } catch (error) {
+      toast.success('Note resolved successfully');
+    } catch (error: any) {
       console.error('Error resolving note:', error);
+      const errorMessage = error?.message || 'Failed to resolve note. Please try again.';
+      toast.error(errorMessage);
       throw error;
     }
   };
@@ -1078,7 +1088,7 @@ const MentorAllocation: React.FC = () => {
                         if (!mentorUuid) return null;
                         
                         const mentorNotes = dynamicNotes.filter(n => n.mentor_id === mentorUuid);
-                        const notesWithResponse = mentorNotes.filter(n => n.educator_response || n.action_taken);
+                        const notesWithResponse = mentorNotes.filter(n => (n.educator_response || n.action_taken) && n.status !== 'completed');
                         const pendingNotes = mentorNotes.filter(n => !n.educator_response && !n.action_taken && n.status === 'pending');
                         
                         if (notesWithResponse.length > 0) {
@@ -1169,7 +1179,7 @@ const MentorAllocation: React.FC = () => {
                           // No current period, show total across all active allocations
                           const currentLoad = getMentorCurrentLoadLegacy(mentor.id);
                           const maxCapacity = activeAllocations.length > 0 
-                            ? Math.max(...activeAllocations.map(a => a.capacity))
+                            ? Math.max(...activeAllocations.map(a => a.period?.default_mentor_capacity || a.capacity || 15))
                             : 15; // Default capacity
                           
                           return (
