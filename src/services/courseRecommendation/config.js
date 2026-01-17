@@ -3,8 +3,8 @@
  * Central configuration for the course recommendation system.
  */
 
-// API URL for embedding generation (uses career-api Cloudflare worker)
-export const EMBEDDING_API_URL = import.meta.env.VITE_CAREER_API_URL;
+// API URL for embedding generation (uses embedding-api Cloudflare worker)
+export const EMBEDDING_API_URL = import.meta.env.VITE_EMBEDDING_API_URL || import.meta.env.VITE_CAREER_API_URL;
 
 // Maximum courses to return in recommendations (Requirement 3.2)
 export const MAX_RECOMMENDATIONS = 10;

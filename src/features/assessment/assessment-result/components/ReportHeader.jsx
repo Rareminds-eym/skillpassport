@@ -8,6 +8,37 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
     console.log('ReportHeader gradeLevel:', gradeLevel);
     console.log('ReportHeader studentInfo:', studentInfo);
     
+    // Format stream display name
+    const formatStreamDisplay = (stream) => {
+        if (!stream || stream === '—') return '—';
+        
+        // Convert stream IDs to friendly labels
+        const streamMap = {
+            'middle_school': 'Middle School (Grades 6-8)',
+            'high_school': 'High School (Grades 9-10)',
+            'highschool': 'High School (Grades 9-10)',
+            'higher_secondary': 'Higher Secondary (Grades 11-12)',
+            'after10': 'After 10th',
+            'after12': 'After 12th',
+            'college': 'College',
+            'university': 'University'
+        };
+        
+        // Check if it's a stream ID that needs conversion
+        const lowerStream = stream.toLowerCase();
+        if (streamMap[lowerStream]) {
+            return streamMap[lowerStream];
+        }
+        
+        // If it's already formatted (contains parentheses), return as is
+        if (stream.includes('(') && stream.includes(')')) {
+            return stream;
+        }
+        
+        // Otherwise, convert to title case (SCIENCE → Science, COMMERCE → Commerce)
+        return stream.charAt(0).toUpperCase() + stream.slice(1).toLowerCase();
+    };
+    
     // Determine the label and value for the grade/course field based on grade level
     const getGradeCourseField = () => {
         const level = gradeLevel?.toLowerCase();
@@ -68,7 +99,7 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
     const infoItems = [
         { label: 'Student Name', value: studentInfo.name },
         { label: rollNumberLabel, value: studentInfo.regNo },
-        { label: 'Programme/Stream', value: studentInfo.stream || studentInfo.branchField || '—' },
+        { label: 'Programme/Stream', value: formatStreamDisplay(studentInfo.stream || studentInfo.branchField || '—') },
         { label: gradeCourseField.label, value: gradeCourseField.value },
         { label: institutionLabel, value: studentInfo.college || studentInfo.school, truncate: true },
         { label: 'Assessment Date', value: new Date().toLocaleDateString() },

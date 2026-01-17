@@ -1,12 +1,14 @@
 /**
  * Recommendation Service
  * Main service for generating course recommendations from assessment results.
+ * Uses optimized batch processing and multi-layer caching.
  */
 
 import { supabase } from '../../lib/supabaseClient';
 import { cosineSimilarity } from '../../utils/vectorUtils';
 import { buildProfileText } from './profileBuilder';
 import { generateEmbedding } from './embeddingService';
+import { generateProfileAndSkillEmbeddings } from './embeddingBatch';
 import { fetchCoursesWithEmbeddings, fetchCoursesBySkillType, fetchBasicCourses } from './courseRepository';
 import { 
   calculateRelevanceScore, 
