@@ -1938,7 +1938,7 @@ const StudentDashboard = () => {
             </LampContainer>
 
             {/* Institution Card - Show organization info if student belongs to one */}
-            {institutionInfo && (
+            {/* {institutionInfo && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1978,7 +1978,7 @@ const StudentDashboard = () => {
                   </CardContent>
                 </Card>
               </motion.div>
-            )}
+            )} */}
 
             {/* 3x3 Grid Section */}
             <motion.div

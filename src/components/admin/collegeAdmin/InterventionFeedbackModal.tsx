@@ -7,6 +7,7 @@ import {
   ChatBubbleLeftRightIcon,
   UserIcon,
 } from '@heroicons/react/24/outline';
+import { ConfirmModal } from '../../shared/ConfirmModal';
 
 interface InterventionFeedbackModalProps {
   note: {
@@ -49,34 +50,42 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
   onResolve,
 }) => {
   const [adminFeedback, setAdminFeedback] = useState(note.admin_feedback || '');
-  const [status, setStatus] = useState(note.status);
   const [priority, setPriority] = useState(note.priority || 'medium');
   const [followUpRequired, setFollowUpRequired] = useState(note.follow_up_required || false);
   const [followUpDate, setFollowUpDate] = useState(note.follow_up_date || '');
   const [saving, setSaving] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  // Automatically disable follow-up when status is completed
-  React.useEffect(() => {
-    if (status === 'completed') {
-      setFollowUpRequired(false);
-      setFollowUpDate('');
-    }
-  }, [status]);
+  // Determine if admin can give feedback (only when status = 'acknowledged')
+  const canGiveFeedback = note.status === 'acknowledged';
+  
+  // Determine if admin can resolve (only when status = 'in_progress')
+  const canResolve = note.status === 'in_progress';
+  
+  // Check if educator has responded
+  const hasEducatorResponse = note.educator_response || note.action_taken || note.next_steps;
 
   const handleSave = async () => {
+    // Validate that we can give feedback
+    if (!canGiveFeedback) {
+      alert(`Cannot give feedback: Note must be in 'acknowledged' status (current: '${note.status}')`);
+      return;
+    }
+
     setSaving(true);
     try {
+      // Server will auto-transition status from 'acknowledged' to 'in_progress'
       await onSave({
         admin_feedback: adminFeedback || undefined,
-        status,
         priority,
         follow_up_required: followUpRequired,
         follow_up_date: followUpRequired ? followUpDate : undefined,
       });
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving feedback:', error);
-      alert('Failed to save feedback. Please try again.');
+      const errorMessage = error?.message || 'Failed to save feedback. Please try again.';
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -85,17 +94,26 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
   const handleResolve = async () => {
     if (!onResolve) return;
     
-    if (!confirm('Mark this intervention as resolved? This will set the status to completed.')) {
+    // Validate that we can resolve
+    if (!canResolve) {
+      alert(`Cannot resolve: Note must be in 'in_progress' status (current: '${note.status}')`);
       return;
     }
+    
+    // Show confirmation modal instead of native confirm
+    setShowConfirmModal(true);
+  };
 
+  const handleConfirmResolve = async () => {
     setSaving(true);
     try {
-      await onResolve();
+      // Server will validate status and transition to 'completed'
+      await onResolve!();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error resolving note:', error);
-      alert('Failed to resolve note. Please try again.');
+      const errorMessage = error?.message || 'Failed to resolve note. Please try again.';
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -111,7 +129,27 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
     return colors[priorityLevel as keyof typeof colors] || colors.medium;
   };
 
-  const hasEducatorResponse = note.educator_response || note.action_taken || note.next_steps;
+  const getStatusBadge = (status: string) => {
+    const colors = {
+      pending: 'bg-amber-100 text-amber-700',
+      acknowledged: 'bg-cyan-100 text-cyan-700',
+      in_progress: 'bg-blue-100 text-blue-700',
+      completed: 'bg-emerald-100 text-emerald-700',
+      escalated: 'bg-red-100 text-red-700',
+    };
+    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-700';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels = {
+      pending: 'Pending',
+      acknowledged: 'Acknowledged',
+      in_progress: 'In Progress',
+      completed: 'Completed',
+      escalated: 'Escalated',
+    };
+    return labels[status as keyof typeof labels] || status;
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -169,7 +207,7 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
                 <ClockIcon className="h-3 w-3" />
                 {new Date(note.note_date).toLocaleDateString()}
               </span>
-              {note.follow_up_required && note.follow_up_date && (
+              {note.follow_up_required && note.follow_up_date && note.status !== 'completed' && (
                 <span className="flex items-center gap-1 text-orange-600">
                   <ExclamationTriangleIcon className="h-3 w-3" />
                   Follow-up: {new Date(note.follow_up_date).toLocaleDateString()}
@@ -213,13 +251,37 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
                 </p>
               )}
             </div>
-          ) : (
+          ) : note.status === 'pending' ? (
             <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
               <div className="flex items-center gap-2">
                 <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" />
                 <p className="text-sm text-yellow-800">
                   Educator has not responded yet. They will be notified to review this intervention.
                 </p>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Current Status Display */}
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <p className="text-sm font-medium text-gray-700 mb-2">Current Status</p>
+            <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(note.status)}`}>
+              {getStatusLabel(note.status)}
+            </span>
+          </div>
+
+          {/* Workflow Guidance - Only show if not completed */}
+          {note.status !== 'completed' && !canGiveFeedback && !canResolve && (
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <div className="flex items-start gap-2">
+                <ExclamationTriangleIcon className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-blue-900">Workflow Status</p>
+                  <p className="text-sm text-blue-800 mt-1">
+                    {note.status === 'pending' && 'Waiting for educator to respond. You can give feedback once they acknowledge this note.'}
+                    {note.status === 'escalated' && 'This note has been escalated. Please review and take appropriate action.'}
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -234,7 +296,16 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
 
           {/* Admin Feedback Form */}
           <div className="border-t pt-6 space-y-4">
-            <h3 className="font-semibold text-gray-900">Provide Feedback to Educator</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900">Provide Feedback to Educator</h3>
+              {canGiveFeedback && (
+                <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                  ✓ Ready for feedback
+                </span>
+              )}
+            </div>
+
+
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -244,85 +315,69 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
                 value={adminFeedback}
                 onChange={(e) => setAdminFeedback(e.target.value)}
                 rows={4}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Provide guidance, acknowledgment, or additional instructions..."
+                disabled={!canGiveFeedback}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                placeholder={canGiveFeedback ? "Provide guidance, acknowledgment, or additional instructions..." : "Feedback can be provided once educator responds"}
               />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Update Priority
-                </label>
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Update Status
-                </label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="pending">Pending (Send Back)</option>
-                  <option value="acknowledged">Acknowledged</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="action_taken">Action Taken</option>
-                  <option value="completed">Completed (Resolved)</option>
-                  <option value="escalated">Escalated</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Follow-up Section */}
-            {status === 'completed' ? (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-green-700">
-                  <CheckCircleIcon className="h-5 w-5" />
-                  <span className="text-sm font-medium">✓ This intervention will be marked as resolved and closed</span>
-                </div>
-                <p className="text-xs text-green-600 mt-1 ml-7">
-                  Follow-up is not needed for completed interventions
+              {canGiveFeedback && (
+                <p className="text-xs text-gray-500 mt-1">
+                  After saving, status will automatically change to "In Progress"
                 </p>
-              </div>
-            ) : (
+              )}
+            </div>
+
+            {/* Show administrative controls only if no educator response yet */}
+            {!hasEducatorResponse && (
               <>
                 <div>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={followUpRequired}
-                      onChange={(e) => setFollowUpRequired(e.target.checked)}
-                      className="h-4 w-4 text-indigo-600 rounded"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Requires follow-up</span>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Update Priority
                   </label>
+                  <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value)}
+                    disabled={!canGiveFeedback}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
                 </div>
 
-                {followUpRequired && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Follow-up Date
-                    </label>
-                    <input
-                      type="date"
-                      value={followUpDate}
-                      onChange={(e) => setFollowUpDate(e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
+                {/* Follow-up Section */}
+                {note.status !== 'completed' && (
+                  <>
+                    <div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={followUpRequired}
+                          onChange={(e) => setFollowUpRequired(e.target.checked)}
+                          disabled={!canGiveFeedback}
+                          className="h-4 w-4 text-indigo-600 rounded disabled:cursor-not-allowed"
+                        />
+                        <span className="text-sm font-medium text-gray-700">Requires follow-up</span>
+                      </label>
+                    </div>
+
+                    {followUpRequired && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Follow-up Date
+                        </label>
+                        <input
+                          type="date"
+                          value={followUpDate}
+                          onChange={(e) => setFollowUpDate(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                          disabled={!canGiveFeedback}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -332,7 +387,7 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
         {/* Footer */}
         <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-between">
           <div>
-            {note.status !== 'completed' && onResolve && (
+            {canResolve && onResolve && (
               <button
                 onClick={handleResolve}
                 disabled={saving}
@@ -342,6 +397,19 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
                 Mark as Resolved
               </button>
             )}
+            {!canResolve && note.status !== 'completed' && (
+              <div className="text-sm text-gray-500">
+                {note.status === 'pending' && 'Waiting for educator response'}
+                {note.status === 'acknowledged' && 'Give feedback to proceed'}
+                {note.status === 'escalated' && 'Note is escalated'}
+              </div>
+            )}
+            {note.status === 'completed' && (
+              <div className="flex items-center gap-2 text-green-600">
+                <CheckCircleIcon className="h-5 w-5" />
+                <span className="text-sm font-medium">Intervention Completed</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -349,25 +417,39 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
               disabled={saving}
               className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
-              Cancel
+              {note.status === 'completed' ? 'Close' : 'Cancel'}
             </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {saving ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Saving...
-                </>
-              ) : (
-                'Save Feedback'
-              )}
-            </button>
+            {canGiveFeedback && (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Saving...
+                  </>
+                ) : (
+                  'Save Feedback'
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
+      
+      {/* Custom Confirm Modal */}
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirmResolve}
+        title="Mark as Resolved"
+        message="Mark this intervention as resolved? This will set the status to completed."
+        confirmText="Mark as Resolved"
+        cancelText="Cancel"
+        variant="info"
+      />
     </div>
   );
 };
