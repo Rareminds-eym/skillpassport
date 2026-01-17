@@ -502,14 +502,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   // Prepare data for insertion - explicitly extract each field
   const riasecScores = geminiResults?.riasec?.scores || null;
   const riasecCode = geminiResults?.riasec?.code || null;
-  const aptitudeScores = geminiResults?.aptitude?.scores || null;
-  const aptitudeOverall = geminiResults?.aptitude?.overallScore ?? null;
   const bigfiveScores = geminiResults?.bigFive || null;
-  const workValuesScores = geminiResults?.workValues?.scores || null;
-  const employabilityScores = geminiResults?.employability?.skillScores || null;
-  const employabilityReadiness = geminiResults?.employability?.overallReadiness || null;
-  const knowledgeScore = geminiResults?.knowledge?.score ?? null;
-  const knowledgeDetails = geminiResults?.knowledge || null;
   const careerFit = geminiResults?.careerFit || null;
   const skillGap = geminiResults?.skillGap || null;
   const skillGapCourses = geminiResults?.skillGapCourses || null;
@@ -519,10 +512,28 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   const finalNote = geminiResults?.finalNote || null;
   const overallSummary = geminiResults?.overallSummary || null;
 
-  console.log('📊 Extracted values:');
+  // Grade-level specific fields - only extract for comprehensive assessments
+  const isSimplifiedAssessment = gradeLevel === 'middle' || gradeLevel === 'highschool';
+  
+  // Aptitude - available for all grade levels (adaptive for middle/high school)
+  const aptitudeScores = geminiResults?.aptitude?.scores || null;
+  const aptitudeOverall = geminiResults?.aptitude?.overallScore ?? null;
+  
+  // These fields are ONLY for comprehensive assessments (after10, after12, college, higher_secondary)
+  const workValuesScores = isSimplifiedAssessment ? null : (geminiResults?.workValues?.scores || null);
+  const employabilityScores = isSimplifiedAssessment ? null : (geminiResults?.employability?.skillScores || null);
+  const employabilityReadiness = isSimplifiedAssessment ? null : (geminiResults?.employability?.overallReadiness || null);
+  const knowledgeScore = isSimplifiedAssessment ? null : (geminiResults?.knowledge?.score ?? null);
+  const knowledgeDetails = isSimplifiedAssessment ? null : (geminiResults?.knowledge || null);
+
+  console.log('📊 Extracted values (grade:', gradeLevel, ', simplified:', isSimplifiedAssessment, '):');
   console.log('  riasecScores:', riasecScores);
   console.log('  riasecCode:', riasecCode);
   console.log('  bigfiveScores:', bigfiveScores);
+  console.log('  aptitudeScores:', aptitudeScores);
+  console.log('  workValuesScores:', workValuesScores, isSimplifiedAssessment ? '(excluded for simplified)' : '');
+  console.log('  employabilityScores:', employabilityScores, isSimplifiedAssessment ? '(excluded for simplified)' : '');
+  console.log('  knowledgeScore:', knowledgeScore, isSimplifiedAssessment ? '(excluded for simplified)' : '');
   console.log('  careerFit exists:', !!careerFit);
 
   const dataToInsert = {
@@ -1306,12 +1317,15 @@ export const completeAttemptWithoutAI = async (attemptId, studentId, streamId, g
   
   const { data: results, error: resultsError } = await supabase
     .from('personal_assessment_results')
-    .insert(dataToInsert)
+    .upsert(dataToInsert, {
+      onConflict: 'attempt_id',
+      ignoreDuplicates: false
+    })
     .select()
     .single();
 
   if (resultsError) {
-    console.error('❌ Error inserting minimal result:', resultsError);
+    console.error('❌ Error upserting minimal result:', resultsError);
     throw resultsError;
   }
 

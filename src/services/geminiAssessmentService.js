@@ -325,7 +325,7 @@ const calculateAptitudeScore = (answers) => {
  * Prepare assessment data for analysis
  * Transforms raw answers into structured format for the AI
  */
-const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12') => {
+const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12', preCalculatedScores = null) => {
   const { 
     riasecQuestions, 
     aptitudeQuestions, 
@@ -351,6 +351,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log('🔍 RIASEC Extraction DEBUG:');
   console.log('  - RIASEC prefix:', riasecPrefix);
   console.log('  - Looking for keys starting with:', `${riasecPrefix}_`);
+  console.log('  - Grade level:', gradeLevel);
   
   // First, try to extract using question bank
   Object.entries(answers).forEach(([key, value]) => {
@@ -366,20 +367,18 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
           categoryMapping: question.categoryMapping,
           type: question.type
         };
+        console.log(`  ✅ Extracted with question bank: ${questionId}`);
       } else {
-        // FALLBACK: Extract RIASEC type from question ID (e.g., 'r1' -> 'R', 'i2' -> 'I')
-        // This ensures we capture answers even if questionBanks is empty
-        const riasecType = questionId.charAt(0).toUpperCase();
-        if (['R', 'I', 'A', 'S', 'E', 'C'].includes(riasecType)) {
-          riasecAnswers[questionId] = {
-            question: `RIASEC ${riasecType} question ${questionId}`,
-            answer: value,
-            type: riasecType,
-            // For rating questions, the answer IS the score
-            categoryMapping: null
-          };
-          console.log(`Extracted RIASEC answer without question bank: ${questionId} = ${value}`);
-        }
+        // FALLBACK: For middle/high school questions (ms1, hs1, etc.) or standard RIASEC (r1, i1, etc.)
+        // Middle/high school questions have categoryMapping in the question bank, so we need the question
+        // For now, extract the answer and let the AI analyze it
+        riasecAnswers[questionId] = {
+          question: `Interest question ${questionId}`,
+          answer: value,
+          type: 'rating', // Middle/high school use rating scale
+          categoryMapping: null // Will be analyzed by AI
+        };
+        console.log(`  ⚠️ Extracted without question bank (fallback): ${questionId} = ${value}`);
       }
     }
   });
@@ -387,10 +386,12 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log('RIASEC answers extracted:', Object.keys(riasecAnswers).length);
   if (Object.keys(riasecAnswers).length === 0) {
     console.error('❌ NO RIASEC ANSWERS EXTRACTED! This will cause zero scores.');
-    console.error('   Check if answer keys match expected format:', `${riasecPrefix}_r1`, `${riasecPrefix}_r2`, 'etc.');
+    console.error('   Check if answer keys match expected format:', `${riasecPrefix}_ms1`, `${riasecPrefix}_hs1`, `${riasecPrefix}_r1`, 'etc.');
+    console.error('   Available answer keys:', Object.keys(answers).filter(k => k.includes('interest') || k.includes('riasec')).slice(0, 10));
   } else {
     console.log('✅ RIASEC answers extracted successfully');
     console.log('   Sample extracted keys:', Object.keys(riasecAnswers).slice(0, 5));
+    console.log('   Sample extracted values:', Object.values(riasecAnswers).slice(0, 2));
   }
 
   // Extract Aptitude answers - IMPROVED: Handle AI-generated questions with correct answers
