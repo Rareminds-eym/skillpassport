@@ -54,6 +54,14 @@ export const getStudentByEmail = async (email) => {
           state,
           organization_type
         ),
+        college:organizations!students_college_id_fkey (
+          id,
+          name,
+          code,
+          city,
+          state,
+          organization_type
+        ),
         university_colleges:university_college_id (
           id,
           name,

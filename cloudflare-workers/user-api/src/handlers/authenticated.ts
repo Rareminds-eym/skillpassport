@@ -65,7 +65,20 @@ export async function handleCreateStudent(request: Request, env: Env): Promise<R
         collegeId = college.id;
         institutionType = 'college';
       }
+    } else if (userRole === 'school_admin') {
+      // Look up school from organizations table for school_admin
+      const { data: school } = await supabaseAdmin
+        .from('organizations')
+        .select('id')
+        .eq('organization_type', 'school')
+        .or(`admin_id.eq.${userId},email.ilike.${userEmail}`)
+        .maybeSingle();
+      if (school?.id) {
+        schoolId = school.id;
+        institutionType = 'school';
+      }
     } else {
+      // For educators, try organizationId first, then school_educators table
       schoolId = currentUserData?.organizationId || null;
       const { data: educatorData } = await supabaseAdmin
         .from('school_educators')

@@ -18,6 +18,10 @@ import {
     type BillingDashboard,
 } from '@/services/organization/organizationBillingService';
 import {
+    organizationMemberService,
+    type OrganizationMember,
+} from '@/services/organization/organizationMemberService';
+import {
     calculateBulkPricing,
     organizationSubscriptionService,
     type OrganizationSubscription,
@@ -36,13 +40,18 @@ interface UseOrganizationSubscriptionOptions {
 interface UseOrganizationSubscriptionReturn {
   subscriptions: OrganizationSubscription[];
   licensePools: LicensePool[];
+  members: OrganizationMember[];
+  memberCounts: { students: number; educators: number; total: number };
   billingData: BillingDashboard | null;
   pendingInvitations: OrganizationInvitation[];
   isLoading: boolean;
+  isMembersLoading: boolean;
   error: string | null;
   fetchSubscriptions: () => Promise<void>;
+  fetchMembers: (memberType?: 'educator' | 'student' | 'all', searchQuery?: string) => Promise<void>;
   calculatePricing: (basePricePerSeat: number, seatCount: number) => PricingBreakdown;
   refresh: () => Promise<void>;
+  refreshMembers: () => Promise<void>;
 }
 
 
@@ -55,9 +64,16 @@ export function useOrganizationSubscription(
   
   const [subscriptions, setSubscriptions] = useState<OrganizationSubscription[]>([]);
   const [licensePools, setLicensePools] = useState<LicensePool[]>([]);
+  const [members, setMembers] = useState<OrganizationMember[]>([]);
+  const [memberCounts, setMemberCounts] = useState<{ students: number; educators: number; total: number }>({
+    students: 0,
+    educators: 0,
+    total: 0,
+  });
   const [billingData, setBillingData] = useState<BillingDashboard | null>(null);
   const [pendingInvitations, setPendingInvitations] = useState<OrganizationInvitation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMembersLoading, setIsMembersLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const fetchSubscriptions = useCallback(async () => {
@@ -85,6 +101,33 @@ export function useOrganizationSubscription(
       console.error('Failed to fetch license pools:', err);
     }
   }, [organizationId]);
+  
+  const fetchMembers = useCallback(async (
+    memberType: 'educator' | 'student' | 'all' = 'all',
+    searchQuery?: string
+  ) => {
+    if (!organizationId) return;
+    setIsMembersLoading(true);
+    try {
+      const result = await organizationMemberService.fetchOrganizationMembers({
+        organizationId,
+        organizationType,
+        memberType,
+        includeAssignmentStatus: true,
+        searchQuery,
+        limit: 500, // Fetch up to 500 members
+      });
+      setMembers(result.members);
+      
+      // Also fetch member counts
+      const counts = await organizationMemberService.getMemberCounts(organizationId, organizationType);
+      setMemberCounts(counts);
+    } catch (err) {
+      console.error('Failed to fetch members:', err);
+    } finally {
+      setIsMembersLoading(false);
+    }
+  }, [organizationId, organizationType]);
   
   const fetchBillingData = useCallback(async () => {
     if (!organizationId) return;
@@ -114,14 +157,19 @@ export function useOrganizationSubscription(
     return calculateBulkPricing(basePricePerSeat, seatCount);
   }, []);
   
+  const refreshMembers = useCallback(async () => {
+    await fetchMembers();
+  }, [fetchMembers]);
+  
   const refresh = useCallback(async () => {
     await Promise.all([
       fetchSubscriptions(),
       fetchLicensePools(),
+      fetchMembers(),
       fetchBillingData(),
       fetchInvitations(),
     ]);
-  }, [fetchSubscriptions, fetchLicensePools, fetchBillingData, fetchInvitations]);
+  }, [fetchSubscriptions, fetchLicensePools, fetchMembers, fetchBillingData, fetchInvitations]);
   
   useEffect(() => {
     if (autoFetch && organizationId) {
@@ -132,14 +180,22 @@ export function useOrganizationSubscription(
   return {
     subscriptions,
     licensePools,
+    members,
+    memberCounts,
     billingData,
     pendingInvitations,
     isLoading,
+    isMembersLoading,
     error,
     fetchSubscriptions,
+    fetchMembers,
     calculatePricing: calculatePricingFn,
     refresh,
+    refreshMembers,
   };
 }
 
 export default useOrganizationSubscription;
+
+// Re-export types for convenience
+export type { OrganizationMember } from '@/services/organization/organizationMemberService';

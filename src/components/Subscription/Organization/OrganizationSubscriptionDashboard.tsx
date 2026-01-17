@@ -7,6 +7,8 @@
 
 import { CreditCard, LayoutDashboard, Mail, Settings, Users } from 'lucide-react';
 import { memo, useCallback, useState } from 'react';
+import BillingDashboard from './BillingDashboard';
+import InvitationManager from './InvitationManager';
 import LicensePoolManager from './LicensePoolManager';
 import MemberAssignments from './MemberAssignments';
 import SubscriptionOverview from './SubscriptionOverview';
@@ -82,6 +84,7 @@ interface OrganizationDetails {
 }
 
 interface OrganizationSubscriptionDashboardProps {
+  organizationId: string;
   organizationName: string;
   organizationType: 'school' | 'college' | 'university';
   organizationDetails?: OrganizationDetails;
@@ -103,11 +106,15 @@ interface OrganizationSubscriptionDashboardProps {
   onUnassignLicenses: (memberIds: string[]) => void;
   onTransferLicense: (fromMemberId: string, toMemberId: string) => void;
   onViewMemberHistory: (memberId: string) => void;
+  onRemoveMember?: (memberId: string, memberType: 'educator' | 'student') => void;
+  onMemberAdded?: () => void;
 }
 
 function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashboardProps) {
   const {
+    organizationId,
     organizationName,
+    organizationType,
     organizationDetails,
     subscriptions,
     licensePools,
@@ -127,6 +134,8 @@ function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashbo
     onUnassignLicenses,
     onTransferLicense,
     onViewMemberHistory,
+    onRemoveMember,
+    onMemberAdded,
   } = props;
 
   const [activeTab, setActiveTab] = useState<TabId>('overview');
@@ -183,24 +192,32 @@ function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashbo
             onUnassign={onUnassignLicenses}
             onTransfer={onTransferLicense}
             onViewHistory={onViewMemberHistory}
+            onRemoveMember={onRemoveMember}
+            onMemberAdded={onMemberAdded}
             isLoading={isLoading}
           />
         );
       case 'billing':
         return (
-          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-            <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="font-semibold text-gray-900 mb-2">Billing Dashboard</h3>
-            <p className="text-gray-500">Coming soon - View invoices, payment history, and cost projections.</p>
-          </div>
+          <BillingDashboard
+            organizationId={organizationId}
+            organizationType={organizationType}
+            isLoading={isLoading}
+          />
         );
       case 'invitations':
         return (
-          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-            <Mail className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="font-semibold text-gray-900 mb-2">Invitation Manager</h3>
-            <p className="text-gray-500">Coming soon - Send and manage member invitations.</p>
-          </div>
+          <InvitationManager
+            organizationId={organizationId}
+            organizationType={organizationType}
+            licensePools={licensePools.map(p => ({
+              id: p.id,
+              poolName: p.poolName,
+              memberType: p.memberType,
+              availableSeats: p.availableSeats,
+            }))}
+            isLoading={isLoading}
+          />
         );
       default:
         return null;
