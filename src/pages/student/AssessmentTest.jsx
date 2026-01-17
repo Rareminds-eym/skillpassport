@@ -441,8 +441,8 @@ const AssessmentTest = () => {
                 0
             );
             
-            // For after10, after12, and college - they use AI-powered questions
-            const usesAIQuestions = ['after10', 'after12', 'college'].includes(gradeLevel);
+            // For after10, higher_secondary, after12, and college - they use AI-powered questions
+            const usesAIQuestions = ['after10', 'higher_secondary', 'after12', 'college'].includes(gradeLevel);
             
             if (totalQuestions === 0 && !usesAIQuestions) {
                 console.warn(`No questions found for grade level: ${gradeLevel}`);
@@ -461,7 +461,7 @@ const AssessmentTest = () => {
         } catch (err) {
             console.error('Failed to load questions from database:', err);
             // For AI-powered grade levels, don't show error - they can proceed
-            const usesAIQuestions = ['after10', 'after12', 'college'].includes(gradeLevel);
+            const usesAIQuestions = ['after10', 'higher_secondary', 'after12', 'college'].includes(gradeLevel);
             if (!usesAIQuestions) {
                 setQuestionsError(err.message);
             }
@@ -683,12 +683,12 @@ const AssessmentTest = () => {
     const [aiQuestions, setAiQuestions] = useState({ aptitude: null, knowledge: null });
     const [aiQuestionsLoading, setAiQuestionsLoading] = useState(false);
 
-    // Load AI questions for after10, after12 AND college students
+    // Load AI questions for after10, higher_secondary, after12 AND college students
     useEffect(() => {
         const loadAIQuestions = async () => {
             // Only require gradeLevel and studentStream - studentId is optional for saving
-            // Support 'after10', 'after12' and 'college' grade levels
-            if ((gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'college') && studentStream) {
+            // Support 'after10', 'higher_secondary', 'after12' and 'college' grade levels
+            if ((gradeLevel === 'after10' || gradeLevel === 'higher_secondary' || gradeLevel === 'after12' || gradeLevel === 'college') && studentStream) {
                 setAiQuestionsLoading(true);
                 try {
                     console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, studentStream, 'studentId:', studentId || 'not set yet');
@@ -722,8 +722,8 @@ const AssessmentTest = () => {
             correct: q.correct_answer || q.correct // Map 'correct_answer' to 'correct'
         });
 
-        // For after10, after12 AND college grade levels, use AI-powered questions
-        if (gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'college') {
+        // For after10, higher_secondary, after12 AND college grade levels, use AI-powered questions
+        if (gradeLevel === 'after10' || gradeLevel === 'higher_secondary' || gradeLevel === 'after12' || gradeLevel === 'college') {
             if (sectionId === 'aptitude') {
                 if (aiQuestionsLoading) {
                     console.log('⏳ AI aptitude questions still loading...');
@@ -866,56 +866,97 @@ const AssessmentTest = () => {
             ];
         }
 
-        // For higher secondary (grades 11-12), show comprehensive assessment with stream focus
+        // For higher secondary (grades 11-12), show comprehensive assessment (same as after12)
+        // Students have already chosen their stream, so use full assessment with AI-generated aptitude & knowledge
         if (gradeLevel === 'higher_secondary') {
             return [
                 {
-                    id: 'hs_interest_explorer',
-                    title: 'Interest Explorer',
+                    id: 'riasec',
+                    title: 'Career Interests',
                     icon: <Heart className="w-6 h-6 text-rose-500" />,
-                    description: "Discover what activities and subjects truly excite you.",
+                    description: "Discover what types of work environments and activities appeal to you most.",
                     color: "rose",
-                    questions: getQuestionsForSection('hs_interest_explorer'),  // Load from database
-                    instruction: "Answer honestly based on your real preferences, not what others expect."
+                    questions: getQuestionsForSection('riasec'),
+                    responseScale: [
+                        { value: 1, label: "Strongly Dislike" },
+                        { value: 2, label: "Dislike" },
+                        { value: 3, label: "Neutral" },
+                        { value: 4, label: "Like" },
+                        { value: 5, label: "Strongly Like" }
+                    ],
+                    instruction: "Rate how much you would LIKE or DISLIKE each activity."
                 },
                 {
-                    id: 'hs_strengths_character',
-                    title: 'Strengths & Character',
-                    icon: <Award className="w-6 h-6 text-amber-500" />,
-                    description: "Identify your personal strengths and character traits.",
-                    color: "amber",
-                    questions: getQuestionsForSection('hs_strengths_character'),  // Load from database
-                    responseScale: highSchoolRatingScale,
-                    instruction: "Rate each: 1 = not me, 2 = a bit, 3 = mostly, 4 = strongly me"
-                },
-                {
-                    id: 'hs_learning_preferences',
-                    title: 'Learning & Work Preferences',
-                    icon: <Users className="w-6 h-6 text-blue-500" />,
-                    description: "Understand how you work, learn, and contribute best.",
-                    color: "blue",
-                    questions: getQuestionsForSection('hs_learning_preferences'),  // Load from database
-                    instruction: "Select the options that best describe you."
-                },
-                {
-                    id: 'hs_aptitude_sampling',
-                    title: 'Aptitude Sampling',
-                    icon: <Zap className="w-6 h-6 text-purple-500" />,
-                    description: "Rate your experience with different types of tasks.",
+                    id: 'bigfive',
+                    title: 'Big Five Personality',
+                    icon: <Users className="w-6 h-6 text-purple-500" />,
+                    description: "Understand your work style, approach to tasks, and how you interact with others.",
                     color: "purple",
-                    questions: getQuestionsForSection('hs_aptitude_sampling'),  // Load from database
-                    responseScale: aptitudeRatingScale,
-                    instruction: "After each task, rate: Ease 1–4, Enjoyment 1–4"
+                    questions: getQuestionsForSection('bigfive'),
+                    responseScale: [
+                        { value: 1, label: "Very Inaccurate" },
+                        { value: 2, label: "Moderately Inaccurate" },
+                        { value: 3, label: "Neither" },
+                        { value: 4, label: "Moderately Accurate" },
+                        { value: 5, label: "Very Accurate" }
+                    ],
+                    instruction: "How accurately does each statement describe you?"
                 },
                 {
-                    id: 'adaptive_aptitude',
-                    title: 'Adaptive Aptitude Test',
-                    icon: <img src="/RMLogo.webp" alt="RM Logo" className="w-6 h-6 object-contain" />,
-                    description: "An intelligent test that adapts to your ability level for accurate aptitude measurement.",
+                    id: 'values',
+                    title: 'Work Values & Motivators',
+                    icon: <Target className="w-6 h-6 text-indigo-500" />,
+                    description: "Identify what drives your career satisfaction and choices.",
                     color: "indigo",
-                    questions: [], // Questions are generated dynamically by the adaptive engine
-                    isAdaptive: true, // Flag to indicate this is the adaptive aptitude section
-                    instruction: "Answer each question carefully. The test will adapt to your performance level."
+                    questions: getQuestionsForSection('values'),
+                    responseScale: [
+                        { value: 1, label: "Not Important" },
+                        { value: 2, label: "Slightly Important" },
+                        { value: 3, label: "Moderately Important" },
+                        { value: 4, label: "Very Important" },
+                        { value: 5, label: "Extremely Important" }
+                    ],
+                    instruction: "How important is each factor in your ideal career?"
+                },
+                {
+                    id: 'employability',
+                    title: 'Employability Skills',
+                    icon: <TrendingUp className="w-6 h-6 text-green-500" />,
+                    description: "Assess your job-readiness and 21st-century skills.",
+                    color: "green",
+                    questions: getQuestionsForSection('employability'),
+                    responseScale: [
+                        { value: 1, label: "Not Like Me" },
+                        { value: 2, label: "Slightly" },
+                        { value: 3, label: "Somewhat" },
+                        { value: 4, label: "Mostly" },
+                        { value: 5, label: "Very Much Like Me" }
+                    ],
+                    instruction: "How well does each statement describe you?"
+                },
+                {
+                    id: 'aptitude',
+                    title: 'Multi-Aptitude',
+                    icon: <Brain className="w-6 h-6 text-amber-500" />,
+                    description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
+                    color: "amber",
+                    questions: getQuestionsForSection('aptitude'),
+                    isTimed: true,
+                    timeLimit: 15 * 60, // Fallback shared timer
+                    isAptitude: true,
+                    individualTimeLimit: 60, // 1 minute per question
+                    instruction: "Choose the correct answer. You have 1 minute per question."
+                },
+                {
+                    id: 'knowledge',
+                    title: 'Stream Knowledge',
+                    icon: <BookOpen className="w-6 h-6 text-blue-500" />,
+                    description: "Test your understanding of core concepts in your field.",
+                    color: "blue",
+                    questions: getQuestionsForSection('knowledge'),
+                    isTimed: true,
+                    timeLimit: 30 * 60, // 30 minutes in seconds
+                    instruction: "Choose the best answer for each question."
                 }
             ];
         }
@@ -2482,8 +2523,8 @@ const AssessmentTest = () => {
                                 >
                                     {currentSection.title}
                                 </motion.h2>
-                                {/* AI-Powered badge for after10/after12/college grade levels */}
-                                {['after10', 'after12', 'college'].includes(gradeLevel) && (
+                                {/* AI-Powered badge for after10/higher_secondary/after12/college grade levels */}
+                                {['after10', 'higher_secondary', 'after12', 'college'].includes(gradeLevel) && (
                                     <motion.div
                                         initial={{ opacity: 0, scale: 0.8 }}
                                         animate={{ opacity: 1, scale: 1 }}

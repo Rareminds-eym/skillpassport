@@ -231,7 +231,7 @@ export const useAssessment = () => {
   }, [currentAttempt?.id]);
 
   // Update progress
-  const updateProgress = useCallback(async (sectionIndex, questionIndex, sectionTimings, timerRemaining = null, elapsedTime = null, allResponses = null) => {
+  const updateProgress = useCallback(async (sectionIndex, questionIndex, sectionTimings, timerRemaining = null, elapsedTime = null, allResponses = null, aptitudeQuestionTimer = null) => {
     if (!currentAttempt?.id) return { success: false, error: 'No active attempt' };
 
     try {
@@ -241,7 +241,8 @@ export const useAssessment = () => {
         sectionTimings,
         timerRemaining,
         elapsedTime,
-        allResponses
+        allResponses,
+        aptitudeQuestionTimer
       });
       return { success: true };
     } catch (err) {

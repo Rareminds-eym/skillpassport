@@ -244,6 +244,11 @@ export const updateAttemptProgress = async (attemptId, progress) => {
     updateData.elapsed_time = progress.elapsedTime;
   }
 
+  // Include aptitude_question_timer if provided (for aptitude section per-question timer)
+  if (progress.aptitudeQuestionTimer !== undefined && progress.aptitudeQuestionTimer !== null) {
+    updateData.aptitude_question_timer = progress.aptitudeQuestionTimer;
+  }
+
   // Include adaptive_aptitude_session_id if provided (for adaptive section)
   if (progress.adaptiveAptitudeSessionId) {
     updateData.adaptive_aptitude_session_id = progress.adaptiveAptitudeSessionId;

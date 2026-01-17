@@ -868,13 +868,13 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log('Keys starting with riasec_:', riasecKeys.length, riasecKeys.slice(0, 5));
 
   // ============================================================================
-  // RULE-BASED STREAM RECOMMENDATION (For After 10th students)
+  // RULE-BASED STREAM RECOMMENDATION (For After 10th and After 12th students)
   // ============================================================================
   let ruleBasedStreamHint = null;
   
-  if (gradeLevel === 'after10') {
+  if (gradeLevel === 'after10' || gradeLevel === 'after12') {
     try {
-      console.log('🎯 Calculating rule-based stream recommendation for After 10th student...');
+      console.log(`🎯 Calculating rule-based stream recommendation for ${gradeLevel} student...`);
       
       // Calculate RIASEC scores from answers for rule-based engine
       const riasecScores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
