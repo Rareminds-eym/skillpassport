@@ -1,15 +1,15 @@
-// {
-//   "mcpServers": {
-//     "supabase": {
-//       "url": "https://mcp.supabase.com/mcp?project_ref=dpooleduinyyzxgrcwko",
-//       "headers": {
-//         "Authorization": "Bearer sbp_e931fa33346724d0ad8c66a86605fd854225bb02"
-//       },
-//       "disabled": false,
-//       "autoApprove": [
-//         "execute_sql",
-//         "apply_migration"
-//       ]
-//     }
-//   }
-// }
+{
+  "mcpServers": {
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=dpooleduinyyzxgrcwko",
+      "headers": {
+        "Authorization": "Bearer sbp_e931fa33346724d0ad8c66a86605fd854225bb02"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "execute_sql",
+        "apply_migration"
+      ]
+    }
+  }
+}

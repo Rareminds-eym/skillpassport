@@ -48,6 +48,8 @@
 - **Complete Journey** → Complete Guide, Section 3 (Mermaid diagram)
 - **Step-by-Step** → Complete Guide, "Detailed Step-by-Step Flow"
 - **Grade Selection** → Complete Guide, "Grade Selection"
+- **After 12th Flow** → [AFTER_12TH_FLOW_EXPLAINED.md](./AFTER_12TH_FLOW_EXPLAINED.md) - Category selection, stream-specific questions
+- **After 10th Flow** → [AFTER_10TH_FLOW_EXPLAINED.md](./AFTER_10TH_FLOW_EXPLAINED.md) - Stream-agnostic with AI stream recommendation
 - **Category Selection** → Complete Guide, "Category/Stream Selection"
 - **Question Loop** → Complete Guide, "Question Loop"
 - **Submission** → Complete Guide, "Submission & Analysis"

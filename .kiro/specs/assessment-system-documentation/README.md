@@ -13,7 +13,10 @@ This Kiro spec contains complete technical documentation for the assessment syst
 | `requirements.md` | User stories and acceptance criteria | ~300 | Product/Tech Leads |
 | `ASSESSMENT_SYSTEM_COMPLETE_GUIDE.md` | Comprehensive technical guide | 1,466 | Developers, AI Agents |
 | `ASSESSMENT_QUICK_REFERENCE.md` | Quick lookup reference | 150 | All Technical Staff |
+| `AFTER_12TH_FLOW_EXPLAINED.md` | After 12th specific flow details | ~400 | Developers, Product |
+| `AFTER_10TH_FLOW_EXPLAINED.md` | After 10th specific flow details | ~450 | Developers, Product |
 | `README.md` | This file - navigation guide | - | Everyone |
+| `INDEX.md` | Topic-based navigation index | ~240 | Everyone |
 
 ## 🚀 Quick Start
 
@@ -68,7 +71,8 @@ This Kiro spec contains complete technical documentation for the assessment syst
 
 ### Assessment Flow
 - Grade selection (Middle School → College)
-- Category/Stream selection (After 12th)
+- Category/Stream selection (After 12th only)
+- Stream-agnostic assessment (After 10th with AI stream recommendation)
 - Multi-section assessment (RIASEC, Big Five, Aptitude, etc.)
 - Resume capability (save & restore progress)
 - Real-time persistence (auto-save every 10s)
