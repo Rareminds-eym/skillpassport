@@ -1056,6 +1056,7 @@ interface CollegeCurriculumBuilderProps {
   assessmentTypes?: AssessmentType[];
   status?: "draft" | "submitted" | "pending_approval" | "approved" | "published" | "archived" | "rejected";
   loading?: boolean;
+  isRealTimeConnected?: boolean;
   searchQuery?: string;
   setSearchQuery?: (value: string) => void;
   // Handlers (adapted for college)
@@ -1939,13 +1940,24 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               )}
             </div>
 
-            {/* Status Badges */}
-            {status === "published" && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
-                <CheckCircleIcon className="h-4 w-4" />
-                Published
-              </span>
-            )}
+            {/* Status Badges and Live Updates Indicator */}
+            <div className="flex items-center gap-3">
+              {/* Live Updates Status Indicator */}
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-50 border">
+                <div className={`w-2 h-2 rounded-full ${props.isRealTimeConnected ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                <span className="text-xs text-gray-600">
+                  {props.isRealTimeConnected ? 'Live Updates' : 'Connecting...'}
+                </span>
+              </div>
+
+              {/* Status Badge */}
+              {status === "published" && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
+                  <CheckCircleIcon className="h-4 w-4" />
+                  Published
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>

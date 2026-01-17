@@ -285,21 +285,24 @@ class CurriculumApprovalService {
   /**
    * Get approval requests for university admin
    */
-  async getApprovalRequests(_universityId: string, filters?: {
+  async getApprovalRequests(universityId: string, filters?: {
     status?: string;
     collegeId?: string;
     departmentId?: string;
     limit?: number;
   }): Promise<{ success: boolean; data?: CurriculumApprovalDashboard[]; error?: string }> {
     try {
+      console.log('🔍 Fetching approval requests for university:', universityId);
+      
       let query = supabase
         .from('curriculum_approval_dashboard')
         .select('*')
+        .eq('university_id', universityId)
         .order('request_date', { ascending: false });
 
       // Apply filters
       if (filters?.status) {
-        query = query.eq('status', filters.status);  // Use existing status column
+        query = query.eq('status', filters.status);
       }
       if (filters?.collegeId) {
         query = query.eq('college_id', filters.collegeId);
@@ -311,37 +314,42 @@ class CurriculumApprovalService {
         query = query.limit(filters.limit);
       }
 
+      console.log('📊 Query filters:', { universityId, filters });
+
       const { data, error } = await query;
       
       if (error) {
-        console.error('Error fetching approval requests:', error);
+        console.error('❌ Error fetching approval requests:', error);
         return { success: false, error: error.message };
       }
 
+      console.log('✅ Raw data from database:', data);
+
       const approvalRequests: CurriculumApprovalDashboard[] = (data || []).map(item => ({
-        request_id: item.curriculum_id, // Using curriculum_id as request_id for simplicity
+        request_id: item.curriculum_id,
         curriculum_id: item.curriculum_id,
-        academic_year: item.academic_year,
-        course_name: item.course_name,
-        course_code: item.course_code,
-        semester: item.semester,
+        academic_year: item.academic_year || '',
+        course_name: item.course_name || '',
+        course_code: item.course_code || '',
+        semester: item.semester || 1,
         department_name: item.department_name || '',
         program_name: item.program_name || '',
         college_name: item.college_name || '',
         requester_name: item.requester_name || '',
         requester_email: item.requester_email || '',
-        request_date: item.request_date,
+        request_date: item.request_date || item.created_at || new Date().toISOString(),
         published_date: item.published_date,
         request_message: item.request_message,
-        request_status: item.status, // Use existing status column
+        request_status: item.status || 'draft',
         review_notes: item.review_notes,
         review_date: item.review_date,
         reviewer_name: item.reviewer_name,
       }));
 
+      console.log('✅ Processed approval requests:', approvalRequests.length);
       return { success: true, data: approvalRequests };
     } catch (error: any) {
-      console.error('Error in getApprovalRequests:', error);
+      console.error('❌ Error in getApprovalRequests:', error);
       return { success: false, error: error.message };
     }
   }
@@ -349,20 +357,25 @@ class CurriculumApprovalService {
   /**
    * Get approval statistics for university admin
    */
-  async getApprovalStatistics(_universityId: string): Promise<{ success: boolean; data?: ApprovalStatistics; error?: string }> {
+  async getApprovalStatistics(universityId: string): Promise<{ success: boolean; data?: ApprovalStatistics; error?: string }> {
     try {
+      console.log('📊 Fetching approval statistics for university:', universityId);
+      
       const { data, error } = await supabase
         .from('curriculum_approval_dashboard')
-        .select('status'); // Use existing status column
+        .select('status')
+        .eq('university_id', universityId);
       
       if (error) {
-        console.error('Error fetching approval statistics:', error);
+        console.error('❌ Error fetching approval statistics:', error);
         return { success: false, error: error.message };
       }
 
+      console.log('✅ Raw statistics data:', data);
+
       const stats = (data || []).reduce((acc, item) => {
         acc.total++;
-        switch (item.status) { // Use existing status column
+        switch (item.status) {
           case 'pending_approval':
             acc.pending++;
             break;
@@ -379,9 +392,10 @@ class CurriculumApprovalService {
         return acc;
       }, { total: 0, pending: 0, approved: 0, rejected: 0, published: 0 });
 
+      console.log('✅ Processed statistics:', stats);
       return { success: true, data: stats };
     } catch (error: any) {
-      console.error('Error in getApprovalStatistics:', error);
+      console.error('❌ Error in getApprovalStatistics:', error);
       return { success: false, error: error.message };
     }
   }

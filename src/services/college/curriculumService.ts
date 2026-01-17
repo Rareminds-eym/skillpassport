@@ -69,15 +69,50 @@ export interface CurriculumWithDetails extends CollegeCurriculum {
 // Get current user's college ID
 async function getCurrentUserCollegeId(): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user) {
+    console.log('❌ No authenticated user found');
+    return null;
+  }
 
-  const { data: lecturer } = await supabase
+  console.log(`🔍 Getting college ID for user: ${user.email}`);
+
+  // First try to get from users table (for college admins)
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('organizationId, role')
+    .eq('id', user.id)
+    .single();
+
+  if (userError) {
+    console.error('❌ Error fetching user data:', userError);
+    return null;
+  }
+
+  if (userData?.organizationId && userData?.role === 'college_admin') {
+    console.log(`✅ Found college ID from users table: ${userData.organizationId}`);
+    return userData.organizationId;
+  }
+
+  // Fallback: try college_lecturers table (for lecturers)
+  const { data: lecturer, error: lecturerError } = await supabase
     .from('college_lecturers')
     .select('collegeId')
     .eq('user_id', user.id)
     .single();
 
-  return lecturer?.collegeId || null;
+  if (lecturerError) {
+    console.log('ℹ️ User not found in college_lecturers table (this is normal for college admins)');
+  }
+
+  const collegeId = lecturer?.collegeId || null;
+  
+  if (collegeId) {
+    console.log(`✅ Found college ID from college_lecturers table: ${collegeId}`);
+  } else {
+    console.log('❌ No college ID found for user');
+  }
+
+  return collegeId;
 }
 
 export const curriculumService = {
@@ -154,6 +189,8 @@ export const curriculumService = {
    */
   async getCurriculumById(id: string): Promise<{ success: boolean; data?: CurriculumWithDetails; error?: any }> {
     try {
+      console.log(`🔍 Fetching curriculum with ID: ${id}`);
+      
       // Get curriculum with department, program names, and course details
       const { data: curriculum, error: curriculumError } = await supabase
         .from('college_curriculums')
@@ -166,7 +203,12 @@ export const curriculumService = {
         .eq('id', id)
         .single();
 
-      if (curriculumError) throw curriculumError;
+      if (curriculumError) {
+        console.error('❌ Error fetching curriculum:', curriculumError);
+        throw curriculumError;
+      }
+
+      console.log(`✅ Curriculum fetched - Status: ${curriculum.status}`);
 
       // Get semester from course mapping
       const { data: mapping } = await supabase
@@ -183,7 +225,12 @@ export const curriculumService = {
         .eq('curriculum_id', id)
         .order('order_index');
 
-      if (unitsError) throw unitsError;
+      if (unitsError) {
+        console.error('❌ Error fetching units:', unitsError);
+        throw unitsError;
+      }
+
+      console.log(`✅ Units fetched: ${units?.length || 0} units`);
 
       // Get outcomes
       const { data: outcomes, error: outcomesError } = await supabase
@@ -191,7 +238,12 @@ export const curriculumService = {
         .select('*')
         .eq('curriculum_id', id);
 
-      if (outcomesError) throw outcomesError;
+      if (outcomesError) {
+        console.error('❌ Error fetching outcomes:', outcomesError);
+        throw outcomesError;
+      }
+
+      console.log(`✅ Outcomes fetched: ${outcomes?.length || 0} outcomes`);
 
       const result: CurriculumWithDetails = {
         ...curriculum,
@@ -206,6 +258,7 @@ export const curriculumService = {
 
       return { success: true, data: result };
     } catch (error: any) {
+      console.error('❌ Error in getCurriculumById:', error);
       return {
         success: false,
         error: {
