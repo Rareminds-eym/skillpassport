@@ -51,6 +51,7 @@ import { LoadingScreen } from './components/screens/LoadingScreen';
 import { AnalyzingScreen } from './components/screens/AnalyzingScreen';
 import { ProgressHeader } from './components/layout/ProgressHeader';
 import { QuestionLayout } from './components/layout/QuestionLayout';
+import { TestModeControls } from './components/layout/TestModeControls';
 
 // Shared Components (from parent assessment feature)
 // @ts-ignore - JSX components
@@ -396,7 +397,37 @@ const AssessmentTestPage: React.FC = () => {
         aiQuestions,
         flow.selectedCategory
       );
-      setSections(builtSections);
+      
+      // TASK 10.5: Update section configuration with question counts
+      // Update section.questions array and questionCount when AI questions load
+      const updatedSections = builtSections.map(section => {
+        if (section.id === 'aptitude' && aiQuestions?.aptitude) {
+          return {
+            ...section,
+            questions: aiQuestions.aptitude,
+            questionCount: aiQuestions.aptitude.length
+          };
+        }
+        if (section.id === 'knowledge' && aiQuestions?.knowledge) {
+          return {
+            ...section,
+            questions: aiQuestions.knowledge,
+            questionCount: aiQuestions.knowledge.length
+          };
+        }
+        return {
+          ...section,
+          questionCount: section.questions?.length || 0
+        };
+      });
+      
+      setSections(updatedSections);
+      
+      console.log('📊 Sections built with question counts:', updatedSections.map(s => ({
+        id: s.id,
+        title: s.title,
+        questionCount: s.questionCount
+      })));
     }
   }, [flow.gradeLevel, flow.studentStream, aiQuestions, flow.selectedCategory]);
   
@@ -569,6 +600,38 @@ const AssessmentTestPage: React.FC = () => {
     }
   }, [adaptiveAptitude.loading, adaptiveAptitude.currentQuestion, flow.showSectionIntro, flow.currentSectionIndex, sections]);
   
+  // TASK 10.3: Automatic screen transition when AI questions finish loading
+  // Transition from loading to section intro when questions load
+  useEffect(() => {
+    const currentSection = sections[flow.currentSectionIndex];
+    
+    // Only apply to aptitude and knowledge sections
+    const isAptitudeSection = currentSection?.id === 'aptitude';
+    const isKnowledgeSection = currentSection?.id === 'knowledge';
+    
+    if (!isAptitudeSection && !isKnowledgeSection) {
+      return;
+    }
+    
+    // If we're on section intro and questions just finished loading
+    if (flow.showSectionIntro && !questionsLoading) {
+      // Check if questions are available
+      const hasQuestions = isAptitudeSection 
+        ? (aiQuestions?.aptitude && aiQuestions.aptitude.length > 0)
+        : (aiQuestions?.knowledge && aiQuestions.knowledge.length > 0);
+      
+      if (hasQuestions) {
+        console.log('✅ AI questions loaded, ready to start section:', currentSection?.id);
+        // Questions are loaded, user can now click "Start Section"
+        // No automatic transition - wait for user to click the button
+      } else if (questionsError) {
+        // Handle error state - show error message
+        console.error('❌ Error loading questions:', questionsError);
+        flow.setError(questionsError);
+      }
+    }
+  }, [questionsLoading, aiQuestions, questionsError, flow.showSectionIntro, flow.currentSectionIndex, sections, flow]);
+  
   // Link adaptive aptitude session to assessment attempt when session is created
   useEffect(() => {
     const linkAdaptiveSession = async () => {
@@ -602,10 +665,12 @@ const AssessmentTestPage: React.FC = () => {
     if (flow.elapsedTime > 0 && flow.elapsedTime % 10 === 0) {
       const currentSection = sections[flow.currentSectionIndex];
       const timerRemaining = currentSection?.isTimed ? flow.timeRemaining : null;
+      const aptitudeQuestionTimer = currentSection?.isAptitude ? flow.aptitudeQuestionTimer : null;
       
       console.log('⏱️ Auto-saving timer state:', {
         elapsedTime: flow.elapsedTime,
         timerRemaining,
+        aptitudeQuestionTimer,
         sectionIndex: flow.currentSectionIndex
       });
       
@@ -615,12 +680,14 @@ const AssessmentTestPage: React.FC = () => {
         flow.sectionTimings,
         timerRemaining,
         flow.elapsedTime,
-        flow.answers
+        flow.answers,
+        aptitudeQuestionTimer
       );
     }
   }, [
     flow.elapsedTime,
     flow.timeRemaining,
+    flow.aptitudeQuestionTimer,
     flow.currentSectionIndex,
     flow.currentQuestionIndex,
     flow.sectionTimings,
@@ -681,12 +748,13 @@ const AssessmentTestPage: React.FC = () => {
     flow.setGradeLevel(level);
     
     // Determine next screen based on grade level
-    // after12 ONLY: Show category selection (Science/Commerce/Arts)
-    // after10, college, and below: Skip category selection, go directly to assessment
-    if (level === 'after12') {
-      // Show category selection ONLY for after12 students
+    // after12 and higher_secondary: Show category selection (Science/Commerce/Arts)
+    // after10, college, and below: Skip category selection
+    if (level === 'after12' || level === 'higher_secondary') {
+      // Show category selection for after12 AND higher_secondary students
+      // They need to select their stream (Science/Commerce/Arts) for AI question generation
       flow.setCurrentScreen('category_selection');
-    } else if (level === 'after10' || level === 'higher_secondary') {
+    } else if (level === 'after10') {
       // After 10th (11th grade) students skip category selection - use 'general' stream
       // The AI analysis will recommend the best stream based on their assessment results
       flow.setStudentStream('general');
@@ -730,16 +798,26 @@ const AssessmentTestPage: React.FC = () => {
   const handleCategorySelect = useCallback(async (category: string) => {
     flow.setSelectedCategory(category);
     
-    // Skip stream selection - go directly to assessment
-    // Use category as the stream (science/commerce/arts)
-    flow.setStudentStream(category);
-    setAssessmentStarted(true);
+    // For higher_secondary and after12: Show stream selection for ALL categories (Science/Commerce/Arts)
+    // This ensures specific streams like science_pcmb, commerce_maths, arts_humanities are selected
+    // For other grade levels: Use category directly as stream
+    const needsStreamSelection = (flow.gradeLevel === 'higher_secondary' || flow.gradeLevel === 'after12') && 
+                                  (category === 'science' || category === 'commerce' || category === 'arts');
     
-    // DON'T create attempt here - wait until user clicks "Start Section"
-    // This prevents orphan attempts when user just browses
-    
-    flow.setCurrentScreen('section_intro');
-  }, [flow, studentRecordId, dbStartAssessment]);
+    if (needsStreamSelection) {
+      // Show stream selection screen (PCMB/PCMS/PCM/PCB for Science, with/without Maths for Commerce, Arts variants for Arts)
+      flow.setCurrentScreen('stream_selection');
+    } else {
+      // For other grade levels or categories, use category as the stream
+      flow.setStudentStream(category);
+      setAssessmentStarted(true);
+      
+      // DON'T create attempt here - wait until user clicks "Start Section"
+      // This prevents orphan attempts when user just browses
+      
+      flow.setCurrentScreen('section_intro');
+    }
+  }, [flow, setAssessmentStarted]);
   
   const handleStreamSelect = useCallback(async (stream: string) => {
     flow.setStudentStream(stream);
@@ -783,6 +861,10 @@ const AssessmentTestPage: React.FC = () => {
     if (pendingAttempt.elapsed_time !== null && pendingAttempt.elapsed_time !== undefined) {
       console.log('⏱️ Restoring elapsed_time:', pendingAttempt.elapsed_time);
       flow.setElapsedTime(pendingAttempt.elapsed_time);
+    }
+    if (pendingAttempt.aptitude_question_timer !== null && pendingAttempt.aptitude_question_timer !== undefined) {
+      console.log('⏱️ Restoring aptitude_question_timer:', pendingAttempt.aptitude_question_timer);
+      flow.setAptitudeQuestionTimer(pendingAttempt.aptitude_question_timer);
     }
     
     // FIX 5: Restore section timings
@@ -917,6 +999,34 @@ const AssessmentTestPage: React.FC = () => {
       setPendingAttempt(null);
     }
     
+    // TASK 10.1: Section start synchronization - Check if questions are loaded
+    // For aptitude and knowledge sections, ensure AI questions are loaded before starting
+    const isAptitudeSection = currentSection?.id === 'aptitude';
+    const isKnowledgeSection = currentSection?.id === 'knowledge';
+    
+    if (isAptitudeSection || isKnowledgeSection) {
+      // Check if questions are still loading
+      if (questionsLoading) {
+        console.log('⏳ Questions still loading, showing loading screen...');
+        // Keep showing section intro with loading indicator
+        // The useEffect below will auto-transition when questions load
+        return;
+      }
+      
+      // Check if questions are loaded
+      const hasQuestions = isAptitudeSection 
+        ? (aiQuestions?.aptitude && aiQuestions.aptitude.length > 0)
+        : (aiQuestions?.knowledge && aiQuestions.knowledge.length > 0);
+      
+      if (!hasQuestions) {
+        console.error('❌ No questions loaded for section:', currentSection?.id);
+        flow.setError('Questions could not be loaded. Please try again.');
+        return;
+      }
+      
+      console.log('✅ Questions loaded, starting section:', currentSection?.id);
+    }
+    
     // Create database attempt on first section start (if not already created)
     if (flow.currentSectionIndex === 0 && !currentAttempt && studentRecordId) {
       try {
@@ -970,7 +1080,7 @@ const AssessmentTestPage: React.FC = () => {
     }
     
     flow.startSection();
-  }, [sections, flow, adaptiveAptitude, currentAttempt, studentRecordId, dbStartAssessment, showResumePrompt]);
+  }, [sections, flow, adaptiveAptitude, currentAttempt, studentRecordId, dbStartAssessment, showResumePrompt, questionsLoading, aiQuestions]);
   
   const handleNextQuestion = useCallback(() => {
     const currentSection = sections[flow.currentSectionIndex];
@@ -1345,91 +1455,80 @@ const AssessmentTestPage: React.FC = () => {
       {/* Test Mode Controls (Dev only) */}
       {isDevMode && testMode && (
         <div className="max-w-4xl mx-auto px-4 py-2">
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={autoFillAllAnswers}
-              className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded text-xs font-medium hover:bg-amber-200"
-            >
-              Auto-Fill All
-            </button>
-            <button
-              onClick={() => {
-                // Find aptitude section dynamically
-                const aptitudeIndex = sections.findIndex(s => s.id === 'aptitude' || s.id === 'hs_aptitude_sampling' || s.id === 'adaptive_aptitude');
-                if (aptitudeIndex >= 0) {
-                  skipToSection(aptitudeIndex);
-                } else {
-                  console.warn('❌ Aptitude section not found in sections:', sections.map(s => s.id));
-                }
-              }}
-              className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200"
-              disabled={sections.length === 0}
-            >
-              Skip to Aptitude
-            </button>
-            <button
-              onClick={() => {
-                // Find adaptive section dynamically (renamed from "Skip to Knowledge")
-                const adaptiveIndex = sections.findIndex(s => s.id === 'adaptive_aptitude' || s.id === 'knowledge');
-                if (adaptiveIndex >= 0) {
-                  skipToSection(adaptiveIndex);
-                } else {
-                  console.warn('❌ Adaptive/Knowledge section not found in sections:', sections.map(s => s.id));
-                }
-              }}
-              className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200"
-              disabled={sections.length === 0}
-            >
-              Skip to Adaptive
-            </button>
-            <button
-              onClick={() => {
-                console.log('🎯 Submit button clicked');
+          <TestModeControls
+            onAutoFillAll={autoFillAllAnswers}
+            onSkipToAptitude={() => {
+              // Find aptitude section dynamically
+              const aptitudeIndex = sections.findIndex(s => s.id === 'aptitude' || s.id === 'hs_aptitude_sampling' || s.id === 'adaptive_aptitude');
+              if (aptitudeIndex >= 0) {
+                skipToSection(aptitudeIndex);
+              } else {
+                console.warn('❌ Aptitude section not found in sections:', sections.map(s => s.id));
+              }
+            }}
+            onSkipToKnowledge={() => {
+              // Find knowledge section dynamically
+              const knowledgeIndex = sections.findIndex(s => s.id === 'knowledge' || s.id === 'adaptive_aptitude');
+              if (knowledgeIndex >= 0) {
+                skipToSection(knowledgeIndex);
+              } else {
+                console.warn('❌ Knowledge section not found in sections:', sections.map(s => s.id));
+              }
+            }}
+            onSkipToSubmit={() => {
+              console.log('🎯 Submit button clicked');
+              
+              if (sections.length === 0) {
+                console.warn('❌ Cannot submit: sections array is empty');
+                return;
+              }
+              
+              // Auto-fill all answers first
+              autoFillAllAnswers();
+              
+              // Use setTimeout to ensure state updates after auto-fill
+              setTimeout(() => {
+                const lastSectionIndex = sections.length - 1;
+                const lastSection = sections[lastSectionIndex];
                 
-                if (sections.length === 0) {
-                  console.warn('❌ Cannot submit: sections array is empty');
-                  return;
-                }
+                console.log(`🎯 Jumping to last section: ${lastSectionIndex} (${lastSection?.title})`);
                 
-                // Auto-fill all answers first
-                autoFillAllAnswers();
-                
-                // Use setTimeout to ensure state updates after auto-fill
-                setTimeout(() => {
-                  const lastSectionIndex = sections.length - 1;
-                  const lastSection = sections[lastSectionIndex];
+                // For adaptive sections, we need to start the test first
+                if (lastSection?.isAdaptive) {
+                  flow.setCurrentSectionIndex(lastSectionIndex);
+                  flow.setCurrentQuestionIndex(0);
+                  flow.setShowSectionIntro(false); // Skip intro, go straight to questions
                   
-                  console.log(`🎯 Jumping to last section: ${lastSectionIndex} (${lastSection?.title})`);
-                  
-                  // For adaptive sections, we need to start the test first
-                  if (lastSection?.isAdaptive) {
-                    flow.setCurrentSectionIndex(lastSectionIndex);
-                    flow.setCurrentQuestionIndex(0);
-                    flow.setShowSectionIntro(false); // Skip intro, go straight to questions
-                    
-                    // Start the adaptive test if not already started
-                    if (!adaptiveAptitude.session) {
-                      adaptiveAptitude.startTest();
-                    }
-                    console.log('✅ Jumped to adaptive section and started test');
-                  } else {
-                    // For regular sections, go to the last question
-                    const lastQuestionIndex = Math.max(0, (lastSection?.questions?.length || 1) - 1);
-                    console.log(`🎯 Going to last question: ${lastQuestionIndex} of ${lastSection?.questions?.length}`);
-                    
-                    flow.setCurrentSectionIndex(lastSectionIndex);
-                    flow.setCurrentQuestionIndex(lastQuestionIndex);
-                    flow.setShowSectionIntro(false);
-                    console.log('✅ Jumped to last question successfully');
+                  // Start the adaptive test if not already started
+                  if (!adaptiveAptitude.session) {
+                    adaptiveAptitude.startTest();
                   }
-                }, 100);
-              }}
-              className="px-3 py-1.5 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
-              disabled={sections.length === 0}
-            >
-              Submit
-            </button>
-          </div>
+                  console.log('✅ Jumped to adaptive section and started test');
+                } else {
+                  // For regular sections, go to the last question
+                  const lastQuestionIndex = Math.max(0, (lastSection?.questions?.length || 1) - 1);
+                  console.log(`🎯 Going to last question: ${lastQuestionIndex} of ${lastSection?.questions?.length}`);
+                  
+                  flow.setCurrentSectionIndex(lastSectionIndex);
+                  flow.setCurrentQuestionIndex(lastQuestionIndex);
+                  flow.setShowSectionIntro(false);
+                  console.log('✅ Jumped to last question successfully');
+                }
+              }, 100);
+            }}
+            onExitTestMode={() => setTestMode(false)}
+            // Debug info props
+            gradeLevel={flow.gradeLevel || undefined}
+            studentStream={flow.studentStream || undefined}
+            currentSectionIndex={flow.currentSectionIndex}
+            totalSections={sections.length}
+            aiQuestionsLoading={questionsLoading}
+            aiQuestionsLoaded={{
+              aptitude: aiQuestions.aptitude?.length || 0,
+              knowledge: aiQuestions.knowledge?.length || 0
+            }}
+            sections={sections}
+          />
         </div>
       )}
       
@@ -1451,7 +1550,10 @@ const AssessmentTestPage: React.FC = () => {
               isAdaptive={currentSection.isAdaptive}
               isTimed={currentSection.isTimed}
               showAIPoweredBadge={currentSection.id === 'aptitude' || currentSection.id === 'knowledge'}
-              isLoading={currentSection.isAdaptive && adaptiveAptitude.loading}
+              isLoading={
+                (currentSection.isAdaptive && adaptiveAptitude.loading) ||
+                ((currentSection.id === 'aptitude' || currentSection.id === 'knowledge') && questionsLoading)
+              }
               onStart={handleStartSection}
             />
           )}

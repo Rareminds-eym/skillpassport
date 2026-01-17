@@ -160,7 +160,9 @@ export const AFTER10_STREAMS_BY_CATEGORY: Record<string, StreamOption[]> = {
     { id: 'commerce_general', label: 'Commerce without Maths', riasec: ['E', 'C', 'S'], aptitudeStrengths: ['verbal', 'numerical', 'logical'], description: 'For Business, Accounting, Management' },
   ],
   arts: [
-    { id: 'arts_humanities', label: 'Arts & Humanities', riasec: ['S', 'A', 'I'], aptitudeStrengths: ['verbal', 'abstract', 'logical'], description: 'Literature, History, Political Science, Languages, Psychology' },
+    { id: 'arts_psychology', label: 'Arts with Psychology', riasec: ['S', 'I', 'A'], aptitudeStrengths: ['verbal', 'logical', 'abstract'], description: 'Psychology, Sociology, English - For Counseling, HR, Social Work' },
+    { id: 'arts_economics', label: 'Arts with Economics', riasec: ['I', 'E', 'S'], aptitudeStrengths: ['verbal', 'numerical', 'logical'], description: 'Economics, Political Science, English - For Civil Services, Policy' },
+    { id: 'arts', label: 'Arts/Humanities General', riasec: ['A', 'S', 'I'], aptitudeStrengths: ['verbal', 'abstract', 'logical'], description: 'English, History, Geography - For Journalism, Law, Teaching' },
   ],
 };
 
