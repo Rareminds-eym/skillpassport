@@ -162,21 +162,9 @@ const InterventionModal: React.FC<InterventionModalProps> = ({
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Status
-                  </label>
-                  <select
-                    value={noteStatus}
-                    onChange={(e) => onStatusChange(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                    <option value="escalated">Escalated</option>
-                  </select>
-                </div>
+                {/* STATUS DROPDOWN REMOVED - Admin-created notes always start with status='pending' */}
+                {/* The workflow is: pending → acknowledged → in_progress → completed */}
+                {/* Status is auto-managed by the system based on mentor/admin actions */}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
