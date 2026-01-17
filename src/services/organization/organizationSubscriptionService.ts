@@ -16,6 +16,7 @@ export interface OrganizationSubscription {
   organizationId: string;
   organizationType: 'school' | 'college' | 'university';
   subscriptionPlanId: string;
+  planName?: string; // Fetched from subscription_plans table
   purchasedBy: string;
   totalSeats: number;
   assignedSeats: number;
@@ -194,7 +195,13 @@ export class OrganizationSubscriptionService {
     try {
       const { data, error } = await supabase
         .from('organization_subscriptions')
-        .select('*')
+        .select(`
+          *,
+          subscription_plans:subscription_plan_id (
+            name,
+            plan_code
+          )
+        `)
         .eq('organization_id', organizationId)
         .eq('organization_type', organizationType)
         .order('created_at', { ascending: false });
@@ -215,7 +222,13 @@ export class OrganizationSubscriptionService {
     try {
       const { data, error } = await supabase
         .from('organization_subscriptions')
-        .select('*')
+        .select(`
+          *,
+          subscription_plans:subscription_plan_id (
+            name,
+            plan_code
+          )
+        `)
         .eq('id', subscriptionId)
         .single();
 
@@ -418,11 +431,17 @@ export class OrganizationSubscriptionService {
    * Map database record to OrganizationSubscription interface
    */
   private mapToOrganizationSubscription(data: any): OrganizationSubscription {
+    // Extract plan name from joined subscription_plans data
+    const planName = data.subscription_plans?.name || 
+                     data.subscription_plans?.plan_code || 
+                     'Standard Plan';
+    
     return {
       id: data.id,
       organizationId: data.organization_id,
       organizationType: data.organization_type,
       subscriptionPlanId: data.subscription_plan_id,
+      planName,
       purchasedBy: data.purchased_by,
       totalSeats: data.total_seats,
       assignedSeats: data.assigned_seats,

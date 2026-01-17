@@ -48,7 +48,6 @@ interface StudentFormData {
   pincode: string
   bloodGroup: string
   district: string
-  university: string
   documents: File[]
 }
 
@@ -64,8 +63,26 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [documentUploadProgress, setDocumentUploadProgress] = useState<DocumentUploadProgress[]>([])
   const [isUploadingDocuments, setIsUploadingDocuments] = useState(false)
 
-  // Permission check
+  // Permission check - allow school_admin and college_admin by default
   const { allowed: canAddStudents, reason: addReason, loading: permissionLoading } = usePermission('Students', 'create');
+  
+  // Check if user is an admin (school_admin or college_admin should always be allowed)
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        const role = userData.role || '';
+        // School admins and college admins should always be able to add students
+        if (role === 'school_admin' || role === 'college_admin' || role === 'university_admin') {
+          setIsAdmin(true);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not parse user data for admin check');
+    }
+  }, []);
 
   const [formData, setFormData] = useState<StudentFormData>({
     name: '',
@@ -88,7 +105,6 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     pincode: '',
     bloodGroup: '',
     district: '',
-    university: '',
     documents: []
   })
 
@@ -115,7 +131,6 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         pincode: '',
         bloodGroup: '',
         district: '',
-        university: '',
         documents: []
       })
       setError(null)
@@ -130,8 +145,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     }
   }, [isOpen])
 
-  // Don't render modal if user doesn't have permission
-  if (!permissionLoading && !canAddStudents) {
+  // Don't render modal if user doesn't have permission (unless they're an admin)
+  if (!permissionLoading && !canAddStudents && !isAdmin) {
     return null;
   }
 
@@ -350,6 +365,38 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         console.warn('Could not parse user data from localStorage')
       }
 
+      // If schoolId not in localStorage but user is school_admin, fetch from organizations table
+      if (!schoolId && userRole === 'school_admin' && userEmail) {
+        console.log('🔍 Fetching schoolId from organizations table for school admin:', userEmail)
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('organization_type', 'school')
+          .ilike('email', userEmail)
+          .maybeSingle()
+
+        if (org?.id) {
+          schoolId = org.id
+          console.log('✅ Found schoolId from organizations:', schoolId)
+        } else {
+          // Also try school_educators table
+          console.log('🔍 Trying school_educators table...')
+          const { data: { user: authUser } } = await supabase.auth.getUser()
+          if (authUser?.id) {
+            const { data: educator } = await supabase
+              .from('school_educators')
+              .select('school_id')
+              .eq('user_id', authUser.id)
+              .maybeSingle()
+            
+            if (educator?.school_id) {
+              schoolId = educator.school_id
+              console.log('✅ Found schoolId from school_educators:', schoolId)
+            }
+          }
+        }
+      }
+
       // If collegeId not in localStorage but user is college_admin, fetch from organizations table
       if (!collegeId && userRole === 'college_admin' && userEmail) {
         console.log('🔍 Fetching collegeId from organizations table for college admin:', userEmail)
@@ -434,7 +481,6 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           country: formData.country || 'India',
           pincode: formData.pincode.trim() || null,
           district: formData.district.trim() || null,
-          university: formData.university.trim() || null,
           bloodGroup: formData.bloodGroup || null,
           approval_status: 'approved',
           student_type: 'educator_added'
@@ -780,7 +826,23 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             }
           }
 
-          // If schoolId not in localStorage, fetch from database
+          // If schoolId not in localStorage but user is school_admin, fetch from organizations table
+          if (!schoolId && userRole === 'school_admin' && userEmail) {
+            console.log('🔍 DEBUG: Fetching schoolId from organizations table for school admin:', userEmail)
+            const { data: org } = await supabase
+              .from('organizations')
+              .select('id')
+              .eq('organization_type', 'school')
+              .ilike('email', userEmail)
+              .maybeSingle()
+
+            if (org?.id) {
+              schoolId = org.id
+              console.log('✅ Found schoolId from organizations:', schoolId)
+            }
+          }
+
+          // If schoolId not in localStorage, fetch from database (for educators)
           if (!schoolId && !collegeId && userEmail) {
             console.log('🔍 DEBUG: Fetching schoolId from database for user:', userEmail)
 
@@ -1009,7 +1071,21 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               }
             }
 
-            // If schoolId not in localStorage, fetch from database
+            // If schoolId not in localStorage but user is school_admin, fetch from organizations table
+            if (!schoolId && userRole === 'school_admin' && userEmail) {
+              const { data: org } = await supabase
+                .from('organizations')
+                .select('id')
+                .eq('organization_type', 'school')
+                .ilike('email', userEmail)
+                .maybeSingle()
+
+              if (org?.id) {
+                schoolId = org.id
+              }
+            }
+
+            // If schoolId not in localStorage, fetch from database (for educators)
             if (!schoolId && !collegeId && userEmail) {
               const { data: educatorData } = await supabase
                 .from('school_educators')
@@ -1618,17 +1694,6 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     onChange={(e) => handleInputChange('district', e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="District name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">University</label>
-                  <input
-                    type="text"
-                    value={formData.university}
-                    onChange={(e) => handleInputChange('university', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="University name"
                   />
                 </div>
 
