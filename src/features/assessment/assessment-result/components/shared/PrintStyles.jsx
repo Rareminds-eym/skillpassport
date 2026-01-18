@@ -34,6 +34,15 @@ const PrintStyles = () => (
           padding: 0;
         }
         
+        /* Show paginated content in print, hide continuous content */
+        .print-pages {
+          display: block !important;
+        }
+        
+        .print-content {
+          display: none !important;
+        }
+        
         /* Cover page print styles - Validates: Requirement 4.4 */
         .cover-page {
           width: 210mm;
@@ -73,13 +82,13 @@ const PrintStyles = () => (
         /* Header row styling */
         .print-header-row {
           display: table-row;
-          height: 60px;
+          height: 30px;
         }
         
         /* Footer row styling */
         .print-footer-row {
           display: table-row;
-          height: 50px;
+          height: 25px;
         }
         
         /* Cell styling for header/footer */
@@ -96,7 +105,7 @@ const PrintStyles = () => (
         
         .print-content-cell {
           display: table-cell;
-          padding: 10px 0;
+          padding: 0;
         }
         
         /* Notebook label print styles */
@@ -167,6 +176,15 @@ const PrintStyles = () => (
       @media screen {
         .print-only-watermark {
           display: none;
+        }
+        
+        /* Hide paginated content on screen, show continuous content */
+        .print-pages {
+          display: none !important;
+        }
+        
+        .print-content {
+          display: block !important;
         }
         
         /* Screen preview styling for cover page */

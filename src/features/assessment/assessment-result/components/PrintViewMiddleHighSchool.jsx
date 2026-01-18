@@ -10,6 +10,7 @@ import { safeRender, getSafeStudentInfo, riasecDescriptions, defaultRiasecNames 
 import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
 import Watermarks, { DataPrivacyNotice, ReportDisclaimer, RepeatingHeader, RepeatingFooter } from './shared/Watermarks';
+import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
 
 /**
  * PrintViewMiddleHighSchool Component
@@ -83,6 +84,16 @@ const PrintViewMiddleHighSchool = ({ results, studentInfo, riasecNames }) => {
               {profileSnapshot?.keyPatterns && (
                 <LearningWorkStyleSection keyPatterns={profileSnapshot.keyPatterns} />
               )}
+
+              {/* Detailed Assessment Breakdown (Developer Reference) */}
+              {/* COMMENTED OUT - Duplicate data already shown in previous sections */}
+              {/* <div style={{ pageBreakBefore: 'always' }}>
+                <DetailedAssessmentBreakdown 
+                  results={results} 
+                  riasecNames={safeRiasecNames}
+                  gradeLevel="highschool"
+                />
+              </div> */}
 
               {/* Section 2: Career Exploration */}
               {careerFit && (

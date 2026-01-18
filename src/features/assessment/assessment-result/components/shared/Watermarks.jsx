@@ -135,11 +135,11 @@ export const DataPrivacyNotice = () => (
       background: '#f0f9ff',
       border: '1px solid #bae6fd',
       borderRadius: '6px',
-      padding: '10px 12px',
-      marginBottom: '20px',
+      padding: '4px 6px',
+      marginBottom: '5px',
       fontSize: '8px',
       color: '#0c4a6e',
-      lineHeight: '1.5',
+      lineHeight: '1.2',
     }}
   >
     <p style={{ margin: '0' }}>
@@ -164,12 +164,12 @@ export const ReportDisclaimer = () => (
       background: '#fef3c7',
       border: '1px solid #fbbf24',
       borderRadius: '6px',
-      padding: '10px 12px',
-      marginTop: '15px',
-      marginBottom: '30px',
+      padding: '6px 8px',
+      marginTop: '10px',
+      marginBottom: '10px',
       fontSize: '8px',
       color: '#78350f',
-      lineHeight: '1.5',
+      lineHeight: '1.4',
     }}
   >
     <p style={{ margin: '0' }}>

@@ -16,11 +16,13 @@ import {
 } from './shared/utils';
 import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
-import PrintPage from './shared/PrintPage';
 import Watermarks, {
   DataPrivacyNotice,
   ReportDisclaimer,
+  RepeatingHeader,
+  RepeatingFooter,
 } from './shared/Watermarks';
+import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
 
 /**
  * PrintViewHigherSecondary Component
@@ -68,80 +70,63 @@ const PrintViewHigherSecondary = ({ results, studentInfo, riasecNames, traitName
       {/* Watermarks */}
       <Watermarks />
 
-      {/* Paginated Content - Each PrintPage has its own header/footer */}
-      <div className="print-pages">
-        {/* Page 1: Profile Snapshot & Interest Profile */}
-        <PrintPage pageNumber={1}>
-          <DataPrivacyNotice />
-          <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
-          <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
-        </PrintPage>
+      {/* Table-based structure for repeating header/footer on every page */}
+      <table className="print-table-wrapper" style={{ width: '100%', borderCollapse: 'collapse' }}>
+        {/* Repeating Header - appears on every page except cover */}
+        <RepeatingHeader />
 
-        {/* Page 2: Cognitive Abilities */}
-        <PrintPage pageNumber={2}>
-          {aptitude && (
-            <CognitiveAbilitiesSection aptitude={aptitude} />
-          )}
-        </PrintPage>
+        {/* Repeating Footer - appears on every page except cover */}
+        <RepeatingFooter />
 
-        {/* Page 3: Big Five Personality & Work Values */}
-        <PrintPage pageNumber={3}>
-          {bigFive && (
-            <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
-          )}
-          {workValues && (
-            <WorkValuesSection workValues={workValues} />
-          )}
-        </PrintPage>
+        {/* Main Content Body */}
+        <tbody className="print-table-body">
+          <tr className="print-content-row">
+            <td className="print-content-cell" style={{ padding: '0' }}>
+              {/* Data Privacy Notice */}
+              <DataPrivacyNotice />
 
-        {/* Page 4: Career Fit Analysis */}
-        <PrintPage pageNumber={4}>
-          {careerFit && (
-            <CareerFitAnalysisSection careerFit={careerFit} />
-          )}
-        </PrintPage>
+              {/* Section 1: Student Profile Snapshot */}
+              <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
+              <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
 
-        {/* Page 5: Skill Gap & Development Plan */}
-        <PrintPage pageNumber={5}>
-          {skillGap && (
-            <SkillGapDevelopmentSection skillGap={skillGap} />
-          )}
-        </PrintPage>
+              {/* Section 2: Cognitive Abilities */}
+              {aptitude && (
+                <div style={{ pageBreakBefore: 'auto' }}>
+                  <CognitiveAbilitiesSection aptitude={aptitude} />
+                </div>
+              )}
 
-        {/* Page 6: Development Roadmap */}
-        <PrintPage pageNumber={6}>
-          {roadmap && (
-            <DevelopmentRoadmapSection roadmap={roadmap} />
-          )}
-          <ReportDisclaimer />
-        </PrintPage>
-      </div>
+              {/* Section 3: Big Five Personality */}
+              {bigFive && (
+                <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
+              )}
 
-      {/* Screen-only continuous content (hidden in print) */}
-      <div className="print-content" style={{ position: 'relative', zIndex: 1, paddingBottom: '70px' }}>
-        <DataPrivacyNotice />
-        <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
-        <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
-        {aptitude && (
-          <CognitiveAbilitiesSection aptitude={aptitude} />
-        )}
-        {bigFive && (
-          <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
-        )}
-        {workValues && (
-          <WorkValuesSection workValues={workValues} />
-        )}
-        {careerFit && (
-          <CareerFitAnalysisSection careerFit={careerFit} />
-        )}
-        {skillGap && (
-          <SkillGapDevelopmentSection skillGap={skillGap} />
-        )}
-        {roadmap && (
-          <DevelopmentRoadmapSection roadmap={roadmap} />
-        )}
-        <ReportDisclaimer />
-      </div>
+              {/* Section 4: Work Values */}
+              {workValues && (
+                <WorkValuesSection workValues={workValues} />
+              )}
+
+              {/* Section 5: Career Fit Analysis */}
+              {careerFit && (
+                <CareerFitAnalysisSection careerFit={careerFit} />
+              )}
+
+              {/* Section 6: Skill Gap & Development Plan */}
+              {skillGap && (
+                <SkillGapDevelopmentSection skillGap={skillGap} />
+              )}
+
+              {/* Section 7: Development Roadmap */}
+              {roadmap && (
+                <DevelopmentRoadmapSection roadmap={roadmap} />
+              )}
+
+              {/* Report Disclaimer */}
+              <ReportDisclaimer />
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 };
@@ -174,10 +159,10 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
       {/* RIASEC Infographic Layout with Central Circle */}
       <div style={{
         position: 'relative',
-        padding: '20px 0',
-        marginTop: '10px',
-        marginBottom: '8px',
-        minHeight: '320px'
+        padding: '0',
+        marginTop: '0',
+        marginBottom: '0',
+        minHeight: '220px'
       }}>
         {/* SVG for connecting lines */}
         <svg style={{
@@ -316,7 +301,8 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
         color: '#6b7280', 
         fontStyle: 'italic', 
         lineHeight: '1.5',
-        marginTop: '10px',
+        marginTop: '0',
+        marginBottom: '0',
         textAlign: 'left'
       }}>
         <strong>Your Top Interests:</strong> {topInterestsText}. {hasStrongInterests 
@@ -337,7 +323,7 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>2. Cognitive Abilities</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>2. Cognitive Abilities</h2>
       <h3 style={printStyles.subTitle}>Aptitude Test Results</h3>
 
       <div style={printStyles.twoCol}>
@@ -404,7 +390,7 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>3. Big Five Personality Traits</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>3. Big Five Personality Traits</h2>
 
       <div style={printStyles.twoCol}>
         {traits.map((trait) => {
@@ -472,7 +458,7 @@ const WorkValuesSection = ({ workValues }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>4. Work Values</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>4. Work Values</h2>
       <h3 style={printStyles.subTitle}>Your Top Work Motivations</h3>
 
       <div style={printStyles.twoCol}>
@@ -525,7 +511,7 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>5. Career Fit Analysis</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>5. Career Fit Analysis</h2>
       <h3 style={printStyles.subTitle}>Recommended Career Paths</h3>
 
       <div style={printStyles.twoCol}>
@@ -576,11 +562,11 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>6. Skill Gap & Development Plan</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>6. Skill Gap & Development Plan</h2>
 
       {/* Current Skills */}
       {skillGap.currentSkills && skillGap.currentSkills.length > 0 && (
-        <div style={{ marginBottom: '15px' }}>
+        <div style={{ marginBottom: '8px' }}>
           <h3 style={printStyles.subTitle}>Your Current Skills</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {skillGap.currentSkills.map((skill, idx) => (
@@ -672,13 +658,13 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>7. Development Roadmap</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>7. Development Roadmap</h2>
 
       {/* Roadmap Phases */}
       {roadmap.phases && roadmap.phases.length > 0 && (
-        <div style={{ marginTop: '10px' }}>
+        <div style={{ marginTop: '5px' }}>
           {roadmap.phases.map((phase, idx) => (
-            <div key={idx} style={{ ...printStyles.card, marginBottom: '12px' }}>
+            <div key={idx} style={{ ...printStyles.card, marginBottom: '6px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#4f46e5' }}>
                   {safeRender(phase.phase || `Phase ${idx + 1}`)}
