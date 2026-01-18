@@ -34,7 +34,8 @@ import {
     ProfileSection,
     CareerSection,
     SkillsSection,
-    RoadmapSection
+    RoadmapSection,
+    StageScoresSection
 } from './components';
 
 // Import Career Track Modal

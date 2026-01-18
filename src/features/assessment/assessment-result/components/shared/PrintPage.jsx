@@ -27,7 +27,6 @@ const PrintPage = ({ pageNumber, children, isLastPage = false }) => {
         breakAfter: isLastPage ? 'auto' : 'page',
         pageBreakInside: 'avoid',
         breakInside: 'avoid',
-        minHeight: '250mm',
         position: 'relative',
       }}
     >
@@ -42,8 +41,8 @@ const PrintPage = ({ pageNumber, children, isLastPage = false }) => {
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 borderBottom: '1px solid #e2e8f0',
-                paddingBottom: '8px',
-                marginBottom: '15px',
+                paddingBottom: '4px',
+                marginBottom: '8px',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <img 
@@ -89,8 +88,8 @@ const PrintPage = ({ pageNumber, children, isLastPage = false }) => {
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 borderTop: '1px solid #e2e8f0',
-                paddingTop: '8px',
-                marginTop: '15px',
+                paddingTop: '4px',
+                marginTop: '8px',
                 fontSize: '8px',
                 color: '#9ca3af',
               }}>
