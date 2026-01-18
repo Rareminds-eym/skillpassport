@@ -105,7 +105,7 @@ export async function handleAptitudeGeneration(
 
     // Save to cache
     if (studentId) {
-      await saveCareerQuestions(env, studentId, streamId, 'aptitude', allQuestions, attemptId);
+      await saveCareerQuestions(env, studentId, streamId, 'aptitude', allQuestions, attemptId, gradeLevel);
     }
 
     return jsonResponse({ questions: allQuestions, generated: true });

@@ -23,6 +23,7 @@ interface StudentGradeData {
   gradeStartDate: string | null;
   monthsInGrade: number | null;
   detectedGradeLevel: GradeLevel | null;
+  profileData: any | null;
   loading: boolean;
   error: string | null;
 }
@@ -43,6 +44,7 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
   const [studentProgram, setStudentProgram] = useState<string | null>(null);
   const [gradeStartDate, setGradeStartDate] = useState<string | null>(null);
   const [monthsInGrade, setMonthsInGrade] = useState<number | null>(null);
+  const [profileData, setProfileData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -92,6 +94,9 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
       }
 
       if (student) {
+        // Store complete profile data for missing field analysis
+        setProfileData(student);
+        
         // Save student ID
         setStudentId(student.id);
 
@@ -157,6 +162,7 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
     gradeStartDate,
     monthsInGrade,
     detectedGradeLevel,
+    profileData,
     loading,
     error
   };

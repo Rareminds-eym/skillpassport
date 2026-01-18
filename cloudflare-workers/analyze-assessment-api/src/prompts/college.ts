@@ -9,6 +9,91 @@ export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: 
   const ruleBasedHint = (assessmentData as any).ruleBasedStreamHint;
   const profileAnalysis = ruleBasedHint?.profileAnalysis;
   const isFlatProfile = profileAnalysis?.isFlatProfile;
+  
+  // Student context for program-specific recommendations
+  const studentContext = assessmentData.studentContext;
+  const hasStudentContext = studentContext && (studentContext.rawGrade || studentContext.programName || studentContext.degreeLevel);
+  
+  // Build student context section
+  const studentContextSection = hasStudentContext ? `
+## 🎓 STUDENT ACADEMIC CONTEXT (CRITICAL - READ CAREFULLY)
+
+**Current Academic Level**: ${studentContext.rawGrade || 'Not specified'}
+**Program/Course**: ${studentContext.programName || 'Not specified'}
+**Program Code**: ${studentContext.programCode || 'Not specified'}
+**Degree Level**: ${studentContext.degreeLevel || 'Not specified'}
+
+${studentContext.degreeLevel === 'postgraduate' ? `
+### ⚠️ POSTGRADUATE STUDENT - SPECIAL INSTRUCTIONS ⚠️
+
+This student is pursuing a POSTGRADUATE degree (Master's/PG Diploma). Your recommendations MUST reflect this:
+
+**MANDATORY REQUIREMENTS:**
+1. **NO Undergraduate Programs**: Do NOT recommend Bachelor's degrees (B.Tech, BCA, B.Sc, etc.)
+2. **Advanced Roles Only**: Focus on mid-level to senior positions, not entry-level
+3. **Higher Salary Expectations**: 
+   - Entry (0-2 years): ₹6-15 LPA
+   - Mid-level (3-5 years): ₹15-30 LPA
+   - Senior (5+ years): ₹30-60 LPA
+4. **Specialized Skills**: Recommend advanced certifications and specializations
+5. **Industry-Specific Roles**: Match recommendations to their field of study
+
+**Program Field Alignment:**
+${studentContext.programCode === 'mca' || studentContext.programName?.toLowerCase().includes('mca') || studentContext.programName?.toLowerCase().includes('computer') ? `
+- **MCA/Computer Science PG**: Focus on Software Engineering, Data Science, Cloud Architecture, AI/ML, DevOps
+- Recommended roles: Senior Software Engineer, Data Scientist, ML Engineer, Cloud Architect, Full Stack Developer
+- Certifications: AWS Solutions Architect, Azure DevOps, GCP Professional, Kubernetes, Docker
+` : ''}
+${studentContext.programCode === 'mba' || studentContext.programName?.toLowerCase().includes('mba') || studentContext.programName?.toLowerCase().includes('management') ? `
+- **MBA/Management PG**: Focus on Business Strategy, Product Management, Consulting, Finance
+- Recommended roles: Product Manager, Business Analyst, Management Consultant, Financial Analyst
+- Certifications: PMP, Six Sigma, CFA, Digital Marketing
+` : ''}
+${studentContext.programCode === 'mtech' || studentContext.programName?.toLowerCase().includes('m.tech') || studentContext.programName?.toLowerCase().includes('engineering') ? `
+- **M.Tech/Engineering PG**: Focus on specialized engineering roles, R&D, technical leadership
+- Recommended roles: Senior Engineer, Technical Lead, R&D Engineer, Solutions Architect
+- Certifications: Domain-specific technical certifications, Project Management
+` : ''}
+
+**FILTERING RULES (STRICTLY ENFORCE):**
+- ❌ Remove any "Complete your Bachelor's degree" suggestions
+- ❌ Remove any UG program recommendations
+- ❌ Remove any entry-level roles meant for fresh graduates
+- ❌ Remove any basic certifications (recommend advanced ones only)
+- ✅ Include only roles that value PG qualifications
+- ✅ Include only advanced/specialized certifications
+- ✅ Adjust salary ranges to PG level
+
+` : ''}
+
+${studentContext.degreeLevel === 'undergraduate' ? `
+### 📚 UNDERGRADUATE STUDENT INSTRUCTIONS
+
+This student is pursuing an UNDERGRADUATE degree (Bachelor's).
+
+**RECOMMENDATIONS SHOULD INCLUDE:**
+1. **Entry-Level Roles**: Focus on campus placements and fresher positions
+2. **Salary Expectations**: ₹3-8 LPA for entry-level
+3. **Foundational Skills**: Basic to intermediate certifications
+4. **Internship Opportunities**: Emphasize internships and training programs
+5. **Career Growth Path**: Show progression from entry to mid-level
+
+` : ''}
+
+${studentContext.degreeLevel === 'diploma' ? `
+### 🔧 DIPLOMA STUDENT INSTRUCTIONS
+
+This student is pursuing a DIPLOMA program.
+
+**RECOMMENDATIONS SHOULD INCLUDE:**
+1. **Technical/Vocational Roles**: Focus on hands-on, skill-based positions
+2. **Salary Expectations**: ₹2-6 LPA for entry-level
+3. **Industry Certifications**: Practical, industry-recognized certifications
+4. **Skill Development**: Emphasize technical skills and on-the-job training
+5. **Career Pathways**: Show how to progress to higher qualifications if desired
+
+` : ''}
+` : '';
 
   // After 10th stream recommendation section
   const after10StreamSection = isAfter10 ? `
@@ -236,6 +321,7 @@ This analysis must be DETERMINISTIC and CONSISTENT. Given the same input data, y
 
 ## Student Grade Level: ${assessmentData.gradeLevel.toUpperCase()}
 ## Student Stream: ${assessmentData.stream.toUpperCase()}
+${studentContextSection}
 ${after10StreamSection}
 
 ## RIASEC Career Interest Responses (1-5 scale):

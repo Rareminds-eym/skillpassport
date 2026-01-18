@@ -1449,7 +1449,8 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
           topics: effectiveStreamInfo.topics,
           questionCount,
           studentId,
-          attemptId
+          attemptId,
+          gradeLevel // Add grade level to API request
         })
       });
 

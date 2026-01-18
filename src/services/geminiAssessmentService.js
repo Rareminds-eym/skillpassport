@@ -74,7 +74,12 @@ const callOpenRouterAssessment = async (assessmentData) => {
   updateProgress('analyzing', 'AI is processing your responses...');
 
   try {
-    const response = await fetch(`${API_URL}/analyze-assessment`, {
+    // Add cache-busting parameter to force new worker version
+    // This bypasses Cloudflare edge cache to get the latest deployed version
+    const cacheBuster = Date.now();
+    const apiUrl = `${API_URL}/analyze-assessment?v=${cacheBuster}`;
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -116,6 +121,28 @@ const callOpenRouterAssessment = async (assessmentData) => {
 
     console.log('✅ Assessment analysis successful');
     console.log('📊 Response keys:', Object.keys(result.data));
+    
+    // Log seed for deterministic verification
+    if (result.data._metadata?.seed) {
+      console.log('🎲 DETERMINISTIC SEED:', result.data._metadata.seed);
+      console.log('🎲 Model used:', result.data._metadata.model);
+      console.log('🎲 Deterministic:', result.data._metadata.deterministic);
+      
+      // Log failure details if any models failed before success
+      if (result.data._metadata.failureDetails && result.data._metadata.failureDetails.length > 0) {
+        console.warn('⚠️ MODEL FAILURES BEFORE SUCCESS:');
+        result.data._metadata.failureDetails.forEach((failure, idx) => {
+          console.warn(`   ${idx + 1}. ❌ ${failure.model}`);
+          if (failure.status) {
+            console.warn(`      Status: ${failure.status}`);
+          }
+          console.warn(`      Error: ${failure.error}`);
+        });
+        console.log(`✅ Final success with: ${result.data._metadata.model}`);
+      }
+    } else {
+      console.warn('⚠️ NO SEED IN RESPONSE - Using old worker version?');
+    }
     
     // Debug: Log career clusters to verify stream alignment
     if (result.data.careerFit?.clusters) {
@@ -324,8 +351,14 @@ const calculateAptitudeScore = (answers) => {
 /**
  * Prepare assessment data for analysis
  * Transforms raw answers into structured format for the AI
+ * 
+ * @param {Object} studentContext - Additional student context for better AI recommendations
+ * @param {string} studentContext.rawGrade - Original grade string (e.g., "PG Year 1", "Grade 10")
+ * @param {string} studentContext.programName - Student's program name (e.g., "MCA", "B.Tech CSE")
+ * @param {string} studentContext.programCode - Program code if available
+ * @param {string} studentContext.degreeLevel - Extracted degree level (undergraduate/postgraduate/diploma)
  */
-const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12', preCalculatedScores = null) => {
+const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12', preCalculatedScores = null, studentContext = {}) => {
   const { 
     riasecQuestions, 
     aptitudeQuestions, 
@@ -975,6 +1008,19 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     }
   }
 
+  // Extract degree level from grade string if not provided
+  let degreeLevel = studentContext.degreeLevel;
+  if (!degreeLevel && studentContext.rawGrade) {
+    const gradeStr = studentContext.rawGrade.toLowerCase();
+    if (gradeStr.includes('pg') || gradeStr.includes('postgraduate') || gradeStr.includes('m.tech') || gradeStr.includes('mtech') || gradeStr.includes('mca') || gradeStr.includes('mba') || gradeStr.includes('m.sc')) {
+      degreeLevel = 'postgraduate';
+    } else if (gradeStr.includes('ug') || gradeStr.includes('undergraduate') || gradeStr.includes('b.tech') || gradeStr.includes('btech') || gradeStr.includes('bca') || gradeStr.includes('b.sc') || gradeStr.includes('b.com') || gradeStr.includes('ba ')) {
+      degreeLevel = 'undergraduate';
+    } else if (gradeStr.includes('diploma')) {
+      degreeLevel = 'diploma';
+    }
+  }
+
   return {
     stream,
     gradeLevel,
@@ -989,7 +1035,14 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     totalAptitudeQuestions,
     sectionTimings: timingData,
     ruleBasedStreamHint, // Add rule-based hint for After 10th students
-    adaptiveAptitudeResults: answers.adaptive_aptitude_results || null
+    adaptiveAptitudeResults: answers.adaptive_aptitude_results || null,
+    // Add student context for AI prompt enhancement
+    studentContext: {
+      rawGrade: studentContext.rawGrade || null,
+      programName: studentContext.programName || null,
+      programCode: studentContext.programCode || null,
+      degreeLevel: degreeLevel || null
+    }
   };
 };
 
@@ -1005,6 +1058,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
  * @param {Object} questionBanks - All question banks for reference
  * @param {Object} sectionTimings - Time spent on each section in seconds
  * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', 'after10', or 'after12'
+ * @param {Object} studentContext - Additional student context (program, degree level, etc.)
  * @returns {Promise<Object>} - AI-analyzed results with course recommendations
  */
 export const analyzeAssessmentWithOpenRouter = async (
@@ -1012,16 +1066,21 @@ export const analyzeAssessmentWithOpenRouter = async (
   stream, 
   questionBanks, 
   sectionTimings = {}, 
-  gradeLevel = 'after12'
+  gradeLevel = 'after12',
+  preCalculatedScores = null,
+  studentContext = {}
 ) => {
   console.log('🤖 Starting assessment analysis...');
   console.log(`📊 Grade: ${gradeLevel}, Stream: ${stream}`);
+  if (studentContext.rawGrade) {
+    console.log(`📚 Student Context: ${studentContext.rawGrade}${studentContext.programName ? ` (${studentContext.programName})` : ''}`);
+  }
   
   updateProgress('preparing', 'Preparing your assessment data...');
   
   try {
-    // Prepare the assessment data (includes rule-based stream hint for after10)
-    const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings, gradeLevel);
+    // Prepare the assessment data (includes rule-based stream hint for after10 and student context)
+    const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings, gradeLevel, preCalculatedScores, studentContext);
 
     // Call the Cloudflare Worker (handles prompt building and AI call)
     let parsedResults = await callOpenRouterAssessment(assessmentData);

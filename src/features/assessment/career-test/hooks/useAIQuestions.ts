@@ -1,8 +1,12 @@
 /**
  * useAIQuestions Hook
  * 
- * Loads AI-generated questions for aptitude and knowledge sections
- * for after10, after12, and college grade levels.
+ * Loads AI-generated questions for aptitude and knowledge sections.
+ * 
+ * Grade Level Behavior:
+ * - after10: Loads ONLY aptitude questions (stream-agnostic, no knowledge)
+ * - after12, college, higher_secondary: Loads BOTH aptitude AND knowledge questions
+ * - middle, highschool: Does not load AI questions (uses hardcoded questions)
  * 
  * @module features/assessment/career-test/hooks/useAIQuestions
  */
