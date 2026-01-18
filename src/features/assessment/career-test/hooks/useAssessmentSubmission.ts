@@ -374,14 +374,9 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
       console.log('   Grade:', gradeLevel, 'Stream:', studentStream);
       console.log('   Total answers:', Object.keys(answers).length);
       
-      // Save to localStorage (same as Regenerate uses)
-      localStorage.setItem('assessment_answers', JSON.stringify(answers));
-      localStorage.setItem('assessment_stream', studentStream || '');
-      localStorage.setItem('assessment_grade_level', gradeLevel || 'after12');
-      localStorage.setItem('assessment_section_timings', JSON.stringify(finalTimings));
-      localStorage.removeItem('assessment_gemini_results'); // Clear old results
-      
-      console.log('💾 Saved assessment data to localStorage');
+      // ✅ REMOVED: localStorage saves (data already in database from real-time saving)
+      // All responses are already saved to database after each answer
+      // No need for redundant localStorage storage
 
       // Save to database WITHOUT AI analysis
       // AI analysis will be generated on-demand when viewing result (same as Regenerate)
@@ -432,12 +427,21 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           navigate(`/student/assessment/result?attemptId=${attemptId}`);
         } catch (dbErr: any) {
           console.error('❌ Failed to save to database:', dbErr);
-          // Still navigate to results (localStorage has the data)
-          navigate('/student/assessment/result');
+          // Navigate to results with attemptId (database has real-time saved data)
+          if (attemptId) {
+            navigate(`/student/assessment/result?attemptId=${attemptId}`);
+          } else {
+            // No attemptId - show error and stay on assessment page
+            alert('Failed to save assessment. Please try again.');
+            setIsSubmitting(false);
+            return;
+          }
         }
       } else {
-        console.log('No attemptId available, navigating without database save');
-        navigate('/student/assessment/result');
+        console.log('❌ No attemptId available - cannot navigate to results');
+        alert('Assessment data not found. Please try again.');
+        setIsSubmitting(false);
+        return;
       }
     } catch (err: any) {
       console.error('Error submitting assessment:', err);

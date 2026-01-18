@@ -74,7 +74,12 @@ const callOpenRouterAssessment = async (assessmentData) => {
   updateProgress('analyzing', 'AI is processing your responses...');
 
   try {
-    const response = await fetch(`${API_URL}/analyze-assessment`, {
+    // Add cache-busting parameter to force new worker version
+    // This bypasses Cloudflare edge cache to get the latest deployed version
+    const cacheBuster = Date.now();
+    const apiUrl = `${API_URL}/analyze-assessment?v=${cacheBuster}`;
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -116,6 +121,28 @@ const callOpenRouterAssessment = async (assessmentData) => {
 
     console.log('✅ Assessment analysis successful');
     console.log('📊 Response keys:', Object.keys(result.data));
+    
+    // Log seed for deterministic verification
+    if (result.data._metadata?.seed) {
+      console.log('🎲 DETERMINISTIC SEED:', result.data._metadata.seed);
+      console.log('🎲 Model used:', result.data._metadata.model);
+      console.log('🎲 Deterministic:', result.data._metadata.deterministic);
+      
+      // Log failure details if any models failed before success
+      if (result.data._metadata.failureDetails && result.data._metadata.failureDetails.length > 0) {
+        console.warn('⚠️ MODEL FAILURES BEFORE SUCCESS:');
+        result.data._metadata.failureDetails.forEach((failure, idx) => {
+          console.warn(`   ${idx + 1}. ❌ ${failure.model}`);
+          if (failure.status) {
+            console.warn(`      Status: ${failure.status}`);
+          }
+          console.warn(`      Error: ${failure.error}`);
+        });
+        console.log(`✅ Final success with: ${result.data._metadata.model}`);
+      }
+    } else {
+      console.warn('⚠️ NO SEED IN RESPONSE - Using old worker version?');
+    }
     
     // Debug: Log career clusters to verify stream alignment
     if (result.data.careerFit?.clusters) {

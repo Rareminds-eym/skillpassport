@@ -1815,15 +1815,21 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
       console.log(`✅ Using ${aiAptitude.length} AI aptitude questions`);
     }
     
-    // Add delay between API calls to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Generate/load knowledge questions (will use saved if available)
-    const aiKnowledge = await generateStreamKnowledgeQuestions(normalizedStreamId, 20, studentId, attemptId);
-    
-    if (aiKnowledge && aiKnowledge.length > 0) {
-      questions.knowledge = aiKnowledge;
-      console.log(`✅ Using ${aiKnowledge.length} AI knowledge questions`);
+    // IMPORTANT: Only generate knowledge questions for after12, college, and higher_secondary
+    // after10 students use stream-agnostic assessment (no knowledge section)
+    if (gradeLevel !== 'after10') {
+      // Add delay between API calls to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Generate/load knowledge questions (will use saved if available)
+      const aiKnowledge = await generateStreamKnowledgeQuestions(normalizedStreamId, 20, studentId, attemptId);
+      
+      if (aiKnowledge && aiKnowledge.length > 0) {
+        questions.knowledge = aiKnowledge;
+        console.log(`✅ Using ${aiKnowledge.length} AI knowledge questions`);
+      }
+    } else {
+      console.log(`⏭️ Skipping knowledge questions for after10 (stream-agnostic assessment)`);
     }
   }
 

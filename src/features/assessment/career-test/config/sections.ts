@@ -167,8 +167,59 @@ export const HIGH_SCHOOL_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
 ];
 
 /**
- * Section definitions for After 10th, After 12th, and College
- * Full comprehensive assessment with 6 sections
+ * Section definitions for After 10th
+ * Stream-agnostic assessment (no knowledge section)
+ * AI recommends best stream based on interests, personality, values, and aptitudes
+ */
+export const AFTER_10TH_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
+  {
+    id: 'riasec',
+    title: 'Career Interests',
+    description: "Discover what types of work environments and activities appeal to you most.",
+    color: "rose",
+    responseScale: RESPONSE_SCALES.likert5,
+    instruction: "Rate how much you would LIKE or DISLIKE each activity."
+  },
+  {
+    id: 'bigfive',
+    title: 'Big Five Personality',
+    description: "Understand your work style, approach to tasks, and how you interact with others.",
+    color: "purple",
+    responseScale: RESPONSE_SCALES.accuracy5,
+    instruction: "How accurately does each statement describe you?"
+  },
+  {
+    id: 'values',
+    title: 'Work Values & Motivators',
+    description: "Identify what drives your career satisfaction and choices.",
+    color: "indigo",
+    responseScale: RESPONSE_SCALES.importance5,
+    instruction: "How important is each factor in your ideal career?"
+  },
+  {
+    id: 'employability',
+    title: 'Employability Skills',
+    description: "Assess your job-readiness and 21st-century skills.",
+    color: "green",
+    responseScale: RESPONSE_SCALES.selfDescription5,
+    instruction: "How well does each statement describe you?"
+  },
+  {
+    id: 'aptitude',
+    title: 'Multi-Aptitude',
+    description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
+    color: "amber",
+    isTimed: true,
+    timeLimit: 15 * 60, // 15 minutes fallback
+    isAptitude: true,
+    individualTimeLimit: 60, // 1 minute per question
+    instruction: "Choose the correct answer. You have 1 minute per question."
+  }
+];
+
+/**
+ * Section definitions for After 12th and College
+ * Full comprehensive assessment with 6 sections including stream-specific knowledge
  */
 export const COMPREHENSIVE_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
   {
@@ -244,9 +295,10 @@ export const getSectionsForGrade = (gradeLevel: GradeLevel): Omit<SectionConfig,
     case 'higher_secondary':
       return HIGHER_SECONDARY_SECTIONS;
     case 'after10':
+      return AFTER_10TH_SECTIONS; // Stream-agnostic (no knowledge section)
     case 'after12':
     case 'college':
-      return COMPREHENSIVE_SECTIONS;
+      return COMPREHENSIVE_SECTIONS; // Includes knowledge section
     default:
       return [];
   }
@@ -256,7 +308,9 @@ export const getSectionsForGrade = (gradeLevel: GradeLevel): Omit<SectionConfig,
  * Check if a grade level uses AI-powered questions
  */
 export const usesAIQuestions = (gradeLevel: GradeLevel): boolean => {
-  return ['higher_secondary', 'after10', 'after12', 'college'].includes(gradeLevel);
+  // Only higher_secondary, after12, and college use AI knowledge questions
+  // after10 uses AI aptitude questions but NOT knowledge questions (stream-agnostic)
+  return ['higher_secondary', 'after12', 'college'].includes(gradeLevel);
 };
 
 /**
