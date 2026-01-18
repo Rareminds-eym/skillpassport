@@ -828,8 +828,8 @@ export const useAssessmentResults = () => {
                     } else {
                         // Result exists but no AI analysis - AUTO-GENERATE IT!
 
-                        // Check if we already tried auto-retrying this session
-                        const retryKey = `auto_retry_done_${result.id}`;
+                        // Check if we already tried auto-retrying this session (using attemptId to match handleRetry)
+                        const retryKey = `auto_retry_done_attempt_${attemptId}`;
                         const alreadyRetried = sessionStorage.getItem(retryKey);
 
                         if (retryCompleted || alreadyRetried) {
@@ -861,8 +861,10 @@ export const useAssessmentResults = () => {
                             gradeLevelFromAttemptRef.current = true;
                         }
 
-                        // Mark as attempted to prevent loops on remount
-                        sessionStorage.setItem(retryKey, 'true');
+                        // Store the result ID for use in handleRetry's sessionStorage marker
+                        // NOTE: We do NOT set sessionStorage here anymore - it's set in handleRetry's finally block
+                        // This fixes the React Strict Mode race condition where the component re-mounts
+                        // before handleRetry can complete, causing the second loadResults to skip the retry
 
                         // Set flag to trigger auto-retry (will be handled by useEffect)
                         // Keep loading=true so user sees "Generating Your Report" screen
@@ -1199,10 +1201,18 @@ export const useAssessmentResults = () => {
             console.error('Regeneration failed:', e);
             setError(e.message || 'Failed to regenerate report. Please try again.');
         } finally {
+            // Mark retry as attempted in sessionStorage AFTER the retry completes (success or failure)
+            // This fixes the React Strict Mode race condition - we only mark as attempted when done
+            const attemptIdForMarker = searchParams.get('attemptId');
+            if (attemptIdForMarker) {
+                // Use attemptId since result.id may not be available in all cases
+                sessionStorage.setItem(`auto_retry_done_attempt_${attemptIdForMarker}`, 'true');
+                console.log('📝 Marked retry as completed for attempt:', attemptIdForMarker);
+            }
             setRetrying(false);
             setLoading(false); // Ensure loading screen is dismissed
         }
-    }, [searchParams, gradeLevel, studentInfo.grade, studentInfo.courseName]); // Use specific fields instead of whole object
+    }, [searchParams.toString(), gradeLevel, studentInfo.grade, studentInfo.courseName]); // Use toString() for stable dependency
 
     useEffect(() => {
         loadResults();
@@ -1218,13 +1228,15 @@ export const useAssessmentResults = () => {
             console.log('   retryCompleted:', retryCompleted);
             setAutoRetry(false); // Reset flag immediately to prevent loops
 
-            // Add a small delay to ensure state updates have propagated
-            const retryTimer = setTimeout(() => {
-                console.log('⏰ Executing handleRetry after delay...');
+            // REMOVED TIMEOUT: Executing immediately to prevent cancellation on component unmount/update
+            // (common in React Strict Mode or when dependencies change rapidly)
+            console.log('🤖 Executing handleRetry immediately...');
+            if (typeof handleRetry === 'function') {
                 handleRetry();
-            }, 100);
-
-            return () => clearTimeout(retryTimer);
+            } else {
+                console.error('❌ handleRetry is not a function');
+                setError('Internal error: Retry mechanism failed.');
+            }
         } else if (autoRetry) {
             console.log('⚠️ Auto-retry NOT triggered - conditions not met:');
             console.log('   autoRetry:', autoRetry);
