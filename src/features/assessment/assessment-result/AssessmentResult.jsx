@@ -34,7 +34,8 @@ import {
     ProfileSection,
     CareerSection,
     SkillsSection,
-    RoadmapSection
+    RoadmapSection,
+    StageScoresSection
 } from './components';
 
 // Import Career Track Modal
@@ -1672,37 +1673,49 @@ const AssessmentResult = () => {
                     )}
 
                     {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-                    {/* AFTER 12TH - TAB BASED (Keep existing behavior) */}
+                    {/* AFTER 12TH - STEPPER BASED (matching After 10th design) */}
                     {/* ═══════════════════════════════════════════════════════════════════════════════ */}
                     {gradeLevel === 'after12' && (
                         <div className="mb-8">
-                            {/* Toggle Buttons */}
-                            <div className="flex justify-center mb-6">
-                                <div className="inline-flex bg-gray-100 rounded-xl p-1 shadow-inner">
-                                    <button
+                            {/* Stepper Header */}
+                            <div className="flex justify-center mb-8">
+                                <div className="flex items-center gap-4">
+                                    {/* Step 1 - Recommended Programs */}
+                                    <div
+                                        className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${activeRecommendationTab === 'primary' ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => setActiveRecommendationTab('primary')}
-                                        className={`px-6 py-3 rounded-lg font-medium text-sm transition-all duration-300 ${activeRecommendationTab === 'primary'
-                                            ? 'bg-white text-indigo-600 shadow-md'
-                                            : 'text-gray-600 hover:text-gray-800'
-                                            }`}
                                     >
-                                        <span className="flex items-center gap-2">
-                                            <GraduationCap className="w-4 h-4" />
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${activeRecommendationTab === 'primary'
+                                            ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
+                                            : activeRecommendationTab === 'career'
+                                                ? 'bg-green-500 text-white'
+                                                : 'bg-gray-200 text-gray-500'
+                                            }`}>
+                                            {activeRecommendationTab === 'career' ? <CheckCircle2 className="w-5 h-5" /> : '1'}
+                                        </div>
+                                        <span className={`font-medium text-sm hidden sm:block ${activeRecommendationTab === 'primary' ? 'text-blue-600' : 'text-gray-500'}`}>
                                             Recommended Programs
                                         </span>
-                                    </button>
-                                    <button
+                                    </div>
+
+                                    {/* Connector */}
+                                    <div className={`w-16 h-1 rounded-full transition-all duration-500 ${activeRecommendationTab === 'career' ? 'bg-green-500' : 'bg-gray-200'}`} />
+
+                                    {/* Step 2 - Career Recommendations */}
+                                    <div
+                                        className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${activeRecommendationTab === 'career' ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => setActiveRecommendationTab('career')}
-                                        className={`px-6 py-3 rounded-lg font-medium text-sm transition-all duration-300 ${activeRecommendationTab === 'career'
-                                            ? 'bg-white text-indigo-600 shadow-md'
-                                            : 'text-gray-600 hover:text-gray-800'
-                                            }`}
                                     >
-                                        <span className="flex items-center gap-2">
-                                            <Briefcase className="w-4 h-4" />
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${activeRecommendationTab === 'career'
+                                            ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
+                                            : 'bg-gray-200 text-gray-500'
+                                            }`}>
+                                            2
+                                        </div>
+                                        <span className={`font-medium text-sm hidden sm:block ${activeRecommendationTab === 'career' ? 'text-blue-600' : 'text-gray-500'}`}>
                                             Career Recommendations
                                         </span>
-                                    </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1718,6 +1731,17 @@ const AssessmentResult = () => {
                                                 const degreePrograms = results?.gemini_results?.careerFit?.degreePrograms || results?.careerFit?.degreePrograms;
                                                 const hasAIPrograms = degreePrograms && degreePrograms.length >= 3;
                                                 
+                                                // DEBUG: Log first program to check for new fields
+                                                if (degreePrograms && degreePrograms.length > 0) {
+                                                    console.log('🎓 DEGREE PROGRAM DEBUG - First Program:', degreePrograms[0]);
+                                                    console.log('📊 Field Check:', {
+                                                        programName: degreePrograms[0].programName,
+                                                        duration: degreePrograms[0].duration || '❌ MISSING',
+                                                        roleDescription: degreePrograms[0].roleDescription ? '✅ Present' : '❌ MISSING',
+                                                        topUniversities: degreePrograms[0].topUniversities ? `✅ ${degreePrograms[0].topUniversities.length} universities` : '❌ MISSING'
+                                                    });
+                                                }
+                                                
                                                 console.log('🔍 After12 Layout Check:', {
                                                     hasGeminiResults: !!results?.gemini_results,
                                                     hasCareerFit: !!(results?.gemini_results?.careerFit || results?.careerFit),
@@ -1726,7 +1750,15 @@ const AssessmentResult = () => {
                                                     willShowNewLayout: hasAIPrograms,
                                                     willShowFallback: !hasAIPrograms && enhancedCourseRecommendations?.length > 0,
                                                     dataSource: results?.gemini_results?.careerFit ? 'nested' : results?.careerFit ? 'flattened' : 'none',
-                                                    careerFitKeys: results?.careerFit ? Object.keys(results.careerFit) : 'no careerFit'
+                                                    careerFitKeys: results?.careerFit ? Object.keys(results.careerFit) : 'no careerFit',
+                                                    firstProgramSample: degreePrograms?.[0] ? {
+                                                        programName: degreePrograms[0].programName,
+                                                        hasDuration: !!degreePrograms[0].duration,
+                                                        hasRoleDescription: !!degreePrograms[0].roleDescription,
+                                                        hasTopUniversities: !!degreePrograms[0].topUniversities,
+                                                        duration: degreePrograms[0].duration,
+                                                        universitiesCount: degreePrograms[0].topUniversities?.length || 0
+                                                    } : 'no programs'
                                                 });
                                                 
                                                 // DETAILED DEBUG - Show what's actually in careerFit
@@ -1866,7 +1898,20 @@ const AssessmentResult = () => {
                                                                                                 </div>
                                                                                                 <div>
                                                                                                     <h4 className="text-xl font-bold text-white">{program.programName}</h4>
-                                                                                                    {program.alignedWithCluster && (
+                                                                                                    {/* Duration and Aligned Cluster on same line */}
+                                                                                                    {program.duration && (
+                                                                                                        <div className="flex items-center gap-2 mt-1">
+                                                                                                            <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 text-xs font-semibold rounded-full border border-blue-500/30">
+                                                                                                                {program.duration}
+                                                                                                            </span>
+                                                                                                            {program.alignedWithCluster && (
+                                                                                                                <span className="text-xs text-gray-400">
+                                                                                                                    • Aligned with: <span className="text-blue-300">{program.alignedWithCluster}</span>
+                                                                                                                </span>
+                                                                                                            )}
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                    {!program.duration && program.alignedWithCluster && (
                                                                                                         <p className="text-xs text-gray-400 mt-1">
                                                                                                             Aligned with: <span className="text-blue-300">{program.alignedWithCluster}</span>
                                                                                                         </p>
@@ -1897,9 +1942,37 @@ const AssessmentResult = () => {
                                                                                         </div>
                                                                                     )}
 
+                                                                                    {/* Role Description */}
+                                                                                    {program.roleDescription && (
+                                                                                        <div className="mb-4 bg-white/5 rounded-lg p-4 border border-white/10">
+                                                                                            <h5 className="text-xs font-bold uppercase mb-2 tracking-wider flex items-center gap-2" style={{ color: purpleConfig.accentLight }}>
+                                                                                                <Briefcase className="w-3.5 h-3.5" />
+                                                                                                WHAT YOU'LL DO
+                                                                                            </h5>
+                                                                                            <p className="text-gray-300 text-sm leading-relaxed">{program.roleDescription}</p>
+                                                                                        </div>
+                                                                                    )}
+
+                                                                                    {/* Top Universities */}
+                                                                                    {program.topUniversities && program.topUniversities.length > 0 && (
+                                                                                        <div className="mb-4">
+                                                                                            <h5 className="text-xs font-bold uppercase mb-3 tracking-wider flex items-center gap-2" style={{ color: purpleConfig.accentLight }}>
+                                                                                                <GraduationCap className="w-3.5 h-3.5" />
+                                                                                                TOP UNIVERSITIES
+                                                                                            </h5>
+                                                                                            <div className="flex flex-wrap gap-2">
+                                                                                                {program.topUniversities.slice(0, 5).map((university, idx) => (
+                                                                                                    <span key={idx} className="px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs border border-white/20 hover:bg-white/15 transition-colors">
+                                                                                                        {university}
+                                                                                                    </span>
+                                                                                                ))}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    )}
+
                                                                                     {/* Evidence Summary (Compact) */}
                                                                                     {program.evidence && (
-                                                                                        <div className="grid md:grid-cols-2 gap-3">
+                                                                                        <div className="grid md:grid-cols-2 gap-3 pt-3 border-t border-white/10">
                                                                                             {program.evidence.interest && (
                                                                                                 <div className="text-xs">
                                                                                                     <span className="font-semibold text-blue-300">Interest:</span>

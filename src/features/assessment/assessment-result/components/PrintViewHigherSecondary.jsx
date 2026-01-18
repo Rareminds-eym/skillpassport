@@ -16,11 +16,13 @@ import {
 } from './shared/utils';
 import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
-import PrintPage from './shared/PrintPage';
 import Watermarks, {
   DataPrivacyNotice,
   ReportDisclaimer,
+  RepeatingHeader,
+  RepeatingFooter,
 } from './shared/Watermarks';
+import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
 
 /**
  * PrintViewHigherSecondary Component
@@ -212,10 +214,10 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
       {/* RIASEC Infographic Layout with Central Circle */}
       <div style={{
         position: 'relative',
-        padding: '20px 0',
-        marginTop: '10px',
-        marginBottom: '8px',
-        minHeight: '320px'
+        padding: '0',
+        marginTop: '0',
+        marginBottom: '0',
+        minHeight: '220px'
       }}>
         {/* SVG for connecting lines */}
         <svg style={{
@@ -354,7 +356,8 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
         color: '#6b7280', 
         fontStyle: 'italic', 
         lineHeight: '1.5',
-        marginTop: '10px',
+        marginTop: '0',
+        marginBottom: '0',
         textAlign: 'left'
       }}>
         <strong>Your Top Interests:</strong> {topInterestsText}. {hasStrongInterests 
@@ -375,7 +378,7 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>2. Cognitive Abilities</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>2. Cognitive Abilities</h2>
       <h3 style={printStyles.subTitle}>Aptitude Test Results</h3>
 
       <div style={printStyles.twoCol}>
@@ -442,7 +445,7 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>3. Big Five Personality Traits</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>3. Big Five Personality Traits</h2>
 
       <div style={printStyles.twoCol}>
         {traits.map((trait) => {
@@ -510,7 +513,7 @@ const WorkValuesSection = ({ workValues }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>4. Work Values</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>4. Work Values</h2>
       <h3 style={printStyles.subTitle}>Your Top Work Motivations</h3>
 
       <div style={printStyles.twoCol}>
@@ -563,7 +566,7 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>5. Career Fit Analysis</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>5. Career Fit Analysis</h2>
       <h3 style={printStyles.subTitle}>Recommended Career Paths</h3>
 
       <div style={printStyles.twoCol}>
@@ -614,11 +617,11 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>6. Skill Gap & Development Plan</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>6. Skill Gap & Development Plan</h2>
 
       {/* Current Skills */}
       {skillGap.currentSkills && skillGap.currentSkills.length > 0 && (
-        <div style={{ marginBottom: '15px' }}>
+        <div style={{ marginBottom: '8px' }}>
           <h3 style={printStyles.subTitle}>Your Current Skills</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {skillGap.currentSkills.map((skill, idx) => (
@@ -710,13 +713,13 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>7. Development Roadmap</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>7. Development Roadmap</h2>
 
       {/* Roadmap Phases */}
       {roadmap.phases && roadmap.phases.length > 0 && (
-        <div style={{ marginTop: '10px' }}>
+        <div style={{ marginTop: '5px' }}>
           {roadmap.phases.map((phase, idx) => (
-            <div key={idx} style={{ ...printStyles.card, marginBottom: '12px' }}>
+            <div key={idx} style={{ ...printStyles.card, marginBottom: '6px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#4f46e5' }}>
                   {safeRender(phase.phase || `Phase ${idx + 1}`)}

@@ -11,6 +11,7 @@ import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
 import PrintPage from './shared/PrintPage';
 import Watermarks, { DataPrivacyNotice, ReportDisclaimer } from './shared/Watermarks';
+import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
 
 /**
  * PrintViewCollege Component
@@ -99,28 +100,38 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
           )}
         </PrintPage>
 
-        {/* Page 5: Employability Score */}
+        {/* Page 5: Detailed Assessment Breakdown (Developer Reference) */}
+        {/* COMMENTED OUT - Duplicate data already shown in previous pages */}
+        {/* <PrintPage pageNumber={5}>
+          <DetailedAssessmentBreakdown 
+            results={results} 
+            riasecNames={safeRiasecNames}
+            gradeLevel="college"
+          />
+        </PrintPage> */}
+
+        {/* Page 6: Employability Score */}
         <PrintPage pageNumber={5}>
           {employability && (
             <EmployabilityScoreSection employability={employability} />
           )}
         </PrintPage>
 
-        {/* Page 6: Career Fit Analysis */}
+        {/* Page 7: Career Fit Analysis */}
         <PrintPage pageNumber={6}>
           {careerFit && (
             <CareerFitAnalysisSection careerFit={careerFit} />
           )}
         </PrintPage>
 
-        {/* Page 7: Skill Gap & Development Plan */}
+        {/* Page 8: Skill Gap & Development Plan */}
         <PrintPage pageNumber={7}>
           {skillGap && (
             <SkillGapDevelopmentSection skillGap={skillGap} />
           )}
         </PrintPage>
 
-        {/* Page 8: Detailed Career Roadmap */}
+        {/* Page 9: Detailed Career Roadmap */}
         <PrintPage pageNumber={8}>
           {roadmap && (
             <DetailedCareerRoadmapSection roadmap={roadmap} />
