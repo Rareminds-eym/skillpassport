@@ -26,6 +26,14 @@ import DigitalSharingSettings from '../pages/digital-pp/settings/SharingSettings
 import DigitalThemeSettings from '../pages/digital-pp/settings/ThemeSettings';
 // Duplicate imports removed - using the Digital* prefixed imports above
 
+// Role constants to prevent re-renders
+const STUDENT_ROLES = ["student", "school_student", "college_student"];
+const RECRUITER_ROLES = ["recruiter"];
+const EDUCATOR_ROLES = ["educator", "school_educator", "college_educator"];
+const COLLEGE_ADMIN_ROLES = ["college_admin"];
+const SCHOOL_ADMIN_ROLES = ["school_admin"];
+const UNIVERSITY_ADMIN_ROLES = ["university_admin"];
+
 const Home = lazy(() => import("../pages/homepage/Home"));
 const About = lazy(() => import("../pages/homepage/About"));
 const Contact = lazy(() => import("../pages/homepage/Contact"));
@@ -144,7 +152,7 @@ const BrowseJobs = lazy(() => import("../pages/student/BrowseJobs"));
 const Messages = lazy(() => import("../pages/student/Messages"));
 const StudentAnalytics = lazy(() => import("../pages/student/Analytics"));
 const MyClass = lazy(() => import("../pages/student/MyClass"));
-const Clubs = lazy(() => import ("../pages/student/Clubs"))
+const Clubs = lazy(() => import("../pages/student/Clubs"))
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
 const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
 const CareerAI = lazy(() => import("../pages/student/CareerAI"));
@@ -171,7 +179,7 @@ const EducatorAssessmentResults = lazy(() => import("../pages/educator/Assessmen
 const EducatorCourses = lazy(() => import("../pages/educator/Courses"));
 const EducatorBrowseCourses = lazy(() => import("../pages/educator/BrowseCourses"));
 const EducatorAssessments = lazy(() => import("../pages/educator/Assessments"));
-const CollegeAssignments = lazy(()=> import("../pages/educator/CollegeSkillTasks"));
+const CollegeAssignments = lazy(() => import("../pages/educator/CollegeSkillTasks"));
 const EducatorMentorNotes = lazy(() => import("../pages/educator/MentorNotes"));
 const EducatorMyMentees = lazy(() => import("../pages/educator/MyMentees"));
 const EducatorSettings = lazy(() => import("../pages/educator/Settings"));
@@ -497,12 +505,12 @@ const AppRoutes = () => {
       <Routes>
         {/* Simple Event Registration - Social media campaigns (standalone, no layout) */}
         <Route path="/register" element={<SimpleEventRegistration />} />
-        
+
         {/* Event Sales - Standalone without layout (no header/footer) */}
         <Route path="/signup/plans" element={<EventSales />} />
         <Route path="/signup/plans/success" element={<EventSalesSuccess />} />
         <Route path="/signup/plans/failure" element={<EventSalesFailure />} />
-        
+
         {/* Register plans - alias for Event Sales (standalone, no layout) */}
         <Route path="/register/plans" element={<EventSales />} />
         <Route path="/register/plans/success" element={<EventSalesSuccess />} />
@@ -588,7 +596,7 @@ const AppRoutes = () => {
         <Route
           path="/college-admin/*"
           element={
-            <SubscriptionProtectedRoute 
+            <SubscriptionProtectedRoute
               allowedRoles={["college_admin"]}
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=college_admin"
@@ -627,7 +635,7 @@ const AppRoutes = () => {
           <Route path="academics/coverage-tracker" element={<AcademicCoverageTracker />} />
           <Route path="academics/programs" element={<ProgramManagement />} />
           <Route path="academics/program-sections" element={<ProgramSectionManagement />} />
-          
+
           <Route path="academics/calendar" element={<AcademicCalendar />} />
 
           {/* Examination Management */}
@@ -676,7 +684,7 @@ const AppRoutes = () => {
         <Route
           path="/school-admin/*"
           element={
-            <SubscriptionProtectedRoute 
+            <SubscriptionProtectedRoute
               allowedRoles={["school_admin"]}
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=school_admin"
@@ -691,7 +699,7 @@ const AppRoutes = () => {
           <Route path="students/admissions" element={<StudentAdmissions />} />
           <Route path="students/attendance-reports" element={<AttendanceReports />} />
           <Route path="students/assessment-results" element={<SchoolAdminAssessmentResults />} />
-          <Route path="students/verifications" element={<SchoolAdminVerifications  />} />
+          <Route path="students/verifications" element={<SchoolAdminVerifications />} />
           <Route path="students/digital-portfolio" element={<SchoolAdminDigitalPortfolio />} />
           <Route path="classes/management" element={<ClassManagement />} />
           <Route path="courses" element={<SchoolAdminCourses />} />
@@ -739,7 +747,7 @@ const AppRoutes = () => {
         <Route
           path="/university-admin/*"
           element={
-            <SubscriptionProtectedRoute 
+            <SubscriptionProtectedRoute
               allowedRoles={["university_admin"]}
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=university_admin"
@@ -803,7 +811,7 @@ const AppRoutes = () => {
         <Route
           path="/recruitment/*"
           element={
-            <SubscriptionProtectedRoute 
+            <SubscriptionProtectedRoute
               allowedRoles={["recruiter"]}
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=recruiter"
@@ -839,8 +847,8 @@ const AppRoutes = () => {
         <Route
           path="/student/*"
           element={
-            <SubscriptionProtectedRoute 
-              allowedRoles={["student", "school_student", "college_student"]}
+            <SubscriptionProtectedRoute
+              allowedRoles={STUDENT_ROLES}
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=student"
             >
@@ -1002,8 +1010,8 @@ const AppRoutes = () => {
         <Route
           path="/educator/*"
           element={
-            <SubscriptionProtectedRoute 
-              allowedRoles={["educator", "school_educator", "college_educator"]}
+            <SubscriptionProtectedRoute
+              allowedRoles={EDUCATOR_ROLES}
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=educator"
             >

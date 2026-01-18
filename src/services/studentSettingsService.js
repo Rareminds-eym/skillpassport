@@ -317,6 +317,13 @@ export const updateStudentSettings = async (email, updates) => {
         }
 
         columnUpdates[fieldMapping[key]] = value;
+        
+        // IMPORTANT: When branch_field is updated, also update course_name
+        // This ensures consistency between settings page and assessment test page
+        if (key === 'branch' && value) {
+          columnUpdates.course_name = value;
+          console.log('📚 Syncing course_name with branch_field:', value);
+        }
       } else if (key === 'otherSocialLinks') {
         columnUpdates.other_social_links = updates[key];
       }

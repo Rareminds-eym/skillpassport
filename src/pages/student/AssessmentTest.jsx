@@ -155,6 +155,7 @@ const AssessmentTest = () => {
     const [gradeStartDate, setGradeStartDate] = useState(null); // When student started current grade
     const [monthsInGrade, setMonthsInGrade] = useState(null); // Months since starting current grade
     const [loadingStudentGrade, setLoadingStudentGrade] = useState(true);
+    const [profileData, setProfileData] = useState(null); // Complete profile data for missing field analysis
     
     // Use centralized utility for calculating months in grade
     const calculateMonthsInGrade = calculateMonthsInGradeUtil;
@@ -197,6 +198,9 @@ const AssessmentTest = () => {
                     console.error('Error fetching student grade:', error);
                 } else if (student) {
                     console.log('Student grade data found:', student);
+                    
+                    // Store complete profile data for missing field analysis
+                    setProfileData(student);
                     
                     // Save student ID for AI question saving
                     setStudentId(student.id);
@@ -1903,13 +1907,25 @@ const AssessmentTest = () => {
                 // This will be used by the AI to enhance career recommendations
             }
 
+            // Build student context for enhanced AI recommendations
+            const studentContext = {
+                rawGrade: studentGrade, // Original grade string (e.g., "PG Year 1", "Grade 10")
+                programName: studentProgram, // Program name (e.g., "MCA", "B.Tech CSE")
+                programCode: null, // Not available in this context
+                degreeLevel: null // Will be extracted from rawGrade in service
+            };
+            
+            console.log('📚 Student Context for AI:', studentContext);
+            
             // Analyze with Gemini AI - this is required, no fallback
             const geminiResults = await analyzeAssessmentWithGemini(
                 answersWithAdaptive,
                 studentStream,
                 questionBanks,
                 finalTimings, // Pass section timings to Gemini
-                gradeLevel // Pass grade level for proper scoring
+                gradeLevel, // Pass grade level for proper scoring
+                null, // preCalculatedScores (not available here)
+                studentContext // Pass student context for enhanced recommendations
             );
 
             if (geminiResults) {
@@ -2144,6 +2160,7 @@ const AssessmentTest = () => {
                 shouldShowAllOptions={shouldShowAllOptions}
                 shouldFilterByGrade={shouldFilterByGrade}
                 studentProgram={studentProgram}
+                profileData={profileData}
             />
         );
     }

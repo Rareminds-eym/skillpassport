@@ -838,9 +838,10 @@ async function generateAptitudeQuestions(
         attempt_id: attemptId || null,
         questions: allQuestions,
         generated_at: new Date().toISOString(),
+        grade_level: gradeLevel || 'Grade 10', // Add grade level field
         is_active: true
       }, { onConflict: 'student_id,stream_id,question_type' });
-      console.log('✅ Aptitude questions saved for student:', studentId);
+      console.log('✅ Aptitude questions saved for student:', studentId, 'grade:', gradeLevel);
     } catch (e: any) {
       console.warn('⚠️ Could not save questions:', e.message);
     }
@@ -860,7 +861,8 @@ async function generateKnowledgeQuestions(
   topics: string[], 
   questionCount: number = 20,
   studentId?: string,
-  attemptId?: string
+  attemptId?: string,
+  gradeLevel?: string // Add grade level parameter
 ) {
   const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
 
@@ -1002,9 +1004,10 @@ Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
         attempt_id: attemptId || null,
         questions: allQuestions,
         generated_at: new Date().toISOString(),
+        grade_level: gradeLevel || 'Grade 10', // Add grade level field
         is_active: true
       }, { onConflict: 'student_id,stream_id,question_type' });
-      console.log('✅ Knowledge questions saved for student:', studentId);
+      console.log('✅ Knowledge questions saved for student:', studentId, 'grade:', gradeLevel);
     } catch (e: any) {
       console.warn('⚠️ Could not save questions:', e.message);
     }
@@ -1216,15 +1219,15 @@ export default {
       try {
         const body = await request.json() as any;
         console.log('📥 Knowledge request body:', JSON.stringify(body));
-        const { streamId, streamName, topics, questionCount = 20, studentId, attemptId } = body;
+        const { streamId, streamName, topics, questionCount = 20, studentId, attemptId, gradeLevel } = body;
 
         if (!streamId || !streamName || !topics) {
           console.error('❌ Missing required fields:', { streamId, streamName, topics: !!topics });
           return jsonResponse({ error: 'Stream ID, name, and topics are required', received: { streamId, streamName, hasTopics: !!topics } }, 400);
         }
 
-        console.log('🎯 Generating knowledge questions for:', streamName, 'topics:', topics.length);
-        const result = await generateKnowledgeQuestions(env, streamId, streamName, topics, questionCount, studentId, attemptId);
+        console.log('🎯 Generating knowledge questions for:', streamName, 'topics:', topics.length, 'grade:', gradeLevel);
+        const result = await generateKnowledgeQuestions(env, streamId, streamName, topics, questionCount, studentId, attemptId, gradeLevel);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Knowledge generation error:', error.message, error.stack);

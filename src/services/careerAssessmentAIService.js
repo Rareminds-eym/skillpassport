@@ -944,8 +944,53 @@ export function validateQuestion(question, questionType) {
       // Normalize correct answer - extract letter from formats like "Option B", "B)", "b", etc.
       const normalized = String(correctAnswer).trim().toUpperCase();
       const match = normalized.match(/[ABCD]/);
+      
       if (!match) {
-        errors.push(`Invalid correct answer: ${correctAnswer}`);
+        // AI might have returned the actual answer text instead of the letter
+        // Try to match it to one of the options
+        if (question.options && Array.isArray(question.options)) {
+          const answerText = String(correctAnswer).trim();
+          
+          // Debug logging
+          console.log(`🔍 Attempting to match answer "${answerText}" to options:`, question.options);
+          
+          const matchingOptionIndex = question.options.findIndex(opt => {
+            const optText = String(opt).trim();
+            // Exact match
+            if (optText === answerText) {
+              console.log(`  ✅ Exact match found: "${optText}" === "${answerText}"`);
+              return true;
+            }
+            // Case-insensitive match
+            if (optText.toLowerCase() === answerText.toLowerCase()) {
+              console.log(`  ✅ Case-insensitive match found: "${optText}" ~= "${answerText}"`);
+              return true;
+            }
+            // Match if option contains the answer
+            if (optText.toLowerCase().includes(answerText.toLowerCase())) {
+              console.log(`  ✅ Contains match found: "${optText}" contains "${answerText}"`);
+              return true;
+            }
+            // Match if answer contains the option (reverse check)
+            if (answerText.toLowerCase().includes(optText.toLowerCase())) {
+              console.log(`  ✅ Reverse contains match found: "${answerText}" contains "${optText}"`);
+              return true;
+            }
+            return false;
+          });
+          
+          if (matchingOptionIndex !== -1) {
+            // Found matching option - convert index to letter
+            const letters = ['A', 'B', 'C', 'D'];
+            question.correct = letters[matchingOptionIndex];
+            console.log(`✅ Auto-corrected answer "${correctAnswer}" to option ${question.correct}`);
+          } else {
+            console.warn(`❌ No match found for answer "${answerText}" in options:`, question.options);
+            errors.push(`Invalid correct answer: ${correctAnswer}`);
+          }
+        } else {
+          errors.push(`Invalid correct answer: ${correctAnswer}`);
+        }
       } else {
         // Update the question object with normalized answer
         question.correct = match[0];
@@ -1341,7 +1386,7 @@ export async function getSavedQuestionsForStudent(studentId, streamId, questionT
  * Generate Stream Knowledge questions using AI
  * If studentId provided, saves questions for resume functionality
  */
-export async function generateStreamKnowledgeQuestions(streamId, questionCount = 20, studentId = null, attemptId = null) {
+export async function generateStreamKnowledgeQuestions(streamId, questionCount = 20, studentId = null, attemptId = null, gradeLevel = 'Grade 10') {
   // Normalize the stream ID to match our STREAM_KNOWLEDGE_PROMPTS keys
   const normalizedStreamId = normalizeStreamId(streamId);
   const streamInfo = STREAM_KNOWLEDGE_PROMPTS[normalizedStreamId];
@@ -1390,7 +1435,8 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
           topics: effectiveStreamInfo.topics,
           questionCount,
           studentId,
-          attemptId
+          attemptId,
+          gradeLevel // Add grade level to API request
         })
       });
 
@@ -1458,7 +1504,7 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
       // If API returned questions but didn't save them, save from frontend as fallback
       if (finalQuestions.length > 0 && studentId && !data.cached) {
         console.log('💾 Saving knowledge questions from frontend as fallback...');
-        await saveKnowledgeQuestions(studentId, effectiveStreamId, attemptId, finalQuestions);
+        await saveKnowledgeQuestions(studentId, effectiveStreamId, attemptId, finalQuestions, gradeLevel);
       }
       
       return finalQuestions;
@@ -1710,13 +1756,13 @@ async function saveAptitudeQuestions(studentId, streamId, attemptId, questions, 
 /**
  * Save knowledge questions to database (fallback if API doesn't save)
  */
-async function saveKnowledgeQuestions(studentId, streamId, attemptId, questions) {
+async function saveKnowledgeQuestions(studentId, streamId, attemptId, questions, gradeLevel = 'Grade 10') {
   if (!studentId) {
     console.log('⚠️ No studentId provided, skipping knowledge save');
     return;
   }
   
-  console.log(`💾 [Frontend] Saving ${questions.length} knowledge questions for student:`, studentId, 'stream:', streamId);
+  console.log(`💾 [Frontend] Saving ${questions.length} knowledge questions for student:`, studentId, 'stream:', streamId, 'grade:', gradeLevel);
   
   try {
     const { data, error } = await supabase.from('career_assessment_ai_questions').upsert({
@@ -1726,7 +1772,7 @@ async function saveKnowledgeQuestions(studentId, streamId, attemptId, questions)
       attempt_id: attemptId || null,
       questions: questions,
       generated_at: new Date().toISOString(),
-      grade_level: null, // Will be set by API if needed
+      grade_level: gradeLevel, // Use actual grade level from student
       is_active: true
     }, { onConflict: 'student_id,stream_id,question_type' })
     .select('id');
@@ -1822,7 +1868,7 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Generate/load knowledge questions (will use saved if available)
-      const aiKnowledge = await generateStreamKnowledgeQuestions(normalizedStreamId, 20, studentId, attemptId);
+      const aiKnowledge = await generateStreamKnowledgeQuestions(normalizedStreamId, 20, studentId, attemptId, gradeLevel);
       
       if (aiKnowledge && aiKnowledge.length > 0) {
         questions.knowledge = aiKnowledge;
