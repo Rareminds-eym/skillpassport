@@ -850,6 +850,52 @@ const buildAnalysisPrompt = (assessmentData: any) => {
 
   const gradeLevel = assessmentData.gradeLevel || 'after12';
   const isAfter10 = gradeLevel === 'after10';
+  
+  // Extract student context for enhanced recommendations
+  const studentContext = assessmentData.studentContext || {};
+  const hasStudentContext = studentContext.rawGrade || studentContext.programName;
+  
+  // Build student context section for AI prompt
+  const studentContextSection = hasStudentContext ? `
+## STUDENT ACADEMIC CONTEXT (USE THIS FOR PERSONALIZED RECOMMENDATIONS):
+${studentContext.rawGrade ? `- Current Grade/Year: ${studentContext.rawGrade}` : ''}
+${studentContext.programName ? `- Program/Course: ${studentContext.programName}` : ''}
+${studentContext.degreeLevel ? `- Degree Level: ${studentContext.degreeLevel}` : ''}
+
+**IMPORTANT INSTRUCTIONS FOR USING STUDENT CONTEXT:**
+${studentContext.degreeLevel === 'postgraduate' ? `
+- This student is pursuing POSTGRADUATE education (Master's level)
+- DO NOT recommend undergraduate (UG) courses or basic entry-level roles
+- Focus on ADVANCED roles, specializations, and career progression
+- Recommend roles that require Master's degree or equivalent experience
+- Salary ranges should reflect postgraduate qualifications (higher range)
+- Skill gaps should focus on advanced/specialized skills, not basics
+` : studentContext.degreeLevel === 'undergraduate' ? `
+- This student is pursuing UNDERGRADUATE education (Bachelor's level)
+- Recommend entry-level to mid-level roles appropriate for fresh graduates
+- Focus on foundational skills and early career development
+- Include internship and training opportunities
+- Salary ranges should reflect entry-level positions
+` : studentContext.degreeLevel === 'diploma' ? `
+- This student is pursuing DIPLOMA education
+- Recommend technical/vocational roles appropriate for diploma holders
+- Focus on practical skills and hands-on experience
+- Include apprenticeship and skill certification opportunities
+` : ''}
+${studentContext.programName ? `
+- Student's field of study: ${studentContext.programName}
+- Prioritize career recommendations ALIGNED with their program
+- If program is technical (CS/IT/Engineering), focus on tech roles
+- If program is business (BBA/MBA), focus on management/business roles
+- If program is science (MSc/BSc), focus on research/analytical roles
+` : ''}
+
+**FILTERING RULES:**
+- Filter out recommendations that don't match the student's education level
+- Ensure career clusters are relevant to their field of study
+- Adjust skill gap priorities based on their current program
+- Tailor learning tracks to complement their academic curriculum
+` : '';
 
   // After 10th specific stream recommendation section - ONLY for after10 students
   const after10StreamSection = isAfter10 ? `
@@ -917,6 +963,7 @@ This analysis must be DETERMINISTIC and CONSISTENT. Given the same input data, y
 
 ## Student Grade Level: ${gradeLevel.toUpperCase()}
 ## Student Stream: ${assessmentData.stream.toUpperCase()}
+${studentContextSection}
 ${after10StreamSection}
 
 ## RIASEC Career Interest Responses (1-5 scale: 1=Strongly Dislike, 2=Dislike, 3=Neutral, 4=Like, 5=Strongly Like):

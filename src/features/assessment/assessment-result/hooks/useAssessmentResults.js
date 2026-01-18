@@ -1078,8 +1078,51 @@ export const useAssessmentResults = () => {
             
             console.log('Sample answers:', JSON.stringify(answers).substring(0, 500));
             
-            // Force regenerate with AI - pass gradeLevel
-            const geminiResults = await analyzeAssessmentWithGemini(answers, stream, questionBanks, {}, storedGradeLevel);
+            // Extract degree level from grade for better AI recommendations
+            const extractDegreeLevel = (grade) => {
+                if (!grade) return null;
+                const gradeStr = grade.toLowerCase();
+                if (gradeStr.includes('pg') || gradeStr.includes('postgraduate') || 
+                    gradeStr.includes('m.tech') || gradeStr.includes('mtech') || 
+                    gradeStr.includes('mca') || gradeStr.includes('mba') || 
+                    gradeStr.includes('m.sc') || gradeStr.includes('msc')) {
+                    return 'postgraduate';
+                }
+                if (gradeStr.includes('ug') || gradeStr.includes('undergraduate') || 
+                    gradeStr.includes('b.tech') || gradeStr.includes('btech') || 
+                    gradeStr.includes('bca') || gradeStr.includes('b.sc') || 
+                    gradeStr.includes('b.com') || gradeStr.includes('ba ') || 
+                    gradeStr.includes('bba')) {
+                    return 'undergraduate';
+                }
+                if (gradeStr.includes('diploma')) {
+                    return 'diploma';
+                }
+                return null;
+            };
+            
+            // Build student context for enhanced AI recommendations
+            // Use studentInfo that was already fetched earlier in the hook
+            const studentContext = {
+                rawGrade: studentInfo.grade || storedGradeLevel, // Use actual grade from studentInfo
+                programName: studentInfo.courseName || null, // Use course name from studentInfo
+                programCode: null, // Not available in retry context
+                degreeLevel: extractDegreeLevel(studentInfo.grade || storedGradeLevel) // Extract from grade
+            };
+            
+            console.log('📚 Retry Student Context:', studentContext);
+            console.log('🎓 Extracted degree level:', studentContext.degreeLevel, 'from grade:', studentInfo.grade);
+            
+            // Force regenerate with AI - pass gradeLevel and student context
+            const geminiResults = await analyzeAssessmentWithGemini(
+                answers, 
+                stream, 
+                questionBanks, 
+                {}, // Empty timings in retry
+                storedGradeLevel, // Pass grade level for proper scoring
+                null, // preCalculatedScores (not available in retry)
+                studentContext // Pass student context for enhanced recommendations
+            );
             
             if (!geminiResults) {
                 throw new Error('AI analysis returned no results');

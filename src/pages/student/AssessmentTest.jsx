@@ -1907,13 +1907,25 @@ const AssessmentTest = () => {
                 // This will be used by the AI to enhance career recommendations
             }
 
+            // Build student context for enhanced AI recommendations
+            const studentContext = {
+                rawGrade: studentGrade, // Original grade string (e.g., "PG Year 1", "Grade 10")
+                programName: studentProgram, // Program name (e.g., "MCA", "B.Tech CSE")
+                programCode: null, // Not available in this context
+                degreeLevel: null // Will be extracted from rawGrade in service
+            };
+            
+            console.log('📚 Student Context for AI:', studentContext);
+            
             // Analyze with Gemini AI - this is required, no fallback
             const geminiResults = await analyzeAssessmentWithGemini(
                 answersWithAdaptive,
                 studentStream,
                 questionBanks,
                 finalTimings, // Pass section timings to Gemini
-                gradeLevel // Pass grade level for proper scoring
+                gradeLevel, // Pass grade level for proper scoring
+                null, // preCalculatedScores (not available here)
+                studentContext // Pass student context for enhanced recommendations
             );
 
             if (geminiResults) {

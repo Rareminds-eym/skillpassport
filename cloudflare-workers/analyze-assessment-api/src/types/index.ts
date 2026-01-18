@@ -10,6 +10,13 @@ export interface Env {
   VITE_OPENROUTER_API_KEY?: string;
 }
 
+export interface StudentContext {
+  rawGrade?: string;
+  programName?: string;
+  programCode?: string;
+  degreeLevel?: 'postgraduate' | 'undergraduate' | 'diploma' | null;
+}
+
 export interface AssessmentData {
   stream: string;
   gradeLevel: 'middle' | 'highschool' | 'higher_secondary' | 'after12' | 'after10';
@@ -24,6 +31,7 @@ export interface AssessmentData {
   totalAptitudeQuestions: number;
   sectionTimings: SectionTimings;
   adaptiveAptitudeResults?: AdaptiveAptitudeResults;
+  studentContext?: StudentContext;
 }
 
 export interface RiasecAnswer {
