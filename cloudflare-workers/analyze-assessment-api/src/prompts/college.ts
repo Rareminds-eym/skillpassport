@@ -236,7 +236,6 @@ This analysis must be DETERMINISTIC and CONSISTENT. Given the same input data, y
 
 ## Student Grade Level: ${assessmentData.gradeLevel.toUpperCase()}
 ## Student Stream: ${assessmentData.stream.toUpperCase()}
-${after12StreamSection}
 ${after10StreamSection}
 
 ## RIASEC Career Interest Responses (1-5 scale):
