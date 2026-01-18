@@ -34,6 +34,8 @@ interface QuestionLayoutProps {
   totalQuestions: number;
   elapsedTime: number;
   showNoWrongAnswers?: boolean;
+  perQuestionTimer?: number | null; // Per-question timer (for aptitude/knowledge)
+  showPerQuestionTimer?: boolean; // Whether to show per-question timer instead of elapsed time
 }
 
 /**
@@ -114,8 +116,17 @@ export const QuestionLayout: React.FC<QuestionLayoutProps> = ({
   totalQuestions,
   elapsedTime,
   showNoWrongAnswers = true,
+  perQuestionTimer = null,
+  showPerQuestionTimer = false,
 }) => {
   const colors = getColorClasses(sectionColor);
+  
+  // Determine timer color based on remaining time
+  const getTimerColor = () => {
+    if (!showPerQuestionTimer || perQuestionTimer === null) return 'text-indigo-600';
+    if (perQuestionTimer <= 10) return 'text-red-600';
+    return 'text-orange-600';
+  };
   
   return (
     <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
@@ -164,7 +175,7 @@ export const QuestionLayout: React.FC<QuestionLayoutProps> = ({
               <span>Question {currentQuestionIndex + 1} / {totalQuestions}</span>
             </div>
             
-            {/* Timer */}
+            {/* Timer - Always show section elapsed time in sidebar */}
             <div className="flex items-center gap-2 text-sm text-indigo-600 font-medium">
               <Clock className="w-4 h-4" />
               <span>Time: {formatTime(elapsedTime)}</span>

@@ -98,9 +98,9 @@ export const StreamSelectionScreen = ({
   studentProgram = null,
 }) => {
   // Use different streams based on grade level
-  // For higher_secondary (11th/12th) and after10, use the school stream config (PCMB, Commerce with Maths, etc.)
-  // For after12 and college, use the college degree config (BSc, BA, BBA, etc.)
-  const streamsConfig = (gradeLevel === 'after10' || gradeLevel === 'higher_secondary') 
+  // For higher_secondary (11th/12th), after10, and after12, use the school stream config (PCMB, Commerce with Maths, etc.)
+  // For college, use the college degree config (BSc, BA, BBA, etc.)
+  const streamsConfig = (gradeLevel === 'after10' || gradeLevel === 'higher_secondary' || gradeLevel === 'after12') 
     ? AFTER10_STREAMS_BY_CATEGORY 
     : STREAMS_BY_CATEGORY;
   
@@ -133,8 +133,9 @@ export const StreamSelectionScreen = ({
   const getTitle = () => {
     switch (gradeLevel) {
       case 'after10':
-        return `${categoryLabel} Streams`;
+      case 'higher_secondary':
       case 'after12':
+        return `${categoryLabel} Streams`;
       case 'college':
         return `${categoryLabel} Programs`;
       default:
@@ -146,9 +147,9 @@ export const StreamSelectionScreen = ({
   const getSubtitle = () => {
     switch (gradeLevel) {
       case 'after10':
-        return 'Choose the specific stream you want to explore';
+      case 'higher_secondary':
       case 'after12':
-        return 'Select the program that interests you most';
+        return 'Choose the specific stream you want to explore';
       case 'college':
         return 'Choose your program for personalized career recommendations';
       default:

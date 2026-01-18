@@ -804,41 +804,49 @@ const AssessmentResult = () => {
         });
 
         // STREAM FILTERING: Get student's stream from assessment results or profile
-        // Priority: 1) Stream recommendation from after10 assessment, 2) Profile stream, 3) No filter
+        // Priority: 1) Stream from current assessment, 2) Stream recommendation from after10, 3) Profile stream, 4) No filter
         let studentStream = null;
 
         console.log('🔍 Stream Detection - Checking sources:', {
+            'results exists': !!results,
+            'results keys': results ? Object.keys(results) : [],
             'has streamRecommendation': !!results?.streamRecommendation?.recommendedStream,
             'streamRecommendation value': results?.streamRecommendation?.recommendedStream,
             'studentInfo exists': !!studentInfo,
             'studentInfo.stream': studentInfo?.stream,
             'stream check': studentInfo?.stream && studentInfo.stream !== '—' && studentInfo.stream.toUpperCase() !== 'N/A',
-            'academicData.stream': studentAcademicData?.stream
+            'academicData.stream': studentAcademicData?.stream,
+            'gradeLevel': gradeLevel
         });
-
-        // Check if student has completed after10 assessment and has stream recommendation
+        
+        // PRIORITY 1: Check if results contain stream information (for after12/higher_secondary/college)
+        // The stream is stored in the assessment results when student selects it during assessment
+        if (results?.stream || results?.streamId || results?.stream_id) {
+            studentStream = results.stream || results.streamId || results.stream_id;
+            console.log('📚 Using stream from assessment results:', studentStream);
+        }
+        // PRIORITY 2: Check if student has completed after10 assessment and has stream recommendation
         // IMPORTANT: Validate that the stream recommendation is not a placeholder value
-        const hasValidStreamRecommendation = results?.streamRecommendation?.recommendedStream &&
-            results.streamRecommendation.recommendedStream !== 'N/A' &&
-            results.streamRecommendation.recommendedStream !== '—' &&
-            results.streamRecommendation.recommendedStream !== '';
-
-        if (hasValidStreamRecommendation) {
+        else if (results?.streamRecommendation?.recommendedStream && 
+                 results.streamRecommendation.recommendedStream !== 'N/A' &&
+                 results.streamRecommendation.recommendedStream !== '—' &&
+                 results.streamRecommendation.recommendedStream !== '') {
             studentStream = results.streamRecommendation.recommendedStream;
             console.log('📚 Using stream from after10 assessment:', studentStream);
-        }
-        // Check if student has stream in their profile (for after12/college students)
+        } 
+        // PRIORITY 3: Check if student has stream in their profile (for after12/college students)
         else if (studentInfo?.stream && studentInfo.stream !== '—' && studentInfo.stream.toUpperCase() !== 'N/A') {
             studentStream = studentInfo.stream;
             console.log('📚 Using stream from student profile:', studentStream);
         }
-        // Check academic data for stream indicators
+        // PRIORITY 4: Check academic data for stream indicators
         else if (studentAcademicData?.stream) {
             studentStream = studentAcademicData.stream;
             console.log('📚 Using stream from academic data:', studentStream);
         }
         else {
             console.log('⚠️ No valid stream found in any source!');
+            console.log('📋 Full results object:', results);
         }
 
         // Debug: Log all stream sources
@@ -1699,24 +1707,261 @@ const AssessmentResult = () => {
                             {activeRecommendationTab === 'primary' && (
                                 <>
                                     {/* After 12th: Course Recommendations - Dark Theme matching After 10 */}
-                                    {shouldShowProgramRecommendations && enhancedCourseRecommendations && enhancedCourseRecommendations.length > 0 && (
+                                    {shouldShowProgramRecommendations && (
                                         <div>
-                                            {/* Header Section - Dark Theme */}
-                                            <div className="bg-slate-800 rounded-xl p-6 mb-6 shadow-lg">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center shadow-lg">
-                                                        <GraduationCap className="w-6 h-6 text-white" />
-                                                    </div>
-                                                    <div>
-                                                        <h2 className="text-2xl font-bold text-white">Recommended Programs for You</h2>
-                                                        <p className="text-slate-300 text-sm">Based on your interests, academics, projects & experiences</p>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            {/* Check if we have AI-generated programs from Gemini */}
+                                            {(() => {
+                                                // Check both nested (gemini_results.careerFit) and flattened (careerFit) structures
+                                                const degreePrograms = results?.gemini_results?.careerFit?.degreePrograms || results?.careerFit?.degreePrograms;
+                                                const hasAIPrograms = degreePrograms && degreePrograms.length >= 3;
+                                                
+                                                console.log('🔍 After12 Layout Check:', {
+                                                    hasGeminiResults: !!results?.gemini_results,
+                                                    hasCareerFit: !!(results?.gemini_results?.careerFit || results?.careerFit),
+                                                    hasDegreePrograms: !!degreePrograms,
+                                                    programCount: degreePrograms?.length || 0,
+                                                    willShowNewLayout: hasAIPrograms,
+                                                    willShowFallback: !hasAIPrograms && enhancedCourseRecommendations?.length > 0,
+                                                    dataSource: results?.gemini_results?.careerFit ? 'nested' : results?.careerFit ? 'flattened' : 'none',
+                                                    careerFitKeys: results?.careerFit ? Object.keys(results.careerFit) : 'no careerFit'
+                                                });
+                                                
+                                                // DETAILED DEBUG - Show what's actually in careerFit
+                                                if (results?.careerFit && !degreePrograms) {
+                                                    console.log('⚠️ careerFit exists but NO degreePrograms!');
+                                                    console.log('   careerFit.clusters:', results.careerFit.clusters?.length || 0, 'items');
+                                                    console.log('   careerFit.specificOptions:', results.careerFit.specificOptions);
+                                                    console.log('   careerFit.degreePrograms:', results.careerFit.degreePrograms);
+                                                    console.log('   👉 You need to run: fix-career-fit-degree-programs.sql');
+                                                }
+                                                
+                                                return hasAIPrograms;
+                                            })() ? (
+                                                // NEW LAYOUT: Single Card with 3 AI Programs (After10 Style)
+                                                (() => {
+                                                    // Get degreePrograms from either nested or flattened structure
+                                                    const degreePrograms = results?.gemini_results?.careerFit?.degreePrograms || results?.careerFit?.degreePrograms;
+                                                    const aiPrograms = degreePrograms.slice(0, 3);
+                                                    // Purple/Track 3 color config
+                                                    const purpleConfig = {
+                                                        bg: '#1e293b',
+                                                        accent: '#60a5fa',
+                                                        accentLight: '#bfdbfe',
+                                                        shadow: 'rgba(96, 165, 250, 0.3)'
+                                                    };
+                                                    return (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: 50 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            transition={{ duration: 0.6, ease: "easeOut" }}
+                                                            className="max-w-6xl mx-auto"
+                                                        >
+                                                            {/* Single Card Container - Purple/Track 3 Theme */}
+                                                            <div
+                                                                className="relative rounded-[10px] p-[1px]"
+                                                                style={{
+                                                                    background: `radial-gradient(circle 230px at 0% 0%, ${purpleConfig.accentLight}, #0c0d0d)`,
+                                                                    boxShadow: `0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 0 15px 3px ${purpleConfig.shadow}`,
+                                                                }}
+                                                            >
+                                                                {/* Animated Dot */}
+                                                                <div
+                                                                    className="absolute w-[6px] aspect-square rounded-full z-[3]"
+                                                                    style={{
+                                                                        backgroundColor: '#fff',
+                                                                        boxShadow: `0 0 10px ${purpleConfig.accentLight}, 0 0 20px ${purpleConfig.accent}`,
+                                                                        animation: 'moveProgramDot 10s linear infinite',
+                                                                    }}
+                                                                />
 
-                                            {/* Cards Grid - Dark Theme */}
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                {enhancedCourseRecommendations.slice(0, 5).map((course, index) => {
+                                                                {/* Keyframes for program card dot animation */}
+                                                                <style>{`
+                                                                    @keyframes moveProgramDot {
+                                                                        0%, 100% {
+                                                                            top: 2%;
+                                                                            right: 2%;
+                                                                        }
+                                                                        25% {
+                                                                            top: 2%;
+                                                                            right: calc(100% - 10px);
+                                                                        }
+                                                                        50% {
+                                                                            top: calc(100% - 10px);
+                                                                            right: calc(100% - 10px);
+                                                                        }
+                                                                        75% {
+                                                                            top: calc(100% - 10px);
+                                                                            right: 2%;
+                                                                        }
+                                                                    }
+                                                                `}</style>
+
+                                                                {/* Main Card Inner */}
+                                                                <div
+                                                                    className="relative w-full rounded-[9px] overflow-hidden"
+                                                                    style={{
+                                                                        background: `radial-gradient(circle 280px at 0% 0%, ${purpleConfig.accent}40, #0c0d0d)`,
+                                                                        backgroundSize: '20px 20px',
+                                                                    }}
+                                                                >
+                                                                    {/* Ray Light Effect */}
+                                                                    <div
+                                                                        className="absolute w-[220px] h-[45px] rounded-[100px] opacity-40 blur-[10px]"
+                                                                        style={{
+                                                                            backgroundColor: purpleConfig.accentLight,
+                                                                            boxShadow: `0 0 50px ${purpleConfig.accentLight}`,
+                                                                            transformOrigin: '10%',
+                                                                            top: '0%',
+                                                                            left: '0',
+                                                                            transform: 'rotate(40deg)'
+                                                                        }}
+                                                                    />
+
+                                                                    {/* Grid Lines */}
+                                                                    <div className="absolute w-[1px] h-full" style={{ left: '2%', background: `linear-gradient(180deg, ${purpleConfig.accent}74 30%, #222424 70%)` }} />
+                                                                    <div className="absolute w-[1px] h-full" style={{ right: '2%', background: `linear-gradient(180deg, ${purpleConfig.accent}40 30%, #222424 70%)` }} />
+                                                                    <div className="absolute w-full h-[1px]" style={{ top: '2%', background: `linear-gradient(90deg, ${purpleConfig.accent}74 30%, #1d1f1f 70%)` }} />
+                                                                    <div className="absolute w-full h-[1px]" style={{ bottom: '2%', background: `linear-gradient(90deg, ${purpleConfig.accent}40 30%, #1d1f1f 70%)` }} />
+
+                                                                    {/* Content */}
+                                                                    <div className="relative z-[1] px-16 py-12">
+                                                                        {/* Header Section */}
+                                                                        <div className="flex items-center gap-4 mb-8">
+                                                                            <div
+                                                                                className="w-14 h-14 rounded-xl flex items-center justify-center text-white shadow-lg"
+                                                                                style={{ backgroundColor: purpleConfig.accent }}
+                                                                            >
+                                                                                <GraduationCap className="w-7 h-7" />
+                                                                            </div>
+                                                                            <div className="flex-1">
+                                                                                <span
+                                                                                    className="inline-block px-3 py-1 text-white text-xs font-semibold rounded-full mb-1"
+                                                                                    style={{ backgroundColor: purpleConfig.accent }}
+                                                                                >
+                                                                                    RECOMMENDED DEGREE PROGRAMS
+                                                                                </span>
+                                                                                <h3 className="text-2xl sm:text-3xl font-bold text-white">Your Best-Fit Programs</h3>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* 3 Program Cards */}
+                                                                        <div className="space-y-6 mb-8">
+                                                                            {aiPrograms.map((program, index) => (
+                                                                                <div key={index} className="bg-white/5 rounded-xl p-6 border border-white/10">
+                                                                                    {/* Program Header */}
+                                                                                    <div className="flex items-start justify-between mb-4">
+                                                                                        <div className="flex-1">
+                                                                                            <div className="flex items-center gap-3 mb-2">
+                                                                                                <div
+                                                                                                    className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold shadow-lg ${
+                                                                                                        index === 0 ? 'bg-green-500' :
+                                                                                                        index === 1 ? 'bg-yellow-500' :
+                                                                                                        'bg-purple-500'
+                                                                                                    }`}
+                                                                                                >
+                                                                                                    #{index + 1}
+                                                                                                </div>
+                                                                                                <div>
+                                                                                                    <h4 className="text-xl font-bold text-white">{program.programName}</h4>
+                                                                                                    {program.alignedWithCluster && (
+                                                                                                        <p className="text-xs text-gray-400 mt-1">
+                                                                                                            Aligned with: <span className="text-blue-300">{program.alignedWithCluster}</span>
+                                                                                                        </p>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        {/* Match Score Badge */}
+                                                                                        <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg border border-white/20">
+                                                                                            <Star className="w-5 h-5 text-yellow-400" />
+                                                                                            <span className={`text-base font-semibold ${
+                                                                                                program.matchScore >= 85 ? 'text-green-400' : 
+                                                                                                program.matchScore >= 75 ? 'text-blue-300' : 
+                                                                                                'text-purple-300'
+                                                                                            }`}>
+                                                                                                {program.matchScore}% Match
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    {/* Why This Fits You */}
+                                                                                    {program.whyThisFitsYou && (
+                                                                                        <div className="mb-4">
+                                                                                            <h5 className="text-xs font-bold uppercase mb-2 tracking-wider" style={{ color: purpleConfig.accentLight }}>
+                                                                                                WHY THIS FITS YOU
+                                                                                            </h5>
+                                                                                            <p className="text-gray-300 text-sm leading-relaxed">{program.whyThisFitsYou}</p>
+                                                                                        </div>
+                                                                                    )}
+
+                                                                                    {/* Evidence Summary (Compact) */}
+                                                                                    {program.evidence && (
+                                                                                        <div className="grid md:grid-cols-2 gap-3">
+                                                                                            {program.evidence.interest && (
+                                                                                                <div className="text-xs">
+                                                                                                    <span className="font-semibold text-blue-300">Interest:</span>
+                                                                                                    <span className="text-gray-400 ml-1">{program.evidence.interest.substring(0, 80)}...</span>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            {program.evidence.aptitude && (
+                                                                                                <div className="text-xs">
+                                                                                                    <span className="font-semibold text-green-300">Aptitude:</span>
+                                                                                                    <span className="text-gray-400 ml-1">{program.evidence.aptitude.substring(0, 80)}...</span>
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+
+                                                                        {/* View Career Clusters Button */}
+                                                                        <div className="flex justify-center pt-4">
+                                                                            <motion.button
+                                                                                onClick={() => setActiveRecommendationTab('career')}
+                                                                                className="group flex items-center gap-3 px-6 py-3 text-white font-semibold rounded-xl transition-all duration-300"
+                                                                                style={{
+                                                                                    backgroundColor: '#333333',
+                                                                                    border: '1px solid #4a4a4a',
+                                                                                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)'
+                                                                                }}
+                                                                                whileHover={{ 
+                                                                                    backgroundColor: '#ffffff',
+                                                                                    color: '#000000',
+                                                                                    scale: 1.05,
+                                                                                    boxShadow: '0 0 20px rgba(255, 255, 255, 0.3)'
+                                                                                }}
+                                                                                whileTap={{ scale: 0.95 }}
+                                                                            >
+                                                                                <span>View Career Clusters</span>
+                                                                                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                                                            </motion.button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </motion.div>
+                                                    );
+                                                })()
+                                            ) : enhancedCourseRecommendations && enhancedCourseRecommendations.length > 0 ? (
+                                                // FALLBACK: Old grid layout if AI programs not available
+                                                <div>
+                                                    {/* Header Section - Dark Theme */}
+                                                    <div className="bg-slate-800 rounded-xl p-6 mb-6 shadow-lg">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center shadow-lg">
+                                                                <GraduationCap className="w-6 h-6 text-white" />
+                                                            </div>
+                                                            <div>
+                                                                <h2 className="text-2xl font-bold text-white">Top 3 Recommended Programs</h2>
+                                                                <p className="text-slate-300 text-sm">Based on your assessment results and profile</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Cards Grid - Dark Theme */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                        {enhancedCourseRecommendations.slice(0, 3).map((course, index) => {
                                                     // Get career paths from COURSE_KNOWLEDGE_BASE (fallback)
                                                     const courseProfile = COURSE_KNOWLEDGE_BASE[course.courseId];
                                                     const fallbackCareerPaths = courseProfile?.careerPaths || [];
@@ -1893,51 +2138,10 @@ const AssessmentResult = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                    )}
-
-                                    {/* Fallback when no course data but should show recommendations */}
-                                    {shouldShowProgramRecommendations && (!enhancedCourseRecommendations || enhancedCourseRecommendations.length === 0) && (
-                                        <div className="bg-slate-800 rounded-xl p-8 text-center border border-slate-700">
-                                            <GraduationCap className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                                            {results?.riasec?.scores && Object.values(results.riasec.scores).some(score => score > 0) ? (
-                                                <>
-                                                    <h3 className="text-lg font-semibold text-white mb-2">Program Recommendations Loading...</h3>
-                                                    <p className="text-slate-300 text-sm">Your personalized degree program recommendations are being calculated based on your assessment results.</p>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <h3 className="text-lg font-semibold text-white mb-2">Complete Your Assessment</h3>
-                                                    <p className="text-slate-300 text-sm mb-4">
-                                                        To receive personalized degree program recommendations, please complete all sections of the assessment including:
-                                                    </p>
-                                                    <ul className="text-slate-300 text-sm text-left max-w-md mx-auto space-y-2">
-                                                        <li className="flex items-start gap-2">
-                                                            <span className="text-slate-500 mt-0.5">•</span>
-                                                            <span>Career Interest Assessment (RIASEC)</span>
-                                                        </li>
-                                                        <li className="flex items-start gap-2">
-                                                            <span className="text-slate-500 mt-0.5">•</span>
-                                                            <span>Personality Assessment (Big Five)</span>
-                                                        </li>
-                                                        <li className="flex items-start gap-2">
-                                                            <span className="text-slate-500 mt-0.5">•</span>
-                                                            <span>Work Values Assessment</span>
-                                                        </li>
-                                                        <li className="flex items-start gap-2">
-                                                            <span className="text-slate-500 mt-0.5">•</span>
-                                                            <span>Aptitude & Knowledge Tests</span>
-                                                        </li>
-                                                    </ul>
-                                                    <button
-                                                        onClick={() => navigate('/student/assessment/test')}
-                                                        className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                                    >
-                                                        Complete Assessment
-                                                    </button>
-                                                </>
-                                            )}
+                                            ) : null}
                                         </div>
                                     )}
+
                                 </>
                             )}
 
