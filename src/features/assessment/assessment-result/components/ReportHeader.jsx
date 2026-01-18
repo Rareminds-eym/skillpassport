@@ -70,15 +70,32 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
         return { label: 'Grade', value: studentInfo.grade || '—' };
     };
 
-    // Determine the institution label based on grade level
+    // Determine the institution label based on grade level and student data
     const getInstitutionLabel = () => {
         const level = gradeLevel?.toLowerCase();
+        
+        // Check if student has actual school vs college data
+        const hasSchoolData = studentInfo.school && studentInfo.school !== '—';
+        const hasCollegeData = studentInfo.college && studentInfo.college !== '—';
+        
+        // If we have actual data, use that to determine the label
+        if (hasSchoolData && !hasCollegeData) {
+            return 'School';
+        } else if (hasCollegeData && !hasSchoolData) {
+            return 'College';
+        }
+        
+        // Fallback to grade level logic
         if (level === 'middle' || level === 'high' || level === 'middleschool' || level === 'highschool' || level === 'higher_secondary') {
             return 'School';
         } else if (level === 'after12' || level === 'after12th' || level === '12th' || level === 'college' || level === 'university') {
+            // For after12, check if student has course name (college) or is still in grade 12 (school)
+            if (studentInfo.grade && (studentInfo.grade === '12' || studentInfo.grade === 'Grade 12')) {
+                return 'School';
+            }
             return 'College';
         }
-        return 'School'; // Default to School instead of Institution
+        return 'School'; // Default to School
     };
 
     // Determine the roll number label based on student type
@@ -101,7 +118,7 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
         { label: rollNumberLabel, value: studentInfo.regNo },
         { label: 'Programme/Stream', value: formatStreamDisplay(studentInfo.stream || studentInfo.branchField || '—') },
         { label: gradeCourseField.label, value: gradeCourseField.value },
-        { label: institutionLabel, value: studentInfo.college || studentInfo.school, truncate: true },
+        { label: institutionLabel, value: (studentInfo.college && studentInfo.college !== '—') ? studentInfo.college : studentInfo.school, truncate: true },
         { label: 'Assessment Date', value: new Date().toLocaleDateString() },
     ];
 
