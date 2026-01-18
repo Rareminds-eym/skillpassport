@@ -211,6 +211,7 @@ const StudentDashboard = () => {
     loading: recommendationsLoading,
     hasAssessment,
     hasInProgressAssessment,
+    latestAttemptId,
   } = useAssessmentRecommendations(studentId, !!studentId && !isViewingOthersProfile);
 
   // Debug: Log student ID being passed to assessment hook
@@ -700,7 +701,7 @@ const StudentDashboard = () => {
           <div className="flex justify-center py-4">
             {hasAssessment ? (
               <Button
-                onClick={() => navigate("/student/assessment/result")}
+                onClick={() => navigate(latestAttemptId ? `/student/assessment/result?attemptId=${latestAttemptId}` : "/student/assessment/result")}
                 className="w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
               >
                 <Eye className="w-5 h-5 mr-2" />

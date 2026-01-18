@@ -12,6 +12,7 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
   const [hasCompletedAssessment, setHasCompletedAssessment] = useState(false);
   const [hasInProgressAssessment, setHasInProgressAssessment] = useState(false);
   const [inProgressAttempt, setInProgressAttempt] = useState(null);
+  const [latestAttemptId, setLatestAttemptId] = useState(null);
 
   useEffect(() => {
     if (!studentIdOrUserId || !enabled) {
@@ -63,6 +64,14 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
         // Mark as having completed assessment if result exists with completed status
         if (result.status === 'completed') {
           setHasCompletedAssessment(true);
+        }
+
+        // Store the attempt_id for navigation
+        if (result.attempt_id) {
+          console.log('✅ Found attempt_id:', result.attempt_id);
+          setLatestAttemptId(result.attempt_id);
+        } else {
+          console.warn('⚠️ Result found but no attempt_id');
         }
 
         // Extract recommendations from assessment results
@@ -140,5 +149,7 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
     // New: check for in-progress assessment
     hasInProgressAssessment,
     inProgressAttempt,
+    // Latest attempt ID for navigation to results page
+    latestAttemptId,
   };
 };

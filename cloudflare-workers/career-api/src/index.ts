@@ -719,7 +719,7 @@ async function handleGenerateEmbedding(request: Request, env: Env): Promise<Resp
     return jsonResponse({ success: false, error: 'Invalid JSON' }, 400);
   }
 
-  const { text, table, id, type = 'opportunity' } = body;
+  const { text, table, id, type = 'opportunity', returnEmbedding = false } = body;
 
   // Validate required parameters
   if (!text || !table || !id) {
@@ -792,6 +792,16 @@ async function handleGenerateEmbedding(request: Request, env: Env): Promise<Resp
     }
 
     console.log(`Generated embedding with ${embedding.length} dimensions`);
+
+    // If returnEmbedding is true, skip database update and just return the embedding
+    if (returnEmbedding) {
+      console.log(`✅ Returning embedding without database update (${embedding.length} dimensions)`);
+      return jsonResponse({
+        success: true,
+        embedding: embedding,
+        dimensions: embedding.length
+      });
+    }
 
     // Update the record in Supabase
     const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
