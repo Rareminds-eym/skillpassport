@@ -476,9 +476,15 @@ export const useAssessmentResults = () => {
                         // Fallback: use college_school_name if available
                         if (studentData.college_school_name && studentData.college_school_name !== '—') {
                             institutionName = toTitleCase(studentData.college_school_name);
-                            // Can't determine if it's school or college, so set both
-                            schoolName = institutionName;
-                            collegeName = institutionName;
+                            // For grade 12 students, treat as school student
+                            if (!isNaN(gradeNum) && gradeNum >= 1 && gradeNum <= 12) {
+                                schoolName = institutionName;
+                                collegeName = '—';
+                            } else {
+                                // Can't determine if it's school or college, so set both
+                                schoolName = institutionName;
+                                collegeName = institutionName;
+                            }
                         }
                     }
                     
