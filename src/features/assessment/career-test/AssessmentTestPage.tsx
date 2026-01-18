@@ -189,6 +189,7 @@ const AssessmentTestPage: React.FC = () => {
     isCollegeStudent,
     studentProgram,
     monthsInGrade,
+    profileData,
     loading: loadingStudentGrade
   } = useStudentGrade({ userId: user?.id, userEmail: user?.email });
   
@@ -1465,6 +1466,7 @@ const AssessmentTestPage: React.FC = () => {
         shouldShowAllOptions={shouldShowAllOptions}
         shouldFilterByGrade={shouldFilterByGrade}
         studentProgram={studentProgram}
+        profileData={profileData}
       />
     );
   }

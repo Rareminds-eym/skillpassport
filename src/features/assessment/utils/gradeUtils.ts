@@ -16,8 +16,16 @@ export const getGradeLevelFromGrade = (grade: string | number | null | undefined
   const gradeStr = String(grade).toUpperCase().trim();
 
   // Check program-based grades first (UG, PG, Diploma, etc.)
+  // Check for exact match first
   if (PROGRAM_GRADE_MAPPINGS[gradeStr]) {
     return PROGRAM_GRADE_MAPPINGS[gradeStr];
+  }
+  
+  // Check if grade string contains any of the program keywords
+  for (const [key, value] of Object.entries(PROGRAM_GRADE_MAPPINGS)) {
+    if (gradeStr.includes(key)) {
+      return value;
+    }
   }
 
   // Try to extract numeric grade

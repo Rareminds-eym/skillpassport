@@ -155,6 +155,7 @@ const AssessmentTest = () => {
     const [gradeStartDate, setGradeStartDate] = useState(null); // When student started current grade
     const [monthsInGrade, setMonthsInGrade] = useState(null); // Months since starting current grade
     const [loadingStudentGrade, setLoadingStudentGrade] = useState(true);
+    const [profileData, setProfileData] = useState(null); // Complete profile data for missing field analysis
     
     // Use centralized utility for calculating months in grade
     const calculateMonthsInGrade = calculateMonthsInGradeUtil;
@@ -197,6 +198,9 @@ const AssessmentTest = () => {
                     console.error('Error fetching student grade:', error);
                 } else if (student) {
                     console.log('Student grade data found:', student);
+                    
+                    // Store complete profile data for missing field analysis
+                    setProfileData(student);
                     
                     // Save student ID for AI question saving
                     setStudentId(student.id);
@@ -2144,6 +2148,7 @@ const AssessmentTest = () => {
                 shouldShowAllOptions={shouldShowAllOptions}
                 shouldFilterByGrade={shouldFilterByGrade}
                 studentProgram={studentProgram}
+                profileData={profileData}
             />
         );
     }
