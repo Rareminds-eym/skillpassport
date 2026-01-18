@@ -51,6 +51,7 @@ import { LoadingScreen } from './components/screens/LoadingScreen';
 import { AnalyzingScreen } from './components/screens/AnalyzingScreen';
 import { ProgressHeader } from './components/layout/ProgressHeader';
 import { QuestionLayout } from './components/layout/QuestionLayout';
+import { TestModeControls } from './components/layout/TestModeControls';
 
 // Shared Components (from parent assessment feature)
 // @ts-ignore - JSX components
@@ -1541,90 +1542,92 @@ const AssessmentTestPage: React.FC = () => {
       {/* Test Mode Controls (Dev only) */}
       {isDevMode && testMode && (
         <div className="max-w-4xl mx-auto px-4 py-2">
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={autoFillAllAnswers}
-              className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded text-xs font-medium hover:bg-amber-200"
-            >
-              Auto-Fill All
-            </button>
-            <button
-              onClick={() => {
-                // Find aptitude section dynamically
-                const aptitudeIndex = sections.findIndex(s => s.id === 'aptitude' || s.id === 'hs_aptitude_sampling' || s.id === 'adaptive_aptitude');
-                if (aptitudeIndex >= 0) {
-                  skipToSection(aptitudeIndex);
-                } else {
-                  console.warn('❌ Aptitude section not found in sections:', sections.map(s => s.id));
-                }
-              }}
-              className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200"
-              disabled={sections.length === 0}
-            >
-              Skip to Aptitude
-            </button>
-            <button
-              onClick={() => {
-                // Find adaptive section dynamically (renamed from "Skip to Knowledge")
-                const adaptiveIndex = sections.findIndex(s => s.id === 'adaptive_aptitude' || s.id === 'knowledge');
-                if (adaptiveIndex >= 0) {
-                  skipToSection(adaptiveIndex);
-                } else {
-                  console.warn('❌ Adaptive/Knowledge section not found in sections:', sections.map(s => s.id));
-                }
-              }}
-              className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200"
-              disabled={sections.length === 0}
-            >
-              Skip to Adaptive
-            </button>
-            <button
-              onClick={async () => {
-                console.log('🎯 Submit button clicked');
+          <TestModeControls
+            onAutoFillAll={autoFillAllAnswers}
+            onSkipToAptitude={() => {
+              const aptitudeIndex = sections.findIndex(s => s.id === 'aptitude' || s.id === 'hs_aptitude_sampling' || s.id === 'adaptive_aptitude');
+              if (aptitudeIndex >= 0) {
+                skipToSection(aptitudeIndex);
+              } else {
+                console.warn('❌ Aptitude section not found');
+              }
+            }}
+            onSkipToKnowledge={() => {
+              const knowledgeIndex = sections.findIndex(s => s.id === 'knowledge' || s.id === 'adaptive_aptitude');
+              if (knowledgeIndex >= 0) {
+                skipToSection(knowledgeIndex);
+              } else {
+                console.warn('❌ Knowledge section not found');
+              }
+            }}
+            onSkipToSubmit={async () => {
+              console.log('🎯 Submit button clicked');
+              
+              if (sections.length === 0) {
+                console.warn('❌ Cannot submit: sections array is empty');
+                return;
+              }
+              
+              // Enable database mode and create attempt if not already created
+              if (!currentAttempt && studentRecordId) {
+                console.log('📝 Creating database attempt for test mode submission...');
+                setUseDatabase(true);
                 
-                if (sections.length === 0) {
-                  console.warn('❌ Cannot submit: sections array is empty');
-                  return;
-                }
-                
-                // Auto-fill all answers first
-                autoFillAllAnswers();
-                
-                // Use setTimeout to ensure state updates after auto-fill
-                setTimeout(async () => {
-                  console.log('🚀 Auto-fill complete, proceeding to submit...');
+                try {
+                  await dbStartAssessment(flow.studentStream || 'general', flow.gradeLevel || 'after12');
+                  console.log('✅ Database attempt created');
                   
-                  // Mark all sections as complete by setting section timings
-                  const completedTimings: Record<string, number> = {};
-                  sections.forEach((section) => {
-                    if (!flow.sectionTimings[section.id]) {
-                      completedTimings[section.id] = 60; // Default 60 seconds per section
-                    }
-                  });
-                  
-                  if (Object.keys(completedTimings).length > 0) {
-                    flow.setSectionTimings({ ...flow.sectionTimings, ...completedTimings });
+                  // Wait a bit for the attempt to be created
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (err) {
+                  console.error('❌ Failed to create database attempt:', err);
+                }
+              }
+              
+              // Auto-fill all answers first
+              autoFillAllAnswers();
+              
+              // Use setTimeout to ensure state updates after auto-fill
+              setTimeout(async () => {
+                console.log('🚀 Auto-fill complete, proceeding to submit...');
+                
+                // Mark all sections as complete by setting section timings
+                const completedTimings: Record<string, number> = {};
+                sections.forEach((section) => {
+                  if (!flow.sectionTimings[section.id]) {
+                    completedTimings[section.id] = 60;
                   }
-                  
-                  // Jump to last section to trigger submission
-                  const lastSectionIndex = sections.length - 1;
-                  flow.setCurrentSectionIndex(lastSectionIndex);
-                  flow.setCurrentQuestionIndex(0);
-                  flow.setShowSectionIntro(false);
-                  
-                  // Wait for state to update, then trigger submission directly
-                  setTimeout(() => {
-                    console.log('✅ Triggering submission via handleNextSection...');
-                    handleNextSection();
-                  }, 200);
-                }, 100);
-              }}
-              className="px-3 py-1.5 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
-              disabled={sections.length === 0}
-            >
-              Submit
-            </button>
-          </div>
+                });
+                
+                if (Object.keys(completedTimings).length > 0) {
+                  flow.setSectionTimings({ ...flow.sectionTimings, ...completedTimings });
+                }
+                
+                // Jump to last section to trigger submission
+                const lastSectionIndex = sections.length - 1;
+                flow.setCurrentSectionIndex(lastSectionIndex);
+                flow.setCurrentQuestionIndex(0);
+                flow.setShowSectionIntro(false);
+                
+                // Wait for state to update, then trigger submission directly
+                setTimeout(() => {
+                  console.log('✅ Triggering submission via handleNextSection...');
+                  handleNextSection();
+                }, 200);
+              }, 100);
+            }}
+            onExitTestMode={() => setTestMode(false)}
+            gradeLevel={flow.gradeLevel || undefined}
+            studentStream={flow.studentStream || undefined}
+            currentSectionIndex={flow.currentSectionIndex}
+            totalSections={sections.length}
+            aiQuestionsLoading={questionsLoading}
+            aiQuestionsLoaded={aiQuestions ? {
+              aptitude: aiQuestions.aptitude?.length || 0,
+              knowledge: aiQuestions.knowledge?.length || 0
+            } : undefined}
+            sections={sections}
+          />
         </div>
       )}
       
