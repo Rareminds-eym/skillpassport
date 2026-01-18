@@ -711,8 +711,13 @@ const AssessmentResult = () => {
             return monthsInGrade !== null && monthsInGrade >= 6;
         }
         // After 12 and college - always show
+        // IMPORTANT: higher_secondary (grades 11-12) should NOT show program recommendations
         if (gradeLevel === 'after12' || gradeLevel === 'college') {
             return true;
+        }
+        // Higher secondary (grades 11-12) - DON'T show program recommendations
+        if (gradeLevel === 'higher_secondary') {
+            return false;
         }
         return false;
     }, [gradeLevel, monthsInGrade, studentInfo?.grade]);
