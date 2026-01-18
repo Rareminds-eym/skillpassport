@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../../../lib/supabaseClient';
 import * as assessmentService from '../../../../services/assessmentService';
@@ -229,6 +229,7 @@ export const useAssessmentResults = () => {
     const [gradeLevelFromAttempt, setGradeLevelFromAttempt] = useState(false); // Track if grade level was set from attempt
     // Use ref to track grade level from attempt synchronously (avoids race condition with async state updates)
     const gradeLevelFromAttemptRef = useRef(false);
+    const loadedAttemptIdRef = useRef(null); // Track loaded attempt to prevent loop
     const [studentInfo, setStudentInfo] = useState({
         name: '—',
         regNo: '—',
@@ -744,6 +745,17 @@ export const useAssessmentResults = () => {
 
         // Check if we have an attemptId in URL params (database mode)
         const attemptId = searchParams.get('attemptId');
+
+        // Prevent redundant loops if already loading/loaded this attempt
+        if (attemptId && loadedAttemptIdRef.current === attemptId && results && !loading) {
+            console.log('♻️ Results for attemptId', attemptId, 'already loaded - skipping redundancy');
+            // Ensure loading is false just in case
+            if (loading) setLoading(false);
+            return;
+        }
+
+
+
         console.log('🔥 loadResults called with attemptId:', attemptId);
         console.log('🔥 Full URL search params:', searchParams.toString());
 
@@ -825,6 +837,8 @@ export const useAssessmentResults = () => {
                                 }
                             }
 
+
+                            loadedAttemptIdRef.current = attemptId; // Mark as loaded
                             setLoading(false);
                             return;
                         }
@@ -1327,7 +1341,7 @@ export const useAssessmentResults = () => {
         return missingFields;
     };
 
-    return {
+    return useMemo(() => ({
         results,
         loading,
         error,
@@ -1340,5 +1354,5 @@ export const useAssessmentResults = () => {
         handleRetry,
         validateResults,
         navigate
-    };
+    }), [results, loading, error, retrying, gradeLevel, monthsInGrade, studentInfo, studentAcademicData, validationWarnings, handleRetry, validateResults, navigate]);
 };
