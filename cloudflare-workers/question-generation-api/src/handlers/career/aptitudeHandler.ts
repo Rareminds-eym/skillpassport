@@ -31,13 +31,13 @@ export async function handleAptitudeGeneration(
 ): Promise<Response> {
   try {
     const body = await request.json() as AptitudeRequestBody;
-    const { streamId, studentId, attemptId, gradeLevel } = body;
+    const { streamId, studentId, attemptId, gradeLevel, questionsPerCategory } = body;
 
     if (!streamId) {
       return errorResponse('Stream ID is required', 400);
     }
 
-    console.log('📚 Aptitude request:', { streamId, gradeLevel, studentId });
+    console.log('📚 Aptitude request:', { streamId, gradeLevel, studentId, questionsPerCategory });
 
     // Check cache first
     if (studentId) {
@@ -59,8 +59,17 @@ export async function handleAptitudeGeneration(
     }
 
     const streamContext = getStreamContext(streamId);
-    const categories = getCategories(isAfter10);
+    let categories = getCategories(isAfter10);
     const moduleTitles = getModuleTitles(isAfter10);
+
+    // Override category counts if questionsPerCategory is provided
+    if (questionsPerCategory && questionsPerCategory > 0) {
+      console.log(`🔧 Overriding category counts with ${questionsPerCategory} questions per category`);
+      categories = categories.map(cat => ({
+        ...cat,
+        count: questionsPerCategory
+      }));
+    }
 
     // Generate questions in batches
     const batch1Categories = isAfter10 

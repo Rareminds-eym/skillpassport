@@ -238,9 +238,17 @@ export const useAssessmentFlow = ({
   }, [currentQuestionIndex]);
 
   const startSection = useCallback(() => {
+    console.log('🎬 startSection called - Hiding intro screen');
+    console.log('📊 startSection state BEFORE:', {
+      showSectionIntro,
+      showSectionComplete,
+      currentSectionIndex,
+      elapsedTime
+    });
     setShowSectionIntro(false);
     setShowSectionComplete(false);
-  }, []);
+    console.log('✅ startSection complete - Section should now be active');
+  }, [showSectionIntro, showSectionComplete, currentSectionIndex, elapsedTime]);
 
   const completeSection = useCallback(() => {
     console.log('🔄 completeSection called');
@@ -288,12 +296,21 @@ export const useAssessmentFlow = ({
     console.log(`🎯 jumpToSection called: sectionIndex=${sectionIndex}, sections.length=${sections.length}`);
     if (sectionIndex >= 0 && sectionIndex < sections.length) {
       console.log(`✅ Jumping to section ${sectionIndex}: ${sections[sectionIndex]?.title || 'unknown'}`);
+      console.log('📊 jumpToSection - Setting state:', {
+        currentSectionIndex: sectionIndex,
+        currentQuestionIndex: 0,
+        timeRemaining: null,
+        elapsedTime: 0,
+        showSectionIntro: true,
+        showSectionComplete: false
+      });
       setCurrentSectionIndex(sectionIndex);
       setCurrentQuestionIndex(0);
       setTimeRemaining(null);
       setElapsedTime(0);
       setShowSectionIntro(true);
       setShowSectionComplete(false);
+      console.log('✅ jumpToSection state updates queued');
     } else {
       console.warn(`❌ Cannot jump to section ${sectionIndex}: sections.length=${sections.length}`);
     }

@@ -964,17 +964,46 @@ export const useAssessmentResults = () => {
             console.log('No database results found:', e.message);
         }
 
-        // ✅ REMOVED: localStorage fallback (database is now single source of truth)
-        // If no database results found, redirect to assessment test
-        console.log('❌ No assessment results found in database');
-        console.log('   Redirecting to assessment test page...');
-        navigate('/student/assessment/test');
-    };
+        // Fallback to localStorage (legacy mode)
+        let answersJson = localStorage.getItem('assessment_answers');
+        const geminiResultsJson = localStorage.getItem('assessment_gemini_results');
+        let stream = localStorage.getItem('assessment_stream');
+        let storedGradeLevel = localStorage.getItem('assessment_grade_level');
 
-    const handleRetry = useCallback(async () => {
-        setRetrying(true);
-        // Don't clear error yet - this keeps the ErrorState visible (with spinner)
-        // instead of showing a blank screen while retrying
+        // CRITICAL FIX: If localStorage is empty, try to load answers from database
+        // This handles cases where localStorage was cleared (refresh, different device, etc.)
+        if (!answersJson && attemptId) {
+            console.log('📊 localStorage empty, attempting to load answers from database...');
+            try {
+                const attempt = await assessmentService.getAttemptWithResults(attemptId);
+                if (attempt?.all_responses && Object.keys(attempt.all_responses).length > 0) {
+                    answersJson = JSON.stringify(attempt.all_responses);
+                    console.log('✅ Loaded answers from database:', Object.keys(attempt.all_responses).length, 'answers');
+                    
+                    // Also restore stream and grade level from attempt if not in localStorage
+                    if (!stream && attempt.stream_id) {
+                        stream = attempt.stream_id;
+                        localStorage.setItem('assessment_stream', attempt.stream_id);
+                        console.log('✅ Restored stream from database:', attempt.stream_id);
+                    }
+                    if (!storedGradeLevel && attempt.grade_level) {
+                        storedGradeLevel = attempt.grade_level;
+                        localStorage.setItem('assessment_grade_level', attempt.grade_level);
+                        console.log('✅ Restored grade level from database:', attempt.grade_level);
+                    }
+                } else {
+                    console.warn('⚠️ Database attempt has no answers in all_responses');
+                }
+            } catch (dbError) {
+                console.error('❌ Error loading answers from database:', dbError);
+            }
+        }
+
+        if (!answersJson) {
+            console.error('❌ No answers found in localStorage or database');
+            navigate('/student/assessment/test');
+            return;
+        }
 
         try {
             // ✅ Get answers from database instead of localStorage
@@ -989,17 +1018,164 @@ export const useAssessmentResults = () => {
             console.log('🔄 Regenerating AI analysis from database data');
             console.log('   Attempt ID:', attemptId);
 
-            // Fetch attempt data from database
-            const { data: attempt, error: attemptError } = await supabase
-                .from('personal_assessment_attempts')
-                .select('all_responses, stream_id, grade_level, section_timings')
-                .eq('id', attemptId)
-                .single();
+                // Pass gradeLevel to get proper stream recommendations
+                console.log('Re-analyzing with gradeLevel:', effectiveGradeLevel);
+                const geminiResults = await analyzeAssessmentWithGemini(answers, stream, questionBanks, {}, effectiveGradeLevel);
 
-            if (attemptError || !attempt) {
-                console.error('Failed to fetch attempt:', attemptError);
-                setError('Could not load assessment data. Please try again.');
-                setRetrying(false);
+                if (geminiResults) {
+                    // Apply validation to correct RIASEC topThree and detect aptitude patterns
+                    const sectionTimings = JSON.parse(localStorage.getItem('assessment_section_timings') || '{}');
+                    const validatedResults = applyValidation(geminiResults, answers, sectionTimings);
+                    localStorage.setItem('assessment_gemini_results', JSON.stringify(validatedResults));
+                    
+                    // Set grade level
+                    if (storedGradeLevel) {
+                        setGradeLevel(storedGradeLevel);
+                        setGradeLevelFromAttempt(true);
+                        gradeLevelFromAttemptRef.current = true; // Set ref synchronously to prevent race condition
+                    }
+                    
+                    // Also try to save to database if user is logged in
+                    try {
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (user) {
+                            // First, check if there's a completed result that needs AI analysis
+                            const latestResult = await assessmentService.getLatestResult(user.id);
+                            
+                            // CRITICAL FIX: Check if result needs AI update
+                            // Update if: 1) No gemini_results, OR 2) gemini_results exists but RIASEC scores are empty
+                            const needsUpdate = !latestResult?.gemini_results || 
+                                !latestResult.gemini_results.riasec?.scores ||
+                                Object.values(latestResult.gemini_results.riasec.scores).every(score => score === 0);
+                            
+                            if (latestResult && needsUpdate) {
+                                // Update the existing result with AI analysis
+                                console.log('📊 Updating completed result with AI analysis (RIASEC scores were empty)');
+                                
+                                // Apply grade-level specific field filtering (same as assessmentService.js)
+                                const isSimplifiedAssessment = effectiveGradeLevel === 'middle' || effectiveGradeLevel === 'highschool';
+                                
+                                // Clean gemini_results for simplified assessments
+                                // Remove fields that don't exist in simplified assessments to prevent database triggers from extracting them
+                                let cleanedGeminiResults = { ...validatedResults };
+                                if (isSimplifiedAssessment) {
+                                    delete cleanedGeminiResults.workValues;
+                                    delete cleanedGeminiResults.employability;
+                                    delete cleanedGeminiResults.knowledge;
+                                    console.log('🧹 Cleaned gemini_results for simplified assessment (removed workValues, employability, knowledge)');
+                                }
+                                
+                                const updateData = {
+                                    gemini_results: cleanedGeminiResults,
+                                    riasec_scores: validatedResults.riasec?.scores || null,
+                                    riasec_code: validatedResults.riasec?.code || null,
+                                    aptitude_scores: validatedResults.aptitude?.scores || null,
+                                    aptitude_overall: validatedResults.aptitude?.overallScore ?? null,
+                                    bigfive_scores: validatedResults.bigFive || null,
+                                    // These fields are ONLY for comprehensive assessments (after10, after12, college, higher_secondary)
+                                    work_values_scores: isSimplifiedAssessment ? null : (validatedResults.workValues?.scores || null),
+                                    employability_scores: isSimplifiedAssessment ? null : (validatedResults.employability?.skillScores || null),
+                                    employability_readiness: isSimplifiedAssessment ? null : (validatedResults.employability?.overallReadiness || null),
+                                    knowledge_score: isSimplifiedAssessment ? null : (validatedResults.knowledge?.score ?? null),
+                                    knowledge_details: isSimplifiedAssessment ? null : (validatedResults.knowledge || null),
+                                    career_fit: validatedResults.careerFit || null,
+                                    skill_gap: validatedResults.skillGap || null,
+                                    skill_gap_courses: validatedResults.skillGapCourses || null,
+                                    roadmap: validatedResults.roadmap || null,
+                                    profile_snapshot: validatedResults.profileSnapshot || null,
+                                    timing_analysis: validatedResults.timingAnalysis || null,
+                                    final_note: validatedResults.finalNote || null,
+                                    overall_summary: validatedResults.overallSummary || null,
+                                    updated_at: new Date().toISOString()
+                                };
+                                
+                                console.log('📊 Update data (grade:', effectiveGradeLevel, ', simplified:', isSimplifiedAssessment, '):');
+                                console.log('  riasec_scores:', updateData.riasec_scores);
+                                console.log('  riasec_code:', updateData.riasec_code);
+                                console.log('  work_values_scores:', updateData.work_values_scores, isSimplifiedAssessment ? '(excluded for simplified)' : '');
+                                console.log('  employability_scores:', updateData.employability_scores, isSimplifiedAssessment ? '(excluded for simplified)' : '');
+                                console.log('  knowledge_score:', updateData.knowledge_score, isSimplifiedAssessment ? '(excluded for simplified)' : '');
+                                
+                                const { error: updateError } = await supabase
+                                    .from('personal_assessment_results')
+                                    .update(updateData)
+                                    .eq('id', latestResult.id);
+                                
+                                if (updateError) {
+                                    console.warn('Could not update database result:', updateError.message);
+                                    console.error('Update error details:', updateError);
+                                } else {
+                                    console.log('✅ Database result updated with AI analysis');
+                                    console.log('   Updated result ID:', latestResult.id);
+                                    console.log('   RIASEC scores saved:', updateData.riasec_scores);
+                                }
+                                
+                                // Save course recommendations
+                                if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
+                                    try {
+                                        await saveRecommendations(
+                                            user.id,
+                                            validatedResults.platformCourses,
+                                            latestResult.id,
+                                            'assessment'
+                                        );
+                                        console.log('Course recommendations saved to database');
+                                    } catch (recError) {
+                                        console.warn('Could not save recommendations:', recError.message);
+                                    }
+                                }
+                            } else {
+                                // Fallback: Check if there's an in-progress attempt to complete
+                                const inProgressAttempt = await assessmentService.getInProgressAttempt(user.id);
+                                if (inProgressAttempt) {
+                                    const completedAttempt = await assessmentService.completeAttempt(
+                                        inProgressAttempt.id,
+                                        user.id,
+                                        stream,
+                                        inProgressAttempt.grade_level || 'after12',
+                                        validatedResults,
+                                        sectionTimings
+                                    );
+                                    console.log('Results saved to database');
+                                    
+                                    // Save course recommendations to database
+                                    if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
+                                        try {
+                                            // Get the assessment result ID
+                                            const { data: resultData } = await supabase
+                                                .from('personal_assessment_results')
+                                                .select('id')
+                                                .eq('attempt_id', inProgressAttempt.id)
+                                                .maybeSingle();
+                                            
+                                            await saveRecommendations(
+                                                user.id,
+                                                validatedResults.platformCourses,
+                                                resultData?.id || null,
+                                                'assessment'
+                                            );
+                                            console.log('Course recommendations saved to database');
+                                        } catch (recError) {
+                                            console.warn('Could not save recommendations:', recError.message);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (dbError) {
+                        console.log('Could not save to database:', dbError.message);
+                    }
+                    
+                    setResults(validatedResults);
+                    setLoading(false);
+                    return;
+                } else {
+                    throw new Error('AI analysis returned no results');
+                }
+            } catch (e) {
+                console.error('Gemini analysis failed:', e);
+                setError(e.message || 'Failed to analyze assessment with AI. Please try again.');
+                setLoading(false);
                 return;
             }
 
