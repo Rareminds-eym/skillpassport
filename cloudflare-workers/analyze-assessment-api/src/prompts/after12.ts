@@ -77,7 +77,7 @@ Calculate average score for each trait and use to determine work style and caree
 ## SECTION 3: WORK VALUES & MOTIVATORS - 24 Questions
 ## ═══════════════════════════════════════════════════════════════════════════
 
-${JSON.stringify(assessmentData.valuesAnswers, null, 2)}
+${JSON.stringify(assessmentData.workValuesAnswers, null, 2)}
 
 **WORK VALUES SCORING**: Identify what motivates this student in their career:
 - **Achievement**: Accomplishment, results, recognition, advancement, success
@@ -125,8 +125,10 @@ Use aptitude scores to validate career fit and identify cognitive strengths.
 ## SECTION 6: STREAM KNOWLEDGE (DOMAIN-SPECIFIC) - 20 Questions
 ## ═══════════════════════════════════════════════════════════════════════════
 
-Pre-calculated knowledge score:
-${JSON.stringify(assessmentData.knowledgeScores, null, 2)}
+Knowledge answers and assessment:
+${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
+
+Total questions: ${assessmentData.totalKnowledgeQuestions}
 
 **KNOWLEDGE ASSESSMENT**: Tests domain-specific knowledge in their chosen stream/field.
 - Score >= 70%: Strong foundation, ready for advanced study
@@ -319,6 +321,9 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
         "programName": "B.Tech Computer Science & Engineering",
         "matchScore": 92,
         "fit": "High",
+        "duration": "4 years",
+        "roleDescription": "As a Computer Science graduate, you'll design and develop software applications, work on cutting-edge technologies like AI and cloud computing, and solve complex technical problems. You'll have opportunities in software development, data science, cybersecurity, and tech entrepreneurship.",
+        "topUniversities": ["IIT Bombay", "IIT Delhi", "BITS Pilani", "NIT Trichy", "IIIT Hyderabad", "VIT Vellore", "Manipal Institute of Technology"],
         "alignedWithCluster": "Technology & Innovation",
         "whyThisFitsYou": "Your exceptional logical reasoning (85%) and high Investigative interest (I: 88%) make you perfect for software development. Your strong problem-solving skills (90%) and curiosity for technology align perfectly with CSE's analytical and creative demands.",
         "evidence": {
@@ -334,6 +339,9 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
         "programName": "BCA (Bachelor of Computer Applications)",
         "matchScore": 85,
         "fit": "Medium",
+        "duration": "3 years",
+        "roleDescription": "BCA graduates work as software developers, web developers, and IT professionals. You'll build applications, manage databases, and work on software projects. Career opportunities include app development, system administration, and IT consulting with paths to MCA or MBA.",
+        "topUniversities": ["Christ University Bangalore", "Symbiosis Pune", "Presidency College Bangalore", "St. Xavier's Mumbai", "Loyola College Chennai", "Amity University", "Chandigarh University"],
         "alignedWithCluster": "Engineering & Research",
         "whyThisFitsYou": "Your strong programming aptitude and practical approach to technology make BCA an excellent alternative. This program offers hands-on software development training that matches your learning style.",
         "evidence": {
@@ -349,6 +357,9 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
         "programName": "B.Sc Mathematics",
         "matchScore": 78,
         "fit": "Explore",
+        "duration": "3 years",
+        "roleDescription": "Mathematics graduates pursue careers in data science, actuarial science, quantitative finance, research, and teaching. You'll analyze complex problems, develop mathematical models, and apply statistical methods. This degree opens doors to analytics, banking, insurance, and academic research.",
+        "topUniversities": ["St. Stephen's College Delhi", "Loyola College Chennai", "Fergusson College Pune", "Presidency College Kolkata", "Hindu College Delhi", "Madras Christian College", "St. Xavier's Mumbai"],
         "alignedWithCluster": "Healthcare & Life Sciences",
         "whyThisFitsYou": "Your exceptional numerical reasoning (85%) and analytical mindset make mathematics a viable path. This opens doors to data science, actuarial science, and quantitative finance careers.",
         "evidence": {
@@ -643,6 +654,9 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
 3. **Each program MUST include:**
    - Program name (exact match from list above)
    - Match score (85-95 for High fit, 75-84 for Medium fit, 65-74 for Explore)
+   - **Duration** (e.g., "4 years", "3-4 years", "5 years" - typical duration for that degree in India)
+   - **Role description** (2-3 sentences explaining what graduates typically do in their careers)
+   - **Top universities** (array of 5-7 well-known Indian universities offering this program)
    - Personalized "Why this fits you" reasoning (2-3 sentences connecting their assessment results to the program)
    - Evidence from ALL 6 sections (interest, aptitude, personality, values, employability, knowledge)
 4. **Selection criteria within each cluster:**
@@ -663,6 +677,9 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
       "programName": "B.Tech Computer Science & Engineering",
       "matchScore": 92,
       "fit": "High",
+      "duration": "4 years",
+      "roleDescription": "As a Computer Science graduate, you'll design and develop software applications, work on cutting-edge technologies like AI and cloud computing, and solve complex technical problems. You'll have opportunities in software development, data science, cybersecurity, and tech entrepreneurship.",
+      "topUniversities": ["IIT Bombay", "IIT Delhi", "BITS Pilani", "NIT Trichy", "IIIT Hyderabad", "VIT Vellore", "Manipal Institute of Technology"],
       "alignedWithCluster": "Technology & Innovation",
       "whyThisFitsYou": "Your exceptional logical reasoning (85%) and high Investigative interest (I: 88%) make you perfect for software development. Your strong problem-solving skills (90%) and curiosity for technology align perfectly with CSE's analytical and creative demands.",
       "evidence": {
@@ -678,6 +695,9 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
       "programName": "B.Tech Mechanical Engineering",
       "matchScore": 85,
       "fit": "Medium",
+      "duration": "4 years",
+      "roleDescription": "Mechanical engineers design, develop, and test mechanical systems and devices. You'll work on projects ranging from automotive design to robotics, renewable energy systems, and manufacturing processes. Career paths include product design, R&D, automotive engineering, and aerospace.",
+      "topUniversities": ["IIT Madras", "IIT Kharagpur", "NIT Surathkal", "BITS Pilani", "Anna University", "PSG College of Technology", "Jadavpur University"],
       "alignedWithCluster": "Engineering & Research",
       "whyThisFitsYou": "Your strong Realistic interest (R: 75%) and spatial reasoning (82%) make mechanical engineering a natural fit. Your hands-on approach and analytical mindset support complex engineering challenges.",
       "evidence": {
@@ -693,6 +713,9 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
       "programName": "MBBS (Bachelor of Medicine & Surgery)",
       "matchScore": 78,
       "fit": "Explore",
+      "duration": "5.5 years",
+      "roleDescription": "As a medical doctor, you'll diagnose and treat patients, conduct medical research, and contribute to public health. You'll specialize in areas like surgery, pediatrics, cardiology, or pursue research in medical sciences. The career combines scientific knowledge with compassionate patient care.",
+      "topUniversities": ["AIIMS Delhi", "CMC Vellore", "JIPMER Puducherry", "KGMU Lucknow", "Maulana Azad Medical College", "Grant Medical College Mumbai", "Madras Medical College"],
       "alignedWithCluster": "Healthcare & Life Sciences",
       "whyThisFitsYou": "Your Investigative interest (I: 88%) and Social aptitude (S: 70%) open doors to medical careers. Your empathy and scientific curiosity support patient care and medical research.",
       "evidence": {
@@ -716,6 +739,9 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
       "programName": "BBA Finance & Banking",
       "matchScore": 90,
       "fit": "High",
+      "duration": "3 years",
+      "roleDescription": "Finance graduates work in investment banking, financial analysis, portfolio management, and corporate finance. You'll analyze market trends, manage investments, assess financial risks, and advise clients on wealth management. Career paths include investment banking, equity research, and financial consulting.",
+      "topUniversities": ["Shaheed Sukhdev College of Business Studies Delhi", "Christ University Bangalore", "Symbiosis Pune", "NMIMS Mumbai", "Narsee Monjee College Mumbai", "St. Xavier's Mumbai", "Loyola College Chennai"],
       "alignedWithCluster": "Finance & Accounting",
       "whyThisFitsYou": "Your exceptional Conventional interest (C: 80%) and numerical reasoning (88%) make you perfect for finance careers. Your attention to detail and analytical skills align with investment banking and financial analysis."
     },
@@ -723,6 +749,9 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
       "programName": "BBA (Bachelor of Business Administration)",
       "matchScore": 84,
       "fit": "Medium",
+      "duration": "3 years",
+      "roleDescription": "BBA graduates become business managers, marketing professionals, HR specialists, and operations managers. You'll lead teams, develop business strategies, manage projects, and drive organizational growth. Career opportunities span across consulting, marketing, operations, and general management.",
+      "topUniversities": ["Shaheed Sukhdev College Delhi", "Christ University Bangalore", "Symbiosis Pune", "NMIMS Mumbai", "Amity University", "Manipal University", "VIT Vellore"],
       "alignedWithCluster": "Business & Management",
       "whyThisFitsYou": "Your strong Enterprising interest (E: 85%) and leadership skills make business management a natural fit. Your communication abilities and strategic thinking support managerial roles."
     },
@@ -730,6 +759,9 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
       "programName": "BBA Entrepreneurship",
       "matchScore": 76,
       "fit": "Explore",
+      "duration": "3 years",
+      "roleDescription": "Entrepreneurship graduates start their own ventures, work in startups, or drive innovation in established companies. You'll develop business plans, secure funding, build teams, and launch products. This path suits those who want to create their own opportunities and drive change.",
+      "topUniversities": ["Christ University Bangalore", "Symbiosis Pune", "NMIMS Mumbai", "Amity University", "Manipal University", "VIT Vellore", "Chandigarh University"],
       "alignedWithCluster": "Entrepreneurship & Digital Business",
       "whyThisFitsYou": "Your Enterprising interest (E: 85%) and creativity (A: 65%) open doors to entrepreneurship. Your risk-taking ability and innovative mindset support startup ventures."
     }
@@ -745,6 +777,9 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
       "programName": "BA Design (Graphic/UI/UX)",
       "matchScore": 94,
       "fit": "High",
+      "duration": "3-4 years",
+      "roleDescription": "Design graduates create visual content, user interfaces, brand identities, and digital experiences. You'll work as UI/UX designers, graphic designers, brand strategists, or creative directors. Career opportunities exist in tech companies, design agencies, advertising firms, and as freelance designers.",
+      "topUniversities": ["NID Ahmedabad", "NIFT Delhi", "Srishti Manipal", "Pearl Academy", "MIT Institute of Design", "Symbiosis Institute of Design", "DJ Academy of Design"],
       "alignedWithCluster": "Creative & Design",
       "whyThisFitsYou": "Your exceptional Artistic interest (A: 92%) and creativity score (88%) make you perfect for design. Your visual thinking and attention to detail align with UI/UX design's creative and analytical demands."
     },
@@ -752,6 +787,9 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
       "programName": "BA Journalism & Mass Communication",
       "matchScore": 86,
       "fit": "Medium",
+      "duration": "3 years",
+      "roleDescription": "Journalism graduates work as reporters, content creators, news anchors, editors, and media strategists. You'll investigate stories, conduct interviews, create multimedia content, and shape public discourse. Career paths include print journalism, broadcast media, digital content, and public relations.",
+      "topUniversities": ["IIMC Delhi", "Symbiosis Pune", "Xavier's Institute Mumbai", "Christ University Bangalore", "Jamia Millia Islamia", "Lady Shri Ram College Delhi", "Asian College of Journalism Chennai"],
       "alignedWithCluster": "Media & Communication",
       "whyThisFitsYou": "Your high Social interest (S: 85%) and excellent verbal skills (90%) make journalism a natural fit. Your curiosity and communication strengths support investigative reporting and storytelling."
     },
@@ -759,6 +797,9 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
       "programName": "LLB (Bachelor of Laws)",
       "matchScore": 79,
       "fit": "Explore",
+      "duration": "3 years (after graduation) or 5 years (integrated)",
+      "roleDescription": "Law graduates become lawyers, legal advisors, judges, corporate counsels, and policy makers. You'll represent clients, draft legal documents, argue cases in court, and provide legal guidance. Career opportunities span litigation, corporate law, intellectual property, human rights, and legal academia.",
+      "topUniversities": ["National Law School Bangalore", "NALSAR Hyderabad", "NLSIU Bangalore", "NUJS Kolkata", "NLU Delhi", "Symbiosis Law School Pune", "Jindal Global Law School"],
       "alignedWithCluster": "Social Sciences & Law",
       "whyThisFitsYou": "Your high Social interest (S: 85%) and logical reasoning (85%) make law worth exploring. Your analytical thinking and communication skills support legal advocacy and policy work."
     }
@@ -767,6 +808,22 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
 \`\`\`
 
 **CAREER RECOMMENDATIONS GUIDELINES:**
+
+**JOB TITLE REQUIREMENTS - PROFESSIONAL & SERIOUS:**
+- Use formal, industry-standard job titles (e.g., "Software Engineer" not "App Developer")
+- Avoid casual or trendy titles (e.g., "Data Scientist" not "Data Ninja")
+- Use senior-level titles for high-paying roles (e.g., "Senior Product Manager", "Lead UX Designer")
+- Include specific specializations (e.g., "Machine Learning Engineer" not just "AI Engineer")
+- For creative roles, use professional titles (e.g., "Creative Director" not "Content Creator")
+- Avoid generic titles - be specific about the domain (e.g., "Financial Analyst" not just "Analyst")
+
+**EXAMPLES OF PROFESSIONAL JOB TITLES BY FIELD:**
+- **Technology**: Software Engineer, Data Scientist, Machine Learning Engineer, DevOps Engineer, Cloud Architect, Cybersecurity Analyst, Full Stack Developer, Backend Engineer, Frontend Engineer, Systems Architect
+- **Design**: UX Designer, UI Designer, Product Designer, Visual Designer, Interaction Designer, Design Researcher, Creative Director, Brand Strategist
+- **Business**: Product Manager, Business Analyst, Strategy Consultant, Operations Manager, Project Manager, Business Development Manager
+- **Finance**: Financial Analyst, Investment Analyst, Risk Analyst, Portfolio Manager, Quantitative Analyst, Corporate Finance Manager
+- **Media**: Journalist, Editor, Content Strategist, Communications Manager, Public Relations Manager, Media Producer
+- **Research**: Research Scientist, Data Analyst, Research Associate, Laboratory Technician, Clinical Research Coordinator
 
 **FUTURISTIC & EMERGING CAREERS (2025-2035 Job Market):**
 - AI/ML Engineer, Prompt Engineer, AI Ethics Officer, Computer Vision Specialist

@@ -46,8 +46,9 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
 }) => {
   const [showDebugInfo, setShowDebugInfo] = useState(false);
 
-  // Check if this is higher_secondary
+  // Check if this is higher_secondary or after12
   const isHigherSecondary = gradeLevel === 'higher_secondary';
+  const isAfter12 = gradeLevel === 'after12';
   const usesAIQuestions = ['after10', 'higher_secondary', 'after12', 'college'].includes(gradeLevel || '');
 
   // Get current section info
@@ -62,6 +63,11 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-amber-600" />
             <span className="text-sm font-semibold text-amber-800">Test Mode Active</span>
+            {isAfter12 && (
+              <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">
+                After 12th
+              </span>
+            )}
             {isHigherSecondary && (
               <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-semibold">
                 Higher Secondary
@@ -270,6 +276,78 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
             </div>
           )}
 
+          {/* After 12th Specific Checks */}
+          {isAfter12 && (
+            <div className="pt-3 border-t border-gray-300">
+              <div className="text-gray-500 mb-2 font-semibold">After 12th Checks:</div>
+              <div className="space-y-1">
+                <div className={`flex items-center gap-2 ${isComprehensiveAssessment ? 'text-green-600' : 'text-red-600'}`}>
+                  {isComprehensiveAssessment ? '✅' : '❌'} Using comprehensive assessment
+                </div>
+                <div className={`flex items-center gap-2 ${sections.length === 6 ? 'text-green-600' : 'text-red-600'}`}>
+                  {sections.length === 6 ? '✅' : '❌'} Has 6 sections (expected)
+                </div>
+                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'riasec') ? 'text-green-600' : 'text-red-600'}`}>
+                  {sections.some(s => s.id === 'riasec') ? '✅' : '❌'} Has RIASEC section (48 questions)
+                </div>
+                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'bigfive') ? 'text-green-600' : 'text-red-600'}`}>
+                  {sections.some(s => s.id === 'bigfive') ? '✅' : '❌'} Has Big Five section (50 questions)
+                </div>
+                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'work_values') ? 'text-green-600' : 'text-red-600'}`}>
+                  {sections.some(s => s.id === 'work_values') ? '✅' : '❌'} Has Work Values section (20 questions)
+                </div>
+                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'employability') ? 'text-green-600' : 'text-red-600'}`}>
+                  {sections.some(s => s.id === 'employability') ? '✅' : '❌'} Has Employability section (30 questions)
+                </div>
+                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'aptitude') ? 'text-green-600' : 'text-red-600'}`}>
+                  {sections.some(s => s.id === 'aptitude') ? '✅' : '❌'} Has Aptitude section (AI)
+                </div>
+                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'knowledge') ? 'text-green-600' : 'text-red-600'}`}>
+                  {sections.some(s => s.id === 'knowledge') ? '✅' : '❌'} Has Knowledge section (AI)
+                </div>
+                {aiQuestionsLoaded && (
+                  <>
+                    <div className={`flex items-center gap-2 ${aiQuestionsLoaded.aptitude === 50 ? 'text-green-600' : 'text-orange-600'}`}>
+                      {aiQuestionsLoaded.aptitude === 50 ? '✅' : '⚠️'} Aptitude: {aiQuestionsLoaded.aptitude}/50 questions
+                    </div>
+                    <div className={`flex items-center gap-2 ${aiQuestionsLoaded.knowledge === 20 ? 'text-green-600' : 'text-orange-600'}`}>
+                      {aiQuestionsLoaded.knowledge === 20 ? '✅' : '⚠️'} Knowledge: {aiQuestionsLoaded.knowledge}/20 questions
+                    </div>
+                  </>
+                )}
+                
+                {/* Stream Validation for After 12th */}
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <div className={`flex items-center gap-2 ${
+                    studentStream && ['science', 'commerce', 'arts'].includes(studentStream.toLowerCase())
+                      ? 'text-green-600' 
+                      : 'text-orange-600'
+                  }`}>
+                    {studentStream && ['science', 'commerce', 'arts'].includes(studentStream.toLowerCase()) ? '✅' : '⚠️'} 
+                    Stream: {studentStream || 'Not set'}
+                  </div>
+                  <div className="mt-1 p-2 bg-blue-50 rounded text-blue-700 text-xs">
+                    <strong>ℹ️ After 12th Streams:</strong> Science, Commerce, or Arts
+                  </div>
+                </div>
+
+                {/* Total Questions Count */}
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <div className="text-gray-500 mb-1">Total Questions Expected:</div>
+                  <div className="font-mono text-xs space-y-0.5">
+                    <div>RIASEC: 48</div>
+                    <div>Big Five: 50</div>
+                    <div>Work Values: 20</div>
+                    <div>Employability: 30</div>
+                    <div>Aptitude (AI): 50</div>
+                    <div>Knowledge (AI): 20</div>
+                    <div className="font-semibold text-green-600 pt-1 border-t border-gray-300">Total: 218 questions</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Console Log Button */}
           <div className="pt-3 border-t border-gray-300">
             <button
@@ -287,6 +365,7 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
                 })));
                 console.log('Is Comprehensive:', isComprehensiveAssessment);
                 console.log('Is Higher Secondary:', isHigherSecondary);
+                console.log('Is After 12th:', isAfter12);
               }}
               className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg text-xs font-semibold hover:bg-gray-800 transition-all"
             >
