@@ -1259,7 +1259,7 @@ const AssessmentTestPage: React.FC = () => {
         if (question.partType === 'sjt') {
           const options = question.options || [];
           if (options.length >= 2) {
-            answer = { best: options[0], worst: options[options.length - 1] };
+            flow.setAnswer(questionId, { best: options[0], worst: options[options.length - 1] });
           }
         } 
         // Handle RIASEC questions with categoryMapping (multiselect)
@@ -1309,7 +1309,7 @@ const AssessmentTestPage: React.FC = () => {
         if (question.partType === 'sjt') {
           const options = question.options || [];
           if (options.length >= 2) {
-            answer = { best: options[0], worst: options[options.length - 1] };
+            flow.setAnswer(questionId, { best: options[0], worst: options[options.length - 1] });
           }
         }
         // Handle RIASEC questions with categoryMapping (multiselect)
