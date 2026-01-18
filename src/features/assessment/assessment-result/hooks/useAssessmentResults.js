@@ -223,6 +223,7 @@ export const useAssessmentResults = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [retrying, setRetrying] = useState(false);
+    const [autoRetry, setAutoRetry] = useState(false); // Flag to trigger auto-retry
     const [gradeLevel, setGradeLevel] = useState('after12'); // Default to after12
     const [gradeLevelFromAttempt, setGradeLevelFromAttempt] = useState(false); // Track if grade level was set from attempt
     // Use ref to track grade level from attempt synchronously (avoids race condition with async state updates)
@@ -732,13 +733,13 @@ export const useAssessmentResults = () => {
                             return;
                         }
                     } else {
-                        // Result exists but no AI analysis - show error with retry option
-                        console.log('🔥🔥🔥 NEW CODE: Database result exists but missing AI analysis 🔥🔥🔥');
+                        // Result exists but no AI analysis - AUTO-GENERATE IT!
+                        console.log('🔥🔥🔥 AUTO-GENERATING AI ANALYSIS 🔥🔥🔥');
                         console.log('📊 Database result exists but missing AI analysis');
                         console.log('   Result ID:', result.id);
                         console.log('   Attempt ID:', attemptId);
                         console.log('   gemini_results:', result.gemini_results);
-                        console.log('   Showing error state with retry option...');
+                        console.log('   🚀 Setting flag to trigger AI analysis generation...');
                         
                         // Set grade level from attempt
                         if (attempt.grade_level) {
@@ -747,10 +748,10 @@ export const useAssessmentResults = () => {
                             gradeLevelFromAttemptRef.current = true;
                         }
                         
-                        console.log('🔥 Setting error message and stopping loading...');
-                        setError('Your assessment was saved successfully, but the AI analysis is missing. Click "Try Again" to generate your personalized career report.');
-                        setLoading(false);
-                        console.log('🔥 Error state set. Should show error screen now, NOT redirect!');
+                        // Set flag to trigger auto-retry (will be handled by useEffect)
+                        // Keep loading=true so user sees "Generating Your Report" screen
+                        setAutoRetry(true);
+                        // Don't set loading to false - keep showing loading screen
                         return;
                     }
                 } else {
@@ -1042,6 +1043,15 @@ export const useAssessmentResults = () => {
     useEffect(() => {
         loadResults();
     }, [navigate]);
+
+    // Auto-retry effect: Trigger handleRetry when autoRetry flag is set
+    useEffect(() => {
+        if (autoRetry && !retrying) {
+            console.log('🤖 Auto-retry triggered - calling handleRetry...');
+            setAutoRetry(false); // Reset flag
+            handleRetry();
+        }
+    }, [autoRetry, retrying]);
 
     // Update roll number type when grade level changes to after12/after10
     useEffect(() => {
