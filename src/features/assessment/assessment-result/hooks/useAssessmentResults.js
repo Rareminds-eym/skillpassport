@@ -224,6 +224,7 @@ export const useAssessmentResults = () => {
     const [error, setError] = useState(null);
     const [retrying, setRetrying] = useState(false);
     const [autoRetry, setAutoRetry] = useState(false); // Flag to trigger auto-retry
+    const [retryCompleted, setRetryCompleted] = useState(false); // Flag to prevent re-triggering after successful retry
     const [gradeLevel, setGradeLevel] = useState('after12'); // Default to after12
     const [gradeLevelFromAttempt, setGradeLevelFromAttempt] = useState(false); // Track if grade level was set from attempt
     // Use ref to track grade level from attempt synchronously (avoids race condition with async state updates)
@@ -827,6 +828,13 @@ export const useAssessmentResults = () => {
                         }
                     } else {
                         // Result exists but no AI analysis - AUTO-GENERATE IT!
+                        // But only if we haven't already completed a retry
+                        if (retryCompleted) {
+                            console.log('⏭️ Skipping auto-retry - already completed successfully');
+                            setLoading(false);
+                            return;
+                        }
+                        
                         console.log('🔥🔥🔥 AUTO-GENERATING AI ANALYSIS 🔥🔥🔥');
                         console.log('📊 Database result exists but missing AI analysis');
                         console.log('   Result ID:', result.id);
@@ -1123,6 +1131,7 @@ export const useAssessmentResults = () => {
             
             // Update state with new results
             setResults(validatedResults);
+            setRetryCompleted(true); // Mark retry as completed to prevent re-triggering
             console.log('✅ AI analysis regenerated successfully');
             
         } catch (e) {
@@ -1142,7 +1151,13 @@ export const useAssessmentResults = () => {
         if (autoRetry && !retrying) {
             console.log('🤖 Auto-retry triggered - calling handleRetry...');
             setAutoRetry(false); // Reset flag immediately to prevent loops
-            handleRetry();
+            
+            // Add a small delay to ensure state updates have propagated
+            const retryTimer = setTimeout(() => {
+                handleRetry();
+            }, 100);
+            
+            return () => clearTimeout(retryTimer);
         }
     }, [autoRetry, retrying, handleRetry]);
 

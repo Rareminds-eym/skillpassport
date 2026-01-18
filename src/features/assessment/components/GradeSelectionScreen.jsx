@@ -22,6 +22,7 @@ import { Label } from '../../../components/Students/components/ui/label';
  * @property {boolean} shouldShowAllOptions - Whether to show all grade options
  * @property {boolean} shouldFilterByGrade - Whether to filter options by grade
  * @property {string|null} studentProgram - Student's program name (for college students)
+ * @property {Object|null} profileData - Complete student profile data for missing field analysis
  */
 
 /**
@@ -225,52 +226,131 @@ const GradeOptionButton = ({ option, onClick, additionalInfo, studentProgram }) 
 /**
  * Incomplete Profile Screen
  */
-const IncompleteProfileScreen = ({ onNavigateToSettings, onNavigateToDashboard }) => (
-  <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-    <Card className="w-full max-w-2xl border-none shadow-2xl">
-      <CardContent className="p-8">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <AlertCircle className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Complete Your Profile</h1>
-          <p className="text-gray-600">Please update your personal information to take the assessment</p>
-        </div>
+const IncompleteProfileScreen = ({ onNavigateToSettings, onNavigateToDashboard, profileData }) => {
+  const missingFields = [];
+  const currentValues = [];
 
-        <div className="bg-amber-50 rounded-xl p-6 mb-6 border border-amber-200">
-          <div className="flex gap-3">
-            <AlertCircle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-amber-800 mb-2">Missing Information</p>
-              <p className="text-sm text-amber-700">
-                We couldn't determine your grade level or class. Please go to your profile settings and update your:
-              </p>
-              <ul className="text-sm text-amber-700 mt-2 list-disc list-inside space-y-1">
-                <li>Grade/Class information (for school students)</li>
-                <li>College/University details (for college students)</li>
-              </ul>
+  // Analyze what's missing
+  const hasGrade = profileData?.grade || profileData?.school_classes?.grade;
+  const hasSchoolId = profileData?.school_id;
+  const hasCollegeId = profileData?.university_college_id;
+  const hasSchoolClassId = profileData?.school_class_id;
+
+  // Determine student type
+  const isSchoolStudent = hasSchoolId && !hasCollegeId;
+  const isCollegeStudent = hasCollegeId && !hasSchoolId;
+  const isUndetermined = !hasSchoolId && !hasCollegeId;
+
+  // Build missing fields list
+  if (isSchoolStudent || isUndetermined) {
+    if (!hasGrade) {
+      missingFields.push('Grade/Class information');
+    }
+    if (!hasSchoolClassId && !hasGrade) {
+      missingFields.push('Class/Section assignment');
+    }
+  }
+
+  if (isCollegeStudent || isUndetermined) {
+    if (!hasCollegeId) {
+      missingFields.push('College/University selection');
+    }
+  }
+
+  // Show current values
+  if (profileData) {
+    if (profileData.grade) currentValues.push(`Grade: ${profileData.grade}`);
+    if (profileData.school_classes?.grade) currentValues.push(`Class Grade: ${profileData.school_classes.grade}`);
+    if (profileData.school_id) currentValues.push(`School ID: ${profileData.school_id}`);
+    if (profileData.university_college_id) currentValues.push(`College ID: ${profileData.university_college_id}`);
+    if (profileData.program?.name) currentValues.push(`Program: ${profileData.program.name}`);
+    if (profileData.course_name) currentValues.push(`Course: ${profileData.course_name}`);
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-2xl border-none shadow-2xl">
+        <CardContent className="p-8">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <AlertCircle className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Complete Your Profile</h1>
+            <p className="text-gray-600">Please update your personal information to take the assessment</p>
+          </div>
+
+          <div className="bg-amber-50 rounded-xl p-6 mb-6 border border-amber-200">
+            <div className="flex gap-3">
+              <AlertCircle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-amber-800 mb-2">Missing Information</p>
+                <p className="text-sm text-amber-700 mb-3">
+                  We couldn't determine your grade level or class. Please update the following:
+                </p>
+                
+                {missingFields.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-semibold text-amber-800 mb-1">Required Fields:</p>
+                    <ul className="text-sm text-amber-700 list-disc list-inside space-y-1">
+                      {missingFields.map((field, idx) => (
+                        <li key={idx}>{field}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {isUndetermined && (
+                  <div className="bg-amber-100 rounded-lg p-3 mb-3">
+                    <p className="text-xs font-semibold text-amber-900 mb-1">Student Type Not Determined</p>
+                    <p className="text-xs text-amber-800">
+                      Please specify if you are a <strong>School Student</strong> (add grade/class) or <strong>College Student</strong> (add college/university).
+                    </p>
+                  </div>
+                )}
+
+                {currentValues.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-amber-200">
+                    <p className="text-xs font-semibold text-amber-800 mb-1">Current Profile Data:</p>
+                    <div className="text-xs text-amber-700 space-y-0.5">
+                      {currentValues.map((value, idx) => (
+                        <div key={idx}>• {value}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        <Button
-          onClick={onNavigateToSettings}
-          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white py-6 text-lg shadow-lg"
-        >
-          Go to Profile Settings
-        </Button>
-        
-        <Button
-          variant="outline"
-          onClick={onNavigateToDashboard}
-          className="w-full mt-3 py-4"
-        >
-          Back to Dashboard
-        </Button>
-      </CardContent>
-    </Card>
-  </div>
-);
+          <div className="bg-blue-50 rounded-xl p-4 mb-6 border border-blue-200">
+            <p className="text-sm font-semibold text-blue-800 mb-2">What to do:</p>
+            <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+              <li>Click "Go to Profile Settings" below</li>
+              <li>Update your {isSchoolStudent ? 'Grade/Class' : isCollegeStudent ? 'College/Program' : 'Grade or College'} information</li>
+              <li>Save your changes</li>
+              <li>Return to take the assessment</li>
+            </ol>
+          </div>
+
+          <Button
+            onClick={onNavigateToSettings}
+            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white py-6 text-lg shadow-lg"
+          >
+            Go to Profile Settings
+          </Button>
+          
+          <Button
+            variant="outline"
+            onClick={onNavigateToDashboard}
+            className="w-full mt-3 py-4"
+          >
+            Back to Dashboard
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 /**
  * Loading Screen
@@ -297,6 +377,7 @@ export const GradeSelectionScreen = ({
   shouldShowAllOptions,
   shouldFilterByGrade,
   studentProgram = null,
+  profileData = null,
 }) => {
   const navigate = useNavigate();
 
@@ -314,6 +395,7 @@ export const GradeSelectionScreen = ({
       <IncompleteProfileScreen
         onNavigateToSettings={() => navigate('/student/settings')}
         onNavigateToDashboard={() => navigate('/student/dashboard')}
+        profileData={profileData}
       />
     );
   }
