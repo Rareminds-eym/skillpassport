@@ -103,7 +103,7 @@ const GeminiCareerPath = ({ reverse = false }) => {
 
                 {/* Main flowing path - thickest */}
                 <motion.path
-                    d={reverse 
+                    d={reverse
                         ? "M800 20 Q 600 20, 500 80 T 200 80 Q 100 80, 0 140"
                         : "M0 20 Q 200 20, 300 80 T 600 80 Q 700 80, 800 140"
                     }
@@ -120,7 +120,7 @@ const GeminiCareerPath = ({ reverse = false }) => {
 
                 {/* Secondary path */}
                 <motion.path
-                    d={reverse 
+                    d={reverse
                         ? "M800 30 Q 580 30, 480 90 T 180 90 Q 80 90, 0 150"
                         : "M0 30 Q 220 30, 320 90 T 620 90 Q 720 90, 800 150"
                     }
@@ -138,7 +138,7 @@ const GeminiCareerPath = ({ reverse = false }) => {
 
                 {/* Tertiary path */}
                 <motion.path
-                    d={reverse 
+                    d={reverse
                         ? "M800 40 Q 560 40, 460 100 T 160 100 Q 60 100, 0 160"
                         : "M0 40 Q 240 40, 340 100 T 640 100 Q 740 100, 800 160"
                     }
@@ -156,7 +156,7 @@ const GeminiCareerPath = ({ reverse = false }) => {
 
                 {/* Fourth path - thinnest */}
                 <motion.path
-                    d={reverse 
+                    d={reverse
                         ? "M800 50 Q 540 50, 440 110 T 140 110 Q 40 110, 0 170"
                         : "M0 50 Q 260 50, 360 110 T 660 110 Q 760 110, 800 170"
                     }
@@ -363,12 +363,12 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                 width: '100%',
                                 maxWidth: '320px',
                                 minHeight: '280px',
-                                background: isHovered 
+                                background: isHovered
                                     ? `radial-gradient(circle 230px at 0% 0%, ${config.accent}, #0c0d0d)`
                                     : `radial-gradient(circle 230px at 0% 0%, ${config.accentLight}, #0c0d0d)`,
                                 borderRadius: isHovered ? '15px' : '10px',
                                 transform: isHovered ? 'scale(1.05)' : 'scale(1)',
-                                boxShadow: isHovered 
+                                boxShadow: isHovered
                                     ? `0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 25px 5px ${config.shadow}`
                                     : `0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 0 15px 3px ${config.shadow}`,
                                 transition: 'all 0.4s ease'
@@ -429,7 +429,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                 <div className="absolute w-[2px] h-full" style={{ right: '10%' }} />
 
                                 {/* First Content - Main Card Content (visible by default) */}
-                                <div 
+                                <div
                                     className="absolute inset-0 flex flex-col justify-center transition-all duration-400 rounded-[9px]"
                                     style={{
                                         opacity: isHovered ? 0 : 1,
@@ -486,7 +486,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                 </div>
 
                                 {/* Second Content - CTA (visible on hover, rotates in) */}
-                                <div 
+                                <div
                                     className="absolute inset-0 flex flex-col items-center justify-center transition-all duration-400 rounded-[9px]"
                                     style={{
                                         opacity: isHovered ? 1 : 0,
@@ -498,15 +498,15 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                 >
                                     <div className="text-center px-6">
                                         <motion.div
-                                            animate={{ 
+                                            animate={{
                                                 y: isHovered ? [0, -5, 0] : 0,
                                             }}
                                             transition={{ duration: 1.5, repeat: Infinity }}
                                             className="mb-4"
                                         >
-                                            <div 
+                                            <div
                                                 className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
-                                                style={{ 
+                                                style={{
                                                     backgroundColor: '#2a2a2a',
                                                     border: '2px solid #404040',
                                                     boxShadow: '0 0 20px rgba(255, 255, 255, 0.1)'
@@ -521,14 +521,14 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                         <p className="text-gray-300 text-sm mb-4">
                                             Click to view the complete career roadmap, required skills, and growth opportunities
                                         </p>
-                                        <motion.div 
+                                        <motion.div
                                             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium cursor-pointer"
-                                            style={{ 
+                                            style={{
                                                 backgroundColor: '#333333',
                                                 color: '#ffffff',
                                                 border: '1px solid #4a4a4a'
                                             }}
-                                            whileHover={{ 
+                                            whileHover={{
                                                 backgroundColor: '#ffffff',
                                                 color: '#000000',
                                                 scale: 1.05,
@@ -602,7 +602,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
  * Assessment Result Page
  * Displays comprehensive career assessment results with modular components
  */
-    const AssessmentResult = () => {
+const AssessmentResult = () => {
     const [activeSection, setActiveSection] = useState(null);
     const [isNavbarVisible, setIsNavbarVisible] = useState(true);
     const [selectedTrack, setSelectedTrack] = useState(null);
@@ -632,7 +632,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
             window.removeEventListener('scroll', handleScroll);
         };
     }, []);
-    
+
     const {
         results,
         loading,
@@ -655,7 +655,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
     const shouldShowProgramRecommendations = useMemo(() => {
         // Get the student's actual grade from studentInfo (from database)
         const actualGrade = studentInfo?.grade;
-        
+
         // Parse the actual grade number
         let actualGradeNum = null;
         if (actualGrade) {
@@ -664,14 +664,14 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                 actualGradeNum = parseInt(match[0], 10);
             }
         }
-        
+
         console.log('shouldShowProgramRecommendations check:', {
             gradeLevel,
             actualGrade,
             actualGradeNum,
             monthsInGrade
         });
-        
+
         // If we have actual grade from database, use it for the decision
         if (actualGradeNum !== null) {
             // Grade 6-8 (middle school) - DON'T show
@@ -696,7 +696,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                 return true;
             }
         }
-        
+
         // Fallback to gradeLevel from assessment if no actual grade
         // Middle school (6-8) - DON'T show
         if (gradeLevel === 'middle') {
@@ -731,19 +731,19 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
             'scoresKeys': results?.riasec?.scores ? Object.keys(results.riasec.scores) : [],
             'scoresValues': results?.riasec?.scores ? Object.values(results.riasec.scores) : []
         });
-        
+
         // Don't calculate if still loading or retrying
         if (loading || retrying) {
             console.log('⏳ Skipping course recommendations - still loading/retrying');
             return [];
         }
-        
+
         // Don't calculate if no results yet
         if (!results) {
             console.log('⏳ Skipping course recommendations - no results yet');
             return [];
         }
-        
+
         // Get the student's actual grade from studentInfo (from database)
         const actualGrade = studentInfo?.grade;
         let actualGradeNum = null;
@@ -753,7 +753,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                 actualGradeNum = parseInt(match[0], 10);
             }
         }
-        
+
         // If we have actual grade, use it for the decision
         if (actualGradeNum !== null) {
             // Grade 6-10 - DON'T calculate
@@ -775,7 +775,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                 return [];
             }
         }
-        
+
         // For eligible students - use DEGREE_PROGRAMS
         // Use degree programs from knowledge base for proper scoring
         // FIXED: Pass assessment results as academic data if profile is empty
@@ -793,7 +793,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                 knowledge: results?.knowledge
             }
         };
-        
+
         // DEBUG: Log RIASEC data structure
         console.log('🔍 RIASEC Debug:', {
             hasResults: !!results,
@@ -802,11 +802,11 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
             scores: results?.riasec?.scores,
             fullRiasec: results?.riasec
         });
-        
+
         // STREAM FILTERING: Get student's stream from assessment results or profile
         // Priority: 1) Stream recommendation from after10 assessment, 2) Profile stream, 3) No filter
         let studentStream = null;
-        
+
         console.log('🔍 Stream Detection - Checking sources:', {
             'has streamRecommendation': !!results?.streamRecommendation?.recommendedStream,
             'streamRecommendation value': results?.streamRecommendation?.recommendedStream,
@@ -815,18 +815,18 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
             'stream check': studentInfo?.stream && studentInfo.stream !== '—' && studentInfo.stream.toUpperCase() !== 'N/A',
             'academicData.stream': studentAcademicData?.stream
         });
-        
+
         // Check if student has completed after10 assessment and has stream recommendation
         // IMPORTANT: Validate that the stream recommendation is not a placeholder value
-        const hasValidStreamRecommendation = results?.streamRecommendation?.recommendedStream && 
-                                            results.streamRecommendation.recommendedStream !== 'N/A' &&
-                                            results.streamRecommendation.recommendedStream !== '—' &&
-                                            results.streamRecommendation.recommendedStream !== '';
-        
+        const hasValidStreamRecommendation = results?.streamRecommendation?.recommendedStream &&
+            results.streamRecommendation.recommendedStream !== 'N/A' &&
+            results.streamRecommendation.recommendedStream !== '—' &&
+            results.streamRecommendation.recommendedStream !== '';
+
         if (hasValidStreamRecommendation) {
             studentStream = results.streamRecommendation.recommendedStream;
             console.log('📚 Using stream from after10 assessment:', studentStream);
-        } 
+        }
         // Check if student has stream in their profile (for after12/college students)
         else if (studentInfo?.stream && studentInfo.stream !== '—' && studentInfo.stream.toUpperCase() !== 'N/A') {
             studentStream = studentInfo.stream;
@@ -840,7 +840,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
         else {
             console.log('⚠️ No valid stream found in any source!');
         }
-        
+
         // Debug: Log all stream sources
         console.log('🔍 Stream Detection Debug:', {
             'results.streamRecommendation': results?.streamRecommendation?.recommendedStream,
@@ -848,9 +848,9 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
             'academicData.stream': studentAcademicData?.stream,
             'finalStream': studentStream
         });
-        
+
         console.log('🎯 About to call calculateCourseMatchScores with stream:', studentStream);
-        
+
         // DIAGNOSTIC: Final check before calling calculateCourseMatchScores
         const riasecScores = results?.riasec?.scores || {};
         console.log('📊 Final RIASEC Check Before Calculation:', {
@@ -859,18 +859,18 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
             'hasNonZeroValues': Object.values(riasecScores).some(s => s > 0),
             'allValues': Object.values(riasecScores)
         });
-        
+
         // Don't call if no valid RIASEC data
         if (!riasecScores || Object.keys(riasecScores).length === 0) {
             console.log('⚠️ Aborting calculateCourseMatchScores - no RIASEC scores');
             return [];
         }
-        
+
         if (!Object.values(riasecScores).some(s => s > 0)) {
             console.log('⚠️ Aborting calculateCourseMatchScores - all RIASEC scores are zero');
             return [];
         }
-        
+
         return calculateCourseMatchScores(
             DEGREE_PROGRAMS,
             riasecScores,
@@ -882,10 +882,10 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
     // Calculate stream recommendations for after 10th students using academic data
     const enhancedStreamRecommendation = useMemo(() => {
         if (gradeLevel !== 'after10') return null;
-        
+
         // Use the stream matching engine with academic data (marks, projects, experiences)
         const streamRec = calculateStreamRecommendations(results, studentAcademicData);
-        
+
         // Merge with AI recommendation if available, PREFERRING AI results over engine calculations
         // AI has analyzed the full assessment context and provides more accurate recommendations
         if (results?.streamRecommendation) {
@@ -908,7 +908,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                 allStreamScores: streamRec.allStreamScores // Keep engine's detailed scores for reference
             };
         }
-        
+
         return streamRec;
     }, [gradeLevel, results, studentAcademicData]);
 
@@ -959,7 +959,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
             </html>
         `);
         printWindow.document.close();
-        
+
         // Wait for content to load then print
         printWindow.onload = () => {
             setTimeout(() => {
@@ -1064,9 +1064,8 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
             <div className="web-view min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 pt-14 pb-8 px-4">
                 {/* Floating Action Bar */}
                 <div
-                    className={`fixed top-0 left-0 right-0 z-50 w-full transition-transform duration-300 ${
-                        isNavbarVisible ? 'translate-y-0' : '-translate-y-full'
-                    }`}
+                    className={`fixed top-0 left-0 right-0 z-50 w-full transition-transform duration-300 ${isNavbarVisible ? 'translate-y-0' : '-translate-y-full'
+                        }`}
                 >
                     <div className="relative flex justify-between items-center bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-200 px-6 py-2">
                         <Button
@@ -1077,16 +1076,16 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                             <ArrowLeft className="w-4 h-4 mr-2" />
                             Back to Dashboard
                         </Button>
-                        
+
                         {/* Center Logo */}
                         <div className="absolute left-1/2 transform -translate-x-1/2">
-                            <img 
-                                src="/RareMinds.webp" 
-                                alt="RareMinds Logo" 
+                            <img
+                                src="/RareMinds.webp"
+                                alt="RareMinds Logo"
                                 className="h-8 w-auto object-contain"
                             />
                         </div>
-                        
+
                         <div className="flex gap-2">
                             <Button
                                 variant="outline"
@@ -1181,21 +1180,21 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                     <div className="bg-white rounded-xl shadow-lg overflow-hidden my-8">
                         <div className="bg-gradient-to-r from-slate-800 to-slate-700 p-6">
                             <div className="flex items-start gap-3">
-                                <div 
+                                <div
                                     className="w-14 h-14 rounded-lg bg-white/10 flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
                                     style={{
                                         boxShadow: '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)'
                                     }}
                                 >
-                                    <img 
-                                        src="/assets/HomePage/Ai Logo.png" 
-                                        alt="AI Logo" 
+                                    <img
+                                        src="/assets/HomePage/Ai Logo.png"
+                                        alt="AI Logo"
                                         className="w-14 h-14 object-contain"
                                     />
                                 </div>
                                 <div className="flex-1">
                                     {results.overallSummary && (
-                                        <TextGenerateEffect 
+                                        <TextGenerateEffect
                                             words={`"${results.overallSummary}"`}
                                             className="text-slate-300 text-lg"
                                             filter={true}
@@ -1280,17 +1279,16 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                             <div className="flex justify-center mb-8">
                                 <div className="flex items-center gap-4">
                                     {/* Step 1 */}
-                                    <div 
+                                    <div
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${after10Step === 1 ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => setAfter10Step(1)}
                                     >
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
-                                            after10Step === 1 
-                                                ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30' 
-                                                : after10Step > 1 
-                                                    ? 'bg-green-500 text-white' 
-                                                    : 'bg-gray-200 text-gray-500'
-                                        }`}>
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${after10Step === 1
+                                            ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
+                                            : after10Step > 1
+                                                ? 'bg-green-500 text-white'
+                                                : 'bg-gray-200 text-gray-500'
+                                            }`}>
                                             {after10Step > 1 ? <CheckCircle2 className="w-5 h-5" /> : '1'}
                                         </div>
                                         <span className={`font-medium text-sm hidden sm:block ${after10Step === 1 ? 'text-blue-600' : 'text-gray-500'}`}>
@@ -1302,15 +1300,14 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                     <div className={`w-16 h-1 rounded-full transition-all duration-500 ${after10Step > 1 ? 'bg-green-500' : 'bg-gray-200'}`} />
 
                                     {/* Step 2 */}
-                                    <div 
+                                    <div
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${after10Step === 2 ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => after10Step > 1 && setAfter10Step(2)}
                                     >
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
-                                            after10Step === 2 
-                                                ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30' 
-                                                : 'bg-gray-200 text-gray-500'
-                                        }`}>
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${after10Step === 2
+                                            ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
+                                            : 'bg-gray-200 text-gray-500'
+                                            }`}>
                                             2
                                         </div>
                                         <span className={`font-medium text-sm hidden sm:block ${after10Step === 2 ? 'text-blue-600' : 'text-gray-500'}`}>
@@ -1562,7 +1559,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                                                     border: '1px solid #4a4a4a',
                                                                     boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)'
                                                                 }}
-                                                                whileHover={{ 
+                                                                whileHover={{
                                                                     backgroundColor: '#ffffff',
                                                                     color: '#000000',
                                                                     scale: 1.05,
@@ -1636,9 +1633,9 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                                 color={index === 0 ? 'green' : index === 1 ? 'yellow' : 'purple'}
                                                 reverse={index === 1}
                                                 specificRoles={careerFit?.specificOptions?.[
-                                                    index === 0 ? 'highFit' : 
-                                                    index === 1 ? 'mediumFit' : 
-                                                    'exploreLater'
+                                                    index === 0 ? 'highFit' :
+                                                        index === 1 ? 'mediumFit' :
+                                                            'exploreLater'
                                                 ] || cluster.specificRoles || []}
                                                 onCardClick={handleTrackClick}
                                             />
@@ -1676,11 +1673,10 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                 <div className="inline-flex bg-gray-100 rounded-xl p-1 shadow-inner">
                                     <button
                                         onClick={() => setActiveRecommendationTab('primary')}
-                                        className={`px-6 py-3 rounded-lg font-medium text-sm transition-all duration-300 ${
-                                            activeRecommendationTab === 'primary'
-                                                ? 'bg-white text-indigo-600 shadow-md'
-                                                : 'text-gray-600 hover:text-gray-800'
-                                        }`}
+                                        className={`px-6 py-3 rounded-lg font-medium text-sm transition-all duration-300 ${activeRecommendationTab === 'primary'
+                                            ? 'bg-white text-indigo-600 shadow-md'
+                                            : 'text-gray-600 hover:text-gray-800'
+                                            }`}
                                     >
                                         <span className="flex items-center gap-2">
                                             <GraduationCap className="w-4 h-4" />
@@ -1689,11 +1685,10 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                     </button>
                                     <button
                                         onClick={() => setActiveRecommendationTab('career')}
-                                        className={`px-6 py-3 rounded-lg font-medium text-sm transition-all duration-300 ${
-                                            activeRecommendationTab === 'career'
-                                                ? 'bg-white text-indigo-600 shadow-md'
-                                                : 'text-gray-600 hover:text-gray-800'
-                                        }`}
+                                        className={`px-6 py-3 rounded-lg font-medium text-sm transition-all duration-300 ${activeRecommendationTab === 'career'
+                                            ? 'bg-white text-indigo-600 shadow-md'
+                                            : 'text-gray-600 hover:text-gray-800'
+                                            }`}
                                     >
                                         <span className="flex items-center gap-2">
                                             <Briefcase className="w-4 h-4" />
@@ -1728,10 +1723,10 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                                     // Get career paths from COURSE_KNOWLEDGE_BASE (fallback)
                                                     const courseProfile = COURSE_KNOWLEDGE_BASE[course.courseId];
                                                     const fallbackCareerPaths = courseProfile?.careerPaths || [];
-                                                    
+
                                                     const handleProgramClick = async () => {
                                                         setAiCareerPathsLoading(true);
-                                                        
+
                                                         try {
                                                             // Prepare student profile for AI
                                                             const studentProfile = {
@@ -1804,93 +1799,88 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                                             setAiCareerPathsLoading(false);
                                                         }
                                                     };
-                                                    
+
                                                     return (
-                                                    <div 
-                                                        key={course.courseId}
-                                                        onClick={handleProgramClick}
-                                                        className={`relative bg-slate-800 rounded-xl border p-5 transition-all hover:shadow-xl hover:scale-[1.02] cursor-pointer ${
-                                                            index === 0 ? 'border-slate-600 shadow-lg shadow-slate-900/50' : 'border-slate-700'
-                                                        } ${aiCareerPathsLoading ? 'opacity-50 pointer-events-none' : ''}`}
-                                                    >
-                                                        {/* Rank Badge */}
-                                                        <div className={`absolute -top-3 -right-3 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg ${
-                                                            index === 0 ? 'bg-slate-600' :
-                                                            index === 1 ? 'bg-slate-700' :
-                                                            'bg-slate-700'
-                                                        }`}>
-                                                            #{index + 1}
-                                                        </div>
-
-                                                        {/* Top Pick Badge */}
-                                                        {index === 0 && (
-                                                            <div className="flex items-center gap-1 text-yellow-400 text-xs font-semibold mb-2">
-                                                                <Star className="w-3 h-3 fill-current" />
-                                                                TOP RECOMMENDATION
-                                                            </div>
-                                                        )}
-
-                                                        {/* Course Name */}
-                                                        <h3 className="font-semibold text-white text-lg mb-2 pr-8">{course.courseName}</h3>
-
-                                                        {/* Category Badge */}
-                                                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-3 ${
-                                                            course.category === 'Science' ? 'bg-slate-700 text-slate-200' :
-                                                            course.category === 'Commerce' ? 'bg-slate-700 text-slate-200' :
-                                                            'bg-slate-700 text-slate-200'
-                                                        }`}>
-                                                            {course.category}
-                                                        </span>
-
-                                                        {/* Match Score */}
-                                                        <div className="mb-3">
-                                                            <div className="flex items-center justify-between mb-1">
-                                                                <span className="text-sm text-slate-400">Match Score</span>
-                                                                <span className={`font-bold ${
-                                                                    course.matchScore >= 80 ? 'text-green-400' :
-                                                                    course.matchScore >= 65 ? 'text-blue-400' :
-                                                                    'text-slate-300'
+                                                        <div
+                                                            key={course.courseId}
+                                                            onClick={handleProgramClick}
+                                                            className={`relative bg-slate-800 rounded-xl border p-5 transition-all hover:shadow-xl hover:scale-[1.02] cursor-pointer ${index === 0 ? 'border-slate-600 shadow-lg shadow-slate-900/50' : 'border-slate-700'
+                                                                } ${aiCareerPathsLoading ? 'opacity-50 pointer-events-none' : ''}`}
+                                                        >
+                                                            {/* Rank Badge */}
+                                                            <div className={`absolute -top-3 -right-3 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg ${index === 0 ? 'bg-slate-600' :
+                                                                index === 1 ? 'bg-slate-700' :
+                                                                    'bg-slate-700'
                                                                 }`}>
-                                                                    {course.matchScore}%
-                                                                </span>
+                                                                #{index + 1}
                                                             </div>
-                                                            <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                                                                <div 
-                                                                    className={`h-full rounded-full transition-all ${
-                                                                        course.matchScore >= 80 ? 'bg-green-500' :
-                                                                        course.matchScore >= 65 ? 'bg-blue-500' :
-                                                                        'bg-slate-500'
-                                                                    }`}
-                                                                    style={{ width: `${course.matchScore}%` }}
-                                                                />
-                                                            </div>
-                                                        </div>
 
-                                                        {/* Reasons */}
-                                                        {course.reasons && course.reasons.length > 0 && (
-                                                            <div className="mt-3 pt-3 border-t border-slate-700">
-                                                                <p className="text-xs font-medium text-slate-400 mb-2">Why this fits you:</p>
-                                                                <ul className="space-y-1">
-                                                                    {course.reasons.slice(0, 3).map((reason, idx) => (
-                                                                        <li key={idx} className="flex items-start gap-2 text-xs text-slate-300">
-                                                                            <CheckCircle2 className="w-3 h-3 text-green-400 mt-0.5 flex-shrink-0" />
-                                                                            {reason}
-                                                                        </li>
-                                                                    ))}
-                                                                </ul>
-                                                            </div>
-                                                        )}
-                                                        
-                                                        {/* View Careers CTA */}
-                                                        {fallbackCareerPaths.length > 0 && (
-                                                            <div className="mt-4 pt-4 border-t border-slate-700">
-                                                                <div className="flex items-center justify-between text-xs">
-                                                                    <span className="text-slate-400">Click to view career tracks</span>
-                                                                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                                                            {/* Top Pick Badge */}
+                                                            {index === 0 && (
+                                                                <div className="flex items-center gap-1 text-yellow-400 text-xs font-semibold mb-2">
+                                                                    <Star className="w-3 h-3 fill-current" />
+                                                                    TOP RECOMMENDATION
+                                                                </div>
+                                                            )}
+
+                                                            {/* Course Name */}
+                                                            <h3 className="font-semibold text-white text-lg mb-2 pr-8">{course.courseName}</h3>
+
+                                                            {/* Category Badge */}
+                                                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-3 ${course.category === 'Science' ? 'bg-slate-700 text-slate-200' :
+                                                                course.category === 'Commerce' ? 'bg-slate-700 text-slate-200' :
+                                                                    'bg-slate-700 text-slate-200'
+                                                                }`}>
+                                                                {course.category}
+                                                            </span>
+
+                                                            {/* Match Score */}
+                                                            <div className="mb-3">
+                                                                <div className="flex items-center justify-between mb-1">
+                                                                    <span className="text-sm text-slate-400">Match Score</span>
+                                                                    <span className={`font-bold ${course.matchScore >= 80 ? 'text-green-400' :
+                                                                        course.matchScore >= 65 ? 'text-blue-400' :
+                                                                            'text-slate-300'
+                                                                        }`}>
+                                                                        {course.matchScore}%
+                                                                    </span>
+                                                                </div>
+                                                                <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className={`h-full rounded-full transition-all ${course.matchScore >= 80 ? 'bg-green-500' :
+                                                                            course.matchScore >= 65 ? 'bg-blue-500' :
+                                                                                'bg-slate-500'
+                                                                            }`}
+                                                                        style={{ width: `${course.matchScore}%` }}
+                                                                    />
                                                                 </div>
                                                             </div>
-                                                        )}
-                                                    </div>
+
+                                                            {/* Reasons */}
+                                                            {course.reasons && course.reasons.length > 0 && (
+                                                                <div className="mt-3 pt-3 border-t border-slate-700">
+                                                                    <p className="text-xs font-medium text-slate-400 mb-2">Why this fits you:</p>
+                                                                    <ul className="space-y-1">
+                                                                        {course.reasons.slice(0, 3).map((reason, idx) => (
+                                                                            <li key={idx} className="flex items-start gap-2 text-xs text-slate-300">
+                                                                                <CheckCircle2 className="w-3 h-3 text-green-400 mt-0.5 flex-shrink-0" />
+                                                                                {reason}
+                                                                            </li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
+                                                            )}
+
+                                                            {/* View Careers CTA */}
+                                                            {fallbackCareerPaths.length > 0 && (
+                                                                <div className="mt-4 pt-4 border-t border-slate-700">
+                                                                    <div className="flex items-center justify-between text-xs">
+                                                                        <span className="text-slate-400">Click to view career tracks</span>
+                                                                        <ChevronRight className="w-4 h-4 text-slate-500" />
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     );
                                                 })}
                                             </div>
@@ -1967,9 +1957,9 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                             color={index === 0 ? 'green' : index === 1 ? 'yellow' : 'purple'}
                                             reverse={index === 1}
                                             specificRoles={careerFit?.specificOptions?.[
-                                                index === 0 ? 'highFit' : 
-                                                index === 1 ? 'mediumFit' : 
-                                                'exploreLater'
+                                                index === 0 ? 'highFit' :
+                                                    index === 1 ? 'mediumFit' :
+                                                        'exploreLater'
                                             ] || cluster.specificRoles || []}
                                             onCardClick={handleTrackClick}
                                         />
@@ -2015,9 +2005,9 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                         color={index === 0 ? 'green' : index === 1 ? 'yellow' : 'purple'}
                                         reverse={index === 1}
                                         specificRoles={careerFit?.specificOptions?.[
-                                            index === 0 ? 'highFit' : 
-                                            index === 1 ? 'mediumFit' : 
-                                            'exploreLater'
+                                            index === 0 ? 'highFit' :
+                                                index === 1 ? 'mediumFit' :
+                                                    'exploreLater'
                                         ] || cluster.specificRoles || []}
                                         onCardClick={handleTrackClick}
                                     />
@@ -2037,7 +2027,27 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                         </div>
                     )}
                 </div>
+
+                {/* Section Detail Dialogs */}
+                <Dialog open={!!activeSection} onOpenChange={() => setActiveSection(null)}>
+                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {activeSection === 'profile' && "Detailed Profile Analysis"}
+                                {activeSection === 'career' && "Career Path Recommendations"}
+                                {activeSection === 'skills' && "Skills & Development"}
+                                {activeSection === 'roadmap' && "Your Action Plan"}
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        {activeSection === 'profile' && <ProfileSection results={results} />}
+                        {activeSection === 'career' && <CareerSection results={results} />}
+                        {activeSection === 'skills' && <SkillsSection results={results} />}
+                        {activeSection === 'roadmap' && <RoadmapSection results={results} />}
+                    </DialogContent>
+                </Dialog>
             </div>
+
         </>
     );
 };
