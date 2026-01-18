@@ -1012,6 +1012,9 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                 gradeLevel={gradeLevel}
                 riasecNames={RIASEC_NAMES}
                 traitNames={TRAIT_NAMES}
+                courseRecommendations={enhancedCourseRecommendations}
+                streamRecommendation={enhancedStreamRecommendation || streamRecommendation}
+                studentAcademicData={studentAcademicData}
             />
 
             {/* Web View - Rich UI for screen */}

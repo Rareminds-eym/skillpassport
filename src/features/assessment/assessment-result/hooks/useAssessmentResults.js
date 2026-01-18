@@ -283,6 +283,8 @@ export const useAssessmentResults = () => {
     const fetchStudentInfo = async () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
+            
+            console.log('📊 fetchStudentInfo - Current user ID:', user?.id);
 
             if (user) {
                 // First, try to fetch student data with relationships
@@ -306,6 +308,12 @@ export const useAssessmentResults = () => {
                     .eq('user_id', user.id)
                     .maybeSingle();
 
+                console.log('📊 fetchStudentInfo - Query error:', fetchError);
+                console.log('📊 fetchStudentInfo - Raw studentData from database:', studentData);
+                console.log('📊 fetchStudentInfo - grade field:', studentData?.grade);
+                console.log('📊 fetchStudentInfo - school_id field:', studentData?.school_id);
+                console.log('📊 fetchStudentInfo - college_id field:', studentData?.college_id);
+
                 // If we got student data, fetch related college/school names separately
                 if (studentData && !fetchError) {
                     if (studentData.college_id) {
@@ -317,6 +325,7 @@ export const useAssessmentResults = () => {
                         if (orgData) {
                             studentData.colleges = { name: orgData.name };
                         }
+                        console.log('📊 fetchStudentInfo - Fetched college name:', orgData?.name);
                     }
                     if (studentData.school_id) {
                         const { data: orgData } = await supabase
