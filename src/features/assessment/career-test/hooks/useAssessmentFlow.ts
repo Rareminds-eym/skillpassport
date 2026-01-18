@@ -213,9 +213,13 @@ export const useAssessmentFlow = ({
     } else {
       // End of section - save timing and show complete screen
       // Calculate time spent on this section
-      const timeSpent = currentSection.isTimed
-        ? (currentSection.timeLimit || 0) - (timeRemaining || 0)
-        : elapsedTime;
+      // For aptitude/knowledge sections, always use elapsedTime (they use per-question timers)
+      // For other timed sections, use timeLimit - timeRemaining
+      const timeSpent = (currentSection.isAptitude || currentSection.isKnowledge)
+        ? elapsedTime
+        : currentSection.isTimed
+          ? (currentSection.timeLimit || 0) - (timeRemaining || 0)
+          : elapsedTime;
       
       // Save section timing
       setSectionTimings(prev => ({
@@ -263,9 +267,14 @@ export const useAssessmentFlow = ({
     });
     
     if (currentSection) {
-      const timeSpent = currentSection.isTimed
-        ? (currentSection.timeLimit || 0) - (timeRemaining || 0)
-        : elapsedTime;
+      // Calculate time spent on this section
+      // For aptitude/knowledge sections, always use elapsedTime (they use per-question timers)
+      // For other timed sections, use timeLimit - timeRemaining
+      const timeSpent = (currentSection.isAptitude || currentSection.isKnowledge)
+        ? elapsedTime
+        : currentSection.isTimed
+          ? (currentSection.timeLimit || 0) - (timeRemaining || 0)
+          : elapsedTime;
       
       console.log('⏱️ Section time spent:', timeSpent);
       

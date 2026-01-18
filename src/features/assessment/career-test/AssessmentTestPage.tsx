@@ -225,14 +225,18 @@ const AssessmentTestPage: React.FC = () => {
       console.log('🔍 DEBUG: flow.answers on section complete:', flow.answers);
       console.log('🔍 DEBUG: Answer count:', Object.keys(flow.answers).length);
       console.log('🔍 DEBUG: Sample keys:', Object.keys(flow.answers).slice(0, 10));
+      
+      // Update section timings in state so it shows on the complete screen
+      const updatedTimings = {
+        ...flow.sectionTimings,
+        [sectionId]: timeSpent
+      };
+      flow.setSectionTimings(updatedTimings);
+      console.log('📊 Updated section timings in state:', updatedTimings);
+      
       if (useDatabase && currentAttempt?.id) {
         // Save all responses including non-UUID questions (RIASEC, BigFive, etc.)
-        // Note: Use the timeSpent parameter directly since flow.sectionTimings may not be updated yet
-        const updatedTimings = {
-          ...flow.sectionTimings,
-          [sectionId]: timeSpent
-        };
-        console.log('📊 Saving section timings:', updatedTimings);
+        console.log('📊 Saving section timings to database:', updatedTimings);
         dbUpdateProgress(flow.currentSectionIndex, 0, updatedTimings, null, null, flow.answers);
       }
     },
@@ -554,12 +558,27 @@ const AssessmentTestPage: React.FC = () => {
       sectionId: currentSection.id,
       sectionTitle: currentSection.title,
       isTimed: currentSection.isTimed,
+      isAptitude: currentSection.isAptitude,
+      isKnowledge: currentSection.isKnowledge,
       timeRemaining: flow.timeRemaining,
       elapsedTime: flow.elapsedTime
     });
     
-    // Elapsed time counter for non-timed sections OR timed sections without timeRemaining initialized
-    // This handles aptitude/knowledge sections that are marked as timed but use per-question timers instead
+    // For aptitude and knowledge sections: ALWAYS use elapsed time counter
+    // These sections use per-question timers, not section-level countdown
+    if (currentSection.isAptitude || currentSection.isKnowledge) {
+      console.log('⏱️ Starting elapsed time counter (aptitude/knowledge section)');
+      const interval = setInterval(() => {
+        console.log('⏱️ Elapsed time tick:', flow.elapsedTime, '→', flow.elapsedTime + 1);
+        flow.setElapsedTime(flow.elapsedTime + 1);
+      }, 1000);
+      return () => {
+        console.log('⏱️ Cleaning up elapsed time counter');
+        clearInterval(interval);
+      };
+    }
+    
+    // Elapsed time counter for non-timed sections
     if (!currentSection.isTimed || flow.timeRemaining === null) {
       console.log('⏱️ Starting elapsed time counter (non-timed or timeRemaining not set)');
       const interval = setInterval(() => {
@@ -572,7 +591,7 @@ const AssessmentTestPage: React.FC = () => {
       };
     }
     
-    // Countdown timer for timed sections
+    // Countdown timer for timed sections (not aptitude/knowledge)
     if (currentSection.isTimed && flow.timeRemaining !== null && flow.timeRemaining > 0) {
       console.log('⏱️ Starting countdown timer for timed section');
       const interval = setInterval(() => {
@@ -777,13 +796,15 @@ const AssessmentTestPage: React.FC = () => {
     flow.setGradeLevel(level);
     
     // Determine next screen based on grade level
-    // after12 ONLY: Show category selection (Science/Commerce/Arts)
-    // after10, college, and below: Skip category selection, go directly to assessment
-    if (level === 'after12') {
-      // Show category selection ONLY for after12 students
+    // after12 and higher_secondary: Show category selection (Science/Commerce/Arts)
+    // after10: Skip stream selection, use 'general' (AI will recommend best stream)
+    // college and below: Skip category/stream selection
+    if (level === 'after12' || level === 'higher_secondary') {
+      // Show category selection for after12 and higher_secondary students
+      // They need to select Science/Commerce/Arts first, then specific stream
       flow.setCurrentScreen('category_selection');
-    } else if (level === 'after10' || level === 'higher_secondary') {
-      // After 10th (11th grade) students skip category selection - use 'general' stream
+    } else if (level === 'after10') {
+      // After 10th (11th grade) students skip stream selection - use 'general' stream
       // The AI analysis will recommend the best stream based on their assessment results
       flow.setStudentStream('general');
       setAssessmentStarted(true);
@@ -826,16 +847,10 @@ const AssessmentTestPage: React.FC = () => {
   const handleCategorySelect = useCallback(async (category: string) => {
     flow.setSelectedCategory(category);
     
-    // Skip stream selection - go directly to assessment
-    // Use category as the stream (science/commerce/arts)
-    flow.setStudentStream(category);
-    setAssessmentStarted(true);
-    
-    // DON'T create attempt here - wait until user clicks "Start Section"
-    // This prevents orphan attempts when user just browses
-    
-    flow.setCurrentScreen('section_intro');
-  }, [flow, studentRecordId, dbStartAssessment]);
+    // Show stream selection screen for the selected category
+    // This allows students to choose specific streams like PCMB, Commerce with Maths, Arts with Psychology, etc.
+    flow.setCurrentScreen('stream_selection');
+  }, [flow]);
   
   const handleStreamSelect = useCallback(async (stream: string) => {
     flow.setStudentStream(stream);
@@ -1702,8 +1717,8 @@ const AssessmentTestPage: React.FC = () => {
                       : `${flow.currentQuestionIndex + 1} / ${currentSection?.questions?.length || 0}`}
                   </div>
                   
-                  {/* Per-Question Countdown Timer - Top Right (for aptitude/knowledge sections) */}
-                  {((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) && flow.aptitudeQuestionTimer !== null ? (
+                  {/* Per-Question Countdown Timer - Top Right (for aptitude/knowledge sections ONLY) */}
+                  {((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) && flow.aptitudeQuestionTimer !== null && (
                     <div className={`text-sm font-semibold flex items-center gap-1.5 ${
                       flow.aptitudeQuestionTimer <= 10 ? 'text-red-600' : 'text-orange-600'
                     }`}>
@@ -1712,15 +1727,6 @@ const AssessmentTestPage: React.FC = () => {
                         <path strokeLinecap="round" strokeWidth="2" d="M12 6v6l4 2"/>
                       </svg>
                       <span>Question Time: {Math.floor(flow.aptitudeQuestionTimer / 60)}:{(flow.aptitudeQuestionTimer % 60).toString().padStart(2, '0')}</span>
-                    </div>
-                  ) : (
-                    /* Section Elapsed Time - Top Right (for other sections) */
-                    <div className="text-sm font-medium text-gray-600 flex items-center gap-1.5">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10" strokeWidth="2"/>
-                        <path strokeLinecap="round" strokeWidth="2" d="M12 6v6l4 2"/>
-                      </svg>
-                      <span>Time: {Math.floor(flow.elapsedTime / 60)}:{(flow.elapsedTime % 60).toString().padStart(2, '0')}</span>
                     </div>
                   )}
                 </div>

@@ -27,6 +27,7 @@ export interface SectionConfig {
   isTimed?: boolean;
   timeLimit?: number;
   isAptitude?: boolean;
+  isKnowledge?: boolean;
   isAdaptive?: boolean;
   individualTimeLimit?: number;
   individualQuestionCount?: number;
@@ -272,7 +273,9 @@ export const COMPREHENSIVE_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
     color: "blue",
     isTimed: true,
     timeLimit: 30 * 60, // 30 minutes
-    instruction: "Choose the best answer for each question."
+    isKnowledge: true,
+    individualTimeLimit: 60, // 1 minute per question
+    instruction: "Choose the best answer for each question. You have 1 minute per question."
   }
 ];
 
