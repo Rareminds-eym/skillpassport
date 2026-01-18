@@ -298,20 +298,20 @@ export const useAssessmentResults = () => {
                 console.log('📊 Querying students table with user_id:', user.id);
                 
                 // First, try to fetch student data with relationships
-                // Query students table - using correct column names
+                // Query students table - using actual database column names (mix of camelCase and snake_case)
                 let { data: studentData, error: fetchError } = await supabase
                     .from('students')
                     .select(`
                         id, 
                         name,
-                        enrollment_number,
+                        enrollmentNumber,
                         admission_number,
                         roll_number,
                         grade,
                         semester,
                         college_id, 
                         school_id,
-                        school_class_id,
+                        schoolClassId,
                         branch_field,
                         course_name,
                         college_school_name,
@@ -375,12 +375,12 @@ export const useAssessmentResults = () => {
                         }
                     }
                     
-                    if (studentData.school_class_id) {
-                        console.log('📚 Fetching school class:', studentData.school_class_id);
+                    if (studentData.schoolClassId) {
+                        console.log('📚 Fetching school class:', studentData.schoolClassId);
                         const { data: classData, error: classError } = await supabase
                             .from('school_classes')
                             .select('grade')
-                            .eq('id', studentData.school_class_id)
+                            .eq('id', studentData.schoolClassId)
                             .maybeSingle();
                         console.log('📚 School class result:', { classData, classError });
                         if (classData) {
@@ -422,33 +422,77 @@ export const useAssessmentResults = () => {
                     
                     console.log('Student grade:', studentGrade, 'from students.grade:', studentData.grade, 'from school_classes:', studentData.school_classes?.grade, 'year:', studentData.year, 'semester:', studentData.semester);
                     
-                    // Get institution name - prioritize direct column, then relationships
+                    // Get institution name - show school OR college, not both
                     let institutionName = '—';
                     let schoolName = '—';
+                    let collegeName = '—';
                     
-                    // Priority 1: Use college_school_name from students table (direct column)
-                    if (studentData.college_school_name && studentData.college_school_name !== '—') {
-                        institutionName = toTitleCase(studentData.college_school_name);
-                        schoolName = toTitleCase(studentData.college_school_name);
-                    }
-                    // Priority 2: Fallback to organizations table relationships
-                    else {
-                        institutionName = studentData.schools?.name || studentData.colleges?.name || '—';
-                        schoolName = studentData.schools?.name || '—';
+                    // Determine if this is a school student or college student
+                    // Priority 1: Check if they have school_id or schoolClassId
+                    const hasSchoolId = studentData.school_id || studentData.schoolClassId;
+                    const hasCollegeId = studentData.college_id;
+                    
+                    // Priority 2: Check grade level (Grades 1-12 are school, Year/Semester are college)
+                    // Extract numeric grade from strings like "Grade 10", "10", "Year 2", "Semester 4"
+                    let gradeNum = parseInt(studentGrade);
+                    
+                    // If direct parsing fails, try to extract number from "Grade X" format
+                    if (isNaN(gradeNum) && studentGrade.includes('Grade')) {
+                        const match = studentGrade.match(/Grade\s*(\d+)/i);
+                        if (match) {
+                            gradeNum = parseInt(match[1]);
+                        }
                     }
                     
-                    console.log('Institution names - college_school_name:', studentData.college_school_name, 'school:', studentData.schools?.name, 'college:', studentData.colleges?.name, 'final institution:', institutionName, 'final school:', schoolName);
-                    console.log('Roll numbers - enrollment_number:', studentData.enrollment_number, 'admission_number:', studentData.admission_number, 'roll_number:', studentData.roll_number);
-                    console.log('IDs - school_id:', studentData.school_id, 'college_id:', studentData.college_id, 'school_class_id:', studentData.school_class_id);
+                    const isSchoolGrade = !isNaN(gradeNum) && gradeNum >= 1 && gradeNum <= 12;
+                    const isCollegeGrade = studentGrade.includes('Year') || studentGrade.includes('Semester');
+                    
+                    // Determine student type
+                    const isSchoolStudent = hasSchoolId || (isSchoolGrade && !hasCollegeId);
+                    const isCollegeStudent = hasCollegeId || (isCollegeGrade && !hasSchoolId);
+                    
+                    if (isSchoolStudent) {
+                        // School student - show only school name
+                        if (studentData.college_school_name && studentData.college_school_name !== '—') {
+                            schoolName = toTitleCase(studentData.college_school_name);
+                            institutionName = schoolName;
+                        } else if (studentData.schools?.name) {
+                            schoolName = toTitleCase(studentData.schools.name);
+                            institutionName = schoolName;
+                        }
+                        collegeName = '—'; // Don't show college for school students
+                    } else if (isCollegeStudent) {
+                        // College student - show only college name
+                        if (studentData.college_school_name && studentData.college_school_name !== '—') {
+                            collegeName = toTitleCase(studentData.college_school_name);
+                            institutionName = collegeName;
+                        } else if (studentData.colleges?.name) {
+                            collegeName = toTitleCase(studentData.colleges.name);
+                            institutionName = collegeName;
+                        }
+                        schoolName = '—'; // Don't show school for college students
+                    } else {
+                        // Fallback: use college_school_name if available
+                        if (studentData.college_school_name && studentData.college_school_name !== '—') {
+                            institutionName = toTitleCase(studentData.college_school_name);
+                            // Can't determine if it's school or college, so set both
+                            schoolName = institutionName;
+                            collegeName = institutionName;
+                        }
+                    }
+                    
+                    console.log('Institution detection - hasSchoolId:', hasSchoolId, 'hasCollegeId:', hasCollegeId, 'isSchoolGrade:', isSchoolGrade, 'isCollegeGrade:', isCollegeGrade, 'isSchoolStudent:', isSchoolStudent, 'isCollegeStudent:', isCollegeStudent, 'final school:', schoolName, 'final college:', collegeName);
+                    console.log('Roll numbers - enrollmentNumber:', studentData.enrollmentNumber, 'admission_number:', studentData.admission_number, 'roll_number:', studentData.roll_number);
+                    console.log('IDs - school_id:', studentData.school_id, 'college_id:', studentData.college_id, 'schoolClassId:', studentData.schoolClassId);
 
                     // Determine which roll number to use and roll number type
                     let rollNumber = '—';
                     let rollNumberType = 'school'; // default
-                    const gradeNum = parseInt(studentGrade);
+                    // gradeNum already declared above, reuse it
                     
-                    // Priority 1: Use enrollment_number if available
-                    if (studentData.enrollment_number && studentData.enrollment_number !== '—') {
-                        rollNumber = studentData.enrollment_number;
+                    // Priority 1: Use enrollmentNumber if available
+                    if (studentData.enrollmentNumber && studentData.enrollmentNumber !== '—') {
+                        rollNumber = studentData.enrollmentNumber;
                         // Determine type based on student context
                         if (studentData.college_id) {
                             rollNumberType = 'university';
@@ -473,7 +517,7 @@ export const useAssessmentResults = () => {
                     // NOTE: This is only used as a fallback. The assessment attempt's grade_level
                     // takes priority and is set in loadResults() after this runs.
                     let derivedGradeLevel = 'after12'; // default
-                    if (studentData.school_id || studentData.school_class_id) {
+                    if (studentData.school_id || studentData.schoolClassId) {
                         // School student - determine if middle or high school based on grade
                         if (!isNaN(gradeNum)) {
                             if (gradeNum >= 6 && gradeNum <= 8) {
@@ -499,7 +543,7 @@ export const useAssessmentResults = () => {
                     if (!gradeLevelFromAttemptRef.current) {
                         setGradeLevel(derivedGradeLevel);
                     }
-                    console.log('Derived gradeLevel from student data:', derivedGradeLevel, 'grade:', studentGrade, 'school_id:', studentData.school_id, 'college_id:', studentData.college_id);
+                    console.log('Derived gradeLevel from student data:', derivedGradeLevel, 'grade:', studentGrade, 'school_id:', studentData.school_id, 'college_id:', studentData.college_id, 'schoolClassId:', studentData.schoolClassId);
 
                     // Derive stream from branch_field or course_name (database only)
                     let derivedStream = '—';
@@ -550,8 +594,8 @@ export const useAssessmentResults = () => {
                         name: fullName,
                         regNo: rollNumber,
                         rollNumberType: rollNumberType,
-                        college: institutionName,
-                        school: schoolName,
+                        college: collegeName,  // Only show college for college students
+                        school: schoolName,    // Only show school for school students
                         stream: derivedStream,
                         grade: studentGrade,
                         branchField: studentData.branch_field || '—',
