@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../../../lib/supabaseClient';
 import * as assessmentService from '../../../../services/assessmentService';
@@ -898,7 +898,7 @@ export const useAssessmentResults = () => {
         navigate('/student/assessment/test');
     };
 
-    const handleRetry = async () => {
+    const handleRetry = useCallback(async () => {
         setRetrying(true);
         setError(null);
         
@@ -1087,7 +1087,7 @@ export const useAssessmentResults = () => {
         } finally {
             setRetrying(false);
         }
-    };
+    }, [searchParams, gradeLevel]); // Add dependencies
 
     useEffect(() => {
         loadResults();
@@ -1097,10 +1097,10 @@ export const useAssessmentResults = () => {
     useEffect(() => {
         if (autoRetry && !retrying) {
             console.log('🤖 Auto-retry triggered - calling handleRetry...');
-            setAutoRetry(false); // Reset flag
+            setAutoRetry(false); // Reset flag immediately to prevent loops
             handleRetry();
         }
-    }, [autoRetry, retrying]);
+    }, [autoRetry, retrying, handleRetry]);
 
     // Update roll number type when grade level changes to after12/after10
     useEffect(() => {
