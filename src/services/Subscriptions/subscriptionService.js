@@ -6,7 +6,7 @@
  * paymentsApiService → Cloudflare Worker for security and consistency.
  * 
  * READ OPERATIONS (this file):
- * - getActiveSubscription()     - Get user's active subscription
+ * - getActiveSubscription()     - Get user's active subscription (individual OR organization license)
  * - getUserSubscriptions()      - Get all user subscriptions (billing history)
  * - getSubscriptionPayments()   - Get payments for a subscription
  * - getUserPayments()           - Get all user payments
@@ -24,6 +24,7 @@ import { checkAuthentication } from '../authService';
 
 /**
  * Get active subscription for authenticated user
+ * Checks BOTH individual subscriptions AND organization license assignments
  * Includes cancelled subscriptions that haven't expired yet (user retains access until end date)
  * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
  */
@@ -40,6 +41,106 @@ export const getActiveSubscription = async () => {
     }
 
     const userId = authResult.user.id;
+    const now = new Date().toISOString();
+
+    // ============================================================================
+    // STEP 1: Check for organization license assignment FIRST
+    // This allows members assigned by admins to have subscription access
+    // ============================================================================
+    const { data: licenseAssignment, error: licenseError } = await supabase
+      .from('license_assignments')
+      .select(`
+        id,
+        status,
+        expires_at,
+        assigned_at,
+        organization_subscription_id,
+        organization_subscriptions!inner (
+          id,
+          status,
+          start_date,
+          end_date,
+          organization_id,
+          organization_type,
+          subscription_plan_id,
+          subscription_plans (
+            id,
+            name,
+            plan_code
+          )
+        )
+      `)
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (!licenseError && licenseAssignment) {
+      const orgSub = licenseAssignment.organization_subscriptions;
+      
+      // Check if organization subscription is active and not expired
+      if (orgSub && orgSub.status === 'active') {
+        const orgEndDate = new Date(orgSub.end_date);
+        
+        if (orgEndDate > new Date()) {
+          // Check if license assignment has its own expiry
+          const licenseExpiry = licenseAssignment.expires_at ? new Date(licenseAssignment.expires_at) : null;
+          const effectiveEndDate = licenseExpiry && licenseExpiry < orgEndDate ? licenseExpiry : orgEndDate;
+          
+          if (effectiveEndDate > new Date()) {
+            // Build a subscription-like object for compatibility
+            const orgSubscriptionData = {
+              id: orgSub.id,
+              user_id: userId,
+              plan_id: orgSub.subscription_plan_id,
+              plan_type: orgSub.subscription_plans?.name || 'Organization Plan',
+              plan_code: orgSub.subscription_plans?.plan_code,
+              status: 'active',
+              subscription_start_date: orgSub.start_date,
+              subscription_end_date: effectiveEndDate.toISOString(),
+              auto_renew: false, // Org licenses don't auto-renew individually
+              is_organization_license: true,
+              organization_id: orgSub.organization_id,
+              organization_type: orgSub.organization_type,
+              license_assignment_id: licenseAssignment.id,
+            };
+
+            console.log(`✅ User ${userId} has active organization license from org ${orgSub.organization_id}`);
+            return {
+              success: true,
+              data: orgSubscriptionData,
+              error: null
+            };
+          }
+        }
+      }
+    }
+
+    // ============================================================================
+    // STEP 1.5: Check if user had a revoked license assignment (show as expired)
+    // This ensures members see "expired" status immediately when license is revoked
+    // ============================================================================
+    const { data: revokedLicense } = await supabase
+      .from('license_assignments')
+      .select(`
+        id,
+        status,
+        revoked_at,
+        organization_subscriptions (
+          subscription_plans (
+            name,
+            plan_code
+          )
+        )
+      `)
+      .eq('user_id', userId)
+      .eq('status', 'revoked')
+      .order('revoked_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // ============================================================================
+    // STEP 2: Check for individual subscription (original logic)
+    // ============================================================================
 
     // Query for active, paused, or cancelled (but not expired) subscription
     // For cancelled subscriptions, we still show them if end_date hasn't passed
@@ -48,7 +149,7 @@ export const getActiveSubscription = async () => {
       .select('*')
       .eq('user_id', userId)
       .in('status', ['active', 'paused', 'cancelled'])
-      .gte('subscription_end_date', new Date().toISOString())
+      .gte('subscription_end_date', now)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -64,6 +165,26 @@ export const getActiveSubscription = async () => {
 
     // If no active/valid subscription, try to get the most recent one for display purposes
     if (!data) {
+      // If user had a revoked organization license, show as expired
+      if (revokedLicense) {
+        const revokedOrgSub = revokedLicense.organization_subscriptions;
+        console.log(`⚠️ User ${userId} had revoked organization license`);
+        return {
+          success: true,
+          data: {
+            id: revokedLicense.id,
+            user_id: userId,
+            status: 'expired',
+            plan_type: revokedOrgSub?.subscription_plans?.name || 'Organization License',
+            plan_code: revokedOrgSub?.subscription_plans?.plan_code,
+            is_organization_license: true,
+            was_revoked: true,
+            revoked_at: revokedLicense.revoked_at,
+          },
+          error: null
+        };
+      }
+
       const { data: recentSub, error: recentError } = await supabase
         .from('subscriptions')
         .select('*')

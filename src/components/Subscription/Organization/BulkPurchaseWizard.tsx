@@ -21,10 +21,12 @@ import {
     Loader2,
     Settings,
     ShoppingCart,
+    UserPlus,
     Users,
     X,
 } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
+import AddStudentModal from '../../educator/modals/Addstudentmodal';
 import MemberTypeSelector, { MemberType } from './MemberTypeSelector';
 import PricingBreakdown, { PricingBreakdownData } from './PricingBreakdown';
 import SeatSelector from './SeatSelector';
@@ -81,6 +83,7 @@ interface BulkPurchaseWizardProps {
   availableMembers: Member[];
   onComplete: (purchaseData: PurchaseData) => Promise<void>;
   onCancel: () => void;
+  onMemberAdded?: () => void;
   isLoading?: boolean;
 }
 
@@ -132,11 +135,13 @@ function BulkPurchaseWizard({
   availableMembers,
   onComplete,
   onCancel,
+  onMemberAdded,
   isLoading = false,
 }: BulkPurchaseWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [state, setState] = useState<WizardState>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
 
   // Filter members by type
   const filteredMembers = useMemo(() => {
@@ -355,12 +360,14 @@ function BulkPurchaseWizard({
               selectedMemberIds={state.selectedMemberIds}
               poolName={state.poolName}
               autoAssignNewMembers={state.autoAssignNewMembers}
+              isLoading={isLoading}
               onAssignmentModeChange={(mode) => setState((prev) => ({ ...prev, assignmentMode: mode }))}
               onMemberToggle={handleMemberToggle}
               onSelectAll={handleSelectAll}
               onClearSelection={handleClearSelection}
               onPoolNameChange={(name) => setState((prev) => ({ ...prev, poolName: name }))}
               onAutoAssignChange={(auto) => setState((prev) => ({ ...prev, autoAssignNewMembers: auto }))}
+              onAddStudent={() => setShowAddStudentModal(true)}
             />
           )}
 
@@ -419,6 +426,16 @@ function BulkPurchaseWizard({
           )}
         </div>
       </div>
+
+      {/* Add Student Modal */}
+      <AddStudentModal
+        isOpen={showAddStudentModal}
+        onClose={() => setShowAddStudentModal(false)}
+        onSuccess={() => {
+          setShowAddStudentModal(false);
+          onMemberAdded?.();
+        }}
+      />
     </div>
   );
 }
@@ -645,12 +662,14 @@ interface Step3Props {
   selectedMemberIds: string[];
   poolName: string;
   autoAssignNewMembers: boolean;
+  isLoading?: boolean;
   onAssignmentModeChange: (mode: AssignmentMode) => void;
   onMemberToggle: (memberId: string) => void;
   onSelectAll: () => void;
   onClearSelection: () => void;
   onPoolNameChange: (name: string) => void;
   onAutoAssignChange: (auto: boolean) => void;
+  onAddStudent: () => void;
 }
 
 function Step3MemberSelection({
@@ -660,12 +679,14 @@ function Step3MemberSelection({
   selectedMemberIds,
   poolName,
   autoAssignNewMembers,
+  isLoading = false,
   onAssignmentModeChange,
   onMemberToggle,
   onSelectAll,
   onClearSelection,
   onPoolNameChange,
   onAutoAssignChange,
+  onAddStudent,
 }: Step3Props) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -681,13 +702,22 @@ function Step3MemberSelection({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          How would you like to assign licenses?
-        </h3>
-        <p className="text-sm text-gray-500">
-          You have {seatCount} seats to assign. Choose your assignment method.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            How would you like to assign licenses?
+          </h3>
+          <p className="text-sm text-gray-500">
+            You have {seatCount} seats to assign. Choose your assignment method.
+          </p>
+        </div>
+        <button
+          onClick={onAddStudent}
+          className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+        >
+          <UserPlus className="w-4 h-4" />
+          Add Student
+        </button>
       </div>
 
       {/* Assignment Mode Options */}
@@ -747,27 +777,38 @@ function Step3MemberSelection({
       {/* Auto-assign All Options */}
       {assignmentMode === 'auto-all' && (
         <div className="bg-blue-50 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-gray-900">
-                {Math.min(members.length, seatCount)} members will be assigned
-              </p>
-              <p className="text-sm text-gray-500">
-                {members.length > seatCount
-                  ? `${members.length - seatCount} members won't receive licenses (not enough seats)`
-                  : 'All current members will receive licenses'}
-              </p>
+          {isLoading ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+              <span className="text-gray-600">Loading members...</span>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoAssignNewMembers}
-                onChange={(e) => onAutoAssignChange(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700">Auto-assign new members</span>
-            </label>
-          </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-gray-900">
+                  {members.length === 0 
+                    ? 'No members available to assign'
+                    : `${Math.min(members.length, seatCount)} members will be assigned`}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {members.length === 0
+                    ? 'Add students or educators to your organization first'
+                    : members.length > seatCount
+                    ? `${members.length - seatCount} members won't receive licenses (not enough seats)`
+                    : 'All current members will receive licenses'}
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoAssignNewMembers}
+                  onChange={(e) => onAutoAssignChange(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Auto-assign new members</span>
+              </label>
+            </div>
+          )}
         </div>
       )}
 
@@ -805,9 +846,26 @@ function Step3MemberSelection({
           </div>
 
           <div className="border border-gray-200 rounded-xl max-h-64 overflow-y-auto">
-            {filteredMembers.length === 0 ? (
+            {isLoading ? (
+              <div className="p-8 text-center text-gray-500">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                <p>Loading members...</p>
+              </div>
+            ) : filteredMembers.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
-                No members found
+                <p className="mb-2">No members found</p>
+                <p className="text-xs text-gray-400 mb-3">
+                  {members.length === 0 
+                    ? 'Add students or educators to your organization first'
+                    : 'Try a different search term'}
+                </p>
+                <button
+                  onClick={onAddStudent}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Add Student
+                </button>
               </div>
             ) : (
               filteredMembers.map((member) => {

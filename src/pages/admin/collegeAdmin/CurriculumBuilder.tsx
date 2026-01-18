@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { FeatureGate } from '../../../components/Subscription/FeatureGate';
 import ConfirmationModal from '../../../components/ui/ConfirmationModal';
@@ -8,6 +8,7 @@ import ConfirmationModal from '../../../components/ui/ConfirmationModal';
 import CollegeCurriculumBuilderUI from '../../../components/admin/collegeAdmin/CollegeCurriculumBuilderUI';
 import { curriculumService, type CurriculumUnit, type CurriculumOutcome } from '../../../services/college/curriculumService';
 import { curriculumApprovalService } from '../../../services/curriculumApprovalService';
+import { supabase } from '../../../lib/supabaseClient';
 
 /**
  * CollegeCurriculumBuilder - Curriculum management for college admins
@@ -39,6 +40,10 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
   
   // UI state
   const [loading, setLoading] = useState(false);
+  
+  // Real-time subscription refs
+  const subscriptionRef = useRef<any>(null);
+  const [isRealTimeConnected, setIsRealTimeConnected] = useState(false);
   
   // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -103,6 +108,117 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
       setStatus("draft");
     }
   }, [selectedDepartment, selectedProgram, selectedSemester, selectedAcademicYear, selectedCourse]);
+
+  // Real-time subscription for curriculum changes
+  useEffect(() => {
+    if (!curriculumId) return; // Only subscribe when we have a specific curriculum
+
+    const setupRealTimeSubscription = () => {
+      // Clean up existing subscription
+      if (subscriptionRef.current) {
+        supabase.removeChannel(subscriptionRef.current);
+      }
+
+      // Create new subscription for the specific curriculum and its related tables
+      const channel = supabase
+        .channel(`curriculum-live-${curriculumId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+            schema: 'public',
+            table: 'college_curriculums',
+            filter: `id=eq.${curriculumId}` // Only listen to changes for this specific curriculum
+          },
+          (payload) => {
+            console.log('🔄 Real-time curriculum change detected:', payload);
+            
+            // Auto-refresh curriculum data when changes are detected
+            loadExistingCurriculum();
+
+            // Show a subtle notification
+            if (payload.eventType === 'UPDATE') {
+              toast.success('Curriculum updated', {
+                duration: 2000,
+                icon: '🔔'
+              });
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'curriculum_units',
+            filter: `curriculum_id=eq.${curriculumId}` // Listen to unit changes for current curriculum
+          },
+          (payload) => {
+            console.log('🔄 Real-time unit change detected:', payload);
+            
+            // Refresh curriculum data when units change
+            loadExistingCurriculum();
+            
+            if (payload.eventType === 'INSERT') {
+              toast.success('New unit added', { duration: 2000, icon: '📚' });
+            } else if (payload.eventType === 'UPDATE') {
+              toast.success('Unit updated', { duration: 2000, icon: '📝' });
+            } else if (payload.eventType === 'DELETE') {
+              toast.success('Unit removed', { duration: 2000, icon: '🗑️' });
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'curriculum_learning_outcomes',
+            filter: `curriculum_id=eq.${curriculumId}` // Listen to outcome changes for current curriculum
+          },
+          (payload) => {
+            console.log('🔄 Real-time outcome change detected:', payload);
+            
+            // Refresh curriculum data when outcomes change
+            loadExistingCurriculum();
+            
+            if (payload.eventType === 'INSERT') {
+              toast.success('New learning outcome added', { duration: 2000, icon: '🎯' });
+            } else if (payload.eventType === 'UPDATE') {
+              toast.success('Learning outcome updated', { duration: 2000, icon: '✏️' });
+            } else if (payload.eventType === 'DELETE') {
+              toast.success('Learning outcome removed', { duration: 2000, icon: '🗑️' });
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log('🔌 Real-time subscription status:', status);
+          setIsRealTimeConnected(status === 'SUBSCRIBED');
+          
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Real-time updates enabled for curriculum changes');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('❌ Real-time subscription error');
+            // Retry connection after 5 seconds
+            setTimeout(setupRealTimeSubscription, 5000);
+          }
+        });
+
+      subscriptionRef.current = channel;
+    };
+
+    setupRealTimeSubscription();
+
+    // Cleanup on unmount or curriculum change
+    return () => {
+      if (subscriptionRef.current) {
+        console.log('🔌 Cleaning up real-time subscription');
+        supabase.removeChannel(subscriptionRef.current);
+        subscriptionRef.current = null;
+      }
+      setIsRealTimeConnected(false);
+    };
+  }, [curriculumId]);
 
   const loadConfigurationData = async () => {
     try {
@@ -210,10 +326,18 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
 
     try {
       setLoading(true);
+      console.log('🔍 Loading existing curriculum with filters:', {
+        department_id: selectedDepartment,
+        program_id: selectedProgram,
+        semester: parseInt(selectedSemester),
+        academic_year: selectedAcademicYear,
+        course_id: selectedCourse,
+      });
 
       // Get the selected course details
       const selectedCourseData = courses.find(c => c.id === selectedCourse);
       if (!selectedCourseData) {
+        console.log('❌ Course not found, clearing curriculum data');
         // Course not found, clear curriculum data
         setCurriculumId(null);
         setUnits([]);
@@ -222,27 +346,56 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         return;
       }
 
-      // Try to find existing curriculum
+      // Try to find existing curriculum (including approved/published ones)
       const result = await curriculumService.getCurriculums({
         department_id: selectedDepartment,
         program_id: selectedProgram,
         semester: parseInt(selectedSemester),
         academic_year: selectedAcademicYear,
         course_id: selectedCourse,
+        // Don't filter by status - include all statuses
       });
 
+      console.log('📊 getCurriculums result:', result);
+
       if (result.success && result.data && result.data.length > 0) {
-        // Load existing curriculum
-        const existingCurriculum = result.data[0]; // Should be only one match
+        console.log(`✅ Found ${result.data.length} existing curriculum(s)`);
+        
+        // Load existing curriculum (prioritize published/approved over draft)
+        const sortedCurriculums = result.data.sort((a, b) => {
+          const statusPriority: Record<string, number> = { 
+            'published': 3, 
+            'approved': 2, 
+            'pending_approval': 1, 
+            'draft': 0 
+          };
+          return (statusPriority[b.status] || 0) - (statusPriority[a.status] || 0);
+        });
+        
+        const existingCurriculum = sortedCurriculums[0];
+        console.log(`📋 Loading curriculum with status: ${existingCurriculum.status}`);
+        
         const detailResult = await curriculumService.getCurriculumById(existingCurriculum.id);
         if (detailResult.success && detailResult.data) {
           setCurriculumId(detailResult.data.id);
           setUnits(detailResult.data.units);
           setLearningOutcomes(detailResult.data.outcomes);
           setStatus(detailResult.data.status);
-          toast.success('Existing curriculum loaded');
+          
+          console.log(`✅ Curriculum loaded successfully:`, {
+            id: detailResult.data.id,
+            status: detailResult.data.status,
+            unitsCount: detailResult.data.units.length,
+            outcomesCount: detailResult.data.outcomes.length,
+          });
+          
+          toast.success(`Existing curriculum loaded (${detailResult.data.status})`);
+        } else {
+          console.error('❌ Failed to load curriculum details:', detailResult.error);
+          toast.error('Failed to load curriculum details');
         }
       } else {
+        console.log('ℹ️ No existing curriculum found - ready to create new');
         // No existing curriculum found - clear state but don't create yet
         setCurriculumId(null);
         setUnits([]);
@@ -250,7 +403,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         setStatus("draft");
       }
     } catch (error: any) {
-      console.error('Error loading curriculum:', error);
+      console.error('❌ Error loading curriculum:', error);
       toast.error('Failed to load curriculum');
       // Clear state on error
       setCurriculumId(null);
@@ -824,6 +977,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         assessmentTypes={assessmentTypes.map(at => ({ id: at.id, name: at.name, description: at.description }))}
         status={status}
         loading={loading}
+        isRealTimeConnected={isRealTimeConnected}
         // Search
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}

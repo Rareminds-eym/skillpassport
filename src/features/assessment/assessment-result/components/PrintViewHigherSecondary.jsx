@@ -31,9 +31,20 @@ import Watermarks, {
  * @param {Object} props.studentInfo - Student information
  * @param {Object} props.riasecNames - RIASEC code to name mapping (optional)
  * @param {Object} props.traitNames - Big Five trait names mapping (optional)
+ * @param {Array} props.courseRecommendations - Course/program recommendations (optional)
+ * @param {Object} props.streamRecommendation - Stream recommendation for after10 students (optional)
+ * @param {Object} props.studentAcademicData - Student academic data (optional)
  * @returns {JSX.Element} - Print view component
  */
-const PrintViewHigherSecondary = ({ results, studentInfo, riasecNames, traitNames }) => {
+const PrintViewHigherSecondary = ({ 
+  results, 
+  studentInfo, 
+  riasecNames, 
+  traitNames,
+  courseRecommendations,
+  streamRecommendation,
+  studentAcademicData
+}) => {
   // Handle null results
   if (!results) {
     return (
@@ -113,6 +124,27 @@ const PrintViewHigherSecondary = ({ results, studentInfo, riasecNames, traitName
           {roadmap && (
             <DevelopmentRoadmapSection roadmap={roadmap} />
           )}
+        </PrintPage>
+
+        {/* Page 7: Stream Recommendation (if available) */}
+        {streamRecommendation && streamRecommendation.recommendedStream && (
+          <PrintPage pageNumber={7}>
+            <StreamRecommendationSection streamRecommendation={streamRecommendation} />
+          </PrintPage>
+        )}
+
+        {/* Page 8 (or 7 if no stream): Course Recommendations (if available) */}
+        {courseRecommendations && courseRecommendations.length > 0 && (
+          <PrintPage pageNumber={streamRecommendation && streamRecommendation.recommendedStream ? 8 : 7}>
+            <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
+          </PrintPage>
+        )}
+
+        {/* Final Page: Disclaimer */}
+        <PrintPage pageNumber={
+          (streamRecommendation && streamRecommendation.recommendedStream ? 1 : 0) +
+          (courseRecommendations && courseRecommendations.length > 0 ? 1 : 0) + 6
+        }>
           <ReportDisclaimer />
         </PrintPage>
       </div>
@@ -139,6 +171,12 @@ const PrintViewHigherSecondary = ({ results, studentInfo, riasecNames, traitName
         )}
         {roadmap && (
           <DevelopmentRoadmapSection roadmap={roadmap} />
+        )}
+        {streamRecommendation && streamRecommendation.recommendedStream && (
+          <StreamRecommendationSection streamRecommendation={streamRecommendation} />
+        )}
+        {courseRecommendations && courseRecommendations.length > 0 && (
+          <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
         )}
         <ReportDisclaimer />
       </div>
@@ -734,7 +772,7 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
 
       {/* Projects (if available) */}
       {roadmap.projects && roadmap.projects.length > 0 && (
-        <div style={{ marginTop: '15px' }}>
+        <div style={{ marginTop: '30px' }}>
           <h3 style={printStyles.subTitle}>Recommended Projects</h3>
           <div style={printStyles.twoCol}>
             {roadmap.projects.map((project, idx) => (
@@ -752,6 +790,206 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
           </div>
         </div>
       )}
+    </>
+  );
+};
+
+/**
+ * StreamRecommendationSection Component
+ * Renders stream recommendation for after 10th students
+ */
+const StreamRecommendationSection = ({ streamRecommendation }) => {
+  if (!streamRecommendation || !streamRecommendation.recommendedStream) return null;
+
+  return (
+    <>
+      <h2 style={printStyles.sectionTitle}>11th/12th Stream Recommendation</h2>
+      <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '15px', lineHeight: '1.5' }}>
+        Based on your interests, aptitudes, and academic performance, here is your recommended stream for grades 11-12:
+      </p>
+
+      <div style={{ 
+        ...printStyles.card, 
+        border: '2px solid #3b82f6',
+        backgroundColor: '#eff6ff',
+        marginBottom: '15px'
+      }}>
+        <div style={{ 
+          fontWeight: 'bold', 
+          fontSize: '14px', 
+          color: '#1e40af', 
+          marginBottom: '8px',
+          textAlign: 'center'
+        }}>
+          Recommended Stream: {streamRecommendation.recommendedStream}
+        </div>
+
+        {streamRecommendation.matchScore && (
+          <div style={{ 
+            fontSize: '11px', 
+            color: '#059669',
+            fontWeight: '600',
+            textAlign: 'center',
+            marginBottom: '10px'
+          }}>
+            Match Score: {Math.round(streamRecommendation.matchScore)}%
+          </div>
+        )}
+
+        {streamRecommendation.reasoning && (
+          <p style={{ 
+            fontSize: '9px', 
+            color: '#4b5563', 
+            lineHeight: '1.5',
+            margin: '0'
+          }}>
+            {streamRecommendation.reasoning}
+          </p>
+        )}
+      </div>
+
+      {/* Alternative Streams */}
+      {streamRecommendation.alternatives && streamRecommendation.alternatives.length > 0 && (
+        <div style={{ marginTop: '15px' }}>
+          <h3 style={printStyles.subTitle}>Alternative Stream Options</h3>
+          {streamRecommendation.alternatives.map((alt, index) => (
+            <div key={index} style={{ 
+              ...printStyles.card, 
+              marginBottom: '10px',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div style={{ 
+                fontWeight: 'bold', 
+                fontSize: '11px', 
+                color: '#1e293b', 
+                marginBottom: '4px'
+              }}>
+                {alt.stream}
+                {alt.matchScore && (
+                  <span style={{ 
+                    fontSize: '9px', 
+                    color: '#059669',
+                    marginLeft: '8px'
+                  }}>
+                    ({Math.round(alt.matchScore)}% match)
+                  </span>
+                )}
+              </div>
+              {alt.reasoning && (
+                <p style={{ 
+                  fontSize: '9px', 
+                  color: '#4b5563', 
+                  lineHeight: '1.5',
+                  margin: '0'
+                }}>
+                  {alt.reasoning}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+};
+
+/**
+ * CourseRecommendationsSection Component
+ * Renders recommended degree programs/courses
+ */
+const CourseRecommendationsSection = ({ courseRecommendations }) => {
+  if (!courseRecommendations || courseRecommendations.length === 0) return null;
+
+  const topCourses = courseRecommendations.slice(0, 5);
+
+  return (
+    <>
+      <h2 style={printStyles.sectionTitle}>Recommended Degree Programs</h2>
+      <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '15px', lineHeight: '1.5' }}>
+        Based on your assessment results and chosen stream, here are the top degree programs for you:
+      </p>
+
+      {topCourses.map((course, index) => (
+        <div key={index} style={{ 
+          ...printStyles.card, 
+          marginBottom: '12px',
+          border: index === 0 ? '2px solid #3b82f6' : '1px solid #e5e7eb',
+          backgroundColor: index === 0 ? '#eff6ff' : '#ffffff'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <div style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              backgroundColor: index === 0 ? '#3b82f6' : index === 1 ? '#60a5fa' : '#93c5fd',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold',
+              fontSize: '12px',
+              flexShrink: 0
+            }}>
+              {index + 1}
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <div style={{ 
+                fontWeight: 'bold', 
+                fontSize: '11px', 
+                color: '#1e293b', 
+                marginBottom: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                {course.courseName}
+                {index === 0 && (
+                  <span style={{
+                    fontSize: '8px',
+                    backgroundColor: '#fbbf24',
+                    color: '#78350f',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    fontWeight: 'bold'
+                  }}>
+                    TOP PICK
+                  </span>
+                )}
+              </div>
+
+              {course.category && (
+                <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '6px' }}>
+                  Category: {course.category}
+                </div>
+              )}
+
+              <div style={{ fontSize: '9px', color: '#059669', fontWeight: '600', marginBottom: '6px' }}>
+                Match Score: {Math.round(course.matchScore)}%
+              </div>
+
+              {course.description && (
+                <p style={{ fontSize: '9px', color: '#4b5563', lineHeight: '1.5', margin: '0 0 8px 0' }}>
+                  {course.description}
+                </p>
+              )}
+
+              {course.reasons && course.reasons.length > 0 && (
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}>
+                    Why this program suits you:
+                  </div>
+                  <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '8px', color: '#4b5563', lineHeight: '1.5' }}>
+                    {course.reasons.slice(0, 3).map((reason, idx) => (
+                      <li key={idx}>{reason}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
     </>
   );
 };

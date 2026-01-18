@@ -99,17 +99,57 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
   };
 
   const expandAll = () => {
-    const activeAllocations = mentor.allocations.filter(a => a.status === 'active');
-    setExpandedAllocations(new Set(activeAllocations.map(a => a.id)));
+    const visibleAllocations = mentor.allocations.filter(a => shouldShowAllocation(a));
+    setExpandedAllocations(new Set(visibleAllocations.map(a => a.id)));
   };
 
   const collapseAll = () => {
     setExpandedAllocations(new Set());
   };
+  // Helper function to determine allocation display status
+  const getAllocationDisplayStatus = (allocation: MentorAllocation) => {
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    
+    const startDate = new Date(allocation.period?.start_date || allocation.allocationPeriod?.startDate);
+    startDate.setHours(0, 0, 0, 0);
+    
+    const endDate = new Date(allocation.period?.end_date || allocation.allocationPeriod?.endDate);
+    endDate.setHours(0, 0, 0, 0);
+    
+    const isActive = allocation.period?.is_active ?? true; // Default to true if not available
+    
+    // Check date range
+    const isCurrentPeriod = currentDate >= startDate && currentDate <= endDate;
+    const isPastPeriod = currentDate > endDate;
+    const isFuturePeriod = currentDate < startDate;
+    
+    // Determine status based on is_active flag AND date range
+    if (!isActive) {
+      return 'inactive'; // Period is marked as inactive in DB
+    } else if (isCurrentPeriod) {
+      return 'active'; // Currently active
+    } else if (isFuturePeriod) {
+      return 'upcoming'; // Future period
+    } else if (isPastPeriod) {
+      return 'past'; // Past period
+    }
+    
+    return 'unknown';
+  };
+
+  // Helper function to check if allocation should be shown
+  const shouldShowAllocation = (allocation: MentorAllocation) => {
+    const displayStatus = getAllocationDisplayStatus(allocation);
+    // Show all periods except inactive ones
+    // Include allocations with status: 'active', 'pending', 'transferred', or 'available' (no students)
+    return displayStatus !== 'inactive' && ['active', 'pending', 'transferred', 'available'].includes(allocation.status);
+  };
+
   // Helper functions to work with new allocation structure
   const getAllocatedStudents = () => {
     return mentor.allocations
-      .filter(allocation => allocation.status === 'active')
+      .filter(allocation => shouldShowAllocation(allocation))
       .flatMap(allocation => allocation.students);
   };
 
@@ -118,8 +158,8 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
   };
 
   const getLatestAllocation = () => {
-    const activeAllocations = mentor.allocations.filter(allocation => allocation.status === 'active');
-    return activeAllocations.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    const visibleAllocations = mentor.allocations.filter(allocation => shouldShowAllocation(allocation));
+    return visibleAllocations.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
   };
   const getInterventionTypeColor = (type: string) => {
     const colors = {
@@ -243,7 +283,7 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                           </div>
                         )}
 
-                        {mentor.experienceYears && (
+                        {mentor.experienceYears != null && mentor.experienceYears !== '' && (
                           <div className="flex items-start gap-3">
                             <CalendarIcon className="h-5 w-5 text-gray-400 mt-0.5" />
                             <div>
@@ -298,9 +338,11 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                   {/* Active Allocations - Accordion Style */}
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">Active Allocations</h3>
+                      <h3 className="text-lg font-semibold text-gray-900">Allocations</h3>
                       <div className="flex items-center gap-3">
-                        <span className="text-sm text-gray-500">{mentor.allocations.filter(a => a.status === 'active').length} allocation periods</span>
+                        <span className="text-sm text-gray-500">
+                          {mentor.allocations.filter(a => shouldShowAllocation(a)).length} period{mentor.allocations.filter(a => shouldShowAllocation(a)).length !== 1 ? 's' : ''}
+                        </span>
                         {getAtRiskStudents().length > 0 && (
                           <div className="flex items-center gap-1">
                             <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />
@@ -309,7 +351,7 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                             </span>
                           </div>
                         )}
-                        {mentor.allocations.filter(a => a.status === 'active').length > 1 && (
+                        {mentor.allocations.filter(a => shouldShowAllocation(a)).length > 1 && (
                           <div className="flex gap-2">
                             <button
                               onClick={expandAll}
@@ -329,19 +371,26 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                       </div>
                     </div>
                     
-                    {mentor.allocations.filter(allocation => allocation.status === 'active').length === 0 ? (
+                    {mentor.allocations.filter(allocation => shouldShowAllocation(allocation)).length === 0 ? (
                       <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-xl">
                         <AcademicCapIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                        <p className="text-lg font-medium">No active allocations</p>
+                        <p className="text-lg font-medium">No allocations</p>
                         <p className="text-sm">Allocations will appear here once students are assigned to this mentor</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
                         {mentor.allocations
-                          .filter(allocation => allocation.status === 'active')
-                          .sort((a, b) => new Date(b.allocationPeriod.startDate).getTime() - new Date(a.allocationPeriod.startDate).getTime())
+                          .filter(allocation => shouldShowAllocation(allocation))
+                          .sort((a, b) => {
+                            // Sort by start date, most recent first
+                            const dateA = new Date(a.period?.start_date || a.allocationPeriod?.startDate);
+                            const dateB = new Date(b.period?.start_date || b.allocationPeriod?.startDate);
+                            return dateB.getTime() - dateA.getTime();
+                          })
                           .map((allocation: MentorAllocation) => {
                             const isExpanded = expandedAllocations.has(allocation.id);
+                            const displayStatus = getAllocationDisplayStatus(allocation);
+                            
                             return (
                               <div key={allocation.id} className="bg-white border border-gray-200 rounded-lg shadow-sm">
                                 {/* Allocation Header - Always Visible */}
@@ -351,25 +400,18 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                 >
                                   <div className="flex items-center gap-3">
                                     {(() => {
-                                      const currentDate = new Date();
-                                      const startDate = new Date(allocation.allocationPeriod.startDate);
-                                      const endDate = new Date(allocation.allocationPeriod.endDate);
-                                      const isCurrentPeriod = currentDate >= startDate && currentDate <= endDate;
-                                      const isPastPeriod = currentDate > endDate;
-                                      const isFuturePeriod = currentDate < startDate;
-                                      
                                       return (
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                          isCurrentPeriod 
+                                          displayStatus === 'active'
                                             ? 'bg-green-100' 
-                                            : isPastPeriod 
+                                            : displayStatus === 'past'
                                             ? 'bg-gray-100' 
                                             : 'bg-blue-100'
                                         }`}>
                                           <CalendarIcon className={`h-4 w-4 ${
-                                            isCurrentPeriod 
+                                            displayStatus === 'active'
                                               ? 'text-green-600' 
-                                              : isPastPeriod 
+                                              : displayStatus === 'past'
                                               ? 'text-gray-500' 
                                               : 'text-blue-600'
                                           }`} />
@@ -379,29 +421,22 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                     <div>
                                       <div className="flex items-center gap-2">
                                         <h4 className="font-semibold text-gray-900 text-sm">
-                                          {allocation.allocationPeriod.startDate} to {allocation.allocationPeriod.endDate}
+                                          {allocation.period?.name || `${allocation.period?.start_date || allocation.allocationPeriod?.startDate} to ${allocation.period?.end_date || allocation.allocationPeriod?.endDate}`}
                                         </h4>
                                         {(() => {
-                                          const currentDate = new Date();
-                                          const startDate = new Date(allocation.allocationPeriod.startDate);
-                                          const endDate = new Date(allocation.allocationPeriod.endDate);
-                                          const isCurrentPeriod = currentDate >= startDate && currentDate <= endDate;
-                                          const isPastPeriod = currentDate > endDate;
-                                          const isFuturePeriod = currentDate < startDate;
-                                          
-                                          if (isCurrentPeriod) {
+                                          if (displayStatus === 'active') {
                                             return (
                                               <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
-                                                Active Now
+                                                Active
                                               </span>
                                             );
-                                          } else if (isPastPeriod) {
+                                          } else if (displayStatus === 'past') {
                                             return (
                                               <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-medium">
-                                                Completed
+                                                Past
                                               </span>
                                             );
-                                          } else if (isFuturePeriod) {
+                                          } else if (displayStatus === 'upcoming') {
                                             return (
                                               <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
                                                 Upcoming
@@ -412,7 +447,9 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                         })()}
                                       </div>
                                       <p className="text-xs text-gray-600">
-                                        {allocation.academicYear} • {allocation.semester}
+                                        {allocation.period?.start_date || allocation.allocationPeriod?.startDate} to {allocation.period?.end_date || allocation.allocationPeriod?.endDate}
+                                        {allocation.period?.academic_year && ` • ${allocation.period.academic_year}`}
+                                        {allocation.period?.semester && ` • ${allocation.period.semester}`}
                                       </p>
                                     </div>
                                   </div>
@@ -420,19 +457,21 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                       <div className="text-right">
                                         <div className="flex items-center gap-2 mb-1">
                                           <span className="text-sm font-medium text-gray-900">
-                                            {allocation.students.length}/{allocation.capacity}
+                                            {allocation.students.length}/{allocation.capacity || allocation.period?.default_mentor_capacity || 15}
                                           </span>
                                           <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                                            allocation.students.length >= allocation.capacity
+                                            allocation.students.length >= (allocation.capacity || allocation.period?.default_mentor_capacity || 15)
                                               ? "bg-red-100 text-red-700"
-                                              : allocation.students.length >= allocation.capacity * 0.8
+                                              : allocation.students.length >= (allocation.capacity || allocation.period?.default_mentor_capacity || 15) * 0.8
                                               ? "bg-yellow-100 text-yellow-700"
                                               : "bg-green-100 text-green-700"
                                           }`}>
-                                            {allocation.students.length >= allocation.capacity
+                                            {allocation.students.length >= (allocation.capacity || allocation.period?.default_mentor_capacity || 15)
                                               ? "Full"
-                                              : allocation.students.length >= allocation.capacity * 0.8
+                                              : allocation.students.length >= (allocation.capacity || allocation.period?.default_mentor_capacity || 15) * 0.8
                                               ? "Near Full"
+                                              : allocation.students.length === 0
+                                              ? "Available"
                                               : "Available"
                                             }
                                           </span>
@@ -444,14 +483,8 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                         </p>
                                       </div>
                                       {(() => {
-                                        const currentDate = new Date();
-                                        const startDate = new Date(allocation.allocationPeriod.startDate);
-                                        const endDate = new Date(allocation.allocationPeriod.endDate);
-                                        const isCurrentPeriod = currentDate >= startDate && currentDate <= endDate;
-                                        const isFuturePeriod = currentDate < startDate;
-                                        
-                                        // Only show configure button for current or future periods
-                                        return (isCurrentPeriod || isFuturePeriod) && (
+                                        // Only show configure button for active or upcoming periods
+                                        return (displayStatus === 'active' || displayStatus === 'upcoming') && (
                                           <button
                                             onClick={(e) => {
                                               e.stopPropagation();
@@ -585,7 +618,6 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                     <div className="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500">
                                       <div className="flex items-center justify-between">
                                         <span>Created: {new Date(allocation.createdAt).toLocaleDateString()}</span>
-                                        <span>Created by: {allocation.createdBy}</span>
                                       </div>
                                     </div>
                                   </div>
@@ -674,22 +706,22 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                   </div>
                                 </div>
                                 
-                                {/* Status Indicator */}
-                                {hasEducatorResponse && (
+                                {/* Status Indicator - Only show if not completed */}
+                                {hasEducatorResponse && note.status !== 'completed' && (
                                   <div className="mt-3 flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg border border-green-200">
                                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                                     <span className="font-medium">Educator has responded</span>
                                   </div>
                                 )}
-                                {needsResponse && (
+                                {needsResponse && note.status !== 'completed' && (
                                   <div className="mt-3 flex items-center gap-2 text-sm text-orange-700 bg-orange-50 px-3 py-2 rounded-lg border border-orange-200">
                                     <ClockIcon className="h-4 w-4" />
                                     <span className="font-medium">Awaiting educator response</span>
                                   </div>
                                 )}
                                 
-                                {/* Follow-up Alert */}
-                                {note.follow_up_required && note.follow_up_date && (
+                                {/* Follow-up Alert - Only show if not completed */}
+                                {note.follow_up_required && note.follow_up_date && note.status !== 'completed' && (
                                   <div className="mt-3 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
                                     <ExclamationTriangleIcon className="h-4 w-4" />
                                     <span className="font-medium">
