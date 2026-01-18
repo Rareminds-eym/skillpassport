@@ -721,6 +721,29 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
     // Only calculate for grade levels that should show recommendations
     // IMPORTANT: Use student's ACTUAL grade from database, not the assessment's grade_level
     const enhancedCourseRecommendations = useMemo(() => {
+        // DIAGNOSTIC: Check if we have results and RIASEC data
+        console.log('🔍 Course Recommendations - Initial Check:', {
+            'hasResults': !!results,
+            'loading': loading,
+            'retrying': retrying,
+            'hasRiasec': !!results?.riasec,
+            'hasScores': !!results?.riasec?.scores,
+            'scoresKeys': results?.riasec?.scores ? Object.keys(results.riasec.scores) : [],
+            'scoresValues': results?.riasec?.scores ? Object.values(results.riasec.scores) : []
+        });
+        
+        // Don't calculate if still loading or retrying
+        if (loading || retrying) {
+            console.log('⏳ Skipping course recommendations - still loading/retrying');
+            return [];
+        }
+        
+        // Don't calculate if no results yet
+        if (!results) {
+            console.log('⏳ Skipping course recommendations - no results yet');
+            return [];
+        }
+        
         // Get the student's actual grade from studentInfo (from database)
         const actualGrade = studentInfo?.grade;
         let actualGradeNum = null;
@@ -828,13 +851,33 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
         
         console.log('🎯 About to call calculateCourseMatchScores with stream:', studentStream);
         
+        // DIAGNOSTIC: Final check before calling calculateCourseMatchScores
+        const riasecScores = results?.riasec?.scores || {};
+        console.log('📊 Final RIASEC Check Before Calculation:', {
+            'riasecScores': riasecScores,
+            'hasKeys': Object.keys(riasecScores).length > 0,
+            'hasNonZeroValues': Object.values(riasecScores).some(s => s > 0),
+            'allValues': Object.values(riasecScores)
+        });
+        
+        // Don't call if no valid RIASEC data
+        if (!riasecScores || Object.keys(riasecScores).length === 0) {
+            console.log('⚠️ Aborting calculateCourseMatchScores - no RIASEC scores');
+            return [];
+        }
+        
+        if (!Object.values(riasecScores).some(s => s > 0)) {
+            console.log('⚠️ Aborting calculateCourseMatchScores - all RIASEC scores are zero');
+            return [];
+        }
+        
         return calculateCourseMatchScores(
             DEGREE_PROGRAMS,
-            results?.riasec?.scores || {},
+            riasecScores,
             assessmentBasedAcademicData,
             studentStream // Pass student's stream for filtering
         );
-    }, [gradeLevel, monthsInGrade, results, studentAcademicData, studentInfo?.grade, studentInfo?.stream]);
+    }, [gradeLevel, monthsInGrade, results, studentAcademicData, studentInfo?.grade, studentInfo?.stream, loading, retrying]);
 
     // Calculate stream recommendations for after 10th students using academic data
     const enhancedStreamRecommendation = useMemo(() => {

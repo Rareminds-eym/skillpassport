@@ -24,12 +24,12 @@ const getStudentRecordId = async (authUserId) => {
             .select('id')
             .eq('user_id', authUserId)
             .maybeSingle();
-        
+
         if (error || !student) {
             console.log(`⚠️ No student record found for auth user: ${authUserId}`);
             return null;
         }
-        
+
         console.log(`✅ Found student record: ${student.id} for auth user: ${authUserId}`);
         return student.id;
     } catch (err) {
@@ -54,7 +54,7 @@ const fetchAIAptitudeQuestions = async (authUserId, answerKeys = []) => {
 
         // First, look up the student record ID from the auth user ID
         const studentRecordId = await getStudentRecordId(authUserId);
-        
+
         // Try with student record ID first (this is how questions are saved)
         if (studentRecordId) {
             const { data: allQuestionSets, error } = await supabase
@@ -140,7 +140,7 @@ const fetchAIKnowledgeQuestions = async (authUserId, answerKeys = []) => {
 
         // First, look up the student record ID from the auth user ID
         const studentRecordId = await getStudentRecordId(authUserId);
-        
+
         // Try with student record ID first (this is how questions are saved)
         if (studentRecordId) {
             const { data: allQuestionSets, error } = await supabase
@@ -216,7 +216,7 @@ const fetchAIKnowledgeQuestions = async (authUserId, answerKeys = []) => {
 export const useAssessmentResults = () => {
     // 🔥 DEBUG: Verify new code is loaded
     console.log('🔥🔥🔥 useAssessmentResults hook loaded - NEW CODE WITH FIXES 🔥🔥🔥');
-    
+
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [results, setResults] = useState(null);
@@ -256,12 +256,12 @@ export const useAssessmentResults = () => {
             rawAnswers,
             sectionTimings
         );
-        
+
         if (warnings.length > 0) {
             console.log('⚠️ Assessment validation warnings:', warnings);
             setValidationWarnings(warnings);
         }
-        
+
         return validatedResults;
     };
 
@@ -297,7 +297,7 @@ export const useAssessmentResults = () => {
 
             if (user) {
                 console.log('📊 Querying students table with user_id:', user.id);
-                
+
                 // First, try to fetch student data with relationships
                 // Query students table - using actual database column names (mix of camelCase and snake_case)
                 let { data: studentData, error: fetchError } = await supabase
@@ -349,7 +349,7 @@ export const useAssessmentResults = () => {
                 // If we got student data, fetch related college/school names separately
                 if (studentData && !fetchError) {
                     console.log('✅ Student data found! Fetching related organization data...');
-                    
+
                     if (studentData.college_id) {
                         console.log('🏛️ Fetching college organization:', studentData.college_id);
                         const { data: orgData, error: orgError } = await supabase
@@ -362,7 +362,7 @@ export const useAssessmentResults = () => {
                             studentData.colleges = { name: orgData.name };
                         }
                     }
-                    
+
                     if (studentData.school_id) {
                         console.log('🏫 Fetching school organization:', studentData.school_id);
                         const { data: orgData, error: orgError } = await supabase
@@ -375,7 +375,7 @@ export const useAssessmentResults = () => {
                             studentData.schools = { name: orgData.name };
                         }
                     }
-                    
+
                     if (studentData.schoolClassId) {
                         console.log('📚 Fetching school class:', studentData.schoolClassId);
                         const { data: classData, error: classError } = await supabase
@@ -402,7 +402,7 @@ export const useAssessmentResults = () => {
 
                     // Get grade - prioritize students.grade, then school_classes.grade as fallback
                     let studentGrade = studentData.grade || studentData.school_classes?.grade;
-                    
+
                     // Format grade value
                     if (studentGrade && studentGrade !== '—') {
                         // Convert to string for consistent display
@@ -420,23 +420,23 @@ export const useAssessmentResults = () => {
                     } else {
                         studentGrade = '—';
                     }
-                    
+
                     console.log('Student grade:', studentGrade, 'from students.grade:', studentData.grade, 'from school_classes:', studentData.school_classes?.grade, 'year:', studentData.year, 'semester:', studentData.semester);
-                    
+
                     // Get institution name - show school OR college, not both
                     let institutionName = '—';
                     let schoolName = '—';
                     let collegeName = '—';
-                    
+
                     // Determine if this is a school student or college student
                     // Priority 1: Check if they have school_id or schoolClassId
                     const hasSchoolId = studentData.school_id || studentData.schoolClassId;
                     const hasCollegeId = studentData.college_id;
-                    
+
                     // Priority 2: Check grade level (Grades 1-12 are school, Year/Semester are college)
                     // Extract numeric grade from strings like "Grade 10", "10", "Year 2", "Semester 4"
                     let gradeNum = parseInt(studentGrade);
-                    
+
                     // If direct parsing fails, try to extract number from "Grade X" format
                     if (isNaN(gradeNum) && studentGrade.includes('Grade')) {
                         const match = studentGrade.match(/Grade\s*(\d+)/i);
@@ -444,14 +444,14 @@ export const useAssessmentResults = () => {
                             gradeNum = parseInt(match[1]);
                         }
                     }
-                    
+
                     const isSchoolGrade = !isNaN(gradeNum) && gradeNum >= 1 && gradeNum <= 12;
                     const isCollegeGrade = studentGrade.includes('Year') || studentGrade.includes('Semester');
-                    
+
                     // Determine student type
                     const isSchoolStudent = hasSchoolId || (isSchoolGrade && !hasCollegeId);
                     const isCollegeStudent = hasCollegeId || (isCollegeGrade && !hasSchoolId);
-                    
+
                     if (isSchoolStudent) {
                         // School student - show only school name
                         if (studentData.college_school_name && studentData.college_school_name !== '—') {
@@ -481,7 +481,7 @@ export const useAssessmentResults = () => {
                             collegeName = institutionName;
                         }
                     }
-                    
+
                     console.log('Institution detection - hasSchoolId:', hasSchoolId, 'hasCollegeId:', hasCollegeId, 'isSchoolGrade:', isSchoolGrade, 'isCollegeGrade:', isCollegeGrade, 'isSchoolStudent:', isSchoolStudent, 'isCollegeStudent:', isCollegeStudent, 'final school:', schoolName, 'final college:', collegeName);
                     console.log('Roll numbers - enrollmentNumber:', studentData.enrollmentNumber, 'admission_number:', studentData.admission_number, 'roll_number:', studentData.roll_number);
                     console.log('IDs - school_id:', studentData.school_id, 'college_id:', studentData.college_id, 'schoolClassId:', studentData.schoolClassId);
@@ -490,7 +490,7 @@ export const useAssessmentResults = () => {
                     let rollNumber = '—';
                     let rollNumberType = 'school'; // default
                     // gradeNum already declared above, reuse it
-                    
+
                     // Priority 1: Use enrollmentNumber if available
                     if (studentData.enrollmentNumber && studentData.enrollmentNumber !== '—') {
                         rollNumber = studentData.enrollmentNumber;
@@ -537,7 +537,7 @@ export const useAssessmentResults = () => {
                         // College student
                         derivedGradeLevel = 'after12';
                     }
-                    
+
                     // Update gradeLevel state - this is a fallback value
                     // Only set if grade level wasn't already set from the assessment attempt
                     // Use ref for synchronous check to avoid race condition with async state updates
@@ -548,7 +548,7 @@ export const useAssessmentResults = () => {
 
                     // Derive stream from branch_field or course_name (database only)
                     let derivedStream = '—';
-                    
+
                     // For middle/high school, use friendly labels
                     if (derivedGradeLevel === 'middle') {
                         derivedStream = 'Middle School (Grades 6-8)';
@@ -558,36 +558,36 @@ export const useAssessmentResults = () => {
                     // If we have branch_field or course_name, derive the stream
                     else if (studentData.branch_field || studentData.course_name) {
                         const fieldText = (studentData.branch_field || studentData.course_name || '').toLowerCase();
-                        
+
                         // Science stream indicators
-                        if (fieldText.includes('science') || fieldText.includes('engineering') || 
-                            fieldText.includes('tech') || fieldText.includes('bca') || 
-                            fieldText.includes('computer') || fieldText.includes('physics') || 
-                            fieldText.includes('chemistry') || fieldText.includes('biology') || 
+                        if (fieldText.includes('science') || fieldText.includes('engineering') ||
+                            fieldText.includes('tech') || fieldText.includes('bca') ||
+                            fieldText.includes('computer') || fieldText.includes('physics') ||
+                            fieldText.includes('chemistry') || fieldText.includes('biology') ||
                             fieldText.includes('mathematics') || fieldText.includes('medical') ||
-                            fieldText.includes('mbbs') || fieldText.includes('bsc') || 
+                            fieldText.includes('mbbs') || fieldText.includes('bsc') ||
                             fieldText.includes('b.sc') || fieldText.includes('b.tech') ||
                             fieldText.includes('m.tech') || fieldText.includes('mtech')) {
                             derivedStream = 'SCIENCE';
                         }
                         // Commerce stream indicators
-                        else if (fieldText.includes('commerce') || fieldText.includes('business') || 
-                                 fieldText.includes('bba') || fieldText.includes('bcom') || 
-                                 fieldText.includes('b.com') || fieldText.includes('finance') || 
-                                 fieldText.includes('accounting') || fieldText.includes('economics') ||
-                                 fieldText.includes('management') || fieldText.includes('marketing')) {
+                        else if (fieldText.includes('commerce') || fieldText.includes('business') ||
+                            fieldText.includes('bba') || fieldText.includes('bcom') ||
+                            fieldText.includes('b.com') || fieldText.includes('finance') ||
+                            fieldText.includes('accounting') || fieldText.includes('economics') ||
+                            fieldText.includes('management') || fieldText.includes('marketing')) {
                             derivedStream = 'COMMERCE';
                         }
                         // Arts stream indicators
-                        else if (fieldText.includes('arts') || fieldText.includes('humanities') || 
-                                 fieldText.includes('ba ') || fieldText.includes('b.a') || 
-                                 fieldText.includes('law') || fieldText.includes('llb') || 
-                                 fieldText.includes('english') || fieldText.includes('history') || 
-                                 fieldText.includes('political') || fieldText.includes('sociology') ||
-                                 fieldText.includes('psychology') || fieldText.includes('literature')) {
+                        else if (fieldText.includes('arts') || fieldText.includes('humanities') ||
+                            fieldText.includes('ba ') || fieldText.includes('b.a') ||
+                            fieldText.includes('law') || fieldText.includes('llb') ||
+                            fieldText.includes('english') || fieldText.includes('history') ||
+                            fieldText.includes('political') || fieldText.includes('sociology') ||
+                            fieldText.includes('psychology') || fieldText.includes('literature')) {
                             derivedStream = 'ARTS';
                         }
-                        
+
                         console.log('📚 Derived stream from database:', derivedStream, 'from field:', fieldText);
                     }
 
@@ -621,13 +621,13 @@ export const useAssessmentResults = () => {
                     }
 
                     // ✅ REMOVED: localStorage caching for student info (use database as source of truth)
-                    
+
                     // Fetch academic data (marks, projects, experiences)
                     await fetchStudentAcademicData(studentData.id);
                 } else {
                     const rawName = user.user_metadata?.full_name || user.email?.split('@')[0] || '—';
                     const name = toTitleCase(rawName);
-                    
+
                     setStudentInfo(prev => ({
                         ...prev,
                         name: name,
@@ -665,12 +665,11 @@ export const useAssessmentResults = () => {
                         marks_obtained,
                         total_marks,
                         percentage,
-                        grade,
-                        curriculum_subjects(name)
+                        grade
                     `)
                     .eq('student_id', studentId)
                     .order('created_at', { ascending: false });
-                
+
                 if (error) {
                     // Silently handle error - marks are optional for career assessment
                     console.log('📊 Academic marks not available (this is normal for career assessments)');
@@ -744,51 +743,51 @@ export const useAssessmentResults = () => {
         const attemptId = searchParams.get('attemptId');
         console.log('🔥 loadResults called with attemptId:', attemptId);
         console.log('🔥 Full URL search params:', searchParams.toString());
-        
+
         if (attemptId) {
             // Load results from database - ALWAYS prefer database over localStorage
             try {
                 const attempt = await assessmentService.getAttemptWithResults(attemptId);
-                
+
                 console.log('🔥🔥🔥 ATTEMPT LOOKUP DEBUG 🔥🔥🔥');
                 console.log('   attempt exists:', !!attempt);
                 console.log('   attempt.results:', attempt?.results);
                 console.log('   attempt.results type:', Array.isArray(attempt?.results) ? 'array' : typeof attempt?.results);
                 console.log('   attempt.results[0]:', attempt?.results?.[0]);
                 console.log('   attempt.results length:', attempt?.results?.length);
-                
+
                 // Check if we have a result record (even if AI analysis is missing)
                 // Supabase returns results as an ARRAY when using select with relationship
                 // BUT if the relationship is one-to-one, it might return an object instead
                 const result = Array.isArray(attempt?.results) ? attempt.results[0] : attempt?.results;
-                
+
                 console.log('🔥 Result after normalization:', result);
                 console.log('🔥 Result exists:', !!result);
-                
+
                 if (result && result.id) {
                     console.log('🔥 Result found, checking AI analysis...');
-                    
+
                     // If AI analysis exists AND is valid, use it
                     if (result.gemini_results && typeof result.gemini_results === 'object' && Object.keys(result.gemini_results).length > 0) {
                         const geminiResults = result.gemini_results;
-                        
+
                         // Validate that AI analysis is complete (has RIASEC scores)
-                        const hasValidRiasec = geminiResults.riasec?.scores && 
+                        const hasValidRiasec = geminiResults.riasec?.scores &&
                             Object.keys(geminiResults.riasec.scores).length > 0 &&
                             Object.values(geminiResults.riasec.scores).some(score => score > 0);
-                        
+
                         if (!hasValidRiasec) {
                             console.log('⚠️ Database result has gemini_results but RIASEC scores are empty/invalid');
                             console.log('   RIASEC scores:', geminiResults.riasec?.scores);
                             console.log('   Will regenerate AI analysis');
-                            
+
                             // Set grade level from attempt before falling through
                             if (attempt.grade_level) {
                                 setGradeLevel(attempt.grade_level);
                                 setGradeLevelFromAttempt(true);
                                 gradeLevelFromAttemptRef.current = true;
                             }
-                            
+
                             // Fall through to regenerate AI analysis
                         } else {
                             // Valid AI analysis exists - use it
@@ -828,30 +827,47 @@ export const useAssessmentResults = () => {
                         }
                     } else {
                         // Result exists but no AI analysis - AUTO-GENERATE IT!
-                        // But only if we haven't already completed a retry
-                        if (retryCompleted) {
-                            console.log('⏭️ Skipping auto-retry - already completed successfully');
+
+                        // Check if we already tried auto-retrying this session
+                        const retryKey = `auto_retry_done_${result.id}`;
+                        const alreadyRetried = sessionStorage.getItem(retryKey);
+
+                        if (retryCompleted || alreadyRetried) {
+                            console.log('⏭️ Skipping auto-retry - already completed/attempted');
+
+                            // If we're skipping but don't have results, set an error so the user can manually retry
+                            // instead of showing a blank page
+                            if (!result.gemini_results || Object.keys(result.gemini_results).length === 0) {
+                                console.log('❌ No results found after skip - setting error state');
+                                setError(new Error("Unable to retrieve assessment report. Please click 'Retry' to regenerate."));
+                            }
+
                             setLoading(false);
                             return;
                         }
-                        
+
                         console.log('🔥🔥🔥 AUTO-GENERATING AI ANALYSIS 🔥🔥🔥');
                         console.log('📊 Database result exists but missing AI analysis');
                         console.log('   Result ID:', result.id);
                         console.log('   Attempt ID:', attemptId);
                         console.log('   gemini_results:', result.gemini_results);
-                        console.log('   🚀 Setting flag to trigger AI analysis generation...');
-                        
+                        console.log('   retryCompleted:', retryCompleted);
+                        console.log('   🚀 Setting autoRetry flag to TRUE...');
+
                         // Set grade level from attempt
                         if (attempt.grade_level) {
                             setGradeLevel(attempt.grade_level);
                             setGradeLevelFromAttempt(true);
                             gradeLevelFromAttemptRef.current = true;
                         }
-                        
+
+                        // Mark as attempted to prevent loops on remount
+                        sessionStorage.setItem(retryKey, 'true');
+
                         // Set flag to trigger auto-retry (will be handled by useEffect)
                         // Keep loading=true so user sees "Generating Your Report" screen
                         setAutoRetry(true);
+                        console.log('   ✅ autoRetry flag set to TRUE');
                         // Don't set loading to false - keep showing loading screen
                         return;
                     }
@@ -863,14 +879,14 @@ export const useAssessmentResults = () => {
                     console.log('   attempt.results type:', typeof attempt?.results);
                     console.log('   attempt.results value:', attempt?.results);
                     console.log('   This should NOT happen - attempt is completed but no result!');
-                    
+
                     // Set grade level from attempt
                     if (attempt?.grade_level) {
                         setGradeLevel(attempt.grade_level);
                         setGradeLevelFromAttempt(true);
                         gradeLevelFromAttemptRef.current = true;
                     }
-                    
+
                     // Show error with retry option
                     setError('Your assessment was saved but the results are missing. Click "Try Again" to generate your personalized career report.');
                     setLoading(false);
@@ -890,17 +906,17 @@ export const useAssessmentResults = () => {
                 const latestResult = await assessmentService.getLatestResult(user.id);
                 if (latestResult?.gemini_results && typeof latestResult.gemini_results === 'object' && Object.keys(latestResult.gemini_results).length > 0) {
                     const geminiResults = latestResult.gemini_results;
-                    
+
                     // Validate that AI analysis is complete (has RIASEC scores with non-zero values)
-                    const hasValidRiasec = geminiResults.riasec?.scores && 
+                    const hasValidRiasec = geminiResults.riasec?.scores &&
                         Object.keys(geminiResults.riasec.scores).length > 0 &&
                         Object.values(geminiResults.riasec.scores).some(score => score > 0);
-                    
+
                     if (!hasValidRiasec) {
                         console.log('⚠️ Latest result has gemini_results but RIASEC scores are empty/invalid');
                         console.log('   RIASEC scores:', geminiResults.riasec?.scores);
                         console.log('   Redirecting to assessment test...');
-                        
+
                         navigate('/student/assessment/test');
                         return;
                     } else {
@@ -952,53 +968,54 @@ export const useAssessmentResults = () => {
 
     const handleRetry = useCallback(async () => {
         setRetrying(true);
-        setError(null);
-        
+        // Don't clear error yet - this keeps the ErrorState visible (with spinner)
+        // instead of showing a blank screen while retrying
+
         try {
             // ✅ Get answers from database instead of localStorage
             const attemptId = searchParams.get('attemptId');
-            
+
             if (!attemptId) {
                 setError('No attempt ID found. Please retake the assessment.');
                 setRetrying(false);
                 return;
             }
-            
+
             console.log('🔄 Regenerating AI analysis from database data');
             console.log('   Attempt ID:', attemptId);
-            
+
             // Fetch attempt data from database
             const { data: attempt, error: attemptError } = await supabase
                 .from('personal_assessment_attempts')
                 .select('all_responses, stream_id, grade_level, section_timings')
                 .eq('id', attemptId)
                 .single();
-            
+
             if (attemptError || !attempt) {
                 console.error('Failed to fetch attempt:', attemptError);
                 setError('Could not load assessment data. Please try again.');
                 setRetrying(false);
                 return;
             }
-            
+
             const answers = attempt.all_responses;
             const stream = attempt.stream_id;
             const storedGradeLevel = attempt.grade_level || gradeLevel || 'after12';
             const sectionTimings = attempt.section_timings || {};
-            
+
             if (!answers || !stream) {
                 setError('Assessment data is incomplete. Please retake the assessment.');
                 setRetrying(false);
                 return;
             }
-            
+
             console.log('   Stream:', stream);
             console.log('   Grade Level:', storedGradeLevel);
             console.log('   Total answers:', Object.keys(answers).length);
-            
+
             // Check if this is an AI assessment that needs questions from database
             const isAIAssessment = ['after10', 'after12', 'college', 'higher_secondary'].includes(storedGradeLevel);
-            
+
             // Build question banks
             let questionBanks = {
                 riasecQuestions,
@@ -1008,14 +1025,14 @@ export const useAssessmentResults = () => {
                 employabilityQuestions,
                 streamKnowledgeQuestions
             };
-            
+
             // For AI assessments, fetch questions from database for proper scoring
             if (isAIAssessment) {
                 try {
                     const { data: { user } } = await supabase.auth.getUser();
                     if (user) {
                         const answerKeys = Object.keys(answers);
-                        
+
                         // Fetch aptitude questions
                         const aptitudeAnswerKeys = answerKeys.filter(k => k.startsWith('aptitude_'));
                         if (aptitudeAnswerKeys.length > 0) {
@@ -1026,7 +1043,7 @@ export const useAssessmentResults = () => {
                                 console.log(`✅ Loaded ${aiAptitudeQuestions.length} AI aptitude questions`);
                             }
                         }
-                        
+
                         // Fetch knowledge questions
                         const knowledgeAnswerKeys = answerKeys.filter(k => k.startsWith('knowledge_'));
                         if (knowledgeAnswerKeys.length > 0) {
@@ -1042,7 +1059,7 @@ export const useAssessmentResults = () => {
                     console.warn('Could not fetch AI questions for retry:', fetchErr.message);
                 }
             }
-            
+
             console.log('=== REGENERATE: Starting AI analysis ===');
             console.log('📚 Question bank counts:', {
                 riasec: questionBanks.riasecQuestions?.length || 0,
@@ -1052,7 +1069,7 @@ export const useAssessmentResults = () => {
                 employability: questionBanks.employabilityQuestions?.length || 0,
                 knowledge: questionBanks.streamKnowledgeQuestions?.[stream]?.length || 0
             });
-            
+
             // CRITICAL DEBUG: Check if questions have correct_answer field
             if (questionBanks.aptitudeQuestions?.length > 0) {
                 const sampleAptQ = questionBanks.aptitudeQuestions[0];
@@ -1064,7 +1081,7 @@ export const useAssessmentResults = () => {
                     keys: Object.keys(sampleAptQ)
                 });
             }
-            
+
             if (questionBanks.streamKnowledgeQuestions?.[stream]?.length > 0) {
                 const sampleKnowQ = questionBanks.streamKnowledgeQuestions[stream][0];
                 console.log('📚 REGENERATE: Sample knowledge question structure:', {
@@ -1075,23 +1092,23 @@ export const useAssessmentResults = () => {
                     keys: Object.keys(sampleKnowQ)
                 });
             }
-            
+
             console.log('Sample answers:', JSON.stringify(answers).substring(0, 500));
-            
+
             // Extract degree level from grade for better AI recommendations
             const extractDegreeLevel = (grade) => {
                 if (!grade) return null;
                 const gradeStr = grade.toLowerCase();
-                if (gradeStr.includes('pg') || gradeStr.includes('postgraduate') || 
-                    gradeStr.includes('m.tech') || gradeStr.includes('mtech') || 
-                    gradeStr.includes('mca') || gradeStr.includes('mba') || 
+                if (gradeStr.includes('pg') || gradeStr.includes('postgraduate') ||
+                    gradeStr.includes('m.tech') || gradeStr.includes('mtech') ||
+                    gradeStr.includes('mca') || gradeStr.includes('mba') ||
                     gradeStr.includes('m.sc') || gradeStr.includes('msc')) {
                     return 'postgraduate';
                 }
-                if (gradeStr.includes('ug') || gradeStr.includes('undergraduate') || 
-                    gradeStr.includes('b.tech') || gradeStr.includes('btech') || 
-                    gradeStr.includes('bca') || gradeStr.includes('b.sc') || 
-                    gradeStr.includes('b.com') || gradeStr.includes('ba ') || 
+                if (gradeStr.includes('ug') || gradeStr.includes('undergraduate') ||
+                    gradeStr.includes('b.tech') || gradeStr.includes('btech') ||
+                    gradeStr.includes('bca') || gradeStr.includes('b.sc') ||
+                    gradeStr.includes('b.com') || gradeStr.includes('ba ') ||
                     gradeStr.includes('bba')) {
                     return 'undergraduate';
                 }
@@ -1100,7 +1117,7 @@ export const useAssessmentResults = () => {
                 }
                 return null;
             };
-            
+
             // Build student context for enhanced AI recommendations
             // Use studentInfo that was already fetched earlier in the hook
             const studentContext = {
@@ -1109,28 +1126,28 @@ export const useAssessmentResults = () => {
                 programCode: null, // Not available in retry context
                 degreeLevel: extractDegreeLevel(studentInfo.grade || storedGradeLevel) // Extract from grade
             };
-            
+
             console.log('📚 Retry Student Context:', studentContext);
             console.log('🎓 Extracted degree level:', studentContext.degreeLevel, 'from grade:', studentInfo.grade);
-            
+
             // Force regenerate with AI - pass gradeLevel and student context
             const geminiResults = await analyzeAssessmentWithGemini(
-                answers, 
-                stream, 
-                questionBanks, 
+                answers,
+                stream,
+                questionBanks,
                 {}, // Empty timings in retry
                 storedGradeLevel, // Pass grade level for proper scoring
                 null, // preCalculatedScores (not available in retry)
                 studentContext // Pass student context for enhanced recommendations
             );
-            
+
             if (!geminiResults) {
                 throw new Error('AI analysis returned no results');
             }
-            
+
             // Apply validation to correct RIASEC topThree and detect aptitude patterns
             const validatedResults = applyValidation(geminiResults, answers, sectionTimings);
-            
+
             // ✅ Save to database only (no localStorage)
             try {
                 const { data: { user } } = await supabase.auth.getUser();
@@ -1141,18 +1158,18 @@ export const useAssessmentResults = () => {
                         // Update the existing result with new AI analysis
                         const { error: updateError } = await supabase
                             .from('personal_assessment_results')
-                            .update({ 
+                            .update({
                                 gemini_results: validatedResults,
                                 updated_at: new Date().toISOString()
                             })
                             .eq('id', latestResult.id);
-                        
+
                         if (updateError) {
                             console.warn('Could not update database result:', updateError.message);
                         } else {
                             console.log('✅ Database result updated with regenerated AI analysis');
                         }
-                        
+
                         // Save course recommendations
                         if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
                             try {
@@ -1171,38 +1188,50 @@ export const useAssessmentResults = () => {
             } catch (dbError) {
                 console.log('Could not update database:', dbError.message);
             }
-            
+
             // Update state with new results
             setResults(validatedResults);
+            setError(null); // Clear error only on success
             setRetryCompleted(true); // Mark retry as completed to prevent re-triggering
             console.log('✅ AI analysis regenerated successfully');
-            
+
         } catch (e) {
             console.error('Regeneration failed:', e);
             setError(e.message || 'Failed to regenerate report. Please try again.');
         } finally {
             setRetrying(false);
+            setLoading(false); // Ensure loading screen is dismissed
         }
-    }, [searchParams, gradeLevel]); // Add dependencies
+    }, [searchParams, gradeLevel, studentInfo.grade, studentInfo.courseName]); // Use specific fields instead of whole object
 
     useEffect(() => {
         loadResults();
-    }, [navigate]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams.get('attemptId')]); // Only run when attemptId changes
 
     // Auto-retry effect: Trigger handleRetry when autoRetry flag is set
     useEffect(() => {
-        if (autoRetry && !retrying) {
+        if (autoRetry && !retrying && !retryCompleted) {
             console.log('🤖 Auto-retry triggered - calling handleRetry...');
+            console.log('   autoRetry:', autoRetry);
+            console.log('   retrying:', retrying);
+            console.log('   retryCompleted:', retryCompleted);
             setAutoRetry(false); // Reset flag immediately to prevent loops
-            
+
             // Add a small delay to ensure state updates have propagated
             const retryTimer = setTimeout(() => {
+                console.log('⏰ Executing handleRetry after delay...');
                 handleRetry();
             }, 100);
-            
+
             return () => clearTimeout(retryTimer);
+        } else if (autoRetry) {
+            console.log('⚠️ Auto-retry NOT triggered - conditions not met:');
+            console.log('   autoRetry:', autoRetry);
+            console.log('   retrying:', retrying);
+            console.log('   retryCompleted:', retryCompleted);
         }
-    }, [autoRetry, retrying, handleRetry]);
+    }, [autoRetry, retrying, retryCompleted]); // Remove handleRetry from dependencies to prevent cleanup
 
     // Update roll number type when grade level changes to after12/after10
     useEffect(() => {
