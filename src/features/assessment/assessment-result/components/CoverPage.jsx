@@ -156,7 +156,7 @@ const BrandingHeader = () => {
 
 /**
  * IllustrationContainer Component
- * Renders an oval-shaped container with Hero background image
+ * Renders a rectangular container with Hero background image
  * @returns {JSX.Element} Illustration container component
  */
 const IllustrationContainer = () => {
@@ -173,7 +173,7 @@ const IllustrationContainer = () => {
         marginBottom: '20px'
       }}
     >
-      {/* Oval-shaped illustration container with Hero background */}
+      {/* Rectangular illustration container with Hero background */}
       <div
         style={{
           position: 'relative',
@@ -182,12 +182,12 @@ const IllustrationContainer = () => {
           height: '100%'
         }}
       >
-        {/* Oval container with Hero-bg.jpg image */}
+        {/* Rectangle container with Hero-bg.jpg image */}
         <div
           style={{
             width: '100%',
             height: '100%',
-            borderRadius: '50%',
+            borderRadius: '12px',
             overflow: 'hidden',
             border: '3px solid #1e3a5f',
             boxShadow: '0 4px 15px rgba(30, 58, 95, 0.2)'
@@ -199,7 +199,7 @@ const IllustrationContainer = () => {
             style={{
               width: '100%',
               height: '100%',
-              objectFit: 'fill',
+              objectFit: 'cover',
               objectPosition: 'center'
             }}
           />
@@ -318,7 +318,7 @@ const NotebookLabel = ({ studentInfo, description }) => {
           {/* Row 1, Col 1: Student Name */}
           <div>
             <span style={labelStyle}>Student Name</span>
-            <span style={{ valueStyle}}>{safeInfo.name}</span>
+            <span style={valueStyle}>{safeInfo.name}</span>
           </div>
           
           {/* Row 1, Col 2: Registration Number */}
@@ -378,15 +378,27 @@ const NotebookLabel = ({ studentInfo, description }) => {
  * @returns {JSX.Element} Cover page component
  */
 const CoverPage = ({ studentInfo }) => {
-  // Safe student info with fallback values
+  // Debug: Log what studentInfo is received
+  console.log('CoverPage - studentInfo received:', studentInfo);
+  console.log('CoverPage - studentInfo keys:', studentInfo ? Object.keys(studentInfo) : 'null');
+  console.log('CoverPage - grade value:', studentInfo?.grade);
+  console.log('CoverPage - school value:', studentInfo?.school);
+  console.log('CoverPage - college value:', studentInfo?.college);
+  
+  // Safe student info with fallback values and better handling
   const safeStudentInfo = {
     name: studentInfo?.name || '—',
     regNo: studentInfo?.regNo || '—',
-    college: studentInfo?.college || '—',
+    college: studentInfo?.college || studentInfo?.school || '—',
     stream: studentInfo?.stream || '—',
-    grade: studentInfo?.grade || '—',
-    school: studentInfo?.school || '—'
+    // Try multiple possible field names for grade
+    grade: studentInfo?.grade?.toString() || studentInfo?.class || studentInfo?.gradeLevel || '—',
+    // Try multiple possible field names for school
+    school: studentInfo?.school || studentInfo?.college || studentInfo?.schoolName || studentInfo?.institution || '—'
   };
+  
+  // Debug: Log safeStudentInfo
+  console.log('CoverPage - safeStudentInfo created:', safeStudentInfo);
 
   return (
     <div 

@@ -53,9 +53,21 @@ const determineGradeLevel = (gradeLevel, results) => {
  * @param {string} props.gradeLevel - Grade level indicator (optional)
  * @param {Object} props.riasecNames - RIASEC code to name mapping (optional)
  * @param {Object} props.traitNames - Trait code to name mapping (optional)
+ * @param {Array} props.courseRecommendations - Course/program recommendations (optional)
+ * @param {Object} props.streamRecommendation - Stream recommendation for after10 students (optional)
+ * @param {Object} props.studentAcademicData - Student academic data (optional)
  * @returns {JSX.Element} - Appropriate grade-level print view component
  */
-const PrintView = ({ results, studentInfo, gradeLevel, riasecNames, traitNames }) => {
+const PrintView = ({ 
+  results, 
+  studentInfo, 
+  gradeLevel, 
+  riasecNames, 
+  traitNames,
+  courseRecommendations,
+  streamRecommendation,
+  studentAcademicData
+}) => {
   // Handle null/undefined results - Requirement 6.4
   if (!results) {
     return (
@@ -77,6 +89,8 @@ const PrintView = ({ results, studentInfo, gradeLevel, riasecNames, traitNames }
         results={results}
         studentInfo={studentInfo}
         riasecNames={riasecNames}
+        streamRecommendation={streamRecommendation}
+        studentAcademicData={studentAcademicData}
       />
     );
   }
@@ -88,6 +102,9 @@ const PrintView = ({ results, studentInfo, gradeLevel, riasecNames, traitNames }
         studentInfo={studentInfo}
         riasecNames={riasecNames}
         traitNames={traitNames}
+        courseRecommendations={courseRecommendations}
+        streamRecommendation={streamRecommendation}
+        studentAcademicData={studentAcademicData}
       />
     );
   }
@@ -99,6 +116,8 @@ const PrintView = ({ results, studentInfo, gradeLevel, riasecNames, traitNames }
       studentInfo={studentInfo}
       riasecNames={riasecNames}
       traitNames={traitNames}
+      courseRecommendations={courseRecommendations}
+      studentAcademicData={studentAcademicData}
     />
   );
 };

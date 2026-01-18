@@ -19,9 +19,17 @@ import Watermarks, { DataPrivacyNotice, ReportDisclaimer, RepeatingHeader, Repea
  * @param {Object} props.results - Assessment results data
  * @param {Object} props.studentInfo - Student information
  * @param {Object} props.riasecNames - RIASEC code to name mapping (optional)
+ * @param {Object} props.streamRecommendation - Stream recommendation for after10 students (optional)
+ * @param {Object} props.studentAcademicData - Student academic data (optional)
  * @returns {JSX.Element} - Print view component
  */
-const PrintViewMiddleHighSchool = ({ results, studentInfo, riasecNames }) => {
+const PrintViewMiddleHighSchool = ({ 
+  results, 
+  studentInfo, 
+  riasecNames,
+  streamRecommendation,
+  studentAcademicData
+}) => {
   // Handle null results
   if (!results) {
     return (
@@ -509,7 +517,7 @@ const ProjectsSection = ({ projects }) => {
 
   return (
     <>
-      <h3 style={{ ...printStyles.subTitle, marginTop: '20px' }}>Projects to Try</h3>
+      <h3 style={{ ...printStyles.subTitle, marginTop: '30px' }}>Projects to Try</h3>
       <div style={printStyles.twoCol}>
         {projects.map((project, idx) => (
           <div key={idx} style={printStyles.card}>

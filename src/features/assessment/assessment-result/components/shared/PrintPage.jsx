@@ -36,7 +36,7 @@ const PrintPage = ({ pageNumber, children, isLastPage = false }) => {
         {/* Repeating Header */}
         <div className="print-repeating-header">
           <div className="print-header-row">
-            <div className="print-header-cell">
+            <div className="print-header-cell" style={{ padding: '12mm 12mm 0 12mm' }}>
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -74,7 +74,7 @@ const PrintPage = ({ pageNumber, children, isLastPage = false }) => {
         {/* Main Content Body */}
         <div className="print-table-body">
           <div className="print-content-row">
-            <div className="print-content-cell">
+            <div className="print-content-cell" style={{ padding: '0 12mm' }}>
               {children}
             </div>
           </div>
@@ -83,7 +83,7 @@ const PrintPage = ({ pageNumber, children, isLastPage = false }) => {
         {/* Repeating Footer */}
         <div className="print-repeating-footer">
           <div className="print-footer-row">
-            <div className="print-footer-cell">
+            <div className="print-footer-cell" style={{ padding: '0 12mm 12mm 12mm' }}>
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',

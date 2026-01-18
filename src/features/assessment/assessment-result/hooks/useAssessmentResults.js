@@ -284,6 +284,7 @@ export const useAssessmentResults = () => {
         console.log('🔍 ========== FETCH STUDENT INFO START ==========');
         try {
             const { data: { user } } = await supabase.auth.getUser();
+
             console.log('👤 Authenticated User:', {
                 id: user?.id,
                 email: user?.email,
@@ -316,6 +317,7 @@ export const useAssessmentResults = () => {
                     `)
                     .eq('user_id', user.id)
                     .maybeSingle();
+
 
                 console.log('📦 Student Data Query Result:', {
                     hasData: !!studentData,
@@ -357,6 +359,7 @@ export const useAssessmentResults = () => {
                         if (orgData) {
                             studentData.colleges = { name: orgData.name };
                         }
+                        console.log('📊 fetchStudentInfo - Fetched college name:', orgData?.name);
                     }
                     
                     if (studentData.school_id) {
