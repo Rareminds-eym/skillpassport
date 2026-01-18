@@ -28,6 +28,51 @@
  */
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Extract the parent stream category from a specific stream
+ * Examples:
+ * - science_pcmb → science
+ * - arts_psychology → arts
+ * - commerce_maths → commerce
+ * - ANIMATION → null (not a valid stream)
+ */
+const extractStreamCategory = (stream) => {
+  if (!stream) return null;
+  const normalized = stream.toLowerCase().trim();
+  
+  // Direct category matches
+  if (normalized === 'science' || normalized === 'commerce' || normalized === 'arts') {
+    return normalized;
+  }
+  
+  // Extract category from stream variants
+  if (normalized.startsWith('science_') || ['pcmb', 'pcms', 'pcm', 'pcb'].includes(normalized)) {
+    return 'science';
+  }
+  if (normalized.startsWith('commerce_') || normalized.includes('commerce')) {
+    return 'commerce';
+  }
+  if (normalized.startsWith('arts_') || normalized === 'humanities') {
+    return 'arts';
+  }
+  
+  // Not a valid stream category
+  return null;
+};
+
+/**
+ * Check if a stream value is a valid stream category (not a specific program name)
+ * Valid categories: science, commerce, arts, and their variants (pcmb, pcms, etc.)
+ * Invalid: ANIMATION, B.Sc, BBA, etc. (specific program names)
+ */
+const isValidStreamCategory = (stream) => {
+  return extractStreamCategory(stream) !== null;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // COMPREHENSIVE COURSE KNOWLEDGE BASE
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -645,31 +690,42 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
     // Skip filtering if stream is invalid/placeholder
     if (normalizedStream === 'n/a' || normalizedStream === '—' || normalizedStream === '') {
       console.log('⚠️ Invalid stream value, skipping filter:', studentStream);
-    } else {
-      console.log(`🎯 Filtering programs by student stream: ${normalizedStream}`);
+    } 
+    // Extract parent category from stream (e.g., science_pcmb → science)
+    else {
+      const streamCategory = extractStreamCategory(normalizedStream);
       
-      filteredCourses = courseRecommendations.filter(course => {
-        const courseId = course.courseId?.toLowerCase() || '';
-        const courseProfile = COURSE_KNOWLEDGE_BASE[courseId];
+      if (streamCategory) {
+        console.log(`🎯 Filtering programs by stream category: ${streamCategory} (from ${studentStream})`);
         
-        if (!courseProfile) return true; // Keep unknown courses
+        filteredCourses = courseRecommendations.filter(course => {
+          const courseId = course.courseId?.toLowerCase() || '';
+          const courseProfile = COURSE_KNOWLEDGE_BASE[courseId];
+          
+          if (!courseProfile) return true; // Keep unknown courses
+          
+          const courseStream = courseProfile.stream?.toLowerCase();
+          const matches = courseStream === streamCategory;
+          
+          if (!matches) {
+            console.log(`   ❌ Filtered out: ${course.courseName} (${courseStream} ≠ ${streamCategory})`);
+          } else {
+            console.log(`   ✅ Keeping: ${course.courseName} (${courseStream} = ${streamCategory})`);
+          }
+          
+          return matches;
+        });
         
-        const courseStream = courseProfile.stream?.toLowerCase();
-        const matches = courseStream === normalizedStream;
+        console.log(`   📊 Filtered from ${courseRecommendations.length} to ${filteredCourses.length} programs`);
         
-        if (!matches) {
-          console.log(`   ❌ Filtered out: ${course.courseName} (${courseStream} ≠ ${normalizedStream})`);
+        // If no courses match the stream, return empty array
+        if (filteredCourses.length === 0) {
+          console.log('   ⚠️ No programs match student stream category - returning empty array');
+          return [];
         }
-        
-        return matches;
-      });
-      
-      console.log(`   ✅ Filtered from ${courseRecommendations.length} to ${filteredCourses.length} programs`);
-      
-      // If no courses match the stream, return empty array
-      if (filteredCourses.length === 0) {
-        console.log('   ⚠️ No programs match student stream - returning empty array');
-        return [];
+      } else {
+        // Stream is a specific program name (like ANIMATION, B.Sc, BBA) - don't filter
+        console.log(`⚠️ Stream "${studentStream}" is not a valid category - skipping filter (showing all programs)`);
       }
     }
   } else {

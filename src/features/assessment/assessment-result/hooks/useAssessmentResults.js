@@ -858,12 +858,42 @@ export const useAssessmentResults = () => {
         }
 
         // Fallback to localStorage (legacy mode)
-        const answersJson = localStorage.getItem('assessment_answers');
+        let answersJson = localStorage.getItem('assessment_answers');
         const geminiResultsJson = localStorage.getItem('assessment_gemini_results');
-        const stream = localStorage.getItem('assessment_stream');
-        const storedGradeLevel = localStorage.getItem('assessment_grade_level');
+        let stream = localStorage.getItem('assessment_stream');
+        let storedGradeLevel = localStorage.getItem('assessment_grade_level');
+
+        // CRITICAL FIX: If localStorage is empty, try to load answers from database
+        // This handles cases where localStorage was cleared (refresh, different device, etc.)
+        if (!answersJson && attemptId) {
+            console.log('📊 localStorage empty, attempting to load answers from database...');
+            try {
+                const attempt = await assessmentService.getAttemptWithResults(attemptId);
+                if (attempt?.all_responses && Object.keys(attempt.all_responses).length > 0) {
+                    answersJson = JSON.stringify(attempt.all_responses);
+                    console.log('✅ Loaded answers from database:', Object.keys(attempt.all_responses).length, 'answers');
+                    
+                    // Also restore stream and grade level from attempt if not in localStorage
+                    if (!stream && attempt.stream_id) {
+                        stream = attempt.stream_id;
+                        localStorage.setItem('assessment_stream', attempt.stream_id);
+                        console.log('✅ Restored stream from database:', attempt.stream_id);
+                    }
+                    if (!storedGradeLevel && attempt.grade_level) {
+                        storedGradeLevel = attempt.grade_level;
+                        localStorage.setItem('assessment_grade_level', attempt.grade_level);
+                        console.log('✅ Restored grade level from database:', attempt.grade_level);
+                    }
+                } else {
+                    console.warn('⚠️ Database attempt has no answers in all_responses');
+                }
+            } catch (dbError) {
+                console.error('❌ Error loading answers from database:', dbError);
+            }
+        }
 
         if (!answersJson) {
+            console.error('❌ No answers found in localStorage or database');
             navigate('/student/assessment/test');
             return;
         }
@@ -1037,9 +1067,16 @@ export const useAssessmentResults = () => {
                         if (user) {
                             // First, check if there's a completed result that needs AI analysis
                             const latestResult = await assessmentService.getLatestResult(user.id);
-                            if (latestResult && !latestResult.gemini_results) {
+                            
+                            // CRITICAL FIX: Check if result needs AI update
+                            // Update if: 1) No gemini_results, OR 2) gemini_results exists but RIASEC scores are empty
+                            const needsUpdate = !latestResult?.gemini_results || 
+                                !latestResult.gemini_results.riasec?.scores ||
+                                Object.values(latestResult.gemini_results.riasec.scores).every(score => score === 0);
+                            
+                            if (latestResult && needsUpdate) {
                                 // Update the existing result with AI analysis
-                                console.log('📊 Updating completed result with AI analysis');
+                                console.log('📊 Updating completed result with AI analysis (RIASEC scores were empty)');
                                 
                                 // Apply grade-level specific field filtering (same as assessmentService.js)
                                 const isSimplifiedAssessment = effectiveGradeLevel === 'middle' || effectiveGradeLevel === 'highschool';
@@ -1079,6 +1116,8 @@ export const useAssessmentResults = () => {
                                 };
                                 
                                 console.log('📊 Update data (grade:', effectiveGradeLevel, ', simplified:', isSimplifiedAssessment, '):');
+                                console.log('  riasec_scores:', updateData.riasec_scores);
+                                console.log('  riasec_code:', updateData.riasec_code);
                                 console.log('  work_values_scores:', updateData.work_values_scores, isSimplifiedAssessment ? '(excluded for simplified)' : '');
                                 console.log('  employability_scores:', updateData.employability_scores, isSimplifiedAssessment ? '(excluded for simplified)' : '');
                                 console.log('  knowledge_score:', updateData.knowledge_score, isSimplifiedAssessment ? '(excluded for simplified)' : '');
@@ -1090,8 +1129,11 @@ export const useAssessmentResults = () => {
                                 
                                 if (updateError) {
                                     console.warn('Could not update database result:', updateError.message);
+                                    console.error('Update error details:', updateError);
                                 } else {
                                     console.log('✅ Database result updated with AI analysis');
+                                    console.log('   Updated result ID:', latestResult.id);
+                                    console.log('   RIASEC scores saved:', updateData.riasec_scores);
                                 }
                                 
                                 // Save course recommendations

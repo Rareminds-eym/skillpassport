@@ -7,9 +7,10 @@ import { generateAnswersHash } from '../utils/hash';
 import { buildMiddleSchoolPrompt } from './middleSchool';
 import { buildHighSchoolPrompt } from './highSchool';
 import { buildHigherSecondaryPrompt } from './higherSecondary';
+import { buildAfter12Prompt } from './after12';
 import { buildCollegePrompt } from './college';
 
-export type GradeLevel = 'middle' | 'highschool' | 'higher_secondary' | 'after12' | 'after10';
+export type GradeLevel = 'middle' | 'highschool' | 'higher_secondary' | 'after12' | 'after10' | 'college';
 
 /**
  * Build the appropriate analysis prompt based on grade level
@@ -30,12 +31,17 @@ export function buildAnalysisPrompt(assessmentData: AssessmentData): string {
     return buildHighSchoolPrompt(assessmentData, answersHash);
   }
 
-  // Higher secondary (grades 11-12) - NEW: Separate prompt with all 6 sections required
+  // Higher secondary (grades 11-12) - Separate prompt with all 6 sections required
   if (gradeLevel === 'higher_secondary') {
     return buildHigherSecondaryPrompt(assessmentData, answersHash);
   }
 
-  // College (after12) or After 10th (after10)
+  // After 12th (college-bound) - NEW: Separate prompt with all 6 sections required
+  if (gradeLevel === 'after12') {
+    return buildAfter12Prompt(assessmentData, answersHash);
+  }
+
+  // College (university students) or After 10th (after10) - fallback to college prompt
   return buildCollegePrompt(assessmentData, answersHash);
 }
 
@@ -66,4 +72,5 @@ CRITICAL REQUIREMENTS:
 export { buildMiddleSchoolPrompt } from './middleSchool';
 export { buildHighSchoolPrompt } from './highSchool';
 export { buildHigherSecondaryPrompt } from './higherSecondary';
+export { buildAfter12Prompt } from './after12';
 export { buildCollegePrompt } from './college';
