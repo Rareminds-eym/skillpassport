@@ -33,9 +33,20 @@ import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
  * @param {Object} props.studentInfo - Student information
  * @param {Object} props.riasecNames - RIASEC code to name mapping (optional)
  * @param {Object} props.traitNames - Big Five trait names mapping (optional)
+ * @param {Array} props.courseRecommendations - Course/program recommendations (optional)
+ * @param {Object} props.streamRecommendation - Stream recommendation for after10 students (optional)
+ * @param {Object} props.studentAcademicData - Student academic data (optional)
  * @returns {JSX.Element} - Print view component
  */
-const PrintViewHigherSecondary = ({ results, studentInfo, riasecNames, traitNames }) => {
+const PrintViewHigherSecondary = ({ 
+  results, 
+  studentInfo, 
+  riasecNames, 
+  traitNames,
+  courseRecommendations,
+  streamRecommendation,
+  studentAcademicData
+}) => {
   // Handle null results
   if (!results) {
     return (
@@ -70,63 +81,107 @@ const PrintViewHigherSecondary = ({ results, studentInfo, riasecNames, traitName
       {/* Watermarks */}
       <Watermarks />
 
-      {/* Table-based structure for repeating header/footer on every page */}
-      <table className="print-table-wrapper" style={{ width: '100%', borderCollapse: 'collapse' }}>
-        {/* Repeating Header - appears on every page except cover */}
-        <RepeatingHeader />
+      {/* Paginated Content - Each PrintPage has its own header/footer */}
+      <div className="print-pages">
+        {/* Page 1: Profile Snapshot & Interest Profile */}
+        <PrintPage pageNumber={1}>
+          <DataPrivacyNotice />
+          <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
+          <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
+        </PrintPage>
 
-        {/* Repeating Footer - appears on every page except cover */}
-        <RepeatingFooter />
+        {/* Page 2: Cognitive Abilities */}
+        <PrintPage pageNumber={2}>
+          {aptitude && (
+            <CognitiveAbilitiesSection aptitude={aptitude} />
+          )}
+        </PrintPage>
 
-        {/* Main Content Body */}
-        <tbody className="print-table-body">
-          <tr className="print-content-row">
-            <td className="print-content-cell" style={{ padding: '0' }}>
-              {/* Data Privacy Notice */}
-              <DataPrivacyNotice />
+        {/* Page 3: Big Five Personality & Work Values */}
+        <PrintPage pageNumber={3}>
+          {bigFive && (
+            <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
+          )}
+          {workValues && (
+            <WorkValuesSection workValues={workValues} />
+          )}
+        </PrintPage>
 
-              {/* Section 1: Student Profile Snapshot */}
-              <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
-              <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
+        {/* Page 4: Career Fit Analysis */}
+        <PrintPage pageNumber={4}>
+          {careerFit && (
+            <CareerFitAnalysisSection careerFit={careerFit} />
+          )}
+        </PrintPage>
 
-              {/* Section 2: Cognitive Abilities */}
-              {aptitude && (
-                <div style={{ pageBreakBefore: 'auto' }}>
-                  <CognitiveAbilitiesSection aptitude={aptitude} />
-                </div>
-              )}
+        {/* Page 5: Skill Gap & Development Plan */}
+        <PrintPage pageNumber={5}>
+          {skillGap && (
+            <SkillGapDevelopmentSection skillGap={skillGap} />
+          )}
+        </PrintPage>
 
-              {/* Section 3: Big Five Personality */}
-              {bigFive && (
-                <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
-              )}
+        {/* Page 6: Development Roadmap */}
+        <PrintPage pageNumber={6}>
+          {roadmap && (
+            <DevelopmentRoadmapSection roadmap={roadmap} />
+          )}
+        </PrintPage>
 
-              {/* Section 4: Work Values */}
-              {workValues && (
-                <WorkValuesSection workValues={workValues} />
-              )}
+        {/* Page 7: Stream Recommendation (if available) */}
+        {streamRecommendation && streamRecommendation.recommendedStream && (
+          <PrintPage pageNumber={7}>
+            <StreamRecommendationSection streamRecommendation={streamRecommendation} />
+          </PrintPage>
+        )}
 
-              {/* Section 5: Career Fit Analysis */}
-              {careerFit && (
-                <CareerFitAnalysisSection careerFit={careerFit} />
-              )}
+        {/* Page 8 (or 7 if no stream): Course Recommendations (if available) */}
+        {courseRecommendations && courseRecommendations.length > 0 && (
+          <PrintPage pageNumber={streamRecommendation && streamRecommendation.recommendedStream ? 8 : 7}>
+            <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
+          </PrintPage>
+        )}
 
-              {/* Section 6: Skill Gap & Development Plan */}
-              {skillGap && (
-                <SkillGapDevelopmentSection skillGap={skillGap} />
-              )}
+        {/* Final Page: Disclaimer */}
+        <PrintPage pageNumber={
+          (streamRecommendation && streamRecommendation.recommendedStream ? 1 : 0) +
+          (courseRecommendations && courseRecommendations.length > 0 ? 1 : 0) + 6
+        }>
+          <ReportDisclaimer />
+        </PrintPage>
+      </div>
 
-              {/* Section 7: Development Roadmap */}
-              {roadmap && (
-                <DevelopmentRoadmapSection roadmap={roadmap} />
-              )}
-
-              {/* Report Disclaimer */}
-              <ReportDisclaimer />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      {/* Screen-only continuous content (hidden in print) */}
+      <div className="print-content" style={{ position: 'relative', zIndex: 1, paddingBottom: '70px' }}>
+        <DataPrivacyNotice />
+        <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
+        <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
+        {aptitude && (
+          <CognitiveAbilitiesSection aptitude={aptitude} />
+        )}
+        {bigFive && (
+          <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
+        )}
+        {workValues && (
+          <WorkValuesSection workValues={workValues} />
+        )}
+        {careerFit && (
+          <CareerFitAnalysisSection careerFit={careerFit} />
+        )}
+        {skillGap && (
+          <SkillGapDevelopmentSection skillGap={skillGap} />
+        )}
+        {roadmap && (
+          <DevelopmentRoadmapSection roadmap={roadmap} />
+        )}
+        {streamRecommendation && streamRecommendation.recommendedStream && (
+          <StreamRecommendationSection streamRecommendation={streamRecommendation} />
+        )}
+        {courseRecommendations && courseRecommendations.length > 0 && (
+          <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
+        )}
+        <ReportDisclaimer />
+      </div>
     </div>
   );
 };
@@ -720,7 +775,7 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
 
       {/* Projects (if available) */}
       {roadmap.projects && roadmap.projects.length > 0 && (
-        <div style={{ marginTop: '15px' }}>
+        <div style={{ marginTop: '30px' }}>
           <h3 style={printStyles.subTitle}>Recommended Projects</h3>
           <div style={printStyles.twoCol}>
             {roadmap.projects.map((project, idx) => (
@@ -738,6 +793,206 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
           </div>
         </div>
       )}
+    </>
+  );
+};
+
+/**
+ * StreamRecommendationSection Component
+ * Renders stream recommendation for after 10th students
+ */
+const StreamRecommendationSection = ({ streamRecommendation }) => {
+  if (!streamRecommendation || !streamRecommendation.recommendedStream) return null;
+
+  return (
+    <>
+      <h2 style={printStyles.sectionTitle}>11th/12th Stream Recommendation</h2>
+      <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '15px', lineHeight: '1.5' }}>
+        Based on your interests, aptitudes, and academic performance, here is your recommended stream for grades 11-12:
+      </p>
+
+      <div style={{ 
+        ...printStyles.card, 
+        border: '2px solid #3b82f6',
+        backgroundColor: '#eff6ff',
+        marginBottom: '15px'
+      }}>
+        <div style={{ 
+          fontWeight: 'bold', 
+          fontSize: '14px', 
+          color: '#1e40af', 
+          marginBottom: '8px',
+          textAlign: 'center'
+        }}>
+          Recommended Stream: {streamRecommendation.recommendedStream}
+        </div>
+
+        {streamRecommendation.matchScore && (
+          <div style={{ 
+            fontSize: '11px', 
+            color: '#059669',
+            fontWeight: '600',
+            textAlign: 'center',
+            marginBottom: '10px'
+          }}>
+            Match Score: {Math.round(streamRecommendation.matchScore)}%
+          </div>
+        )}
+
+        {streamRecommendation.reasoning && (
+          <p style={{ 
+            fontSize: '9px', 
+            color: '#4b5563', 
+            lineHeight: '1.5',
+            margin: '0'
+          }}>
+            {streamRecommendation.reasoning}
+          </p>
+        )}
+      </div>
+
+      {/* Alternative Streams */}
+      {streamRecommendation.alternatives && streamRecommendation.alternatives.length > 0 && (
+        <div style={{ marginTop: '15px' }}>
+          <h3 style={printStyles.subTitle}>Alternative Stream Options</h3>
+          {streamRecommendation.alternatives.map((alt, index) => (
+            <div key={index} style={{ 
+              ...printStyles.card, 
+              marginBottom: '10px',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div style={{ 
+                fontWeight: 'bold', 
+                fontSize: '11px', 
+                color: '#1e293b', 
+                marginBottom: '4px'
+              }}>
+                {alt.stream}
+                {alt.matchScore && (
+                  <span style={{ 
+                    fontSize: '9px', 
+                    color: '#059669',
+                    marginLeft: '8px'
+                  }}>
+                    ({Math.round(alt.matchScore)}% match)
+                  </span>
+                )}
+              </div>
+              {alt.reasoning && (
+                <p style={{ 
+                  fontSize: '9px', 
+                  color: '#4b5563', 
+                  lineHeight: '1.5',
+                  margin: '0'
+                }}>
+                  {alt.reasoning}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+};
+
+/**
+ * CourseRecommendationsSection Component
+ * Renders recommended degree programs/courses
+ */
+const CourseRecommendationsSection = ({ courseRecommendations }) => {
+  if (!courseRecommendations || courseRecommendations.length === 0) return null;
+
+  const topCourses = courseRecommendations.slice(0, 5);
+
+  return (
+    <>
+      <h2 style={printStyles.sectionTitle}>Recommended Degree Programs</h2>
+      <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '15px', lineHeight: '1.5' }}>
+        Based on your assessment results and chosen stream, here are the top degree programs for you:
+      </p>
+
+      {topCourses.map((course, index) => (
+        <div key={index} style={{ 
+          ...printStyles.card, 
+          marginBottom: '12px',
+          border: index === 0 ? '2px solid #3b82f6' : '1px solid #e5e7eb',
+          backgroundColor: index === 0 ? '#eff6ff' : '#ffffff'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <div style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              backgroundColor: index === 0 ? '#3b82f6' : index === 1 ? '#60a5fa' : '#93c5fd',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold',
+              fontSize: '12px',
+              flexShrink: 0
+            }}>
+              {index + 1}
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <div style={{ 
+                fontWeight: 'bold', 
+                fontSize: '11px', 
+                color: '#1e293b', 
+                marginBottom: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                {course.courseName}
+                {index === 0 && (
+                  <span style={{
+                    fontSize: '8px',
+                    backgroundColor: '#fbbf24',
+                    color: '#78350f',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    fontWeight: 'bold'
+                  }}>
+                    TOP PICK
+                  </span>
+                )}
+              </div>
+
+              {course.category && (
+                <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '6px' }}>
+                  Category: {course.category}
+                </div>
+              )}
+
+              <div style={{ fontSize: '9px', color: '#059669', fontWeight: '600', marginBottom: '6px' }}>
+                Match Score: {Math.round(course.matchScore)}%
+              </div>
+
+              {course.description && (
+                <p style={{ fontSize: '9px', color: '#4b5563', lineHeight: '1.5', margin: '0 0 8px 0' }}>
+                  {course.description}
+                </p>
+              )}
+
+              {course.reasons && course.reasons.length > 0 && (
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}>
+                    Why this program suits you:
+                  </div>
+                  <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '8px', color: '#4b5563', lineHeight: '1.5' }}>
+                    {course.reasons.slice(0, 3).map((reason, idx) => (
+                      <li key={idx}>{reason}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
     </>
   );
 };

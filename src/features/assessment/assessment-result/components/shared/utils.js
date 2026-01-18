@@ -91,4 +91,6 @@ export const getSafeStudentInfo = (studentInfo) => ({
   regNo: studentInfo?.regNo || '—',
   college: studentInfo?.college || '—',
   stream: studentInfo?.stream || '—',
+  grade: studentInfo?.grade || '—',
+  school: studentInfo?.school || studentInfo?.college || '—',
 });

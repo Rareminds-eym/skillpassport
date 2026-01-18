@@ -17,7 +17,7 @@ const PrintStyles = () => (
       /* Validates: Requirements 4.1, 4.2 */
       @page {
         size: A4;
-        margin: 0;
+        margin: 15mm 12mm;
       }
       
       /* First page (cover page) specific rules */
@@ -105,7 +105,7 @@ const PrintStyles = () => (
         
         .print-content-cell {
           display: table-cell;
-          padding: 0;
+          padding: 15mm 12mm;
         }
         
         /* Notebook label print styles */

@@ -51,6 +51,7 @@ import { LoadingScreen } from './components/screens/LoadingScreen';
 import { AnalyzingScreen } from './components/screens/AnalyzingScreen';
 import { ProgressHeader } from './components/layout/ProgressHeader';
 import { QuestionLayout } from './components/layout/QuestionLayout';
+import { TestModeControls } from './components/layout/TestModeControls';
 
 // Shared Components (from parent assessment feature)
 // @ts-ignore - JSX components
@@ -525,38 +526,79 @@ const AssessmentTestPage: React.FC = () => {
   
   // Timer effects
   useEffect(() => {
-    if (flow.showSectionIntro || flow.showSectionComplete || flow.isSubmitting) return;
+    console.log('⏱️ Timer useEffect triggered:', {
+      showSectionIntro: flow.showSectionIntro,
+      showSectionComplete: flow.showSectionComplete,
+      isSubmitting: flow.isSubmitting,
+      currentSectionIndex: flow.currentSectionIndex,
+      elapsedTime: flow.elapsedTime,
+      sectionsLength: sections.length
+    });
+    
+    if (flow.showSectionIntro || flow.showSectionComplete || flow.isSubmitting) {
+      console.log('⏱️ Timer BLOCKED - Early return due to:', {
+        showSectionIntro: flow.showSectionIntro,
+        showSectionComplete: flow.showSectionComplete,
+        isSubmitting: flow.isSubmitting
+      });
+      return;
+    }
     
     const currentSection = sections[flow.currentSectionIndex];
-    if (!currentSection) return;
+    if (!currentSection) {
+      console.log('⏱️ Timer BLOCKED - No current section');
+      return;
+    }
     
-    // Elapsed time counter for non-timed sections (including adaptive sections)
-    // Adaptive sections need elapsed time tracking for section timing records
-    if (!currentSection.isTimed) {
+    console.log('⏱️ Timer ACTIVE - Section:', {
+      sectionId: currentSection.id,
+      sectionTitle: currentSection.title,
+      isTimed: currentSection.isTimed,
+      timeRemaining: flow.timeRemaining,
+      elapsedTime: flow.elapsedTime
+    });
+    
+    // Elapsed time counter for non-timed sections OR timed sections without timeRemaining initialized
+    // This handles aptitude/knowledge sections that are marked as timed but use per-question timers instead
+    if (!currentSection.isTimed || flow.timeRemaining === null) {
+      console.log('⏱️ Starting elapsed time counter (non-timed or timeRemaining not set)');
       const interval = setInterval(() => {
+        console.log('⏱️ Elapsed time tick:', flow.elapsedTime, '→', flow.elapsedTime + 1);
         flow.setElapsedTime(flow.elapsedTime + 1);
       }, 1000);
-      return () => clearInterval(interval);
+      return () => {
+        console.log('⏱️ Cleaning up elapsed time counter');
+        clearInterval(interval);
+      };
     }
     
     // Countdown timer for timed sections
     if (currentSection.isTimed && flow.timeRemaining !== null && flow.timeRemaining > 0) {
+      console.log('⏱️ Starting countdown timer for timed section');
       const interval = setInterval(() => {
+        console.log('⏱️ Countdown tick:', flow.timeRemaining, '→', flow.timeRemaining! - 1);
         flow.setTimeRemaining(flow.timeRemaining! - 1);
       }, 1000);
-      return () => clearInterval(interval);
+      return () => {
+        console.log('⏱️ Cleaning up countdown timer');
+        clearInterval(interval);
+      };
     }
     
     // Auto-advance when time runs out
     if (currentSection.isTimed && flow.timeRemaining === 0) {
+      console.log('⏱️ Time expired - auto-advancing');
       handleNextQuestion();
     }
   }, [flow.showSectionIntro, flow.showSectionComplete, flow.isSubmitting, flow.currentSectionIndex, flow.timeRemaining, flow.elapsedTime, sections]);
   
-  // Aptitude per-question timer
+  // Aptitude and Knowledge per-question timer
   useEffect(() => {
     const currentSection = sections[flow.currentSectionIndex];
-    if (!currentSection?.isAptitude || flow.aptitudePhase !== 'individual') return;
+    // Check if this is aptitude individual phase OR knowledge section
+    const hasIndividualTimer = (currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge;
+    
+    if (!hasIndividualTimer) return;
     if (flow.showSectionIntro || flow.showSectionComplete) return;
     
     if (flow.aptitudeQuestionTimer > 0) {
@@ -1056,8 +1098,13 @@ const AssessmentTestPage: React.FC = () => {
     // Reset elapsed time
     flow.setElapsedTime(0);
     
-    // Reset aptitude question timer
+    // Reset aptitude question timer for aptitude section
     if (currentSection?.isAptitude) {
+      flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
+    }
+    
+    // Reset question timer for knowledge section (reuse aptitudeQuestionTimer state)
+    if (currentSection?.isKnowledge) {
       flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
     }
     
@@ -1094,6 +1141,11 @@ const AssessmentTestPage: React.FC = () => {
     
     // Reset aptitude question timer for next question
     if (currentSection?.isAptitude && flow.aptitudePhase === 'individual') {
+      flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
+    }
+    
+    // Reset question timer for knowledge section
+    if (currentSection?.isKnowledge) {
       flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
     }
     
@@ -1204,91 +1256,34 @@ const AssessmentTestPage: React.FC = () => {
       section.questions?.forEach((question: any) => {
         const questionId = `${section.id}_${question.id}`;
         
-        let answer: any;
+        // Handle SJT questions (best/worst)
         if (question.partType === 'sjt') {
           const options = question.options || [];
           if (options.length >= 2) {
-            answer = { best: options[0], worst: options[options.length - 1] };
+            flow.setAnswer(questionId, { best: options[0], worst: options[options.length - 1] });
           }
-        } else if (section.responseScale) {
-          answer = 3;
-        } else if (question.options?.length > 0) {
-          answer = question.correct || question.options[0];
+        } 
+        // Handle RIASEC questions with categoryMapping (multiselect)
+        else if (question.categoryMapping && question.options?.length > 0) {
+          // For RIASEC questions, select 2-3 random options to generate valid scores
+          const numToSelect = Math.min(3, question.options.length);
+          const selectedOptions = question.options.slice(0, numToSelect);
+          flow.setAnswer(questionId, selectedOptions);
+          console.log(`Test Mode: RIASEC question ${questionId} filled with ${numToSelect} options`);
         }
-        
-        if (answer !== undefined) {
-          flow.setAnswer(questionId, answer);
-          allAnswers[questionId] = answer;
-          
-          // IMPORTANT: Also save UUID questions to personal_assessment_responses table
-          // This matches the normal flow behavior
-          if (useDatabase && currentAttempt?.id) {
-            const [sectionId, qId] = questionId.split('_');
-            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(qId);
-            
-            if (isUUID) {
-              // UUID questions (AI-generated) go to personal_assessment_responses table
-              dbSaveResponse(sectionId, qId, answer);
-            }
-          }
+        // Handle rating scale questions (1-5)
+        else if (section.responseScale) {
+          // Use 4 instead of 3 to generate higher scores
+          flow.setAnswer(questionId, 4);
+        } 
+        // Handle multiple choice questions
+        else if (question.options?.length > 0) {
+          flow.setAnswer(questionId, question.correct || question.options[0]);
         }
       });
     });
-    
-    console.log('Test Mode: Auto-filled all answers');
-    console.log('Test Mode: Total answers filled:', Object.keys(allAnswers).length);
-    
-    // Debug: Check if database save conditions are met
-    console.log('Test Mode: Database save check:', {
-      useDatabase,
-      hasCurrentAttempt: !!currentAttempt,
-      currentAttemptId: currentAttempt?.id,
-      hasStudentRecordId: !!studentRecordId,
-      hasGradeLevel: !!flow.gradeLevel,
-      hasStream: !!flow.studentStream
-    });
-    
-    // Create attempt if it doesn't exist yet (for test mode convenience)
-    if (!currentAttempt && studentRecordId && flow.gradeLevel && flow.studentStream) {
-      console.log('Test Mode: No attempt exists, creating one...');
-      try {
-        setUseDatabase(true);
-        await dbStartAssessment(flow.studentStream, flow.gradeLevel);
-        console.log('Test Mode: ✅ Attempt created');
-        
-        // Wait a bit for the attempt to be created
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (err) {
-        console.error('Test Mode: ❌ Failed to create attempt:', err);
-      }
-    }
-    
-    // Save all answers to database (all_responses column)
-    // IMPORTANT: Merge with existing flow.answers to preserve any previously answered questions
-    if (useDatabase && currentAttempt?.id) {
-      console.log('Test Mode: Saving all answers to database...');
-      const mergedAnswers = { ...flow.answers, ...allAnswers };
-      console.log('Test Mode: Total answers (including existing):', Object.keys(mergedAnswers).length);
-      
-      dbUpdateProgress(
-        flow.currentSectionIndex, 
-        flow.currentQuestionIndex, 
-        flow.sectionTimings, 
-        null, 
-        null, 
-        mergedAnswers
-      );
-      console.log('Test Mode: ✅ All answers saved to database');
-    } else {
-      console.warn('Test Mode: ⚠️ NOT saving to database - conditions not met:', {
-        useDatabase,
-        hasCurrentAttempt: !!currentAttempt,
-        currentAttemptId: currentAttempt?.id,
-        reason: !useDatabase ? 'useDatabase is false' : !currentAttempt ? 'no currentAttempt' : 'no attempt ID'
-      });
-      console.warn('Test Mode: 💡 TIP: Click "Start Section" first to create database attempt, then use Auto-Fill All');
-    }
-  }, [sections, flow, useDatabase, currentAttempt, dbUpdateProgress, dbSaveResponse, studentRecordId, dbStartAssessment]);
+    console.log('Test Mode: Auto-filled all answers with valid RIASEC data');
+  }, [sections, flow]);
   
   const skipToSection = useCallback((sectionIndex: number) => {
     console.log(`🚀 skipToSection called: sectionIndex=${sectionIndex}, sections.length=${sections.length}`);
@@ -1311,57 +1306,45 @@ const AssessmentTestPage: React.FC = () => {
       section.questions?.forEach((question: any) => {
         const questionId = `${section.id}_${question.id}`;
         
-        let answer: any;
+        // Handle SJT questions (best/worst)
         if (question.partType === 'sjt') {
           const options = question.options || [];
           if (options.length >= 2) {
-            answer = { best: options[0], worst: options[options.length - 1] };
+            flow.setAnswer(questionId, { best: options[0], worst: options[options.length - 1] });
           }
-        } else if (section.responseScale) {
-          answer = 3;
-        } else if (question.options?.length > 0) {
-          answer = question.correct || question.options[0];
         }
-        
-        if (answer !== undefined) {
-          flow.setAnswer(questionId, answer);
-          allAnswers[questionId] = answer;
-          
-          // IMPORTANT: Also save UUID questions to personal_assessment_responses table
-          // This matches the normal flow behavior
-          if (useDatabase && currentAttempt?.id) {
-            const [sectionId, qId] = questionId.split('_');
-            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(qId);
-            
-            if (isUUID) {
-              // UUID questions (AI-generated) go to personal_assessment_responses table
-              dbSaveResponse(sectionId, qId, answer);
-            }
-          }
+        // Handle RIASEC questions with categoryMapping (multiselect)
+        else if (question.categoryMapping && question.options?.length > 0) {
+          // For RIASEC questions, select 2-3 random options to generate valid scores
+          const numToSelect = Math.min(3, question.options.length);
+          const selectedOptions = question.options.slice(0, numToSelect);
+          flow.setAnswer(questionId, selectedOptions);
+        }
+        // Handle rating scale questions (1-5)
+        else if (section.responseScale) {
+          // Use 4 instead of 3 to generate higher scores
+          flow.setAnswer(questionId, 4);
+        }
+        // Handle multiple choice questions
+        else if (question.options?.length > 0) {
+          flow.setAnswer(questionId, question.correct || question.options[0]);
         }
       });
     });
     
-    // Save all answers to database (all_responses column)
-    // IMPORTANT: Merge with existing flow.answers to preserve any previously answered questions
-    if (useDatabase && currentAttempt?.id && Object.keys(allAnswers).length > 0) {
-      console.log(`Test Mode: Saving ${Object.keys(allAnswers).length} answers to database...`);
-      const mergedAnswers = { ...flow.answers, ...allAnswers };
-      console.log(`Test Mode: Total answers (including existing): ${Object.keys(mergedAnswers).length}`);
-      
-      dbUpdateProgress(
-        sectionIndex, 
-        0, 
-        flow.sectionTimings, 
-        null, 
-        null, 
-        mergedAnswers
-      );
-      console.log('Test Mode: ✅ Answers saved to database');
-    }
-    
+    console.log('📍 About to call flow.jumpToSection');
     // Jump to the target section
     flow.jumpToSection(sectionIndex);
+    
+    console.log('⏰ Scheduling auto-start in 100ms');
+    // Auto-start the section (skip the intro screen) so timer starts immediately
+    // This ensures the elapsed time timer starts counting when using test mode
+    setTimeout(() => {
+      console.log('⏰ Auto-start timeout fired - calling flow.startSection()');
+      flow.startSection();
+      console.log('✅ flow.startSection() called');
+    }, 100);
+    
     console.log(`✅ Test Mode: Skipped to section ${sectionIndex} (${sections[sectionIndex]?.title})`);
   }, [sections, flow, useDatabase, currentAttempt, dbUpdateProgress, dbSaveResponse]);
   
@@ -1559,90 +1542,92 @@ const AssessmentTestPage: React.FC = () => {
       {/* Test Mode Controls (Dev only) */}
       {isDevMode && testMode && (
         <div className="max-w-4xl mx-auto px-4 py-2">
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={autoFillAllAnswers}
-              className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded text-xs font-medium hover:bg-amber-200"
-            >
-              Auto-Fill All
-            </button>
-            <button
-              onClick={() => {
-                // Find aptitude section dynamically
-                const aptitudeIndex = sections.findIndex(s => s.id === 'aptitude' || s.id === 'hs_aptitude_sampling' || s.id === 'adaptive_aptitude');
-                if (aptitudeIndex >= 0) {
-                  skipToSection(aptitudeIndex);
-                } else {
-                  console.warn('❌ Aptitude section not found in sections:', sections.map(s => s.id));
-                }
-              }}
-              className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200"
-              disabled={sections.length === 0}
-            >
-              Skip to Aptitude
-            </button>
-            <button
-              onClick={() => {
-                // Find adaptive section dynamically (renamed from "Skip to Knowledge")
-                const adaptiveIndex = sections.findIndex(s => s.id === 'adaptive_aptitude' || s.id === 'knowledge');
-                if (adaptiveIndex >= 0) {
-                  skipToSection(adaptiveIndex);
-                } else {
-                  console.warn('❌ Adaptive/Knowledge section not found in sections:', sections.map(s => s.id));
-                }
-              }}
-              className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200"
-              disabled={sections.length === 0}
-            >
-              Skip to Adaptive
-            </button>
-            <button
-              onClick={async () => {
-                console.log('🎯 Submit button clicked');
+          <TestModeControls
+            onAutoFillAll={autoFillAllAnswers}
+            onSkipToAptitude={() => {
+              const aptitudeIndex = sections.findIndex(s => s.id === 'aptitude' || s.id === 'hs_aptitude_sampling' || s.id === 'adaptive_aptitude');
+              if (aptitudeIndex >= 0) {
+                skipToSection(aptitudeIndex);
+              } else {
+                console.warn('❌ Aptitude section not found');
+              }
+            }}
+            onSkipToKnowledge={() => {
+              const knowledgeIndex = sections.findIndex(s => s.id === 'knowledge' || s.id === 'adaptive_aptitude');
+              if (knowledgeIndex >= 0) {
+                skipToSection(knowledgeIndex);
+              } else {
+                console.warn('❌ Knowledge section not found');
+              }
+            }}
+            onSkipToSubmit={async () => {
+              console.log('🎯 Submit button clicked');
+              
+              if (sections.length === 0) {
+                console.warn('❌ Cannot submit: sections array is empty');
+                return;
+              }
+              
+              // Enable database mode and create attempt if not already created
+              if (!currentAttempt && studentRecordId) {
+                console.log('📝 Creating database attempt for test mode submission...');
+                setUseDatabase(true);
                 
-                if (sections.length === 0) {
-                  console.warn('❌ Cannot submit: sections array is empty');
-                  return;
-                }
-                
-                // Auto-fill all answers first
-                autoFillAllAnswers();
-                
-                // Use setTimeout to ensure state updates after auto-fill
-                setTimeout(async () => {
-                  console.log('🚀 Auto-fill complete, proceeding to submit...');
+                try {
+                  await dbStartAssessment(flow.studentStream || 'general', flow.gradeLevel || 'after12');
+                  console.log('✅ Database attempt created');
                   
-                  // Mark all sections as complete by setting section timings
-                  const completedTimings: Record<string, number> = {};
-                  sections.forEach((section) => {
-                    if (!flow.sectionTimings[section.id]) {
-                      completedTimings[section.id] = 60; // Default 60 seconds per section
-                    }
-                  });
-                  
-                  if (Object.keys(completedTimings).length > 0) {
-                    flow.setSectionTimings({ ...flow.sectionTimings, ...completedTimings });
+                  // Wait a bit for the attempt to be created
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (err) {
+                  console.error('❌ Failed to create database attempt:', err);
+                }
+              }
+              
+              // Auto-fill all answers first
+              autoFillAllAnswers();
+              
+              // Use setTimeout to ensure state updates after auto-fill
+              setTimeout(async () => {
+                console.log('🚀 Auto-fill complete, proceeding to submit...');
+                
+                // Mark all sections as complete by setting section timings
+                const completedTimings: Record<string, number> = {};
+                sections.forEach((section) => {
+                  if (!flow.sectionTimings[section.id]) {
+                    completedTimings[section.id] = 60;
                   }
-                  
-                  // Jump to last section to trigger submission
-                  const lastSectionIndex = sections.length - 1;
-                  flow.setCurrentSectionIndex(lastSectionIndex);
-                  flow.setCurrentQuestionIndex(0);
-                  flow.setShowSectionIntro(false);
-                  
-                  // Wait for state to update, then trigger submission directly
-                  setTimeout(() => {
-                    console.log('✅ Triggering submission via handleNextSection...');
-                    handleNextSection();
-                  }, 200);
-                }, 100);
-              }}
-              className="px-3 py-1.5 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
-              disabled={sections.length === 0}
-            >
-              Submit
-            </button>
-          </div>
+                });
+                
+                if (Object.keys(completedTimings).length > 0) {
+                  flow.setSectionTimings({ ...flow.sectionTimings, ...completedTimings });
+                }
+                
+                // Jump to last section to trigger submission
+                const lastSectionIndex = sections.length - 1;
+                flow.setCurrentSectionIndex(lastSectionIndex);
+                flow.setCurrentQuestionIndex(0);
+                flow.setShowSectionIntro(false);
+                
+                // Wait for state to update, then trigger submission directly
+                setTimeout(() => {
+                  console.log('✅ Triggering submission via handleNextSection...');
+                  handleNextSection();
+                }, 200);
+              }, 100);
+            }}
+            onExitTestMode={() => setTestMode(false)}
+            gradeLevel={flow.gradeLevel || undefined}
+            studentStream={flow.studentStream || undefined}
+            currentSectionIndex={flow.currentSectionIndex}
+            totalSections={sections.length}
+            aiQuestionsLoading={questionsLoading}
+            aiQuestionsLoaded={aiQuestions ? {
+              aptitude: aiQuestions.aptitude?.length || 0,
+              knowledge: aiQuestions.knowledge?.length || 0
+            } : undefined}
+            sections={sections}
+          />
         </div>
       )}
       
@@ -1706,12 +1691,38 @@ const AssessmentTestPage: React.FC = () => {
                   : (currentSection?.questions?.length || 0)}
                 elapsedTime={flow.elapsedTime}
                 showNoWrongAnswers={!currentSection?.isAptitude && !currentSection?.isAdaptive}
+                perQuestionTimer={((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) ? flow.aptitudeQuestionTimer : null}
+                showPerQuestionTimer={((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) && flow.aptitudeQuestionTimer !== null}
               >
-                {/* Question Number Label */}
-                <div className="text-sm font-semibold text-indigo-600 mb-2">
-                  QUESTION {currentSection?.isAdaptive 
-                    ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1} / ${adaptiveAptitude.progress?.estimatedTotalQuestions || 21}`
-                    : `${flow.currentQuestionIndex + 1} / ${currentSection?.questions?.length || 0}`}
+                {/* Question Number Label with Per-Question Timer */}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-semibold text-indigo-600">
+                    QUESTION {currentSection?.isAdaptive 
+                      ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1} / ${adaptiveAptitude.progress?.estimatedTotalQuestions || 21}`
+                      : `${flow.currentQuestionIndex + 1} / ${currentSection?.questions?.length || 0}`}
+                  </div>
+                  
+                  {/* Per-Question Countdown Timer - Top Right (for aptitude/knowledge sections) */}
+                  {((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) && flow.aptitudeQuestionTimer !== null ? (
+                    <div className={`text-sm font-semibold flex items-center gap-1.5 ${
+                      flow.aptitudeQuestionTimer <= 10 ? 'text-red-600' : 'text-orange-600'
+                    }`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                        <path strokeLinecap="round" strokeWidth="2" d="M12 6v6l4 2"/>
+                      </svg>
+                      <span>Question Time: {Math.floor(flow.aptitudeQuestionTimer / 60)}:{(flow.aptitudeQuestionTimer % 60).toString().padStart(2, '0')}</span>
+                    </div>
+                  ) : (
+                    /* Section Elapsed Time - Top Right (for other sections) */
+                    <div className="text-sm font-medium text-gray-600 flex items-center gap-1.5">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                        <path strokeLinecap="round" strokeWidth="2" d="M12 6v6l4 2"/>
+                      </svg>
+                      <span>Time: {Math.floor(flow.elapsedTime / 60)}:{(flow.elapsedTime % 60).toString().padStart(2, '0')}</span>
+                    </div>
+                  )}
                 </div>
                 
                 <QuestionRenderer

@@ -60,6 +60,18 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
     name: 'Arts & Humanities',
     topics: ['English Literature', 'History concepts', 'Political Science basics', 'Psychology fundamentals', 'Sociology', 'Critical thinking']
   },
+  'arts_psychology': {
+    name: 'Arts with Psychology',
+    topics: ['Psychology fundamentals', 'Sociology basics', 'English Literature', 'Human behavior', 'Social sciences', 'Counseling basics']
+  },
+  'arts_economics': {
+    name: 'Arts with Economics',
+    topics: ['Economics fundamentals', 'Political Science basics', 'English Literature', 'Public policy', 'International relations', 'Governance']
+  },
+  'arts': {
+    name: 'Arts/Humanities General',
+    topics: ['English Literature', 'History concepts', 'Geography basics', 'Critical thinking', 'Communication skills', 'Cultural studies']
+  },
   
   // ═══════════════════════════════════════════════════════════════════════════
   // B.TECH / ENGINEERING SPECIALIZATIONS (College/University)
@@ -933,67 +945,68 @@ export function validateQuestion(question, questionType) {
     if (isClericalQuestion) {
       // Clerical questions use "Same" or "Different"
       const normalized = String(correctAnswer).trim().toLowerCase();
-      if (normalized !== 'same' && normalized !== 'different') {
-        errors.push(`Invalid clerical answer: ${correctAnswer} (expected "Same" or "Different")`);
-      } else {
-        // Capitalize first letter
+      
+      // Handle various formats: "Same", "Different", "Option A", "Option B", "A", "B"
+      if (normalized === 'same' || normalized === 'different') {
+        // Already in correct format
         question.correct = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+      } else if (normalized.includes('option a') || normalized === 'a') {
+        // AI returned "Option A" or "A" - assume first option is the answer
+        // Check what the first option actually is
+        if (question.options && question.options[0]) {
+          const firstOption = String(question.options[0]).trim().toLowerCase();
+          if (firstOption === 'same' || firstOption === 'different') {
+            question.correct = firstOption.charAt(0).toUpperCase() + firstOption.slice(1);
+          } else {
+            // Default to "Same" if we can't determine
+            question.correct = 'Same';
+            console.warn(`⚠️ Clerical question has unclear first option, defaulting to "Same"`);
+          }
+        } else {
+          question.correct = 'Same';
+        }
+      } else if (normalized.includes('option b') || normalized === 'b') {
+        // AI returned "Option B" or "B" - assume second option is the answer
+        if (question.options && question.options[1]) {
+          const secondOption = String(question.options[1]).trim().toLowerCase();
+          if (secondOption === 'same' || secondOption === 'different') {
+            question.correct = secondOption.charAt(0).toUpperCase() + secondOption.slice(1);
+          } else {
+            // Default to "Different" if we can't determine
+            question.correct = 'Different';
+            console.warn(`⚠️ Clerical question has unclear second option, defaulting to "Different"`);
+          }
+        } else {
+          question.correct = 'Different';
+        }
+      } else {
+        errors.push(`Invalid clerical answer: ${correctAnswer} (expected "Same" or "Different")`);
       }
     } else {
       // Regular MCQ questions use A/B/C/D
-      // Normalize correct answer - extract letter from formats like "Option B", "B)", "b", etc.
+      // First try to extract letter from formats like "Option B", "B)", "b", etc.
       const normalized = String(correctAnswer).trim().toUpperCase();
-      const match = normalized.match(/[ABCD]/);
+      const letterMatch = normalized.match(/[ABCD]/);
       
-      if (!match) {
-        // AI might have returned the actual answer text instead of the letter
-        // Try to match it to one of the options
-        if (question.options && Array.isArray(question.options)) {
-          const answerText = String(correctAnswer).trim();
-          
-          // Debug logging
-          console.log(`🔍 Attempting to match answer "${answerText}" to options:`, question.options);
-          
-          const matchingOptionIndex = question.options.findIndex(opt => {
-            const optText = String(opt).trim();
-            // Exact match
-            if (optText === answerText) {
-              console.log(`  ✅ Exact match found: "${optText}" === "${answerText}"`);
-              return true;
-            }
-            // Case-insensitive match
-            if (optText.toLowerCase() === answerText.toLowerCase()) {
-              console.log(`  ✅ Case-insensitive match found: "${optText}" ~= "${answerText}"`);
-              return true;
-            }
-            // Match if option contains the answer
-            if (optText.toLowerCase().includes(answerText.toLowerCase())) {
-              console.log(`  ✅ Contains match found: "${optText}" contains "${answerText}"`);
-              return true;
-            }
-            // Match if answer contains the option (reverse check)
-            if (answerText.toLowerCase().includes(optText.toLowerCase())) {
-              console.log(`  ✅ Reverse contains match found: "${answerText}" contains "${optText}"`);
-              return true;
-            }
-            return false;
-          });
-          
-          if (matchingOptionIndex !== -1) {
-            // Found matching option - convert index to letter
-            const letters = ['A', 'B', 'C', 'D'];
-            question.correct = letters[matchingOptionIndex];
-            console.log(`✅ Auto-corrected answer "${correctAnswer}" to option ${question.correct}`);
-          } else {
-            console.warn(`❌ No match found for answer "${answerText}" in options:`, question.options);
-            errors.push(`Invalid correct answer: ${correctAnswer}`);
-          }
+      if (letterMatch) {
+        // Found a letter, use it
+        question.correct = letterMatch[0];
+      } else if (question.options && Array.isArray(question.options)) {
+        // AI returned the actual answer text, match it against options
+        const answerText = String(correctAnswer).trim();
+        const optionIndex = question.options.findIndex(opt => {
+          const optText = String(opt).trim();
+          return optText === answerText || optText.toLowerCase() === answerText.toLowerCase();
+        });
+        
+        if (optionIndex !== -1 && optionIndex < 4) {
+          // Convert index to letter (0->A, 1->B, 2->C, 3->D)
+          question.correct = String.fromCharCode(65 + optionIndex);
         } else {
           errors.push(`Invalid correct answer: ${correctAnswer}`);
         }
       } else {
-        // Update the question object with normalized answer
-        question.correct = match[0];
+        errors.push(`Invalid correct answer: ${correctAnswer}`);
       }
     }
   }
@@ -1386,7 +1399,7 @@ export async function getSavedQuestionsForStudent(studentId, streamId, questionT
  * Generate Stream Knowledge questions using AI
  * If studentId provided, saves questions for resume functionality
  */
-export async function generateStreamKnowledgeQuestions(streamId, questionCount = 20, studentId = null, attemptId = null, gradeLevel = 'Grade 10') {
+export async function generateStreamKnowledgeQuestions(streamId, questionCount = 20, studentId = null, attemptId = null, gradeLevel = null) {
   // Normalize the stream ID to match our STREAM_KNOWLEDGE_PROMPTS keys
   const normalizedStreamId = normalizeStreamId(streamId);
   const streamInfo = STREAM_KNOWLEDGE_PROMPTS[normalizedStreamId];
@@ -1416,6 +1429,7 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
   }
 
   console.log('🎯 Generating fresh knowledge questions for:', effectiveStreamInfo.name, '(stream:', effectiveStreamId, ')');
+  console.log('📚 Stream topics:', effectiveStreamInfo.topics);
 
   // Use unified question generation API
   const apiUrl = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
@@ -1606,14 +1620,14 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
       const validQuestions = validation.valid;
       console.log(`📊 Validation: ${validQuestions.length} valid, ${validation.invalid.length} invalid`);
       
-      // Check if we have sufficient valid questions
+      // Check if we have sufficient valid questions (80% threshold)
       if (validQuestions.length < questionCount) {
         console.warn(`⚠️ Insufficient valid questions: ${validQuestions.length}/${questionCount}`);
         
-        // If we have at least 80% of expected questions, we can proceed
         const threshold = Math.floor(questionCount * 0.8);
+        
         if (validQuestions.length >= threshold) {
-          console.log(`✅ Proceeding with ${validQuestions.length} questions (>= 80% threshold)`);
+          console.log(`✅ Proceeding with ${validQuestions.length} questions (>= ${Math.floor((threshold/questionCount)*100)}% threshold)`);
           
           // Save valid questions if we have studentId
           if (validQuestions.length > 0 && studentId && !data.cached) {
@@ -1755,8 +1769,13 @@ async function saveAptitudeQuestions(studentId, streamId, attemptId, questions, 
 
 /**
  * Save knowledge questions to database (fallback if API doesn't save)
+ * @param {string} studentId - Student ID
+ * @param {string} streamId - Stream ID
+ * @param {string} attemptId - Assessment attempt ID
+ * @param {Array} questions - Array of question objects
+ * @param {string} gradeLevel - Grade level (e.g., 'higher_secondary', 'after10', 'college')
  */
-async function saveKnowledgeQuestions(studentId, streamId, attemptId, questions, gradeLevel = 'Grade 10') {
+async function saveKnowledgeQuestions(studentId, streamId, attemptId, questions, gradeLevel = null) {
   if (!studentId) {
     console.log('⚠️ No studentId provided, skipping knowledge save');
     return;
@@ -1772,7 +1791,7 @@ async function saveKnowledgeQuestions(studentId, streamId, attemptId, questions,
       attempt_id: attemptId || null,
       questions: questions,
       generated_at: new Date().toISOString(),
-      grade_level: gradeLevel, // Use actual grade level from student
+      grade_level: gradeLevel,
       is_active: true
     }, { onConflict: 'student_id,stream_id,question_type' })
     .select('id');
@@ -1783,7 +1802,12 @@ async function saveKnowledgeQuestions(studentId, streamId, attemptId, questions,
       console.log('ℹ️', errorInfo.message);
       // Continue with in-memory questions - don't throw
     } else {
-      console.log('✅ [Frontend] Knowledge questions saved:', questions.length, 'record:', data);
+      console.log('✅ [Frontend] Knowledge questions saved successfully:', {
+        question_count: questions.length,
+        record_id: data?.[0]?.id,
+        grade_level: gradeLevel,
+        timestamp: new Date().toISOString()
+      });
     }
   } catch (e) {
     const errorInfo = handleDatabaseError(e, 'saving knowledge questions');
@@ -1861,21 +1885,15 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
       console.log(`✅ Using ${aiAptitude.length} AI aptitude questions`);
     }
     
-    // IMPORTANT: Only generate knowledge questions for after12, college, and higher_secondary
-    // after10 students use stream-agnostic assessment (no knowledge section)
-    if (gradeLevel !== 'after10') {
-      // Add delay between API calls to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Generate/load knowledge questions (will use saved if available)
-      const aiKnowledge = await generateStreamKnowledgeQuestions(normalizedStreamId, 20, studentId, attemptId, gradeLevel);
-      
-      if (aiKnowledge && aiKnowledge.length > 0) {
-        questions.knowledge = aiKnowledge;
-        console.log(`✅ Using ${aiKnowledge.length} AI knowledge questions`);
-      }
-    } else {
-      console.log(`⏭️ Skipping knowledge questions for after10 (stream-agnostic assessment)`);
+    // Add delay between API calls to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Generate/load knowledge questions (will use saved if available)
+    const aiKnowledge = await generateStreamKnowledgeQuestions(normalizedStreamId, 20, studentId, attemptId, gradeLevel);
+    
+    if (aiKnowledge && aiKnowledge.length > 0) {
+      questions.knowledge = aiKnowledge;
+      console.log(`✅ Using ${aiKnowledge.length} AI knowledge questions`);
     }
   }
 

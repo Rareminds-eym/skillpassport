@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../../../lib/supabaseClient';
 import * as assessmentService from '../../../../services/assessmentService';
@@ -229,6 +229,7 @@ export const useAssessmentResults = () => {
     const [gradeLevelFromAttempt, setGradeLevelFromAttempt] = useState(false); // Track if grade level was set from attempt
     // Use ref to track grade level from attempt synchronously (avoids race condition with async state updates)
     const gradeLevelFromAttemptRef = useRef(false);
+    const loadedAttemptIdRef = useRef(null); // Track loaded attempt to prevent loop
     const [studentInfo, setStudentInfo] = useState({
         name: '—',
         regNo: '—',
@@ -289,6 +290,7 @@ export const useAssessmentResults = () => {
         console.log('🔍 ========== FETCH STUDENT INFO START ==========');
         try {
             const { data: { user } } = await supabase.auth.getUser();
+
             console.log('👤 Authenticated User:', {
                 id: user?.id,
                 email: user?.email,
@@ -320,6 +322,7 @@ export const useAssessmentResults = () => {
                     `)
                     .eq('user_id', user.id)
                     .maybeSingle();
+
 
                 console.log('📦 Student Data Query Result:', {
                     hasData: !!studentData,
@@ -361,6 +364,7 @@ export const useAssessmentResults = () => {
                         if (orgData) {
                             studentData.colleges = { name: orgData.name };
                         }
+                        console.log('📊 fetchStudentInfo - Fetched college name:', orgData?.name);
                     }
 
                     if (studentData.school_id) {
@@ -476,9 +480,15 @@ export const useAssessmentResults = () => {
                         // Fallback: use college_school_name if available
                         if (studentData.college_school_name && studentData.college_school_name !== '—') {
                             institutionName = toTitleCase(studentData.college_school_name);
-                            // Can't determine if it's school or college, so set both
-                            schoolName = institutionName;
-                            collegeName = institutionName;
+                            // For grade 12 students, treat as school student
+                            if (!isNaN(gradeNum) && gradeNum >= 1 && gradeNum <= 12) {
+                                schoolName = institutionName;
+                                collegeName = '—';
+                            } else {
+                                // Can't determine if it's school or college, so set both
+                                schoolName = institutionName;
+                                collegeName = institutionName;
+                            }
                         }
                     }
 
@@ -741,6 +751,17 @@ export const useAssessmentResults = () => {
 
         // Check if we have an attemptId in URL params (database mode)
         const attemptId = searchParams.get('attemptId');
+
+        // Prevent redundant loops if already loading/loaded this attempt
+        if (attemptId && loadedAttemptIdRef.current === attemptId && results && !loading) {
+            console.log('♻️ Results for attemptId', attemptId, 'already loaded - skipping redundancy');
+            // Ensure loading is false just in case
+            if (loading) setLoading(false);
+            return;
+        }
+
+
+
         console.log('🔥 loadResults called with attemptId:', attemptId);
         console.log('🔥 Full URL search params:', searchParams.toString());
 
@@ -822,14 +843,16 @@ export const useAssessmentResults = () => {
                                 }
                             }
 
+
+                            loadedAttemptIdRef.current = attemptId; // Mark as loaded
                             setLoading(false);
                             return;
                         }
                     } else {
                         // Result exists but no AI analysis - AUTO-GENERATE IT!
 
-                        // Check if we already tried auto-retrying this session
-                        const retryKey = `auto_retry_done_${result.id}`;
+                        // Check if we already tried auto-retrying this session (using attemptId to match handleRetry)
+                        const retryKey = `auto_retry_done_attempt_${attemptId}`;
                         const alreadyRetried = sessionStorage.getItem(retryKey);
 
                         if (retryCompleted || alreadyRetried) {
@@ -861,8 +884,10 @@ export const useAssessmentResults = () => {
                             gradeLevelFromAttemptRef.current = true;
                         }
 
-                        // Mark as attempted to prevent loops on remount
-                        sessionStorage.setItem(retryKey, 'true');
+                        // Store the result ID for use in handleRetry's sessionStorage marker
+                        // NOTE: We do NOT set sessionStorage here anymore - it's set in handleRetry's finally block
+                        // This fixes the React Strict Mode race condition where the component re-mounts
+                        // before handleRetry can complete, causing the second loadResults to skip the retry
 
                         // Set flag to trigger auto-retry (will be handled by useEffect)
                         // Keep loading=true so user sees "Generating Your Report" screen
@@ -959,19 +984,54 @@ export const useAssessmentResults = () => {
             console.log('No database results found:', e.message);
         }
 
-        // ✅ REMOVED: localStorage fallback (database is now single source of truth)
-        // If no database results found, redirect to assessment test
-        console.log('❌ No assessment results found in database');
-        console.log('   Redirecting to assessment test page...');
-        navigate('/student/assessment/test');
-    };
+        // Fallback to localStorage (legacy mode)
+        let answersJson = localStorage.getItem('assessment_answers');
+        const geminiResultsJson = localStorage.getItem('assessment_gemini_results');
+        let stream = localStorage.getItem('assessment_stream');
+        let storedGradeLevel = localStorage.getItem('assessment_grade_level');
 
+        // CRITICAL FIX: If localStorage is empty, try to load answers from database
+        // This handles cases where localStorage was cleared (refresh, different device, etc.)
+        if (!answersJson && attemptId) {
+            console.log('📊 localStorage empty, attempting to load answers from database...');
+            try {
+                const attempt = await assessmentService.getAttemptWithResults(attemptId);
+                if (attempt?.all_responses && Object.keys(attempt.all_responses).length > 0) {
+                    answersJson = JSON.stringify(attempt.all_responses);
+                    console.log('✅ Loaded answers from database:', Object.keys(attempt.all_responses).length, 'answers');
+                    
+                    // Also restore stream and grade level from attempt if not in localStorage
+                    if (!stream && attempt.stream_id) {
+                        stream = attempt.stream_id;
+                        localStorage.setItem('assessment_stream', attempt.stream_id);
+                        console.log('✅ Restored stream from database:', attempt.stream_id);
+                    }
+                    if (!storedGradeLevel && attempt.grade_level) {
+                        storedGradeLevel = attempt.grade_level;
+                        localStorage.setItem('assessment_grade_level', attempt.grade_level);
+                        console.log('✅ Restored grade level from database:', attempt.grade_level);
+                    }
+                } else {
+                    console.warn('⚠️ Database attempt has no answers in all_responses');
+                }
+            } catch (dbError) {
+                console.error('❌ Error loading answers from database:', dbError);
+            }
+        }
+
+        if (!answersJson) {
+            console.error('❌ No answers found in localStorage or database');
+            navigate('/student/assessment/test');
+            return;
+        }
+    }; // End of loadResults function
+
+    // Handle retry - regenerate AI analysis from database
     const handleRetry = useCallback(async () => {
-        setRetrying(true);
-        // Don't clear error yet - this keeps the ErrorState visible (with spinner)
-        // instead of showing a blank screen while retrying
-
         try {
+            setRetrying(true);
+            setError(null);
+
             // ✅ Get answers from database instead of localStorage
             const attemptId = searchParams.get('attemptId');
 
@@ -984,16 +1044,11 @@ export const useAssessmentResults = () => {
             console.log('🔄 Regenerating AI analysis from database data');
             console.log('   Attempt ID:', attemptId);
 
-            // Fetch attempt data from database
-            const { data: attempt, error: attemptError } = await supabase
-                .from('personal_assessment_attempts')
-                .select('all_responses, stream_id, grade_level, section_timings')
-                .eq('id', attemptId)
-                .single();
-
-            if (attemptError || !attempt) {
-                console.error('Failed to fetch attempt:', attemptError);
-                setError('Could not load assessment data. Please try again.');
+            // Fetch the attempt with all responses
+            const attempt = await assessmentService.getAttemptWithResults(attemptId);
+            
+            if (!attempt) {
+                setError('Assessment attempt not found. Please retake the assessment.');
                 setRetrying(false);
                 return;
             }
@@ -1199,15 +1254,23 @@ export const useAssessmentResults = () => {
             console.error('Regeneration failed:', e);
             setError(e.message || 'Failed to regenerate report. Please try again.');
         } finally {
+            // Mark retry as attempted in sessionStorage AFTER the retry completes (success or failure)
+            // This fixes the React Strict Mode race condition - we only mark as attempted when done
+            const attemptIdForMarker = searchParams.get('attemptId');
+            if (attemptIdForMarker) {
+                // Use attemptId since result.id may not be available in all cases
+                sessionStorage.setItem(`auto_retry_done_attempt_${attemptIdForMarker}`, 'true');
+                console.log('📝 Marked retry as completed for attempt:', attemptIdForMarker);
+            }
             setRetrying(false);
             setLoading(false); // Ensure loading screen is dismissed
         }
-    }, [searchParams, gradeLevel, studentInfo.grade, studentInfo.courseName]); // Use specific fields instead of whole object
+    }, [searchParams, gradeLevel, studentInfo.grade, studentInfo.courseName]); // searchParams object itself is stable
 
     useEffect(() => {
         loadResults();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams.get('attemptId')]); // Only run when attemptId changes
+    }, [searchParams]); // Only run when searchParams changes
 
     // Auto-retry effect: Trigger handleRetry when autoRetry flag is set
     useEffect(() => {
@@ -1218,13 +1281,15 @@ export const useAssessmentResults = () => {
             console.log('   retryCompleted:', retryCompleted);
             setAutoRetry(false); // Reset flag immediately to prevent loops
 
-            // Add a small delay to ensure state updates have propagated
-            const retryTimer = setTimeout(() => {
-                console.log('⏰ Executing handleRetry after delay...');
+            // REMOVED TIMEOUT: Executing immediately to prevent cancellation on component unmount/update
+            // (common in React Strict Mode or when dependencies change rapidly)
+            console.log('🤖 Executing handleRetry immediately...');
+            if (typeof handleRetry === 'function') {
                 handleRetry();
-            }, 100);
-
-            return () => clearTimeout(retryTimer);
+            } else {
+                console.error('❌ handleRetry is not a function');
+                setError('Internal error: Retry mechanism failed.');
+            }
         } else if (autoRetry) {
             console.log('⚠️ Auto-retry NOT triggered - conditions not met:');
             console.log('   autoRetry:', autoRetry);
@@ -1282,7 +1347,7 @@ export const useAssessmentResults = () => {
         return missingFields;
     };
 
-    return {
+    return useMemo(() => ({
         results,
         loading,
         error,
@@ -1295,5 +1360,5 @@ export const useAssessmentResults = () => {
         handleRetry,
         validateResults,
         navigate
-    };
+    }), [results, loading, error, retrying, gradeLevel, monthsInGrade, studentInfo, studentAcademicData, validationWarnings, handleRetry, validateResults, navigate]);
 };

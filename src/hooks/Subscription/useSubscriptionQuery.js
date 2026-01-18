@@ -27,7 +27,7 @@ const formatSubscriptionData = (data) => {
     'ecosystem': 'ecosystem'
   };
 
-  const planType = data.plan_type?.toLowerCase() || 'basic';
+  const planType = data.plan_type?.toLowerCase() || data.plan_code?.toLowerCase() || 'basic';
   const planId = planTypeMap[planType] || planType;
 
   return {
@@ -50,7 +50,12 @@ const formatSubscriptionData = (data) => {
     cancelledAt: data.cancelled_at,
     cancellationReason: data.cancellation_reason,
     // role column uses user_role enum type with values like school_admin, college_student, etc.
-    userRole: data.users?.role || null
+    userRole: data.users?.role || null,
+    // Organization license fields
+    isOrganizationLicense: data.is_organization_license || false,
+    organizationId: data.organization_id || null,
+    organizationType: data.organization_type || null,
+    licenseAssignmentId: data.license_assignment_id || null,
   };
 };
 
