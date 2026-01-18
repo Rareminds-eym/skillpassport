@@ -20,6 +20,7 @@ interface KnowledgeRequestBody {
   questionCount?: number;
   studentId?: string;
   attemptId?: string;
+  gradeLevel?: string; // Add gradeLevel
 }
 
 export async function handleKnowledgeGeneration(
@@ -30,7 +31,7 @@ export async function handleKnowledgeGeneration(
     const body = await request.json() as KnowledgeRequestBody;
     console.log('📥 Knowledge request body:', JSON.stringify(body));
     
-    const { streamId, streamName, topics, questionCount = 20, studentId, attemptId } = body;
+    const { streamId, streamName, topics, questionCount = 20, studentId, attemptId, gradeLevel } = body;
 
     if (!streamId || !streamName || !topics) {
       console.error('❌ Missing required fields:', { streamId, streamName, topics: !!topics });
@@ -82,7 +83,7 @@ export async function handleKnowledgeGeneration(
 
     // Save to cache
     if (studentId) {
-      await saveCareerQuestions(env, studentId, streamId, 'knowledge', allQuestions, attemptId);
+      await saveCareerQuestions(env, studentId, streamId, 'knowledge', allQuestions, attemptId, gradeLevel);
     }
 
     return jsonResponse({ questions: allQuestions, generated: true });

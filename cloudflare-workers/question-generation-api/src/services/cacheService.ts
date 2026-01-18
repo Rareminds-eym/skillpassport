@@ -64,12 +64,13 @@ export async function saveCareerQuestions(
   streamId: string,
   questionType: 'aptitude' | 'knowledge',
   questions: CareerQuestion[],
-  attemptId?: string
+  attemptId?: string,
+  gradeLevel?: string // Add grade level parameter
 ): Promise<void> {
   // Use write client for insert/upsert operations
   const supabase = getWriteClient(env);
   
-  console.log(`💾 [saveCareerQuestions] Saving ${questions.length} ${questionType} questions for student:`, studentId, 'stream:', streamId);
+  console.log(`💾 [saveCareerQuestions] Saving ${questions.length} ${questionType} questions for student:`, studentId, 'stream:', streamId, 'grade:', gradeLevel);
   
   try {
     const { data, error } = await supabase.from('career_assessment_ai_questions').upsert({
@@ -79,6 +80,7 @@ export async function saveCareerQuestions(
       attempt_id: attemptId || null,
       questions,
       generated_at: new Date().toISOString(),
+      grade_level: gradeLevel || 'Grade 10', // Add grade level field
       is_active: true
     }, { onConflict: 'student_id,stream_id,question_type' })
     .select('id');

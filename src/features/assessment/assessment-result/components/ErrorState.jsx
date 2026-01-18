@@ -14,7 +14,7 @@ const ErrorState = ({ error, onRetry, retrying, onRetake }) => (
                     <AlertCircle className="w-10 h-10 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-3">Analysis Error</h2>
-                <p className="text-gray-600 mb-8">{error}</p>
+                <p className="text-gray-600 mb-8">{error?.message || (typeof error === 'string' ? error : 'An unexpected error occurred')}</p>
                 <div className="flex flex-col gap-3">
                     <Button
                         onClick={onRetry}
