@@ -651,14 +651,16 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
    - Program 1 (High fit) → From Cluster 1 program list
    - Program 2 (Medium fit) → From Cluster 2 program list
    - Program 3 (Explore) → From Cluster 3 program list
-3. **Each program MUST include:**
-   - Program name (exact match from list above)
-   - Match score (85-95 for High fit, 75-84 for Medium fit, 65-74 for Explore)
-   - **Duration** (e.g., "4 years", "3-4 years", "5 years" - typical duration for that degree in India)
-   - **Role description** (2-3 sentences explaining what graduates typically do in their careers)
-   - **Top universities** (array of 5-7 well-known Indian universities offering this program)
-   - Personalized "Why this fits you" reasoning (2-3 sentences connecting their assessment results to the program)
-   - Evidence from ALL 6 sections (interest, aptitude, personality, values, employability, knowledge)
+3. **Each program MUST include ALL OF THESE REQUIRED FIELDS:**
+   - **programName**: Program name (exact match from list above)
+   - **matchScore**: Match score (85-95 for High fit, 75-84 for Medium fit, 65-74 for Explore)
+   - **fit**: "High", "Medium", or "Explore"
+   - **duration**: REQUIRED - Program duration (e.g., "4 years", "3-4 years", "5 years", "5.5 years" - typical duration for that degree in India)
+   - **roleDescription**: REQUIRED - 2-3 sentences explaining what graduates typically do in their careers, career opportunities, and work responsibilities
+   - **topUniversities**: REQUIRED - Array of 5-7 well-known Indian universities offering this program (e.g., ["IIT Bombay", "IIT Delhi", "BITS Pilani", "NIT Trichy"])
+   - **alignedWithCluster**: The career cluster this program aligns with
+   - **whyThisFitsYou**: Personalized reasoning (2-3 sentences connecting their assessment results to the program)
+   - **evidence**: Object with ALL 6 sections (interest, aptitude, personality, values, employability, knowledge)
 4. **Selection criteria within each cluster:**
    - Choose program that best matches student's RIASEC top 3 types
    - Consider aptitude strengths (numerical, logical, verbal, spatial, creative)
@@ -879,10 +881,27 @@ Before returning your response, verify:
 - [ ] Each degree program has "alignedWithCluster" field
 - [ ] Each degree program has personalized "Why this fits you" reasoning
 - [ ] Each degree program has evidence from ALL 6 sections
+- [ ] **CRITICAL: Each degree program has "duration" field (e.g., "4 years", "3 years", "5.5 years")**
+- [ ] **CRITICAL: Each degree program has "roleDescription" field (2-3 sentences about what graduates do)**
+- [ ] **CRITICAL: Each degree program has "topUniversities" array (5-7 universities)**
 - [ ] If 'A' (Artistic) is in top 3 RIASEC, at least one creative career cluster AND one creative program included
 - [ ] Specific college majors and programs listed for each cluster
 - [ ] Salary ranges provided for entry, mid, and senior levels
 - [ ] All JSON fields properly filled (no empty arrays or null values)
-- [ ] Response is valid JSON (no markdown, no truncation)`;
+- [ ] Response is valid JSON (no markdown, no truncation)
+
+**🚨 MANDATORY FIELDS FOR EACH DEGREE PROGRAM - DO NOT SKIP:**
+Example structure:
+{
+  "programName": "B.Tech Computer Science & Engineering",
+  "matchScore": 92,
+  "fit": "High",
+  "duration": "4 years",  // ← REQUIRED - MUST BE PRESENT
+  "roleDescription": "As a Computer Science graduate, you'll design and develop software applications...",  // ← REQUIRED - MUST BE PRESENT
+  "topUniversities": ["IIT Bombay", "IIT Delhi", "BITS Pilani", "NIT Trichy", "IIIT Hyderabad"],  // ← REQUIRED - MUST BE PRESENT
+  "alignedWithCluster": "Technology & Innovation",
+  "whyThisFitsYou": "Your exceptional logical reasoning...",
+  "evidence": { ... }
+}`;
 }
 
