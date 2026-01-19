@@ -520,7 +520,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                             Explore {cluster.title}
                                         </h4>
                                         <p className="text-gray-300 text-sm mb-4">
-                                            Click to view the complete career roadmap, required skills, and growth opportunities
+                                            View role-specific courses, career roadmap, required skills, and growth opportunities
                                         </p>
                                         <motion.div
                                             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium cursor-pointer"

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, Download, Bell, ChevronRight, Calendar, Loader2 } from 'lucide-react';
 import { useRoleOverview } from '../../../../hooks/useRoleOverview';
-import { matchCoursesForRole } from '../../../../services/aiCareerPathService';
+import { matchCoursesForRole as matchCoursesForRoleRAG } from '../../../../services/courseRecommendation/roleBasedMatcher';
+import { supabase } from '../../../../lib/supabaseClient';
 import jsPDF from 'jspdf';
 
 /**
@@ -17,7 +18,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
     const [currentPage, setCurrentPage] = useState(0); // 0 = role selection, 1-5 = wizard pages
     const [showReminderModal, setShowReminderModal] = useState(false);
     
-    // AI Course Matching State
+    // RAG Course Matching State
     const [aiMatchedCourses, setAiMatchedCourses] = useState([]);
     const [courseMatchingLoading, setCourseMatchingLoading] = useState(false);
     const [courseMatchingError, setCourseMatchingError] = useState(null);
@@ -88,10 +89,41 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
         console.warn('[CareerTrackModal] API error, using fallback data:', overviewError.message);
     }
 
-    // AI-powered course matching - fetch when role is selected and platform courses are available
+    // RAG-powered course matching - fetch when role is selected and platform courses are available
     useEffect(() => {
         const fetchAIMatchedCourses = async () => {
-            if (!selectedRole || !results?.platformCourses || results.platformCourses.length === 0) {
+            // Fetch platform courses from database if not in results
+            let coursesToMatch = results?.platformCourses;
+            
+            if (!coursesToMatch || coursesToMatch.length === 0) {
+                console.log('[CareerTrackModal] No courses in results, fetching from database...');
+                try {
+                    const { data: courses, error } = await supabase
+                        .from('courses')
+                        .select('*')
+                        .eq('status', 'Active')
+                        .is('deleted_at', null)
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) {
+                        console.error('[CareerTrackModal] Failed to fetch courses:', error);
+                        coursesToMatch = [];
+                    } else {
+                        console.log(`[CareerTrackModal] Fetched ${courses?.length || 0} courses from database`);
+                        coursesToMatch = courses || [];
+                    }
+                } catch (err) {
+                    console.error('[CareerTrackModal] Error fetching courses:', err);
+                    coursesToMatch = [];
+                }
+            }
+            
+            if (!selectedRole || !coursesToMatch || coursesToMatch.length === 0) {
+                console.log('[CareerTrackModal] Skipping RAG matching:', {
+                    hasRole: !!selectedRole,
+                    hasPlatformCourses: !!coursesToMatch,
+                    courseCount: coursesToMatch?.length || 0
+                });
                 setAiMatchedCourses([]);
                 return;
             }
@@ -99,44 +131,40 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
             const roleName = getRoleName(selectedRole);
             const clusterTitle = selectedTrack.cluster?.title || '';
 
+            console.log('[CareerTrackModal] Starting course matching:', {
+                roleName,
+                clusterTitle,
+                roleObject: selectedRole
+            });
+
             setCourseMatchingLoading(true);
             setCourseMatchingError(null);
 
             try {
-                // Prepare courses for AI matching
-                const coursesForMatching = results.platformCourses.map(course => ({
-                    id: course.course_id || course.id || String(Math.random()),
-                    title: course.title || course.name || '',
-                    description: course.description || '',
-                    skills: course.skills || [],
-                    category: course.category || '',
-                }));
+                console.log(`[CareerTrackModal] Using RAG-based course matching for: ${roleName}`, {
+                    coursesAvailable: coursesToMatch.length,
+                    clusterTitle: clusterTitle
+                });
 
-                console.log(`[CareerTrackModal] Calling AI course matching for: ${roleName}`);
-                const matchResult = await matchCoursesForRole(roleName, clusterTitle, coursesForMatching);
+                // Use RAG-based matching (vector similarity)
+                const matchedCourses = await matchCoursesForRoleRAG(
+                    roleName, 
+                    clusterTitle, 
+                    coursesToMatch,
+                    4 // Request exactly 4 courses
+                );
 
-                let finalCourses = [];
-
-                if (matchResult.matchedCourseIds && matchResult.matchedCourseIds.length > 0) {
-                    // Filter platform courses by matched IDs
-                    const matched = results.platformCourses.filter(course => {
-                        const courseId = course.course_id || course.id;
-                        return matchResult.matchedCourseIds.includes(courseId);
-                    });
-                    console.log(`[CareerTrackModal] AI matched ${matched.length} courses:`, matchResult.reasoning);
-                    finalCourses = matched;
-                }
-
-                // ALWAYS ensure we have exactly 4 courses
-                finalCourses = ensureFourCourses(finalCourses, roleName, clusterTitle, results.platformCourses);
-                setAiMatchedCourses(finalCourses);
+                console.log(`[CareerTrackModal] RAG matched ${matchedCourses.length} courses:`, 
+                    matchedCourses.map(c => ({ title: c.title, relevance: c.relevance_score }))
+                );
+                setAiMatchedCourses(matchedCourses);
             } catch (error) {
-                console.error('[CareerTrackModal] AI course matching failed:', error);
+                console.error('[CareerTrackModal] RAG course matching failed:', error);
                 setCourseMatchingError(error);
                 // Use fallback on error - still ensure 4 courses
                 const roleName = getRoleName(selectedRole);
                 const clusterTitle = selectedTrack.cluster?.title || '';
-                const fallbackCourses = ensureFourCourses([], roleName, clusterTitle, results.platformCourses);
+                const fallbackCourses = ensureFourCourses([], roleName, clusterTitle, coursesToMatch);
                 setAiMatchedCourses(fallbackCourses);
             } finally {
                 setCourseMatchingLoading(false);
@@ -147,16 +175,16 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
     }, [selectedRole, results?.platformCourses, selectedTrack.cluster?.title]);
 
     // Ensure we ALWAYS return exactly 4 courses
-    const ensureFourCourses = (aiMatchedCourses, roleName, clusterTitle, platformCourses) => {
+    const ensureFourCourses = (ragMatchedCourses, roleName, clusterTitle, platformCourses) => {
         if (!platformCourses || platformCourses.length === 0) return [];
         
-        // If AI already matched 4 or more, return top 4
-        if (aiMatchedCourses.length >= 4) {
-            return aiMatchedCourses.slice(0, 4);
+        // If RAG already matched 4 or more, return top 4
+        if (ragMatchedCourses.length >= 4) {
+            return ragMatchedCourses.slice(0, 4);
         }
 
         // Get IDs of already matched courses to avoid duplicates
-        const matchedIds = new Set(aiMatchedCourses.map(c => c.course_id || c.id));
+        const matchedIds = new Set(ragMatchedCourses.map(c => c.course_id || c.id));
         
         // Get remaining courses not yet matched
         const remainingCourses = platformCourses.filter(c => !matchedIds.has(c.course_id || c.id));
@@ -206,14 +234,14 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
         
         // Sort by score and take what we need to fill up to 4
         const sortedRemaining = scored.sort((a, b) => b._fillScore - a._fillScore);
-        const needed = 4 - aiMatchedCourses.length;
+        const needed = 4 - ragMatchedCourses.length;
         const fillers = sortedRemaining.slice(0, needed);
         
-        // Combine AI matches with fillers
-        return [...aiMatchedCourses, ...fillers].slice(0, 4);
+        // Combine RAG matches with fillers
+        return [...ragMatchedCourses, ...fillers].slice(0, 4);
     };
 
-    // Use AI-matched courses (or empty array while loading)
+    // Use RAG-matched courses (or empty array while loading)
     const relevantCourses = aiMatchedCourses;
 
     const getSalary = (role) => {
@@ -1177,11 +1205,11 @@ END:VCALENDAR`;
                                         Recommended Courses
                                     </h3>
                                     <p className="text-gray-500">
-                                        AI-matched platform courses for your {getRoleName(selectedRole)} career path
+                                        Intelligently matched courses for your {getRoleName(selectedRole)} career path
                                     </p>
                                 </div>
 
-                                {/* Platform Courses - AI filtered by relevance to role */}
+                                {/* Platform Courses - RAG filtered by relevance to role */}
                                 <div className="mb-6">
                                     <h4 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                         <BookOpen className="w-5 h-5" style={{ color: accentColor }} />
@@ -1195,7 +1223,7 @@ END:VCALENDAR`;
                                     </h4>
                                     
                                     {courseMatchingLoading ? (
-                                        // Loading skeleton while AI is matching
+                                        // Loading skeleton while RAG is matching
                                         <div className="grid md:grid-cols-2 gap-4 animate-pulse">
                                             {[1, 2, 3, 4].map((i) => (
                                                 <div key={i} className="p-4 rounded-xl bg-white border border-gray-200">
