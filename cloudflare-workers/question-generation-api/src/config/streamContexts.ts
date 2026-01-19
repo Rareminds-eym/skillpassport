@@ -56,6 +56,76 @@ export const STREAM_CONTEXTS: Record<string, StreamContext> = {
 - Clerical (100% PCM): Physics units, chemical formulas, mathematical notations comparison`,
     clericalExample: 'PHY-9.8m/s²-2024 — PHY-9.8m/s²-2024'
   },
+  'science_pcb': {
+    name: 'Science (PCB)',
+    context: `ALL questions must use 11th/12th Science PCB context:
+- Verbal (100% PCB): Biology terminology, chemistry concepts, physics principles, medical basics
+- Numerical (100% PCB): Biology statistics, chemistry calculations, physics problems, medical data
+- Abstract/Logical (100% PCB): Biological patterns, chemical reactions, medical reasoning, scientific method
+- Spatial/Mechanical (100% PCB): Anatomical diagrams, cell structures, molecular models, lab equipment
+- Clerical (100% PCB): Biological names, chemical formulas, specimen codes, medical terms comparison`,
+    clericalExample: 'BIO-DNA-2024 — BIO-DNA-2024'
+  },
+  'science_pcms': {
+    name: 'Science (PCMS)',
+    context: `ALL questions must use 11th/12th Science PCMS context:
+- Verbal (100% PCMS): Scientific terminology, programming concepts, physics principles, chemistry reactions
+- Numerical (100% PCMS): Physics calculations, chemistry equations, programming logic, math problems
+- Abstract/Logical (100% PCMS): Algorithm patterns, scientific reasoning, programming logic, chemical reactions
+- Spatial/Mechanical (100% PCMS): Circuit diagrams, flowcharts, physics diagrams, molecular structures
+- Clerical (100% PCMS): Variable names, chemical formulas, physics units, code snippets comparison`,
+    clericalExample: 'CODE-VAR-2024 — CODE-VAR-2024'
+  },
+  'commerce_maths': {
+    name: 'Commerce with Maths',
+    context: `ALL questions must use 11th/12th Commerce with Maths context:
+- Verbal (100% commerce): Business terminology, accounting concepts, economic principles, financial reports
+- Numerical (100% commerce): Profit/loss calculations, interest rates, statistical analysis, business math
+- Abstract/Logical (100% commerce): Business decision scenarios, market analysis, financial planning patterns
+- Spatial/Mechanical (100% commerce): Financial charts, graphs, organizational structures, data visualization
+- Clerical (100% commerce): Invoice numbers, account codes, transaction IDs, ledger entries comparison`,
+    clericalExample: 'ACC-INV-2024-1234 — ACC-INV-2024-1234'
+  },
+  'commerce_general': {
+    name: 'Commerce without Maths',
+    context: `ALL questions must use 11th/12th Commerce (General) context:
+- Verbal (100% commerce): Business communication, accounting terminology, economic concepts, trade principles
+- Numerical (100% commerce): Basic accounting calculations, percentage problems, simple interest, business arithmetic
+- Abstract/Logical (100% commerce): Business scenarios, trade patterns, organizational hierarchies, decision-making
+- Spatial/Mechanical (100% commerce): Business process flows, organizational charts, financial statements layout
+- Clerical (100% commerce): Account numbers, voucher codes, receipt numbers, business document IDs comparison`,
+    clericalExample: 'VCH-2024-5678 — VCH-2024-5678'
+  },
+  'arts_humanities': {
+    name: 'Arts & Humanities',
+    context: `ALL questions must use 11th/12th Arts & Humanities context:
+- Verbal (100% arts): Literary analysis, historical texts, philosophical concepts, social science terminology
+- Numerical (100% arts): Historical data, social statistics, survey analysis, demographic interpretation
+- Abstract/Logical (100% arts): Ethical reasoning, historical cause-effect, philosophical arguments, social patterns
+- Spatial/Mechanical (100% arts): Historical maps, art compositions, architectural layouts, cultural diagrams
+- Clerical (100% arts): Reference codes, bibliography entries, historical dates, citation formats comparison`,
+    clericalExample: 'REF-HIST-1947-08 — REF-HIST-1947-08'
+  },
+  'arts_psychology': {
+    name: 'Arts with Psychology',
+    context: `ALL questions must use 11th/12th Arts with Psychology context:
+- Verbal (100% psychology): Psychological terminology, behavioral concepts, mental health terms, research descriptions
+- Numerical (100% psychology): Statistical analysis, research data, psychological test scores, survey results
+- Abstract/Logical (100% psychology): Behavioral patterns, cognitive processes, psychological theories, case analysis
+- Spatial/Mechanical (100% psychology): Brain diagrams, psychological models, research flowcharts, data visualization
+- Clerical (100% psychology): Case study IDs, research codes, DSM classifications, psychological test codes comparison`,
+    clericalExample: 'PSY-CASE-2024-089 — PSY-CASE-2024-089'
+  },
+  'arts_economics': {
+    name: 'Arts with Economics',
+    context: `ALL questions must use 11th/12th Arts with Economics context:
+- Verbal (100% economics): Economic terminology, policy concepts, market principles, international trade terms
+- Numerical (100% economics): Economic calculations, GDP analysis, inflation rates, demand-supply problems
+- Abstract/Logical (100% economics): Economic models, policy analysis, market trends, cause-effect relationships
+- Spatial/Mechanical (100% economics): Economic graphs, supply-demand curves, market diagrams, policy flowcharts
+- Clerical (100% economics): Economic indicators, policy codes, statistical data IDs, report numbers comparison`,
+    clericalExample: 'ECON-GDP-2024-Q1 — ECON-GDP-2024-Q1'
+  },
   'btech_cse': {
     name: 'B.Tech Computer Science',
     context: `ALL questions must use Computer Science/Programming context:
@@ -119,5 +189,35 @@ export const STREAM_CONTEXTS: Record<string, StreamContext> = {
 };
 
 export function getStreamContext(streamId: string): StreamContext {
-  return STREAM_CONTEXTS[streamId] || STREAM_CONTEXTS['science'];
+  let streamContext = STREAM_CONTEXTS[streamId];
+  
+  if (!streamContext) {
+    console.warn(`⚠️ Stream context not found for: ${streamId}, attempting fallback...`);
+    const streamIdLower = streamId.toLowerCase();
+    
+    // Check for commerce-related keywords
+    if (streamIdLower.includes('commerce')) {
+      console.log(`✅ Fallback: Using 'commerce' context for ${streamId}`);
+      streamContext = STREAM_CONTEXTS['commerce'];
+    }
+    // Check for arts/humanities keywords
+    else if (streamIdLower.includes('arts') || streamIdLower.includes('humanities')) {
+      console.log(`✅ Fallback: Using 'arts' context for ${streamId}`);
+      streamContext = STREAM_CONTEXTS['arts'];
+    }
+    // Check for science keywords
+    else if (streamIdLower.includes('science') || streamIdLower.includes('pcm') || streamIdLower.includes('pcb')) {
+      console.log(`✅ Fallback: Using 'science' context for ${streamId}`);
+      streamContext = STREAM_CONTEXTS['science'];
+    }
+    // Final fallback to college/generic
+    else {
+      console.warn(`⚠️ No keyword match found for ${streamId}, using 'college' context as last resort`);
+      streamContext = STREAM_CONTEXTS['college'];
+    }
+  } else {
+    console.log(`✅ Found exact stream context for: ${streamId} -> ${streamContext.name}`);
+  }
+  
+  return streamContext;
 }
