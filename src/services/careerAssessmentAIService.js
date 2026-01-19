@@ -922,9 +922,21 @@ export function validateQuestion(question, questionType) {
     errors.push('Missing or invalid options array');
   } else {
     // Clerical questions have 2 options (Same/Different), all others have 4
+    // Check by category/subtype OR by detecting Same/Different options
+    const hasSameDifferentOptions = question.options.length === 2 &&
+      question.options.some(opt => String(opt).trim().toLowerCase() === 'same') &&
+      question.options.some(opt => String(opt).trim().toLowerCase() === 'different');
+    
     const isClericalQuestion = question.subtype === 'clerical' || 
                                question.category === 'clerical' ||
-                               question.skill_tag === 'clerical_speed';
+                               question.skill_tag === 'clerical_speed' ||
+                               hasSameDifferentOptions;
+    
+    // Auto-fix: If we detect Same/Different options, mark as clerical
+    if (hasSameDifferentOptions && !question.category) {
+      question.category = 'clerical';
+    }
+    
     const expectedOptions = isClericalQuestion ? 2 : 4;
     
     if (question.options.length !== expectedOptions) {
@@ -938,9 +950,15 @@ export function validateQuestion(question, questionType) {
     errors.push('Missing correct answer');
   } else {
     // Check if this is a clerical question (2 options: Same/Different)
+    // Check by category/subtype OR by detecting Same/Different options
+    const hasSameDifferentOptions = question.options && question.options.length === 2 &&
+      question.options.some(opt => String(opt).trim().toLowerCase() === 'same') &&
+      question.options.some(opt => String(opt).trim().toLowerCase() === 'different');
+    
     const isClericalQuestion = question.subtype === 'clerical' || 
                                question.category === 'clerical' ||
-                               question.skill_tag === 'clerical_speed';
+                               question.skill_tag === 'clerical_speed' ||
+                               hasSameDifferentOptions;
     
     if (isClericalQuestion) {
       // Clerical questions use "Same" or "Different"
