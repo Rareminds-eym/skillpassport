@@ -10,6 +10,7 @@ import { buildProfileText } from './profileBuilder';
 import { generateEmbedding } from './embeddingService';
 import { generateProfileAndSkillEmbeddings } from './embeddingBatch';
 import { fetchCoursesWithEmbeddings, fetchCoursesBySkillType, fetchBasicCourses } from './courseRepository';
+import { getDomainKeywordsWithCache } from './fieldDomainService.js';
 import { 
   calculateRelevanceScore, 
   generateMatchReasons, 
@@ -34,6 +35,22 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
   try {
     // Extract keywords from assessment results
     const keywords = [];
+    const fieldKeywords = []; // High-priority field-specific keywords
+    
+    // Add AI-generated field-specific keywords (highest priority)
+    const stream = assessmentResults.stream || assessmentResults.branch_field;
+    if (stream) {
+      try {
+        const domainKeywords = await getDomainKeywordsWithCache(stream);
+        if (domainKeywords) {
+          // Split AI-generated keywords and add to fieldKeywords
+          const aiKeywords = domainKeywords.split(',').map(k => k.trim().toLowerCase());
+          fieldKeywords.push(...aiKeywords);
+        }
+      } catch (error) {
+        console.warn('Failed to get AI keywords for fallback, using pattern matching');
+      }
+    }
     
     // Add skill gap keywords
     const skillGap = assessmentResults.skillGap;
@@ -51,7 +68,7 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
       });
     }
     
-    if (keywords.length === 0) {
+    if (keywords.length === 0 && fieldKeywords.length === 0) {
       return [];
     }
 
@@ -62,16 +79,30 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
       return [];
     }
 
-    // Score courses by keyword matches
+    // Score courses by keyword matches with field-specific boosting
     const scoredCourses = courses.map(course => {
       const courseText = `${course.title} ${course.description || ''} ${(course.skills || []).join(' ')}`.toLowerCase();
       
       let matchCount = 0;
+      let fieldMatchCount = 0;
+      
+      // Count field-specific keyword matches (weighted 2x)
+      fieldKeywords.forEach(keyword => {
+        if (courseText.includes(keyword.toLowerCase())) {
+          fieldMatchCount++;
+        }
+      });
+      
+      // Count general keyword matches
       keywords.forEach(keyword => {
         if (courseText.includes(keyword.toLowerCase())) {
           matchCount++;
         }
       });
+      
+      // Calculate weighted match score (field keywords count double)
+      const totalMatches = (fieldMatchCount * 2) + matchCount;
+      const totalKeywords = (fieldKeywords.length * 2) + keywords.length;
       
       return {
         course_id: course.course_id,
@@ -82,19 +113,26 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
         category: course.category,
         skills: course.skills || [],
         target_outcomes: course.target_outcomes || [],
-        relevance_score: Math.min(100, Math.round((matchCount / keywords.length) * 100)),
-        match_reasons: ['Matched by keywords'],
+        relevance_score: Math.min(100, Math.round((totalMatches / totalKeywords) * 100)),
+        match_reasons: fieldMatchCount > 0 ? ['Matched by field-specific keywords'] : ['Matched by keywords'],
         skill_gaps_addressed: [],
-        _matchCount: matchCount
+        _matchCount: totalMatches,
+        _fieldMatchCount: fieldMatchCount
       };
     });
 
-    // Return top matches
+    // Return top matches (prioritize field matches)
     return scoredCourses
       .filter(c => c._matchCount > 0)
-      .sort((a, b) => b._matchCount - a._matchCount)
+      .sort((a, b) => {
+        // First sort by field matches, then by total matches
+        if (b._fieldMatchCount !== a._fieldMatchCount) {
+          return b._fieldMatchCount - a._fieldMatchCount;
+        }
+        return b._matchCount - a._matchCount;
+      })
       .slice(0, MAX_RECOMMENDATIONS)
-      .map(({ _matchCount, ...course }) => course);
+      .map(({ _matchCount, _fieldMatchCount, ...course }) => course);
   } catch (error) {
     console.error('Fallback keyword matching failed:', error);
     return [];

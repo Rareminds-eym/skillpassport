@@ -211,43 +211,92 @@ const validateResults = (results) => {
 /**
  * Add course recommendations to assessment results
  * Fetches platform courses that match the student's profile using RAG-based recommendations
+ * NOW considers ALL past assessments to provide comprehensive recommendations
  * 
- * @param {Object} assessmentResults - Parsed results from AI
+ * @param {Object} assessmentResults - Parsed results from current AI assessment
+ * @param {string} studentId - Student ID to fetch all past assessments
  * @returns {Promise<Object>} - Results with platformCourses, coursesByType, and skillGapCourses added
  */
-const addCourseRecommendations = async (assessmentResults) => {
+export const addCourseRecommendations = async (assessmentResults, studentId = null) => {
   try {
     console.log('=== Adding Course Recommendations ===');
     updateProgress('courses', 'Finding relevant courses...');
+
+    // If studentId provided, fetch all past assessments to build comprehensive profile
+    let aggregatedProfile = assessmentResults;
+    
+    if (studentId) {
+      try {
+        console.log(`Fetching all past assessments for student: ${studentId}`);
+        const { data: pastAssessments, error } = await supabase
+          .from('personal_assessment_results')
+          .select('riasec_scores, aptitude_scores, skill_gap, career_fit, stream_id, grade_level')
+          .eq('student_id', studentId)
+          .order('created_at', { ascending: false })
+          .limit(5); // Consider last 5 assessments
+
+        if (!error && pastAssessments && pastAssessments.length > 0) {
+          console.log(`Found ${pastAssessments.length} past assessments`);
+          
+          // Aggregate skill gaps from all assessments
+          const allSkillGaps = [];
+          pastAssessments.forEach(assessment => {
+            if (assessment.skill_gap?.priorityA) {
+              allSkillGaps.push(...assessment.skill_gap.priorityA);
+            }
+          });
+
+          // Deduplicate skills by name
+          const uniqueSkills = Array.from(
+            new Map(allSkillGaps.map(skill => [skill.skill, skill])).values()
+          );
+
+          // Merge with current assessment
+          aggregatedProfile = {
+            ...assessmentResults,
+            skillGap: {
+              ...assessmentResults.skillGap,
+              priorityA: uniqueSkills.slice(0, 10), // Top 10 unique skills
+              allAssessments: pastAssessments.length
+            }
+          };
+
+          console.log(`Aggregated ${uniqueSkills.length} unique skills from ${pastAssessments.length} assessments`);
+        }
+      } catch (fetchError) {
+        console.warn('Failed to fetch past assessments:', fetchError.message);
+        // Continue with current assessment only
+      }
+    }
 
     let coursesByType = { technical: [], soft: [] };
     let platformCourses = [];
 
     try {
-      // Fetch courses by type - ensures both technical and soft skills
-      coursesByType = await getRecommendedCoursesByType(assessmentResults, 5);
+      // Fetch courses by type using aggregated profile
+      coursesByType = await getRecommendedCoursesByType(aggregatedProfile, 5);
       console.log(`Found ${coursesByType.technical.length} technical and ${coursesByType.soft.length} soft skill courses`);
 
       platformCourses = [...coursesByType.technical, ...coursesByType.soft];
 
       // Fallback to combined fetch if by-type returned nothing
       if (platformCourses.length === 0) {
-        platformCourses = await getRecommendedCourses(assessmentResults);
+        platformCourses = await getRecommendedCourses(aggregatedProfile);
         console.log(`Fallback: Found ${platformCourses.length} platform course recommendations`);
       }
     } catch (error) {
       console.warn('Failed to get platform course recommendations:', error.message);
       try {
-        platformCourses = await getRecommendedCourses(assessmentResults);
+        platformCourses = await getRecommendedCourses(aggregatedProfile);
       } catch (fallbackError) {
         console.warn('Fallback also failed:', fallbackError.message);
       }
     }
 
-    // Get courses mapped to each priority skill gap
+    // Get courses mapped to each priority skill gap (using aggregated skills)
     let skillGapCourses = {};
     try {
-      const skillGaps = assessmentResults.skillGap?.priorityA || [];
+      const skillGaps = aggregatedProfile.skillGap?.priorityA || [];
       if (skillGaps.length > 0) {
         skillGapCourses = await getCoursesForMultipleSkillGaps(skillGaps);
         console.log(`Mapped courses to ${Object.keys(skillGapCourses).length} skill gaps`);
@@ -1097,8 +1146,28 @@ export const analyzeAssessmentWithOpenRouter = async (
       console.warn('⚠️ Response has missing fields:', missingFields);
     }
 
-    // Add course recommendations
-    const resultsWithCourses = await addCourseRecommendations(parsedResults);
+    // Add course recommendations (fetch studentId from auth)
+    let studentId = null;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Get student_id from students table
+        const { data: student } = await supabase
+          .from('students')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+        studentId = student?.id;
+      }
+    } catch (error) {
+      console.warn('Could not fetch studentId for course recommendations:', error.message);
+    }
+
+    // DISABLED: Course generation during assessment
+    // Courses are now generated on-demand when user clicks a job role
+    // This improves assessment generation speed significantly
+    console.log('📋 Skipping course generation (will be generated on-demand)');
+    // const resultsWithCourses = await addCourseRecommendations(parsedResults, studentId);
     
     updateProgress('saving', 'Saving your results...');
     
@@ -1107,7 +1176,8 @@ export const analyzeAssessmentWithOpenRouter = async (
     // Mark as complete after a short delay to show the saving stage
     setTimeout(() => updateProgress('complete', 'Analysis complete!'), 500);
     
-    return resultsWithCourses;
+    // Return results without courses
+    return parsedResults;
     
   } catch (error) {
     console.error('❌ Assessment analysis failed:', error.message);

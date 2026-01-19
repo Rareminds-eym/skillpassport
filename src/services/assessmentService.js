@@ -528,6 +528,8 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   const careerFit = geminiResults?.careerFit || null;
   const skillGap = geminiResults?.skillGap || null;
   const skillGapCourses = geminiResults?.skillGapCourses || null;
+  const platformCourses = geminiResults?.platformCourses || null;
+  const coursesByType = geminiResults?.coursesByType || null;
   const roadmap = geminiResults?.roadmap || null;
   const profileSnapshot = geminiResults?.profileSnapshot || null;
   const timingAnalysis = geminiResults?.timingAnalysis || null;
@@ -577,6 +579,8 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
     career_fit: careerFit,
     skill_gap: skillGap,
     skill_gap_courses: skillGapCourses,
+    platform_courses: platformCourses,
+    courses_by_type: coursesByType,
     roadmap: roadmap,
     profile_snapshot: profileSnapshot,
     timing_analysis: timingAnalysis,

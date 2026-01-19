@@ -1,11 +1,12 @@
 import { CheckCircle, Award, Rocket, Calendar, FileText, Users, Briefcase, GraduationCap } from 'lucide-react';
-import RecommendedCoursesSection from './RecommendedCoursesSection';
+// REMOVED: RecommendedCoursesSection import - courses now shown only when clicking job roles
 
 /**
  * Roadmap Section Component
- * Displays the career action roadmap including projects, internships, activities, and recommended courses
+ * Displays the career action roadmap including projects, internships, and activities
  * 
- * Requirements: 4.1 - Shows recommended courses section in the roadmap
+ * NOTE: Courses are NO LONGER displayed here. They are shown in CareerTrackModal
+ * when a specific job role is clicked, providing role-specific course recommendations.
  */
 const RoadmapSection = ({
     roadmap,
@@ -28,13 +29,10 @@ const RoadmapSection = ({
 
     return (
         <div className="space-y-6">
-            {/* Recommended Platform Courses Section - Requirements: 4.1 */}
-            <RecommendedCoursesSection
-                platformCourses={platformCourses}
-                coursesByType={coursesByType}
-                skillGapCourses={skillGapCourses}
-                onCourseClick={onCourseClick}
-            />
+            {/* REMOVED: Recommended Platform Courses Section
+                Courses are now shown ONLY when a specific job role is clicked
+                See CareerTrackModal for role-specific course recommendations
+            */}
 
             {/* Internship & Exposure Grid */}
             <div className="grid md:grid-cols-2 gap-4">
