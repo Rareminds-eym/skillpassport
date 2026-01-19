@@ -11,7 +11,7 @@
  * @module features/assessment/career-test/hooks/useAIQuestions
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 // @ts-ignore - JS file without type declarations
 import { loadCareerAssessmentQuestions } from '../../../../services/careerAssessmentAIService';
 import type { GradeLevel } from '../config/sections';
@@ -66,7 +66,7 @@ const normalizeAIQuestion = (q: any): AIQuestion => {
     // Convert object options { A: "...", B: "...", ... } to array
     normalizedOptions = Object.values(q.options);
   }
-  
+
   return {
     ...q,
     text: q.question || q.text,
@@ -98,11 +98,15 @@ export const useAIQuestions = ({
     message: ''
   });
 
+  // Use ref to track loading state synchronously to prevent race conditions
+  const isLoadingRef = useRef(false);
+
   // Cleanup function to reset state on unmount
   useEffect(() => {
     return () => {
       console.log('🧹 Cleaning up useAIQuestions hook');
       setLoading(false);
+      isLoadingRef.current = false;
       setError(null);
       setProgress({
         stage: 'idle',
@@ -115,12 +119,18 @@ export const useAIQuestions = ({
   }, []);
 
   const loadQuestions = useCallback(async () => {
+    // Prevent duplicate calls
+    if (isLoadingRef.current) {
+      console.log('⏳ Already loading questions, skipping duplicate call');
+      return;
+    }
+
     // Only load for grade levels that use AI questions (stream-based assessments)
     const usesAI = gradeLevel && ['higher_secondary', 'after10', 'after12', 'college'].includes(gradeLevel);
-    
+
     // For after10, we use 'general' stream if no specific stream is set
     const effectiveStream = studentStream || (gradeLevel === 'after10' ? 'general' : null);
-    
+
     console.log('🔍 useAIQuestions.loadQuestions called:', {
       gradeLevel,
       studentStream,
@@ -128,12 +138,12 @@ export const useAIQuestions = ({
       usesAI,
       willLoad: usesAI && !!effectiveStream
     });
-    
+
     if (!usesAI || !effectiveStream) {
-      console.log('⏭️ Skipping AI question load:', { 
-        usesAI, 
-        effectiveStream, 
-        gradeLevel, 
+      console.log('⏭️ Skipping AI question load:', {
+        usesAI,
+        effectiveStream,
+        gradeLevel,
         studentStream,
         reason: !usesAI ? 'Grade level does not use AI' : 'No stream selected yet'
       });
@@ -142,8 +152,9 @@ export const useAIQuestions = ({
 
     // Set loading state to true when generation starts
     setLoading(true);
+    isLoadingRef.current = true;
     setError(null);
-    
+
     // Initialize progress tracking
     const startTime = Date.now();
     const TYPICAL_APTITUDE_TIME = 15; // seconds
@@ -152,7 +163,7 @@ export const useAIQuestions = ({
 
     try {
       console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, effectiveStream);
-      
+
       // Stage 1: Loading aptitude questions
       setProgress({
         stage: 'aptitude',
@@ -227,7 +238,7 @@ export const useAIQuestions = ({
       };
 
       setAiQuestions(normalizedQuestions);
-      
+
       // Stage 3: Complete
       setProgress({
         stage: 'complete',
@@ -236,17 +247,17 @@ export const useAIQuestions = ({
         estimatedTimeRemaining: 0,
         message: 'Questions loaded successfully!'
       });
-      
+
       console.log('✅ AI questions loaded:', {
         aptitude: normalizedQuestions.aptitude?.length || 0,
         knowledge: normalizedQuestions.knowledge?.length || 0
       });
     } catch (err) {
       console.warn('Failed to load AI questions:', err);
-      
+
       // Set user-friendly error message based on error type
       let userMessage = 'Failed to load AI questions. Please try again.';
-      
+
       if (err instanceof Error) {
         if (err.message.includes('network') || err.message.includes('fetch')) {
           userMessage = 'Network error. Please check your connection and try again.';
@@ -258,9 +269,9 @@ export const useAIQuestions = ({
           userMessage = 'Question generation service is temporarily unavailable. Please try again later.';
         }
       }
-      
+
       setError(userMessage);
-      
+
       // Reset progress on error
       setProgress({
         stage: 'idle',
@@ -272,6 +283,7 @@ export const useAIQuestions = ({
     } finally {
       // Set loading state to false when generation completes
       setLoading(false);
+      isLoadingRef.current = false;
     }
   }, [gradeLevel, studentStream, studentId, attemptId]);
 

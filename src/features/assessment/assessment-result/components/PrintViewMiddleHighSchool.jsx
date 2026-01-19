@@ -94,14 +94,13 @@ const PrintViewMiddleHighSchool = ({
               )}
 
               {/* Detailed Assessment Breakdown (Developer Reference) */}
-              {/* COMMENTED OUT - Duplicate data already shown in previous sections */}
-              {/* <div style={{ pageBreakBefore: 'always' }}>
+              <div style={{ pageBreakBefore: 'always' }}>
                 <DetailedAssessmentBreakdown 
                   results={results} 
                   riasecNames={safeRiasecNames}
                   gradeLevel="highschool"
                 />
-              </div> */}
+              </div>
 
               {/* Section 2: Career Exploration */}
               {careerFit && (

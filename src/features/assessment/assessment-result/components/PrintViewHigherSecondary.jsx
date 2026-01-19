@@ -107,37 +107,46 @@ const PrintViewHigherSecondary = ({
           )}
         </PrintPage>
 
-        {/* Page 4: Career Fit Analysis */}
+        {/* Page 4: Detailed Assessment Breakdown (Developer Reference) */}
         <PrintPage pageNumber={4}>
+          <DetailedAssessmentBreakdown 
+            results={results} 
+            riasecNames={safeRiasecNames}
+            gradeLevel="after10"
+          />
+        </PrintPage>
+
+        {/* Page 5: Career Fit Analysis */}
+        <PrintPage pageNumber={5}>
           {careerFit && (
             <CareerFitAnalysisSection careerFit={careerFit} />
           )}
         </PrintPage>
 
-        {/* Page 5: Skill Gap & Development Plan */}
-        <PrintPage pageNumber={5}>
+        {/* Page 6: Skill Gap & Development Plan */}
+        <PrintPage pageNumber={6}>
           {skillGap && (
             <SkillGapDevelopmentSection skillGap={skillGap} />
           )}
         </PrintPage>
 
-        {/* Page 6: Development Roadmap */}
-        <PrintPage pageNumber={6}>
+        {/* Page 7: Development Roadmap */}
+        <PrintPage pageNumber={7}>
           {roadmap && (
             <DevelopmentRoadmapSection roadmap={roadmap} />
           )}
         </PrintPage>
 
-        {/* Page 7: Stream Recommendation (if available) */}
+        {/* Page 8: Stream Recommendation (if available) */}
         {streamRecommendation && streamRecommendation.recommendedStream && (
-          <PrintPage pageNumber={7}>
+          <PrintPage pageNumber={8}>
             <StreamRecommendationSection streamRecommendation={streamRecommendation} />
           </PrintPage>
         )}
 
-        {/* Page 8 (or 7 if no stream): Course Recommendations (if available) */}
+        {/* Page 9 (or 8 if no stream): Course Recommendations (if available) */}
         {courseRecommendations && courseRecommendations.length > 0 && (
-          <PrintPage pageNumber={streamRecommendation && streamRecommendation.recommendedStream ? 8 : 7}>
+          <PrintPage pageNumber={streamRecommendation && streamRecommendation.recommendedStream ? 9 : 8}>
             <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
           </PrintPage>
         )}
@@ -145,7 +154,7 @@ const PrintViewHigherSecondary = ({
         {/* Final Page: Disclaimer */}
         <PrintPage pageNumber={
           (streamRecommendation && streamRecommendation.recommendedStream ? 1 : 0) +
-          (courseRecommendations && courseRecommendations.length > 0 ? 1 : 0) + 6
+          (courseRecommendations && courseRecommendations.length > 0 ? 1 : 0) + 7
         }>
           <ReportDisclaimer />
         </PrintPage>
