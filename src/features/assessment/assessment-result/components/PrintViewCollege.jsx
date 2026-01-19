@@ -67,96 +67,57 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
       {/* Watermarks */}
       <Watermarks />
 
-      {/* Paginated Content - Each PrintPage has its own header/footer */}
+      {/* Continuous content for print - flows naturally across pages */}
       <div className="print-pages">
-        {/* Page 1: Profile Snapshot & Interest Profile */}
-        <PrintPage pageNumber={1}>
-          <DataPrivacyNotice />
-          <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
-          <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
-        </PrintPage>
+        <DataPrivacyNotice />
+        
+        {/* Detailed Assessment Breakdown (All stages data) */}
+        <DetailedAssessmentBreakdown 
+          results={results} 
+          riasecNames={safeRiasecNames}
+          gradeLevel="college"
+        />
 
-        {/* Page 2: Cognitive Abilities */}
-        <PrintPage pageNumber={2}>
-          {aptitude && (
-            <CognitiveAbilitiesSection aptitude={aptitude} />
-          )}
-        </PrintPage>
-
-        {/* Page 3: Big Five Personality */}
-        <PrintPage pageNumber={3}>
-          {bigFive && (
-            <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
-          )}
-        </PrintPage>
-
-        {/* Page 4: Work Values & Knowledge Assessment */}
-        <PrintPage pageNumber={4}>
-          {workValues && (
-            <WorkValuesSection workValues={workValues} />
-          )}
-          {knowledge && (
-            <KnowledgeAssessmentSection knowledge={knowledge} />
-          )}
-        </PrintPage>
-
-        {/* Page 5: Detailed Assessment Breakdown (Developer Reference) */}
-        <PrintPage pageNumber={5}>
-          <DetailedAssessmentBreakdown 
-            results={results} 
-            riasecNames={safeRiasecNames}
-            gradeLevel="college"
-          />
-        </PrintPage>
-
-        {/* Page 6: Employability Score */}
-        <PrintPage pageNumber={6}>
-          {employability && (
-            <EmployabilityScoreSection employability={employability} />
-          )}
-        </PrintPage>
-
-        {/* Page 7: Career Fit Analysis */}
-        <PrintPage pageNumber={7}>
-          {careerFit && (
-            <CareerFitAnalysisSection careerFit={careerFit} />
-          )}
-        </PrintPage>
-
-        {/* Page 8: Skill Gap & Development Plan */}
-        <PrintPage pageNumber={8}>
-          {skillGap && (
-            <SkillGapDevelopmentSection skillGap={skillGap} />
-          )}
-        </PrintPage>
-
-        {/* Page 9: Detailed Career Roadmap */}
-        <PrintPage pageNumber={9}>
-          {roadmap && (
-            <DetailedCareerRoadmapSection roadmap={roadmap} />
-          )}
-        </PrintPage>
-
-        {/* Page 10: Course Recommendations (if available) */}
-        {courseRecommendations && courseRecommendations.length > 0 && (
-          <PrintPage pageNumber={10}>
-            <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
-          </PrintPage>
+        {/* Career Fit Analysis */}
+        {careerFit && (
+          <CareerFitAnalysisSection careerFit={careerFit} />
+        )}
+        
+        {/* Skill Gap & Development Plan */}
+        {skillGap && (
+          <SkillGapDevelopmentSection skillGap={skillGap} />
         )}
 
-        {/* Page 11 (or 10 if no courses): Final Recommendations */}
-        <PrintPage pageNumber={courseRecommendations && courseRecommendations.length > 0 ? 11 : 10}>
-          {overallSummary && (
-            <FinalRecommendationsSection overallSummary={overallSummary} />
-          )}
-          <ReportDisclaimer />
-        </PrintPage>
+        {/* Career Roadmap */}
+        {roadmap && (
+          <DetailedCareerRoadmapSection roadmap={roadmap} />
+        )}
+        
+        {/* Course Recommendations - REMOVED for college students (only for After 12th) */}
+        {/* College students are already in a degree program, they don't need degree recommendations */}
+        {/* {courseRecommendations && courseRecommendations.length > 0 && (
+          <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
+        )} */}
+
+        {/* Final Recommendations */}
+        {overallSummary && (
+          <FinalRecommendationsSection overallSummary={overallSummary} />
+        )}
+        
+        <ReportDisclaimer />
       </div>
 
       {/* Screen-only continuous content (hidden in print) */}
       <div className="print-content" style={{ position: 'relative', zIndex: 1, paddingBottom: '70px' }}>
         <DataPrivacyNotice />
-        <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
+        {/* Show Detailed Assessment Breakdown for screen view */}
+        <DetailedAssessmentBreakdown 
+          results={results} 
+          riasecNames={safeRiasecNames}
+          gradeLevel="college"
+        />
+        {/* OLD SECTIONS COMMENTED OUT - Data now shown in Detailed Assessment Breakdown */}
+        {/* <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
         <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
         {aptitude && (
           <CognitiveAbilitiesSection aptitude={aptitude} />
@@ -172,7 +133,7 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         )}
         {employability && (
           <EmployabilityScoreSection employability={employability} />
-        )}
+        )} */}
         {careerFit && (
           <CareerFitAnalysisSection careerFit={careerFit} />
         )}
@@ -182,9 +143,10 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         {roadmap && (
           <DetailedCareerRoadmapSection roadmap={roadmap} />
         )}
-        {courseRecommendations && courseRecommendations.length > 0 && (
+        {/* Course Recommendations - REMOVED for college students (only for After 12th) */}
+        {/* {courseRecommendations && courseRecommendations.length > 0 && (
           <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
-        )}
+        )} */}
         {overallSummary && (
           <FinalRecommendationsSection overallSummary={overallSummary} />
         )}
@@ -825,13 +787,127 @@ const EmployabilityScoreSection = ({ employability }) => {
 const CareerFitAnalysisSection = ({ careerFit }) => {
   if (!careerFit || !careerFit.topCareers || careerFit.topCareers.length === 0) return null;
 
+  // Debug: Log careerFit data to see if tracks/roles/salary data exists
+  console.log('CareerFitAnalysisSection - careerFit data:', careerFit);
+  console.log('CareerFitAnalysisSection - checking for tracks:', careerFit.tracks || careerFit.careerTracks || careerFit.topTracks);
+
+  // Extract career tracks if they exist
+  const careerTracks = careerFit.tracks || careerFit.careerTracks || careerFit.topTracks || [];
+
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>7. Career Fit Analysis</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>2. Career Fit Analysis</h2>
       <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
         Based on your interests, abilities, personality, and values, these careers offer the best alignment 
         with your profile. The fit score indicates how well each career matches your overall assessment results.
       </p>
+
+      {/* Career Tracks with Roles & Salary (if available) */}
+      {careerTracks.length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={printStyles.subTitle}>Top Career Tracks for You</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '10px' }}>
+            {careerTracks.slice(0, 3).map((track, idx) => {
+              const trackNumber = idx + 1;
+              const trackName = track.name || track.trackName || `Track ${trackNumber}`;
+              const matchScore = track.matchScore || track.fitScore || 0;
+              const roles = track.roles || track.topRoles || [];
+              const scoreStyle = getScoreStyle(matchScore);
+
+              return (
+                <div key={idx} style={{
+                  ...printStyles.card,
+                  background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+                  color: 'white',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  position: 'relative'
+                }}>
+                  {/* Track Badge */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '8px',
+                    left: '8px',
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    fontSize: '7px',
+                    fontWeight: 'bold'
+                  }}>
+                    TRACK {trackNumber}
+                  </div>
+
+                  {/* Match Score Circle */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    width: '45px',
+                    height: '45px',
+                    borderRadius: '50%',
+                    border: '3px solid rgba(255, 255, 255, 0.3)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(255, 255, 255, 0.1)'
+                  }}>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{matchScore}%</div>
+                    <div style={{ fontSize: '6px' }}>Match</div>
+                  </div>
+
+                  {/* Track Name */}
+                  <div style={{
+                    marginTop: '50px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    marginBottom: '10px',
+                    lineHeight: '1.3'
+                  }}>
+                    {trackName}
+                  </div>
+
+                  {/* Top Roles & Salary */}
+                  {roles.length > 0 && (
+                    <div>
+                      <div style={{
+                        fontSize: '7px',
+                        fontWeight: 'bold',
+                        marginBottom: '6px',
+                        opacity: 0.9
+                      }}>
+                        TOP ROLES & SALARY
+                      </div>
+                      {roles.slice(0, 3).map((role, roleIdx) => (
+                        <div key={roleIdx} style={{
+                          fontSize: '8px',
+                          marginBottom: '4px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          opacity: 0.95
+                        }}>
+                          <span>{role.title || role.name || role}</span>
+                          {role.salary && (
+                            <span style={{
+                              fontSize: '7px',
+                              color: '#86efac',
+                              fontWeight: 'bold',
+                              marginLeft: '4px'
+                            }}>
+                              {role.salary}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Career Clusters (if available) */}
       {careerFit.clusters && careerFit.clusters.length > 0 && (
@@ -953,9 +1029,12 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
 const SkillGapDevelopmentSection = ({ skillGap }) => {
   if (!skillGap) return null;
 
+  // Debug: Log skillGap data to verify it's correct
+  console.log('SkillGapDevelopmentSection - skillGap data:', skillGap);
+
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>8. Skill Gap & Development Plan</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>3. Skill Gap & Development Plan</h2>
       <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
         This analysis compares your current skills with those required for your target careers, 
         helping you prioritize your professional development efforts.
@@ -1095,9 +1174,12 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
 const DetailedCareerRoadmapSection = ({ roadmap }) => {
   if (!roadmap) return null;
 
+  // Debug: Log roadmap data to verify it's correct
+  console.log('DetailedCareerRoadmapSection - roadmap data:', roadmap);
+
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>9. Detailed Career Roadmap</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>4. Detailed Career Roadmap</h2>
       <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
         This roadmap provides a structured path to achieve your career goals, with specific phases, 
         timelines, and actionable steps.
@@ -1288,6 +1370,9 @@ const FinalRecommendationsSection = ({ overallSummary }) => {
  */
 const CourseRecommendationsSection = ({ courseRecommendations }) => {
   if (!courseRecommendations || courseRecommendations.length === 0) return null;
+
+  // Debug: Log courseRecommendations data to verify it's correct
+  console.log('CourseRecommendationsSection - courseRecommendations data:', courseRecommendations);
 
   // Take top 5 recommendations
   const topCourses = courseRecommendations.slice(0, 5);
