@@ -1421,26 +1421,26 @@ END:VCALENDAR`;
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center justify-between text-sm">
-                                            <div className="text-center max-w-[80px]">
+                                        <div className="flex items-center text-sm gap-3">
+                                            <div className="text-center flex-1 min-w-0">
                                                 <div className="w-4 h-4 rounded-full bg-green-500 mx-auto mb-1" />
-                                                <span className="text-gray-700 font-medium text-xs block truncate">
+                                                <span className="text-gray-700 font-medium text-xs block">
                                                     {learningRoadmap[0]?.title || 'Foundation'}
                                                 </span>
                                                 <span className="text-gray-400 text-[10px]">{learningRoadmap[0]?.month || 'Month 1-2'}</span>
                                             </div>
-                                            <div className="flex-1 h-1 bg-gradient-to-r from-green-400 to-blue-400 mx-2 rounded-full" />
-                                            <div className="text-center max-w-[80px]">
+                                            <div className="w-16 h-1 bg-gradient-to-r from-green-400 to-blue-400 rounded-full shrink-0" />
+                                            <div className="text-center flex-1 min-w-0">
                                                 <div className="w-4 h-4 rounded-full bg-blue-400 mx-auto mb-1" />
-                                                <span className="text-gray-600 text-xs block truncate">
+                                                <span className="text-gray-600 text-xs block">
                                                     {learningRoadmap[1]?.title || 'Development'}
                                                 </span>
                                                 <span className="text-gray-400 text-[10px]">{learningRoadmap[1]?.month || 'Month 3-4'}</span>
                                             </div>
-                                            <div className="flex-1 h-1 bg-gradient-to-r from-blue-400 to-purple-400 mx-2 rounded-full" />
-                                            <div className="text-center max-w-[80px]">
+                                            <div className="w-16 h-1 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full shrink-0" />
+                                            <div className="text-center flex-1 min-w-0">
                                                 <div className="w-4 h-4 rounded-full bg-purple-400 mx-auto mb-1" />
-                                                <span className="text-gray-500 text-xs block truncate">
+                                                <span className="text-gray-500 text-xs block">
                                                     {learningRoadmap[2]?.title || 'Portfolio'}
                                                 </span>
                                                 <span className="text-gray-400 text-[10px]">{learningRoadmap[2]?.month || 'Month 5-6'}</span>
