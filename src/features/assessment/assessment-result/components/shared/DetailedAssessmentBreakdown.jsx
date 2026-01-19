@@ -185,30 +185,29 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
 
     return (
         <div style={{ 
-            pageBreakBefore: 'always',
-            padding: '15px',
+            padding: '10px',
             fontFamily: 'Arial, Helvetica, sans-serif',
-            fontSize: '10px',
-            lineHeight: '1.3',
+            fontSize: '9px',
+            lineHeight: '1.2',
             color: '#1f2937'
         }}>
             {/* Header - Dark slate theme matching "Message for You" */}
             <div style={{
                 ...printStyles.finalBox,
                 marginTop: '0',
-                marginBottom: '10px',
-                padding: '10px 15px'
+                marginBottom: '6px',
+                padding: '8px 12px'
             }}>
                 <h2 style={{
-                    fontSize: '13px',
+                    fontSize: '12px',
                     fontWeight: 'bold',
                     color: '#fbbf24',
-                    margin: '0 0 4px 0'
+                    margin: '0 0 3px 0'
                 }}>
                     Detailed Assessment Breakdown
                 </h2>
                 <p style={{
-                    fontSize: '8px',
+                    fontSize: '7px',
                     color: '#cbd5e1',
                     margin: 0,
                     fontStyle: 'italic'
@@ -222,10 +221,8 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                 background: '#334155',
                 border: '1px solid #475569',
                 borderRadius: '6px',
-                padding: '8px 10px',
-                marginBottom: '10px',
-                pageBreakInside: 'avoid',
-                breakInside: 'avoid'
+                padding: '6px 8px',
+                marginBottom: '6px'
             }}>
                 <h3 style={{
                     fontSize: '10px',
@@ -258,16 +255,14 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                 return (
                     <div key={stage.id} style={{
                         ...printStyles.card,
-                        marginBottom: '8px',
-                        padding: '0',
-                        pageBreakInside: 'avoid',
-                        breakInside: 'avoid'
+                        marginBottom: '6px',
+                        padding: '0'
                     }}>
                         {/* Stage Header - Dark slate theme matching "Message for You" */}
                         <div style={{
                             background: '#1e293b',
                             color: 'white',
-                            padding: '6px 10px',
+                            padding: '5px 8px',
                             margin: '0',
                             borderRadius: '6px 6px 0 0',
                             display: 'flex',
@@ -279,12 +274,12 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                                 <span style={{ fontSize: '7px', color: '#fbbf24', display: 'block', marginBottom: '1px', fontWeight: '600' }}>
                                     STAGE {stage.id}
                                 </span>
-                                <h4 style={{ fontSize: '10px', fontWeight: 'bold', margin: 0 }}>
+                                <h4 style={{ fontSize: '9px', fontWeight: 'bold', margin: 0 }}>
                                     {stage.name}
                                 </h4>
                             </div>
                             <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fbbf24' }}>{stage.avgPercentage}%</div>
+                                <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#fbbf24' }}>{stage.avgPercentage}%</div>
                                 <div style={{ fontSize: '6px', opacity: 0.9 }}>Average</div>
                             </div>
                         </div>
@@ -380,29 +375,7 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                             </table>
                         </div>
 
-                        {/* Stage Summary - matching print view summary box */}
-                        <div style={{
-                            background: '#f8fafc',
-                            padding: '10px 12px',
-                            margin: '12px -12px -12px -12px',
-                            borderTop: '1px solid #e2e8f0',
-                            borderRadius: '0 0 6px 6px'
-                        }}>
-                            <p style={{
-                                fontSize: '9px',
-                                color: '#475569',
-                                margin: 0,
-                                lineHeight: '1.5'
-                            }}>
-                                <strong>Analysis:</strong> {
-                                    stage.avgPercentage >= 70 
-                                        ? `Strong performance across ${stage.name.toLowerCase()}. Scores indicate clear strengths in this area.`
-                                        : stage.avgPercentage >= 40
-                                        ? `Solid performance in ${stage.name.toLowerCase()}. Some dimensions show room for development.`
-                                        : `Development opportunity in ${stage.name.toLowerCase()}. Focus on improving lower-scoring dimensions.`
-                                }
-                            </p>
-                        </div>
+                        {/* Stage Summary removed to save space */}
                     </div>
                 );
             })}
