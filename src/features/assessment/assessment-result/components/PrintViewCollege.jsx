@@ -101,52 +101,51 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         </PrintPage>
 
         {/* Page 5: Detailed Assessment Breakdown (Developer Reference) */}
-        {/* COMMENTED OUT - Duplicate data already shown in previous pages */}
-        {/* <PrintPage pageNumber={5}>
+        <PrintPage pageNumber={5}>
           <DetailedAssessmentBreakdown 
             results={results} 
             riasecNames={safeRiasecNames}
             gradeLevel="college"
           />
-        </PrintPage> */}
+        </PrintPage>
 
         {/* Page 6: Employability Score */}
-        <PrintPage pageNumber={5}>
+        <PrintPage pageNumber={6}>
           {employability && (
             <EmployabilityScoreSection employability={employability} />
           )}
         </PrintPage>
 
         {/* Page 7: Career Fit Analysis */}
-        <PrintPage pageNumber={6}>
+        <PrintPage pageNumber={7}>
           {careerFit && (
             <CareerFitAnalysisSection careerFit={careerFit} />
           )}
         </PrintPage>
 
         {/* Page 8: Skill Gap & Development Plan */}
-        <PrintPage pageNumber={7}>
+        <PrintPage pageNumber={8}>
           {skillGap && (
             <SkillGapDevelopmentSection skillGap={skillGap} />
           )}
         </PrintPage>
 
         {/* Page 9: Detailed Career Roadmap */}
-        <PrintPage pageNumber={8}>
+        <PrintPage pageNumber={9}>
           {roadmap && (
             <DetailedCareerRoadmapSection roadmap={roadmap} />
           )}
         </PrintPage>
 
-        {/* Page 9: Course Recommendations (if available) */}
+        {/* Page 10: Course Recommendations (if available) */}
         {courseRecommendations && courseRecommendations.length > 0 && (
-          <PrintPage pageNumber={9}>
+          <PrintPage pageNumber={10}>
             <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
           </PrintPage>
         )}
 
-        {/* Page 10 (or 9 if no courses): Final Recommendations */}
-        <PrintPage pageNumber={courseRecommendations && courseRecommendations.length > 0 ? 10 : 9}>
+        {/* Page 11 (or 10 if no courses): Final Recommendations */}
+        <PrintPage pageNumber={courseRecommendations && courseRecommendations.length > 0 ? 11 : 10}>
           {overallSummary && (
             <FinalRecommendationsSection overallSummary={overallSummary} />
           )}
