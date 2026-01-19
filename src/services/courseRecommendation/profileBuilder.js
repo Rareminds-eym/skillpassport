@@ -3,6 +3,8 @@
  * Builds composite text representation of student profile from assessment results.
  */
 
+import { getDomainKeywordsWithCache } from './fieldDomainService.js';
+
 /**
  * Build a composite text representation of the student's profile
  * from assessment results for embedding generation.
@@ -11,16 +13,41 @@
  * with skill gaps and career clusters weighted as primary factors.
  * 
  * @param {Object} assessmentResults - Assessment results from AI analysis
- * @returns {string} - Composite profile text for embedding
+ * @returns {Promise<string>} - Composite profile text for embedding
  * 
  * Requirements: 2.1, 2.2
  */
-export const buildProfileText = (assessmentResults) => {
+export const buildProfileText = async (assessmentResults) => {
   if (!assessmentResults) {
     throw new Error('Assessment results are required');
   }
 
   const parts = [];
+
+  // Priority 0: Field of Study (Highest Priority for domain-specific matching)
+  // Add field-specific context at the beginning to strongly influence embedding
+  const stream = assessmentResults.stream || assessmentResults.branch_field;
+  if (stream) {
+    parts.push(`Student Field of Study: ${stream}`);
+    
+    // Generate domain-specific keywords using AI service
+    // This works for ALL fields, not just hardcoded ones
+    try {
+      console.log(`[Profile Builder] Fetching domain keywords for: "${stream}"`);
+      const domainKeywords = await getDomainKeywordsWithCache(stream);
+      if (domainKeywords) {
+        parts.push(`Domain Focus: ${domainKeywords}`);
+        console.log(`[Profile Builder] ✅ Domain keywords added to profile`);
+      } else {
+        console.warn(`[Profile Builder] ⚠️ No domain keywords returned for "${stream}"`);
+        console.log(`[Profile Builder] → Continuing with LAYER 4 (Other Profile Factors)`);
+      }
+    } catch (error) {
+      console.error(`[Profile Builder] ❌ LAYER 4 (Graceful Degradation) - Failed to generate domain keywords:`, error.message);
+      console.log(`[Profile Builder] → Continuing without domain keywords, using career clusters and skill gaps`);
+      // Continue without domain keywords rather than failing
+    }
+  }
 
   // Priority 1: Skill Gaps (Primary Factor - Requirement 2.2)
   const skillGap = assessmentResults.skillGap;
@@ -107,11 +134,6 @@ export const buildProfileText = (assessmentResults) => {
   const aptitude = assessmentResults.aptitude;
   if (aptitude && aptitude.topStrengths && Array.isArray(aptitude.topStrengths)) {
     parts.push(`Aptitude Strengths: ${aptitude.topStrengths.join(', ')}`);
-  }
-
-  // Additional context: Stream/field of study
-  if (assessmentResults.stream) {
-    parts.push(`Field of Study: ${assessmentResults.stream}`);
   }
 
   if (parts.length === 0) {

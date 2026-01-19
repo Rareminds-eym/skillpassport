@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../../../lib/supabaseClient';
 import * as assessmentService from '../../../../services/assessmentService';
 import { saveRecommendations } from '../../../../services/courseRecommendationService';
-import { analyzeAssessmentWithGemini } from '../../../../services/geminiAssessmentService';
+import { analyzeAssessmentWithGemini, addCourseRecommendations } from '../../../../services/geminiAssessmentService';
 import { validateAssessmentResults } from '../utils/assessmentValidation';
 import {
     riasecQuestions,
@@ -805,6 +805,72 @@ export const useAssessmentResults = () => {
                             // Valid AI analysis exists - use it
                             // Apply validation to correct RIASEC topThree and detect aptitude patterns
                             const validatedResults = applyValidation(geminiResults, attempt.all_responses || {});
+                            
+                            // DISABLED: Course generation during assessment
+                            // Courses are now generated on-demand when user clicks a job role
+                            // This improves assessment generation speed and reduces unnecessary API calls
+                            /*
+                            // Check if courses are missing and regenerate if needed
+                            if (!validatedResults.platformCourses || validatedResults.platformCourses.length === 0) {
+                                console.log('⚠️ Course recommendations missing - regenerating...');
+                                console.log('   Current result ID:', result.id);
+                                console.log('   Attempt ID:', attemptId);
+                                try {
+                                    const { data: { user } } = await supabase.auth.getUser();
+                                    let studentId = null;
+                                    if (user) {
+                                        const { data: student } = await supabase
+                                            .from('students')
+                                            .select('id')
+                                            .eq('user_id', user.id)
+                                            .single();
+                                        studentId = student?.id;
+                                        console.log('   Student ID:', studentId);
+                                    }
+                                    
+                                    console.log('   Calling addCourseRecommendations...');
+                                    const resultsWithCourses = await addCourseRecommendations(validatedResults, studentId);
+                                    console.log('   ✅ Courses generated:', {
+                                        platformCourses: resultsWithCourses.platformCourses?.length || 0,
+                                        technical: resultsWithCourses.coursesByType?.technical?.length || 0,
+                                        soft: resultsWithCourses.coursesByType?.soft?.length || 0
+                                    });
+                                    
+                                    // Update database with new courses
+                                    console.log('   Saving to database...');
+                                    const { error: updateError } = await supabase
+                                        .from('personal_assessment_results')
+                                        .update({
+                                            platform_courses: resultsWithCourses.platformCourses,
+                                            courses_by_type: resultsWithCourses.coursesByType,
+                                            skill_gap_courses: resultsWithCourses.skillGapCourses,
+                                            gemini_results: resultsWithCourses
+                                        })
+                                        .eq('id', result.id);
+                                    
+                                    if (updateError) {
+                                        console.error('   ❌ Failed to save courses:', updateError);
+                                    } else {
+                                        console.log('   ✅ Courses saved to database successfully');
+                                    }
+                                    
+                                    setResults(resultsWithCourses);
+                                } catch (courseError) {
+                                    console.error('   ❌ Failed to regenerate courses:', courseError);
+                                    setResults(validatedResults); // Use results without courses
+                                }
+                            } else {
+                                console.log('✅ Courses already exist:', {
+                                    platformCourses: validatedResults.platformCourses?.length || 0,
+                                    technical: validatedResults.coursesByType?.technical?.length || 0,
+                                    soft: validatedResults.coursesByType?.soft?.length || 0
+                                });
+                                setResults(validatedResults);
+                            }
+                            */
+                            
+                            // Set results without course generation
+                            console.log('📋 Loading assessment results (courses will be generated on-demand)');
                             setResults(validatedResults);
 
                             // Set grade level from attempt
@@ -816,6 +882,9 @@ export const useAssessmentResults = () => {
 
                             // ✅ REMOVED: localStorage caching (database is source of truth)
 
+                            // DISABLED: Course recommendation saving
+                            // Courses are now generated on-demand when user clicks a job role
+                            /*
                             // Ensure recommendations are saved (in case they weren't before)
                             if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
                                 try {
@@ -833,6 +902,7 @@ export const useAssessmentResults = () => {
                                     console.log('Recommendations sync:', recError.message);
                                 }
                             }
+                            */
 
 
                             loadedAttemptIdRef.current = attemptId; // Mark as loaded
@@ -950,6 +1020,9 @@ export const useAssessmentResults = () => {
 
                         // ✅ REMOVED: localStorage caching (database is source of truth)
 
+                        // DISABLED: Course recommendation saving
+                        // Courses are now generated on-demand when user clicks a job role
+                        /*
                         // Ensure recommendations are saved
                         if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
                             try {
@@ -963,6 +1036,7 @@ export const useAssessmentResults = () => {
                                 console.log('Recommendations sync:', recError.message);
                             }
                         }
+                        */
 
                         setLoading(false);
                         return;
@@ -1186,6 +1260,9 @@ export const useAssessmentResults = () => {
                             console.log('✅ Database result updated with regenerated AI analysis');
                         }
 
+                        // DISABLED: Course recommendation saving
+                        // Courses are now generated on-demand when user clicks a job role
+                        /*
                         // Save course recommendations
                         if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
                             try {
@@ -1199,6 +1276,7 @@ export const useAssessmentResults = () => {
                                 console.log('Recommendations sync:', recError.message);
                             }
                         }
+                        */
                     }
                 }
             } catch (dbError) {

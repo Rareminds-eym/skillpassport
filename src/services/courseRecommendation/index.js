@@ -16,6 +16,7 @@
  * - skillGapMatcher.js: Matches courses to skill gaps
  * - recommendationService.js: Main recommendation logic
  * - recommendationStorage.js: Saves/retrieves recommendations
+ * - roleBasedMatcher.js: RAG-based matching for specific job roles
  */
 
 // Profile building
@@ -39,6 +40,11 @@ export {
   getCoursesForMultipleSkillGaps 
 } from './skillGapMatcher';
 
+// Role-based matching (for CareerTrackModal)
+export { 
+  matchCoursesForRole 
+} from './roleBasedMatcher';
+
 // Storage operations
 export { 
   saveRecommendations,
@@ -52,6 +58,7 @@ import { buildProfileText } from './profileBuilder';
 import { fetchCoursesWithEmbeddings, fetchCoursesBySkillType } from './courseRepository';
 import { getRecommendedCourses, getRecommendedCoursesByType } from './recommendationService';
 import { getCoursesForSkillGap, getCoursesForMultipleSkillGaps } from './skillGapMatcher';
+import { matchCoursesForRole } from './roleBasedMatcher';
 import { 
   saveRecommendations, 
   getSavedRecommendations, 
@@ -68,6 +75,7 @@ export default {
   getRecommendedCoursesByType,
   getCoursesForSkillGap,
   getCoursesForMultipleSkillGaps,
+  matchCoursesForRole,
   saveRecommendations,
   getSavedRecommendations,
   updateRecommendationStatus,
