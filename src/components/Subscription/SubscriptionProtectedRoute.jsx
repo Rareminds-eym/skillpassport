@@ -1,8 +1,16 @@
 /**
  * SubscriptionProtectedRoute
  * 
- * Production-ready route guard that protects routes requiring active subscription.
+ * Industrial-grade route guard that protects routes requiring active subscription.
  * Combines authentication check + role check + subscription access check.
+ * 
+ * Features:
+ * - State machine for predictable state transitions
+ * - Retry logic with exponential backoff
+ * - Post-payment navigation handling with cache synchronization
+ * - Comprehensive error handling and recovery
+ * - Debug logging for troubleshooting
+ * - Safety timeouts to prevent infinite loading
  * 
  * Usage:
  * <SubscriptionProtectedRoute 
@@ -13,26 +21,322 @@
  * </SubscriptionProtectedRoute>
  */
 
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ACCESS_REASONS, useSubscriptionContext } from '../../context/SubscriptionContext';
 import Loader from '../Loader';
 import SubscriptionBanner from './SubscriptionBanner';
 
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const DEBUG = import.meta.env.DEV || localStorage.getItem('DEBUG_SUBSCRIPTION') === 'true';
+
+/** Route guard states */
+const GUARD_STATES = {
+  INITIALIZING: 'initializing',
+  CHECKING_AUTH: 'checking_auth',
+  CHECKING_ROLE: 'checking_role',
+  CHECKING_SUBSCRIPTION: 'checking_subscription',
+  POST_PAYMENT_SYNC: 'post_payment_sync',
+  ACCESS_GRANTED: 'access_granted',
+  ACCESS_DENIED: 'access_denied',
+  ERROR: 'error',
+};
+
+/** Configuration */
+const CONFIG = {
+  POST_PAYMENT_MAX_RETRIES: 3,
+  POST_PAYMENT_RETRY_DELAY_MS: 1000,
+  POST_PAYMENT_TIMEOUT_MS: 10000,
+  SUBSCRIPTION_CHECK_TIMEOUT_MS: 15000,
+};
+
+/** User type mapping from URL path */
+const PATH_TO_USER_TYPE = {
+  '/student': 'student',
+  '/recruitment': 'recruiter',
+  '/educator': 'educator',
+  '/college-admin': 'college_admin',
+  '/school-admin': 'school_admin',
+  '/university-admin': 'university_admin',
+  '/admin': 'admin',
+};
+
+// ============================================================================
+// UTILITIES
+// ============================================================================
+
+/**
+ * Debug logger that only logs in development or when DEBUG flag is set
+ */
+const log = {
+  info: (...args) => DEBUG && console.log('[SubscriptionGuard]', ...args),
+  warn: (...args) => DEBUG && console.warn('[SubscriptionGuard]', ...args),
+  error: (...args) => console.error('[SubscriptionGuard]', ...args),
+  state: (state, data = {}) => DEBUG && console.log('[SubscriptionGuard] State:', state, data),
+};
+
 /**
  * Get the user type for subscription plans based on current URL path
- * This is more reliable than using the role from auth context
  */
 function getUserTypeFromPath(pathname) {
-  if (pathname.startsWith('/student')) return 'student';
-  if (pathname.startsWith('/recruitment')) return 'recruiter';
-  if (pathname.startsWith('/educator')) return 'educator';
-  if (pathname.startsWith('/college-admin')) return 'college_admin';
-  if (pathname.startsWith('/school-admin')) return 'school_admin';
-  if (pathname.startsWith('/university-admin')) return 'university_admin';
-  if (pathname.startsWith('/admin')) return 'admin';
+  for (const [prefix, userType] of Object.entries(PATH_TO_USER_TYPE)) {
+    if (pathname.startsWith(prefix)) {
+      return userType;
+    }
+  }
   return 'student'; // fallback
 }
+
+/**
+ * Sleep utility for retry delays
+ */
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Retry with exponential backoff
+ */
+async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
+  let lastError;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries - 1) {
+        const delay = baseDelayMs * Math.pow(2, attempt);
+        onRetry?.(attempt + 1, delay, error);
+        await sleep(delay);
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
+// ============================================================================
+// CUSTOM HOOK: usePostPaymentSync
+// ============================================================================
+
+/**
+ * Hook to handle post-payment subscription synchronization
+ * Ensures subscription cache is refreshed before allowing access
+ */
+function usePostPaymentSync(isPostPayment, hasAccess, refreshAccess) {
+  const [syncState, setSyncState] = useState({
+    status: 'idle', // 'idle' | 'syncing' | 'synced' | 'failed'
+    attempts: 0,
+    error: null,
+  });
+  
+  const syncStartedRef = useRef(false);
+  const timeoutRef = useRef(null);
+  const mountedRef = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Perform sync when coming from payment
+  useEffect(() => {
+    // Skip if not post-payment, already has access, or already started sync
+    if (!isPostPayment || hasAccess || syncStartedRef.current) {
+      return;
+    }
+
+    syncStartedRef.current = true;
+    setSyncState({ status: 'syncing', attempts: 0, error: null });
+    log.info('Post-payment sync started');
+
+    // Set overall timeout
+    timeoutRef.current = setTimeout(() => {
+      if (mountedRef.current && syncState.status === 'syncing') {
+        log.warn('Post-payment sync timeout reached');
+        setSyncState(prev => ({
+          ...prev,
+          status: 'failed',
+          error: new Error('Sync timeout'),
+        }));
+      }
+    }, CONFIG.POST_PAYMENT_TIMEOUT_MS);
+
+    // Perform sync with retries
+    retryWithBackoff(
+      async () => {
+        await refreshAccess();
+        // Small delay to ensure React Query cache is updated
+        await sleep(100);
+      },
+      CONFIG.POST_PAYMENT_MAX_RETRIES,
+      CONFIG.POST_PAYMENT_RETRY_DELAY_MS,
+      (attempt, delay, error) => {
+        log.warn(`Post-payment sync retry ${attempt}/${CONFIG.POST_PAYMENT_MAX_RETRIES} after ${delay}ms`, error);
+        if (mountedRef.current) {
+          setSyncState(prev => ({ ...prev, attempts: attempt }));
+        }
+      }
+    )
+      .then(() => {
+        if (mountedRef.current) {
+          log.info('Post-payment sync completed successfully');
+          setSyncState({ status: 'synced', attempts: 0, error: null });
+        }
+      })
+      .catch((error) => {
+        if (mountedRef.current) {
+          log.error('Post-payment sync failed after all retries', error);
+          setSyncState({ status: 'failed', attempts: CONFIG.POST_PAYMENT_MAX_RETRIES, error });
+        }
+      })
+      .finally(() => {
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+      });
+  }, [isPostPayment, hasAccess, refreshAccess, syncState.status]);
+
+  // Reset sync state when hasAccess becomes true
+  useEffect(() => {
+    if (hasAccess && syncState.status === 'syncing') {
+      log.info('Access granted during sync, marking as synced');
+      setSyncState({ status: 'synced', attempts: 0, error: null });
+    }
+  }, [hasAccess, syncState.status]);
+
+  return {
+    isSyncing: syncState.status === 'syncing',
+    isSynced: syncState.status === 'synced' || syncState.status === 'idle',
+    syncFailed: syncState.status === 'failed',
+    syncAttempts: syncState.attempts,
+    syncError: syncState.error,
+  };
+}
+
+// ============================================================================
+// CUSTOM HOOK: useGuardState
+// ============================================================================
+
+/**
+ * Hook to manage the route guard state machine
+ */
+function useGuardState({
+  authLoading,
+  isAuthenticated,
+  role,
+  allowedRoles,
+  requireSubscription,
+  subscriptionLoading,
+  hasAccess,
+  isRefetching,
+  subscriptionError,
+  isPostPayment,
+  postPaymentSync,
+}) {
+  const [state, setState] = useState(GUARD_STATES.INITIALIZING);
+  const prevStateRef = useRef(state);
+
+  // Compute the current state based on all inputs
+  const computedState = useMemo(() => {
+    // Step 1: Auth loading
+    if (authLoading) {
+      return GUARD_STATES.CHECKING_AUTH;
+    }
+
+    // Step 2: Not authenticated
+    if (!isAuthenticated) {
+      return GUARD_STATES.ACCESS_DENIED;
+    }
+
+    // Step 3: Role check - be lenient for admin roles
+    if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
+      // Check if this is an admin role mismatch that should be allowed
+      const isAdminRoute = allowedRoles.some(r => r.includes('_admin'));
+      const userIsAdmin = role === 'admin' || role?.includes('_admin');
+      
+      if (!(isAdminRoute && userIsAdmin)) {
+        // Not an admin exception, deny access
+        return GUARD_STATES.ACCESS_DENIED;
+      }
+      // Admin exception - continue to subscription check
+    }
+
+    // Step 4: Subscription not required
+    if (!requireSubscription) {
+      return GUARD_STATES.ACCESS_GRANTED;
+    }
+
+    // Step 5: Post-payment sync in progress
+    if (isPostPayment && postPaymentSync.isSyncing) {
+      return GUARD_STATES.POST_PAYMENT_SYNC;
+    }
+
+    // Step 6: Subscription loading or refetching
+    if (subscriptionLoading || (!hasAccess && isRefetching)) {
+      return GUARD_STATES.CHECKING_SUBSCRIPTION;
+    }
+
+    // Step 7: Subscription error (allow with warning)
+    if (subscriptionError) {
+      return GUARD_STATES.ERROR;
+    }
+
+    // Step 8: Check access
+    if (hasAccess) {
+      return GUARD_STATES.ACCESS_GRANTED;
+    }
+
+    // Step 9: Post-payment sync failed but we should still check access
+    if (isPostPayment && postPaymentSync.syncFailed) {
+      // Even if sync failed, check if we have access now
+      return hasAccess ? GUARD_STATES.ACCESS_GRANTED : GUARD_STATES.ACCESS_DENIED;
+    }
+
+    return GUARD_STATES.ACCESS_DENIED;
+  }, [
+    authLoading,
+    isAuthenticated,
+    role,
+    allowedRoles,
+    requireSubscription,
+    subscriptionLoading,
+    hasAccess,
+    isRefetching,
+    subscriptionError,
+    isPostPayment,
+    postPaymentSync,
+  ]);
+
+  // Update state when computed state changes
+  useEffect(() => {
+    if (computedState !== prevStateRef.current) {
+      log.state(computedState, {
+        from: prevStateRef.current,
+        hasAccess,
+        isPostPayment,
+        syncStatus: postPaymentSync,
+      });
+      prevStateRef.current = computedState;
+      setState(computedState);
+    }
+  }, [computedState, hasAccess, isPostPayment, postPaymentSync]);
+
+  return state;
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
 const SubscriptionProtectedRoute = ({ 
   children, 
@@ -41,8 +345,23 @@ const SubscriptionProtectedRoute = ({
   subscriptionFallbackPath = '/subscription/plans',
   loginFallbackPath = '/login',
 }) => {
-  const { isAuthenticated, role, loading: authLoading } = useAuth();
+  const { isAuthenticated, role, loading: authLoading, user } = useAuth();
   const location = useLocation();
+  
+  // Debug logging for redirect loop investigation
+  useEffect(() => {
+    if (DEBUG) {
+      console.log('[SubscriptionGuard] Mount/Update:', {
+        path: location.pathname,
+        isAuthenticated,
+        role,
+        authLoading,
+        userId: user?.id,
+        allowedRoles,
+        requireSubscription,
+      });
+    }
+  }, [location.pathname, isAuthenticated, role, authLoading, user?.id, allowedRoles, requireSubscription]);
   
   const {
     hasAccess,
@@ -53,59 +372,65 @@ const SubscriptionProtectedRoute = ({
     warningMessage,
     error: subscriptionError,
     isRefetching,
+    refreshAccess,
   } = useSubscriptionContext();
 
-  // Helper to build the subscription fallback URL with user's type from URL path
-  const getSubscriptionFallbackUrl = () => {
-    // If the fallback path already has a type parameter, use it as-is
+  // Detect post-payment navigation
+  const isPostPayment = location.state?.fromPayment === true;
+
+  // Post-payment synchronization
+  const postPaymentSync = usePostPaymentSync(isPostPayment, hasAccess, refreshAccess);
+
+  // Guard state machine
+  const guardState = useGuardState({
+    authLoading,
+    isAuthenticated,
+    role,
+    allowedRoles,
+    requireSubscription,
+    subscriptionLoading,
+    hasAccess,
+    isRefetching,
+    subscriptionError,
+    isPostPayment,
+    postPaymentSync,
+  });
+
+  // Build subscription fallback URL
+  const getSubscriptionFallbackUrl = useCallback(() => {
     if (subscriptionFallbackPath.includes('type=')) {
       return subscriptionFallbackPath;
     }
-    // Get user type from current URL path (more reliable than role from auth)
     const userType = getUserTypeFromPath(location.pathname);
-    // Otherwise, append the user's type as the type parameter
     const separator = subscriptionFallbackPath.includes('?') ? '&' : '?';
     return `${subscriptionFallbackPath}${separator}type=${userType}`;
-  };
+  }, [subscriptionFallbackPath, location.pathname]);
 
-  // Step 1: Wait for auth to load
-  if (authLoading) {
+  // Build redirect state for subscription plans
+  const buildRedirectState = useCallback((message) => ({
+    from: location,
+    reason: accessReason,
+    userRole: role,
+    message,
+  }), [location, accessReason, role]);
+
+  // ============================================================================
+  // RENDER BASED ON STATE
+  // ============================================================================
+
+  // Loading states
+  if (
+    guardState === GUARD_STATES.INITIALIZING ||
+    guardState === GUARD_STATES.CHECKING_AUTH ||
+    guardState === GUARD_STATES.CHECKING_SUBSCRIPTION ||
+    guardState === GUARD_STATES.POST_PAYMENT_SYNC
+  ) {
     return <Loader />;
   }
 
-  // Step 2: Check authentication
-  if (!isAuthenticated) {
-    // Preserve the intended destination for redirect after login
-    const redirectPath = location.pathname.includes('student') 
-      ? loginFallbackPath 
-      : '/';
-    return <Navigate to={redirectPath} state={{ from: location }} replace />;
-  }
-
-  // Step 3: Check role (if allowedRoles specified)
-  if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
-    console.log('[SubscriptionProtectedRoute] Role check failed - role:', role, 'allowedRoles:', allowedRoles);
-    // Instead of redirecting to home, redirect to subscription plans with the expected role
-    // This provides a better UX - user can see plans and potentially fix their subscription
-    const expectedRole = allowedRoles[0] || 'student';
-    return <Navigate to={`/subscription/plans?type=${expectedRole}`} replace />;
-  }
-
-  // Step 4: If subscription not required, allow access
-  if (!requireSubscription) {
-    return children;
-  }
-
-  // Step 5: Wait for subscription check to complete
-  // If loading (first load) or if we don't have access but are refetching (checking if we gained access)
-  if (subscriptionLoading || (!hasAccess && isRefetching)) {
-    return <Loader />;
-  }
-
-  // Step 6: Handle subscription error (allow access but log error)
-  if (subscriptionError) {
-    console.error('Subscription check error:', subscriptionError);
-    // On error, we could either block or allow - allowing with warning is safer for UX
+  // Error state - allow access with warning
+  if (guardState === GUARD_STATES.ERROR) {
+    log.error('Subscription check error, allowing access with warning:', subscriptionError);
     return (
       <>
         <SubscriptionBanner 
@@ -117,63 +442,71 @@ const SubscriptionProtectedRoute = ({
     );
   }
 
-  // Step 7: Check subscription access
-  if (!hasAccess) {
-    const fallbackUrl = getSubscriptionFallbackUrl();
+  // Access denied - determine redirect
+  if (guardState === GUARD_STATES.ACCESS_DENIED) {
+    // Not authenticated
+    if (!isAuthenticated) {
+      const redirectPath = location.pathname.includes('student') 
+        ? loginFallbackPath 
+        : '/';
+      log.info('Not authenticated, redirecting to:', redirectPath);
+      return <Navigate to={redirectPath} state={{ from: location }} replace />;
+    }
+
+    // Role mismatch - but be lenient for admin roles
+    // Allow 'admin' role to access school_admin, college_admin, university_admin routes
+    // This handles the case where the role in metadata is 'admin' but the route expects a specific admin type
+    const roleMatches = allowedRoles.length === 0 || allowedRoles.includes(role);
+    const isAdminRoute = allowedRoles.some(r => r.includes('_admin'));
+    const userIsAdmin = role === 'admin' || role?.includes('_admin');
+    const adminRoleException = isAdminRoute && userIsAdmin;
     
-    // Determine redirect based on reason
-    const redirectState = {
-      from: location,
-      reason: accessReason,
-      userRole: role, // Pass the user's role for better UX on plans page
-    };
+    if (!roleMatches && !adminRoleException) {
+      // Role doesn't match and no admin exception applies
+      const expectedRole = allowedRoles[0] || 'student';
+      log.info('Role mismatch, redirecting to plans. Expected:', allowedRoles, 'Got:', role);
+      return <Navigate to={`/subscription/plans?type=${expectedRole}`} replace />;
+    }
 
-    // For expired subscriptions, redirect to plans with renewal message
+    // Role matches (or admin exception applies) but no subscription access
+    const fallbackUrl = getSubscriptionFallbackUrl();
+    let message = 'A subscription is required to access this area.';
+
     if (accessReason === ACCESS_REASONS.EXPIRED) {
-      return (
-        <Navigate 
-          to={fallbackUrl} 
-          state={{ ...redirectState, message: 'Your subscription has expired. Please renew to continue.' }}
-          replace 
-        />
-      );
+      message = 'Your subscription has expired. Please renew to continue.';
+    } else if (accessReason === ACCESS_REASONS.CANCELLED) {
+      message = 'Your subscription has ended. Subscribe again to access.';
     }
 
-    // For cancelled subscriptions that still have access (end_date not passed)
-    // This case shouldn't happen since hasAccess would be true, but handle it gracefully
-    if (accessReason === ACCESS_REASONS.CANCELLED) {
-      // If we reach here with cancelled status, it means end_date has passed
-      return (
-        <Navigate 
-          to={fallbackUrl} 
-          state={{ ...redirectState, message: 'Your subscription has ended. Subscribe again to access.' }}
-          replace 
-        />
-      );
-    }
-
-    // For no subscription
+    log.info('No subscription access, redirecting to:', fallbackUrl, 'Reason:', accessReason, 'Role:', role, 'AdminException:', adminRoleException);
     return (
       <Navigate 
         to={fallbackUrl} 
-        state={{ ...redirectState, message: 'A subscription is required to access this area.' }}
+        state={buildRedirectState(message)}
         replace 
       />
     );
   }
 
-  // Step 8: Access granted - render with optional warning banner
-  return (
-    <>
-      {showWarning && (
-        <SubscriptionBanner 
-          type={warningType}
-          message={warningMessage}
-        />
-      )}
-      {children}
-    </>
-  );
+  // Access granted
+  if (guardState === GUARD_STATES.ACCESS_GRANTED) {
+    log.info('Access granted');
+    return (
+      <>
+        {showWarning && (
+          <SubscriptionBanner 
+            type={warningType}
+            message={warningMessage}
+          />
+        )}
+        {children}
+      </>
+    );
+  }
+
+  // Fallback - should never reach here
+  log.error('Unexpected guard state:', guardState);
+  return <Loader />;
 };
 
 export default SubscriptionProtectedRoute;

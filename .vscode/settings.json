@@ -1,5 +1,6 @@
 {
     "kiroAgent.configureMCP": "Enabled",
     "typescript.autoClosingTags": false,
-    "javascript.autoClosingTags": false
+    "javascript.autoClosingTags": false,
+    "chat.edits2.enabled": false
 }

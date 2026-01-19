@@ -244,8 +244,8 @@ export async function handleCalculateOrgPricing(
   userId: string
 ): Promise<Response> {
   try {
-    const body = await request.json() as { planId: string; seatCount: number };
-    const { planId, seatCount } = body;
+    const body = await request.json() as { planId: string; seatCount: number; billingCycle?: 'monthly' | 'annual' };
+    const { planId, seatCount, billingCycle = 'monthly' } = body;
 
     if (!planId || !seatCount || seatCount < 1) {
       return new Response(JSON.stringify({ error: 'Invalid planId or seatCount' }), { status: 400 });
@@ -254,7 +254,7 @@ export async function handleCalculateOrgPricing(
     // Get plan details
     const { data: plan, error: planError } = await supabase
       .from('subscription_plans')
-      .select('price')
+      .select('price_monthly, price_yearly')
       .eq('id', planId)
       .single();
 
@@ -262,7 +262,9 @@ export async function handleCalculateOrgPricing(
       return new Response(JSON.stringify({ error: 'Plan not found' }), { status: 404 });
     }
 
-    const pricing = calculateBulkPricing(plan.price, seatCount);
+    // Use price_monthly or price_yearly based on billing cycle
+    const basePrice = billingCycle === 'annual' ? plan.price_yearly : plan.price_monthly;
+    const pricing = calculateBulkPricing(basePrice, seatCount);
 
     return new Response(JSON.stringify({ success: true, pricing }), { status: 200 });
   } catch (error) {
@@ -334,8 +336,9 @@ export async function handlePurchaseOrgSubscription(
       return new Response(JSON.stringify({ error: 'Plan not found' }), { status: 404 });
     }
 
-    // Calculate pricing
-    const pricing = calculateBulkPricing(plan.price, seatCount);
+    // Calculate pricing - use price_monthly or price_yearly based on billing cycle
+    const basePrice = billingCycle === 'annual' ? plan.price_yearly : plan.price_monthly;
+    const pricing = calculateBulkPricing(basePrice, seatCount);
 
     // Calculate subscription dates
     const startDate = new Date();
@@ -928,8 +931,8 @@ export async function handleGetBillingDashboard(
         subscription_plans (
           id,
           name,
-          price,
-          billing_cycle
+          price_monthly,
+          price_yearly
         )
       `)
       .eq('organization_id', organizationId)
@@ -960,8 +963,12 @@ export async function handleGetBillingDashboard(
 
     const subscriptionSummaries = (subscriptions || []).map((sub: any) => {
       const finalAmount = parseFloat(sub.final_amount);
-      const billingCycle = sub.subscription_plans?.billing_cycle || 'monthly';
-      const monthlyCost = billingCycle === 'annual' ? finalAmount / 12 : finalAmount;
+      // Determine if annual based on subscription duration (no billing_cycle column in subscription_plans)
+      const startDate = new Date(sub.start_date);
+      const endDate = new Date(sub.end_date);
+      const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const isAnnual = durationDays > 60; // More than 2 months = annual
+      const monthlyCost = isAnnual ? finalAmount / 12 : finalAmount;
       
       subscriptionCosts += monthlyCost;
       totalActiveSeats += sub.total_seats;
@@ -1135,7 +1142,7 @@ export async function handleGetCostProjection(
       .from('organization_subscriptions')
       .select(`
         *,
-        subscription_plans (price, billing_cycle)
+        subscription_plans (price_monthly, price_yearly)
       `)
       .eq('organization_id', organizationId)
       .eq('organization_type', organizationType)
@@ -1147,8 +1154,12 @@ export async function handleGetCostProjection(
     let subscriptionCost = 0;
     (subscriptions || []).forEach((sub: any) => {
       const finalAmount = parseFloat(sub.final_amount);
-      const billingCycle = sub.subscription_plans?.billing_cycle || 'monthly';
-      subscriptionCost += billingCycle === 'annual' ? finalAmount / 12 : finalAmount;
+      // Determine if annual based on subscription duration
+      const startDate = new Date(sub.start_date);
+      const endDate = new Date(sub.end_date);
+      const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const isAnnual = durationDays > 60; // More than 2 months = annual
+      subscriptionCost += isAnnual ? finalAmount / 12 : finalAmount;
     });
 
     const totalBeforeTax = subscriptionCost;
@@ -1196,7 +1207,7 @@ export async function handleCalculateSeatAdditionCost(
       .from('organization_subscriptions')
       .select(`
         *,
-        subscription_plans (price, billing_cycle)
+        subscription_plans (price_monthly, price_yearly)
       `)
       .eq('id', subscriptionId)
       .single();
@@ -1206,7 +1217,7 @@ export async function handleCalculateSeatAdditionCost(
     }
 
     const newTotalSeats = subscription.total_seats + additionalSeats;
-    const pricePerSeat = subscription.subscription_plans?.price || subscription.price_per_seat;
+    const pricePerSeat = subscription.subscription_plans?.price_monthly || subscription.price_per_seat;
 
     // Calculate new volume discount
     const newDiscountPercentage = calculateVolumeDiscount(newTotalSeats);

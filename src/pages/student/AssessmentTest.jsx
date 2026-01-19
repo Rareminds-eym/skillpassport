@@ -17,6 +17,7 @@ import {
     FlaskConical,
     Heart,
     Loader2,
+    Sparkles,
     Target,
     TrendingUp,
     Users,
@@ -27,17 +28,25 @@ import { Card, CardContent } from '../../components/Students/components/ui/card'
 import { Label } from '../../components/Students/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 
-// Import question banks (fallback for offline/legacy mode)
-import { aptitudeModules, getModuleQuestionIndex } from './assessment-data/aptitudeQuestions';
-import { bigFiveQuestions as fallbackBigFiveQuestions } from './assessment-data/bigFiveQuestions';
-import { employabilityQuestions as fallbackEmployabilityQuestions, getCurrentEmployabilityModule } from './assessment-data/employabilityQuestions';
+// Import AI-powered question banks from centralized assessment feature
 import {
+    // Aptitude
+    aptitudeModules,
+    getModuleQuestionIndex,
+    // Big Five
+    bigFiveQuestions as aiPoweredBigFiveQuestions,
+    // Employability
+    employabilityQuestions as aiPoweredEmployabilityQuestions,
+    getCurrentEmployabilityModule,
+    // Middle/High School rating scales
     aptitudeRatingScale,
     highSchoolRatingScale,
-    strengthsRatingScale
-} from './assessment-data/middleSchoolQuestions';
-import { riasecQuestions as fallbackRiasecQuestions } from './assessment-data/riasecQuestions';
-import { workValuesQuestions as fallbackWorkValuesQuestions } from './assessment-data/workValuesQuestions';
+    strengthsRatingScale,
+    // RIASEC
+    riasecQuestions as aiPoweredRiasecQuestions,
+    // Work Values
+    workValuesQuestions as aiPoweredWorkValuesQuestions,
+} from '../../features/assessment';
 
 // Import Gemini assessment service
 import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentService';
@@ -55,34 +64,23 @@ import { useAdaptiveAptitude } from '../../hooks/useAdaptiveAptitude';
 
 import { supabase } from '../../lib/supabaseClient';
 
-// Helper function to determine grade level from student's grade
-const getGradeLevelFromGrade = (grade) => {
-    if (!grade) return null;
-    
-    // Handle program-based grades (UG, PG, Diploma, etc.)
-    const upperGrade = grade.toUpperCase();
-    if (upperGrade === 'UG' || upperGrade === 'UNDERGRADUATE') return 'after12';
-    if (upperGrade === 'PG' || upperGrade === 'POSTGRADUATE') return 'after12'; // Post-graduation also uses after12 assessment
-    if (upperGrade === 'DIPLOMA') return 'after10'; // Diploma can be after 10th
-    if (upperGrade === 'CERTIFICATE') return 'after12';
-    
-    const gradeNum = parseInt(grade, 10);
-    if (isNaN(gradeNum)) {
-        // Handle non-numeric grades like "12th", "10th"
-        const match = grade.match(/(\d+)/);
-        if (match) {
-            const num = parseInt(match[1], 10);
-            if (num >= 6 && num <= 8) return 'middle';
-            if (num >= 9 && num <= 10) return 'highschool';
-            if (num >= 11 && num <= 12) return 'higher_secondary';
-        }
-        return null;
-    }
-    if (gradeNum >= 6 && gradeNum <= 8) return 'middle';
-    if (gradeNum >= 9 && gradeNum <= 10) return 'highschool';
-    if (gradeNum >= 11 && gradeNum <= 12) return 'higher_secondary';
-    return null;
-};
+// Import centralized assessment utilities and components
+import {
+    getGradeLevelFromGrade,
+    getAdaptiveGradeLevel,
+    calculateMonthsInGrade as calculateMonthsInGradeUtil,
+    formatTime,
+    formatElapsedTime,
+    isQuestionAnswered,
+    generateQuestionId,
+    TIMERS,
+    GRADE_LEVELS,
+    GradeSelectionScreen,
+    CategorySelectionScreen,
+    StreamSelectionScreen,
+    ResumePromptScreen,
+    RestrictionScreen,
+} from '../../features/assessment';
 
 const AssessmentTest = () => {
     const navigate = useNavigate();
@@ -131,22 +129,23 @@ const AssessmentTest = () => {
     const [elapsedTime, setElapsedTime] = useState(0); // Elapsed time for non-timed sections
     const [aptitudeQuestionTimer, setAptitudeQuestionTimer] = useState(60); // Per-question timer for first 30 aptitude questions
     const [aptitudePhase, setAptitudePhase] = useState('individual'); // 'individual' for first 30, 'shared' for last 20
-    
+
     // Adaptive Aptitude Test state (for high school 5th section)
     const [adaptiveAptitudeAnswer, setAdaptiveAptitudeAnswer] = useState(null);
     const [adaptiveQuestionStartTime, setAdaptiveQuestionStartTime] = useState(null);
-    const [adaptiveQuestionTimer, setAdaptiveQuestionTimer] = useState(90); // 90 seconds per question
-    const ADAPTIVE_QUESTION_TIME_LIMIT = 90; // seconds per question
-    
+    const [adaptiveQuestionTimer, setAdaptiveQuestionTimer] = useState(TIMERS.ADAPTIVE_QUESTION_TIME_LIMIT);
+    // Use centralized timer constant
+    const ADAPTIVE_QUESTION_TIME_LIMIT = TIMERS.ADAPTIVE_QUESTION_TIME_LIMIT;
+
     // TEST MODE - Auto-fill answers for development/testing
     const [testMode, setTestMode] = useState(false);
     const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
     // skillpassport.pages.dev shows all options, localhost and skilldevelopment.rareminds.in filter by grade
     const shouldShowAllOptions = window.location.hostname === 'skillpassport.pages.dev';
-    const shouldFilterByGrade = window.location.hostname === 'localhost' || 
-                                 window.location.hostname === 'skilldevelopment.rareminds.in';
+    const shouldFilterByGrade = window.location.hostname === 'localhost' ||
+        window.location.hostname === 'skilldevelopment.rareminds.in';
     const [sectionTimings, setSectionTimings] = useState({}); // Track time spent on each section
-    
+
     // Student grade from database
     const [studentGrade, setStudentGrade] = useState(null);
     const [studentSchoolClassId, setStudentSchoolClassId] = useState(null);
@@ -156,28 +155,23 @@ const AssessmentTest = () => {
     const [gradeStartDate, setGradeStartDate] = useState(null); // When student started current grade
     const [monthsInGrade, setMonthsInGrade] = useState(null); // Months since starting current grade
     const [loadingStudentGrade, setLoadingStudentGrade] = useState(true);
-    
-    // Helper function to calculate months between two dates
-    const calculateMonthsInGrade = (startDate) => {
-        if (!startDate) return null;
-        const start = new Date(startDate);
-        const now = new Date();
-        const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
-        return Math.max(0, months);
-    };
-    
+    const [profileData, setProfileData] = useState(null); // Complete profile data for missing field analysis
+
+    // Use centralized utility for calculating months in grade
+    const calculateMonthsInGrade = calculateMonthsInGradeUtil;
+
     // Fetch student's grade from database (either from student.grade or from school_classes.grade)
     useEffect(() => {
         const fetchStudentGrade = async () => {
             console.log('Fetching student grade for user:', user?.id, user?.email);
             console.log('shouldFilterByGrade:', shouldFilterByGrade);
-            
+
             if (!user?.id) {
                 console.log('No user id, skipping grade fetch');
                 setLoadingStudentGrade(false);
                 return;
             }
-            
+
             try {
                 // First try to get student by user_id with school_class grade and program name joined
                 let { data: student, error } = await supabase
@@ -185,9 +179,9 @@ const AssessmentTest = () => {
                     .select('id, grade, grade_start_date, school_class_id, school_id, university_college_id, program_id, course_name, school_classes:school_class_id(grade, academic_year), program:program_id(name, code)')
                     .eq('user_id', user.id)
                     .maybeSingle();
-                
+
                 console.log('Student by user_id:', student, error);
-                
+
                 // If not found by user_id, try by email
                 if (!student && user.email) {
                     const result = await supabase
@@ -199,20 +193,23 @@ const AssessmentTest = () => {
                     error = result.error;
                     console.log('Student by email:', student, error);
                 }
-                
+
                 if (error) {
                     console.error('Error fetching student grade:', error);
                 } else if (student) {
                     console.log('Student grade data found:', student);
-                    
+
+                    // Store complete profile data for missing field analysis
+                    setProfileData(student);
+
                     // Save student ID for AI question saving
                     setStudentId(student.id);
-                    
+
                     // Check if student is a college student (has university_college_id but no school_id)
                     const isCollege = student.university_college_id && !student.school_id;
                     console.log('Is college student:', isCollege);
                     setIsCollegeStudent(isCollege);
-                    
+
                     // Set program name if available (BBA, BCA, BSC, etc.)
                     // Priority: program.name > program.code > course_name
                     const programName = student.program?.name || student.program?.code || student.course_name;
@@ -220,7 +217,7 @@ const AssessmentTest = () => {
                         console.log('Student program:', programName);
                         setStudentProgram(programName);
                     }
-                    
+
                     // Set grade_start_date and calculate months in grade
                     if (student.grade_start_date) {
                         setGradeStartDate(student.grade_start_date);
@@ -240,11 +237,11 @@ const AssessmentTest = () => {
                             console.log('Estimated from academic year:', academicYear, 'Months in grade:', months);
                         }
                     }
-                    
+
                     // Use student.grade first, if not available use grade from school_classes
                     const effectiveGrade = student.grade || student.school_classes?.grade;
                     console.log('Effective grade:', effectiveGrade);
-                    
+
                     setStudentGrade(effectiveGrade);
                     setStudentSchoolClassId(student.school_class_id);
                 } else {
@@ -256,23 +253,17 @@ const AssessmentTest = () => {
                 setLoadingStudentGrade(false);
             }
         };
-        
+
         fetchStudentGrade();
     }, [user?.id, user?.email, shouldFilterByGrade]);
 
-    // Map UI grade level to adaptive aptitude grade level
-    const getAdaptiveGradeLevel = () => {
-        if (gradeLevel === 'highschool') return 'high_school';
-        if (gradeLevel === 'higher_secondary') return 'high_school';
-        if (gradeLevel === 'middle') return 'middle_school';
-        // For after12 and college, use high_school level questions
-        return 'high_school';
-    };
+    // Map UI grade level to adaptive aptitude grade level - using centralized utility
+    const getAdaptiveGradeLevelValue = () => getAdaptiveGradeLevel(gradeLevel);
 
     // Adaptive Aptitude Hook for adaptive aptitude section
     const adaptiveAptitude = useAdaptiveAptitude({
         studentId: studentId || '',
-        gradeLevel: getAdaptiveGradeLevel(),
+        gradeLevel: getAdaptiveGradeLevelValue(),
         onTestComplete: (testResults) => {
             console.log('✅ Adaptive aptitude test completed:', testResults);
             // Store results in answers for final submission
@@ -321,13 +312,13 @@ const AssessmentTest = () => {
     // Auto-fill all answers for test mode
     const autoFillAllAnswers = () => {
         if (!sections || sections.length === 0) return;
-        
+
         const filledAnswers = {};
-        
+
         sections.forEach(section => {
             section.questions.forEach(question => {
                 const questionId = `${section.id}_${question.id}`;
-                
+
                 if (question.partType === 'sjt') {
                     // SJT questions need best and worst
                     const options = question.options || [];
@@ -346,7 +337,7 @@ const AssessmentTest = () => {
                 }
             });
         });
-        
+
         setAnswers(filledAnswers);
         console.log('Test Mode: Auto-filled', Object.keys(filledAnswers).length, 'answers');
     };
@@ -354,14 +345,14 @@ const AssessmentTest = () => {
     // Skip to Aptitude section (section 5) - fills first 4 sections and jumps to aptitude
     const skipToAptitude = () => {
         if (!sections || sections.length === 0) return;
-        
+
         const filledAnswers = {};
-        
+
         // Only fill first 4 sections (RIASEC, Big Five, Work Values, Employability)
         sections.slice(0, 4).forEach(section => {
             section.questions.forEach(question => {
                 const questionId = `${section.id}_${question.id}`;
-                
+
                 if (question.partType === 'sjt') {
                     const options = question.options || [];
                     if (options.length >= 2) {
@@ -377,7 +368,7 @@ const AssessmentTest = () => {
                 }
             });
         });
-        
+
         setAnswers(filledAnswers);
         // Jump to section 5 (Aptitude - index 4)
         const aptitudeIndex = sections.findIndex(s => s.id === 'aptitude');
@@ -393,14 +384,14 @@ const AssessmentTest = () => {
     // Skip to Knowledge section (section 6) - fills first 5 sections and jumps to knowledge
     const skipToKnowledge = () => {
         if (!sections || sections.length === 0) return;
-        
+
         const filledAnswers = {};
-        
+
         // Fill first 5 sections (RIASEC, Big Five, Work Values, Employability, Aptitude)
         sections.slice(0, 5).forEach(section => {
             section.questions.forEach(question => {
                 const questionId = `${section.id}_${question.id}`;
-                
+
                 if (question.partType === 'sjt') {
                     const options = question.options || [];
                     if (options.length >= 2) {
@@ -416,7 +407,7 @@ const AssessmentTest = () => {
                 }
             });
         });
-        
+
         setAnswers(filledAnswers);
         // Jump to section 6 (Knowledge - index 5)
         const knowledgeIndex = sections.findIndex(s => s.id === 'knowledge');
@@ -447,12 +438,37 @@ const AssessmentTest = () => {
         try {
             const allQuestions = await assessmentService.fetchAllQuestions(streamId, gradeLevel);
             console.log('Questions loaded from database:', allQuestions);
+
+            // Check if any questions were loaded
+            const totalQuestions = Object.values(allQuestions || {}).reduce(
+                (sum, section) => sum + (section?.questions?.length || 0),
+                0
+            );
+
+            // For after10, higher_secondary, after12, and college - they use AI-powered questions
+            const usesAIQuestions = ['after10', 'higher_secondary', 'after12', 'college'].includes(gradeLevel);
+
+            if (totalQuestions === 0 && !usesAIQuestions) {
+                console.warn(`No questions found for grade level: ${gradeLevel}`);
+                setQuestionsError(`No assessment questions available for this grade level (${gradeLevel}). Please contact support or try a different grade level.`);
+                setUseDatabase(false);
+                return null;
+            }
+
+            if (totalQuestions === 0 && usesAIQuestions) {
+                console.log(`Grade level ${gradeLevel} uses AI-powered personalized questions`);
+            }
+
             setDbQuestions(allQuestions);
-            setUseDatabase(true);
+            setUseDatabase(totalQuestions > 0);
             return allQuestions;
         } catch (err) {
             console.error('Failed to load questions from database:', err);
-            setQuestionsError(err.message);
+            // For AI-powered grade levels, don't show error - they can proceed
+            const usesAIQuestions = ['after10', 'higher_secondary', 'after12', 'college'].includes(gradeLevel);
+            if (!usesAIQuestions) {
+                setQuestionsError(err.message);
+            }
             setUseDatabase(false);
             return null;
         } finally {
@@ -476,19 +492,19 @@ const AssessmentTest = () => {
                 if (studentId) {
                     // First check if user can take assessment (6-month restriction)
                     const eligibility = await assessmentService.canTakeAssessment(studentId);
-                    
+
                     if (!eligibility.canTake) {
                         // User cannot take assessment yet
                         const nextDate = new Date(eligibility.nextAvailableDate);
                         const lastDate = new Date(eligibility.lastAttemptDate);
-                        setError(`You can retake the assessment after ${nextDate.toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
-                        })}. Your last assessment was completed on ${lastDate.toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
+                        setError(`You can retake the assessment after ${nextDate.toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        })}. Your last assessment was completed on ${lastDate.toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
                         })}.`);
                         setCheckingExistingAttempt(false);
                         setInitialCheckDone(true);
@@ -671,20 +687,20 @@ const AssessmentTest = () => {
     const [aiQuestions, setAiQuestions] = useState({ aptitude: null, knowledge: null });
     const [aiQuestionsLoading, setAiQuestionsLoading] = useState(false);
 
-    // Load AI questions for after10, after12 AND college students
+    // Load AI questions for after10, higher_secondary, after12 AND college students
     useEffect(() => {
         const loadAIQuestions = async () => {
             // Only require gradeLevel and studentStream - studentId is optional for saving
-            // Support 'after10', 'after12' and 'college' grade levels
-            if ((gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'college') && studentStream) {
+            // Support 'after10', 'higher_secondary', 'after12' and 'college' grade levels
+            if ((gradeLevel === 'after10' || gradeLevel === 'higher_secondary' || gradeLevel === 'after12' || gradeLevel === 'college') && studentStream) {
                 setAiQuestionsLoading(true);
                 try {
                     console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, studentStream, 'studentId:', studentId || 'not set yet');
                     // Pass studentId and attemptId for save/resume functionality (optional)
                     const questions = await loadCareerAssessmentQuestions(
-                        studentStream, 
-                        gradeLevel, 
-                        studentId || null, 
+                        studentStream,
+                        gradeLevel,
+                        studentId || null,
                         currentAttempt?.id || null
                     );
                     setAiQuestions(questions);
@@ -693,7 +709,7 @@ const AssessmentTest = () => {
                         knowledge: questions.knowledge?.length || 0
                     });
                 } catch (error) {
-                    console.warn('Failed to load AI questions, will use fallback:', error);
+                    console.warn('Failed to load AI questions:', error);
                 }
                 setAiQuestionsLoading(false);
             }
@@ -701,7 +717,7 @@ const AssessmentTest = () => {
         loadAIQuestions();
     }, [gradeLevel, studentStream, studentId, currentAttempt?.id]);
 
-    // Get questions for a section - from database or AI (no fallback for after10/after12/college)
+    // Get questions for a section - from database or AI-powered questions
     const getQuestionsForSection = (sectionId) => {
         // Helper to normalize AI question format (AI uses 'question', UI expects 'text')
         const normalizeAIQuestion = (q) => ({
@@ -710,8 +726,8 @@ const AssessmentTest = () => {
             correct: q.correct_answer || q.correct // Map 'correct_answer' to 'correct'
         });
 
-        // For after10, after12 AND college grade levels, use AI questions ONLY for aptitude and knowledge
-        if (gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'college') {
+        // For after10, higher_secondary, after12 AND college grade levels, use AI-powered questions
+        if (gradeLevel === 'after10' || gradeLevel === 'higher_secondary' || gradeLevel === 'after12' || gradeLevel === 'college') {
             if (sectionId === 'aptitude') {
                 if (aiQuestionsLoading) {
                     console.log('⏳ AI aptitude questions still loading...');
@@ -722,7 +738,7 @@ const AssessmentTest = () => {
                     return aiQuestions.aptitude.map(normalizeAIQuestion);
                 }
                 console.log('⚠️ No AI aptitude questions available yet');
-                return []; // No fallback - wait for AI
+                return []; // Wait for AI questions
             }
             if (sectionId === 'knowledge') {
                 if (aiQuestionsLoading) {
@@ -734,7 +750,7 @@ const AssessmentTest = () => {
                     return aiQuestions.knowledge.map(normalizeAIQuestion);
                 }
                 console.log('⚠️ No AI knowledge questions available yet');
-                return []; // No fallback - wait for AI
+                return []; // Wait for AI questions
             }
         }
 
@@ -742,13 +758,13 @@ const AssessmentTest = () => {
         if (dbQuestions && dbQuestions[sectionId]?.questions) {
             return dbQuestions[sectionId].questions.map(transformDbQuestion);
         }
-        
-        // Fallback to hardcoded questions for non-AI sections only
+
+        // AI-powered standard questions for career assessment sections
         switch (sectionId) {
-            case 'riasec': return fallbackRiasecQuestions;
-            case 'bigfive': return fallbackBigFiveQuestions;
-            case 'values': return fallbackWorkValuesQuestions;
-            case 'employability': return fallbackEmployabilityQuestions;
+            case 'riasec': return aiPoweredRiasecQuestions;
+            case 'bigfive': return aiPoweredBigFiveQuestions;
+            case 'values': return aiPoweredWorkValuesQuestions;
+            case 'employability': return aiPoweredEmployabilityQuestions;
             default: return [];
         }
     };
@@ -854,56 +870,97 @@ const AssessmentTest = () => {
             ];
         }
 
-        // For higher secondary (grades 11-12), show comprehensive assessment with stream focus
+        // For higher secondary (grades 11-12), show comprehensive assessment (same as after12)
+        // Students have already chosen their stream, so use full assessment with AI-generated aptitude & knowledge
         if (gradeLevel === 'higher_secondary') {
             return [
                 {
-                    id: 'hs_interest_explorer',
-                    title: 'Interest Explorer',
+                    id: 'riasec',
+                    title: 'Career Interests',
                     icon: <Heart className="w-6 h-6 text-rose-500" />,
-                    description: "Discover what activities and subjects truly excite you.",
+                    description: "Discover what types of work environments and activities appeal to you most.",
                     color: "rose",
-                    questions: getQuestionsForSection('hs_interest_explorer'),  // Load from database
-                    instruction: "Answer honestly based on your real preferences, not what others expect."
+                    questions: getQuestionsForSection('riasec'),
+                    responseScale: [
+                        { value: 1, label: "Strongly Dislike" },
+                        { value: 2, label: "Dislike" },
+                        { value: 3, label: "Neutral" },
+                        { value: 4, label: "Like" },
+                        { value: 5, label: "Strongly Like" }
+                    ],
+                    instruction: "Rate how much you would LIKE or DISLIKE each activity."
                 },
                 {
-                    id: 'hs_strengths_character',
-                    title: 'Strengths & Character',
-                    icon: <Award className="w-6 h-6 text-amber-500" />,
-                    description: "Identify your personal strengths and character traits.",
-                    color: "amber",
-                    questions: getQuestionsForSection('hs_strengths_character'),  // Load from database
-                    responseScale: highSchoolRatingScale,
-                    instruction: "Rate each: 1 = not me, 2 = a bit, 3 = mostly, 4 = strongly me"
-                },
-                {
-                    id: 'hs_learning_preferences',
-                    title: 'Learning & Work Preferences',
-                    icon: <Users className="w-6 h-6 text-blue-500" />,
-                    description: "Understand how you work, learn, and contribute best.",
-                    color: "blue",
-                    questions: getQuestionsForSection('hs_learning_preferences'),  // Load from database
-                    instruction: "Select the options that best describe you."
-                },
-                {
-                    id: 'hs_aptitude_sampling',
-                    title: 'Aptitude Sampling',
-                    icon: <Zap className="w-6 h-6 text-purple-500" />,
-                    description: "Rate your experience with different types of tasks.",
+                    id: 'bigfive',
+                    title: 'Big Five Personality',
+                    icon: <Users className="w-6 h-6 text-purple-500" />,
+                    description: "Understand your work style, approach to tasks, and how you interact with others.",
                     color: "purple",
-                    questions: getQuestionsForSection('hs_aptitude_sampling'),  // Load from database
-                    responseScale: aptitudeRatingScale,
-                    instruction: "After each task, rate: Ease 1–4, Enjoyment 1–4"
+                    questions: getQuestionsForSection('bigfive'),
+                    responseScale: [
+                        { value: 1, label: "Very Inaccurate" },
+                        { value: 2, label: "Moderately Inaccurate" },
+                        { value: 3, label: "Neither" },
+                        { value: 4, label: "Moderately Accurate" },
+                        { value: 5, label: "Very Accurate" }
+                    ],
+                    instruction: "How accurately does each statement describe you?"
                 },
                 {
-                    id: 'adaptive_aptitude',
-                    title: 'Adaptive Aptitude Test',
-                    icon: <img src="/RMLogo.webp" alt="RM Logo" className="w-6 h-6 object-contain" />,
-                    description: "An intelligent test that adapts to your ability level for accurate aptitude measurement.",
+                    id: 'values',
+                    title: 'Work Values & Motivators',
+                    icon: <Target className="w-6 h-6 text-indigo-500" />,
+                    description: "Identify what drives your career satisfaction and choices.",
                     color: "indigo",
-                    questions: [], // Questions are generated dynamically by the adaptive engine
-                    isAdaptive: true, // Flag to indicate this is the adaptive aptitude section
-                    instruction: "Answer each question carefully. The test will adapt to your performance level."
+                    questions: getQuestionsForSection('values'),
+                    responseScale: [
+                        { value: 1, label: "Not Important" },
+                        { value: 2, label: "Slightly Important" },
+                        { value: 3, label: "Moderately Important" },
+                        { value: 4, label: "Very Important" },
+                        { value: 5, label: "Extremely Important" }
+                    ],
+                    instruction: "How important is each factor in your ideal career?"
+                },
+                {
+                    id: 'employability',
+                    title: 'Employability Skills',
+                    icon: <TrendingUp className="w-6 h-6 text-green-500" />,
+                    description: "Assess your job-readiness and 21st-century skills.",
+                    color: "green",
+                    questions: getQuestionsForSection('employability'),
+                    responseScale: [
+                        { value: 1, label: "Not Like Me" },
+                        { value: 2, label: "Slightly" },
+                        { value: 3, label: "Somewhat" },
+                        { value: 4, label: "Mostly" },
+                        { value: 5, label: "Very Much Like Me" }
+                    ],
+                    instruction: "How well does each statement describe you?"
+                },
+                {
+                    id: 'aptitude',
+                    title: 'Multi-Aptitude',
+                    icon: <Brain className="w-6 h-6 text-amber-500" />,
+                    description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
+                    color: "amber",
+                    questions: getQuestionsForSection('aptitude'),
+                    isTimed: true,
+                    timeLimit: 15 * 60, // Fallback shared timer
+                    isAptitude: true,
+                    individualTimeLimit: 60, // 1 minute per question
+                    instruction: "Choose the correct answer. You have 1 minute per question."
+                },
+                {
+                    id: 'knowledge',
+                    title: 'Stream Knowledge',
+                    icon: <BookOpen className="w-6 h-6 text-blue-500" />,
+                    description: "Test your understanding of core concepts in your field.",
+                    color: "blue",
+                    questions: getQuestionsForSection('knowledge'),
+                    isTimed: true,
+                    timeLimit: 30 * 60, // 30 minutes in seconds
+                    instruction: "Choose the best answer for each question."
                 }
             ];
         }
@@ -1003,7 +1060,7 @@ const AssessmentTest = () => {
                 }
             ];
         }
-        
+
         // Default: return empty array when gradeLevel is not set
         return [];
     }, [dbQuestions, studentStream, gradeLevel, aiQuestions, aiQuestionsLoading]);
@@ -1060,11 +1117,11 @@ const AssessmentTest = () => {
     const totalQuestions = sections?.reduce((sum, section) => {
         // For adaptive sections, use estimated total questions (~21)
         if (section?.isAdaptive) {
-            return sum + (adaptiveAptitude.progress?.estimatedTotalQuestions || 21);
+            return sum + (adaptiveAptitude.progress?.estimatedTotalQuestions || 20);
         }
         return sum + (section?.questions?.length || 0);
     }, 0) || 0;
-    
+
     // Count answered questions including adaptive section progress
     const regularAnsweredCount = Object.keys(answers).filter(key => !key.startsWith('adaptive_aptitude')).length;
     const adaptiveAnsweredCount = adaptiveAptitude.progress?.questionsAnswered || 0;
@@ -1122,7 +1179,7 @@ const AssessmentTest = () => {
                 }, 1000);
                 return () => clearInterval(timer);
             }
-            
+
             // Aptitude shared timer (last 20 questions) or other timed sections
             if (!currentSection.isAptitude || aptitudePhase === 'shared') {
                 if (timeRemaining === null) {
@@ -1207,20 +1264,20 @@ const AssessmentTest = () => {
     useEffect(() => {
         if (currentSection?.isAdaptive && adaptiveQuestionTimer === 0 && adaptiveAptitude.currentQuestion && !adaptiveAptitude.submitting) {
             console.log('⏰ [AssessmentTest] Adaptive timer expired, auto-submitting...');
-            
+
             // If student selected an answer, submit it
             // If no answer selected, submit a random answer (or skip)
             const answerToSubmit = adaptiveAptitudeAnswer || 'A'; // Default to 'A' if no answer
-            
+
             (async () => {
                 try {
                     const result = await adaptiveAptitude.submitAnswer(answerToSubmit);
-                    
+
                     // Reset for next question
                     setAdaptiveAptitudeAnswer(null);
                     setAdaptiveQuestionTimer(ADAPTIVE_QUESTION_TIME_LIMIT);
                     setAdaptiveQuestionStartTime(Date.now());
-                    
+
                     if (result?.testComplete) {
                         setShowSectionComplete(true);
                     }
@@ -1267,7 +1324,7 @@ const AssessmentTest = () => {
         setGradeLevel(level);
         setShowGradeSelection(false);
 
-        // For middle school, high school, and higher secondary, skip stream selection and go directly to assessment
+        // For middle school, high school, skip stream selection and go directly to assessment
         if (level === 'middle') {
             setAssessmentStarted(true);
             const streamId = 'middle_school'; // Use a generic stream for middle school
@@ -1310,13 +1367,33 @@ const AssessmentTest = () => {
             }
 
             setShowSectionIntro(true);
-        } else if (level === 'after10') {
-            // For after 10th, show category selection (Science/Commerce/Arts) similar to after12
-            setShowCategorySelection(true);
-        } else if (level === 'college') {
-            // For college students (UG/PG), go directly to assessment using their program
+        } else if (level === 'after10' || level === 'higher_secondary') {
+            // For after 10th (11th grade), skip category selection - go directly to assessment
+            // The AI will recommend the best stream based on assessment results
             setAssessmentStarted(true);
-            
+            const streamId = 'general';
+            setStudentStream(streamId);
+
+            // Load questions and create attempt
+            await loadQuestionsFromDatabase(streamId, level);
+
+            if (studentRecordId) {
+                try {
+                    console.log('Creating assessment attempt for after10/higher_secondary with studentRecordId:', studentRecordId);
+                    await startAssessment(streamId, level);
+                    setUseDatabase(true);
+                } catch (err) {
+                    console.log('Could not create database attempt:', err.message);
+                }
+            } else {
+                console.log('No studentRecordId available, skipping database attempt creation');
+            }
+
+            setShowSectionIntro(true);
+        } else if (level === 'college') {
+            // For college students (UG/PG), skip category selection - go directly to assessment using their program
+            setAssessmentStarted(true);
+
             // Use student's program as the stream, normalize it to match STREAM_KNOWLEDGE_PROMPTS
             // Pass the original program name to normalizeStreamId (it handles the conversion)
             const streamId = normalizeStreamId(studentProgram || 'college');
@@ -1336,47 +1413,50 @@ const AssessmentTest = () => {
             }
 
             setShowSectionIntro(true);
-        } else if (level === 'higher_secondary') {
-            // For higher secondary (11-12), show category selection (Science/Commerce/Arts)
-            setShowCategorySelection(true);
         } else {
-            // For after 12th, show category selection (Science/Commerce/Arts)
+            // For after 12th ONLY, show category selection (Science/Commerce/Arts)
             setShowCategorySelection(true);
         }
     };
 
     // Handle category selection (Science/Commerce/Arts)
-    // After selecting category, go directly to assessment (no stream selection)
+    // For after12: Go directly to assessment (no program selection)
+    // For college and other levels: Show program selection screen
     const handleCategorySelect = async (categoryId) => {
         setSelectedCategory(categoryId);
         setShowCategorySelection(false);
-        
-        // Mark that user has started an assessment
-        setAssessmentStarted(true);
-        
-        // Use category as the stream - for after10, use the specific stream like 'science_pcmb'
-        const streamId = categoryId;
-        setStudentStream(streamId);
 
         // Determine the effective grade level for database
-        // Use the current gradeLevel state which was set in handleGradeSelect
         const effectiveGradeLevel = gradeLevel || 'after12';
         console.log('📚 handleCategorySelect - gradeLevel:', gradeLevel, 'effectiveGradeLevel:', effectiveGradeLevel, 'categoryId:', categoryId);
 
-        // Load questions from database
-        await loadQuestionsFromDatabase(streamId, effectiveGradeLevel);
+        // For after12 students: Skip program selection, go directly to assessment
+        if (effectiveGradeLevel === 'after12') {
+            // Mark that user has started an assessment
+            setAssessmentStarted(true);
 
-        setShowSectionIntro(true);
+            // Use category as the stream
+            const streamId = categoryId;
+            setStudentStream(streamId);
 
-        // Try to create a database attempt if student record exists
-        if (studentRecordId) {
-            try {
-                await startAssessment(streamId, effectiveGradeLevel);
-                setUseDatabase(true);
-                console.log('Assessment attempt created in database for category:', categoryId, 'gradeLevel:', effectiveGradeLevel);
-            } catch (err) {
-                console.log('Could not create database attempt, using localStorage mode:', err.message);
+            // Load questions from database
+            await loadQuestionsFromDatabase(streamId, effectiveGradeLevel);
+
+            setShowSectionIntro(true);
+
+            // Try to create a database attempt if student record exists
+            if (studentRecordId) {
+                try {
+                    await startAssessment(streamId, effectiveGradeLevel);
+                    setUseDatabase(true);
+                    console.log('Assessment attempt created in database for category:', categoryId, 'gradeLevel:', effectiveGradeLevel);
+                } catch (err) {
+                    console.log('Could not create database attempt, using localStorage mode:', err.message);
+                }
             }
+        } else {
+            // For college and other levels: Show program selection screen
+            setShowStreamSelection(true);
         }
     };
 
@@ -1417,7 +1497,7 @@ const AssessmentTest = () => {
                     await adaptiveAptitude.startTest();
                 }
                 // Note: Session ID linking is handled by useEffect when session becomes available
-                
+
                 // Set the question start time for response timing
                 setAdaptiveQuestionStartTime(Date.now());
                 // Reset the per-question timer
@@ -1436,7 +1516,7 @@ const AssessmentTest = () => {
 
     const handleAnswer = (value) => {
         if (!currentSection?.questions?.[currentQuestionIndex]) return;
-        
+
         const question = currentSection.questions[currentQuestionIndex];
         const questionId = `${currentSection.id}_${question.id}`;
 
@@ -1480,18 +1560,18 @@ const AssessmentTest = () => {
                     currentQuestionIndex: adaptiveAptitude.session?.currentQuestionIndex,
                     questionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
                 });
-                
+
                 try {
                     // Submit the answer to the adaptive engine (only pass the answer, hook handles timing)
                     const result = await adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer);
-                    
+
                     console.log('✅ [AssessmentTest] Answer submitted, result:', {
                         isCorrect: result?.isCorrect,
                         testComplete: result?.testComplete,
                         phaseComplete: result?.phaseComplete,
                         newDifficulty: result?.newDifficulty,
                     });
-                    
+
                     // Log the updated state after submission
                     console.log('📊 [AssessmentTest] State after submission:', {
                         newQuestionId: adaptiveAptitude.currentQuestion?.id,
@@ -1500,13 +1580,13 @@ const AssessmentTest = () => {
                         newCurrentQuestionIndex: adaptiveAptitude.session?.currentQuestionIndex,
                         isTestComplete: adaptiveAptitude.isTestComplete,
                     });
-                    
+
                     // Reset for next question
                     setAdaptiveAptitudeAnswer(null);
                     // Reset timer for next question
                     setAdaptiveQuestionTimer(ADAPTIVE_QUESTION_TIME_LIMIT);
                     setAdaptiveQuestionStartTime(Date.now());
-                    
+
                     // Check if test is complete (check the result, not the state which may not have updated yet)
                     if (result?.testComplete) {
                         console.log('🏁 [AssessmentTest] Adaptive test complete!');
@@ -1524,7 +1604,7 @@ const AssessmentTest = () => {
             }
             return;
         }
-        
+
         if (currentQuestionIndex < currentSection.questions.length - 1) {
             const nextQuestionIndex = currentQuestionIndex + 1;
 
@@ -1583,14 +1663,14 @@ const AssessmentTest = () => {
             const riasecScores = riasec.scores || {}; // { R: 15, I: 12, A: 8, ... }
             const riasecMaxScore = riasec.maxScore || 20;
             const riasecTopThree = riasec.topThree || []; // ['R', 'I', 'A']
-            
+
             const aptitudeResults = analysisResults?.aptitude || {};
             const aptitudeScores = aptitudeResults.scores || {}; // { verbal: {percentage: 80}, numerical: {percentage: 70}, ... }
             const aptitudeTopStrengths = aptitudeResults.topStrengths || [];
-            
+
             const bigFive = analysisResults?.bigFive || {};
             // Big Five scores are 0-5 scale
-            
+
             console.log('📊 Generating recommendations with:', {
                 riasecScores,
                 riasecTopThree,
@@ -1598,22 +1678,22 @@ const AssessmentTest = () => {
                 aptitudeTopStrengths,
                 bigFive
             });
-            
+
             // Calculate match scores for each course
             const courseMatches = allCourses.map(course => {
                 let matchScore = 0;
                 let matchReasons = [];
-                
+
                 // RIASEC matching (40% weight)
                 // Check if course's RIASEC types match student's top interests
                 if (course.riasec && course.riasec.length > 0) {
                     let riasecMatchPoints = 0;
-                    
+
                     course.riasec.forEach(type => {
                         const typeUpper = type.toUpperCase();
                         const score = riasecScores[typeUpper] || 0;
                         const percentage = (score / riasecMaxScore) * 100;
-                        
+
                         // Bonus if this type is in student's top 3
                         if (riasecTopThree.includes(typeUpper)) {
                             riasecMatchPoints += percentage * 1.5; // 50% bonus for top 3
@@ -1621,49 +1701,49 @@ const AssessmentTest = () => {
                             riasecMatchPoints += percentage;
                         }
                     });
-                    
+
                     const avgRiasecMatch = riasecMatchPoints / course.riasec.length;
                     matchScore += avgRiasecMatch * 0.4;
-                    
+
                     // Add reason if strong match
-                    const matchingTopTypes = course.riasec.filter(type => 
+                    const matchingTopTypes = course.riasec.filter(type =>
                         riasecTopThree.includes(type.toUpperCase())
                     );
                     if (matchingTopTypes.length > 0) {
                         matchReasons.push(`Aligns with your ${matchingTopTypes.join(', ')} interests`);
                     }
                 }
-                
+
                 // Aptitude matching (35% weight)
                 if (course.aptitudeStrengths && course.aptitudeStrengths.length > 0) {
                     let aptitudeMatchPoints = 0;
-                    
+
                     course.aptitudeStrengths.forEach(strength => {
                         const strengthLower = strength.toLowerCase();
                         const scoreData = aptitudeScores[strengthLower];
                         const percentage = scoreData?.percentage || 0;
-                        
+
                         // Bonus if this is in student's top strengths
-                        const isTopStrength = aptitudeTopStrengths.some(s => 
+                        const isTopStrength = aptitudeTopStrengths.some(s =>
                             s.toLowerCase().includes(strengthLower) || strengthLower.includes(s.toLowerCase())
                         );
-                        
+
                         if (isTopStrength) {
                             aptitudeMatchPoints += percentage * 1.3; // 30% bonus
                         } else {
                             aptitudeMatchPoints += percentage;
                         }
                     });
-                    
+
                     const avgAptitudeMatch = aptitudeMatchPoints / course.aptitudeStrengths.length;
                     matchScore += avgAptitudeMatch * 0.35;
-                    
+
                     // Add reason if strong aptitude match
                     if (avgAptitudeMatch > 60) {
                         matchReasons.push(`Strong aptitude in required skills`);
                     }
                 }
-                
+
                 // Personality fit (25% weight)
                 // Big Five scores are 0-5, convert to percentage
                 const O = ((bigFive.O || 3) / 5) * 100; // Openness
@@ -1671,9 +1751,9 @@ const AssessmentTest = () => {
                 const E = ((bigFive.E || 3) / 5) * 100; // Extraversion
                 const A = ((bigFive.A || 3) / 5) * 100; // Agreeableness
                 const N = ((bigFive.N || 3) / 5) * 100; // Neuroticism (lower is better for most careers)
-                
+
                 let personalityFit = 50; // Base score
-                
+
                 // Adjust based on course type
                 if (course.id === 'cs' || course.id === 'bca' || course.id === 'engineering') {
                     // Tech/Engineering: High Openness, High Conscientiousness
@@ -1702,16 +1782,16 @@ const AssessmentTest = () => {
                     // Default: balanced approach
                     personalityFit = (O * 0.25) + (C * 0.25) + (E * 0.2) + (A * 0.2) + ((100 - N) * 0.1);
                 }
-                
+
                 matchScore += personalityFit * 0.25;
-                
+
                 // Ensure score is between 0-100
                 matchScore = Math.min(100, Math.max(0, matchScore));
-                
+
                 // Determine category
                 const category = streamsByCategory.science.find(s => s.id === course.id) ? 'Science' :
-                                streamsByCategory.commerce.find(s => s.id === course.id) ? 'Commerce' : 'Arts';
-                
+                    streamsByCategory.commerce.find(s => s.id === course.id) ? 'Commerce' : 'Arts';
+
                 return {
                     courseId: course.id,
                     courseName: course.label,
@@ -1721,15 +1801,15 @@ const AssessmentTest = () => {
                     category: category
                 };
             });
-            
+
             // Sort by match score and return top 5 recommendations
             const topRecommendations = courseMatches
                 .sort((a, b) => b.matchScore - a.matchScore)
                 .slice(0, 5);
-            
+
             console.log('✅ Top recommendations:', topRecommendations);
             return topRecommendations;
-                
+
         } catch (error) {
             console.error('Error generating course recommendations:', error);
             return [];
@@ -1827,13 +1907,25 @@ const AssessmentTest = () => {
                 // This will be used by the AI to enhance career recommendations
             }
 
+            // Build student context for enhanced AI recommendations
+            const studentContext = {
+                rawGrade: studentGrade, // Original grade string (e.g., "PG Year 1", "Grade 10")
+                programName: studentProgram, // Program name (e.g., "MCA", "B.Tech CSE")
+                programCode: null, // Not available in this context
+                degreeLevel: null // Will be extracted from rawGrade in service
+            };
+
+            console.log('📚 Student Context for AI:', studentContext);
+
             // Analyze with Gemini AI - this is required, no fallback
             const geminiResults = await analyzeAssessmentWithGemini(
                 answersWithAdaptive,
                 studentStream,
                 questionBanks,
                 finalTimings, // Pass section timings to Gemini
-                gradeLevel // Pass grade level for proper scoring
+                gradeLevel, // Pass grade level for proper scoring
+                null, // preCalculatedScores (not available here)
+                studentContext // Pass student context for enhanced recommendations
             );
 
             if (geminiResults) {
@@ -1841,7 +1933,7 @@ const AssessmentTest = () => {
                 if (gradeLevel === 'highschool' && answers.adaptive_aptitude_results) {
                     const adaptiveResults = answers.adaptive_aptitude_results;
                     console.log('🎯 Enhancing results with adaptive aptitude data');
-                    
+
                     // Add adaptive aptitude insights to the results
                     geminiResults.adaptiveAptitude = {
                         aptitudeLevel: adaptiveResults.aptitudeLevel,
@@ -1853,12 +1945,12 @@ const AssessmentTest = () => {
                         totalQuestions: adaptiveResults.totalQuestions,
                         totalCorrect: adaptiveResults.totalCorrect
                     };
-                    
+
                     // Enhance aptitude scores with adaptive test results
                     if (geminiResults.aptitude) {
                         geminiResults.aptitude.adaptiveLevel = adaptiveResults.aptitudeLevel;
                         geminiResults.aptitude.adaptiveConfidence = adaptiveResults.confidenceTag;
-                        
+
                         // Map adaptive subtag accuracy to aptitude categories
                         if (adaptiveResults.accuracyBySubtag) {
                             const subtagMapping = {
@@ -1869,7 +1961,7 @@ const AssessmentTest = () => {
                                 data_interpretation: 'numerical',
                                 pattern_recognition: 'abstract'
                             };
-                            
+
                             Object.entries(adaptiveResults.accuracyBySubtag).forEach(([subtag, data]) => {
                                 const category = subtagMapping[subtag];
                                 if (category && geminiResults.aptitude.scores?.[category]) {
@@ -1878,10 +1970,10 @@ const AssessmentTest = () => {
                             });
                         }
                     }
-                    
+
                     console.log('✅ Adaptive aptitude data integrated into results');
                 }
-                
+
                 // Add course recommendations for after12 students
                 if (gradeLevel === 'after12') {
                     geminiResults.courseRecommendations = generateCourseRecommendations(geminiResults);
@@ -1892,92 +1984,150 @@ const AssessmentTest = () => {
                 localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
                 console.log('Gemini analysis complete:', geminiResults);
 
-                // Save results to database
-                console.log('=== Database Save Debug ===');
-                console.log('useDatabase:', useDatabase);
-                console.log('currentAttempt:', currentAttempt);
-                console.log('currentAttempt?.id:', currentAttempt?.id);
-                console.log('user?.id:', user?.id);
-                
-                // Get attempt ID - either from currentAttempt or fetch the latest in-progress attempt
+                // ===========================================
+                // STEP-BY-STEP SUBMISSION WITH VALIDATION
+                // ===========================================
+                console.log('');
+                console.log('🚀 ========== SUBMISSION FLOW START ==========');
+
+                let submissionSuccess = true;
+                let submissionError = null;
+                let finalAttemptId = null;
+
+                // STEP 1: Get or lookup attempt ID
+                console.log('📋 STEP 1: Getting attempt ID');
+                console.log('   currentAttempt?.id:', currentAttempt?.id);
+                console.log('   studentRecordId:', studentRecordId);
+                console.log('   user?.id:', user?.id);
+
                 let attemptId = currentAttempt?.id;
-                
-                if (!attemptId && user?.id) {
-                    console.log('No currentAttempt, fetching latest attempt from database...');
+
+                if (!attemptId && (studentRecordId || user?.id)) {
+                    console.log('   ⏳ No currentAttempt, fetching latest attempt from database...');
+                    const lookupStudentId = studentRecordId || user.id;
+                    console.log('   📝 Looking up with student_id:', lookupStudentId);
+
                     try {
-                        const { data: latestAttempt } = await supabase
+                        const { data: latestAttempt, error: lookupError } = await supabase
                             .from('personal_assessment_attempts')
                             .select('id, stream_id, grade_level')
-                            .eq('student_id', user.id)
+                            .eq('student_id', lookupStudentId)
                             .eq('status', 'in_progress')
                             .order('created_at', { ascending: false })
                             .limit(1)
                             .single();
-                        
+
+                        if (lookupError) {
+                            console.log('   ⚠️ Lookup query error:', lookupError.message);
+                        }
+
                         if (latestAttempt) {
                             attemptId = latestAttempt.id;
-                            console.log('Found latest attempt:', attemptId);
+                            console.log('   ✅ STEP 1 SUCCESS: Found attempt:', attemptId);
+                        } else {
+                            console.log('   ❌ STEP 1 FAILED: No in-progress attempt found');
+                            submissionSuccess = false;
+                            submissionError = 'No assessment attempt found. Please start a new assessment.';
                         }
                     } catch (fetchErr) {
-                        console.log('Could not fetch latest attempt:', fetchErr.message);
+                        console.log('   ❌ STEP 1 FAILED:', fetchErr.message);
+                        submissionSuccess = false;
+                        submissionError = 'Failed to find assessment attempt: ' + fetchErr.message;
                     }
+                } else if (attemptId) {
+                    console.log('   ✅ STEP 1 SUCCESS: Using existing attempt:', attemptId);
+                } else {
+                    console.log('   ❌ STEP 1 FAILED: No valid student ID available');
+                    submissionSuccess = false;
+                    submissionError = 'No student record found. Please log in again.';
                 }
-                
-                // Save to database if we have an attempt
-                if (attemptId) {
+
+                finalAttemptId = attemptId;
+
+                // STEP 2: Save results to database (only if Step 1 succeeded)
+                if (submissionSuccess && attemptId) {
+                    console.log('');
+                    console.log('📋 STEP 2: Saving results to database');
+                    console.log('   attemptId:', attemptId);
+
                     try {
-                        console.log('Attempting to save results to database with attemptId:', attemptId);
-                        
-                        // If currentAttempt is null, call completeAttempt directly
+                        let dbResults = null;
+
                         if (currentAttempt?.id) {
-                            const dbResults = await completeAssessment(geminiResults, finalTimings);
-                            console.log('✅ Results saved to database via hook:', dbResults);
+                            console.log('   ⏳ Saving via completeAssessment hook...');
+                            dbResults = await completeAssessment(geminiResults, finalTimings);
+                            console.log('   ✅ STEP 2 SUCCESS: Saved via hook:', dbResults?.id || 'OK');
                         } else {
-                            // Direct call to assessmentService
-                            const dbResults = await assessmentService.completeAttempt(
+                            const studentIdForDb = studentRecordId || user.id;
+                            console.log('   ⏳ Saving via direct API call...');
+                            console.log('   📝 studentIdForDb:', studentIdForDb);
+
+                            dbResults = await assessmentService.completeAttempt(
                                 attemptId,
-                                user.id,
+                                studentIdForDb,
                                 studentStream,
                                 gradeLevel || 'after12',
                                 geminiResults,
                                 finalTimings
                             );
-                            console.log('✅ Results saved to database directly:', dbResults);
+                            console.log('   ✅ STEP 2 SUCCESS: Saved directly:', dbResults?.id || 'OK');
                         }
-                        
-                        // Navigate with attemptId for database retrieval
-                        navigate(`/student/assessment/result?attemptId=${attemptId}`);
+
+                        if (!dbResults) {
+                            throw new Error('Database returned no result record');
+                        }
+
                     } catch (dbErr) {
-                        console.error('❌ Failed to save to database:', dbErr);
-                        console.error('Error details:', {
+                        console.error('   ❌ STEP 2 FAILED:', dbErr);
+                        console.error('   Error details:', {
                             message: dbErr.message,
                             code: dbErr.code,
                             details: dbErr.details,
                             hint: dbErr.hint
                         });
-                        // Still navigate to results (localStorage has the data)
-                        navigate('/student/assessment/result');
+                        submissionSuccess = false;
+                        submissionError = 'Failed to save results: ' + (dbErr.message || 'Database error');
                     }
+                }
+
+                // STEP 3: Navigate to results page (only if all steps succeeded)
+                console.log('');
+                console.log('📋 STEP 3: Navigation decision');
+                console.log('   submissionSuccess:', submissionSuccess);
+                console.log('   finalAttemptId:', finalAttemptId);
+                console.log('   submissionError:', submissionError);
+
+                if (submissionSuccess && finalAttemptId) {
+                    console.log('   ✅ STEP 3: ALL STEPS SUCCESSFUL - Navigating to results page');
+                    console.log('🎉 ========== SUBMISSION FLOW COMPLETE ==========');
+                    console.log('');
+                    navigate(`/student/assessment/result?attemptId=${finalAttemptId}`);
                 } else {
-                    console.log('No attemptId available, navigating without database save');
-                    navigate('/student/assessment/result');
+                    console.log('   ❌ STEP 3: SUBMISSION FAILED - Showing error to user');
+                    console.log('❌ ========== SUBMISSION FLOW FAILED ==========');
+                    console.log('');
+                    setIsSubmitting(false);
+                    setError(submissionError || 'Assessment submission failed. Please try again.');
+                    // Do NOT navigate - stay on page and show error
+                    return;
                 }
             } else {
                 throw new Error('AI analysis returned no results. Please check your API key configuration.');
             }
         } catch (err) {
-            console.error('Error submitting assessment:', err);
+            console.error('❌ Error submitting assessment:', err);
+            console.log('❌ ========== SUBMISSION FLOW ERROR ==========');
             setIsSubmitting(false);
             setError(err.message || 'Failed to analyze assessment with AI. Please try again.');
         }
     };
 
     // For adaptive sections, use the question from the adaptive hook
-    const currentQuestion = currentSection?.isAdaptive 
-        ? adaptiveAptitude.currentQuestion 
+    const currentQuestion = currentSection?.isAdaptive
+        ? adaptiveAptitude.currentQuestion
         : currentSection?.questions[currentQuestionIndex];
-    const questionId = currentSection?.isAdaptive 
-        ? `adaptive_aptitude_${adaptiveAptitude.currentQuestion?.id}` 
+    const questionId = currentSection?.isAdaptive
+        ? `adaptive_aptitude_${adaptiveAptitude.currentQuestion?.id}`
         : `${currentSection?.id}_${currentQuestion?.id}`;
 
     // Check if current question is answered (SJT needs both BEST and WORST, multiselect needs required count, text needs content)
@@ -2003,22 +2153,7 @@ const AssessmentTest = () => {
         return true;
     })();
 
-    const formatTime = (seconds) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    // Format elapsed time with hours if needed
-    const formatElapsedTime = (seconds) => {
-        const hrs = Math.floor(seconds / 3600);
-        const mins = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-        if (hrs > 0) {
-            return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
+    // formatTime and formatElapsedTime are now imported from centralized utilities
 
     // Unified loading screen - clean and simple
     // Only show loading for initial check and questions loading, not for dbLoading during assessment
@@ -2034,481 +2169,71 @@ const AssessmentTest = () => {
         );
     }
 
+    // Show error if questions failed to load
+    if (questionsError && !showGradeSelection && !showCategorySelection) {
+        return (
+            <RestrictionScreen
+                errorMessage={questionsError}
+                onViewLastReport={() => navigate('/student/assessment/result')}
+                onBackToDashboard={() => navigate('/student/dashboard')}
+            />
+        );
+    }
+
     // Show restriction message if user cannot take assessment
     if (error && !showStreamSelection && !showResumePrompt && !assessmentStarted) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div className="w-full max-w-xl bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-                    {/* Header with Icon */}
-                    <div className="text-center mb-6">
-                        <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Clock className="w-7 h-7 text-white" />
-                        </div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Assessment Not Available</h2>
-                        <p className="text-gray-600 text-sm">You need to wait before taking the assessment again</p>
-                    </div>
-
-                    {/* Warning Message Box */}
-                    <div className="bg-slate-300 rounded-lg p-4 mb-4 border border-slate-100">
-                        <div className="flex items-start gap-2.5">
-                            <AlertCircle className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
-                            <p className="text-sm text-gray-800 leading-relaxed">{error}</p>
-                        </div>
-                    </div>
-
-                    {/* Info Box */}
-                    <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-slate-100">
-                        <div className="flex items-start gap-2.5">
-                            <AlertCircle className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
-                            <div className="text-sm text-gray-700">
-                                <p className="font-semibold text-slate-900 mb-1.5">Why the 6-month waiting period?</p>
-                                <p className="leading-relaxed">The career assessment is designed to track your growth and development over time. Taking it too frequently won't provide meaningful insights. Use this time to work on your skills and gain new experiences!</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="space-y-2.5">
-                        <Button
-                            onClick={() => navigate('/student/assessment/result')}
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 text-sm font-medium rounded-lg transition-colors"
-                        >
-                            <Target className="w-4 h-4 mr-2" />
-                            View Your Last Report
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={() => navigate('/student/dashboard')}
-                            className="w-full py-3 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors"
-                        >
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Dashboard
-                        </Button>
-                    </div>
-                </div>
-            </div>
+            <RestrictionScreen
+                errorMessage={error}
+                onViewLastReport={() => navigate('/student/assessment/result')}
+                onBackToDashboard={() => navigate('/student/dashboard')}
+            />
         );
     }
 
-    // Resume Prompt Screen - shown when user has an in-progress assessment
+    // Resume Prompt Screen - Using extracted component
     if (showResumePrompt && pendingAttempt) {
-        // Find stream label from streamCategories or streamsByCategory
-        const allStreams = [
-            ...streamCategories,
-            ...Object.values(streamsByCategory).flat()
-        ];
-        const streamLabel = allStreams.find(s => s.id === pendingAttempt.stream_id)?.label || pendingAttempt.stream_id;
-        const answeredCount = Object.keys(pendingAttempt.restoredResponses || {}).length;
-
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-                <Card className="w-full max-w-lg border-none shadow-2xl">
-                    <CardContent className="p-8">
-                        <div className="text-center mb-6">
-                            <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                <Clock className="w-8 h-8 text-white" />
-                            </div>
-                            <h2 className="text-2xl font-bold text-gray-800 mb-2">Continue Your Assessment?</h2>
-                            <p className="text-gray-600">You have an incomplete assessment</p>
-                        </div>
-
-                        <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-2">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Stream:</span>
-                                <span className="font-medium text-gray-800">{streamLabel}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Questions Answered:</span>
-                                <span className="font-medium text-gray-800">{answeredCount}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Started:</span>
-                                <span className="font-medium text-gray-800">
-                                    {new Date(pendingAttempt.started_at).toLocaleDateString()}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <Button
-                                onClick={handleResumeAssessment}
-                                className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white py-6 text-lg shadow-lg"
-                            >
-                                <CheckCircle2 className="w-5 h-5 mr-2" />
-                                Continue Assessment
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={handleStartNewAssessment}
-                                className="w-full py-4 text-gray-600 hover:text-red-600 hover:border-red-200"
-                            >
-                                Start Fresh (Discard Progress)
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+            <ResumePromptScreen
+                pendingAttempt={pendingAttempt}
+                onResume={handleResumeAssessment}
+                onStartNew={handleStartNewAssessment}
+                isLoading={questionsLoading}
+            />
         );
     }
 
-    // Grade Level Selection Screen
+    // Grade Level Selection Screen - Using extracted component
     if (showGradeSelection) {
-        // Determine which grade level to show based on student's grade
         const detectedGradeLevel = getGradeLevelFromGrade(studentGrade);
-        
-        // Check if student has incomplete profile (no grade and not college student)
-        const hasIncompleteProfile = shouldFilterByGrade && !detectedGradeLevel && !isCollegeStudent;
-        
-        // Show loading while fetching student grade (only when filtering)
-        if (loadingStudentGrade && shouldFilterByGrade) {
-            return (
-                <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-                    <div className="text-center">
-                        <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-4" />
-                        <p className="text-gray-600">Loading...</p>
-                    </div>
-                </div>
-            );
-        }
-        
-        // Show message to complete profile if no grade/class info
-        if (hasIncompleteProfile) {
-            return (
-                <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-                    <Card className="w-full max-w-2xl border-none shadow-2xl">
-                        <CardContent className="p-8">
-                            <div className="text-center mb-8">
-                                <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                    <AlertCircle className="w-8 h-8 text-white" />
-                                </div>
-                                <h1 className="text-3xl font-bold text-gray-800 mb-2">Complete Your Profile</h1>
-                                <p className="text-gray-600">Please update your personal information to take the assessment</p>
-                            </div>
 
-                            <div className="bg-amber-50 rounded-xl p-6 mb-6 border border-amber-200">
-                                <div className="flex gap-3">
-                                    <AlertCircle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
-                                    <div>
-                                        <p className="font-semibold text-amber-800 mb-2">Missing Information</p>
-                                        <p className="text-sm text-amber-700">
-                                            We couldn't determine your grade level or class. Please go to your profile settings and update your:
-                                        </p>
-                                        <ul className="text-sm text-amber-700 mt-2 list-disc list-inside space-y-1">
-                                            <li>Grade/Class information (for school students)</li>
-                                            <li>College/University details (for college students)</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <Button
-                                onClick={() => navigate('/student/settings')}
-                                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white py-6 text-lg shadow-lg"
-                            >
-                                Go to Profile Settings
-                            </Button>
-                            
-                            <Button
-                                variant="outline"
-                                onClick={() => navigate('/student/dashboard')}
-                                className="w-full mt-3 py-4"
-                            >
-                                Back to Dashboard
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </div>
-            );
-        }
-        
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-                <Card className="w-full max-w-2xl border-none shadow-2xl">
-                    <CardContent className="p-8">
-                        <div className="text-center mb-8">
-                            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                <Award className="w-8 h-8 text-white" />
-                            </div>
-                            <h1 className="text-3xl font-bold text-gray-800 mb-2">Career Assessment</h1>
-                            <p className="text-gray-600">Select your grade level to get started</p>
-                        </div>
-
-                        <div className="space-y-4">
-                            <Label className="text-sm font-semibold text-gray-700">Choose Your Grade Level</Label>
-
-                            {/* Grades 6-8 (Middle School) - Show if: show all OR not filtering OR grade is 6-8 */}
-                            {(shouldShowAllOptions || !shouldFilterByGrade || detectedGradeLevel === 'middle') && (
-                            <button
-                                onClick={() => handleGradeSelect('middle')}
-                                className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                <div className="relative z-10">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">Grades 6–8</h3>
-                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
-                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
-                                        </div>
-                                    </div>
-                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">Middle School Students</p>
-                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                                        <Clock className="w-4 h-4" />
-                                        <span>Assessment: 41 questions (50-60 minutes)</span>
-                                    </div>
-                                </div>
-                            </button>
-                            )}
-
-                            {/* Grades 9-12 (High School) - Show if: show all OR not filtering OR grade is 9/11 OR (grade is 10 AND less than 6 months) OR (grade is 12 AND less than 6 months) */}
-                            {(shouldShowAllOptions || !shouldFilterByGrade || 
-                              (detectedGradeLevel === 'highschool' && !(studentGrade === '10' || studentGrade === '10th' || studentGrade === '12' || studentGrade === '12th')) ||
-                              (detectedGradeLevel === 'highschool' && (studentGrade === '10' || studentGrade === '10th') && monthsInGrade !== null && monthsInGrade < 6) ||
-                              (detectedGradeLevel === 'highschool' && (studentGrade === '12' || studentGrade === '12th') && monthsInGrade !== null && monthsInGrade < 6)
-                            ) && (
-                            <button
-                                onClick={() => handleGradeSelect('highschool')}
-                                className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                <div className="relative z-10">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">Grades 9–10</h3>
-                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
-                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
-                                        </div>
-                                    </div>
-                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">High School Students</p>
-                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                                        <Clock className="w-4 h-4" />
-                                        <span>Assessment: 53 questions (55-65 minutes)</span>
-                                    </div>
-                                </div>
-                            </button>
-                            )}
-
-                            {/* Grades 11-12 (Higher Secondary) - Show if: show all OR not filtering OR (grade is 11-12 AND NOT grade 12 with 6+ months) */}
-                            {(shouldShowAllOptions || !shouldFilterByGrade || 
-                              (detectedGradeLevel === 'higher_secondary' && 
-                               !((studentGrade === '12' || studentGrade === '12th') && monthsInGrade !== null && monthsInGrade >= 6))
-                            ) && (
-                            <button
-                                onClick={() => handleGradeSelect('higher_secondary')}
-                                className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                <div className="relative z-10">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">Grades 11–12</h3>
-                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
-                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
-                                        </div>
-                                    </div>
-                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">Higher Secondary Students</p>
-                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                                        <Clock className="w-4 h-4" />
-                                        <span>Assessment: 53 questions (55-65 minutes)</span>
-                                    </div>
-                                    {/* Show months info for grade 12 students */}
-                                    {(studentGrade === '12' || studentGrade === '12th') && monthsInGrade !== null && monthsInGrade < 6 && (
-                                        <div className="mt-2 text-xs text-indigo-600 font-medium">
-                                            {monthsInGrade} month{monthsInGrade !== 1 ? 's' : ''} in 12th grade
-                                        </div>
-                                    )}
-                                    {/* Show months info for grade 10 students */}
-                                    {(studentGrade === '10' || studentGrade === '10th') && monthsInGrade !== null && monthsInGrade < 6 && (
-                                        <div className="mt-2 text-xs text-indigo-600 font-medium">
-                                            {monthsInGrade} month{monthsInGrade !== 1 ? 's' : ''} in 10th grade
-                                        </div>
-                                    )}
-                                </div>
-                            </button>
-                            )}
-
-                            {/* After 10th - Show if: show all OR not filtering OR (grade is 10 AND 6+ months in grade) */}
-                            {(shouldShowAllOptions || !shouldFilterByGrade || 
-                              (detectedGradeLevel === 'highschool' && (studentGrade === '10' || studentGrade === '10th') && (monthsInGrade === null || monthsInGrade >= 6))
-                            ) && (
-                            <button
-                                onClick={() => handleGradeSelect('after10')}
-                                className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                <div className="relative z-10">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">After 10th</h3>
-                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
-                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
-                                        </div>
-                                    </div>
-                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">Students who have completed 10th grade</p>
-                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                                        <Clock className="w-4 h-4" />
-                                        <span>Assessment: (30-40 minutes)</span>
-                                    </div>
-                                    {/* Show months info for grade 10 students */}
-                                    {(studentGrade === '10' || studentGrade === '10th') && monthsInGrade !== null && monthsInGrade >= 6 && (
-                                        <div className="mt-2 text-xs text-green-600 font-medium">
-                                            {monthsInGrade} month{monthsInGrade !== 1 ? 's' : ''} in 10th grade - Ready for stream selection!
-                                        </div>
-                                    )}
-                                </div>
-                            </button>
-                            )}
-
-                            {/* After 12th - Show if: show all OR not filtering OR (grade is 12 AND 6+ months in grade) */}
-                            {(shouldShowAllOptions || !shouldFilterByGrade || 
-                              (detectedGradeLevel === 'higher_secondary' && (studentGrade === '12' || studentGrade === '12th') && (monthsInGrade === null || monthsInGrade >= 6))
-                            ) && (
-                            <button
-                                onClick={() => handleGradeSelect('after12')}
-                                className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                <div className="relative z-10">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">After 12th</h3>
-                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
-                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
-                                        </div>
-                                    </div>
-                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">Students who have completed 12th grade</p>
-                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                                        <Clock className="w-4 h-4" />
-                                        <span>Assessment: (35-45 minutes)</span>
-                                    </div>
-                                    {/* Show months info for grade 12 students */}
-                                    {(studentGrade === '12' || studentGrade === '12th') && monthsInGrade !== null && monthsInGrade >= 6 && (
-                                        <div className="mt-2 text-xs text-green-600 font-medium">
-                                            {monthsInGrade} month{monthsInGrade !== 1 ? 's' : ''} in 12th grade - Ready for career planning!
-                                        </div>
-                                    )}
-                                </div>
-                            </button>
-                            )}
-
-                            {/* College (UG/PG) - Show if: show all OR not filtering OR is college student (UG/PG grade) */}
-                            {(shouldShowAllOptions || !shouldFilterByGrade || isCollegeStudent || 
-                              detectedGradeLevel === 'after12'
-                            ) && (
-                            <button
-                                onClick={() => handleGradeSelect('college')}
-                                className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                <div className="relative z-10">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">
-                                            {studentProgram ? studentProgram : 'College'}
-                                        </h3>
-                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
-                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
-                                        </div>
-                                    </div>
-                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">
-                                        {studentProgram ? 'College/University Student' : 'Undergraduate & Postgraduate Students'}
-                                    </p>
-                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                                        <Clock className="w-4 h-4" />
-                                        <span>Assessment: (45-60 minutes)</span>
-                                    </div>
-                                </div>
-                            </button>
-                            )}
-                        </div>
-
-                        <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                            <div className="flex gap-3">
-                                <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                                <div className="text-sm text-blue-700">
-                                    <p className="font-semibold mb-1">Personalized Career Guidance</p>
-                                    <p>This assessment is designed to help you discover your interests, strengths, and potential career paths based on your age and educational level.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+            <GradeSelectionScreen
+                onGradeSelect={handleGradeSelect}
+                studentGrade={studentGrade}
+                detectedGradeLevel={detectedGradeLevel}
+                monthsInGrade={monthsInGrade}
+                isCollegeStudent={isCollegeStudent}
+                loadingStudentGrade={loadingStudentGrade}
+                shouldShowAllOptions={shouldShowAllOptions}
+                shouldFilterByGrade={shouldFilterByGrade}
+                studentProgram={studentProgram}
+                profileData={profileData}
+            />
         );
     }
 
-    // Category Selection Screen (Science/Commerce/Arts)
+    // Category Selection Screen - Using extracted component
     if (showCategorySelection) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-                <Card className="w-full max-w-2xl border-none shadow-2xl">
-                    <CardContent className="p-8">
-                        <div className="text-center mb-8">
-                            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                <Award className="w-8 h-8 text-white" />
-                            </div>
-                            <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                                Career Assessment - {gradeLevel === 'after10' ? 'After 10th' : 'After 12th'}
-                            </h1>
-                            <p className="text-gray-600">
-                                {gradeLevel === 'after10' 
-                                    ? 'Select your interest area - we\'ll recommend the best 11th/12th stream for you' 
-                                    : 'Select your stream category to continue'}
-                            </p>
-                        </div>
-
-                        <div className="space-y-4">
-                            <Label className="text-sm font-semibold text-gray-700">
-                                {gradeLevel === 'after10' ? 'Which area interests you most?' : 'Choose Your Stream Category'}
-                            </Label>
-                            
-                            {streamCategories.map((category) => (
-                                <button
-                                    key={category.id}
-                                    onClick={() => handleCategorySelect(category.id)}
-                                    className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                    <div className="relative z-10">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-12 h-12 rounded-xl bg-gray-50 group-hover:bg-indigo-50 flex items-center justify-center transition-colors">
-                                                    {category.icon}
-                                                </div>
-                                                <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">{category.label}</h3>
-                                            </div>
-                                            <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
-                                                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
-                                            </div>
-                                        </div>
-                                        <p className="text-sm text-gray-600 group-hover:text-gray-700 ml-15 pl-0.5">{category.description}</p>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                            <div className="flex gap-3">
-                                <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                                <div className="text-sm text-blue-700">
-                                    <p className="font-semibold mb-1">How It Works</p>
-                                    <p>
-                                        {gradeLevel === 'after10'
-                                            ? 'After completing the assessment, we\'ll recommend the best 11th/12th stream (PCMB, PCMS, PCM, PCB, Commerce, Arts) based on your aptitude, interests, and academic performance.'
-                                            : 'After completing the assessment, we\'ll recommend the best courses/programs for you based on your interests, aptitude, and personality.'}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setShowCategorySelection(false);
-                                setShowGradeSelection(true);
-                            }}
-                            className="w-full mt-4 py-4"
-                        >
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Grade Selection
-                        </Button>
-                    </CardContent>
-                </Card>
-            </div>
+            <CategorySelectionScreen
+                onCategorySelect={handleCategorySelect}
+                onBack={() => {
+                    setShowCategorySelection(false);
+                    setShowGradeSelection(true);
+                }}
+                gradeLevel={gradeLevel}
+            />
         );
     }
 
@@ -2686,7 +2411,7 @@ const AssessmentTest = () => {
                             } else if (idx === currentSectionIndex) {
                                 // Handle adaptive section progress differently
                                 if (sections[idx].isAdaptive) {
-                                    const adaptiveTotal = adaptiveAptitude.progress?.estimatedTotalQuestions || 21;
+                                    const adaptiveTotal = adaptiveAptitude.progress?.estimatedTotalQuestions || 20;
                                     const adaptiveAnswered = adaptiveAptitude.progress?.questionsAnswered || 0;
                                     lineProgress = adaptiveTotal > 0 ? (adaptiveAnswered / adaptiveTotal) * 100 : 0;
                                 } else {
@@ -2873,6 +2598,18 @@ const AssessmentTest = () => {
                                 >
                                     {currentSection.title}
                                 </motion.h2>
+                                {/* AI-Powered badge for after10/higher_secondary/after12/college grade levels */}
+                                {['after10', 'higher_secondary', 'after12', 'college'].includes(gradeLevel) && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: 0.25, duration: 0.3 }}
+                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs font-semibold mb-4 shadow-md"
+                                    >
+                                        <Sparkles className="w-3.5 h-3.5" />
+                                        <span>AI-Powered Questions</span>
+                                    </motion.div>
+                                )}
                                 <motion.p
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
@@ -3013,8 +2750,8 @@ const AssessmentTest = () => {
                                     whileTap={{ scale: 0.98 }}
                                 >
                                     {/* Show loading state for AI sections with no questions */}
-                                    {(currentSection.id === 'aptitude' || currentSection.id === 'knowledge') && 
-                                     currentSection.questions.length === 0 && !currentSection?.isAdaptive ? (
+                                    {(currentSection.id === 'aptitude' || currentSection.id === 'knowledge') &&
+                                        currentSection.questions.length === 0 && !currentSection?.isAdaptive ? (
                                         <div className="flex flex-col items-center gap-4">
                                             {aiQuestionsLoading ? (
                                                 <>
@@ -3188,16 +2925,16 @@ const AssessmentTest = () => {
                                         <div className="flex items-center gap-3 text-sm text-gray-600">
                                             <Users className="w-4 h-4" />
                                             <span>Question {
-                                                currentSection?.isAdaptive 
+                                                currentSection?.isAdaptive
                                                     ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1}`
                                                     : `${currentQuestionIndex + 1}`
                                             } / {
-                                                currentSection?.isAdaptive 
-                                                    ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 21}`
-                                                    : (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 
-                                                    : (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 
-                                                    : currentSection.questions.length
-                                            }</span>
+                                                    currentSection?.isAdaptive
+                                                        ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 20}`
+                                                        : (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50
+                                                            : (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20
+                                                                : currentSection.questions.length
+                                                }</span>
                                         </div>
 
                                         {/* Adaptive section progress */}
@@ -3314,15 +3051,15 @@ const AssessmentTest = () => {
                                                 <div className="mb-6">
                                                     <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 block">
                                                         Question {
-                                                            currentSection?.isAdaptive 
+                                                            currentSection?.isAdaptive
                                                                 ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1}`
                                                                 : `${currentQuestionIndex + 1}`
                                                         } / {
-                                                            currentSection?.isAdaptive 
-                                                                ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 21}`
-                                                                : (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50 
-                                                                : (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20 
-                                                                : currentSection.questions.length
+                                                            currentSection?.isAdaptive
+                                                                ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 20}`
+                                                                : (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50
+                                                                    : (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20
+                                                                        : currentSection.questions.length
                                                         }
                                                     </span>
                                                     <h3 className="text-2xl md:text-3xl font-medium text-gray-800 leading-snug">
@@ -3348,13 +3085,12 @@ const AssessmentTest = () => {
                                                                     )}
                                                                 </div>
                                                                 {/* Per-question timer */}
-                                                                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold ${
-                                                                    adaptiveQuestionTimer <= 10 
-                                                                        ? 'bg-red-100 text-red-700 animate-pulse' 
-                                                                        : adaptiveQuestionTimer <= 30 
-                                                                            ? 'bg-amber-100 text-amber-700' 
-                                                                            : 'bg-indigo-100 text-indigo-700'
-                                                                }`}>
+                                                                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold ${adaptiveQuestionTimer <= 10
+                                                                    ? 'bg-red-100 text-red-700 animate-pulse'
+                                                                    : adaptiveQuestionTimer <= 30
+                                                                        ? 'bg-amber-100 text-amber-700'
+                                                                        : 'bg-indigo-100 text-indigo-700'
+                                                                    }`}>
                                                                     <Clock className="w-4 h-4" />
                                                                     {Math.floor(adaptiveQuestionTimer / 60)}:{(adaptiveQuestionTimer % 60).toString().padStart(2, '0')}
                                                                 </div>
@@ -3368,23 +3104,20 @@ const AssessmentTest = () => {
                                                                         key={optionKey}
                                                                         type="button"
                                                                         onClick={() => setAdaptiveAptitudeAnswer(optionKey)}
-                                                                        className={`w-full border-2 rounded-xl p-4 transition-all text-left ${
-                                                                            isSelected
-                                                                                ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
-                                                                                : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                                                                        }`}
+                                                                        className={`w-full border-2 rounded-xl p-4 transition-all text-left ${isSelected
+                                                                            ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
+                                                                            : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                                                            }`}
                                                                     >
                                                                         <div className="flex items-start gap-3">
-                                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold transition-all ${
-                                                                                isSelected
-                                                                                    ? 'bg-indigo-500 text-white'
-                                                                                    : 'bg-gray-100 text-gray-600'
-                                                                            }`}>
+                                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold transition-all ${isSelected
+                                                                                ? 'bg-indigo-500 text-white'
+                                                                                : 'bg-gray-100 text-gray-600'
+                                                                                }`}>
                                                                                 {optionKey}
                                                                             </div>
-                                                                            <p className={`flex-1 font-medium text-lg ${
-                                                                                isSelected ? 'text-indigo-700' : 'text-gray-700'
-                                                                            }`}>
+                                                                            <p className={`flex-1 font-medium text-lg ${isSelected ? 'text-indigo-700' : 'text-gray-700'
+                                                                                }`}>
                                                                                 {currentQuestion.options[optionKey]}
                                                                             </p>
                                                                         </div>
@@ -3401,269 +3134,260 @@ const AssessmentTest = () => {
                                                             )}
                                                         </div>
                                                     ) : /* SJT Questions - Select BEST and WORST */
-                                                    currentQuestion.partType === 'sjt' ? (
-                                                        <div className="space-y-4">
-                                                            <div className="p-3 bg-rose-50 rounded-lg border border-rose-200 mb-4">
-                                                                <p className="text-sm font-medium text-rose-700">
-                                                                    Select the <span className="font-bold text-green-700">BEST</span> response and the <span className="font-bold text-red-700">WORST</span> response for this scenario.
-                                                                </p>
+                                                        currentQuestion.partType === 'sjt' ? (
+                                                            <div className="space-y-4">
+                                                                <div className="p-3 bg-rose-50 rounded-lg border border-rose-200 mb-4">
+                                                                    <p className="text-sm font-medium text-rose-700">
+                                                                        Select the <span className="font-bold text-green-700">BEST</span> response and the <span className="font-bold text-red-700">WORST</span> response for this scenario.
+                                                                    </p>
+                                                                </div>
+
+                                                                {currentQuestion.options.map((option, idx) => {
+                                                                    const optionLabel = currentQuestion.optionLabels?.[idx] || String.fromCharCode(97 + idx);
+                                                                    const sjtAnswer = answers[questionId] || {};
+                                                                    const isBest = sjtAnswer.best === option;
+                                                                    const isWorst = sjtAnswer.worst === option;
+
+                                                                    return (
+                                                                        <div
+                                                                            key={idx}
+                                                                            className={`border rounded-xl p-4 transition-all ${isBest ? 'border-green-500 bg-green-50 ring-1 ring-green-500/30' :
+                                                                                isWorst ? 'border-red-500 bg-red-50 ring-1 ring-red-500/30' :
+                                                                                    'border-gray-200 hover:bg-gray-50'
+                                                                                }`}
+                                                                        >
+                                                                            <div className="flex items-start gap-3">
+                                                                                <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-600 shrink-0">
+                                                                                    {optionLabel}
+                                                                                </span>
+                                                                                <p className="flex-1 text-gray-700 font-medium text-lg">{option}</p>
+                                                                            </div>
+                                                                            <div className="flex gap-2 mt-3 ml-9">
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        const current = answers[questionId] || {};
+                                                                                        // Can't select same option for both
+                                                                                        if (current.worst === option) return;
+                                                                                        // Toggle: if already selected as best, deselect it
+                                                                                        if (isBest) {
+                                                                                            const { best, ...rest } = current;
+                                                                                            handleAnswer(Object.keys(rest).length > 0 ? rest : undefined);
+                                                                                        } else {
+                                                                                            handleAnswer({ ...current, best: option });
+                                                                                        }
+                                                                                    }}
+                                                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isBest
+                                                                                        ? 'bg-green-600 text-white shadow-md'
+                                                                                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                                                        } ${isWorst ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                                                    disabled={isWorst}
+                                                                                >
+                                                                                    ✓ BEST
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        const current = answers[questionId] || {};
+                                                                                        // Can't select same option for both
+                                                                                        if (current.best === option) return;
+                                                                                        // Toggle: if already selected as worst, deselect it
+                                                                                        if (isWorst) {
+                                                                                            const { worst, ...rest } = current;
+                                                                                            handleAnswer(Object.keys(rest).length > 0 ? rest : undefined);
+                                                                                        } else {
+                                                                                            handleAnswer({ ...current, worst: option });
+                                                                                        }
+                                                                                    }}
+                                                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isWorst
+                                                                                        ? 'bg-red-600 text-white shadow-md'
+                                                                                        : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                                                                        } ${isBest ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                                                    disabled={isBest}
+                                                                                >
+                                                                                    ✗ WORST
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
                                                             </div>
-
-                                                            {currentQuestion.options.map((option, idx) => {
-                                                                const optionLabel = currentQuestion.optionLabels?.[idx] || String.fromCharCode(97 + idx);
-                                                                const sjtAnswer = answers[questionId] || {};
-                                                                const isBest = sjtAnswer.best === option;
-                                                                const isWorst = sjtAnswer.worst === option;
-
-                                                                return (
-                                                                    <div
-                                                                        key={idx}
-                                                                        className={`border rounded-xl p-4 transition-all ${isBest ? 'border-green-500 bg-green-50 ring-1 ring-green-500/30' :
-                                                                            isWorst ? 'border-red-500 bg-red-50 ring-1 ring-red-500/30' :
-                                                                                'border-gray-200 hover:bg-gray-50'
-                                                                            }`}
-                                                                    >
-                                                                        <div className="flex items-start gap-3">
-                                                                            <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-600 shrink-0">
-                                                                                {optionLabel}
+                                                        ) : currentQuestion.type === 'multiselect' ? (
+                                                            // Multi-select questions (Middle School)
+                                                            <div className="space-y-4">
+                                                                <div className="p-3 bg-green-50 rounded-lg border border-green-200 mb-4">
+                                                                    <p className="text-sm font-medium text-green-700">
+                                                                        Select up to <span className="font-bold">{currentQuestion.maxSelections}</span> options that feel most like you
+                                                                        {answers[questionId]?.length > 0 && (
+                                                                            <span className="ml-2 text-green-600">
+                                                                                ({answers[questionId]?.length || 0}/{currentQuestion.maxSelections} selected)
                                                                             </span>
-                                                                            <p className="flex-1 text-gray-700 font-medium text-lg">{option}</p>
-                                                                        </div>
-                                                                        <div className="flex gap-2 mt-3 ml-9">
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => {
-                                                                                    const current = answers[questionId] || {};
-                                                                                    // Can't select same option for both
-                                                                                    if (current.worst === option) return;
-                                                                                    // Toggle: if already selected as best, deselect it
-                                                                                    if (isBest) {
-                                                                                        const { best, ...rest } = current;
-                                                                                        handleAnswer(Object.keys(rest).length > 0 ? rest : undefined);
-                                                                                    } else {
-                                                                                        handleAnswer({ ...current, best: option });
-                                                                                    }
-                                                                                }}
-                                                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isBest
-                                                                                    ? 'bg-green-600 text-white shadow-md'
-                                                                                    : 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                                                    } ${isWorst ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                                                                disabled={isWorst}
-                                                                            >
-                                                                                ✓ BEST
-                                                                            </button>
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => {
-                                                                                    const current = answers[questionId] || {};
-                                                                                    // Can't select same option for both
-                                                                                    if (current.best === option) return;
-                                                                                    // Toggle: if already selected as worst, deselect it
-                                                                                    if (isWorst) {
-                                                                                        const { worst, ...rest } = current;
-                                                                                        handleAnswer(Object.keys(rest).length > 0 ? rest : undefined);
-                                                                                    } else {
-                                                                                        handleAnswer({ ...current, worst: option });
-                                                                                    }
-                                                                                }}
-                                                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isWorst
-                                                                                    ? 'bg-red-600 text-white shadow-md'
-                                                                                    : 'bg-red-100 text-red-700 hover:bg-red-200'
-                                                                                    } ${isBest ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                                                                disabled={isBest}
-                                                                            >
-                                                                                ✗ WORST
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    ) : currentQuestion.type === 'multiselect' ? (
-                                                        // Multi-select questions (Middle School)
-                                                        <div className="space-y-4">
-                                                            <div className="p-3 bg-green-50 rounded-lg border border-green-200 mb-4">
-                                                                <p className="text-sm font-medium text-green-700">
-                                                                    Select up to <span className="font-bold">{currentQuestion.maxSelections}</span> options that feel most like you
-                                                                    {answers[questionId]?.length > 0 && (
-                                                                        <span className="ml-2 text-green-600">
-                                                                            ({answers[questionId]?.length || 0}/{currentQuestion.maxSelections} selected)
-                                                                        </span>
-                                                                    )}
-                                                                </p>
-                                                            </div>
+                                                                        )}
+                                                                    </p>
+                                                                </div>
 
-                                                            {currentQuestion.options.map((option, idx) => {
-                                                                const selectedOptions = answers[questionId] || [];
-                                                                const isSelected = selectedOptions.includes(option);
-                                                                const canSelect = selectedOptions.length < currentQuestion.maxSelections || isSelected;
+                                                                {currentQuestion.options.map((option, idx) => {
+                                                                    const selectedOptions = answers[questionId] || [];
+                                                                    const isSelected = selectedOptions.includes(option);
+                                                                    const canSelect = selectedOptions.length < currentQuestion.maxSelections || isSelected;
 
-                                                                return (
-                                                                    <button
-                                                                        key={idx}
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            const current = answers[questionId] || [];
-                                                                            if (isSelected) {
-                                                                                // Deselect
-                                                                                const newSelection = current.filter(opt => opt !== option);
-                                                                                handleAnswer(newSelection.length > 0 ? newSelection : undefined);
-                                                                            } else if (current.length < currentQuestion.maxSelections) {
-                                                                                // Select
-                                                                                handleAnswer([...current, option]);
-                                                                            }
-                                                                        }}
-                                                                        disabled={!canSelect}
-                                                                        className={`w-full border rounded-xl p-4 transition-all text-left ${
-                                                                            isSelected
+                                                                    return (
+                                                                        <button
+                                                                            key={idx}
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const current = answers[questionId] || [];
+                                                                                if (isSelected) {
+                                                                                    // Deselect
+                                                                                    const newSelection = current.filter(opt => opt !== option);
+                                                                                    handleAnswer(newSelection.length > 0 ? newSelection : undefined);
+                                                                                } else if (current.length < currentQuestion.maxSelections) {
+                                                                                    // Select
+                                                                                    handleAnswer([...current, option]);
+                                                                                }
+                                                                            }}
+                                                                            disabled={!canSelect}
+                                                                            className={`w-full border rounded-xl p-4 transition-all text-left ${isSelected
                                                                                 ? 'border-green-500 bg-green-50 ring-2 ring-green-500/30'
                                                                                 : canSelect
                                                                                     ? 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                                                                                     : 'border-gray-200 opacity-40 cursor-not-allowed'
-                                                                        }`}
-                                                                    >
-                                                                        <div className="flex items-start gap-3">
-                                                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all ${
-                                                                                isSelected
+                                                                                }`}
+                                                                        >
+                                                                            <div className="flex items-start gap-3">
+                                                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all ${isSelected
                                                                                     ? 'bg-green-500 text-white'
                                                                                     : 'bg-gray-100 text-gray-400'
-                                                                            }`}>
-                                                                                {isSelected && <CheckCircle2 className="w-4 h-4" />}
+                                                                                    }`}>
+                                                                                    {isSelected && <CheckCircle2 className="w-4 h-4" />}
+                                                                                </div>
+                                                                                <p className={`flex-1 font-medium text-lg ${isSelected ? 'text-green-700' : 'text-gray-700'
+                                                                                    }`}>
+                                                                                    {option}
+                                                                                </p>
                                                                             </div>
-                                                                            <p className={`flex-1 font-medium text-lg ${
-                                                                                isSelected ? 'text-green-700' : 'text-gray-700'
-                                                                            }`}>
-                                                                                {option}
-                                                                            </p>
-                                                                        </div>
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    ) : currentQuestion.type === 'singleselect' ? (
-                                                        // Single-select questions (Middle School - simpler UI)
-                                                        <div className="space-y-3">
-                                                            {currentQuestion.options.map((option, idx) => {
-                                                                const isSelected = answers[questionId] === option;
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        ) : currentQuestion.type === 'singleselect' ? (
+                                                            // Single-select questions (Middle School - simpler UI)
+                                                            <div className="space-y-3">
+                                                                {currentQuestion.options.map((option, idx) => {
+                                                                    const isSelected = answers[questionId] === option;
 
-                                                                return (
-                                                                    <button
-                                                                        key={idx}
-                                                                        type="button"
-                                                                        onClick={() => handleAnswer(option)}
-                                                                        className={`w-full border rounded-xl p-4 transition-all text-left ${
-                                                                            isSelected
+                                                                    return (
+                                                                        <button
+                                                                            key={idx}
+                                                                            type="button"
+                                                                            onClick={() => handleAnswer(option)}
+                                                                            className={`w-full border rounded-xl p-4 transition-all text-left ${isSelected
                                                                                 ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
                                                                                 : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                                                                        }`}
-                                                                    >
-                                                                        <div className="flex items-start gap-3">
-                                                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all ${
-                                                                                isSelected
+                                                                                }`}
+                                                                        >
+                                                                            <div className="flex items-start gap-3">
+                                                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all ${isSelected
                                                                                     ? 'bg-indigo-500 text-white'
                                                                                     : 'bg-gray-100 text-gray-400'
-                                                                            }`}>
-                                                                                {isSelected && <CheckCircle2 className="w-4 h-4" />}
+                                                                                    }`}>
+                                                                                    {isSelected && <CheckCircle2 className="w-4 h-4" />}
+                                                                                </div>
+                                                                                <p className={`flex-1 font-medium text-lg ${isSelected ? 'text-indigo-700' : 'text-gray-700'
+                                                                                    }`}>
+                                                                                    {option}
+                                                                                </p>
                                                                             </div>
-                                                                            <p className={`flex-1 font-medium text-lg ${
-                                                                                isSelected ? 'text-indigo-700' : 'text-gray-700'
-                                                                            }`}>
-                                                                                {option}
-                                                                            </p>
-                                                                        </div>
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    ) : currentQuestion.type === 'rating' ? (
-                                                        // Rating questions (1-4 scale for middle school)
-                                                        <div className="space-y-4">
-                                                            <div className="flex justify-center gap-2 md:gap-4">
-                                                                {currentSection.responseScale.map((option) => (
-                                                                    <button
-                                                                        key={option.value}
-                                                                        type="button"
-                                                                        onClick={() => handleAnswer(option.value)}
-                                                                        className={`flex-1 max-w-[120px] border-2 rounded-xl p-4 transition-all ${
-                                                                            answers[questionId] === option.value
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        ) : currentQuestion.type === 'rating' ? (
+                                                            // Rating questions (1-4 scale for middle school)
+                                                            <div className="space-y-4">
+                                                                <div className="flex justify-center gap-2 md:gap-4">
+                                                                    {currentSection.responseScale.map((option) => (
+                                                                        <button
+                                                                            key={option.value}
+                                                                            type="button"
+                                                                            onClick={() => handleAnswer(option.value)}
+                                                                            className={`flex-1 max-w-[120px] border-2 rounded-xl p-4 transition-all ${answers[questionId] === option.value
                                                                                 ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-500/30 shadow-md'
                                                                                 : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                                                                        }`}
-                                                                    >
-                                                                        <div className="text-center">
-                                                                            <div className={`text-3xl font-bold mb-2 ${
-                                                                                answers[questionId] === option.value ? 'text-amber-600' : 'text-gray-600'
-                                                                            }`}>
-                                                                                {option.value}
+                                                                                }`}
+                                                                        >
+                                                                            <div className="text-center">
+                                                                                <div className={`text-3xl font-bold mb-2 ${answers[questionId] === option.value ? 'text-amber-600' : 'text-gray-600'
+                                                                                    }`}>
+                                                                                    {option.value}
+                                                                                </div>
+                                                                                <div className={`text-xs font-medium ${answers[questionId] === option.value ? 'text-amber-700' : 'text-gray-600'
+                                                                                    }`}>
+                                                                                    {option.label}
+                                                                                </div>
                                                                             </div>
-                                                                            <div className={`text-xs font-medium ${
-                                                                                answers[questionId] === option.value ? 'text-amber-700' : 'text-gray-600'
-                                                                            }`}>
-                                                                                {option.label}
-                                                                            </div>
-                                                                        </div>
-                                                                    </button>
-                                                                ))}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    ) : currentQuestion.type === 'text' ? (
-                                                        // Text input questions (open reflection)
-                                                        <div className="space-y-3">
-                                                            <textarea
-                                                                value={answers[questionId] || ''}
-                                                                onChange={(e) => handleAnswer(e.target.value)}
-                                                                placeholder={currentQuestion.placeholder || 'Type your answer here...'}
-                                                                className="w-full min-h-[150px] p-4 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all resize-none text-lg text-gray-700"
-                                                            />
-                                                            <p className="text-sm text-gray-500">
-                                                                {answers[questionId]?.length || 0} characters
-                                                            </p>
-                                                        </div>
-                                                    ) : currentSection.responseScale ? (
-                                                        // Likert scale response (for After 12th assessments)
-                                                        <RadioGroup
-                                                            value={answers[questionId]?.toString() || ""}
-                                                            onValueChange={(val) => handleAnswer(parseInt(val))}
-                                                            className="space-y-3"
-                                                        >
-                                                            {currentSection.responseScale.map((option) => (
-                                                                <div
-                                                                    key={option.value}
-                                                                    onClick={() => handleAnswer(option.value)}
-                                                                    className={`flex items-center space-x-3 border rounded-xl p-4 transition-all cursor-pointer hover:bg-gray-50 ${answers[questionId] === option.value
-                                                                        ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20'
-                                                                        : 'border-gray-200'
-                                                                        }`}>
-                                                                    <RadioGroupItem value={option.value.toString()} id={`opt-${option.value}`} className="text-indigo-600" />
-                                                                    <Label htmlFor={`opt-${option.value}`} className="flex-1 cursor-pointer font-medium text-gray-700 text-lg">
-                                                                        {option.label}
-                                                                    </Label>
-                                                                </div>
-                                                            ))}
-                                                        </RadioGroup>
-                                                    ) : (
-                                                        // MCQ response
-                                                        <RadioGroup
-                                                            value={answers[questionId] || ""}
-                                                            onValueChange={handleAnswer}
-                                                            className="space-y-3"
-                                                        >
-                                                            {currentQuestion.options.map((option, idx) => (
-                                                                <div
-                                                                    key={idx}
-                                                                    onClick={() => handleAnswer(option)}
-                                                                    className={`flex items-center space-x-3 border rounded-xl p-4 transition-all cursor-pointer hover:bg-gray-50 ${answers[questionId] === option
-                                                                        ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20'
-                                                                        : 'border-gray-200'
-                                                                        }`}>
-                                                                    <RadioGroupItem value={option} id={`opt-${idx}`} className="text-indigo-600" />
-                                                                    <Label htmlFor={`opt-${idx}`} className="flex-1 cursor-pointer font-medium text-gray-700 text-lg">
-                                                                        {option}
-                                                                    </Label>
-                                                                </div>
-                                                            ))}
-                                                        </RadioGroup>
-                                                    )}
+                                                        ) : currentQuestion.type === 'text' ? (
+                                                            // Text input questions (open reflection)
+                                                            <div className="space-y-3">
+                                                                <textarea
+                                                                    value={answers[questionId] || ''}
+                                                                    onChange={(e) => handleAnswer(e.target.value)}
+                                                                    placeholder={currentQuestion.placeholder || 'Type your answer here...'}
+                                                                    className="w-full min-h-[150px] p-4 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all resize-none text-lg text-gray-700"
+                                                                />
+                                                                <p className="text-sm text-gray-500">
+                                                                    {answers[questionId]?.length || 0} characters
+                                                                </p>
+                                                            </div>
+                                                        ) : currentSection.responseScale ? (
+                                                            // Likert scale response (for After 12th assessments)
+                                                            <RadioGroup
+                                                                value={answers[questionId]?.toString() || ""}
+                                                                onValueChange={(val) => handleAnswer(parseInt(val))}
+                                                                className="space-y-3"
+                                                            >
+                                                                {currentSection.responseScale.map((option) => (
+                                                                    <div
+                                                                        key={option.value}
+                                                                        onClick={() => handleAnswer(option.value)}
+                                                                        className={`flex items-center space-x-3 border rounded-xl p-4 transition-all cursor-pointer hover:bg-gray-50 ${answers[questionId] === option.value
+                                                                            ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20'
+                                                                            : 'border-gray-200'
+                                                                            }`}>
+                                                                        <RadioGroupItem value={option.value.toString()} id={`opt-${option.value}`} className="text-indigo-600" />
+                                                                        <Label htmlFor={`opt-${option.value}`} className="flex-1 cursor-pointer font-medium text-gray-700 text-lg">
+                                                                            {option.label}
+                                                                        </Label>
+                                                                    </div>
+                                                                ))}
+                                                            </RadioGroup>
+                                                        ) : (
+                                                            // MCQ response
+                                                            <RadioGroup
+                                                                value={answers[questionId] || ""}
+                                                                onValueChange={handleAnswer}
+                                                                className="space-y-3"
+                                                            >
+                                                                {currentQuestion.options.map((option, idx) => (
+                                                                    <div
+                                                                        key={idx}
+                                                                        onClick={() => handleAnswer(option)}
+                                                                        className={`flex items-center space-x-3 border rounded-xl p-4 transition-all cursor-pointer hover:bg-gray-50 ${answers[questionId] === option
+                                                                            ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20'
+                                                                            : 'border-gray-200'
+                                                                            }`}>
+                                                                        <RadioGroupItem value={option} id={`opt-${idx}`} className="text-indigo-600" />
+                                                                        <Label htmlFor={`opt-${idx}`} className="flex-1 cursor-pointer font-medium text-gray-700 text-lg">
+                                                                            {option}
+                                                                        </Label>
+                                                                    </div>
+                                                                ))}
+                                                            </RadioGroup>
+                                                        )}
                                                 </div>
                                             </motion.div>
                                         )}

@@ -403,23 +403,40 @@ export const getTopHiringColleges = async (
       if (schoolId) schoolIds.add(schoolId);
     });
 
-    // Step 3: Fetch university names (via university_colleges -> universities)
+    // Step 3: Fetch university names (via university_colleges -> organizations)
+    // Note: universities table doesn't exist - university_id references organizations table
     const universityMap: Record<string, string> = {};
     if (universityCollegeIds.size > 0) {
       const { data: colleges, error: collegesErr } = await supabase
         .from('university_colleges')
         .select(`
           id,
-          universities!inner(name)
+          university_id
         `)
         .in('id', Array.from(universityCollegeIds));
 
       if (!collegesErr && colleges) {
-        colleges.forEach((college: any) => {
-          if (college.universities?.name) {
-            universityMap[college.id] = college.universities.name;
-          }
-        });
+        // Get unique university IDs
+        const universityIds = [...new Set(colleges.map((c: any) => c.university_id).filter(Boolean))];
+        
+        if (universityIds.length > 0) {
+          // Fetch university names from organizations table
+          const { data: universities } = await supabase
+            .from('organizations')
+            .select('id, name')
+            .in('id', universityIds);
+          
+          const univNameMap: Record<string, string> = {};
+          universities?.forEach((u: any) => {
+            univNameMap[u.id] = u.name;
+          });
+          
+          colleges.forEach((college: any) => {
+            if (college.university_id && univNameMap[college.university_id]) {
+              universityMap[college.id] = univNameMap[college.university_id];
+            }
+          });
+        }
       }
     }
 

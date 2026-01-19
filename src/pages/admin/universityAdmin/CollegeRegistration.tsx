@@ -5,6 +5,7 @@ import {
     FunnelIcon,
     PencilSquareIcon,
     PhoneIcon,
+    PlusIcon,
     Squares2X2Icon,
     StarIcon,
     TableCellsIcon,
@@ -16,6 +17,308 @@ import SearchBar from '../../../components/common/SearchBar';
 // @ts-ignore - AuthContext is a .jsx file
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabaseClient';
+import {
+    getCollegesByUniversity,
+    addCollegeToUniversity,
+    getAvailableColleges,
+    updateUniversityCollege,
+    removeCollegeFromUniversity,
+    checkCollegeCodeUnique,
+    getUniversityCollegeStats
+} from '../../../services/universityCollegeService';
+
+const AddCollegeModal = ({ isOpen, onClose, onSuccess, universityId }) => {
+  const [availableColleges, setAvailableColleges] = useState([]);
+  const [selectedCollege, setSelectedCollege] = useState(null);
+  const [collegeCode, setCollegeCode] = useState('');
+  const [deanName, setDeanName] = useState('');
+  const [deanEmail, setDeanEmail] = useState('');
+  const [deanPhone, setDeanPhone] = useState('');
+  const [establishedYear, setEstablishedYear] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [fetchingColleges, setFetchingColleges] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Fetch available colleges when modal opens
+  useEffect(() => {
+    if (isOpen && universityId) {
+      fetchAvailableColleges();
+    }
+  }, [isOpen, universityId]);
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedCollege(null);
+      setCollegeCode('');
+      setDeanName('');
+      setDeanEmail('');
+      setDeanPhone('');
+      setEstablishedYear('');
+      setError(null);
+    }
+  }, [isOpen]);
+
+  // Auto-fill dean email when college is selected
+  useEffect(() => {
+    if (selectedCollege) {
+      setDeanEmail(selectedCollege.email || '');
+      setDeanPhone(selectedCollege.phone || '');
+      setCollegeCode(selectedCollege.code || generateCollegeCode(selectedCollege.name));
+    }
+  }, [selectedCollege]);
+
+  const generateCollegeCode = (name) => {
+    if (!name) return '';
+    const words = name
+      .replace(/\b(college|university|institute|of|the|and|for)\b/gi, '')
+      .trim()
+      .split(/\s+/)
+      .filter(word => word.length > 0);
+    
+    let code = words
+      .map(word => word.charAt(0).toUpperCase())
+      .join('')
+      .substring(0, 6);
+    
+    if (code.length < 3) {
+      code = name.replace(/\s+/g, '').substring(0, 6).toUpperCase();
+    }
+    
+    return code;
+  };
+
+  const fetchAvailableColleges = async () => {
+    setFetchingColleges(true);
+    try {
+      const result = await getAvailableColleges(universityId);
+      if (result.success) {
+        setAvailableColleges(result.data);
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      setError('Failed to fetch available colleges');
+    } finally {
+      setFetchingColleges(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedCollege) {
+      setError('Please select a college');
+      return;
+    }
+
+    if (!collegeCode.trim()) {
+      setError('Please enter a college code');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Check if college code is unique
+      const uniqueCheck = await checkCollegeCodeUnique(universityId, collegeCode);
+      if (!uniqueCheck.isUnique) {
+        setError('College code already exists in this university');
+        setLoading(false);
+        return;
+      }
+
+      const additionalData = {
+        code: collegeCode,
+        dean_name: deanName || null,
+        dean_email: deanEmail || null,
+        dean_phone: deanPhone || null,
+        established_year: establishedYear ? parseInt(establishedYear) : null
+      };
+
+      const result = await addCollegeToUniversity(universityId, selectedCollege.id, additionalData);
+      
+      if (result.success) {
+        onSuccess?.();
+        onClose();
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      console.error('Error adding college:', err);
+      setError(err.message || 'Failed to add college');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+
+        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Add College to University</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Select a college from the available organizations and configure its details.
+              </p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {/* College Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select College <span className="text-red-500">*</span>
+              </label>
+              {fetchingColleges ? (
+                <div className="text-sm text-gray-500">Loading available colleges...</div>
+              ) : (
+                <select
+                  value={selectedCollege?.id || ''}
+                  onChange={(e) => {
+                    const college = availableColleges.find(c => c.id === e.target.value);
+                    setSelectedCollege(college || null);
+                  }}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Choose a college...</option>
+                  {availableColleges.map((college) => (
+                    <option key={college.id} value={college.id}>
+                      {college.name} - {college.city}, {college.state}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {availableColleges.length === 0 && !fetchingColleges && (
+                <p className="text-xs text-gray-500 mt-1">
+                  No available colleges found. All colleges may already be linked to universities.
+                </p>
+              )}
+            </div>
+
+            {/* College Code */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                College Code <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={collegeCode}
+                onChange={(e) => setCollegeCode(e.target.value.toUpperCase())}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="e.g., ABCENG"
+                maxLength={10}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Unique code for this college within the university (auto-generated but editable)
+              </p>
+            </div>
+
+            {/* Dean Information */}
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Dean Name
+                </label>
+                <input
+                  type="text"
+                  value={deanName}
+                  onChange={(e) => setDeanName(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Dean's full name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Dean Email
+                </label>
+                <input
+                  type="email"
+                  value={deanEmail}
+                  onChange={(e) => setDeanEmail(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="dean@college.edu"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Dean Phone
+                </label>
+                <input
+                  type="tel"
+                  value={deanPhone}
+                  onChange={(e) => setDeanPhone(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="+91 98765 43210"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Established Year
+                </label>
+                <input
+                  type="number"
+                  value={establishedYear}
+                  onChange={(e) => setEstablishedYear(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="1985"
+                  min="1800"
+                  max={new Date().getFullYear()}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end space-x-3 mt-6">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={loading || !selectedCollege || !collegeCode.trim()}
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <PlusIcon className="h-4 w-4 mr-1" />
+                  Add College
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const TabButton = ({ active, onClick, children }) => (
   <button
@@ -126,16 +429,30 @@ const CollegeProfileModal = ({ college, isOpen, onClose }) => {
                     <p className="text-gray-900">{college.location || 'N/A'}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Students</label>
-                    <p className="text-gray-900 font-semibold">{college.students || 0}</p>
+                    <label className="text-sm font-medium text-gray-500">Dean Name</label>
+                    <p className="text-gray-900">{college.dean_name || 'N/A'}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Faculty</label>
-                    <p className="text-gray-900">{college.faculty || 'N/A'}</p>
+                    <label className="text-sm font-medium text-gray-500">Dean Email</label>
+                    <p className="text-gray-900">{college.contact_email || 'N/A'}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Rating</label>
-                    <p className="text-gray-900">⭐ {college.rating || 'N/A'}</p>
+                    <label className="text-sm font-medium text-gray-500">Dean Phone</label>
+                    <p className="text-gray-900">{college.contact_phone || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Established Year</label>
+                    <p className="text-gray-900">{college.established_year || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Website</label>
+                    <p className="text-gray-900">
+                      {college.website ? (
+                        <a href={college.website} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700">
+                          {college.website}
+                        </a>
+                      ) : 'N/A'}
+                    </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Registration Status</label>
@@ -157,6 +474,20 @@ const CollegeProfileModal = ({ college, isOpen, onClose }) => {
                     <p className="text-gray-900">{college.updated_date ? new Date(college.updated_date).toLocaleDateString() : 'N/A'}</p>
                   </div>
                 </div>
+                
+                {college.address && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Address</label>
+                    <p className="text-gray-900 mt-1">{college.address}</p>
+                  </div>
+                )}
+                
+                {college.description && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Description</label>
+                    <p className="text-gray-900 mt-1">{college.description}</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -448,6 +779,7 @@ const CollegeRegistration = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState(null);
   const [sortBy, setSortBy] = useState('relevance');
 
@@ -465,8 +797,9 @@ const CollegeRegistration = () => {
   const [colleges, setColleges] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({ total: 0, active: 0, pending: 0, inactive: 0 });
 
-  // Fetch colleges linked to this university
+  // Fetch colleges linked to this university from university_colleges table
   useEffect(() => {
     const fetchColleges = async () => {
       // Get user ID from session - check multiple possible fields
@@ -503,36 +836,52 @@ const CollegeRegistration = () => {
 
         console.log('Fetching colleges for universityId:', organizationId);
 
-        // Fetch colleges linked to this university from organizations table
-        // Note: For university-college hierarchy, you may need to add a parent_organization_id column
-        const { data, error: fetchError } = await supabase
-          .from('organizations')
-          .select('*')
-          .eq('organization_type', 'college')
-          .order('name', { ascending: true });
-
-        if (fetchError) throw fetchError;
+        // Fetch colleges linked to this university from university_colleges table
+        const result = await getCollegesByUniversity(organizationId);
         
-        console.log('Colleges found:', data?.length || 0);
+        if (!result.success) {
+          throw new Error(result.error);
+        }
         
-        // Map database fields to component expected format
-        const mappedColleges = (data || []).map(org => ({
-          id: org.id,
-          name: org.name,
-          code: org.code,
-          location: [org.city, org.state].filter(Boolean).join(', ') || 'N/A',
+        console.log('University colleges found:', result.data?.length || 0);
+        
+        // Map university_colleges data to component expected format
+        const mappedColleges = (result.data || []).map(college => ({
+          id: college.id,
+          name: college.name,
+          code: college.code,
+          location: [
+            college.college?.city || college.metadata?.city, 
+            college.college?.state || college.metadata?.state
+          ].filter(Boolean).join(', ') || 'N/A',
           programs: [], // Can be extended to fetch programs if needed
-          students: 0,
-          faculty: 0,
-          rating: null,
-          status: org.approval_status === 'approved' ? 'registered' : (org.approval_status || 'pending'),
-          registration_date: org.created_at,
-          updated_date: org.updated_at,
-          contact_email: org.email,
-          contact_phone: org.phone
+          students: 0, // Can be extended to fetch student count
+          faculty: 0, // Can be extended to fetch faculty count
+          rating: null, // Can be extended to fetch ratings
+          status: college.account_status === 'active' ? 'registered' : college.account_status,
+          registration_date: college.created_at,
+          updated_date: college.updated_at,
+          contact_email: college.dean_email || college.college?.email,
+          contact_phone: college.dean_phone || college.college?.phone,
+          dean_name: college.dean_name,
+          established_year: college.established_year,
+          university_id: college.university_id,
+          college_id: college.college_id,
+          // Additional college organization data
+          college_org: college.college,
+          website: college.college?.website || college.metadata?.website,
+          address: college.college?.address || college.metadata?.address,
+          description: college.college?.description || college.metadata?.description
         }));
 
         setColleges(mappedColleges);
+        
+        // Fetch stats
+        const statsResult = await getUniversityCollegeStats(organizationId);
+        if (statsResult.success) {
+          setStats(statsResult.data);
+        }
+        
         setError(null);
       } catch (err: any) {
         console.error('Error fetching colleges:', err);
@@ -544,6 +893,15 @@ const CollegeRegistration = () => {
 
     fetchColleges();
   }, [user]);
+
+  const handleAddCollegeSuccess = () => {
+    // Refresh the colleges list
+    const userId = user?.user_id || user?.id;
+    if (userId) {
+      // Re-fetch colleges after successful addition
+      window.location.reload(); // Simple refresh for now
+    }
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -711,6 +1069,33 @@ const CollegeRegistration = () => {
         <div>
           <h1 className="text-xl md:text-3xl font-bold text-gray-900">College Registration</h1>
           <p className="text-base md:text-lg mt-2 text-gray-600">Manage affiliated colleges and their registrations.</p>
+          <div className="flex items-center space-x-4 mt-3">
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">{stats.total}</span> Total Colleges
+            </div>
+            <div className="text-sm text-green-600">
+              <span className="font-medium">{stats.active}</span> Active
+            </div>
+            {stats.pending > 0 && (
+              <div className="text-sm text-yellow-600">
+                <span className="font-medium">{stats.pending}</span> Pending
+              </div>
+            )}
+            {stats.inactive > 0 && (
+              <div className="text-sm text-red-600">
+                <span className="font-medium">{stats.inactive}</span> Inactive
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="mt-4 sm:mt-0">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add College
+          </button>
         </div>
       </div>
 
@@ -1029,6 +1414,13 @@ const CollegeRegistration = () => {
           )}
         </div>
       </div>
+
+      <AddCollegeModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={handleAddCollegeSuccess}
+        universityId={user?.organizationId}
+      />
 
       <CollegeProfileModal
         college={selectedCollege}

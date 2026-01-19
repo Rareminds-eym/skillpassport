@@ -904,6 +904,334 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
   });
 }
 
+// ==================== CREATE ORGANIZATION ORDER ====================
+
+async function handleCreateOrgOrder(request: Request, env: Env, user: any): Promise<Response> {
+  const supabaseUrl = getSupabaseUrl(env);
+  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
+  
+  // Get credentials based on request origin
+  const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
+  console.log(`[CREATE-ORG-ORDER] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+
+  const body = await request.json() as {
+    amount?: number;
+    currency?: string;
+    organizationId?: string;
+    organizationType?: string;
+    planId?: string;
+    planName?: string;
+    seatCount?: number;
+    targetMemberType?: string;
+    billingCycle?: string;
+    billingEmail?: string;
+    billingName?: string;
+  };
+
+  const { amount, currency = 'INR', organizationId, organizationType, planId, planName, seatCount, targetMemberType, billingCycle, billingEmail, billingName } = body;
+
+  // Validate required fields
+  if (!amount || !organizationId || !organizationType || !planId || !planName || !seatCount || !billingEmail) {
+    return jsonResponse({ error: 'Missing required fields' }, 400);
+  }
+
+  // Validate amount
+  if (amount < 100 || amount > 100000000) { // 1 rupee to 10 lakh rupees in paise
+    return jsonResponse({ error: 'Invalid amount' }, 400);
+  }
+
+  // Rate limiting check
+  const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+  const { count } = await supabaseAdmin
+    .from('razorpay_orders')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .gte('created_at', oneMinuteAgo);
+
+  if (count && count >= 5) {
+    return jsonResponse({ error: 'Too many order attempts. Please wait a minute.' }, 429);
+  }
+
+  // Create Razorpay order
+  const receipt = `org_${Date.now()}_${organizationId.substring(0, 8)}`;
+  const razorpayAuth = btoa(`${keyId}:${keySecret}`);
+
+  const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${razorpayAuth}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      amount,
+      currency,
+      receipt,
+      notes: {
+        user_id: user.id,
+        organization_id: organizationId,
+        organization_type: organizationType,
+        plan_id: planId,
+        plan_name: planName,
+        seat_count: seatCount.toString(),
+        target_member_type: targetMemberType,
+        billing_cycle: billingCycle,
+        billing_email: billingEmail,
+        billing_name: billingName,
+        order_type: 'organization_subscription',
+      },
+    }),
+  });
+
+  if (!razorpayResponse.ok) {
+    const errorText = await razorpayResponse.text();
+    console.error('[CREATE-ORG-ORDER] Razorpay API Error:', razorpayResponse.status, errorText);
+    return jsonResponse({ 
+      error: 'Unable to create payment order',
+      razorpay_status: razorpayResponse.status,
+      razorpay_error: errorText
+    }, 500);
+  }
+
+  const order = await razorpayResponse.json() as any;
+
+  // Save order to database
+  const { error: dbError } = await supabaseAdmin.from('razorpay_orders').insert({
+    user_id: user.id,
+    order_id: order.id,
+    amount: order.amount,
+    currency: order.currency,
+    receipt: order.receipt,
+    status: 'created',
+    plan_id: planId,
+    plan_name: planName,
+    user_email: billingEmail,
+    user_name: billingName,
+    created_at: new Date().toISOString(),
+    // Store organization details in notes or a separate field
+  });
+
+  if (dbError) {
+    console.error('[CREATE-ORG-ORDER] Failed to save order:', dbError);
+    return jsonResponse({ error: 'Order created but failed to save' }, 500);
+  }
+
+  console.log(`[CREATE-ORG-ORDER] Order created: ${order.id} for org ${organizationId}`);
+
+  return jsonResponse({
+    success: true,
+    id: order.id,
+    amount: order.amount,
+    currency: order.currency,
+    receipt: order.receipt,
+  });
+}
+
+// ==================== VERIFY ORGANIZATION PAYMENT ====================
+
+async function handleVerifyOrgPayment(request: Request, env: Env, supabase: SupabaseClient, user: any): Promise<Response> {
+  const supabaseUrl = getSupabaseUrl(env);
+  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
+  
+  // Get credentials based on request origin
+  const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
+  console.log(`[VERIFY-ORG-PAYMENT] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+
+  const body = await request.json() as {
+    razorpay_order_id?: string;
+    razorpay_payment_id?: string;
+    razorpay_signature?: string;
+    purchaseData?: {
+      organizationId: string;
+      organizationType: 'school' | 'college' | 'university';
+      planId: string;
+      planName: string;
+      seatCount: number;
+      targetMemberType: 'educator' | 'student' | 'both';
+      billingCycle: 'monthly' | 'annual';
+      autoRenew: boolean;
+      pricing: {
+        basePrice: number;
+        subtotal: number;
+        discountPercentage: number;
+        discountAmount: number;
+        taxAmount: number;
+        finalAmount: number;
+      };
+      assignmentMode: string;
+      selectedMemberIds: string[];
+      poolName?: string;
+      autoAssignNewMembers: boolean;
+      billingEmail: string;
+      billingName: string;
+      gstNumber?: string;
+    };
+  };
+
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, purchaseData } = body;
+
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !purchaseData) {
+    return jsonResponse({ error: 'Missing required fields' }, 400);
+  }
+
+  // Verify signature
+  const isValid = await verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, keySecret);
+  if (!isValid) {
+    console.error('[VERIFY-ORG-PAYMENT] Invalid signature');
+    return jsonResponse({ error: 'Invalid payment signature' }, 400);
+  }
+
+  // Get order from database
+  const { data: order, error: orderError } = await supabaseAdmin
+    .from('razorpay_orders')
+    .select('*')
+    .eq('order_id', razorpay_order_id)
+    .single();
+
+  if (orderError || !order) {
+    console.error('[VERIFY-ORG-PAYMENT] Order not found:', orderError);
+    return jsonResponse({ error: 'Order not found' }, 404);
+  }
+
+  // Verify payment with Razorpay
+  const razorpayAuth = btoa(`${keyId}:${keySecret}`);
+  const paymentResponse = await fetch(`https://api.razorpay.com/v1/payments/${razorpay_payment_id}`, {
+    headers: { 'Authorization': `Basic ${razorpayAuth}` },
+  });
+
+  if (!paymentResponse.ok) {
+    console.error('[VERIFY-ORG-PAYMENT] Failed to verify payment with Razorpay');
+    return jsonResponse({ error: 'Failed to verify payment' }, 500);
+  }
+
+  const paymentDetails = await paymentResponse.json() as any;
+  
+  if (paymentDetails.status !== 'captured' && paymentDetails.status !== 'authorized') {
+    console.error('[VERIFY-ORG-PAYMENT] Payment not completed:', paymentDetails.status);
+    return jsonResponse({ error: 'Payment not completed' }, 400);
+  }
+
+  // Update order status
+  await supabaseAdmin
+    .from('razorpay_orders')
+    .update({ status: 'paid', updated_at: new Date().toISOString() })
+    .eq('order_id', razorpay_order_id);
+
+  // Look up the subscription plan UUID from plan_code
+  // The frontend passes plan codes like 'basic', 'professional', 'enterprise'
+  // but the database expects a UUID
+  let subscriptionPlanId = purchaseData.planId;
+  
+  // Check if planId is not a UUID (i.e., it's a plan code)
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(purchaseData.planId)) {
+    console.log(`[VERIFY-ORG-PAYMENT] Looking up plan UUID for code: ${purchaseData.planId}`);
+    const { data: planData, error: planError } = await supabaseAdmin
+      .from('subscription_plans')
+      .select('id')
+      .eq('plan_code', purchaseData.planId)
+      .eq('is_active', true)
+      .single();
+    
+    if (planError || !planData) {
+      console.error('[VERIFY-ORG-PAYMENT] Plan not found:', planError);
+      return jsonResponse({ error: `Subscription plan '${purchaseData.planId}' not found` }, 400);
+    }
+    
+    subscriptionPlanId = planData.id;
+    console.log(`[VERIFY-ORG-PAYMENT] Found plan UUID: ${subscriptionPlanId}`);
+  }
+
+  // Calculate subscription dates
+  const startDate = new Date();
+  const endDate = new Date(startDate);
+  if (purchaseData.billingCycle === 'annual') {
+    endDate.setFullYear(endDate.getFullYear() + 1);
+  } else {
+    endDate.setMonth(endDate.getMonth() + 1);
+  }
+
+  // Create organization subscription
+  const { data: subscription, error: subError } = await supabaseAdmin
+    .from('organization_subscriptions')
+    .insert({
+      organization_id: purchaseData.organizationId,
+      organization_type: purchaseData.organizationType,
+      subscription_plan_id: subscriptionPlanId,
+      purchased_by: user.id,
+      total_seats: purchaseData.seatCount,
+      assigned_seats: 0,
+      target_member_type: purchaseData.targetMemberType,
+      status: 'active',
+      start_date: startDate.toISOString(),
+      end_date: endDate.toISOString(),
+      auto_renew: purchaseData.autoRenew,
+      price_per_seat: purchaseData.pricing.basePrice,
+      total_amount: purchaseData.pricing.subtotal,
+      discount_percentage: purchaseData.pricing.discountPercentage,
+      final_amount: purchaseData.pricing.finalAmount,
+      razorpay_order_id: razorpay_order_id,
+      razorpay_payment_id: razorpay_payment_id,
+    })
+    .select()
+    .single();
+
+  if (subError) {
+    console.error('[VERIFY-ORG-PAYMENT] Error creating subscription:', subError);
+    return jsonResponse({ error: 'Failed to create subscription' }, 500);
+  }
+
+  // Create license pool if needed
+  if (purchaseData.assignmentMode === 'create-pool' && purchaseData.poolName) {
+    const { error: poolError } = await supabaseAdmin
+      .from('license_pools')
+      .insert({
+        organization_id: purchaseData.organizationId,
+        organization_type: purchaseData.organizationType,
+        organization_subscription_id: subscription.id,
+        pool_name: purchaseData.poolName,
+        member_type: purchaseData.targetMemberType === 'both' ? 'student' : purchaseData.targetMemberType,
+        allocated_seats: purchaseData.seatCount,
+        assigned_seats: 0,
+        auto_assign_new_members: purchaseData.autoAssignNewMembers,
+        is_active: true,
+        created_by: user.id,
+      });
+
+    if (poolError) {
+      console.error('[VERIFY-ORG-PAYMENT] Error creating license pool:', poolError);
+      // Don't fail the whole transaction, just log the error
+    }
+  }
+
+  // Log the transaction
+  await supabaseAdmin
+    .from('payment_transactions')
+    .insert({
+      user_id: user.id,
+      razorpay_order_id: razorpay_order_id,
+      razorpay_payment_id: razorpay_payment_id,
+      amount: order.amount,
+      currency: order.currency,
+      status: 'success',
+      payment_method: paymentDetails.method || 'unknown',
+      transaction_type: 'organization_subscription',
+      metadata: {
+        organization_id: purchaseData.organizationId,
+        organization_type: purchaseData.organizationType,
+        seat_count: purchaseData.seatCount,
+        subscription_id: subscription.id,
+      },
+    });
+
+  console.log(`[VERIFY-ORG-PAYMENT] Subscription created: ${subscription.id} for org ${purchaseData.organizationId}`);
+
+  return jsonResponse({
+    success: true,
+    subscription,
+    message: 'Organization subscription created successfully',
+  });
+}
+
 // ==================== VERIFY PAYMENT ====================
 
 // Helper to calculate subscription end date
@@ -1869,6 +2197,131 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
   const { user, supabase } = auth;
   const now = new Date();
 
+  console.log(`[CheckAccess] Checking subscription access for user ${user.id}`);
+
+  // ============================================================================
+  // STEP 1: Check for organization license assignment FIRST
+  // This allows members assigned by admins to bypass individual subscription check
+  // ============================================================================
+  const { data: licenseAssignment, error: licenseError } = await supabase
+    .from('license_assignments')
+    .select(`
+      id,
+      status,
+      expires_at,
+      assigned_at,
+      revoked_at,
+      organization_subscription_id,
+      organization_subscriptions!inner (
+        id,
+        status,
+        start_date,
+        end_date,
+        organization_id,
+        organization_type,
+        subscription_plan_id,
+        subscription_plans (
+          id,
+          name,
+          plan_code
+        )
+      )
+    `)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  console.log(`[CheckAccess] Active license check result:`, { 
+    found: !!licenseAssignment, 
+    error: licenseError?.message,
+    status: licenseAssignment?.status 
+  });
+
+  if (!licenseError && licenseAssignment) {
+    const orgSub = licenseAssignment.organization_subscriptions as any;
+    
+    // Check if organization subscription is active and not expired
+    if (orgSub && orgSub.status === 'active') {
+      const orgEndDate = new Date(orgSub.end_date);
+      
+      if (orgEndDate > now) {
+        // Check if license assignment has its own expiry
+        const licenseExpiry = licenseAssignment.expires_at ? new Date(licenseAssignment.expires_at) : null;
+        const effectiveEndDate = licenseExpiry && licenseExpiry < orgEndDate ? licenseExpiry : orgEndDate;
+        
+        if (effectiveEndDate > now) {
+          const daysUntilExpiry = Math.ceil((effectiveEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          const showExpiringWarning = daysUntilExpiry <= 7;
+          
+          // Build a subscription-like object for the response
+          const orgSubscriptionInfo = {
+            id: orgSub.id,
+            plan_id: orgSub.subscription_plan_id,
+            plan_name: orgSub.subscription_plans?.name || 'Organization Plan',
+            plan_code: orgSub.subscription_plans?.plan_code,
+            status: 'active',
+            subscription_start_date: orgSub.start_date,
+            subscription_end_date: effectiveEndDate.toISOString(),
+            is_organization_license: true,
+            organization_id: orgSub.organization_id,
+            organization_type: orgSub.organization_type,
+            license_assignment_id: licenseAssignment.id,
+          };
+
+          const response: SubscriptionAccessResponse = {
+            success: true,
+            hasAccess: true,
+            accessReason: 'active',
+            subscription: orgSubscriptionInfo,
+            showWarning: showExpiringWarning,
+            warningType: showExpiringWarning ? 'expiring_soon' : undefined,
+            warningMessage: showExpiringWarning 
+              ? `Your organization license expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`
+              : undefined,
+            daysUntilExpiry,
+            expiresAt: effectiveEndDate.toISOString(),
+          };
+
+          console.log(`[CheckAccess] User ${user.id} has active organization license from org ${orgSub.organization_id}`);
+          return jsonResponse(response);
+        }
+      }
+    }
+  }
+
+  // ============================================================================
+  // STEP 1.5: Check if user had a revoked license assignment (show as expired)
+  // This ensures members see "expired" status immediately when license is revoked
+  // ============================================================================
+  const { data: revokedLicense, error: revokedError } = await supabase
+    .from('license_assignments')
+    .select(`
+      id,
+      status,
+      revoked_at,
+      organization_subscriptions (
+        subscription_plans (
+          name,
+          plan_code
+        )
+      )
+    `)
+    .eq('user_id', user.id)
+    .eq('status', 'revoked')
+    .order('revoked_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  console.log(`[CheckAccess] Revoked license check result:`, { 
+    found: !!revokedLicense, 
+    error: revokedError?.message,
+    revokedAt: revokedLicense?.revoked_at 
+  });
+
+  // ============================================================================
+  // STEP 2: Check for individual subscription (original logic)
+  // ============================================================================
+
   // Get user's subscription - include recently expired for grace period
   const gracePeriodDate = new Date(now);
   gracePeriodDate.setDate(gracePeriodDate.getDate() - GRACE_PERIOD_DAYS);
@@ -1906,6 +2359,28 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    // If user had a revoked organization license, show as expired
+    if (revokedLicense) {
+      const revokedOrgSub = revokedLicense.organization_subscriptions as any;
+      const response: SubscriptionAccessResponse = {
+        success: true,
+        hasAccess: false,
+        accessReason: 'expired',
+        subscription: {
+          id: revokedLicense.id,
+          status: 'expired',
+          plan_name: revokedOrgSub?.subscription_plans?.name || 'Organization License',
+          plan_code: revokedOrgSub?.subscription_plans?.plan_code,
+          is_organization_license: true,
+          was_revoked: true,
+          revoked_at: revokedLicense.revoked_at,
+        },
+        showWarning: false,
+      };
+      console.log(`[CheckAccess] User ${user.id} had revoked organization license`);
+      return jsonResponse(response);
+    }
 
     const response: SubscriptionAccessResponse = {
       success: true,
@@ -2237,6 +2712,23 @@ export default {
           return await handleCheckAddonAccess(request, env);
         
         // Organization Subscription endpoints
+        // Organization Order endpoints (Razorpay integration)
+        case '/create-org-order':
+          if (request.method === 'POST') {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            return await handleCreateOrgOrder(request, env, auth.user);
+          }
+          break;
+        
+        case '/verify-org-payment':
+          if (request.method === 'POST') {
+            const auth = await authenticateUser(request, env);
+            if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+            return await handleVerifyOrgPayment(request, env, auth.supabase, auth.user);
+          }
+          break;
+        
         case '/org-subscriptions/calculate-pricing':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2690,6 +3182,9 @@ export default {
           
           return jsonResponse({ error: 'Not found' }, 404);
       }
+      
+      // If we reach here, the method was not allowed for the matched route
+      return jsonResponse({ error: 'Method not allowed' }, 405);
     } catch (error) {
       console.error('Worker error:', error);
       return jsonResponse({ error: (error as Error).message || 'Internal server error' }, 500);

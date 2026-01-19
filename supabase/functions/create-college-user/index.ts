@@ -73,20 +73,22 @@ serve(async (req) => {
     if (lecturerData?.collegeId) {
       collegeId = lecturerData.collegeId
     } else {
-      // Try colleges table
-      const { data: collegeData } = await supabaseAdmin
-        .from('colleges')
+      // Try organizations table (colleges table doesn't exist)
+      const { data: orgData } = await supabaseAdmin
+        .from('organizations')
         .select('id')
-        .or(`email.eq.${user.email},deanEmail.eq.${user.email}`)
+        .eq('organization_type', 'college')
+        .or(`email.eq.${user.email},admin_email.eq.${user.email}`)
         .maybeSingle()
 
-      if (collegeData?.id) {
-        collegeId = collegeData.id
+      if (orgData?.id) {
+        collegeId = orgData.id
       } else {
-        // Use first available college
+        // Use first available college from organizations
         const { data: firstCollege } = await supabaseAdmin
-          .from('colleges')
+          .from('organizations')
           .select('id')
+          .eq('organization_type', 'college')
           .limit(1)
           .maybeSingle()
 

@@ -90,10 +90,10 @@ export async function handleSchoolAdminSignup(request: Request, env: Env): Promi
         organizationId: null,
         isActive: true,
         phone: body.phone || body.principalPhone,
-        dob: body.dateOfBirth || null,
         metadata: {
           source: 'school_signup',
           schoolCode: body.schoolCode,
+          dateOfBirth: body.dateOfBirth,
         },
       });
 
@@ -259,10 +259,10 @@ export async function handleEducatorSignup(request: Request, env: Env): Promise<
         organizationId: body.schoolId,
         isActive: true,
         phone: body.phone,
-        dob: body.dateOfBirth || null,
         metadata: {
           source: 'educator_signup',
           schoolId: body.schoolId,
+          dateOfBirth: body.dateOfBirth,
         },
       });
 
@@ -416,10 +416,10 @@ export async function handleStudentSignup(request: Request, env: Env): Promise<R
         organizationId: body.schoolId,
         isActive: true,
         phone: body.phone,
-        dob: body.dateOfBirth || null,
         metadata: {
           source: 'student_signup',
           schoolId: body.schoolId,
+          dateOfBirth: body.dateOfBirth,
         },
       });
 

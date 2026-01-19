@@ -3,6 +3,7 @@ import { AlertCircle, Building2, CheckCircle2, Eye, EyeOff, Gift, Globe, Languag
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { capitalizeFirstLetter } from '../../../../../components/Subscription/shared/signupValidation';
+import { supabase } from '../../../../../lib/supabaseClient';
 
 // Languages list
 const LANGUAGES = [
@@ -411,6 +412,21 @@ const SignupAdmin = () => {
       }
 
       const companyCode = result.data.companyCode;
+
+      // CRITICAL FIX: Auto-login after successful signup
+      // This establishes a Supabase session so the user is authenticated
+      console.log('🔐 Auto-logging in after signup...');
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.adminEmail,
+        password: formData.password,
+      });
+
+      if (signInError) {
+        console.error('⚠️ Auto-login failed:', signInError.message);
+        // Even if auto-login fails, the account was created successfully
+      } else {
+        console.log('✅ Auto-login successful, session established');
+      }
 
       // Success!
       if (returnToPayment && plan) {

@@ -10,7 +10,8 @@ import {
     ShieldCheckIcon,
     TrashIcon,
     UserGroupIcon,
-    XMarkIcon
+    XMarkIcon,
+    ExclamationTriangleIcon
 } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { SubscriptionSettingsSection } from "../../../components/Subscription/SubscriptionSettingsSection";
@@ -29,6 +30,7 @@ import {
   type ModuleAccess,
   type ScopeRule
 } from "../../../services/settingsService";
+import { useAuth } from "../../../context/AuthContext";
 
 /* ==============================
    TYPES & INTERFACES
@@ -169,6 +171,9 @@ const RolePermissionModal = ({
   departments: { id: string; name: string; code: string }[];
   programs: { id: string; name: string; code: string }[];
 }) => {
+  // Authentication check
+  const { user, isAuthenticated, role: userRole } = useAuth();
+  
   const [activeRoleTab, setActiveRoleTab] = useState("basic");
   const [formData, setFormData] = useState({
     roleName: "",
@@ -179,6 +184,19 @@ const RolePermissionModal = ({
   const [modulePermissions, setModulePermissions] = useState<ModuleAccess[]>([]);
   const [scopeRules, setScopeRules] = useState<ScopeRule[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  // Check authentication when modal opens
+  useEffect(() => {
+    if (isOpen && (!isAuthenticated || userRole !== 'college_admin')) {
+      console.error('❌ UNAUTHORIZED MODAL ACCESS ATTEMPT');
+      console.error('User:', user?.email);
+      console.error('Role:', userRole);
+      console.error('Required: college_admin');
+      alert('❌ Unauthorized: Only College Administrators can modify permissions.');
+      onClose();
+      return;
+    }
+  }, [isOpen, isAuthenticated, userRole, user, onClose]);
 
   // Available modules for college administration - Now loaded from database
   const getAvailableModulesForRole = () => {
@@ -214,6 +232,14 @@ const RolePermissionModal = ({
 
   useEffect(() => {
     if (role && isOpen) {
+      console.log('📝 EDIT ROLE MODAL OPENED');
+      console.log('Role being edited:', role.roleName);
+      console.log('Current module access:', role.moduleAccess);
+      console.log('Current scope rules:', role.scopeRules);
+      console.log('Related database tables:');
+      console.log('  - college_role_module_permissions');
+      console.log('  - college_role_scope_rules');
+      
       setFormData({
         roleName: role.roleName,
         description: "",
@@ -223,6 +249,9 @@ const RolePermissionModal = ({
       setModulePermissions(role.moduleAccess || []);
       setScopeRules(role.scopeRules || []);
     } else if (!role && isOpen) {
+      console.log('➕ CREATE NEW ROLE MODAL OPENED');
+      console.log('Creating new role with empty permissions');
+      
       setFormData({
         roleName: "",
         description: "",
@@ -235,20 +264,39 @@ const RolePermissionModal = ({
   }, [role, isOpen]);
 
   const handleSubmit = () => {
+    console.log('📤 SUBMITTING ROLE CHANGES');
+    console.log('Form data:', formData);
+    console.log('Module permissions to save:', modulePermissions);
+    console.log('Scope rules to save:', scopeRules);
+    console.log('Target database tables:');
+    console.log('  - college_role_module_permissions (will be updated/inserted)');
+    console.log('  - college_role_scope_rules (will be updated/inserted)');
+    
     setSubmitting(true);
     setTimeout(() => {
-      onSaved({
+      const roleData = {
         id: role?.id || Date.now().toString(),
         roleName: formData.roleName,
         moduleAccess: modulePermissions,
         scopeRules,
-      });
+      };
+      
+      console.log('Final role data being saved:', roleData);
+      onSaved(roleData);
       setSubmitting(false);
       onClose();
     }, 400);
   };
 
   const updateModulePermissions = (moduleName: string, permission: string, checked: boolean) => {
+    console.log('🔄 Permission Change:', {
+      module: moduleName,
+      permission: permission,
+      action: checked ? 'GRANTED' : 'REVOKED',
+      timestamp: new Date().toISOString(),
+      relatedTable: 'college_role_module_permissions'
+    });
+    
     setModulePermissions(prev => {
       const existing = prev.find(m => m.module === moduleName);
       if (existing) {
@@ -257,15 +305,18 @@ const RolePermissionModal = ({
           : existing.permissions.filter(p => p !== permission);
         
         if (updatedPermissions.length === 0) {
+          console.log(`📝 Module ${moduleName} removed (no permissions left)`);
           return prev.filter(m => m.module !== moduleName);
         }
         
+        console.log(`📝 Module ${moduleName} updated:`, updatedPermissions);
         return prev.map(m => 
           m.module === moduleName 
             ? { ...m, permissions: updatedPermissions }
             : m
         );
       } else if (checked) {
+        console.log(`📝 Module ${moduleName} added with permission:`, permission);
         return [...prev, { module: moduleName, permissions: [permission as any] }];
       }
       return prev;
@@ -273,16 +324,32 @@ const RolePermissionModal = ({
   };
 
   const addScopeRule = (type: "department" | "program") => {
+    console.log('➕ Adding scope rule:', {
+      type: type,
+      relatedTable: 'college_role_scope_rules',
+      timestamp: new Date().toISOString()
+    });
     setScopeRules(prev => [...prev, { type, values: [] }]);
   };
 
   const updateScopeRule = (index: number, values: string[]) => {
+    console.log('🔄 Updating scope rule:', {
+      index: index,
+      values: values,
+      relatedTable: 'college_role_scope_rules',
+      timestamp: new Date().toISOString()
+    });
     setScopeRules(prev => prev.map((rule, i) => 
       i === index ? { ...rule, values } : rule
     ));
   };
 
   const removeScopeRule = (index: number) => {
+    console.log('🗑️ Removing scope rule:', {
+      index: index,
+      relatedTable: 'college_role_scope_rules',
+      timestamp: new Date().toISOString()
+    });
     setScopeRules(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -606,6 +673,9 @@ const RolePermissionModal = ({
    MAIN SETTINGS COMPONENT
    ============================== */
 const Settings = () => {
+  // Authentication
+  const { user, isAuthenticated, loading: authLoading, role } = useAuth();
+  
   const [activeTab, setActiveTab] = useState<
     "roles" | "subscription"
   >("roles");
@@ -623,13 +693,42 @@ const Settings = () => {
   const [departments, setDepartments] = useState<{ id: string; name: string; code: string }[]>([]);
   const [programs, setPrograms] = useState<{ id: string; name: string; code: string }[]>([]);
 
+  // Authentication checks
   useEffect(() => {
-    loadSettingsData();
-  }, []);
+    if (!authLoading) {
+      console.log('🔐 AUTHENTICATION CHECK');
+      console.log('User:', user);
+      console.log('Is Authenticated:', isAuthenticated);
+      console.log('User Role:', role);
+      console.log('Required Role: college_admin');
+      
+      if (!isAuthenticated) {
+        console.log('❌ User not authenticated - redirecting to login');
+        // In a real app, you might redirect to login page
+        return;
+      }
+      
+      if (role !== 'college_admin') {
+        console.log('❌ User not authorized - insufficient permissions');
+        console.log('User role:', role, 'Required: college_admin');
+        return;
+      }
+      
+      console.log('✅ User authorized to access settings');
+      loadSettingsData();
+    }
+  }, [authLoading, isAuthenticated, role, user]);
 
   const loadSettingsData = async () => {
+    if (!isAuthenticated || role !== 'college_admin') {
+      console.log('❌ Skipping data load - user not authorized');
+      return;
+    }
+    
     setLoading(true);
     try {
+      console.log('📊 Loading settings data for authorized user:', user?.email);
+      
       const [rolesData, modulesData, permissionsData, departmentsData, programsData] = await Promise.all([
         getRolesWithPermissions(),
         getAvailableModules(),
@@ -647,35 +746,84 @@ const Settings = () => {
       setDepartments(departmentsData);
       setPrograms(programsData);
     } catch (error) {
-      console.error('Error loading settings data:', error);
+      console.error('❌ Error loading settings data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    setLoading(false);
-  }, []);
-
   const handleSaveRole = async (role: Role) => {
+    // Double-check authentication before saving
+    if (!isAuthenticated || user?.role !== 'college_admin') {
+      console.error('❌ UNAUTHORIZED PERMISSION UPDATE ATTEMPT');
+      console.error('User:', user?.email);
+      console.error('Role:', user?.role);
+      console.error('Required: college_admin');
+      alert('❌ Unauthorized: Only College Administrators can modify permissions.');
+      return;
+    }
+    
     try {
       setLoading(true);
       
       // Convert role type back to enum format
       const roleType = role.roleName.includes('Dean') ? 'college_admin' : 'college_educator';
       
+      // Console log the permission update details
+      console.log('=== PERMISSION UPDATE STARTED ===');
+      console.log('Authorized User:', user?.email);
+      console.log('User Role:', user?.role);
+      console.log('Role Name:', role.roleName);
+      console.log('Role Type (Database):', roleType);
+      console.log('Module Permissions:', role.moduleAccess);
+      console.log('Scope Rules:', role.scopeRules);
+      console.log('Target Tables:');
+      console.log('  - college_role_module_permissions (for module access)');
+      console.log('  - college_role_scope_rules (for scope restrictions)');
+      
+      // Log each module permission being updated
+      role.moduleAccess.forEach((moduleAccess, index) => {
+        console.log(`Module ${index + 1}: ${moduleAccess.module}`);
+        console.log(`  Permissions: ${moduleAccess.permissions.join(', ')}`);
+        console.log(`  Related to: College Administration System`);
+      });
+      
+      // Log scope rules being updated
+      role.scopeRules.forEach((scopeRule, index) => {
+        console.log(`Scope Rule ${index + 1}: ${scopeRule.type}`);
+        console.log(`  Values: ${scopeRule.values.join(', ')}`);
+        console.log(`  Related to: Access Control & Data Filtering`);
+      });
+      
       // Save to database with scope rules
       const success = await saveRolePermissions(roleType, role.moduleAccess, role.scopeRules);
       
       if (success) {
+        console.log('✅ PERMISSION UPDATE SUCCESSFUL');
+        console.log('Updated by:', user?.email);
+        console.log('Database tables updated:');
+        console.log('  - college_role_module_permissions: Module access permissions');
+        console.log('  - college_role_scope_rules: Department/Program scope restrictions');
+        
+        // Show success alert
+        alert(`✅ Successfully updated permissions for ${role.roleName}!\n\nUpdated by: ${user?.email}\nUpdated:\n• ${role.moduleAccess.length} module permissions\n• ${role.scopeRules.length} scope rules\n\nTables modified:\n• college_role_module_permissions\n• college_role_scope_rules`);
+        
         // Reload data to reflect changes
         await loadSettingsData();
+        
+        console.log('=== PERMISSION UPDATE COMPLETED ===');
       } else {
-        alert('Failed to save role permissions. Please try again.');
+        console.error('❌ PERMISSION UPDATE FAILED');
+        console.error('Database operation returned false');
+        alert('❌ Failed to save role permissions. Please try again.');
       }
     } catch (error) {
-      console.error('Error saving role:', error);
-      alert('Error saving role permissions. Please try again.');
+      console.error('❌ PERMISSION UPDATE ERROR');
+      console.error('Error details:', error);
+      console.error('Failed to update tables:');
+      console.error('  - college_role_module_permissions');
+      console.error('  - college_role_scope_rules');
+      alert(`❌ Error saving role permissions: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
     } finally {
       setLoading(false);
     }
@@ -687,6 +835,66 @@ const Settings = () => {
     { id: "roles", label: "Roles & Permissions", icon: UserGroupIcon },
     { id: "subscription", label: "Subscription", icon: CreditCardIcon },
   ];
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <ArrowPathIcon className="h-8 w-8 animate-spin text-indigo-600 mx-auto mb-4" />
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show unauthorized message if user is not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <ExclamationTriangleIcon className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
+          <p className="text-gray-600 mb-4">
+            You must be logged in to access the settings page.
+          </p>
+          <button 
+            onClick={() => window.location.href = '/login'}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show unauthorized message if user doesn't have the right role
+  if (role !== 'college_admin') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <ShieldCheckIcon className="h-16 w-16 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Restricted</h2>
+          <p className="text-gray-600 mb-4">
+            Only College Administrators can access the settings page.
+          </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+            <p className="text-sm text-amber-800">
+              <strong>Your Role:</strong> {role || 'Unknown'}<br />
+              <strong>Required Role:</strong> college_admin
+            </p>
+          </div>
+          <button 
+            onClick={() => window.history.back()}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -826,8 +1034,27 @@ const Settings = () => {
                 <p className="text-sm sm:text-base text-gray-600 max-w-2xl">Module access matrix with scope rules for department/program</p>
               </div>
               <button 
-                onClick={() => setShowRoleModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                onClick={() => {
+                  // Authentication check before creating role
+                  if (!isAuthenticated || role !== 'college_admin') {
+                    console.error('❌ UNAUTHORIZED CREATE ROLE ATTEMPT');
+                    console.error('User:', user?.email);
+                    console.error('Role:', role);
+                    console.error('Required: college_admin');
+                    alert('❌ Unauthorized: Only College Administrators can create roles.');
+                    return;
+                  }
+                  
+                  console.log('✅ Authorized user creating new role:', user?.email);
+                  setShowRoleModal(true);
+                }}
+                disabled={!isAuthenticated || role !== 'college_admin'}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md ${
+                  isAuthenticated && role === 'college_admin'
+                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                }`}
+                title={!isAuthenticated || role !== 'college_admin' ? 'Only College Administrators can create roles' : 'Create new role'}
               >
                 <PlusCircleIcon className="h-4 w-4" />
                 <span className="hidden sm:inline">Create Role</span>
@@ -874,16 +1101,16 @@ const Settings = () => {
             </div>
 
             <div className="grid gap-4 sm:gap-6">
-              {roles.map((role) => (
-                <div key={role.id} className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-all duration-200 hover:border-indigo-200">
+              {roles.map((roleItem) => (
+                <div key={roleItem.id} className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-all duration-200 hover:border-indigo-200">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <UserGroupIcon className="h-6 w-6 text-indigo-600" />
-                        <h3 className="font-bold text-gray-900 text-lg sm:text-xl">{role.roleName}</h3>
+                        <h3 className="font-bold text-gray-900 text-lg sm:text-xl">{roleItem.roleName}</h3>
                       </div>
                       <p className="text-sm text-gray-600">
-                        <span className="font-medium">{role.moduleAccess.length}</span> modules • <span className="font-medium">{role.scopeRules.length}</span> scope rules
+                        <span className="font-medium">{roleItem.moduleAccess.length}</span> modules • <span className="font-medium">{roleItem.scopeRules.length}</span> scope rules
                       </p>
                     </div>
                   </div>
@@ -894,7 +1121,7 @@ const Settings = () => {
                       Module Access
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {role.moduleAccess.map((module, idx) => (
+                      {roleItem.moduleAccess.map((module, idx) => (
                         <div key={idx} className="bg-blue-50 border border-blue-200 rounded-lg p-3 hover:bg-blue-100 transition-colors">
                           <p className="text-sm font-semibold text-blue-900 mb-1">{module.module}</p>
                           <div className="flex flex-wrap gap-1">
@@ -915,7 +1142,7 @@ const Settings = () => {
                       Scope Rules
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {role.scopeRules.map((scope, idx) => {
+                      {roleItem.scopeRules.map((scope, idx) => {
                         // Convert IDs to names for display
                         const scopeNames = scope.values.map(value => {
                           if (scope.type === 'department') {
@@ -940,19 +1167,55 @@ const Settings = () => {
                   <div className="flex flex-wrap items-center gap-2">
                     <button 
                       onClick={() => {
-                        setEditRole(role);
+                        // Authentication check before opening modal
+                        if (!isAuthenticated || role !== 'college_admin') {
+                          console.error('❌ UNAUTHORIZED EDIT ATTEMPT');
+                          console.error('User:', user?.email);
+                          console.error('Role:', role);
+                          console.error('Required: college_admin');
+                          alert('❌ Unauthorized: Only College Administrators can edit permissions.');
+                          return;
+                        }
+                        
+                        console.log('✅ Authorized user opening edit modal:', user?.email);
+                        setEditRole(roleItem);
                         setShowRoleModal(true);
                       }}
-                      className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors"
+                      disabled={!isAuthenticated || role !== 'college_admin'}
+                      className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                        isAuthenticated && role === 'college_admin'
+                          ? 'text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100'
+                          : 'text-gray-400 bg-gray-50 border border-gray-200 cursor-not-allowed'
+                      }`}
+                      title={!isAuthenticated || role !== 'college_admin' ? 'Only College Administrators can edit permissions' : 'Edit role permissions'}
                     >
                       <PencilSquareIcon className="h-4 w-4" />
                       Edit Permissions
                     </button>
                     <button 
                       onClick={() => {
-                        setRoles(prev => prev.filter(r => r.id !== role.id));
+                        // Authentication check before deleting
+                        if (!isAuthenticated || role !== 'college_admin') {
+                          console.error('❌ UNAUTHORIZED DELETE ATTEMPT');
+                          console.error('User:', user?.email);
+                          console.error('Role:', role);
+                          console.error('Required: college_admin');
+                          alert('❌ Unauthorized: Only College Administrators can delete roles.');
+                          return;
+                        }
+                        
+                        if (confirm(`Are you sure you want to delete the role "${roleItem.roleName}"? This action cannot be undone.`)) {
+                          console.log('🗑️ Authorized user deleting role:', roleItem.roleName, 'by:', user?.email);
+                          setRoles(prev => prev.filter(r => r.id !== roleItem.id));
+                        }
                       }}
-                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                      disabled={!isAuthenticated || role !== 'college_admin'}
+                      className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                        isAuthenticated && role === 'college_admin'
+                          ? 'text-red-700 bg-red-50 border border-red-200 hover:bg-red-100'
+                          : 'text-gray-400 bg-gray-50 border border-gray-200 cursor-not-allowed'
+                      }`}
+                      title={!isAuthenticated || role !== 'college_admin' ? 'Only College Administrators can delete roles' : 'Delete role'}
                     >
                       <TrashIcon className="h-4 w-4" />
                       <span className="hidden sm:inline">Delete</span>

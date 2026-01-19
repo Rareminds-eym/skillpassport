@@ -12,11 +12,12 @@ import {
     TrendingUp
 } from 'lucide-react';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 // @ts-ignore - JS module without types
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 // @ts-ignore - JS module without types
 import DatePicker from '../../components/Subscription/shared/DatePicker';
+import { supabase } from '../../lib/supabaseClient';
 
 type UserRole = 'school_student' | 'college_student' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
@@ -231,6 +232,10 @@ const LANGUAGES = [
 
 const UnifiedSignup = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Get return URL from query params or session storage (for invitation flow)
+  const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
 
   const [state, setState] = useState<SignupState>({
     firstName: '', lastName: '', dateOfBirth: '', email: '', phone: '', countryCode: '+91',
@@ -426,6 +431,22 @@ const UnifiedSignup = () => {
 
       const userId = result.data.userId;
 
+      // CRITICAL FIX: Auto-login after successful signup
+      // This establishes a Supabase session so the user is authenticated
+      console.log('🔐 Auto-logging in after signup...');
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: state.email,
+        password: state.password,
+      });
+
+      if (signInError) {
+        console.error('⚠️ Auto-login failed:', signInError.message);
+        // Even if auto-login fails, the account was created successfully
+        // User can manually log in
+      } else {
+        console.log('✅ Auto-login successful, session established');
+      }
+
       // Map role to entity type for subscription plans
       const entityTypeMap: Record<UserRole, string> = {
         school_student: 'student',
@@ -439,14 +460,21 @@ const UnifiedSignup = () => {
       };
       const entityType = state.selectedRole ? entityTypeMap[state.selectedRole] : 'student';
 
-      // Redirect to subscription plans page to choose a plan
-      navigate(`/subscription/plans/${entityType}/purchase`, { 
-        state: { 
-          message: 'Account created successfully! Please choose a plan to continue.',
-          email: state.email,
-          userId: userId
-        } 
-      });
+      // Check for return URL (invitation flow) - redirect there instead of subscription plans
+      if (returnUrl) {
+        // Clear the stored return URL
+        sessionStorage.removeItem('invitation_return_url');
+        navigate(returnUrl);
+      } else {
+        // Redirect to subscription plans page to choose a plan
+        navigate(`/subscription/plans/${entityType}/purchase`, { 
+          state: { 
+            message: 'Account created successfully! Please choose a plan to continue.',
+            email: state.email,
+            userId: userId
+          } 
+        });
+      }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred during signup';
       setState(prev => ({ ...prev, loading: false, error: errorMessage }));

@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { OrganizationType, useOrganizationCheck } from '../../hooks/useOrganizationCheck';
 import OrganizationSetup from '../../pages/organization/OrganizationSetup';
 
@@ -23,8 +23,19 @@ const OrganizationGuard: React.FC<OrganizationGuardProps> = ({
   organizationType, 
   children 
 }) => {
-  const { loading, hasOrganization, refetch } = useOrganizationCheck(organizationType);
+  const { loading, hasOrganization, refetch, error } = useOrganizationCheck(organizationType);
   const [setupComplete, setSetupComplete] = useState(false);
+
+  // Debug logging for redirect loop investigation
+  useEffect(() => {
+    console.log('[OrganizationGuard] State:', {
+      organizationType,
+      loading,
+      hasOrganization,
+      setupComplete,
+      error,
+    });
+  }, [organizationType, loading, hasOrganization, setupComplete, error]);
 
   const handleSetupComplete = useCallback(async () => {
     // Refetch organization data after setup

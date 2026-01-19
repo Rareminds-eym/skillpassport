@@ -81,6 +81,16 @@ async function generateEmbedding(text: string, env: Env): Promise<{ embedding: n
   }
 
   const data = await response.json() as { data: Array<{ embedding: number[] }> };
+  
+  // Validate response structure
+  if (!data || !data.data || !Array.isArray(data.data) || data.data.length === 0) {
+    throw new Error(`Invalid OpenRouter response: ${JSON.stringify(data)}`);
+  }
+  
+  if (!data.data[0].embedding || !Array.isArray(data.data[0].embedding)) {
+    throw new Error(`Missing embedding in response: ${JSON.stringify(data.data[0])}`);
+  }
+  
   return { embedding: data.data[0].embedding, model: 'openrouter' };
 }
 

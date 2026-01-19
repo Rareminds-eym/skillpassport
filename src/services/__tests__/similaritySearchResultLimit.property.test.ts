@@ -10,7 +10,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fc from 'fast-check';
-import { cosineSimilarity } from '../embeddingService';
+import { cosineSimilarity } from '../../utils/vectorUtils';
 
 // Constants matching the service implementation
 const MAX_RECOMMENDATIONS = 10;

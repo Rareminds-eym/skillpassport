@@ -61,22 +61,22 @@ const StudentReports: React.FC = () => {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
-          // Check school_educators table
+          // Check school_educators table - use maybeSingle() to avoid 406 error
           const { data: educator } = await supabase
             .from('school_educators')
             .select('school_id')
             .eq('user_id', user.id)
-            .single();
+            .maybeSingle();
 
           if (educator?.school_id) {
             currentSchoolId = educator.school_id;
           } else {
-            // Check organizations table by email
+            // Check organizations table for school admins (by admin_id or email)
             const { data: org } = await supabase
               .from('organizations')
               .select('id')
               .eq('organization_type', 'school')
-              .eq('email', user.email)
+              .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
               .maybeSingle();
 
             currentSchoolId = org?.id || null;

@@ -14,7 +14,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import addOnPaymentService from '../services/addOnPaymentService';
 import entitlementService from '../services/entitlementService';
 import { checkSubscriptionAccess } from '../services/paymentsApiService';
@@ -58,13 +59,26 @@ export const useSubscriptionContextSafe = () => {
 // Query keys
 const SUBSCRIPTION_ACCESS_KEY = 'subscription-access';
 const USER_ENTITLEMENTS_KEY = 'user-entitlements';
-const STALE_TIME = 2 * 60 * 1000; // 2 minutes
+const STALE_TIME = 0; // Always refetch - critical for detecting revoked licenses immediately
 const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
 
 export const SubscriptionProvider = ({ children }) => {
   const { user, session } = useSupabaseAuth();
   const queryClient = useQueryClient();
   const [purchaseError, setPurchaseError] = useState(null);
+  const location = useLocation();
+
+  // Check if the subscription query can run
+  const isQueryEnabled = !!user && !!session?.access_token;
+
+  // Force refresh subscription check on route changes to protected routes
+  // This ensures revoked licenses are detected immediately when navigating
+  useEffect(() => {
+    if (isQueryEnabled && location.pathname.match(/^\/(student|educator|recruitment|school-admin|college-admin|university-admin)\//)) {
+      console.log('[SubscriptionContext] Route change detected, invalidating subscription cache');
+      queryClient.invalidateQueries({ queryKey: [SUBSCRIPTION_ACCESS_KEY, user?.id] });
+    }
+  }, [location.pathname, isQueryEnabled, queryClient, user?.id]);
 
   // Fetch subscription access from Cloudflare Worker
   const {
@@ -72,10 +86,12 @@ export const SubscriptionProvider = ({ children }) => {
     isLoading,
     error,
     isRefetching,
+    isPending,
   } = useQuery({
     queryKey: [SUBSCRIPTION_ACCESS_KEY, user?.id],
     queryFn: async () => {
       if (!session?.access_token) {
+        console.log('[SubscriptionContext] No access token, returning no access');
         return {
           hasAccess: false,
           accessReason: ACCESS_REASONS.NO_SUBSCRIPTION,
@@ -85,13 +101,21 @@ export const SubscriptionProvider = ({ children }) => {
       }
       
       const result = await checkSubscriptionAccess(session.access_token);
+      console.log('[SubscriptionContext] Subscription access check result:', {
+        hasAccess: result.hasAccess,
+        accessReason: result.accessReason,
+        wasRevoked: result.subscription?.was_revoked,
+        userId: user?.id
+      });
       return result;
     },
-    enabled: !!user && !!session?.access_token,
+    enabled: isQueryEnabled,
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnWindowFocus: true, // Re-check subscription when user returns to tab (detects revoked licenses)
+    refetchOnMount: 'always', // Always check on mount to detect license changes
+    refetchInterval: 60 * 1000, // Check every 60 seconds for license changes
+    refetchIntervalInBackground: false, // Don't refetch when tab is not visible
     retry: 2,
     retryDelay: 1000,
   });
@@ -300,7 +324,11 @@ export const SubscriptionProvider = ({ children }) => {
     // Access state
     hasAccess,
     accessReason,
-    isLoading,
+    // isLoading is true if:
+    // 1. The query is loading (initial fetch)
+    // 2. The query is pending (not yet enabled - waiting for session)
+    // This prevents premature redirects when session is not yet available
+    isLoading: isLoading || isPending || !isQueryEnabled,
     error,
     isRefetching,
     
@@ -371,6 +399,8 @@ export const SubscriptionProvider = ({ children }) => {
     purchaseBundleMutation.isPending,
     cancelAddOnMutation.isPending,
     purchaseError,
+    isPending,
+    isQueryEnabled,
   ]);
 
   return (

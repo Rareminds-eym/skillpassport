@@ -79,19 +79,26 @@ const Courses: React.FC = () => {
       // Check if educator is part of a school
       const { data: schoolEducator, error: schoolError } = await supabase
         .from('school_educators')
-        .select('school_id, schools(name)')
+        .select('school_id')
         .eq('user_id', educatorId)
         .maybeSingle();
 
       console.log('School check result:', { schoolEducator, schoolError });
 
-      if (!schoolError && schoolEducator) {
-        console.log('✅ Educator is affiliated with school:', (schoolEducator as any).schools?.name);
+      if (!schoolError && schoolEducator?.school_id) {
+        // Fetch school name from organizations table
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', schoolEducator.school_id)
+          .maybeSingle();
+        
+        console.log('✅ Educator is affiliated with school:', orgData?.name);
         return {
           isAffiliated: true,
           info: {
             type: 'school' as const,
-            name: (schoolEducator as any).schools?.name || 'School'
+            name: orgData?.name || 'School'
           }
         };
       }
@@ -99,19 +106,26 @@ const Courses: React.FC = () => {
       // Check if educator is part of a college
       const { data: collegeEducator, error: collegeError } = await supabase
         .from('college_lecturers')
-        .select('collegeId, colleges(name)')
+        .select('collegeId')
         .eq('user_id', educatorId)
         .maybeSingle();
 
       console.log('College check result:', { collegeEducator, collegeError });
 
-      if (!collegeError && collegeEducator) {
-        console.log('✅ Educator is affiliated with college:', (collegeEducator as any).colleges?.name);
+      if (!collegeError && collegeEducator?.collegeId) {
+        // Fetch college name from organizations table
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', collegeEducator.collegeId)
+          .maybeSingle();
+        
+        console.log('✅ Educator is affiliated with college:', orgData?.name);
         return {
           isAffiliated: true,
           info: {
             type: 'college' as const,
-            name: (collegeEducator as any).colleges?.name || 'College'
+            name: orgData?.name || 'College'
           }
         };
       }
@@ -119,19 +133,26 @@ const Courses: React.FC = () => {
       // Check if educator is part of a university
       const { data: universityEducator, error: universityError } = await supabase
         .from('university_educators')
-        .select('university_id, universities(name)')
+        .select('university_id')
         .eq('user_id', educatorId)
         .maybeSingle();
 
       console.log('University check result:', { universityEducator, universityError });
 
-      if (!universityError && universityEducator) {
-        console.log('✅ Educator is affiliated with university:', (universityEducator as any).universities?.name);
+      if (!universityError && universityEducator?.university_id) {
+        // Fetch university name from organizations table
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', universityEducator.university_id)
+          .maybeSingle();
+        
+        console.log('✅ Educator is affiliated with university:', orgData?.name);
         return {
           isAffiliated: true,
           info: {
             type: 'university' as const,
-            name: (universityEducator as any).universities?.name || 'University'
+            name: orgData?.name || 'University'
           }
         };
       }

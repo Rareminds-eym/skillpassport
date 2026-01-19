@@ -48,6 +48,30 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
     name: 'Science (PCB)',
     topics: ['Physics fundamentals', 'Chemistry basics', 'Biology concepts', 'Medical sciences basics', 'Laboratory techniques', 'Scientific method']
   },
+  'commerce_maths': {
+    name: 'Commerce with Maths',
+    topics: ['Accountancy basics', 'Business Studies', 'Economics fundamentals', 'Mathematics for Commerce', 'Statistics', 'Financial literacy']
+  },
+  'commerce_general': {
+    name: 'Commerce without Maths',
+    topics: ['Accountancy basics', 'Business Studies', 'Economics fundamentals', 'Business Communication', 'Entrepreneurship', 'Financial literacy']
+  },
+  'arts_humanities': {
+    name: 'Arts & Humanities',
+    topics: ['English Literature', 'History concepts', 'Political Science basics', 'Psychology fundamentals', 'Sociology', 'Critical thinking']
+  },
+  'arts_psychology': {
+    name: 'Arts with Psychology',
+    topics: ['Psychology fundamentals', 'Sociology basics', 'English Literature', 'Human behavior', 'Social sciences', 'Counseling basics']
+  },
+  'arts_economics': {
+    name: 'Arts with Economics',
+    topics: ['Economics fundamentals', 'Political Science basics', 'English Literature', 'Public policy', 'International relations', 'Governance']
+  },
+  'arts': {
+    name: 'Arts/Humanities General',
+    topics: ['English Literature', 'History concepts', 'Geography basics', 'Critical thinking', 'Communication skills', 'Cultural studies']
+  },
   
   // ═══════════════════════════════════════════════════════════════════════════
   // B.TECH / ENGINEERING SPECIALIZATIONS (College/University)
@@ -183,6 +207,50 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
   'b.tech': {
     name: 'B.Tech Engineering',
     topics: ['Engineering Mathematics', 'Physics Applications', 'Problem Solving', 'Technical Analysis', 'Design Thinking', 'Project Management']
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // M.TECH / POSTGRADUATE ENGINEERING (Masters)
+  // ═══════════════════════════════════════════════════════════════════════════
+  'mtech_cse': {
+    name: 'M.Tech Computer Science',
+    topics: ['Advanced Algorithms', 'Machine Learning', 'Distributed Systems', 'Cloud Computing', 'Research Methodology', 'Advanced Database Systems']
+  },
+  'mtech_cs': {
+    name: 'M.Tech Computer Science',
+    topics: ['Advanced Algorithms', 'Machine Learning', 'Distributed Systems', 'Cloud Computing', 'Research Methodology', 'Advanced Database Systems']
+  },
+  'mtech_ece': {
+    name: 'M.Tech Electronics',
+    topics: ['VLSI Design', 'Advanced Signal Processing', 'Wireless Communication', 'Embedded Systems Design', 'Microwave Engineering', 'Research Methods']
+  },
+  'mtech_electronics': {
+    name: 'M.Tech Electronics',
+    topics: ['VLSI Design', 'Advanced Signal Processing', 'Wireless Communication', 'Embedded Systems Design', 'Microwave Engineering', 'Research Methods']
+  },
+  'mtech_mechanical': {
+    name: 'M.Tech Mechanical',
+    topics: ['Advanced Thermodynamics', 'Computational Fluid Dynamics', 'Finite Element Analysis', 'Advanced Manufacturing', 'Robotics', 'Research Methodology']
+  },
+  'mtech_mech': {
+    name: 'M.Tech Mechanical',
+    topics: ['Advanced Thermodynamics', 'Computational Fluid Dynamics', 'Finite Element Analysis', 'Advanced Manufacturing', 'Robotics', 'Research Methodology']
+  },
+  'mtech_civil': {
+    name: 'M.Tech Civil',
+    topics: ['Advanced Structural Analysis', 'Geotechnical Engineering', 'Transportation Planning', 'Environmental Engineering', 'Construction Technology', 'Research Methods']
+  },
+  'mtech_aiml': {
+    name: 'M.Tech AI & ML',
+    topics: ['Deep Learning', 'Natural Language Processing', 'Computer Vision', 'Reinforcement Learning', 'Neural Networks', 'AI Research']
+  },
+  'mtech_ds': {
+    name: 'M.Tech Data Science',
+    topics: ['Big Data Analytics', 'Advanced Machine Learning', 'Data Mining', 'Statistical Modeling', 'Data Visualization', 'Research Methodology']
+  },
+  mtech: {
+    name: 'M.Tech Engineering',
+    topics: ['Advanced Engineering Concepts', 'Research Methodology', 'Technical Analysis', 'Innovation', 'Project Management', 'Specialized Engineering']
   },
   
   // ═══════════════════════════════════════════════════════════════════════════
@@ -548,6 +616,10 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
   // ═══════════════════════════════════════════════════════════════════════════
   // GENERIC/FALLBACK STREAMS
   // ═══════════════════════════════════════════════════════════════════════════
+  general: {
+    name: 'General Assessment',
+    topics: ['Logical Reasoning', 'Verbal Ability', 'Numerical Aptitude', 'General Knowledge', 'Critical Thinking', 'Problem Solving']
+  },
   college: {
     name: 'College/University',
     topics: ['Critical Thinking', 'Communication Skills', 'Problem Solving', 'Research Methods', 'Professional Ethics', 'Career Planning']
@@ -645,6 +717,41 @@ export function normalizeStreamId(programName) {
     
     'b.tech chemical': 'btech_chem',
     'chemical engineering': 'btech_chem',
+    
+    // M.Tech variations -> short keys
+    'master of technology in computer science': 'mtech_cse',
+    'master of technology in computer science and engineering': 'mtech_cse',
+    'm.tech computer science': 'mtech_cse',
+    'm.tech cse': 'mtech_cse',
+    'mtech cse': 'mtech_cse',
+    'mtech computer science': 'mtech_cse',
+    'm.tech cs': 'mtech_cs',
+    'mtech cs': 'mtech_cs',
+    
+    'master of technology in electronics': 'mtech_ece',
+    'master of technology in electronics and communication': 'mtech_ece',
+    'm.tech electronics': 'mtech_ece',
+    'm.tech ece': 'mtech_ece',
+    'mtech ece': 'mtech_ece',
+    'mtech electronics': 'mtech_electronics',
+    
+    'master of technology in mechanical': 'mtech_mech',
+    'm.tech mechanical': 'mtech_mech',
+    'mtech mechanical': 'mtech_mechanical',
+    
+    'master of technology in civil': 'mtech_civil',
+    'm.tech civil': 'mtech_civil',
+    'mtech civil': 'mtech_civil',
+    
+    'master of technology in ai': 'mtech_aiml',
+    'master of technology in artificial intelligence': 'mtech_aiml',
+    'm.tech ai': 'mtech_aiml',
+    'm.tech ml': 'mtech_aiml',
+    'mtech aiml': 'mtech_aiml',
+    
+    'master of technology in data science': 'mtech_ds',
+    'm.tech data science': 'mtech_ds',
+    'mtech data science': 'mtech_ds',
     
     // B.Sc variations
     'b.sc physics': 'bsc_physics',
@@ -792,15 +899,439 @@ export function normalizeStreamId(programName) {
 }
 
 /**
+ * Validate a generated question meets quality standards
+ * @param {Object} question - Question object to validate
+ * @param {string} questionType - 'aptitude' or 'knowledge'
+ * @returns {Object} { isValid: boolean, errors: string[] }
+ */
+export function validateQuestion(question, questionType) {
+  const errors = [];
+  
+  // Check required fields
+  if (!question.text && !question.question) {
+    errors.push('Missing question text');
+  }
+  
+  const questionText = question.text || question.question || '';
+  if (questionText.length < 10 || questionText.length > 500) {
+    errors.push(`Question text length ${questionText.length} is outside valid range (10-500)`);
+  }
+  
+  // Check options
+  if (!question.options || !Array.isArray(question.options)) {
+    errors.push('Missing or invalid options array');
+  } else {
+    // Clerical questions have 2 options (Same/Different), all others have 4
+    const isClericalQuestion = question.subtype === 'clerical' || 
+                               question.category === 'clerical' ||
+                               question.skill_tag === 'clerical_speed';
+    const expectedOptions = isClericalQuestion ? 2 : 4;
+    
+    if (question.options.length !== expectedOptions) {
+      errors.push(`Expected ${expectedOptions} options, got ${question.options.length}`);
+    }
+  }
+  
+  // Check correct answer
+  let correctAnswer = question.correct || question.correct_answer;
+  if (!correctAnswer) {
+    errors.push('Missing correct answer');
+  } else {
+    // Check if this is a clerical question (2 options: Same/Different)
+    const isClericalQuestion = question.subtype === 'clerical' || 
+                               question.category === 'clerical' ||
+                               question.skill_tag === 'clerical_speed';
+    
+    if (isClericalQuestion) {
+      // Clerical questions use "Same" or "Different"
+      const normalized = String(correctAnswer).trim().toLowerCase();
+      
+      // Handle various formats: "Same", "Different", "Option A", "Option B", "A", "B"
+      if (normalized === 'same' || normalized === 'different') {
+        // Already in correct format
+        question.correct = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+      } else if (normalized.includes('option a') || normalized === 'a') {
+        // AI returned "Option A" or "A" - assume first option is the answer
+        // Check what the first option actually is
+        if (question.options && question.options[0]) {
+          const firstOption = String(question.options[0]).trim().toLowerCase();
+          if (firstOption === 'same' || firstOption === 'different') {
+            question.correct = firstOption.charAt(0).toUpperCase() + firstOption.slice(1);
+          } else {
+            // Default to "Same" if we can't determine
+            question.correct = 'Same';
+            console.warn(`⚠️ Clerical question has unclear first option, defaulting to "Same"`);
+          }
+        } else {
+          question.correct = 'Same';
+        }
+      } else if (normalized.includes('option b') || normalized === 'b') {
+        // AI returned "Option B" or "B" - assume second option is the answer
+        if (question.options && question.options[1]) {
+          const secondOption = String(question.options[1]).trim().toLowerCase();
+          if (secondOption === 'same' || secondOption === 'different') {
+            question.correct = secondOption.charAt(0).toUpperCase() + secondOption.slice(1);
+          } else {
+            // Default to "Different" if we can't determine
+            question.correct = 'Different';
+            console.warn(`⚠️ Clerical question has unclear second option, defaulting to "Different"`);
+          }
+        } else {
+          question.correct = 'Different';
+        }
+      } else {
+        errors.push(`Invalid clerical answer: ${correctAnswer} (expected "Same" or "Different")`);
+      }
+    } else {
+      // Regular MCQ questions use A/B/C/D
+      // First try to extract letter from formats like "Option B", "B)", "b", etc.
+      const normalized = String(correctAnswer).trim().toUpperCase();
+      const letterMatch = normalized.match(/[ABCD]/);
+      
+      if (letterMatch) {
+        // Found a letter, use it
+        question.correct = letterMatch[0];
+      } else if (question.options && Array.isArray(question.options)) {
+        // AI returned the actual answer text, match it against options
+        const answerText = String(correctAnswer).trim();
+        const optionIndex = question.options.findIndex(opt => {
+          const optText = String(opt).trim();
+          return optText === answerText || optText.toLowerCase() === answerText.toLowerCase();
+        });
+        
+        if (optionIndex !== -1 && optionIndex < 4) {
+          // Convert index to letter (0->A, 1->B, 2->C, 3->D)
+          question.correct = String.fromCharCode(65 + optionIndex);
+        } else {
+          errors.push(`Invalid correct answer: ${correctAnswer}`);
+        }
+      } else {
+        errors.push(`Invalid correct answer: ${correctAnswer}`);
+      }
+    }
+  }
+  
+  // Check type/subtype for categorization
+  if (questionType === 'aptitude' && !question.subtype && !question.category) {
+    errors.push('Missing subtype/category for aptitude question');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+/**
+ * Validate and filter a batch of questions
+ * @param {Array} questions - Array of questions to validate
+ * @param {string} questionType - 'aptitude' or 'knowledge'
+ * @param {number} expectedCount - Expected number of questions
+ * @returns {Object} { valid: Array, invalid: Array, needsMore: boolean }
+ */
+export function validateQuestionBatch(questions, questionType, expectedCount) {
+  const valid = [];
+  const invalid = [];
+  
+  questions.forEach((q, idx) => {
+    const validation = validateQuestion(q, questionType);
+    if (validation.isValid) {
+      valid.push(q);
+    } else {
+      console.warn(`❌ Question ${idx + 1} failed validation:`, validation.errors);
+      invalid.push({ question: q, errors: validation.errors });
+    }
+  });
+  
+  const needsMore = valid.length < expectedCount;
+  
+  console.log(`📊 Validation results: ${valid.length}/${expectedCount} valid, ${invalid.length} invalid`);
+  
+  return { valid, invalid, needsMore };
+}
+
+/**
+ * Error types for question generation
+ */
+export const QuestionGenerationError = {
+  API_UNAVAILABLE: 'API_UNAVAILABLE',
+  RATE_LIMIT: 'RATE_LIMIT',
+  INVALID_RESPONSE: 'INVALID_RESPONSE',
+  INSUFFICIENT_QUESTIONS: 'INSUFFICIENT_QUESTIONS',
+  DATABASE_ERROR: 'DATABASE_ERROR',
+  NETWORK_TIMEOUT: 'NETWORK_TIMEOUT',
+  UNKNOWN: 'UNKNOWN'
+};
+
+/**
+ * User-friendly error messages for each error type
+ */
+export const ERROR_MESSAGES = {
+  [QuestionGenerationError.API_UNAVAILABLE]: 'Question generation service is temporarily unavailable. Retrying...',
+  [QuestionGenerationError.RATE_LIMIT]: 'Please wait, processing your request...',
+  [QuestionGenerationError.INVALID_RESPONSE]: 'Received invalid response. Retrying...',
+  [QuestionGenerationError.INSUFFICIENT_QUESTIONS]: 'Generating additional questions...',
+  [QuestionGenerationError.DATABASE_ERROR]: 'Unable to save questions, but you can continue with the assessment.',
+  [QuestionGenerationError.NETWORK_TIMEOUT]: 'Network connection timeout. Retrying...',
+  [QuestionGenerationError.UNKNOWN]: 'An unexpected error occurred. Retrying...'
+};
+
+/**
+ * Classify error type based on error details
+ * @param {Error|Response} error - Error object or response
+ * @param {number} status - HTTP status code (if available)
+ * @returns {string} - Error type from QuestionGenerationError
+ */
+export function classifyError(error, status = null) {
+  // Check HTTP status codes
+  if (status === 503) return QuestionGenerationError.API_UNAVAILABLE;
+  if (status === 429) return QuestionGenerationError.RATE_LIMIT;
+  if (status >= 500) return QuestionGenerationError.API_UNAVAILABLE;
+  if (status >= 400 && status < 500) return QuestionGenerationError.INVALID_RESPONSE;
+  
+  // Check error message patterns
+  if (error?.message) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('timeout') || msg.includes('timed out')) {
+      return QuestionGenerationError.NETWORK_TIMEOUT;
+    }
+    if (msg.includes('network') || msg.includes('fetch')) {
+      return QuestionGenerationError.API_UNAVAILABLE;
+    }
+    if (msg.includes('json') || msg.includes('parse')) {
+      return QuestionGenerationError.INVALID_RESPONSE;
+    }
+    if (msg.includes('database') || msg.includes('supabase')) {
+      return QuestionGenerationError.DATABASE_ERROR;
+    }
+  }
+  
+  return QuestionGenerationError.UNKNOWN;
+}
+
+/**
+ * Get user-friendly error message
+ * @param {string} errorType - Error type from QuestionGenerationError
+ * @returns {string} - User-friendly error message
+ */
+export function getUserErrorMessage(errorType) {
+  return ERROR_MESSAGES[errorType] || ERROR_MESSAGES[QuestionGenerationError.UNKNOWN];
+}
+
+/**
+ * Handle API response errors with appropriate retry logic
+ * @param {Response} response - Fetch response object
+ * @param {number} attempt - Current attempt number
+ * @param {number} maxRetries - Maximum retry attempts
+ * @returns {Promise<Object>} - { shouldRetry: boolean, delay: number, errorType: string }
+ */
+export async function handleAPIError(response, attempt, maxRetries) {
+  const status = response.status;
+  const errorType = classifyError(null, status);
+  
+  // Rate limit - wait for retry-after header or use exponential backoff
+  if (status === 429) {
+    const retryAfter = response.headers.get('retry-after');
+    const delay = retryAfter ? parseInt(retryAfter) * 1000 : 2000 * attempt;
+    console.log(`⏳ Rate limit hit, waiting ${delay}ms before retry`);
+    return {
+      shouldRetry: attempt < maxRetries,
+      delay,
+      errorType,
+      message: getUserErrorMessage(errorType)
+    };
+  }
+  
+  // API unavailable - exponential backoff
+  if (status === 503 || status >= 500) {
+    const delay = 2000 * attempt;
+    console.log(`⚠️ API unavailable (${status}), waiting ${delay}ms before retry`);
+    return {
+      shouldRetry: attempt < maxRetries,
+      delay,
+      errorType,
+      message: getUserErrorMessage(errorType)
+    };
+  }
+  
+  // Client errors - don't retry
+  if (status >= 400 && status < 500 && status !== 429) {
+    console.error(`❌ Client error (${status}), not retrying`);
+    return {
+      shouldRetry: false,
+      delay: 0,
+      errorType,
+      message: getUserErrorMessage(errorType)
+    };
+  }
+  
+  // Other errors - retry with exponential backoff
+  const delay = 2000 * attempt;
+  return {
+    shouldRetry: attempt < maxRetries,
+    delay,
+    errorType,
+    message: getUserErrorMessage(errorType)
+  };
+}
+
+/**
+ * Handle network/fetch errors with appropriate retry logic
+ * @param {Error} error - Error object
+ * @param {number} attempt - Current attempt number
+ * @param {number} maxRetries - Maximum retry attempts
+ * @returns {Object} - { shouldRetry: boolean, delay: number, errorType: string }
+ */
+export function handleNetworkError(error, attempt, maxRetries) {
+  const errorType = classifyError(error);
+  const delay = 2000 * attempt; // Exponential backoff
+  
+  console.error(`❌ Network error (attempt ${attempt}/${maxRetries}):`, error.message);
+  
+  return {
+    shouldRetry: attempt < maxRetries,
+    delay,
+    errorType,
+    message: getUserErrorMessage(errorType)
+  };
+}
+
+/**
+ * Handle database save errors gracefully
+ * @param {Error} error - Database error
+ * @param {string} context - Context description (e.g., 'saving aptitude questions')
+ * @returns {Object} - { canContinue: boolean, errorType: string, message: string }
+ */
+export function handleDatabaseError(error, context) {
+  const errorType = QuestionGenerationError.DATABASE_ERROR;
+  const message = getUserErrorMessage(errorType);
+  
+  console.error(`❌ Database error while ${context}:`, error.message);
+  console.log('ℹ️ Continuing with in-memory questions (resume functionality may not work)');
+  
+  return {
+    canContinue: true, // Can continue with in-memory questions
+    errorType,
+    message
+  };
+}
+
+/**
+ * Handle insufficient questions scenario
+ * @param {number} actualCount - Actual number of valid questions
+ * @param {number} expectedCount - Expected number of questions
+ * @param {number} attempt - Current attempt number
+ * @param {number} maxRetries - Maximum retry attempts
+ * @returns {Object} - { shouldRetry: boolean, canProceed: boolean, message: string }
+ */
+export function handleInsufficientQuestions(actualCount, expectedCount, attempt, maxRetries) {
+  const errorType = QuestionGenerationError.INSUFFICIENT_QUESTIONS;
+  const percentage = (actualCount / expectedCount) * 100;
+  
+  // If we have at least 80% of expected questions, we can proceed
+  const canProceed = percentage >= 80;
+  const shouldRetry = !canProceed && attempt < maxRetries;
+  
+  if (canProceed) {
+    console.log(`✅ Proceeding with ${actualCount}/${expectedCount} questions (${percentage.toFixed(0)}%)`);
+  } else if (shouldRetry) {
+    console.log(`⏳ Only ${actualCount}/${expectedCount} questions (${percentage.toFixed(0)}%), retrying...`);
+  } else {
+    console.warn(`⚠️ Only ${actualCount}/${expectedCount} questions (${percentage.toFixed(0)}%) after ${attempt} attempts`);
+  }
+  
+  return {
+    shouldRetry,
+    canProceed,
+    errorType,
+    message: getUserErrorMessage(errorType)
+  };
+}
+
+/**
+ * Generate questions with validation and retry logic
+ * @param {Function} generatorFn - Function that generates questions
+ * @param {string} questionType - 'aptitude' or 'knowledge'
+ * @param {number} expectedCount - Expected number of questions
+ * @param {number} maxRetries - Maximum retry attempts (default 3)
+ * @returns {Promise<Array>} - Valid questions
+ */
+export async function generateWithValidation(generatorFn, questionType, expectedCount, maxRetries = 3) {
+  let allValidQuestions = [];
+  let attempt = 0;
+  
+  while (attempt < maxRetries && allValidQuestions.length < expectedCount) {
+    attempt++;
+    console.log(`📦 Generation attempt ${attempt}/${maxRetries} for ${questionType}`);
+    
+    try {
+      const questions = await generatorFn();
+      
+      if (!questions || questions.length === 0) {
+        console.warn(`⚠️ No questions returned on attempt ${attempt}`);
+        if (attempt < maxRetries) {
+          // Exponential backoff: 2s, 4s, 6s
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+          continue;
+        }
+        break;
+      }
+      
+      const validation = validateQuestionBatch(questions, questionType, expectedCount - allValidQuestions.length);
+      allValidQuestions = [...allValidQuestions, ...validation.valid];
+      
+      console.log(`✅ Attempt ${attempt}: ${validation.valid.length} valid questions (total: ${allValidQuestions.length}/${expectedCount})`);
+      
+      if (!validation.needsMore) {
+        break;
+      }
+      
+      // If we need more questions and have retries left, wait and try again
+      if (attempt < maxRetries) {
+        const needed = expectedCount - allValidQuestions.length;
+        console.log(`⏳ Need ${needed} more questions, retrying...`);
+        // Exponential backoff: 2s, 4s, 6s
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+      }
+    } catch (error) {
+      console.error(`❌ Error on attempt ${attempt}:`, error);
+      if (attempt < maxRetries) {
+        // Exponential backoff: 2s, 4s, 6s
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+      }
+    }
+  }
+  
+  if (allValidQuestions.length < expectedCount) {
+    console.warn(`⚠️ Only generated ${allValidQuestions.length}/${expectedCount} valid questions after ${attempt} attempts`);
+  }
+  
+  return allValidQuestions.slice(0, expectedCount);
+}
+
+/**
  * Get saved questions for a student (for resume functionality)
+ * @param {string} studentId - Student ID
+ * @param {string} streamId - Stream ID
+ * @param {string} questionType - Question type ('aptitude' or 'knowledge')
+ * @returns {Promise<Array|null>} - Array of questions or null if not found
  */
 export async function getSavedQuestionsForStudent(studentId, streamId, questionType) {
-  if (!studentId) return null;
+  if (!studentId) {
+    console.log('⚠️ getSavedQuestionsForStudent: No studentId provided');
+    return null;
+  }
+  
+  console.log(`🔍 Checking for cached ${questionType} questions:`, {
+    student_id: studentId,
+    stream_id: streamId,
+    question_type: questionType
+  });
   
   try {
     const { data, error } = await supabase
       .from('career_assessment_ai_questions')
-      .select('questions')
+      .select('questions, generated_at')
       .eq('student_id', studentId)
       .eq('stream_id', streamId)
       .eq('question_type', questionType)
@@ -808,17 +1339,58 @@ export async function getSavedQuestionsForStudent(studentId, streamId, questionT
       .maybeSingle(); // Use maybeSingle instead of single to avoid 406 error
 
     if (error) {
-      console.warn(`No saved ${questionType} questions found:`, error.message);
+      console.warn(`⚠️ Database query error for ${questionType} questions:`, {
+        error: error.message,
+        code: error.code,
+        details: error.details
+      });
       return null;
     }
     
-    if (data?.questions?.length > 0) {
-      console.log(`✅ Found saved ${questionType} questions for student:`, studentId);
-      return data.questions;
+    // Handle missing data
+    if (!data) {
+      console.log(`ℹ️ No cached ${questionType} questions found for student ${studentId}`);
+      return null;
     }
-    return null;
+    
+    // Validate data structure
+    if (!data.questions) {
+      console.warn(`⚠️ Cached data exists but questions field is missing for ${questionType}`);
+      return null;
+    }
+    
+    // Handle corrupted data (not an array)
+    if (!Array.isArray(data.questions)) {
+      console.warn(`⚠️ Cached ${questionType} questions data is corrupted (not an array):`, typeof data.questions);
+      return null;
+    }
+    
+    // Handle empty array
+    if (data.questions.length === 0) {
+      console.warn(`⚠️ Cached ${questionType} questions array is empty`);
+      return null;
+    }
+    
+    // Success - log cache hit with metadata
+    console.log(`✅ Cache HIT: Found ${data.questions.length} saved ${questionType} questions`, {
+      student_id: studentId,
+      stream_id: streamId,
+      question_count: data.questions.length,
+      generated_at: data.generated_at,
+      grade_level: data.grade_level,
+      cache_age_hours: data.generated_at ? 
+        Math.round((Date.now() - new Date(data.generated_at).getTime()) / (1000 * 60 * 60)) : 
+        'unknown'
+    });
+    
+    return data.questions;
   } catch (err) {
-    console.warn('Error fetching saved questions:', err);
+    console.error(`❌ Exception while fetching saved ${questionType} questions:`, {
+      error: err.message,
+      stack: err.stack,
+      student_id: studentId,
+      stream_id: streamId
+    });
     return null;
   }
 }
@@ -827,7 +1399,7 @@ export async function getSavedQuestionsForStudent(studentId, streamId, questionT
  * Generate Stream Knowledge questions using AI
  * If studentId provided, saves questions for resume functionality
  */
-export async function generateStreamKnowledgeQuestions(streamId, questionCount = 20, studentId = null, attemptId = null) {
+export async function generateStreamKnowledgeQuestions(streamId, questionCount = 20, studentId = null, attemptId = null, gradeLevel = null) {
   // Normalize the stream ID to match our STREAM_KNOWLEDGE_PROMPTS keys
   const normalizedStreamId = normalizeStreamId(streamId);
   const streamInfo = STREAM_KNOWLEDGE_PROMPTS[normalizedStreamId];
@@ -857,8 +1429,11 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
   }
 
   console.log('🎯 Generating fresh knowledge questions for:', effectiveStreamInfo.name, '(stream:', effectiveStreamId, ')');
+  console.log('📚 Stream topics:', effectiveStreamInfo.topics);
 
-  const apiUrl = import.meta.env.VITE_EXTERNAL_API_KEY || 'https://assessment-api.dark-mode-d021.workers.dev';
+  // Use unified question generation API
+  const apiUrl = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
+    'https://question-generation-api.dark-mode-d021.workers.dev';
   const maxRetries = 3;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -874,29 +1449,89 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
           topics: effectiveStreamInfo.topics,
           questionCount,
           studentId,
-          attemptId
+          attemptId,
+          gradeLevel // Add grade level to API request
         })
       });
 
       if (!response.ok) {
+        // Handle API errors with appropriate retry logic
+        const errorInfo = await handleAPIError(response, attempt, maxRetries);
         const errorText = await response.text();
         console.error(`❌ API Error Response (attempt ${attempt}):`, errorText);
-        if (attempt === maxRetries) {
-          throw new Error(`API Error: ${response.status} - ${errorText}`);
+        console.log(`ℹ️ ${errorInfo.message}`);
+        
+        if (errorInfo.shouldRetry) {
+          await new Promise(resolve => setTimeout(resolve, errorInfo.delay));
+          continue;
+        } else {
+          return null;
         }
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        continue;
       }
 
       const data = await response.json();
-      console.log('✅ Knowledge questions generated:', data.questions?.length || 0);
-      return data.questions;
-    } catch (error) {
-      console.error(`Error generating knowledge questions (attempt ${attempt}):`, error);
-      if (attempt === maxRetries) {
-        return null; // Return null instead of fallback - let UI handle loading state
+      
+      // Validate response structure
+      if (!data || !data.questions) {
+        const errorType = classifyError(new Error('Invalid API response'));
+        console.error(`❌ Invalid API response (attempt ${attempt}): missing questions array`);
+        console.log(`ℹ️ ${getUserErrorMessage(errorType)}`);
+        
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+          continue;
+        }
+        return null;
       }
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      
+      console.log('✅ Knowledge questions generated:', data.questions?.length || 0);
+      
+      // Validate question quality using validateQuestionBatch
+      const validation = validateQuestionBatch(data.questions, 'knowledge', questionCount);
+      
+      // Filter out invalid questions - only use valid ones
+      const validQuestions = validation.valid;
+      
+      if (validation.invalid.length > 0) {
+        console.warn(`⚠️ Filtered out ${validation.invalid.length} invalid knowledge questions`);
+      }
+      
+      // Check if we have sufficient valid questions
+      if (validQuestions.length < questionCount) {
+        console.warn(`⚠️ Only ${validQuestions.length}/${questionCount} valid knowledge questions after validation`);
+        
+        if (attempt < maxRetries) {
+          const needed = questionCount - validQuestions.length;
+          console.log(`⏳ Need ${needed} more valid questions, retrying (attempt ${attempt + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+          continue;
+        } else {
+          console.warn(`⚠️ Proceeding with ${validQuestions.length} valid questions after ${maxRetries} attempts`);
+        }
+      }
+      
+      // Ensure final count is exactly 20 (or questionCount)
+      const finalQuestions = validQuestions.slice(0, questionCount);
+      
+      console.log(`✅ Final knowledge question count: ${finalQuestions.length}/${questionCount}`);
+      
+      // If API returned questions but didn't save them, save from frontend as fallback
+      if (finalQuestions.length > 0 && studentId && !data.cached) {
+        console.log('💾 Saving knowledge questions from frontend as fallback...');
+        await saveKnowledgeQuestions(studentId, effectiveStreamId, attemptId, finalQuestions, gradeLevel);
+      }
+      
+      return finalQuestions;
+    } catch (error) {
+      // Handle network/fetch errors
+      const errorInfo = handleNetworkError(error, attempt, maxRetries);
+      console.log(`ℹ️ ${errorInfo.message}`);
+      
+      if (errorInfo.shouldRetry) {
+        await new Promise(resolve => setTimeout(resolve, errorInfo.delay));
+      } else {
+        return null;
+      }
     }
   }
   
@@ -924,7 +1559,9 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
 
   console.log('🎯 Generating aptitude questions for stream:', streamId, 'gradeLevel:', gradeLevel);
 
-  const apiUrl = import.meta.env.VITE_EXTERNAL_API_KEY || 'https://assessment-api.dark-mode-d021.workers.dev';
+  // Use unified question generation API
+  const apiUrl = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
+    'https://question-generation-api.dark-mode-d021.workers.dev';
   const maxRetries = 3;
   const questionsPerCategory = Math.ceil(questionCount / APTITUDE_CATEGORIES.length); // 10 per category for 50 total
   
@@ -945,20 +1582,109 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
       });
 
       if (!response.ok) {
+        // Handle API errors with appropriate retry logic
+        const errorInfo = await handleAPIError(response, attempt, maxRetries);
         const errorText = await response.text();
         console.error(`❌ API Error (attempt ${attempt}):`, errorText.substring(0, 200));
-        if (attempt === maxRetries) return null;
-        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
-        continue;
+        console.log(`ℹ️ ${errorInfo.message}`);
+        
+        if (errorInfo.shouldRetry) {
+          await new Promise(resolve => setTimeout(resolve, errorInfo.delay));
+          continue;
+        } else {
+          return null;
+        }
       }
 
       const data = await response.json();
+      
+      // Validate response structure
+      if (!data || !data.questions) {
+        const errorType = classifyError(new Error('Invalid API response'));
+        console.error(`❌ Invalid API response (attempt ${attempt}): missing questions array`);
+        console.log(`ℹ️ ${getUserErrorMessage(errorType)}`);
+        
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+          continue;
+        }
+        return null;
+      }
+      
       console.log('✅ Aptitude questions generated:', data.questions?.length || 0);
-      return data.questions || [];
+      
+      // Validate question quality using validateQuestionBatch
+      const validation = validateQuestionBatch(data.questions, 'aptitude', questionCount);
+      
+      // Filter out invalid questions - only use valid ones
+      const validQuestions = validation.valid;
+      console.log(`📊 Validation: ${validQuestions.length} valid, ${validation.invalid.length} invalid`);
+      
+      // Check if we have sufficient valid questions (80% threshold)
+      if (validQuestions.length < questionCount) {
+        console.warn(`⚠️ Insufficient valid questions: ${validQuestions.length}/${questionCount}`);
+        
+        const threshold = Math.floor(questionCount * 0.8);
+        
+        if (validQuestions.length >= threshold) {
+          console.log(`✅ Proceeding with ${validQuestions.length} questions (>= ${Math.floor((threshold/questionCount)*100)}% threshold)`);
+          
+          // Save valid questions if we have studentId
+          if (validQuestions.length > 0 && studentId && !data.cached) {
+            console.log('💾 Saving valid questions from frontend as fallback...');
+            await saveAptitudeQuestions(studentId, streamId, attemptId, validQuestions, gradeLevel);
+          }
+          
+          return validQuestions;
+        }
+        
+        // If below threshold and we have retries left, request additional questions
+        if (attempt < maxRetries) {
+          const needed = questionCount - validQuestions.length;
+          console.log(`⏳ Need ${needed} more valid questions, retrying (attempt ${attempt}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+          continue;
+        }
+        
+        // Last attempt - return what we have if it's at least 50%
+        const minThreshold = Math.floor(questionCount * 0.5);
+        if (validQuestions.length >= minThreshold) {
+          console.log(`⚠️ Final attempt: Proceeding with ${validQuestions.length} questions (>= 50% threshold)`);
+          
+          if (validQuestions.length > 0 && studentId && !data.cached) {
+            console.log('💾 Saving valid questions from frontend as fallback...');
+            await saveAptitudeQuestions(studentId, streamId, attemptId, validQuestions, gradeLevel);
+          }
+          
+          return validQuestions;
+        }
+        
+        console.error(`❌ Insufficient valid questions after all retries: ${validQuestions.length}/${questionCount}`);
+        return null;
+      }
+      
+      // We have enough valid questions - ensure final count matches expected count
+      const finalQuestions = validQuestions.slice(0, questionCount);
+      console.log(`✅ Final question count: ${finalQuestions.length}/${questionCount}`);
+      
+      // If API returned questions but didn't save them (cached: false, generated: true),
+      // save them from frontend as a fallback
+      if (finalQuestions.length > 0 && studentId && !data.cached) {
+        console.log('💾 Saving questions from frontend as fallback...');
+        await saveAptitudeQuestions(studentId, streamId, attemptId, finalQuestions, gradeLevel);
+      }
+      
+      return finalQuestions;
     } catch (error) {
-      console.error(`Error generating aptitude questions (attempt ${attempt}):`, error.message);
-      if (attempt === maxRetries) return null;
-      await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+      // Handle network/fetch errors
+      const errorInfo = handleNetworkError(error, attempt, maxRetries);
+      console.log(`ℹ️ ${errorInfo.message}`);
+      
+      if (errorInfo.shouldRetry) {
+        await new Promise(resolve => setTimeout(resolve, errorInfo.delay));
+      } else {
+        return null;
+      }
     }
   }
   
@@ -966,24 +1692,128 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
 }
 
 /**
- * Save aptitude questions to database
+ * Save aptitude questions to database (fallback if API doesn't save)
+ * @param {string} studentId - Student ID
+ * @param {string} streamId - Stream ID
+ * @param {string} attemptId - Assessment attempt ID
+ * @param {Array} questions - Array of question objects
+ * @param {string} gradeLevel - Grade level (e.g., 'higher_secondary', 'after10', 'college')
  */
-async function saveAptitudeQuestions(studentId, streamId, attemptId, questions) {
-  if (!studentId) return;
+async function saveAptitudeQuestions(studentId, streamId, attemptId, questions, gradeLevel = null) {
+  if (!studentId) {
+    console.log('⚠️ No studentId provided, skipping save');
+    return;
+  }
+  
+  console.log(`💾 [Frontend] Saving ${questions.length} aptitude questions for student:`, studentId, 'stream:', streamId, 'grade:', gradeLevel);
   
   try {
-    await supabase.from('career_assessment_ai_questions').upsert({
+    const saveData = {
       student_id: studentId,
       stream_id: streamId,
       question_type: 'aptitude',
       attempt_id: attemptId || null,
       questions: questions,
       generated_at: new Date().toISOString(),
+      grade_level: gradeLevel,
       is_active: true
-    }, { onConflict: 'student_id,stream_id,question_type' });
-    console.log('✅ All aptitude questions saved:', questions.length);
+    };
+    
+    console.log('💾 Attempting database save with metadata:', {
+      student_id: studentId,
+      stream_id: streamId,
+      question_type: 'aptitude',
+      attempt_id: attemptId,
+      grade_level: gradeLevel,
+      question_count: questions.length
+    });
+    
+    const { data, error } = await supabase.from('career_assessment_ai_questions').upsert(
+      saveData,
+      { onConflict: 'student_id,stream_id,question_type' }
+    ).select('id');
+    
+    if (error) {
+      const errorInfo = handleDatabaseError(error, 'saving aptitude questions');
+      console.error('❌ [Frontend] Database save failed:', {
+        error: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      console.log('ℹ️', errorInfo.message);
+      console.log('⚠️ Continuing with in-memory questions - assessment can proceed without caching');
+      // Continue with in-memory questions - don't throw
+      return false;
+    } else {
+      console.log('✅ [Frontend] Aptitude questions saved successfully:', {
+        question_count: questions.length,
+        record_id: data?.[0]?.id,
+        grade_level: gradeLevel,
+        timestamp: new Date().toISOString()
+      });
+      return true;
+    }
   } catch (e) {
-    console.warn('⚠️ Could not save questions:', e.message);
+    const errorInfo = handleDatabaseError(e, 'saving aptitude questions');
+    console.error('❌ [Frontend] Exception during save:', {
+      error: e.message,
+      stack: e.stack
+    });
+    console.log('ℹ️', errorInfo.message);
+    console.log('⚠️ Continuing with in-memory questions - assessment can proceed without caching');
+    // Continue with in-memory questions - don't throw
+    return false;
+  }
+}
+
+/**
+ * Save knowledge questions to database (fallback if API doesn't save)
+ * @param {string} studentId - Student ID
+ * @param {string} streamId - Stream ID
+ * @param {string} attemptId - Assessment attempt ID
+ * @param {Array} questions - Array of question objects
+ * @param {string} gradeLevel - Grade level (e.g., 'higher_secondary', 'after10', 'college')
+ */
+async function saveKnowledgeQuestions(studentId, streamId, attemptId, questions, gradeLevel = null) {
+  if (!studentId) {
+    console.log('⚠️ No studentId provided, skipping knowledge save');
+    return;
+  }
+  
+  console.log(`💾 [Frontend] Saving ${questions.length} knowledge questions for student:`, studentId, 'stream:', streamId, 'grade:', gradeLevel);
+  
+  try {
+    const { data, error } = await supabase.from('career_assessment_ai_questions').upsert({
+      student_id: studentId,
+      stream_id: streamId,
+      question_type: 'knowledge',
+      attempt_id: attemptId || null,
+      questions: questions,
+      generated_at: new Date().toISOString(),
+      grade_level: gradeLevel,
+      is_active: true
+    }, { onConflict: 'student_id,stream_id,question_type' })
+    .select('id');
+    
+    if (error) {
+      const errorInfo = handleDatabaseError(error, 'saving knowledge questions');
+      console.error('❌ [Frontend] Database error:', error.message, error.details, error.hint);
+      console.log('ℹ️', errorInfo.message);
+      // Continue with in-memory questions - don't throw
+    } else {
+      console.log('✅ [Frontend] Knowledge questions saved successfully:', {
+        question_count: questions.length,
+        record_id: data?.[0]?.id,
+        grade_level: gradeLevel,
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (e) {
+    const errorInfo = handleDatabaseError(e, 'saving knowledge questions');
+    console.error('❌ [Frontend] Exception:', e.message);
+    console.log('ℹ️', errorInfo.message);
+    // Continue with in-memory questions - don't throw
   }
 }
 
@@ -1038,8 +1868,8 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
     knowledge: null
   };
 
-  // Generate AI questions for after10, after12 AND college grade levels
-  if ((gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'college') && streamId) {
+  // Generate AI questions for after10, after12, higher_secondary AND college grade levels
+  if ((gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'higher_secondary' || gradeLevel === 'college') && streamId) {
     console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, streamId, 'studentId:', studentId);
     
     // Normalize stream ID for college students
@@ -1047,7 +1877,7 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
     console.log(`📋 Normalized stream ID: ${normalizedStreamId}`);
     
     // Generate/load aptitude questions first (will use saved if available)
-    // Pass gradeLevel so API knows to use school subjects for after10
+    // Pass gradeLevel so API knows to use appropriate difficulty
     const aiAptitude = await generateAptitudeQuestions(normalizedStreamId, 50, studentId, attemptId, gradeLevel);
     
     if (aiAptitude && aiAptitude.length > 0) {
@@ -1059,7 +1889,7 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Generate/load knowledge questions (will use saved if available)
-    const aiKnowledge = await generateStreamKnowledgeQuestions(normalizedStreamId, 20, studentId, attemptId);
+    const aiKnowledge = await generateStreamKnowledgeQuestions(normalizedStreamId, 20, studentId, attemptId, gradeLevel);
     
     if (aiKnowledge && aiKnowledge.length > 0) {
       questions.knowledge = aiKnowledge;

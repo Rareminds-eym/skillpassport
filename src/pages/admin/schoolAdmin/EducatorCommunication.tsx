@@ -61,20 +61,40 @@ const EducatorCommunication = () => {
     targetEducatorEmail?: string; 
   } | null;
   
-  // Get school ID for the current admin
+  // Get school ID for the current admin - use maybeSingle() to avoid 406 error
   const { data: schoolData } = useQuery({
     queryKey: ['school-admin-school', schoolAdminId],
     queryFn: async () => {
       if (!schoolAdminId) return null;
+      
+      // First try school_educators table
       const { data, error } = await supabase
         .from('school_educators')
-        .select('school_id, schools(id, name)')
+        .select('school_id')
         .eq('user_id', schoolAdminId)
         .eq('role', 'school_admin')
-        .single();
+        .maybeSingle();
       
-      if (error) throw error;
-      return data;
+      if (data?.school_id) {
+        return { school_id: data.school_id };
+      }
+      
+      // Fallback: Check organizations table for school admins
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('id, name')
+          .eq('organization_type', 'school')
+          .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
+          .maybeSingle();
+        
+        if (org?.id) {
+          return { school_id: org.id };
+        }
+      }
+      
+      return null;
     },
     enabled: !!schoolAdminId,
   });
@@ -90,8 +110,7 @@ const EducatorCommunication = () => {
         .from('conversations')
         .select(`
           *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url),
-          school:schools(id, name)
+          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
         `)
         .eq('school_id', schoolId)
         .eq('conversation_type', 'educator_admin')
@@ -118,8 +137,7 @@ const EducatorCommunication = () => {
         .from('conversations')
         .select(`
           *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url),
-          school:schools(id, name)
+          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
         `)
         .eq('school_id', schoolId)
         .eq('conversation_type', 'educator_admin')
@@ -489,12 +507,12 @@ const EducatorCommunication = () => {
     if (!messageInput.trim() || !currentChat || !schoolAdminId) return;
     
     try {
-      // Find educator user ID
+      // Find educator user ID - use maybeSingle() to be defensive
       const { data: educator, error: educatorError } = await supabase
         .from('school_educators')
         .select('user_id')
         .eq('id', currentChat.educatorId)
-        .single();
+        .maybeSingle();
       
       if (educatorError || !educator) {
         toast.error('Could not find educator');

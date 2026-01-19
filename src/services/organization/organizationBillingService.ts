@@ -158,8 +158,8 @@ export class OrganizationBillingService {
           subscription_plans (
             id,
             name,
-            price,
-            billing_cycle
+            price_monthly,
+            price_yearly
           )
         `)
         .eq('organization_id', organizationId)
@@ -179,16 +179,10 @@ export class OrganizationBillingService {
       if (payError) throw payError;
 
       // 3. Get addon purchases for organization
+      // Note: addon_pending_orders uses addon_feature_key (text), not a foreign key to subscription_addons
       const { data: addons, error: addonError } = await supabase
         .from('addon_pending_orders')
-        .select(`
-          *,
-          subscription_addons (
-            id,
-            name,
-            price
-          )
-        `)
+        .select('*')
         .eq('organization_id', organizationId)
         .eq('status', 'completed');
 
@@ -231,18 +225,19 @@ export class OrganizationBillingService {
       const addonMap = new Map<string, AddonSummary>();
 
       (addons || []).forEach(addon => {
-        const addonId = addon.addon_id;
-        const existing = addonMap.get(addonId);
+        const addonKey = addon.addon_feature_key;
+        const existing = addonMap.get(addonKey);
         const memberCount = addon.target_member_ids?.length || 1;
-        const cost = (addon.subscription_addons?.price || 0) * memberCount;
+        // Use the amount from the order itself since there's no subscription_addons table
+        const cost = parseFloat(addon.amount || 0);
 
         if (existing) {
           existing.memberCount += memberCount;
           existing.monthlyCost += cost;
         } else {
-          addonMap.set(addonId, {
-            addonId,
-            addonName: addon.subscription_addons?.name || 'Unknown Addon',
+          addonMap.set(addonKey, {
+            addonId: addonKey,
+            addonName: addonKey?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown Addon',
             memberCount,
             monthlyCost: cost
           });
@@ -343,7 +338,7 @@ export class OrganizationBillingService {
           .from('organization_subscriptions')
           .select(`
             *,
-            subscription_plans (name, price)
+            subscription_plans (name, price_monthly, price_yearly)
           `)
           .eq('organization_id', transaction.organization_id)
           .order('created_at', { ascending: false })
@@ -544,7 +539,7 @@ export class OrganizationBillingService {
         .from('organization_subscriptions')
         .select(`
           *,
-          subscription_plans (price, billing_cycle)
+          subscription_plans (price_monthly, price_yearly)
         `)
         .eq('organization_id', organizationId)
         .eq('organization_type', organizationType)
@@ -553,12 +548,10 @@ export class OrganizationBillingService {
       if (subError) throw subError;
 
       // Get addon costs
+      // Note: addon_pending_orders uses addon_feature_key (text), not a foreign key to subscription_addons
       const { data: addons, error: addonError } = await supabase
         .from('addon_pending_orders')
-        .select(`
-          *,
-          subscription_addons (price)
-        `)
+        .select('*')
         .eq('organization_id', organizationId)
         .eq('status', 'completed');
 
@@ -573,8 +566,8 @@ export class OrganizationBillingService {
       // Calculate addon costs
       let addonCost = 0;
       (addons || []).forEach(addon => {
-        const memberCount = addon.target_member_ids?.length || 1;
-        addonCost += (addon.subscription_addons?.price || 0) * memberCount;
+        // Use the amount from the order itself
+        addonCost += parseFloat(addon.amount || 0);
       });
 
       const totalBeforeTax = subscriptionCost + addonCost;
@@ -620,7 +613,7 @@ export class OrganizationBillingService {
         .from('organization_subscriptions')
         .select(`
           *,
-          subscription_plans (price, billing_cycle)
+          subscription_plans (price_monthly, price_yearly)
         `)
         .eq('id', subscriptionId)
         .single();
@@ -630,7 +623,8 @@ export class OrganizationBillingService {
       }
 
       const newTotalSeats = subscription.total_seats + additionalSeats;
-      const pricePerSeat = subscription.subscription_plans?.price || subscription.price_per_seat;
+      // Use price_monthly as default (can be enhanced to detect billing cycle from subscription dates)
+      const pricePerSeat = subscription.subscription_plans?.price_monthly || subscription.price_per_seat;
 
       // Calculate new volume discount
       const newDiscountPercentage = this.calculateVolumeDiscount(newTotalSeats);
@@ -745,9 +739,13 @@ export class OrganizationBillingService {
    */
   private calculateMonthlyCost(subscription: any): number {
     const finalAmount = parseFloat(subscription.final_amount);
-    const billingCycle = subscription.subscription_plans?.billing_cycle || 'monthly';
+    // Determine if annual based on subscription duration
+    const startDate = new Date(subscription.start_date);
+    const endDate = new Date(subscription.end_date);
+    const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const isAnnual = durationDays > 60; // More than 2 months = annual
     
-    if (billingCycle === 'annual') {
+    if (isAnnual) {
       return finalAmount / 12;
     }
     return finalAmount;

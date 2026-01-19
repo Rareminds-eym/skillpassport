@@ -542,6 +542,7 @@ const AttendanceTracking: React.FC = () => {
       const { data: sectionsData } = await sectionsQuery;
 
       // Get faculty from college_lecturers table (filtered by college)
+      // Note: colleges table doesn't exist - fetch college name from organizations separately
       let facultyQuery = supabase
         .from('college_lecturers')
         .select(`
@@ -550,8 +551,7 @@ const AttendanceTracking: React.FC = () => {
           last_name,
           email,
           department,
-          "collegeId",
-          colleges!inner(name)
+          "collegeId"
         `)
         .eq('"accountStatus"', 'active');
 

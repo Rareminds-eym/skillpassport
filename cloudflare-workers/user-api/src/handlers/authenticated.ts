@@ -65,7 +65,20 @@ export async function handleCreateStudent(request: Request, env: Env): Promise<R
         collegeId = college.id;
         institutionType = 'college';
       }
+    } else if (userRole === 'school_admin') {
+      // Look up school from organizations table for school_admin
+      const { data: school } = await supabaseAdmin
+        .from('organizations')
+        .select('id')
+        .eq('organization_type', 'school')
+        .or(`admin_id.eq.${userId},email.ilike.${userEmail}`)
+        .maybeSingle();
+      if (school?.id) {
+        schoolId = school.id;
+        institutionType = 'school';
+      }
     } else {
+      // For educators, try organizationId first, then school_educators table
       schoolId = currentUserData?.organizationId || null;
       const { data: educatorData } = await supabaseAdmin
         .from('school_educators')
@@ -298,15 +311,15 @@ export async function handleCreateTeacher(request: Request, env: Env): Promise<R
       email: teacher.email.toLowerCase(),
       firstName: teacher.first_name,
       lastName: teacher.last_name,
-      role: 'educator',
+      role: 'school_educator',
       organizationId: schoolId,
       isActive: true,
-      entity_type: 'educator',
       metadata: {
         source: 'school_admin_added',
         schoolId,
         addedBy: user.id,
         teacherRole: teacher.role,
+        entityType: 'educator',
       },
     });
 
@@ -604,18 +617,17 @@ export async function handleCreateCollegeStaff(request: Request, env: Env): Prom
       email: staff.email.toLowerCase(),
       firstName,
       lastName,
-      full_name: staff.name,
-      name: staff.name,
       role: primaryRole,
       organizationId: collegeId,
       isActive: true,
-      entity_type: 'college_staff',
       metadata: {
         source: 'college_admin_added',
         collegeId,
         addedBy: user.id,
         roles: staff.roles,
         password: staffPassword,
+        fullName: staff.name,
+        entityType: 'college_staff',
       },
     });
 

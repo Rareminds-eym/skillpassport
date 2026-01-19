@@ -17,13 +17,19 @@ vi.mock('../../lib/supabaseClient', () => ({
 }));
 
 // Mock embedding service for controlled testing
-vi.mock('../embeddingService', () => ({
+vi.mock('../courseRecommendation/embeddingService', () => ({
   generateEmbedding: vi.fn(),
+  generateSkillEmbedding: vi.fn()
+}));
+
+// Mock vectorUtils for cosine similarity
+vi.mock('../../utils/vectorUtils', () => ({
   cosineSimilarity: vi.fn()
 }));
 
 import { supabase } from '../../lib/supabaseClient';
-import { generateEmbedding, cosineSimilarity } from '../embeddingService';
+import { generateEmbedding } from '../courseRecommendation/embeddingService';
+import { cosineSimilarity } from '../../utils/vectorUtils';
 import {
   getRecommendedCourses,
   buildProfileText,

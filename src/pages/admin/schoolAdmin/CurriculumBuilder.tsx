@@ -1024,9 +1024,13 @@ const CopyCurriculumModal = ({
             )
           `)
           .eq('id', selectedCurriculumId)
-          .single();
+          .maybeSingle();
 
         if (fetchError) throw fetchError;
+        if (!data) {
+          console.error('Curriculum not found');
+          return;
+        }
 
         setCurriculumPreview(data);
       } catch (err: any) {
@@ -1581,21 +1585,36 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
         if (user) {
           setCurrentUser(user);
           
-          // Check role
+          // Check role - use maybeSingle() to avoid 406 error
           const { data: userData } = await supabase
             .from('users')
             .select('role')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
           setIsSchoolAdmin(userData?.role === 'school_admin');
 
-          // Get educator data
+          // Get educator data - use maybeSingle() to avoid 406 error
           const { data: educator } = await supabase
             .from('school_educators')
             .select('id, school_id')
             .eq('user_id', user.id)
-            .single();
-          setEducatorData(educator);
+            .maybeSingle();
+          
+          if (educator) {
+            setEducatorData(educator);
+          } else {
+            // Fallback: Check organizations table for school admins
+            const { data: org } = await supabase
+              .from('organizations')
+              .select('id')
+              .eq('organization_type', 'school')
+              .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
+              .maybeSingle();
+            
+            if (org?.id) {
+              setEducatorData({ id: user.id, school_id: org.id });
+            }
+          }
         }
       } catch (error) {
         console.error('Error initializing user:', error);
@@ -2082,9 +2101,12 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
           )
         `)
         .eq('id', newCurriculumId)
-        .single();
+        .maybeSingle();
 
       if (fetchError) throw fetchError;
+      if (!copiedCurriculum) {
+        throw new Error('Failed to fetch copied curriculum');
+      }
 
       // Update local state with copied data
       setSelectedSubject(copiedCurriculum.subject);
@@ -2161,7 +2183,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
           .from('organizations')
           .select('name')
           .eq('id', educatorData.school_id)
-          .single();
+          .maybeSingle();
         
         if (orgData) {
           schoolName = orgData.name;

@@ -53,12 +53,39 @@ export const getStudentSettingsByEmail = async (email) => {
         guardianEmail,
         guardianRelation,
         currentCgpa,
+        grade,
+        grade_start_date,
+        universityId,
+        university_college_id,
+        school_id,
+        school_class_id,
+        college_id,
+        program_id,
+        program_section_id,
+        semester,
+        section,
         expectedGraduationDate,
         enrollmentDate,
         user_id,
         approval_status,
         created_at,
-        updated_at
+        updated_at,
+        school:organizations!students_school_id_fkey (
+          id,
+          name,
+          code,
+          city,
+          state,
+          organization_type
+        ),
+        college:organizations!students_college_id_fkey (
+          id,
+          name,
+          code,
+          city,
+          state,
+          organization_type
+        )
       `)
       .eq('email', email)
       .maybeSingle();
@@ -110,6 +137,17 @@ export const getStudentSettingsByEmail = async (email) => {
       registrationNumber: data.registration_number || '',
       enrollmentNumber: data.enrollmentNumber || '',
       currentCgpa: data.currentCgpa || '',
+      grade: data.grade || '',
+      gradeStartDate: data.grade_start_date || '',
+      universityId: data.universityId || '',
+      universityCollegeId: data.university_college_id || '',
+      schoolId: data.school_id || '',
+      schoolClassId: data.school_class_id || '',
+      collegeId: data.college_id || '',
+      programId: data.program_id || '',
+      programSectionId: data.program_section_id || '',
+      semester: data.semester || '',
+      section: data.section || '',
       enrollmentDate: data.enrollmentDate || '',
       expectedGraduationDate: data.expectedGraduationDate || '',
 
@@ -158,6 +196,11 @@ export const getStudentSettingsByEmail = async (email) => {
       approvalStatus: data.approval_status || 'pending',
       createdAt: data.created_at,
       updatedAt: data.updated_at,
+
+      // Organization info (from invitation acceptance)
+      // These are populated when a student accepts an organization invitation
+      schoolOrganization: data.school || null,
+      collegeOrganization: data.college || null,
     };
 
     return { success: true, data: settingsData };
@@ -209,6 +252,17 @@ export const updateStudentSettings = async (email, updates) => {
       registrationNumber: 'registration_number',
       enrollmentNumber: 'enrollmentNumber',
       currentCgpa: 'currentCgpa',
+      grade: 'grade',
+      gradeStartDate: 'grade_start_date',
+      universityId: 'universityId',
+      universityCollegeId: 'university_college_id',
+      schoolId: 'school_id',
+      schoolClassId: 'school_class_id',
+      collegeId: 'college_id',
+      programId: 'program_id',
+      programSectionId: 'program_section_id',
+      semester: 'semester',
+      section: 'section',
       enrollmentDate: 'enrollmentDate',
       expectedGraduationDate: 'expectedGraduationDate',
       guardianName: 'guardianName',
@@ -226,10 +280,16 @@ export const updateStudentSettings = async (email, updates) => {
     };
 
     // Define numeric fields that should be null instead of empty string
-    const numericFields = ['age', 'pincode', 'currentCgpa'];
+    const numericFields = ['age', 'pincode', 'currentCgpa', 'semester'];
+
+    // Define UUID fields that should be null instead of empty string
+    const uuidFields = ['universityCollegeId', 'schoolId', 'schoolClassId', 'collegeId', 'programId', 'universityId', 'programSectionId'];
 
     // Define fields that might contain phone numbers (could be numeric in DB)
     const phoneFields = ['phone', 'alternatePhone', 'guardianPhone'];
+
+    // Define date fields that should be null instead of empty string
+    const dateFields = ['dateOfBirth', 'gradeStartDate', 'enrollmentDate', 'expectedGraduationDate'];
 
     // Process updates
     Object.keys(updates).forEach(key => {
@@ -241,12 +301,29 @@ export const updateStudentSettings = async (email, updates) => {
           value = null;
         }
 
+        // Handle UUID fields - convert empty strings to null
+        if (uuidFields.includes(key) && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+
         // Handle phone fields - convert empty strings to null (in case they're stored as numeric)
         if (phoneFields.includes(key) && (value === '' || value === null || value === undefined)) {
           value = null;
         }
 
+        // Handle date fields - convert empty strings to null
+        if (dateFields.includes(key) && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+
         columnUpdates[fieldMapping[key]] = value;
+        
+        // IMPORTANT: When branch_field is updated, also update course_name
+        // This ensures consistency between settings page and assessment test page
+        if (key === 'branch' && value) {
+          columnUpdates.course_name = value;
+          console.log('📚 Syncing course_name with branch_field:', value);
+        }
       } else if (key === 'otherSocialLinks') {
         columnUpdates.other_social_links = updates[key];
       }

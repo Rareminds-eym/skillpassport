@@ -719,7 +719,7 @@ async function handleGenerateEmbedding(request: Request, env: Env): Promise<Resp
     return jsonResponse({ success: false, error: 'Invalid JSON' }, 400);
   }
 
-  const { text, table, id, type = 'opportunity' } = body;
+  const { text, table, id, type = 'opportunity', returnEmbedding = false } = body;
 
   // Validate required parameters
   if (!text || !table || !id) {
@@ -793,6 +793,16 @@ async function handleGenerateEmbedding(request: Request, env: Env): Promise<Resp
 
     console.log(`Generated embedding with ${embedding.length} dimensions`);
 
+    // If returnEmbedding is true, skip database update and just return the embedding
+    if (returnEmbedding) {
+      console.log(`✅ Returning embedding without database update (${embedding.length} dimensions)`);
+      return jsonResponse({
+        success: true,
+        embedding: embedding,
+        dimensions: embedding.length
+      });
+    }
+
     // Update the record in Supabase
     const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
@@ -840,6 +850,52 @@ const buildAnalysisPrompt = (assessmentData: any) => {
 
   const gradeLevel = assessmentData.gradeLevel || 'after12';
   const isAfter10 = gradeLevel === 'after10';
+  
+  // Extract student context for enhanced recommendations
+  const studentContext = assessmentData.studentContext || {};
+  const hasStudentContext = studentContext.rawGrade || studentContext.programName;
+  
+  // Build student context section for AI prompt
+  const studentContextSection = hasStudentContext ? `
+## STUDENT ACADEMIC CONTEXT (USE THIS FOR PERSONALIZED RECOMMENDATIONS):
+${studentContext.rawGrade ? `- Current Grade/Year: ${studentContext.rawGrade}` : ''}
+${studentContext.programName ? `- Program/Course: ${studentContext.programName}` : ''}
+${studentContext.degreeLevel ? `- Degree Level: ${studentContext.degreeLevel}` : ''}
+
+**IMPORTANT INSTRUCTIONS FOR USING STUDENT CONTEXT:**
+${studentContext.degreeLevel === 'postgraduate' ? `
+- This student is pursuing POSTGRADUATE education (Master's level)
+- DO NOT recommend undergraduate (UG) courses or basic entry-level roles
+- Focus on ADVANCED roles, specializations, and career progression
+- Recommend roles that require Master's degree or equivalent experience
+- Salary ranges should reflect postgraduate qualifications (higher range)
+- Skill gaps should focus on advanced/specialized skills, not basics
+` : studentContext.degreeLevel === 'undergraduate' ? `
+- This student is pursuing UNDERGRADUATE education (Bachelor's level)
+- Recommend entry-level to mid-level roles appropriate for fresh graduates
+- Focus on foundational skills and early career development
+- Include internship and training opportunities
+- Salary ranges should reflect entry-level positions
+` : studentContext.degreeLevel === 'diploma' ? `
+- This student is pursuing DIPLOMA education
+- Recommend technical/vocational roles appropriate for diploma holders
+- Focus on practical skills and hands-on experience
+- Include apprenticeship and skill certification opportunities
+` : ''}
+${studentContext.programName ? `
+- Student's field of study: ${studentContext.programName}
+- Prioritize career recommendations ALIGNED with their program
+- If program is technical (CS/IT/Engineering), focus on tech roles
+- If program is business (BBA/MBA), focus on management/business roles
+- If program is science (MSc/BSc), focus on research/analytical roles
+` : ''}
+
+**FILTERING RULES:**
+- Filter out recommendations that don't match the student's education level
+- Ensure career clusters are relevant to their field of study
+- Adjust skill gap priorities based on their current program
+- Tailor learning tracks to complement their academic curriculum
+` : '';
 
   // After 10th specific stream recommendation section - ONLY for after10 students
   const after10StreamSection = isAfter10 ? `
@@ -907,6 +963,7 @@ This analysis must be DETERMINISTIC and CONSISTENT. Given the same input data, y
 
 ## Student Grade Level: ${gradeLevel.toUpperCase()}
 ## Student Stream: ${assessmentData.stream.toUpperCase()}
+${studentContextSection}
 ${after10StreamSection}
 
 ## RIASEC Career Interest Responses (1-5 scale: 1=Strongly Dislike, 2=Dislike, 3=Neutral, 4=Like, 5=Strongly Like):
@@ -1693,6 +1750,101 @@ ${resumeText.slice(0, 15000)}
 }
 
 
+// ==================== FIELD DOMAIN KEYWORDS HANDLER ====================
+
+/**
+ * Generate domain-specific keywords for a field of study using AI
+ * This replaces hardcoded field mappings with dynamic AI generation
+ */
+async function handleGenerateFieldKeywords(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') {
+    return jsonResponse({ error: 'Method not allowed' }, 405);
+  }
+
+  let body: { field: string };
+  try {
+    body = await request.json() as { field: string };
+  } catch {
+    return jsonResponse({ error: 'Invalid JSON' }, 400);
+  }
+
+  const { field } = body;
+
+  if (!field || typeof field !== 'string' || field.trim().length === 0) {
+    return jsonResponse({ error: 'Field is required' }, 400);
+  }
+
+  const fieldTrimmed = field.trim();
+
+  try {
+    console.log(`[Field Keywords] Generating for: "${fieldTrimmed}"`);
+
+    // Call OpenRouter AI to generate keywords
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getOpenRouterKey(env)}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': env.VITE_APP_URL || 'https://skillpassport.rareminds.in',
+        'X-Title': 'SkillPassport Course Recommendations'
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.0-flash-exp:free',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an education domain expert. Generate a comprehensive list of relevant course domain keywords for a given field of study. Return ONLY a comma-separated list of ALL possible keywords, no explanations.'
+          },
+          {
+            role: 'user',
+            content: `Field of Study: "${fieldTrimmed}"\n\nGenerate a comprehensive list of ALL possible domain keywords that represent this field. Include:\n1. Core subjects and topics\n2. Technical skills and competencies\n3. Industry-specific tools and technologies\n4. Career domains and job roles\n5. Related disciplines and specializations\n6. Soft skills relevant to this field\n7. Certifications and qualifications\n8. Industry terminology\n\nBe thorough and comprehensive. Return ONLY the comma-separated keywords, nothing else.`
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 500
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Field Keywords] AI API error: ${response.status} - ${errorText}`);
+      return jsonResponse({ 
+        error: 'AI service error', 
+        status: response.status,
+        useFallback: true 
+      }, response.status);
+    }
+
+    const data = await response.json() as { choices: Array<{ message: { content: string } }> };
+    const keywords = data.choices?.[0]?.message?.content?.trim();
+
+    if (!keywords) {
+      console.warn(`[Field Keywords] No keywords generated for "${fieldTrimmed}"`);
+      return jsonResponse({ 
+        error: 'No keywords generated',
+        useFallback: true 
+      }, 500);
+    }
+
+    console.log(`[Field Keywords] ✓ Generated for "${fieldTrimmed}": ${keywords}`);
+
+    return jsonResponse({
+      success: true,
+      field: fieldTrimmed,
+      keywords,
+      source: 'ai',
+      model: 'google/gemini-2.0-flash-exp:free'
+    });
+
+  } catch (error) {
+    console.error(`[Field Keywords] Error for "${fieldTrimmed}":`, error);
+    return jsonResponse({ 
+      error: (error as Error).message,
+      useFallback: true 
+    }, 500);
+  }
+}
+
 // ==================== MAIN HANDLER ====================
 
 export default {
@@ -1734,6 +1886,13 @@ export default {
         return await handleGenerateEmbedding(request, env);
       }
 
+      if (path === '/generate-field-keywords') {
+        if (!getOpenRouterKey(env)) {
+          return jsonResponse({ error: 'AI service not configured', useFallback: true }, 500);
+        }
+        return await handleGenerateFieldKeywords(request, env);
+      }
+
       if (path === '/parse-resume') {
         if (!getOpenRouterKey(env)) {
           return jsonResponse({ error: 'AI service not configured' }, 500);
@@ -1747,14 +1906,14 @@ export default {
           status: 'ok',
           service: 'career-api',
           version: '2.0-cloudflare',
-          endpoints: ['/chat', '/recommend-opportunities', '/analyze-assessment', '/generate-embedding', '/parse-resume'],
+          endpoints: ['/chat', '/recommend-opportunities', '/analyze-assessment', '/generate-embedding', '/generate-field-keywords', '/parse-resume'],
           timestamp: new Date().toISOString()
         });
       }
 
       return jsonResponse({ 
         error: 'Not found', 
-        availableEndpoints: ['/chat', '/recommend-opportunities', '/analyze-assessment', '/generate-embedding', '/parse-resume'] 
+        availableEndpoints: ['/chat', '/recommend-opportunities', '/analyze-assessment', '/generate-embedding', '/generate-field-keywords', '/parse-resume'] 
       }, 404);
 
     } catch (error) {

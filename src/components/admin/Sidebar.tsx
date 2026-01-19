@@ -1,28 +1,28 @@
 import {
-  HomeIcon,
-  BuildingOffice2Icon,
-  UserGroupIcon,
-  AcademicCapIcon,
-  ClipboardDocumentListIcon,
-  ChartBarIcon,
-  BriefcaseIcon,
-  Cog6ToothIcon,
-  ChevronDownIcon,
-  CalendarDaysIcon,
-  BanknotesIcon,
-  WrenchScrewdriverIcon,
-  DocumentChartBarIcon,
-  ChartPieIcon,
-  BellIcon,
-  BookOpenIcon,
-  UserIcon,
-  BuildingLibraryIcon,
-  ClipboardIcon,
-  FolderOpenIcon,
-  FolderIcon,
-  SparklesIcon,
-  ShieldCheckIcon,
-  CreditCardIcon,
+    AcademicCapIcon,
+    BanknotesIcon,
+    BellIcon,
+    BookOpenIcon,
+    BriefcaseIcon,
+    BuildingLibraryIcon,
+    BuildingOffice2Icon,
+    CalendarDaysIcon,
+    ChartBarIcon,
+    ChartPieIcon,
+    ChevronDownIcon,
+    ClipboardDocumentListIcon,
+    ClipboardIcon,
+    Cog6ToothIcon,
+    CreditCardIcon,
+    DocumentChartBarIcon,
+    FolderIcon,
+    FolderOpenIcon,
+    HomeIcon,
+    ShieldCheckIcon,
+    SparklesIcon,
+    UserGroupIcon,
+    UserIcon,
+    WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { TrophyIcon } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -33,7 +33,14 @@ function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }) => {
+interface SidebarProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  showMobileMenu: boolean;
+  onMobileMenuClose?: () => void;
+}
+
+const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -45,7 +52,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
     const initialState: Record<string, boolean> = {};
     const allGroups = [
       "students", "teachers", "academics", "communication", "finance", "skills", // school_admin
-      "colleges", "courses", "faculty", "placements", "analytics", // university_admin
+      "colleges", "courses", "faculty", "placements", "analytics", "library", "hr-payroll", // university_admin
       "department", "student", "examinations", "operations", "administration" // college_admin
     ];
     allGroups.forEach(group => {
@@ -418,6 +425,68 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           ],
         },
         {
+          title: "Library & Student Services",
+          key: "library",
+          items: [
+            {
+              name: "Library Management",
+              path: "/university-admin/library/management",
+              icon: BuildingLibraryIcon,
+            },
+            {
+              name: "Library Clearance",
+              path: "/university-admin/library/clearance",
+              icon: ShieldCheckIcon,
+            },
+            {
+              name: "Student Service Requests",
+              path: "/university-admin/library/service-requests",
+              icon: ClipboardIcon,
+            },
+            {
+              name: "Graduation Integration",
+              path: "/university-admin/library/graduation-integration",
+              icon: AcademicCapIcon,
+            },
+          ],
+        },
+        {
+          title: "HR & Payroll",
+          key: "hr-payroll",
+          items: [
+            {
+              name: "Faculty Lifecycle",
+              path: "/university-admin/hr/faculty-lifecycle",
+              icon: UserGroupIcon,
+            },
+            {
+              name: "Staff Management",
+              path: "/university-admin/hr/staff-management",
+              icon: UserIcon,
+            },
+            {
+              name: "Payroll Processing",
+              path: "/university-admin/hr/payroll",
+              icon: BanknotesIcon,
+            },
+            {
+              name: "Statutory Deductions",
+              path: "/university-admin/hr/statutory-deductions",
+              icon: CreditCardIcon,
+            },
+            {
+              name: "Employee Records",
+              path: "/university-admin/hr/employee-records",
+              icon: FolderOpenIcon,
+            },
+            {
+              name: "Leave Management",
+              path: "/university-admin/hr/leave-management",
+              icon: CalendarDaysIcon,
+            },
+          ],
+        },
+        {
           title: "Communication & Announcements",
           key: "communication",
           items: [
@@ -520,8 +589,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             path: "/college-admin/academics/browse-courses",
             icon: AcademicCapIcon,
           },
-          */
-
           {
             name: "Course Master",
             path: "/college-admin/academics/subject-courses",
@@ -739,12 +806,28 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             <div
               className={classNames(
                 "overflow-hidden transition-all duration-500 ease-in-out",
-                openGroups[group.key] ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                openGroups[group.key] ? "max-h-auto opacity-100" : "max-h-0 opacity-0"
               )}
             >
               <div className="mt-1 space-y-1 pl-2 border-l border-gray-100">
                 {group.items.map((item) => {
-                  const isActive = location.pathname.startsWith(item.path);
+                  // Exact path matching with proper handling of nested routes
+                  const currentPath = location.pathname;
+                  const itemPath = item.path;
+                  
+                  // Check if this is an exact match or if it's a parent path with no other longer matching paths
+                  const isExactMatch = currentPath === itemPath;
+                  const isParentMatch = currentPath.startsWith(itemPath + '/');
+                  
+                  // Find if there's a more specific path that matches better
+                  const hasMoreSpecificMatch = group.items.some(otherItem => 
+                    otherItem !== item && 
+                    currentPath.startsWith(otherItem.path) && 
+                    otherItem.path.length > itemPath.length
+                  );
+                  
+                  const isActive = isExactMatch || (isParentMatch && !hasMoreSpecificMatch);
+                  
                   return (
                     <button
                       key={item.name}

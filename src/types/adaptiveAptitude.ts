@@ -377,17 +377,23 @@ export interface AdaptiveTestConfig {
 
 /**
  * Default configuration for the adaptive aptitude test
+ * 
+ * Question Pattern:
+ * - Phase 1 (Diagnostic Screener): Q1-Q6 all at Level 3 (baseline) - 6 questions
+ * - Phase 2 (Adaptive Core): Q7-Q17 truly adaptive based on performance - 11 questions
+ * - Phase 3 (Stability Confirmation): Q18-Q21 at final level - 4 questions
+ * Total: 21 questions
  */
 export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
   phases: {
     diagnostic_screener: {
       phase: 'diagnostic_screener',
       minQuestions: 6,
-      maxQuestions: 6,
+      maxQuestions: 6,  // 6 questions for baseline (all at Level 3)
       difficultyDistribution: {
-        easy: 2,    // 2 easy questions
-        medium: 2,  // 2 medium questions
-        hard: 2,    // 2 hard questions
+        easy: 0,    // All at level 3 for baseline
+        medium: 6,  // 6 medium questions (Level 3)
+        hard: 0,    // No hard questions in baseline
       },
       minSubtags: 3,
       maxConsecutiveSameSubtag: 1,
@@ -395,14 +401,14 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
     adaptive_core: {
       phase: 'adaptive_core',
       minQuestions: 8,
-      maxQuestions: 11,  // Updated: 11 questions for adaptive core
+      maxQuestions: 11,  // 11 questions for adaptive core
       maxConsecutiveSameSubtag: 2,
       maxConsecutiveSameDirectionJumps: 2,
     },
     stability_confirmation: {
       phase: 'stability_confirmation',
       minQuestions: 4,
-      maxQuestions: 4,  // Updated: 4 questions for stability
+      maxQuestions: 4,  // 4 questions for stability
       maxConsecutiveSameSubtag: 2,
     },
   },
@@ -411,7 +417,7 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
     M: 3,
     H: 4,
   },
-  minimumQuestionsForStop: 16,
+  minimumQuestionsForStop: 15,
   consistencyWindowSize: 5,
   maxDirectionChangesForHighConfidence: 1,
   maxDirectionChangesForMediumConfidence: 2,

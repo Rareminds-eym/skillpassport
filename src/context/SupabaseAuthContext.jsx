@@ -201,12 +201,28 @@ export const SupabaseAuthProvider = ({ children }) => {
         throw new Error(result.error || 'Failed to create account');
       }
 
+      // CRITICAL FIX: Auto-login after successful signup
+      // This establishes a Supabase session so the user is authenticated
+      console.log('🔐 Auto-logging in after signup...');
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        console.error('⚠️ Auto-login failed:', signInError.message);
+        // Even if auto-login fails, the account was created successfully
+      } else {
+        console.log('✅ Auto-login successful, session established');
+      }
+
       // Return in the same format as supabase.auth.signUp
       return { 
         data: { 
           user: { 
             id: result.data.userId, 
-            email: result.data.email 
+            email: result.data.email,
+            session: signInData?.session || null
           } 
         }, 
         error: null 

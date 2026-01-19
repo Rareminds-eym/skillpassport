@@ -69,16 +69,24 @@ const StudentCollegeAdminCommunication = () => {
       if (!collegeAdminId) return null;
       
       // Try college_lecturers table first
+      // Note: colleges table doesn't exist - fetch college name from organizations separately
       const { data: lecturerData, error: lecturerError } = await supabase
         .from('college_lecturers')
-        .select('collegeId, colleges(id, name)')
+        .select('collegeId')
         .or(`user_id.eq.${collegeAdminId},userId.eq.${collegeAdminId}`)
         .single();
       
-      if (!lecturerError && lecturerData) {
+      if (!lecturerError && lecturerData?.collegeId) {
+        // Fetch college name from organizations table
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('id, name')
+          .eq('id', lecturerData.collegeId)
+          .maybeSingle();
+        
         return {
           college_id: lecturerData.collegeId,
-          colleges: lecturerData.colleges
+          colleges: orgData
         };
       }
       
@@ -107,17 +115,25 @@ const StudentCollegeAdminCommunication = () => {
     queryKey: ['college-admin-conversations', collegeId, 'active'],
     queryFn: async () => {
       if (!collegeId) return [];
+      // Note: colleges table doesn't exist - college info already available from collegeData
       const { data, error } = await supabase
         .from('conversations')
         .select(`
           *,
-          student:students(id, name, email, university, branch_field),
-          college:colleges(id, name)
+          student:students(id, name, email, university, branch_field)
         `)
         .eq('college_id', collegeId)
         .eq('conversation_type', 'student_college_admin')
         .eq('deleted_by_college_admin', false)
         .order('last_message_at', { ascending: false, nullsFirst: false });
+      
+      if (error) throw error;
+      
+      // Add college info from collegeData
+      return (data || []).map(conv => ({
+        ...conv,
+        college: collegeData?.colleges || null
+      }));
       
       if (error) throw error;
       return data || [];
@@ -135,12 +151,12 @@ const StudentCollegeAdminCommunication = () => {
     queryKey: ['college-admin-conversations', collegeId, 'archived'],
     queryFn: async () => {
       if (!collegeId) return [];
+      // Note: colleges table doesn't exist - college info already available from collegeData
       const { data, error } = await supabase
         .from('conversations')
         .select(`
           *,
-          student:students(id, name, email, university, branch_field),
-          college:colleges(id, name)
+          student:students(id, name, email, university, branch_field)
         `)
         .eq('college_id', collegeId)
         .eq('conversation_type', 'student_college_admin')
@@ -148,7 +164,12 @@ const StudentCollegeAdminCommunication = () => {
         .order('last_message_at', { ascending: false, nullsFirst: false });
       
       if (error) throw error;
-      return data || [];
+      
+      // Add college info from collegeData
+      return (data || []).map(conv => ({
+        ...conv,
+        college: collegeData?.colleges || null
+      }));
     },
     enabled: !!collegeId,
     staleTime: 60000,

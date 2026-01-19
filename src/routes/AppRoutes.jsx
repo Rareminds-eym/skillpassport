@@ -26,6 +26,14 @@ import DigitalSharingSettings from '../pages/digital-pp/settings/SharingSettings
 import DigitalThemeSettings from '../pages/digital-pp/settings/ThemeSettings';
 // Duplicate imports removed - using the Digital* prefixed imports above
 
+// Role constants to prevent re-renders
+const STUDENT_ROLES = ["student", "school_student", "college_student"];
+const RECRUITER_ROLES = ["recruiter"];
+const EDUCATOR_ROLES = ["educator", "school_educator", "college_educator"];
+const COLLEGE_ADMIN_ROLES = ["college_admin"];
+const SCHOOL_ADMIN_ROLES = ["school_admin"];
+const UNIVERSITY_ADMIN_ROLES = ["university_admin"];
+
 const Home = lazy(() => import("../pages/homepage/Home"));
 const About = lazy(() => import("../pages/homepage/About"));
 const Contact = lazy(() => import("../pages/homepage/Contact"));
@@ -60,6 +68,12 @@ const BulkPurchasePage = lazy(() =>
 );
 const MemberSubscriptionPage = lazy(() =>
   import("../pages/subscription/MemberSubscriptionPage")
+);
+const OrganizationPaymentPage = lazy(() =>
+  import("../pages/subscription/OrganizationPaymentPage")
+);
+const AcceptInvitationPage = lazy(() =>
+  import("../pages/subscription/AcceptInvitationPage")
 );
 
 // Event Sales (no auth required)
@@ -138,7 +152,7 @@ const BrowseJobs = lazy(() => import("../pages/student/BrowseJobs"));
 const Messages = lazy(() => import("../pages/student/Messages"));
 const StudentAnalytics = lazy(() => import("../pages/student/Analytics"));
 const MyClass = lazy(() => import("../pages/student/MyClass"));
-const Clubs = lazy(() => import ("../pages/student/Clubs"))
+const Clubs = lazy(() => import("../pages/student/Clubs"))
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
 const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
 const CareerAI = lazy(() => import("../pages/student/CareerAI"));
@@ -147,7 +161,7 @@ const StudentPublicViewer = lazy(() =>
   import("../components/Students/components/StudentPublicViewer")
 );
 const Settings = lazy(() => import("../pages/student/Settings"));
-const AssessmentTest = lazy(() => import("../pages/student/AssessmentTest"));
+// AssessmentTest is deprecated - using AssessmentTestPage from feature module instead
 const AssessmentResult = lazy(() => import("../pages/student/AssessmentResult"));
 const AssessmentTestPage = lazy(() => import("../pages/student/AssessmentTestPage"));
 const AssessmentResults = lazy(() => import("../pages/student/AssessmentResults"));
@@ -165,7 +179,9 @@ const EducatorAssessmentResults = lazy(() => import("../pages/educator/Assessmen
 const EducatorCourses = lazy(() => import("../pages/educator/Courses"));
 const EducatorBrowseCourses = lazy(() => import("../pages/educator/BrowseCourses"));
 const EducatorAssessments = lazy(() => import("../pages/educator/Assessments"));
+const CollegeAssignments = lazy(() => import("../pages/educator/CollegeSkillTasks"));
 const EducatorMentorNotes = lazy(() => import("../pages/educator/MentorNotes"));
+const EducatorMyMentees = lazy(() => import("../pages/educator/MyMentees"));
 const EducatorSettings = lazy(() => import("../pages/educator/Settings"));
 const EducatorProfile = lazy(() => import("../pages/educator/ProfileFixed"));
 const EducatorProfileDebug = lazy(() => import("../pages/educator/ProfileDebug"));
@@ -256,6 +272,9 @@ const UniversityAdminDashboard = lazy(() =>
 const CollegeRegistration = lazy(() =>
   import("../pages/admin/universityAdmin/CollegeRegistration")
 );
+const ProgramAllocation = lazy(() =>
+  import("../pages/admin/universityAdmin/ProgramAllocation")
+);
 const StudentEnrollments = lazy(() =>
   import("../pages/admin/universityAdmin/StudentEnrollments")
 );
@@ -268,11 +287,17 @@ const PlacementReadiness = lazy(() =>
 const OutcomeBasedEducation = lazy(() =>
   import("../pages/admin/universityAdmin/OutcomeBasedEducation")
 );
+const DistrictCollegeReports = lazy(() =>
+  import("../pages/admin/universityAdmin/DistrictCollegeReports")
+);
 const AICounselling = lazy(() =>
   import("../pages/admin/universityAdmin/AICounselling")
 );
 const UniversityAdminCourses = lazy(() =>
   import("../pages/admin/universityAdmin/Courses")
+);
+const SyllabusApproval = lazy(() =>
+  import("../pages/admin/universityAdmin/SyllabusApproval")
 );
 const UniversityAdminDigitalPortfolio = lazy(() =>
   import("../pages/admin/universityAdmin/DigitalPortfolio")
@@ -292,6 +317,9 @@ const UniversityGradeCalculation = lazy(() =>
 const UniversityResultsPublishing = lazy(() =>
   import("../pages/admin/universityAdmin/ResultsPublishing")
 );
+const UniversityCentralizedResults = lazy(() =>
+  import("../pages/admin/universityAdmin/CentralizedResults")
+);
 const UniversityFinance = lazy(() =>
   import("../pages/admin/universityAdmin/Finance")
 );
@@ -300,6 +328,58 @@ const UniversityPaymentTracking = lazy(() =>
 );
 const UniversityFinancialReports = lazy(() =>
   import("../pages/admin/universityAdmin/FinancialReports")
+);
+const UniversityPerformanceMonitoring = lazy(() =>
+  import("../pages/admin/universityAdmin/PerformanceMonitoring")
+);
+const FacultyEmpanelment = lazy(() =>
+  import("../pages/admin/universityAdmin/FacultyEmpanelment")
+);
+const FacultyFeedbackCertification = lazy(() =>
+  import("../pages/admin/universityAdmin/FeedbackCertification")
+);
+const UniversityStudentCertificates = lazy(() =>
+  import("../pages/admin/universityAdmin/StudentCertificates")
+);
+const UniversityCircularsManagement = lazy(() =>
+  import("../pages/admin/universityAdmin/CircularsManagement")
+);
+const UniversityTrainingUpdates = lazy(() =>
+  import("../pages/admin/universityAdmin/TrainingUpdates")
+);
+
+// Library & Student Services
+const LibraryManagement = lazy(() =>
+  import("../pages/admin/universityAdmin/library/LibraryManagement")
+);
+const LibraryClearance = lazy(() =>
+  import("../pages/admin/universityAdmin/library/LibraryClearance")
+);
+const StudentServiceRequests = lazy(() =>
+  import("../pages/admin/universityAdmin/library/StudentServiceRequests")
+);
+const GraduationIntegration = lazy(() =>
+  import("../pages/admin/universityAdmin/library/GraduationIntegration")
+);
+
+// HR & Payroll
+const FacultyLifecycle = lazy(() =>
+  import("../pages/admin/universityAdmin/hr/FacultyLifecycle")
+);
+const StaffManagement = lazy(() =>
+  import("../pages/admin/universityAdmin/hr/StaffManagement")
+);
+const PayrollProcessing = lazy(() =>
+  import("../pages/admin/universityAdmin/hr/PayrollProcessing")
+);
+const StatutoryDeductions = lazy(() =>
+  import("../pages/admin/universityAdmin/hr/StatutoryDeductions")
+);
+const EmployeeRecords = lazy(() =>
+  import("../pages/admin/universityAdmin/hr/EmployeeRecords")
+);
+const LeaveManagement = lazy(() =>
+  import("../pages/admin/universityAdmin/hr/LeaveManagement")
 );
 
 const AttendanceTracking = lazy(() =>
@@ -425,12 +505,12 @@ const AppRoutes = () => {
       <Routes>
         {/* Simple Event Registration - Social media campaigns (standalone, no layout) */}
         <Route path="/register" element={<SimpleEventRegistration />} />
-        
+
         {/* Event Sales - Standalone without layout (no header/footer) */}
         <Route path="/signup/plans" element={<EventSales />} />
         <Route path="/signup/plans/success" element={<EventSalesSuccess />} />
         <Route path="/signup/plans/failure" element={<EventSalesFailure />} />
-        
+
         {/* Register plans - alias for Event Sales (standalone, no layout) */}
         <Route path="/register/plans" element={<EventSales />} />
         <Route path="/register/plans/success" element={<EventSalesSuccess />} />
@@ -480,6 +560,7 @@ const AppRoutes = () => {
           <Route path="/subscription/payment" element={<PaymentCompletion />} />
           <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
+          <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
           <Route path="/debug-qr" element={<DebugQRTest />} />
           <Route
             path="/student/profile/:studentId"
@@ -515,7 +596,7 @@ const AppRoutes = () => {
         <Route
           path="/college-admin/*"
           element={
-            <SubscriptionProtectedRoute 
+            <SubscriptionProtectedRoute
               allowedRoles={["college_admin"]}
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=college_admin"
@@ -554,7 +635,7 @@ const AppRoutes = () => {
           <Route path="academics/coverage-tracker" element={<AcademicCoverageTracker />} />
           <Route path="academics/programs" element={<ProgramManagement />} />
           <Route path="academics/program-sections" element={<ProgramSectionManagement />} />
-          
+
           <Route path="academics/calendar" element={<AcademicCalendar />} />
 
           {/* Examination Management */}
@@ -594,6 +675,7 @@ const AppRoutes = () => {
           <Route path="subscription/add-ons" element={<AddOns />} />
           <Route path="subscription/organization" element={<OrganizationSubscriptionPage />} />
           <Route path="subscription/bulk-purchase" element={<BulkPurchasePage />} />
+          <Route path="subscription/organization-payment" element={<OrganizationPaymentPage />} />
           <Route path="subscription/member-view" element={<MemberSubscriptionPage />} />
 
           <Route path="" element={<Navigate to="/college-admin/dashboard" replace />} />
@@ -602,7 +684,7 @@ const AppRoutes = () => {
         <Route
           path="/school-admin/*"
           element={
-            <SubscriptionProtectedRoute 
+            <SubscriptionProtectedRoute
               allowedRoles={["school_admin"]}
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=school_admin"
@@ -617,7 +699,7 @@ const AppRoutes = () => {
           <Route path="students/admissions" element={<StudentAdmissions />} />
           <Route path="students/attendance-reports" element={<AttendanceReports />} />
           <Route path="students/assessment-results" element={<SchoolAdminAssessmentResults />} />
-          <Route path="students/verifications" element={<SchoolAdminVerifications  />} />
+          <Route path="students/verifications" element={<SchoolAdminVerifications />} />
           <Route path="students/digital-portfolio" element={<SchoolAdminDigitalPortfolio />} />
           <Route path="classes/management" element={<ClassManagement />} />
           <Route path="courses" element={<SchoolAdminCourses />} />
@@ -654,6 +736,7 @@ const AppRoutes = () => {
           <Route path="subscription/add-ons" element={<AddOns />} />
           <Route path="subscription/organization" element={<OrganizationSubscriptionPage />} />
           <Route path="subscription/bulk-purchase" element={<BulkPurchasePage />} />
+          <Route path="subscription/organization-payment" element={<OrganizationPaymentPage />} />
           <Route path="subscription/member-view" element={<MemberSubscriptionPage />} />
           <Route
             path=""
@@ -664,7 +747,7 @@ const AppRoutes = () => {
         <Route
           path="/university-admin/*"
           element={
-            <SubscriptionProtectedRoute 
+            <SubscriptionProtectedRoute
               allowedRoles={["university_admin"]}
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=university_admin"
@@ -677,7 +760,9 @@ const AppRoutes = () => {
         >
           <Route path="dashboard" element={<UniversityAdminDashboard />} />
           <Route path="colleges/registration" element={<CollegeRegistration />} />
+          <Route path="colleges/programs" element={<ProgramAllocation />} />
           <Route path="courses" element={<UniversityAdminCourses />} />
+          <Route path="courses/syllabus" element={<SyllabusApproval />} />
           <Route path="browse-courses" element={<UniversityAdminBrowseCourses />} />
           <Route path="students/enrollments" element={<StudentEnrollments />} />
           <Route path="students/digital-portfolios" element={<UniversityAdminDigitalPortfolio />} />
@@ -685,18 +770,37 @@ const AppRoutes = () => {
           <Route path="students/continuous-assessment" element={<ContinuousAssessment />} />
           <Route path="placements/readiness" element={<PlacementReadiness />} />
           <Route path="analytics/obe-tracking" element={<OutcomeBasedEducation />} />
+          <Route path="analytics/reports" element={<DistrictCollegeReports />} />
           <Route path="ai-counselling" element={<AICounselling />} />
           <Route path="examinations" element={<UniversityExaminationManagement />} />
           <Route path="examinations/grades" element={<UniversityGradeCalculation />} />
           <Route path="examinations/results" element={<UniversityResultsPublishing />} />
+          <Route path="students/results" element={<UniversityCentralizedResults />} />
+          <Route path="students/certificates" element={<UniversityStudentCertificates />} />
           <Route path="finance" element={<UniversityFinance />} />
           <Route path="finance/payments" element={<UniversityPaymentTracking />} />
           <Route path="finance/reports" element={<UniversityFinancialReports />} />
+          <Route path="colleges/performance" element={<UniversityPerformanceMonitoring />} />
+          <Route path="faculty/empanelment" element={<FacultyEmpanelment />} />
+          <Route path="faculty/feedback" element={<FacultyFeedbackCertification />} />
+          <Route path="library/management" element={<LibraryManagement />} />
+          <Route path="library/clearance" element={<LibraryClearance />} />
+          <Route path="library/service-requests" element={<StudentServiceRequests />} />
+          <Route path="library/graduation-integration" element={<GraduationIntegration />} />
+          <Route path="hr/faculty-lifecycle" element={<FacultyLifecycle />} />
+          <Route path="hr/staff-management" element={<StaffManagement />} />
+          <Route path="hr/payroll" element={<PayrollProcessing />} />
+          <Route path="hr/statutory-deductions" element={<StatutoryDeductions />} />
+          <Route path="hr/employee-records" element={<EmployeeRecords />} />
+          <Route path="hr/leave-management" element={<LeaveManagement />} />
+          <Route path="communication/circulars" element={<UniversityCircularsManagement />} />
+          <Route path="communication/training" element={<UniversityTrainingUpdates />} />
           <Route path="settings" element={<UniversityAdminSettings />} />
           <Route path="subscription/manage" element={<SubscriptionManage />} />
           <Route path="subscription/add-ons" element={<AddOns />} />
           <Route path="subscription/organization" element={<OrganizationSubscriptionPage />} />
           <Route path="subscription/bulk-purchase" element={<BulkPurchasePage />} />
+          <Route path="subscription/organization-payment" element={<OrganizationPaymentPage />} />
           <Route path="subscription/member-view" element={<MemberSubscriptionPage />} />
           <Route
             path=""
@@ -707,7 +811,7 @@ const AppRoutes = () => {
         <Route
           path="/recruitment/*"
           element={
-            <SubscriptionProtectedRoute 
+            <SubscriptionProtectedRoute
               allowedRoles={["recruiter"]}
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=recruiter"
@@ -743,8 +847,8 @@ const AppRoutes = () => {
         <Route
           path="/student/*"
           element={
-            <SubscriptionProtectedRoute 
-              allowedRoles={["student", "school_student", "college_student"]}
+            <SubscriptionProtectedRoute
+              allowedRoles={STUDENT_ROLES}
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=student"
             >
@@ -778,8 +882,8 @@ const AppRoutes = () => {
           <Route path="clubs" element={<Clubs />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
-          <Route path="assessment-report" element={<AssessmentTest />} /> {/* Keep old path for backward compat if needed, or redirect */}
-          <Route path="assessment/test" element={<AssessmentTest />} />
+          <Route path="assessment-report" element={<AssessmentTestPage />} /> {/* Updated to use new modular component */}
+          <Route path="assessment/test" element={<AssessmentTestPage />} /> {/* Updated to use new modular component */}
           <Route path="assessment/result" element={<AssessmentResult />} />
           <Route path="assessment/platform" element={<AssessmentStart />} />
           <Route path="assessment/dynamic" element={<DynamicAssessment />} />
@@ -906,8 +1010,8 @@ const AppRoutes = () => {
         <Route
           path="/educator/*"
           element={
-            <SubscriptionProtectedRoute 
-              allowedRoles={["educator", "school_educator", "college_educator"]}
+            <SubscriptionProtectedRoute
+              allowedRoles={EDUCATOR_ROLES}
               requireSubscription={true}
               subscriptionFallbackPath="/subscription/plans?type=educator"
             >
@@ -925,7 +1029,9 @@ const AppRoutes = () => {
           <Route path="courses/:courseId/analytics" element={<CourseAnalytics />} />
           <Route path="assessment-results" element={<EducatorAssessmentResults />} />
           <Route path="assignments" element={<EducatorAssessments />} />
+          <Route path="college-assignments" element={<CollegeAssignments />} />
           <Route path="mentornotes" element={<EducatorMentorNotes />} />
+          <Route path="my-mentees" element={<EducatorMyMentees />} />
           <Route path="digital-portfolio" element={<EducatorDigitalPortfolio />} />
           <Route path="settings" element={<EducatorSettings />} />
           <Route path="subscription/manage" element={<SubscriptionManage />} />

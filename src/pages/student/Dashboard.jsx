@@ -211,7 +211,14 @@ const StudentDashboard = () => {
     loading: recommendationsLoading,
     hasAssessment,
     hasInProgressAssessment,
+    latestAttemptId,
   } = useAssessmentRecommendations(studentId, !!studentId && !isViewingOthersProfile);
+
+  // Debug: Log student ID being passed to assessment hook
+  useEffect(() => {
+    console.log('📋 Dashboard: studentId for assessment hook:', studentId);
+    console.log('📋 Dashboard: enabled?', !!studentId && !isViewingOthersProfile);
+  }, [studentId, isViewingOthersProfile]);
 
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
@@ -538,6 +545,15 @@ const StudentDashboard = () => {
         city: studentData.school.city,
         state: studentData.school.state,
       };
+    } else if (studentData?.college_id && studentData?.college) {
+      // College (standalone, not part of university)
+      return {
+        type: 'College',
+        name: studentData.college.name,
+        code: studentData.college.code,
+        city: studentData.college.city,
+        state: studentData.college.state,
+      };
     } else if (studentData?.university_college_id && studentData?.universityCollege) {
       // University college with parent university info
       const college = studentData.universityCollege;
@@ -574,58 +590,24 @@ const StudentDashboard = () => {
       };
     }
 
+    if (studentData?.college_id && !studentData?.college) {
+      console.error('⚠️ College ID exists but college data is null. College may have been deleted.');
+      return {
+        type: 'College',
+        name: 'College Not Found',
+        code: 'N/A',
+        city: null,
+        state: null,
+        error: true,
+      };
+    }
+
     return null;
   }, [studentData]);
 
   // Card components for dynamic ordering
   const allCards = {
-    // institution: institutionInfo && (
-    //   <Card
-    //     key="institution"
-    //     className="h-full bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border-2 border-indigo-200 hover:border-indigo-400 transition-all duration-200 shadow-md hover:shadow-lg"
-    //   >
-    //     <CardHeader className="px-6 py-4 border-b border-indigo-100">
-    //       <CardTitle className="flex items-center gap-3">
-    //         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center shadow-md">
-    //           <Building2 className="w-5 h-5 text-white" />
-    //         </div>
-    //         <span className="text-lg font-semibold text-gray-900">
-    //           {institutionInfo.type}
-    //         </span>
-    //       </CardTitle>
-    //     </CardHeader>
-    //     <CardContent className="p-6">
-    //       <div className="space-y-4">
-    //         <div>
-    //           <h3 className="text-2xl font-bold text-gray-900 mb-1">
-    //             {institutionInfo.name}
-    //           </h3>
-    //           {institutionInfo.universityName && (
-    //             <p className="text-sm text-gray-600 mb-1">
-    //               {institutionInfo.universityName}
-    //             </p>
-    //           )}
-    //           {institutionInfo.code && (
-    //             <p className="text-sm text-indigo-600 font-medium">
-    //               Code: {institutionInfo.code}
-    //             </p>
-    //           )}
-    //         </div>
-    //         {(institutionInfo.city || institutionInfo.state) && (
-    //           <div className="flex items-center gap-2 text-gray-600">
-    //             <MapPin className="w-4 h-4" />
-    //             <span className="text-sm">
-    //               {[institutionInfo.city, institutionInfo.state]
-    //                 .filter(Boolean)
-    //                 .join(', ')}
-    //             </span>
-    //           </div>
-    //         )}
-    //       </div>
-    //     </CardContent>
-    //   </Card>
-    // ),
-        assessment: (
+    assessment: (
       <Card
         key="assessment"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
@@ -719,7 +701,7 @@ const StudentDashboard = () => {
           <div className="flex justify-center py-4">
             {hasAssessment ? (
               <Button
-                onClick={() => navigate("/student/assessment/result")}
+                onClick={() => navigate(latestAttemptId ? `/student/assessment/result?attemptId=${latestAttemptId}` : "/student/assessment/result")}
                 className="w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
               >
                 <Eye className="w-5 h-5 mr-2" />
@@ -1955,6 +1937,50 @@ const StudentDashboard = () => {
                 })()}!
               </motion.h1>
             </LampContainer>
+
+            {/* Institution Card - Show organization info if student belongs to one */}
+            {/* {institutionInfo && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+                className="-mt-52 mb-6 relative z-50 max-w-md mx-auto"
+              >
+                <Card className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border-2 border-indigo-200 hover:border-indigo-400 transition-all duration-200 shadow-md hover:shadow-lg">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center shadow-md flex-shrink-0">
+                        <Building2 className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-indigo-600 font-medium uppercase tracking-wide mb-0.5">
+                          {institutionInfo.type}
+                        </p>
+                        <h3 className="text-lg font-bold text-gray-900 truncate">
+                          {institutionInfo.name}
+                        </h3>
+                        {institutionInfo.universityName && (
+                          <p className="text-sm text-gray-600 truncate">
+                            {institutionInfo.universityName}
+                          </p>
+                        )}
+                        {(institutionInfo.city || institutionInfo.state) && (
+                          <div className="flex items-center gap-1 text-gray-500 mt-1">
+                            <MapPin className="w-3 h-3" />
+                            <span className="text-xs">
+                              {[institutionInfo.city, institutionInfo.state]
+                                .filter(Boolean)
+                                .join(', ')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )} */}
+
             {/* 3x3 Grid Section */}
             <motion.div
               initial={{ opacity: 0.5, y: 100 }}

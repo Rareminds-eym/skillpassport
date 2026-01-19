@@ -101,7 +101,7 @@ const Communication = () => {
       console.log('🔍 Querying educator details with user_id:', educatorId);
       const { data, error } = await supabase
         .from('school_educators')
-        .select('id, school_id, first_name, last_name, email, schools(id, name)')
+        .select('id, school_id, first_name, last_name, email')
         .eq('user_id', educatorId)
         .single();
       
@@ -164,8 +164,7 @@ const Communication = () => {
         .from('conversations')
         .select(`
           *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url),
-          school:schools(id, name)
+          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
         `)
         .eq('educator_id', educatorRecordId)
         .eq('conversation_type', 'educator_admin')
@@ -192,8 +191,7 @@ const Communication = () => {
         .from('conversations')
         .select(`
           *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url),
-          school:schools(id, name)
+          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
         `)
         .eq('educator_id', educatorRecordId)
         .eq('conversation_type', 'educator_admin')
