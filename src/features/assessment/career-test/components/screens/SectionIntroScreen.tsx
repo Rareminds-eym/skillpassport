@@ -16,7 +16,7 @@ interface SectionIntroScreenProps {
   title: string;
   description: string;
   instruction: string;
-  icon: React.ReactNode;
+  icon: string; // Changed from React.ReactNode to string (image path)
   color: string;
   sectionId: string;
   questionCount: number;
@@ -96,14 +96,25 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
       transition={{ duration: 0.3 }}
       className="min-h-[600px] flex flex-col items-center justify-center text-center p-8 bg-gray-50"
     >
-      {/* Icon */}
+      {/* Icon with Glassmorphism */}
       <motion.div
         initial={{ scale: 0, rotate: -180 }}
         animate={{ scale: 1, rotate: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
-        className={`w-20 h-20 rounded-2xl bg-${color}-100 flex items-center justify-center mb-6 shadow-lg`}
+        className="w-28 h-28 rounded-3xl flex items-center justify-center mb-6 p-5 relative overflow-hidden backdrop-blur-xl bg-white/30 border border-white/40 shadow-2xl"
+        style={{
+          background: `linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%)`,
+          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.5)',
+        }}
       >
-        {icon}
+        {/* Glass shine effect */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent rounded-3xl" />
+        
+        <img 
+          src={icon} 
+          alt={title}
+          className="w-full h-full object-contain relative z-10 drop-shadow-lg"
+        />
       </motion.div>
 
       {/* Title */}
@@ -144,9 +155,9 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: "spring", stiffness: 100, damping: 12, delay: 0.4 }}
-        className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 mb-6 max-w-lg w-full"
+        className="p-4 bg-blue-50 rounded-xl border border-blue-200 mb-6 max-w-lg w-full"
       >
-        <p className="text-sm font-medium text-indigo-700">
+        <p className="text-sm font-medium text-blue-700">
           {instruction}
         </p>
       </motion.div>
@@ -194,7 +205,7 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
         <Button
           onClick={onStart}
           disabled={isLoading}
-          className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-10 py-6 text-lg shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 rounded-xl font-bold tracking-wide disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
+          className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-6 px-10 rounded-xl disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
         >
           {isLoading ? (
             <>
