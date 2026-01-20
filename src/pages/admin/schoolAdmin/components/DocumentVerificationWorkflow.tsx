@@ -19,4 +19,5 @@ interface PendingTeacher {
   degree_certificate_url?: string;
   id_proof_url?: string;
   experience_letters_url?: string[];
-  resume_url?: string
+  resume_url?: string;
+}
