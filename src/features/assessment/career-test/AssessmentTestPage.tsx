@@ -217,6 +217,9 @@ const AssessmentTestPage: React.FC = () => {
   const [adaptiveAptitudeAnswer, setAdaptiveAptitudeAnswer] = useState<string | null>(null);
   const [adaptiveQuestionTimer, setAdaptiveQuestionTimer] = useState(90); // 90 seconds per question
   
+  // Toast notification state for save errors
+  const [toastError, setToastError] = useState<string | null>(null);
+  
   // Flow state machine
   const flow = useAssessmentFlow({
     sections,
@@ -483,7 +486,7 @@ const AssessmentTestPage: React.FC = () => {
       const questionCount = targetSection?.questions?.length || 0;
       
       // Check if question index is out of bounds (past last question)
-      if (questionIndex >= questionCount) {
+      if (questionIndex >= questionCount && questionCount > 0) {
         console.warn(`⚠️ Question index ${questionIndex} is out of bounds (section has ${questionCount} questions)`);
         console.log('✅ Section already complete - moving to next section or showing complete');
         
@@ -866,7 +869,7 @@ const AssessmentTestPage: React.FC = () => {
     if (!pendingAttempt) return;
     
     console.log('🔄 Starting assessment resume process...');
-    console.log('📋 Pending attempt:', {
+    console.log('📋 Pending attempt DATABASE VALUES:', {
       id: pendingAttempt.id,
       gradeLevel: pendingAttempt.grade_level,
       stream: pendingAttempt.stream_id,
@@ -877,8 +880,34 @@ const AssessmentTestPage: React.FC = () => {
       hasElapsedTime: pendingAttempt.elapsed_time !== null,
       hasSectionTimings: !!pendingAttempt.section_timings,
       sectionsLength: sections.length,
-      questionsLoading
+      questionsLoading,
+      // CRITICAL DEBUG: Show raw database values
+      rawSectionIndex: pendingAttempt.current_section_index,
+      rawQuestionIndex: pendingAttempt.current_question_index,
+      sectionTimings: pendingAttempt.section_timings
     });
+    
+    // CRITICAL: Validate database values before proceeding
+    const dbSectionIndex = pendingAttempt.current_section_index;
+    const dbQuestionIndex = pendingAttempt.current_question_index;
+    
+    if (dbSectionIndex === null || dbSectionIndex === undefined) {
+      console.error('❌ CRITICAL: current_section_index is null/undefined in database!');
+      console.error('❌ This indicates a database save issue. Starting from beginning.');
+      // Start from beginning if database values are invalid
+      flow.setCurrentSectionIndex(0);
+      flow.setCurrentQuestionIndex(0);
+      flow.setCurrentScreen('section_intro');
+      setShowResumePrompt(false);
+      setAssessmentStarted(true);
+      setUseDatabase(true);
+      return;
+    }
+    
+    if (dbQuestionIndex === null || dbQuestionIndex === undefined) {
+      console.error('❌ CRITICAL: current_question_index is null/undefined in database!');
+      console.error('❌ This indicates a database save issue. Using section index only.');
+    }
     
     setShowResumePrompt(false);
     setAssessmentStarted(true);
@@ -951,21 +980,40 @@ const AssessmentTestPage: React.FC = () => {
       return;
     }
     
-    // Restore section and question indices from database columns
-    const sectionIndex = pendingAttempt.current_section_index ?? 0;
-    const questionIndex = pendingAttempt.current_question_index ?? 0;
+    // Use validated database values
+    const sectionIndex = dbSectionIndex ?? 0;
+    const questionIndex = dbQuestionIndex ?? 0;
     
-    console.log('📍 Resuming from section:', sectionIndex, 'question:', questionIndex);
+    console.log('📍 RESUME TARGET POSITION:', { 
+      sectionIndex, 
+      questionIndex,
+      sectionsAvailable: sections.length,
+      willWaitForSections: sections.length === 0
+    });
     
     // FIX 2: Only restore position if sections are already built
     // Otherwise, let the useEffect below handle it once sections are ready
     if (sections.length > 0) {
+      // CRITICAL: Validate section index against actual sections
+      if (sectionIndex >= sections.length) {
+        console.error('❌ CRITICAL: Database section index', sectionIndex, 'is out of bounds! Available sections:', sections.length);
+        console.error('❌ Available sections:', sections.map((s, i) => `${i}: ${s.id}`));
+        console.error('❌ This indicates a mismatch between database and current sections. Starting from beginning.');
+        
+        // Start from beginning if section index is invalid
+        flow.setCurrentSectionIndex(0);
+        flow.setCurrentQuestionIndex(0);
+        flow.setCurrentScreen('section_intro');
+        return;
+      }
+      
       const targetSection = sections[sectionIndex];
       console.log('✅ Sections already built, restoring position immediately', {
         sectionIndex,
         questionIndex,
         sectionId: targetSection?.id,
-        isAdaptive: targetSection?.isAdaptive
+        isAdaptive: targetSection?.isAdaptive,
+        questionCount: targetSection?.questions?.length
       });
       
       flow.setCurrentSectionIndex(sectionIndex);
@@ -984,8 +1032,14 @@ const AssessmentTestPage: React.FC = () => {
         // For regular sections, restore the exact question index
         const questionCount = targetSection?.questions?.length || 0;
         
+        console.log('📊 Regular section validation:', {
+          questionIndex,
+          questionCount,
+          isOutOfBounds: questionIndex >= questionCount
+        });
+        
         // Check if question index is out of bounds (past last question)
-        if (questionIndex >= questionCount) {
+        if (questionIndex >= questionCount && questionCount > 0) {
           console.warn(`⚠️ Question index ${questionIndex} is out of bounds (section has ${questionCount} questions)`);
           console.log('✅ Section already complete - moving to next section or showing complete');
           
@@ -1013,12 +1067,15 @@ const AssessmentTestPage: React.FC = () => {
           }
         } else if (questionIndex > 0) {
           // If we're in the middle of a section, skip the intro
+          flow.setCurrentQuestionIndex(questionIndex);
           flow.setShowSectionIntro(false);
           flow.setCurrentScreen('assessment');
-          console.log('✅ Screen set to assessment (mid-section)');
+          console.log('✅ Screen set to assessment (mid-section), question:', questionIndex);
         } else {
+          // Start of section - show intro
+          flow.setCurrentQuestionIndex(questionIndex);
           flow.setCurrentScreen('section_intro');
-          console.log('✅ Screen set to section_intro');
+          console.log('✅ Screen set to section_intro, question:', questionIndex);
         }
       }
     } else {
@@ -1139,13 +1196,20 @@ const AssessmentTestPage: React.FC = () => {
   const handleNextQuestion = useCallback(async () => {
     const currentSection = sections[flow.currentSectionIndex];
     
-    console.log('🔄 [NEXT QUESTION] Starting optimized navigation:', {
+    // CRITICAL FIX 1: Race Condition Protection
+    if (flow.isSaving) {
+      console.log('⏳ [RACE PROTECTION] Already saving, ignoring click');
+      return;
+    }
+    
+    console.log('🔄 [NEXT QUESTION] Starting navigation with save-first logic:', {
       currentSectionIndex: flow.currentSectionIndex,
       currentQuestionIndex: flow.currentQuestionIndex,
       sectionId: currentSection?.id,
       totalQuestions: currentSection?.questions?.length,
       useDatabase,
-      hasCurrentAttempt: !!currentAttempt?.id
+      hasCurrentAttempt: !!currentAttempt?.id,
+      isSaving: flow.isSaving
     });
     
     // Handle adaptive section
@@ -1166,40 +1230,46 @@ const AssessmentTestPage: React.FC = () => {
     // CRITICAL: Block navigation if database is required but we can't save
     if (useDatabase && !currentAttempt?.id) {
       console.error('❌ [SAVE BLOCK] Cannot save - no current attempt ID');
-      console.error('❌ [SAVE BLOCK] Navigation BLOCKED - database enabled but no attempt');
-      return; // BLOCK NAVIGATION - cannot save at all
+      showToastError('Assessment session not found. Please refresh the page and try again.');
+      return;
     }
     
-    // Calculate navigation positions
-    const isLastInSection = flow.currentQuestionIndex >= (currentSection?.questions?.length - 1);
-    const isEvery10th = (flow.currentQuestionIndex + 1) % 10 === 0;
-    const nextQuestionIndex = flow.currentQuestionIndex + 1;
-    const nextSectionIndex = isLastInSection ? flow.currentSectionIndex + 1 : flow.currentSectionIndex;
-    const finalQuestionIndex = isLastInSection ? 0 : nextQuestionIndex;
-    
-    console.log('📊 [SAVE STRATEGY] Determining save approach:', {
-      isLastInSection,
-      isEvery10th,
-      nextPosition: { section: nextSectionIndex, question: finalQuestionIndex },
-      saveStrategy: isLastInSection ? 'CRITICAL' : isEvery10th ? 'CHECKPOINT' : 'LIGHT'
-    });
-    
-    // Reset timers before navigation
-    if (currentSection?.isAptitude && flow.aptitudePhase === 'individual') {
-      flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
-    }
-    if (currentSection?.isKnowledge) {
-      flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
+    // CRITICAL FIX 2: Set saving state and clear previous errors
+    flow.setIsSaving(true);
+    if (flow.error) {
+      flow.setError(null);
     }
     
-    // Smart save strategy based on importance
-    if (useDatabase && currentAttempt?.id) {
-      const updatedAnswers = { ...flow.answers };
+    try {
+      // Calculate navigation positions
+      const isLastInSection = flow.currentQuestionIndex >= (currentSection?.questions?.length - 1);
+      const isEvery10th = (flow.currentQuestionIndex + 1) % 10 === 0;
+      const nextQuestionIndex = flow.currentQuestionIndex + 1;
+      const nextSectionIndex = isLastInSection ? flow.currentSectionIndex + 1 : flow.currentSectionIndex;
+      const finalQuestionIndex = isLastInSection ? 0 : nextQuestionIndex;
       
-      if (isLastInSection) {
-        // CRITICAL SAVE: Block at section boundaries (data integrity)
-        console.log('💾 [CRITICAL SAVE] Section boundary - blocking save for data integrity');
-        try {
+      console.log('📊 [SAVE STRATEGY] Determining save approach:', {
+        isLastInSection,
+        isEvery10th,
+        nextPosition: { section: nextSectionIndex, question: finalQuestionIndex },
+        saveStrategy: isLastInSection ? 'CRITICAL' : isEvery10th ? 'CHECKPOINT' : 'LIGHT'
+      });
+      
+      // Reset timers before navigation
+      if (currentSection?.isAptitude && flow.aptitudePhase === 'individual') {
+        flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
+      }
+      if (currentSection?.isKnowledge) {
+        flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
+      }
+      
+      // Smart save strategy based on importance
+      if (useDatabase && currentAttempt?.id) {
+        const updatedAnswers = { ...flow.answers };
+        
+        if (isLastInSection) {
+          // CRITICAL SAVE: Block at section boundaries (data integrity)
+          console.log('💾 [CRITICAL SAVE] Section boundary - blocking save for data integrity');
           const saveStartTime = performance.now();
           const saveResult = await dbUpdateProgress(
             nextSectionIndex,
@@ -1221,62 +1291,93 @@ const AssessmentTestPage: React.FC = () => {
           if (!saveResult?.success) {
             console.error('❌ [SAVE BLOCK] Critical save failed - Navigation BLOCKED');
             console.error('❌ [SAVE BLOCK] Save result:', saveResult);
+            showToastError('Failed to save your progress. Please check your internet connection and try again.');
             return; // BLOCK NAVIGATION - critical save failed
           }
           
           console.log('✅ [CRITICAL SAVE] Success - Navigation ALLOWED');
-        } catch (error) {
-          console.error('❌ [SAVE BLOCK] Critical save error - Navigation BLOCKED');
-          console.error('❌ [SAVE BLOCK] Error details:', error);
-          return; // BLOCK NAVIGATION - critical save error
+        } else {
+          // For non-critical saves, try to save first, then navigate
+          console.log('💾 [BACKGROUND SAVE] Attempting save before navigation...');
+          
+          if (isEvery10th) {
+            // CHECKPOINT SAVE: Try to save, block if it fails
+            const saveResult = await dbUpdateProgress(
+              nextSectionIndex,
+              finalQuestionIndex,
+              flow.sectionTimings,
+              null,
+              null,
+              updatedAnswers
+            );
+            
+            if (!saveResult?.success) {
+              console.error('❌ [SAVE BLOCK] Checkpoint save failed - Navigation BLOCKED');
+              console.error('❌ [SAVE BLOCK] Save result:', saveResult);
+              showToastError('Failed to save your progress. Please check your internet connection and try again.');
+              return; // BLOCK NAVIGATION - checkpoint save failed
+            }
+            
+            console.log('✅ [CHECKPOINT SAVE] Success - Navigation ALLOWED');
+          } else {
+            // LIGHT SAVE: Try to save, block if it fails
+            const saveResult = await dbUpdateProgress(
+              nextSectionIndex,
+              finalQuestionIndex,
+              {}, // Empty section timings for light save
+              null,
+              null,
+              {} // Empty answers for light save
+            );
+            
+            if (!saveResult?.success) {
+              console.error('❌ [SAVE BLOCK] Light save failed - Navigation BLOCKED');
+              console.error('❌ [SAVE BLOCK] Save result:', saveResult);
+              showToastError('Failed to save your progress. Please check your internet connection and try again.');
+              return; // BLOCK NAVIGATION - light save failed
+            }
+            
+            console.log('✅ [LIGHT SAVE] Success - Navigation ALLOWED');
+          }
+          
+          // Only navigate after successful save
+          console.log('🚀 [NAVIGATION] Proceeding with navigation after successful save');
+          flow.goToNextQuestion();
+          console.log('✅ [NAVIGATION] Navigation completed');
+          return; // Early return for non-critical saves
         }
       } else {
-        // For non-critical saves, navigate first then save in background
-        console.log('🚀 [NAVIGATION] Proceeding with immediate navigation (optimistic)');
-        flow.goToNextQuestion();
-        console.log('✅ [NAVIGATION] Navigation completed immediately');
-        
-        if (isEvery10th) {
-          // CHECKPOINT SAVE: Background save every 10 questions
-          console.log('💾 [CHECKPOINT SAVE] Every 10th question - background save');
-          dbUpdateProgress(
-            nextSectionIndex,
-            finalQuestionIndex,
-            flow.sectionTimings,
-            null,
-            null,
-            updatedAnswers
-          ).then(result => {
-            console.log('✅ [CHECKPOINT SAVE] Background save completed:', result?.success);
-          }).catch(err => {
-            console.warn('⚠️ [CHECKPOINT SAVE] Background save failed:', err);
-          });
-        } else {
-          // LIGHT SAVE: Just position, minimal overhead
-          console.log('💾 [LIGHT SAVE] Position only - minimal background save');
-          dbUpdateProgress(
-            nextSectionIndex,
-            finalQuestionIndex,
-            {}, // Empty section timings for light save
-            null,
-            null,
-            {} // Empty answers for light save
-          ).then(result => {
-            console.log('✅ [LIGHT SAVE] Position save completed:', result?.success);
-          }).catch(err => {
-            console.warn('⚠️ [LIGHT SAVE] Position save failed:', err);
-          });
-        }
-        return; // Early return for non-critical saves
+        console.log('⏭️ [SAVE] Database disabled - allowing navigation without save');
       }
-    } else {
-      console.log('⏭️ [SAVE] Database disabled - allowing navigation without save');
+      
+      // Navigate after critical save or when database is disabled
+      console.log('🚀 [NAVIGATION] Proceeding with navigation after critical save');
+      flow.goToNextQuestion();
+      console.log('✅ [NAVIGATION] Navigation completed');
+      
+    } catch (error: any) {
+      // CRITICAL FIX 3: Handle network errors and other exceptions
+      console.error('❌ [CRITICAL ERROR] Unexpected error during navigation:', error);
+      
+      // Provide user-friendly error messages based on error type
+      if (error?.message?.includes('NetworkError') || error?.message?.includes('fetch')) {
+        showToastError('Network connection lost. Please check your internet connection and try again.');
+      } else if (error?.message?.includes('timeout')) {
+        showToastError('Request timed out. Please try again.');
+      } else if (error?.message?.includes('session')) {
+        showToastError('Your session has expired. Please refresh the page and try again.');
+      } else {
+        showToastError('An unexpected error occurred. Please try again or refresh the page.');
+      }
+      
+      // Don't navigate on error
+      return;
+    } finally {
+      // CRITICAL FIX 4: Always clear saving state in finally block
+      console.log('🔓 [SAVE] Clearing isSaving state in finally block');
+      flow.setIsSaving(false);
     }
-    
-    // Navigate after critical save or when database is disabled
-    console.log('🚀 [NAVIGATION] Proceeding with navigation after critical save');
-    flow.goToNextQuestion();
-    console.log('✅ [NAVIGATION] Navigation completed');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections, flow, adaptiveAptitude, adaptiveAptitudeAnswer, useDatabase, currentAttempt, dbUpdateProgress]);
   
   const handleNextSection = useCallback(async () => {
@@ -1372,6 +1473,7 @@ const AssessmentTestPage: React.FC = () => {
       if (useDatabase && !currentAttempt?.id) {
         console.error('❌ [SAVE BLOCK] Cannot save - no current attempt ID');
         console.error('❌ [SAVE BLOCK] Section navigation BLOCKED - database enabled but no attempt');
+        showToastError('Assessment session not found. Please refresh the page and try again.');
         return; // BLOCK NAVIGATION - cannot save at all
       }
       
@@ -1411,13 +1513,26 @@ const AssessmentTestPage: React.FC = () => {
           if (!saveResult?.success) {
             console.error('❌ [SAVE BLOCK] Section save failed - Navigation BLOCKED');
             console.error('❌ [SAVE BLOCK] Save result:', saveResult);
+            showToastError('Failed to save your progress. Please check your internet connection and try again.');
             return; // BLOCK NAVIGATION - critical save failed
           }
           
           console.log('✅ [CRITICAL SAVE] Section save successful - Navigation ALLOWED');
-        } catch (error) {
+        } catch (error: any) {
           console.error('❌ [SAVE BLOCK] Section save error - Navigation BLOCKED');
           console.error('❌ [SAVE BLOCK] Error details:', error);
+          
+          // Provide user-friendly error messages based on error type
+          if (error?.message?.includes('NetworkError') || error?.message?.includes('fetch')) {
+            showToastError('Network connection lost. Please check your internet connection and try again.');
+          } else if (error?.message?.includes('timeout')) {
+            showToastError('Request timed out. Please try again.');
+          } else if (error?.message?.includes('session')) {
+            showToastError('Your session has expired. Please refresh the page and try again.');
+          } else {
+            showToastError('An unexpected error occurred. Please try again or refresh the page.');
+          }
+          
           return; // BLOCK NAVIGATION - critical save error
         }
       } else {
@@ -1441,10 +1556,18 @@ const AssessmentTestPage: React.FC = () => {
     }
   }, [sections, flow]);
   
+  // Toast error helper function
+  const showToastError = useCallback((message: string) => {
+    console.log('🚨 [TOAST ERROR] Showing user-friendly error:', message);
+    setToastError(message);
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      setToastError(null);
+    }, 5000);
+  }, []);
+  
   // Test mode functions
   const autoFillAllAnswers = useCallback(async () => {
-    const allAnswers: Record<string, any> = {};
-    
     sections.forEach(section => {
       section.questions?.forEach((question: any) => {
         const questionId = `${section.id}_${question.id}`;
@@ -1493,8 +1616,6 @@ const AssessmentTestPage: React.FC = () => {
     }
     
     // Fill all previous sections with dummy answers
-    const allAnswers: Record<string, any> = {};
-    
     sections.slice(0, sectionIndex).forEach(section => {
       section.questions?.forEach((question: any) => {
         const questionId = `${section.id}_${question.id}`;
@@ -1709,7 +1830,23 @@ const AssessmentTestPage: React.FC = () => {
       }
     });
     
-    return totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
+    const progressPercentage = totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
+    
+    console.log('📊 [MAIN PROGRESS] Calculation:', {
+      totalQuestions,
+      answeredQuestions,
+      progressPercentage: Math.round(progressPercentage),
+      currentSectionIndex: flow.currentSectionIndex,
+      currentQuestionIndex: flow.currentQuestionIndex,
+      sectionsBreakdown: sections.map((s, i) => ({
+        id: s.id,
+        questions: s.questions?.length || (s.isAdaptive ? 21 : 0),
+        isCompleted: i < flow.currentSectionIndex,
+        isCurrent: i === flow.currentSectionIndex
+      }))
+    });
+    
+    return progressPercentage;
   };
   
   // Main Assessment UI
@@ -1927,9 +2064,9 @@ const AssessmentTestPage: React.FC = () => {
                   onPrevious={flow.goToPreviousQuestion}
                   onNext={handleNextQuestion}
                   canGoPrevious={flow.currentQuestionIndex > 0 && !currentSection?.isAdaptive}
-                  canGoNext={isCurrentAnswered}
                   isAnswered={isCurrentAnswered}
                   isSubmitting={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
+                  isSaving={flow.isSaving}
                   isLastQuestion={flow.isLastQuestion}
                 />
               </QuestionLayout>
@@ -1944,6 +2081,39 @@ const AssessmentTestPage: React.FC = () => {
           <p>{submission.error}</p>
         </div>
       )}
+      
+      {/* Toast Error Notification - Top Right Corner */}
+      <AnimatePresence>
+        {toastError && (
+          <motion.div
+            initial={{ opacity: 0, x: 100, y: -20 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            exit={{ opacity: 0, x: 100, y: -20 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="fixed top-4 right-4 z-[9999] bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg max-w-sm"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <svg className="w-5 h-5 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Save Error</p>
+                <p className="text-sm opacity-90 mt-1">{toastError}</p>
+              </div>
+              <button
+                onClick={() => setToastError(null)}
+                className="flex-shrink-0 ml-2 text-white hover:text-gray-200 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -898,7 +898,7 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
     try {
       const { data: sessionData, error } = await supabase
         .from('adaptive_aptitude_sessions')
-        .select('current_question_index, status, current_phase')
+        .select('questions_answered, current_question_index, status, current_phase')
         .eq('id', sessionId)
         .maybeSingle();
       
@@ -908,7 +908,8 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
       }
       
       return {
-        questionsAnswered: sessionData.current_question_index || 0,
+        questionsAnswered: sessionData.questions_answered || 0,
+        currentQuestionIndex: sessionData.current_question_index || 0,
         status: sessionData.status,
         currentPhase: sessionData.current_phase
       };

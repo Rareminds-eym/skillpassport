@@ -95,7 +95,7 @@ interface UseAssessmentFlowResult {
   goToNextSection: () => void;
   jumpToSection: (sectionIndex: number) => void;
   setTimeRemaining: (time: number | null) => void;
-  setElapsedTime: (time: number) => void;
+  setElapsedTime: (time: number | ((prev: number) => number)) => void;
   setAptitudeQuestionTimer: (time: number) => void;
   setError: (error: string | null) => void;
   setIsSubmitting: (submitting: boolean) => void;
