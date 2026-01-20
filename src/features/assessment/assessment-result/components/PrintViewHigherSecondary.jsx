@@ -16,6 +16,7 @@ import {
 } from './shared/utils';
 import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
+import PrintPage from './shared/PrintPage';
 import Watermarks, {
   DataPrivacyNotice,
   ReportDisclaimer,

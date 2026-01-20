@@ -1136,36 +1136,148 @@ const AssessmentTestPage: React.FC = () => {
     flow.startSection();
   }, [sections, flow, adaptiveAptitude, currentAttempt, studentRecordId, dbStartAssessment, showResumePrompt]);
   
-  const handleNextQuestion = useCallback(() => {
+  const handleNextQuestion = useCallback(async () => {
     const currentSection = sections[flow.currentSectionIndex];
+    
+    console.log('🔄 [NEXT QUESTION] Starting optimized navigation:', {
+      currentSectionIndex: flow.currentSectionIndex,
+      currentQuestionIndex: flow.currentQuestionIndex,
+      sectionId: currentSection?.id,
+      totalQuestions: currentSection?.questions?.length,
+      useDatabase,
+      hasCurrentAttempt: !!currentAttempt?.id
+    });
     
     // Handle adaptive section
     if (currentSection?.isAdaptive) {
-      // Prevent double submission - check if already submitting
       if (adaptiveAptitude.submitting) {
         console.log('⏳ Already submitting adaptive answer, ignoring click');
         return;
       }
       
       if (adaptiveAptitudeAnswer !== null) {
+        console.log('🎯 [ADAPTIVE] Submitting answer:', adaptiveAptitudeAnswer);
         adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer as 'A' | 'B' | 'C' | 'D');
         setAdaptiveAptitudeAnswer(null);
       }
       return;
     }
     
-    // Reset aptitude question timer for next question
+    // CRITICAL: Block navigation if database is required but we can't save
+    if (useDatabase && !currentAttempt?.id) {
+      console.error('❌ [SAVE BLOCK] Cannot save - no current attempt ID');
+      console.error('❌ [SAVE BLOCK] Navigation BLOCKED - database enabled but no attempt');
+      return; // BLOCK NAVIGATION - cannot save at all
+    }
+    
+    // Calculate navigation positions
+    const isLastInSection = flow.currentQuestionIndex >= (currentSection?.questions?.length - 1);
+    const isEvery10th = (flow.currentQuestionIndex + 1) % 10 === 0;
+    const nextQuestionIndex = flow.currentQuestionIndex + 1;
+    const nextSectionIndex = isLastInSection ? flow.currentSectionIndex + 1 : flow.currentSectionIndex;
+    const finalQuestionIndex = isLastInSection ? 0 : nextQuestionIndex;
+    
+    console.log('📊 [SAVE STRATEGY] Determining save approach:', {
+      isLastInSection,
+      isEvery10th,
+      nextPosition: { section: nextSectionIndex, question: finalQuestionIndex },
+      saveStrategy: isLastInSection ? 'CRITICAL' : isEvery10th ? 'CHECKPOINT' : 'LIGHT'
+    });
+    
+    // Reset timers before navigation
     if (currentSection?.isAptitude && flow.aptitudePhase === 'individual') {
       flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
     }
-    
-    // Reset question timer for knowledge section
     if (currentSection?.isKnowledge) {
       flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
     }
     
+    // Smart save strategy based on importance
+    if (useDatabase && currentAttempt?.id) {
+      const updatedAnswers = { ...flow.answers };
+      
+      if (isLastInSection) {
+        // CRITICAL SAVE: Block at section boundaries (data integrity)
+        console.log('💾 [CRITICAL SAVE] Section boundary - blocking save for data integrity');
+        try {
+          const saveStartTime = performance.now();
+          const saveResult = await dbUpdateProgress(
+            nextSectionIndex,
+            finalQuestionIndex,
+            flow.sectionTimings,
+            null,
+            null,
+            updatedAnswers
+          );
+          const saveEndTime = performance.now();
+          const saveDuration = Math.round(saveEndTime - saveStartTime);
+          
+          console.log('📊 [CRITICAL SAVE] Completed:', {
+            success: saveResult?.success,
+            duration: `${saveDuration}ms`,
+            error: saveResult?.error || 'none'
+          });
+          
+          if (!saveResult?.success) {
+            console.error('❌ [SAVE BLOCK] Critical save failed - Navigation BLOCKED');
+            console.error('❌ [SAVE BLOCK] Save result:', saveResult);
+            return; // BLOCK NAVIGATION - critical save failed
+          }
+          
+          console.log('✅ [CRITICAL SAVE] Success - Navigation ALLOWED');
+        } catch (error) {
+          console.error('❌ [SAVE BLOCK] Critical save error - Navigation BLOCKED');
+          console.error('❌ [SAVE BLOCK] Error details:', error);
+          return; // BLOCK NAVIGATION - critical save error
+        }
+      } else {
+        // For non-critical saves, navigate first then save in background
+        console.log('🚀 [NAVIGATION] Proceeding with immediate navigation (optimistic)');
+        flow.goToNextQuestion();
+        console.log('✅ [NAVIGATION] Navigation completed immediately');
+        
+        if (isEvery10th) {
+          // CHECKPOINT SAVE: Background save every 10 questions
+          console.log('💾 [CHECKPOINT SAVE] Every 10th question - background save');
+          dbUpdateProgress(
+            nextSectionIndex,
+            finalQuestionIndex,
+            flow.sectionTimings,
+            null,
+            null,
+            updatedAnswers
+          ).then(result => {
+            console.log('✅ [CHECKPOINT SAVE] Background save completed:', result?.success);
+          }).catch(err => {
+            console.warn('⚠️ [CHECKPOINT SAVE] Background save failed:', err);
+          });
+        } else {
+          // LIGHT SAVE: Just position, minimal overhead
+          console.log('💾 [LIGHT SAVE] Position only - minimal background save');
+          dbUpdateProgress(
+            nextSectionIndex,
+            finalQuestionIndex,
+            {}, // Empty section timings for light save
+            null,
+            null,
+            {} // Empty answers for light save
+          ).then(result => {
+            console.log('✅ [LIGHT SAVE] Position save completed:', result?.success);
+          }).catch(err => {
+            console.warn('⚠️ [LIGHT SAVE] Position save failed:', err);
+          });
+        }
+        return; // Early return for non-critical saves
+      }
+    } else {
+      console.log('⏭️ [SAVE] Database disabled - allowing navigation without save');
+    }
+    
+    // Navigate after critical save or when database is disabled
+    console.log('🚀 [NAVIGATION] Proceeding with navigation after critical save');
     flow.goToNextQuestion();
-  }, [sections, flow, adaptiveAptitude, adaptiveAptitudeAnswer]);
+    console.log('✅ [NAVIGATION] Navigation completed');
+  }, [sections, flow, adaptiveAptitude, adaptiveAptitudeAnswer, useDatabase, currentAttempt, dbUpdateProgress]);
   
   const handleNextSection = useCallback(async () => {
     // Compute isLastSection directly to avoid stale closure issues
@@ -1247,11 +1359,77 @@ const AssessmentTestPage: React.FC = () => {
         elapsedTime: flow.elapsedTime
       });
     } else {
-      console.log('⏭️ NOT the last section - going to next section');
-      console.log('📊 Current section:', flow.currentSectionIndex, 'of', sections.length);
+      console.log('⏭️ [NEXT SECTION] Moving to next section with optimized save strategy');
+      console.log('📊 [NEXT SECTION] Current state:', {
+        currentSectionIndex: flow.currentSectionIndex,
+        totalSections: sections.length,
+        currentQuestionIndex: flow.currentQuestionIndex,
+        useDatabase,
+        hasCurrentAttempt: !!currentAttempt?.id
+      });
+      
+      // CRITICAL: Block navigation if database is required but we can't save
+      if (useDatabase && !currentAttempt?.id) {
+        console.error('❌ [SAVE BLOCK] Cannot save - no current attempt ID');
+        console.error('❌ [SAVE BLOCK] Section navigation BLOCKED - database enabled but no attempt');
+        return; // BLOCK NAVIGATION - cannot save at all
+      }
+      
+      // Calculate the next section position
+      const nextSectionIndex = flow.currentSectionIndex + 1;
+      const nextQuestionIndex = 0; // Always start at question 0 in new section
+      
+      console.log('📊 [NEXT SECTION] Next position:', {
+        currentPosition: { section: flow.currentSectionIndex, question: flow.currentQuestionIndex },
+        nextPosition: { section: nextSectionIndex, question: nextQuestionIndex }
+      });
+      
+      // CRITICAL SAVE: Section boundaries are always critical for data integrity
+      if (useDatabase && currentAttempt?.id) {
+        console.log('💾 [CRITICAL SAVE] Section boundary - blocking save for data integrity');
+        const updatedAnswers = { ...flow.answers };
+        
+        try {
+          const saveStartTime = performance.now();
+          const saveResult = await dbUpdateProgress(
+            nextSectionIndex,
+            nextQuestionIndex,
+            flow.sectionTimings,
+            null,
+            null,
+            updatedAnswers
+          );
+          const saveEndTime = performance.now();
+          const saveDuration = Math.round(saveEndTime - saveStartTime);
+          
+          console.log('📊 [CRITICAL SAVE] Section boundary save completed:', {
+            success: saveResult?.success,
+            duration: `${saveDuration}ms`,
+            error: saveResult?.error || 'none'
+          });
+          
+          if (!saveResult?.success) {
+            console.error('❌ [SAVE BLOCK] Section save failed - Navigation BLOCKED');
+            console.error('❌ [SAVE BLOCK] Save result:', saveResult);
+            return; // BLOCK NAVIGATION - critical save failed
+          }
+          
+          console.log('✅ [CRITICAL SAVE] Section save successful - Navigation ALLOWED');
+        } catch (error) {
+          console.error('❌ [SAVE BLOCK] Section save error - Navigation BLOCKED');
+          console.error('❌ [SAVE BLOCK] Error details:', error);
+          return; // BLOCK NAVIGATION - critical save error
+        }
+      } else {
+        console.log('⏭️ [SAVE] Database disabled - allowing section navigation without save');
+      }
+      
+      // Navigate after critical save or when database is disabled
+      console.log('🚀 [SECTION NAVIGATION] Proceeding with section navigation after critical save');
       flow.goToNextSection();
+      console.log('✅ [SECTION NAVIGATION] Section navigation completed');
     }
-  }, [flow, sections, submission, currentAttempt, user, useDatabase]);
+  }, [flow, sections, submission, currentAttempt, user, useDatabase, dbUpdateProgress]);
   
   const handleAnswerChange = useCallback((value: any) => {
     const currentSection = sections[flow.currentSectionIndex];
