@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle, ChevronRight, ClipboardList, Sparkles, Star, X } from 'lucide-react';
+import { CheckCircle, ChevronRight, Sparkles, X } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -147,14 +148,46 @@ const AssessmentPromotionalModal = ({ isOpen, onClose, getTimeRemaining }) => {
             )}
 
             {/* Header */}
-            <div className="flex items-center justify-between px-5 pt-4">
+            <div className="relative flex items-center justify-between px-5 pt-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 shadow-md">
-                  <ClipboardList className="h-5 w-5 text-white" />
+                  <DotLottieReact
+                    src="https://lottie.host/d2e9c81b-68e5-4817-8cdb-232a1a4d96d1/IrCaxvOj5s.lottie"
+                    loop
+                    autoplay
+                    style={{ width: '100%', height: '100%' }}
+                  />
                 </div>
                 <h2 className="text-lg font-bold text-gray-900">Assessment Test</h2>
               </div>
-              <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10">
+                  <DotLottieReact
+                    src="https://lottie.host/d2e9c81b-68e5-4817-8cdb-232a1a4d96d1/IrCaxvOj5s.lottie"
+                    loop
+                    autoplay
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                </div>
+                <motion.button
+                  onClick={onClose}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200 hover:text-gray-800"
+                  aria-label="Close modal"
+                  initial={{ opacity: 0, scale: 0, rotate: -180 }}
+                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                  transition={{ 
+                    duration: 0.5, 
+                    delay: 0.3,
+                    type: "spring",
+                    stiffness: 200,
+                    damping: 15
+                  }}
+                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <X className="h-4 w-4" />
+                </motion.button>
+              </div>
             </div>
 
             {/* Content */}

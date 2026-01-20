@@ -811,7 +811,14 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
     }
   };
 
-  const handleExport = async (format: 'csv' | 'pdf' = 'csv') => {
+  // NEW: Refresh curriculum data function for when changes are approved
+  const handleRefreshCurriculum = async () => {
+    console.log('🔄 Refreshing curriculum data after approved changes...');
+    await loadExistingCurriculum();
+  };
+
+  // Export curriculum function
+  const handleExport = async (format: 'csv' | 'pdf') => {
     if (!curriculumId) {
       toast.error('No curriculum to export. Please add some units first.');
       return;
@@ -992,6 +999,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         onRequestApproval={handleRequestApproval}
         onClone={handleClone}
         onExport={handleExport}
+        onRefreshCurriculum={handleRefreshCurriculum}
       />
 
       <ConfirmationModal

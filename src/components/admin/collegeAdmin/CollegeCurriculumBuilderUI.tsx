@@ -14,6 +14,8 @@ import {
   DocumentCheckIcon,
   ExclamationTriangleIcon,
   PaperAirplaneIcon,
+  ClockIcon,
+  EyeIcon,
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../common/SearchBar";
 import Pagination from "../Pagination";
@@ -21,6 +23,7 @@ import KPICard from "../KPICard";
 import toast from "react-hot-toast";
 import { curriculumApprovalService } from "../../../services/curriculumApprovalService";
 import { curriculumChangeRequestService } from "../../../services/curriculumChangeRequestService";
+import { supabase } from "../../../lib/supabaseClient";
 
 /* ==============================
    TYPES & INTERFACES (College-adapted)
@@ -1070,6 +1073,7 @@ interface CollegeCurriculumBuilderProps {
   onRequestApproval?: (message?: string) => Promise<void>;
   onClone?: (sourceId: string, targetData: any) => Promise<void>;
   onExport?: (format: 'csv' | 'pdf') => Promise<void>;
+  onRefreshCurriculum?: () => Promise<void>; // NEW: Function to refresh curriculum data when changes are approved
 }
 const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props) => {
   // Mock user role (no database connection)
@@ -1100,6 +1104,11 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     type: string;
     data: any;
   } | null>(null);
+  const [isRefreshingChanges, setIsRefreshingChanges] = useState(false);
+  
+  // Enhanced auto-refresh state
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
 
   // College-specific assessment types (as per requirements)
   const defaultCollegeAssessmentTypes: AssessmentType[] = [];
@@ -1224,19 +1233,102 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     checkAffiliation();
   }, []); // Check once on component mount
 
-  // NEW: Fetch pending changes for this curriculum
+  // Enhanced auto-refresh with visual feedback
+  // (Variables already declared above)
+
+  // NEW: Fetch pending changes for this curriculum with auto-refresh
   useEffect(() => {
-    const fetchPendingChanges = async () => {
+    const fetchPendingChanges = async (showLoading = false) => {
       if (props.curriculumId && status === 'published') {
-        const result = await curriculumChangeRequestService.getPendingChanges(props.curriculumId);
-        if (result.success && result.data) {
-          setPendingChanges(result.data);
+        if (showLoading) {
+          setIsRefreshingChanges(true);
+          setIsAutoRefreshing(true);
+        }
+        
+        try {
+          const result = await curriculumChangeRequestService.getPendingChanges(props.curriculumId);
+          if (result.success && result.data) {
+            setPendingChanges(result.data);
+            setLastRefreshTime(Date.now());
+          }
+        } catch (error) {
+          console.error('Error fetching pending changes:', error);
+        } finally {
+          if (showLoading) {
+            setIsRefreshingChanges(false);
+            setTimeout(() => setIsAutoRefreshing(false), 1000); // Keep indicator for 1 second
+          }
         }
       }
     };
     
     fetchPendingChanges();
-  }, [props.curriculumId, status]);
+
+    // Set up auto-refresh every 5 seconds to check for approved changes (more frequent)
+    const refreshInterval = setInterval(() => {
+      if (props.curriculumId && status === 'published') {
+        setIsAutoRefreshing(true);
+        fetchPendingChanges();
+        setTimeout(() => setIsAutoRefreshing(false), 1000);
+      }
+    }, 5000); // Refresh every 5 seconds instead of 10
+
+    // Set up real-time subscription for curriculum changes
+    let subscription: any = null;
+    if (props.curriculumId) {
+      subscription = supabase
+        .channel(`curriculum-changes-${props.curriculumId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'college_curriculums',
+            filter: `id=eq.${props.curriculumId}`
+          },
+          (payload) => {
+            console.log('🔄 Curriculum updated, refreshing pending changes...', payload);
+            setIsAutoRefreshing(true);
+            fetchPendingChanges();
+            setTimeout(() => setIsAutoRefreshing(false), 1000);
+            
+            // Check if changes were approved and refresh curriculum data
+            if (payload.new?.pending_changes && payload.old?.pending_changes) {
+              const oldChanges = payload.old.pending_changes || [];
+              const newChanges = payload.new.pending_changes || [];
+              
+              if (newChanges.length < oldChanges.length) {
+                // Changes were approved - refresh the entire curriculum data
+                console.log('🔄 Changes approved, refreshing curriculum data...');
+                
+                // Call parent refresh function if available
+                if (props.onRefreshCurriculum) {
+                  props.onRefreshCurriculum();
+                } else {
+                  // Fallback: reload the page to get fresh data
+                  console.log('🔄 No refresh function available, reloading page...');
+                  window.location.reload();
+                }
+                
+                toast.success('✅ Changes approved and applied!', {
+                  duration: 4000,
+                  icon: '🎉'
+                });
+              }
+            }
+          }
+        )
+        .subscribe();
+    }
+
+    // Cleanup function
+    return () => {
+      clearInterval(refreshInterval);
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    };
+  }, [props.curriculumId, status, props.onRefreshCurriculum]);
 
   // Enhanced validation for different button states
   const validateForApproval = (): { isValid: boolean; errors: string[] } => {
@@ -1535,11 +1627,6 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     }
   };
 
-  const handleEditOutcome = (outcome: LearningOutcome) => {
-    setEditingOutcome(outcome);
-    setShowAddOutcomeModal(true);
-  };
-
   const handleDeleteOutcome = async (id: string) => {
     // Check if curriculum is published and affiliated - requires approval
     if (status === 'published' && collegeAffiliation.isAffiliated && props.curriculumId) {
@@ -1659,6 +1746,25 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     } catch (error) {
       console.error('Error submitting change request:', error);
       toast.error('Failed to submit change request');
+    }
+  };
+
+  // Manual refresh function for pending changes
+  const handleManualRefresh = async () => {
+    if (!props.curriculumId || status !== 'published') return;
+    
+    setIsRefreshingChanges(true);
+    try {
+      const result = await curriculumChangeRequestService.getPendingChanges(props.curriculumId);
+      if (result.success && result.data) {
+        setPendingChanges(result.data);
+        toast.success('Pending changes refreshed!', { duration: 2000 });
+      }
+    } catch (error) {
+      console.error('Error refreshing pending changes:', error);
+      toast.error('Failed to refresh pending changes');
+    } finally {
+      setIsRefreshingChanges(false);
     }
   };
 
@@ -1852,7 +1958,15 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     setShowExportDropdown(false);
   };
 
-  // Stats
+  // Stats with auto-update tracking
+  const [statsUpdateTimestamp, setStatsUpdateTimestamp] = useState(Date.now());
+  const [previousStats, setPreviousStats] = useState({
+    totalUnits: 0,
+    totalOutcomes: 0,
+    totalCredits: 0,
+    completionRate: 0
+  });
+
   const totalUnits = units.length;
   const totalOutcomes = learningOutcomes.length;
   const totalCredits = units.reduce((sum, unit) => sum + (unit.credits || 0), 0);
@@ -1866,6 +1980,42 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             100
         )
       : 0;
+
+  // Auto-update stats tracking
+  useEffect(() => {
+    const currentStats = { totalUnits, totalOutcomes, totalCredits, completionRate };
+    
+    // Check if stats have changed
+    const hasChanged = Object.keys(currentStats).some(
+      key => currentStats[key as keyof typeof currentStats] !== previousStats[key as keyof typeof previousStats]
+    );
+
+    if (hasChanged) {
+      setStatsUpdateTimestamp(Date.now());
+      setPreviousStats(currentStats);
+      
+      // Show subtle update notification for significant changes
+      if (previousStats.totalUnits > 0 || previousStats.totalOutcomes > 0) {
+        const changes = [];
+        if (currentStats.totalUnits !== previousStats.totalUnits) {
+          changes.push(`Units: ${previousStats.totalUnits} → ${currentStats.totalUnits}`);
+        }
+        if (currentStats.totalOutcomes !== previousStats.totalOutcomes) {
+          changes.push(`Outcomes: ${previousStats.totalOutcomes} → ${currentStats.totalOutcomes}`);
+        }
+        if (currentStats.totalCredits !== previousStats.totalCredits) {
+          changes.push(`Credits: ${previousStats.totalCredits} → ${currentStats.totalCredits}`);
+        }
+        if (currentStats.completionRate !== previousStats.completionRate) {
+          changes.push(`Completion: ${previousStats.completionRate}% → ${currentStats.completionRate}%`);
+        }
+        
+        if (changes.length > 0) {
+          console.log('📊 Stats auto-updated:', changes.join(', '));
+        }
+      }
+    }
+  }, [totalUnits, totalOutcomes, totalCredits, completionRate, previousStats]);
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
       {/* Header */}
@@ -1942,13 +2092,37 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
 
             {/* Status Badges and Live Updates Indicator */}
             <div className="flex items-center gap-3">
-              {/* Live Updates Status Indicator */}
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-50 border">
-                <div className={`w-2 h-2 rounded-full ${props.isRealTimeConnected ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                <span className="text-xs text-gray-600">
-                  {props.isRealTimeConnected ? 'Live Updates' : 'Connecting...'}
+              {/* Enhanced Live Updates Status Indicator */}
+              <div className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-all ${
+                isAutoRefreshing 
+                  ? 'bg-blue-100 border-blue-300 text-blue-700' 
+                  : props.isRealTimeConnected 
+                    ? 'bg-green-50 border-green-200 text-green-700' 
+                    : 'bg-gray-50 border-gray-200 text-gray-600'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  isAutoRefreshing 
+                    ? 'bg-blue-500 animate-spin' 
+                    : props.isRealTimeConnected 
+                      ? 'bg-green-500 animate-pulse' 
+                      : 'bg-gray-400'
+                }`}></div>
+                <span className="text-xs font-medium">
+                  {isAutoRefreshing 
+                    ? 'Refreshing...' 
+                    : props.isRealTimeConnected 
+                      ? 'Live Updates' 
+                      : 'Connecting...'}
                 </span>
+                {isAutoRefreshing && <ArrowPathIcon className="h-3 w-3 animate-spin" />}
               </div>
+
+              {/* Last Update Time */}
+              {status === 'published' && (
+                <div className="text-xs text-gray-500">
+                  Last sync: {new Date(lastRefreshTime).toLocaleTimeString()}
+                </div>
+              )}
 
               {/* Status Badge */}
               {status === "published" && (
@@ -2097,32 +2271,74 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             </div>
           </div>
 
-          {/* Stats */}
+          {/* Stats with Auto-Update Indicators and Animations */}
           <div className="space-y-3">
-            <KPICard
-              title="Total Units"
-              value={totalUnits}
-              icon={<BookOpenIcon className="h-5 w-5" />}
-              color="blue"
-            />
-            <KPICard
-              title="Learning Outcomes"
-              value={totalOutcomes}
-              icon={<AcademicCapIcon className="h-5 w-5" />}
-              color="green"
-            />
-            <KPICard
-              title="Total Credits"
-              value={totalCredits}
-              icon={<DocumentCheckIcon className="h-5 w-5" />}
-              color="purple"
-            />
-            <KPICard
-              title="Completion"
-              value={`${completionRate}%`}
-              icon={<CheckCircleIcon className="h-5 w-5" />}
-              color="yellow"
-            />
+            <div className={`transition-all duration-500 ${totalUnits !== previousStats.totalUnits ? 'scale-105 shadow-lg' : ''}`}>
+              <KPICard
+                title="Total Units"
+                value={totalUnits}
+                icon={<BookOpenIcon className="h-5 w-5" />}
+                color="blue"
+                change={totalUnits !== previousStats.totalUnits ? 
+                  ((totalUnits - previousStats.totalUnits) / Math.max(previousStats.totalUnits, 1)) * 100 : undefined}
+                changeLabel="auto-updated"
+              />
+            </div>
+            <div className={`transition-all duration-500 ${totalOutcomes !== previousStats.totalOutcomes ? 'scale-105 shadow-lg' : ''}`}>
+              <KPICard
+                title="Learning Outcomes"
+                value={totalOutcomes}
+                icon={<AcademicCapIcon className="h-5 w-5" />}
+                color="green"
+                change={totalOutcomes !== previousStats.totalOutcomes ? 
+                  ((totalOutcomes - previousStats.totalOutcomes) / Math.max(previousStats.totalOutcomes, 1)) * 100 : undefined}
+                changeLabel="auto-updated"
+              />
+            </div>
+            <div className={`transition-all duration-500 ${totalCredits !== previousStats.totalCredits ? 'scale-105 shadow-lg' : ''}`}>
+              <KPICard
+                title="Total Credits"
+                value={totalCredits}
+                icon={<DocumentCheckIcon className="h-5 w-5" />}
+                color="purple"
+                change={totalCredits !== previousStats.totalCredits ? 
+                  ((totalCredits - previousStats.totalCredits) / Math.max(previousStats.totalCredits, 1)) * 100 : undefined}
+                changeLabel="auto-updated"
+              />
+            </div>
+            <div className={`transition-all duration-500 ${completionRate !== previousStats.completionRate ? 'scale-105 shadow-lg' : ''}`}>
+              <KPICard
+                title="Completion"
+                value={`${completionRate}%`}
+                icon={<CheckCircleIcon className="h-5 w-5" />}
+                color="yellow"
+                change={completionRate !== previousStats.completionRate ? 
+                  (completionRate - previousStats.completionRate) : undefined}
+                changeLabel="auto-updated"
+              />
+            </div>
+            
+            {/* Enhanced Auto-Update Status Indicator */}
+            <div className={`mt-4 p-3 rounded-lg border transition-all duration-300 ${
+              isAutoRefreshing 
+                ? 'bg-gradient-to-r from-blue-100 to-indigo-100 border-blue-300 shadow-md' 
+                : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'
+            }`}>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  isAutoRefreshing ? 'bg-blue-600 animate-spin' : 'bg-blue-500 animate-pulse'
+                }`}></div>
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-blue-800">
+                    {isAutoRefreshing ? 'Updating Stats...' : 'Auto-Update Active'}
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    Last updated: {new Date(statsUpdateTimestamp).toLocaleTimeString()}
+                  </p>
+                </div>
+                <ArrowPathIcon className={`h-4 w-4 text-blue-600 ${isAutoRefreshing ? 'animate-spin' : ''}`} />
+              </div>
+            </div>
           </div>
           {/* Status Card */}
           <div className={`rounded-xl border p-5 ${
@@ -2186,76 +2402,142 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
 
         {/* MAIN CONTENT */}
         <main className="flex-1 space-y-6">
-          {/* Pending Changes Panel */}
+          {/* Pending Changes Panel - Placement Readiness Style */}
           {pendingChanges.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <ExclamationTriangleIcon className="h-5 w-5 text-amber-600" />
-                  <span className="font-semibold text-amber-900">
-                    {pendingChanges.length} Change{pendingChanges.length > 1 ? 's' : ''} Pending Approval
-                  </span>
-                </div>
-                <button
-                  onClick={() => setShowPendingChangesModal(true)}
-                  className="text-sm text-amber-700 underline hover:text-amber-800"
-                >
-                  View All
-                </button>
-              </div>
-              
-              {/* Show first 3 pending changes */}
-              <div className="space-y-2">
-                {pendingChanges.slice(0, 3).map((change) => {
-                  const getChangeIcon = (type: string) => {
-                    const icons: Record<string, string> = {
-                      'unit_edit': '📝',
-                      'unit_add': '➕',
-                      'unit_delete': '🗑️',
-                      'outcome_add': '➕',
-                      'outcome_edit': '📝',
-                      'outcome_delete': '🗑️',
-                      'curriculum_edit': '📋'
-                    };
-                    return icons[type] || '📄';
-                  };
-
-                  return (
-                  <div key={change.id} className="flex items-center justify-between bg-white rounded p-3 text-sm">
-                    <div className="flex items-center gap-3 flex-1">
-                      <span className="text-xl">
-                        {getChangeIcon(change.change_type)}
-                      </span>
-                      <div className="flex-1">
-                        <p className="text-gray-900 font-medium">
-                          {change.change_type.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {change.request_message || 'No message provided'}
-                        </p>
-                      </div>
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-b border-amber-200 p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl">
+                      <ExclamationTriangleIcon className="h-6 w-6 text-amber-600" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">
-                        {new Date(change.timestamp).toLocaleDateString()}
-                      </span>
-                      <button
-                        onClick={() => handleCancelChangeRequest(change.id)}
-                        className="text-xs text-red-600 hover:text-red-700 underline"
-                      >
-                        Cancel
-                      </button>
+                    <div>
+                      <h2 className="text-lg font-semibold text-amber-900">
+                        Pending Change Requests
+                      </h2>
+                      <p className="text-sm text-amber-700">
+                        {pendingChanges.length} change{pendingChanges.length > 1 ? 's' : ''} awaiting university approval
+                      </p>
                     </div>
                   </div>
-                  );
-                })}
+                  <div className="flex items-center gap-3">
+                    {isRefreshingChanges && (
+                      <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 border border-amber-200">
+                        <ArrowPathIcon className="h-4 w-4 text-amber-600 animate-spin" />
+                        <span className="text-xs text-amber-700">Refreshing...</span>
+                      </div>
+                    )}
+                    <button
+                      onClick={handleManualRefresh}
+                      disabled={isRefreshingChanges}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition-all duration-200 font-medium text-sm disabled:opacity-50"
+                      title="Refresh pending changes"
+                    >
+                      <ArrowPathIcon className={`h-4 w-4 ${isRefreshingChanges ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </button>
+                  </div>
+                </div>
               </div>
               
-              {pendingChanges.length > 3 && (
-                <p className="text-xs text-amber-700 mt-2">
-                  +{pendingChanges.length - 3} more pending changes
-                </p>
-              )}
+              {/* Change Requests Grid */}
+              <div className="p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {pendingChanges.slice(0, 4).map((change) => {
+                    const getChangeTypeInfo = (type: string) => {
+                      const typeMap: Record<string, { icon: string; label: string; color: string; bgColor: string }> = {
+                        'unit_edit': { icon: '�', label: 'Unit Edit', color: 'text-blue-700', bgColor: 'bg-blue-100' },
+                        'unit_add': { icon: '➕', label: 'Unit Add', color: 'text-green-700', bgColor: 'bg-green-100' },
+                        'unit_delete': { icon: '🗑️', label: 'Unit Delete', color: 'text-red-700', bgColor: 'bg-red-100' },
+                        'outcome_add': { icon: '🎯', label: 'Outcome Add', color: 'text-green-700', bgColor: 'bg-green-100' },
+                        'outcome_edit': { icon: '✏️', label: 'Outcome Edit', color: 'text-blue-700', bgColor: 'bg-blue-100' },
+                        'outcome_delete': { icon: '❌', label: 'Outcome Delete', color: 'text-red-700', bgColor: 'bg-red-100' },
+                        'curriculum_edit': { icon: '📋', label: 'Curriculum Edit', color: 'text-purple-700', bgColor: 'bg-purple-100' }
+                      };
+                      return typeMap[type] || { icon: '📄', label: 'Change', color: 'text-gray-700', bgColor: 'bg-gray-100' };
+                    };
+
+                    const typeInfo = getChangeTypeInfo(change.change_type);
+
+                    return (
+                      <div
+                        key={change.id}
+                        className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border border-gray-200 p-5 hover:shadow-md hover:border-amber-300 transition-all duration-200"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-3 ${typeInfo.bgColor} rounded-xl`}>
+                              <span className="text-xl">{typeInfo.icon}</span>
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-gray-900 text-base">{typeInfo.label}</h3>
+                              <p className="text-sm text-gray-600">
+                                {new Date(change.timestamp).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleCancelChangeRequest(change.id)}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Cancel request"
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        <div className="space-y-3 mb-4">
+                          {change.request_message && (
+                            <div className="bg-white rounded-lg p-3 border border-gray-200">
+                              <p className="text-xs font-medium text-gray-600 mb-1">Reason:</p>
+                              <p className="text-sm text-gray-800 line-clamp-2">{change.request_message}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${typeInfo.bgColor} ${typeInfo.color} border-current`}>
+                            <ClockIcon className="h-3 w-3 inline mr-1" />
+                            Pending Review
+                          </span>
+                          <div className="flex items-center gap-1 text-xs text-gray-500">
+                            <span>Status: Submitted</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {pendingChanges.length > 4 && (
+                  <div className="mt-4 text-center">
+                    <button
+                      onClick={() => setShowPendingChangesModal(true)}
+                      className="text-sm text-amber-700 hover:text-amber-800 font-medium flex items-center gap-1 mx-auto"
+                    >
+                      <EyeIcon className="h-4 w-4" />
+                      View All {pendingChanges.length} Changes
+                    </button>
+                  </div>
+                )}
+                
+                {/* Enhanced Auto-refresh indicator */}
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                    <div className={`w-2 h-2 rounded-full ${isAutoRefreshing ? 'bg-blue-500 animate-spin' : 'bg-green-500 animate-pulse'}`}></div>
+                    <span>
+                      {isAutoRefreshing 
+                        ? 'Checking for approved changes...' 
+                        : 'Auto-refreshing every 5 seconds for approved changes'}
+                    </span>
+                    {isAutoRefreshing && <ArrowPathIcon className="h-3 w-3 animate-spin ml-1" />}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -2263,9 +2545,18 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
           <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-200 bg-gray-50">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <h2 className="text-lg font-bold text-gray-900">
-                  Units/Modules ({totalUnits})
-                </h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-bold text-gray-900">
+                    Units/Modules ({totalUnits})
+                  </h2>
+                  {/* Auto-update indicator for units */}
+                  {totalUnits !== previousStats.totalUnits && (
+                    <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium animate-pulse">
+                      <ArrowPathIcon className="h-3 w-3" />
+                      Updated
+                    </div>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
@@ -2374,13 +2665,24 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
          <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-200 bg-gray-50">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">
-                    Learning Outcomes by Unit
-                  </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {totalOutcomes} total outcome{totalOutcomes !== 1 ? "s" : ""} across {units.length} unit{units.length !== 1 ? "s" : ""}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">
+                      Learning Outcomes by Unit
+                    </h2>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs text-gray-500">
+                        {totalOutcomes} total outcome{totalOutcomes !== 1 ? "s" : ""} across {units.length} unit{units.length !== 1 ? "s" : ""}
+                      </p>
+                      {/* Auto-update indicator for outcomes */}
+                      {totalOutcomes !== previousStats.totalOutcomes && (
+                        <div className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium animate-pulse">
+                          <ArrowPathIcon className="h-3 w-3" />
+                          Updated
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -2539,13 +2841,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                                       {/* Action Buttons */}
                                       {((status !== "published" || isCollegeAdmin)) && (
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                          <button
-                                            onClick={() => handleEditOutcome(outcome)}
-                                            className="p-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded transition-colors"
-                                            title="Edit"
-                                          >
-                                            <PencilSquareIcon className="h-3 w-3" />
-                                          </button>
+                                         
                                           <button
                                             onClick={() => handleDeleteOutcome(outcome.id)}
                                             className="p-1 text-gray-500 hover:text-red-600 hover:bg-white rounded transition-colors"
@@ -2855,6 +3151,98 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
             >
               Submit Request
+            </button>
+          </div>
+        </div>
+      </ModalWrapper>
+
+      {/* Pending Changes Modal */}
+      <ModalWrapper
+        title="Pending Change Requests"
+        subtitle={`${pendingChanges.length} changes awaiting university approval`}
+        isOpen={showPendingChangesModal}
+        onClose={() => setShowPendingChangesModal(false)}
+      >
+        <div className="space-y-4 max-h-96 overflow-y-auto">
+          {pendingChanges.map((change) => {
+            const getChangeTypeInfo = (type: string) => {
+              const typeMap: Record<string, { icon: string; label: string; color: string; bgColor: string }> = {
+                'unit_edit': { icon: '📝', label: 'Unit Edit', color: 'text-blue-700', bgColor: 'bg-blue-100' },
+                'unit_add': { icon: '➕', label: 'Unit Add', color: 'text-green-700', bgColor: 'bg-green-100' },
+                'unit_delete': { icon: '🗑️', label: 'Unit Delete', color: 'text-red-700', bgColor: 'bg-red-100' },
+                'outcome_add': { icon: '🎯', label: 'Outcome Add', color: 'text-green-700', bgColor: 'bg-green-100' },
+                'outcome_edit': { icon: '✏️', label: 'Outcome Edit', color: 'text-blue-700', bgColor: 'bg-blue-100' },
+                'outcome_delete': { icon: '❌', label: 'Outcome Delete', color: 'text-red-700', bgColor: 'bg-red-100' },
+                'curriculum_edit': { icon: '📋', label: 'Curriculum Edit', color: 'text-purple-700', bgColor: 'bg-purple-100' }
+              };
+              return typeMap[type] || { icon: '📄', label: 'Change', color: 'text-gray-700', bgColor: 'bg-gray-100' };
+            };
+
+            const typeInfo = getChangeTypeInfo(change.change_type);
+
+            return (
+              <div
+                key={change.id}
+                className="bg-gray-50 rounded-lg border border-gray-200 p-4"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 ${typeInfo.bgColor} rounded-lg`}>
+                      <span className="text-lg">{typeInfo.icon}</span>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">{typeInfo.label}</h4>
+                      <p className="text-xs text-gray-500">
+                        {new Date(change.timestamp).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleCancelChangeRequest(change.id)}
+                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Cancel request"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {change.request_message && (
+                  <div className="bg-white rounded-lg p-3 border border-gray-200 mb-3">
+                    <p className="text-xs font-medium text-gray-600 mb-1">Reason for Change:</p>
+                    <p className="text-sm text-gray-800">{change.request_message}</p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${typeInfo.bgColor} ${typeInfo.color}`}>
+                    Pending Review
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    Submitted to {collegeAffiliation.universityName || 'University'}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span>Auto-refreshing for updates</span>
+            </div>
+            <button
+              onClick={() => setShowPendingChangesModal(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Close
             </button>
           </div>
         </div>

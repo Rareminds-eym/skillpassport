@@ -22,13 +22,17 @@ Output Format - Respond with ONLY valid JSON:
       "type": "mcq",
       "difficulty": "easy",
       "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option B",
+      "options": ["First option text", "Second option text", "Third option text", "Fourth option text"],
+      "correct_answer": "Second option text",
       "skill_tag": "topic name",
       "estimated_time": 60
     }
   ]
 }
+
+CRITICAL: The "correct_answer" field MUST contain the EXACT TEXT of the correct option from the "options" array.
+DO NOT use "Option A", "Option B", etc. - use the actual answer text.
+Example: If the correct answer is the second option, and options[1] is "Photosynthesis", then correct_answer should be "Photosynthesis", NOT "Option B".
 
 IMPORTANT: Use sequential numeric IDs (1, 2, 3, etc.) for each question.`;
 

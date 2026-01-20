@@ -1890,6 +1890,7 @@ const AssessmentTest = () => {
                 return baseSection; // after12 uses default section names
             };
 
+            // Build question banks - fetch AI-generated questions from database for proper scoring
             const questionBanks = {
                 riasecQuestions: getQuestionsForSection(getSectionId('riasec')),
                 aptitudeQuestions: getQuestionsForSection(getSectionId('aptitude')),
@@ -1898,6 +1899,89 @@ const AssessmentTest = () => {
                 employabilityQuestions: getQuestionsForSection('employability'),
                 streamKnowledgeQuestions: { [studentStream]: getQuestionsForSection(getSectionId('knowledge')) }
             };
+
+            // ✅ FIX: Fetch AI-generated questions from database for proper scoring
+            // For AI assessments (after10, after12, college, higher_secondary), questions are generated
+            // and stored in database. We need to fetch them to score answers correctly.
+            const isAIAssessment = ['after10', 'after12', 'college', 'higher_secondary'].includes(gradeLevel);
+            
+            if (isAIAssessment && user) {
+                try {
+                    const answerKeys = Object.keys(answersWithAdaptive);
+                    
+                    // Fetch AI aptitude questions if needed
+                    const aptitudeAnswerKeys = answerKeys.filter(k => k.startsWith('aptitude_'));
+                    if (aptitudeAnswerKeys.length > 0) {
+                        console.log('📡 Fetching AI aptitude questions from database...');
+                        
+                        // Get student record ID
+                        const { data: student } = await supabase
+                            .from('students')
+                            .select('id')
+                            .eq('user_id', user.id)
+                            .maybeSingle();
+                        
+                        if (student) {
+                            const { data: questionSets } = await supabase
+                                .from('career_assessment_ai_questions')
+                                .select('questions')
+                                .eq('student_id', student.id)
+                                .eq('question_type', 'aptitude')
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+                                .maybeSingle();
+                            
+                            if (questionSets?.questions) {
+                                questionBanks.aptitudeQuestions = questionSets.questions.map(q => ({
+                                    ...q,
+                                    correct: q.correct_answer,
+                                    correctAnswer: q.correct_answer,
+                                    subtype: q.subtype || q.category || 'verbal'
+                                }));
+                                console.log(`✅ Loaded ${questionBanks.aptitudeQuestions.length} AI aptitude questions`);
+                            }
+                        }
+                    }
+                    
+                    // Fetch AI knowledge questions if needed
+                    const knowledgeAnswerKeys = answerKeys.filter(k => k.startsWith('knowledge_'));
+                    if (knowledgeAnswerKeys.length > 0) {
+                        console.log('📡 Fetching AI knowledge questions from database...');
+                        
+                        // Get student record ID
+                        const { data: student } = await supabase
+                            .from('students')
+                            .select('id')
+                            .eq('user_id', user.id)
+                            .maybeSingle();
+                        
+                        if (student) {
+                            const { data: questionSets } = await supabase
+                                .from('career_assessment_ai_questions')
+                                .select('questions')
+                                .eq('student_id', student.id)
+                                .eq('question_type', 'knowledge')
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+                                .maybeSingle();
+                            
+                            if (questionSets?.questions) {
+                                const aiKnowledgeQuestions = questionSets.questions.map(q => ({
+                                    ...q,
+                                    correct: q.correct_answer,
+                                    correctAnswer: q.correct_answer
+                                }));
+                                questionBanks.streamKnowledgeQuestions = { [studentStream]: aiKnowledgeQuestions };
+                                console.log(`✅ Loaded ${aiKnowledgeQuestions.length} AI knowledge questions`);
+                            }
+                        }
+                    }
+                } catch (fetchErr) {
+                    console.warn('Could not fetch AI questions:', fetchErr.message);
+                    // Continue with questions from sections (fallback)
+                }
+            }
+            // ✅ END OF FIX
 
             // Include adaptive aptitude results in the answers if available (for high school)
             const answersWithAdaptive = { ...answers };

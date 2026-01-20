@@ -395,7 +395,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
           student_name: student?.name || null,
           student_email: student?.email || null,
           college_id: collegeId,
-          college_name: college.name || null,
+          college_name: org.name || null,
         };
       });
 
