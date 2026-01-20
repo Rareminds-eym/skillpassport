@@ -178,7 +178,7 @@ export const ResumePromptScreen = ({
             <Button
               onClick={onResume}
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-6 text-lg shadow-lg"
+              className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-6"
             >
               {isLoading ? (
                 <>

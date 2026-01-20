@@ -43,7 +43,7 @@ export const QuestionNavigation: React.FC<QuestionNavigationProps> = ({
         variant="outline"
         onClick={onPrevious}
         disabled={!canGoPrevious || isSubmitting}
-        className="flex items-center gap-2 px-6 py-3 disabled:opacity-50"
+        className="flex items-center gap-2 px-6 py-3 bg-white/60 rounded-xl border border-blue-200/50 disabled:opacity-50 hover:bg-white/80"
       >
         <ChevronLeft className="w-4 h-4" />
         Previous
@@ -66,10 +66,10 @@ export const QuestionNavigation: React.FC<QuestionNavigationProps> = ({
           onClick={onNext}
           disabled={!isAnswered || isSubmitting}
           className={`
-            flex items-center gap-2 px-8 py-3 transition-all duration-300
+            flex items-center gap-2 px-8 py-3 transition-all duration-200 rounded-xl
             ${isAnswered && !isSubmitting
-              ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-lg shadow-indigo-500/30 hover:shadow-xl'
-              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+              ? 'w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-md hover:shadow-lg transform hover:scale-105'
+              : 'bg-white/60 border border-blue-200/50 text-gray-500 cursor-not-allowed'
             }
           `}
         >

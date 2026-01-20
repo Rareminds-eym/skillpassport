@@ -91,7 +91,7 @@ export const RestrictionScreen = ({
         <div className="space-y-2.5">
           <Button
             onClick={handleViewReport}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 text-sm font-medium rounded-lg transition-colors"
+            className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-3"
           >
             <Target className="w-4 h-4 mr-2" />
             View Your Last Report

@@ -334,7 +334,7 @@ const IncompleteProfileScreen = ({ onNavigateToSettings, onNavigateToDashboard, 
 
           <Button
             onClick={onNavigateToSettings}
-            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white py-6 text-lg shadow-lg"
+            className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-6"
           >
             Go to Profile Settings
           </Button>
