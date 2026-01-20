@@ -47,3 +47,7 @@ dist-ssr
 
 # Kiro settings
 .kiro/settings/mcp.json
+
+# Local config
+mcpopencode.json
+opencode.json

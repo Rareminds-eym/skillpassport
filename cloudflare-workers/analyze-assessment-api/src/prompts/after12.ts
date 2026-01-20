@@ -64,14 +64,30 @@ You MUST use this mapping to calculate scores precisely:
 
 ${JSON.stringify(assessmentData.bigFiveAnswers, null, 2)}
 
-**BIG FIVE SCORING**: Rate each trait on 1-5 scale based on responses:
+**BIG FIVE SCORING INSTRUCTIONS** (CRITICAL - READ CAREFULLY):
+
+Each BigFive dimension has 6 questions, each rated 1-5.
+
+**YOU MUST CALCULATE THE AVERAGE (MEAN) SCORE FOR EACH DIMENSION:**
+
+1. For each dimension (O, C, E, A, N), identify the 6 questions that belong to it
+2. Sum the 6 response values
+3. **DIVIDE by 6** to get the average
+4. The final score for each dimension MUST be between 1.0 and 5.0
+
+**Example Calculation**:
+- Openness questions: [5, 4, 5, 4, 5, 4]
+- Sum: 5 + 4 + 5 + 4 + 5 + 4 = 27
+- **Average: 27 / 6 = 4.5** ← This is the score to report
+
+**Dimensions**:
 - **Openness (O)**: Curiosity, imagination, creativity, willingness to try new things
 - **Conscientiousness (C)**: Organization, discipline, reliability, goal-orientation, planning
 - **Extraversion (E)**: Sociability, energy, assertiveness, enthusiasm, outgoing nature
 - **Agreeableness (A)**: Cooperation, empathy, kindness, trust, helpfulness
 - **Neuroticism (N)**: Emotional stability, stress management, anxiety levels (lower is better)
 
-Calculate average score for each trait and use to determine work style and career fit.
+**VALIDATION**: After calculating, verify each score is between 1.0 and 5.0. If any score is > 5.0, you made an error - you summed instead of averaged!
 
 ## ═══════════════════════════════════════════════════════════════════════════
 ## SECTION 3: WORK VALUES & MOTIVATORS - 24 Questions
@@ -79,15 +95,35 @@ Calculate average score for each trait and use to determine work style and caree
 
 ${JSON.stringify(assessmentData.workValuesAnswers, null, 2)}
 
-**WORK VALUES SCORING**: Identify what motivates this student in their career:
-- **Achievement**: Accomplishment, results, recognition, advancement, success
-- **Independence**: Autonomy, freedom, self-direction, flexibility, control
-- **Recognition**: Status, prestige, respect, visibility, influence
-- **Relationships**: Teamwork, collaboration, social connections, helping others
-- **Support**: Mentorship, guidance, structured environment, clear expectations
-- **Working Conditions**: Work-life balance, stability, security, comfort, location
+**WORK VALUES SCORING INSTRUCTIONS** (CRITICAL - READ CAREFULLY):
 
-Identify top 3 work values and use to filter career recommendations.
+Each Work Value dimension has 3 questions, each rated 1-5.
+
+**YOU MUST CALCULATE THE AVERAGE (MEAN) SCORE FOR EACH DIMENSION:**
+
+1. For each dimension, identify the 3 questions that belong to it
+2. Sum the 3 response values
+3. **DIVIDE by 3** to get the average
+4. The final score for each dimension MUST be between 1.0 and 5.0
+
+**Example Calculation**:
+- Impact questions: [5, 4, 5]
+- Sum: 5 + 4 + 5 = 14
+- **Average: 14 / 3 = 4.67** ← This is the score to report
+
+**Dimensions**:
+- **Impact**: Making a difference, helping others, social contribution
+- **Status**: Recognition, prestige, respect, visibility, influence
+- **Autonomy**: Independence, freedom, self-direction, flexibility
+- **Security**: Stability, job security, predictability, safety
+- **Financial**: Salary, benefits, financial rewards, wealth
+- **Lifestyle**: Work-life balance, location, flexibility, comfort
+- **Creativity**: Innovation, originality, artistic expression, new ideas
+- **Leadership**: Managing others, authority, decision-making, influence
+
+**VALIDATION**: After calculating, verify each score is between 1.0 and 5.0. If any score is > 5.0, you made an error - you summed instead of averaged!
+
+Identify top 3 work values based on highest average scores.
 
 ## ═══════════════════════════════════════════════════════════════════════════
 ## SECTION 4: EMPLOYABILITY SKILLS - 31 Questions
