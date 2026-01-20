@@ -51,47 +51,51 @@ const formatDate = (dateString) => {
 };
 
 /**
- * Calculate progress percentage
+ * Calculate progress percentage - EXACT SAME LOGIC as AssessmentTestPage
+ * This ensures the progress matches exactly between header and resume screen
  */
 const calculateProgress = (attempt) => {
-  // Count UUID-based responses (from personal_assessment_responses table)
-  const uuidResponsesCount = Object.keys(attempt.restoredResponses || {}).length;
+  // Define section structure based on grade level
+  // This must match the sections in AssessmentTestPage
+  const getSectionQuestionCounts = (gradeLevel) => {
+    switch (gradeLevel) {
+      case 'middle':
+        return [20, 20, 20, 21]; // Interest Explorer, Strengths, Learning, Adaptive
+      case 'highschool':
+      case 'higher_secondary':
+        return [20, 20, 20, 20, 21]; // Interest, Strengths, Learning, Aptitude Sampling, Adaptive
+      case 'after10':
+        return [48, 50, 20, 20, 30, 20]; // RIASEC, BigFive, Values, Employability, Aptitude, Knowledge
+      case 'after12':
+      case 'college':
+        return [48, 50, 20, 20, 30, 20]; // RIASEC, BigFive, Values, Employability, Aptitude, Knowledge
+      default:
+        return [48, 50, 20, 20, 30, 20];
+    }
+  };
+
+  const sectionCounts = getSectionQuestionCounts(attempt.grade_level);
+  const currentSectionIndex = attempt.current_section_index || 0;
+  const currentQuestionIndex = attempt.current_question_index || 0;
   
-  // Count non-UUID responses (from all_responses column - RIASEC, BigFive, etc.)
-  const allResponsesCount = attempt.all_responses ? Object.keys(attempt.all_responses).length : 0;
-  
-  // Count adaptive aptitude progress (from adaptive session)
-  const adaptiveQuestionsAnswered = attempt.adaptiveProgress?.questionsAnswered || 0;
-  
-  // Total answered questions (including adaptive)
-  const answeredCount = uuidResponsesCount + allResponsesCount + adaptiveQuestionsAnswered;
-  
-  // Estimate total questions based on grade level
-  // These totals now include the adaptive aptitude section (~21 questions)
-  let estimatedTotal = 50; // Default
-  
-  switch (attempt.grade_level) {
-    case 'middle':
-      // Middle school: Interest Explorer (5) + Strengths (11) + Learning (4) + Adaptive (~21) = ~41
-      estimatedTotal = 41;
-      break;
-    case 'highschool':
-    case 'higher_secondary':
-      // High school: Interest (5) + Strengths (12) + Learning (4) + Aptitude Sampling (11) + Adaptive (~21) = ~53
-      estimatedTotal = 53;
-      break;
-    case 'after10':
-      estimatedTotal = 100; // After 10th: ~100 questions
-      break;
-    case 'after12':
-      estimatedTotal = 120; // After 12th: ~120 questions
-      break;
-    case 'college':
-      estimatedTotal = 120; // College: ~120 questions
-      break;
-  }
-  
-  return Math.min(100, Math.round((answeredCount / estimatedTotal) * 100));
+  let totalQuestions = 0;
+  let answeredQuestions = 0;
+
+  sectionCounts.forEach((sectionQuestionCount, idx) => {
+    totalQuestions += sectionQuestionCount;
+
+    if (idx < currentSectionIndex) {
+      // For completed sections, count all questions as answered
+      answeredQuestions += sectionQuestionCount;
+    } else if (idx === currentSectionIndex) {
+      // For current section, use currentQuestionIndex directly
+      // This matches the header logic: Math.max(sectionAnswerCount, flow.currentQuestionIndex)
+      // Since we don't have access to flow.answers here, we use currentQuestionIndex
+      answeredQuestions += currentQuestionIndex;
+    }
+  });
+
+  return totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
 };
 
 /**
@@ -112,15 +116,8 @@ export const ResumePromptScreen = ({
   const streamLabel = getStreamLabel(pendingAttempt.stream_id);
   const progress = calculateProgress(pendingAttempt);
   
-  // Count total answered questions
-  // Note: all_responses contains ALL answers (UUID + non-UUID), so we don't need to add them
-  // Only add adaptive questions if they're not already in all_responses
-  const allResponsesCount = pendingAttempt.all_responses ? Object.keys(pendingAttempt.all_responses).length : 0;
-  const adaptiveQuestionsAnswered = pendingAttempt.adaptiveProgress?.questionsAnswered || 0;
-  
-  // Use all_responses count as the primary source (it contains everything)
-  // Adaptive questions are separate and tracked independently
-  const answeredCount = allResponsesCount || adaptiveQuestionsAnswered;
+  // Count total answered questions from all_responses
+  const answeredCount = pendingAttempt.all_responses ? Object.keys(pendingAttempt.all_responses).length : 0;
   
   const startedAt = formatDate(pendingAttempt.started_at);
 
