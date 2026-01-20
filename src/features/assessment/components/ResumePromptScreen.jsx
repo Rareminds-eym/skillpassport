@@ -51,51 +51,123 @@ const formatDate = (dateString) => {
 };
 
 /**
- * Calculate progress percentage - EXACT SAME LOGIC as AssessmentTestPage
- * This ensures the progress matches exactly between header and resume screen
+ * Calculate progress percentage based on actual question counts
  */
 const calculateProgress = (attempt) => {
-  // Define section structure based on grade level
-  // This must match the sections in AssessmentTestPage
-  const getSectionQuestionCounts = (gradeLevel) => {
-    switch (gradeLevel) {
-      case 'middle':
-        return [20, 20, 20, 21]; // Interest Explorer, Strengths, Learning, Adaptive
-      case 'highschool':
-      case 'higher_secondary':
-        return [20, 20, 20, 20, 21]; // Interest, Strengths, Learning, Aptitude Sampling, Adaptive
-      case 'after10':
-        return [48, 50, 20, 20, 30, 20]; // RIASEC, BigFive, Values, Employability, Aptitude, Knowledge
-      case 'after12':
-      case 'college':
-        return [48, 50, 20, 20, 30, 20]; // RIASEC, BigFive, Values, Employability, Aptitude, Knowledge
-      default:
-        return [48, 50, 20, 20, 30, 20];
-    }
-  };
-
-  const sectionCounts = getSectionQuestionCounts(attempt.grade_level);
-  const currentSectionIndex = attempt.current_section_index || 0;
-  const currentQuestionIndex = attempt.current_question_index || 0;
-  
-  let totalQuestions = 0;
-  let answeredQuestions = 0;
-
-  sectionCounts.forEach((sectionQuestionCount, idx) => {
-    totalQuestions += sectionQuestionCount;
-
-    if (idx < currentSectionIndex) {
-      // For completed sections, count all questions as answered
-      answeredQuestions += sectionQuestionCount;
-    } else if (idx === currentSectionIndex) {
-      // For current section, use currentQuestionIndex directly
-      // This matches the header logic: Math.max(sectionAnswerCount, flow.currentQuestionIndex)
-      // Since we don't have access to flow.answers here, we use currentQuestionIndex
-      answeredQuestions += currentQuestionIndex;
-    }
+  // Debug: Log the raw data to understand the structure
+  console.log('📊 [PROGRESS DEBUG] Raw attempt data:', {
+    gradeLevel: attempt.grade_level,
+    streamId: attempt.stream_id,
+    allResponsesCount: attempt.all_responses ? Object.keys(attempt.all_responses).length : 0,
+    restoredResponsesCount: attempt.restoredResponses ? Object.keys(attempt.restoredResponses).length : 0,
+    currentSection: attempt.current_section_index,
+    currentQuestion: attempt.current_question_index,
+    // Show sample keys to debug
+    sampleRestoredKeys: attempt.restoredResponses ? Object.keys(attempt.restoredResponses).slice(0, 5) : [],
+    sampleAllResponsesKeys: attempt.all_responses ? Object.keys(attempt.all_responses).slice(0, 5) : [],
+    // IMPORTANT: Check adaptive progress data
+    adaptiveProgressExists: !!attempt.adaptiveProgress,
+    adaptiveQuestionsAnswered: attempt.adaptiveProgress?.questionsAnswered || 0,
+    adaptiveCurrentQuestionIndex: attempt.adaptiveProgress?.currentQuestionIndex || 0,
+    adaptiveStatus: attempt.adaptiveProgress?.status || 'none'
   });
 
-  return totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
+  // IMPORTANT: restoredResponses contains BOTH UUID and non-UUID responses combined
+  // So we should use restoredResponses as the total count, not add them separately
+  // However, if restoredResponses is empty, fallback to all_responses
+  let totalAnsweredQuestions = Object.keys(attempt.restoredResponses || {}).length;
+  
+  // Fallback: If restoredResponses is empty but all_responses has data, use all_responses
+  if (totalAnsweredQuestions === 0 && attempt.all_responses) {
+    console.log('⚠️ [FALLBACK] restoredResponses is empty, using all_responses as fallback');
+    totalAnsweredQuestions = Object.keys(attempt.all_responses).length;
+  }
+  
+  // Count adaptive aptitude progress (from adaptive session) - this is separate
+  const adaptiveQuestionsAnswered = attempt.adaptiveProgress?.questionsAnswered || 0;
+  
+  // Total answered questions
+  const answeredCount = totalAnsweredQuestions + adaptiveQuestionsAnswered;
+  
+  // Calculate total questions based on actual question counts from database and codebase
+  let estimatedTotal = 50; // Default
+  
+  switch (attempt.grade_level) {
+    case 'middle':
+      // Middle school sections:
+      // - Interest Explorer: ~5 questions
+      // - Strengths & Character: ~11 questions  
+      // - Learning Preferences: ~4 questions
+      // - Adaptive Aptitude: ~21 questions (typical adaptive test length)
+      estimatedTotal = 41;
+      break;
+      
+    case 'highschool':
+      // High school sections (from middleSchoolQuestions.ts - total 53 questions):
+      // - Interest Explorer: ~5 questions
+      // - Strengths & Character: ~12 questions
+      // - Learning Preferences: ~4 questions
+      // - Aptitude Sampling: ~11 questions
+      // - Adaptive Aptitude: ~21 questions
+      estimatedTotal = 53;
+      break;
+      
+    case 'higher_secondary':
+      // Higher secondary sections:
+      // - RIASEC: 48 questions (8 per type × 6 types)
+      // - Big Five: 30 questions (6 per trait × 5 traits)
+      // - Work Values: 24 questions
+      // - Employability: 42 questions (including SJT)
+      // - Aptitude: ~50 questions (AI-generated, varies 46-50)
+      // - Knowledge: 20 questions (AI-generated, consistent)
+      estimatedTotal = 48 + 30 + 24 + 42 + 50 + 20; // = 214
+      break;
+      
+    case 'after10':
+      // After 10th sections (stream-agnostic, no knowledge section):
+      // - RIASEC: 48 questions
+      // - Big Five: 30 questions
+      // - Work Values: 24 questions
+      // - Employability: 42 questions
+      // - Aptitude: 50 questions (AI-generated)
+      estimatedTotal = 194; // = 194
+      break;
+      
+    case 'after12':
+      // After 12th sections:
+      // - RIASEC: 48 questions
+      // - Big Five: 30 questions
+      // - Work Values: 24 questions
+      // - Employability: 42 questions
+      // - Aptitude: ~50 questions (AI-generated, varies 48-50)
+      // - Knowledge: 20 questions (AI-generated)
+      estimatedTotal = 214; // = 214
+      break;
+      
+    case 'college':
+      // College sections:
+      // - RIASEC: 48 questions
+      // - Big Five: 30 questions
+      // - Work Values: 24 questions
+      // - Employability: 42 questions
+      // - Aptitude: ~50 questions (AI-generated, varies 44-50 based on stream)
+      // - Knowledge: 20 questions (AI-generated, consistent)
+      estimatedTotal = 214; // = 214
+      break;
+  }
+  
+  const progressPercentage = Math.min(100, Math.round((answeredCount / estimatedTotal) * 100));
+  
+  console.log('📊 [PROGRESS DEBUG] Final calculation:', {
+    totalAnsweredQuestions,
+    adaptiveQuestionsAnswered,
+    answeredCount,
+    estimatedTotal,
+    progressPercentage,
+    gradeLevel: attempt.grade_level
+  });
+  
+  return progressPercentage;
 };
 
 /**
@@ -116,8 +188,37 @@ export const ResumePromptScreen = ({
   const streamLabel = getStreamLabel(pendingAttempt.stream_id);
   const progress = calculateProgress(pendingAttempt);
   
-  // Count total answered questions from all_responses
-  const answeredCount = pendingAttempt.all_responses ? Object.keys(pendingAttempt.all_responses).length : 0;
+  // Calculate total answered questions correctly (no double counting)
+  // restoredResponses already contains all responses (UUID + non-UUID combined)
+  let totalAnsweredQuestions = Object.keys(pendingAttempt.restoredResponses || {}).length;
+  
+  // Debug: Log the Questions Answered calculation
+  console.log('🔢 [QUESTIONS ANSWERED DEBUG] Raw data:', {
+    restoredResponsesExists: !!pendingAttempt.restoredResponses,
+    restoredResponsesCount: Object.keys(pendingAttempt.restoredResponses || {}).length,
+    restoredResponsesSample: pendingAttempt.restoredResponses ? Object.keys(pendingAttempt.restoredResponses).slice(0, 5) : [],
+    allResponsesExists: !!pendingAttempt.all_responses,
+    allResponsesCount: pendingAttempt.all_responses ? Object.keys(pendingAttempt.all_responses).length : 0,
+    allResponsesSample: pendingAttempt.all_responses ? Object.keys(pendingAttempt.all_responses).slice(0, 5) : [],
+    adaptiveProgressExists: !!pendingAttempt.adaptiveProgress,
+    adaptiveQuestionsAnswered: pendingAttempt.adaptiveProgress?.questionsAnswered || 0
+  });
+  
+  // Fallback: If restoredResponses is empty but all_responses has data, use all_responses
+  if (totalAnsweredQuestions === 0 && pendingAttempt.all_responses) {
+    console.log('⚠️ [QUESTIONS ANSWERED FALLBACK] restoredResponses is empty, using all_responses as fallback');
+    totalAnsweredQuestions = Object.keys(pendingAttempt.all_responses).length;
+  }
+  
+  const adaptiveQuestionsAnswered = pendingAttempt.adaptiveProgress?.questionsAnswered || 0;
+  const answeredCount = totalAnsweredQuestions + adaptiveQuestionsAnswered;
+  
+  console.log('🔢 [QUESTIONS ANSWERED FINAL] Calculation result:', {
+    totalAnsweredQuestions,
+    adaptiveQuestionsAnswered,
+    finalAnsweredCount: answeredCount,
+    calculationMethod: totalAnsweredQuestions > 0 ? 'restoredResponses' : 'all_responses_fallback'
+  });
   
   const startedAt = formatDate(pendingAttempt.started_at);
 
