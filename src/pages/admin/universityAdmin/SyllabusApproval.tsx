@@ -572,8 +572,16 @@ const SyllabusApproval: React.FC = () => {
     if (!selectedChange) return;
 
     try {
+      console.log('🔄 Starting change review process:', {
+        changeId: selectedChange.change_id,
+        curriculumId: selectedChange.curriculum_id,
+        action: changeReviewAction,
+        notes: changeReviewNotes
+      });
+
       let result;
       if (changeReviewAction === 'approve') {
+        console.log('✅ Approving change...');
         result = await curriculumChangeRequestService.approveChange(
           selectedChange.curriculum_id,
           selectedChange.change_id,
@@ -584,6 +592,7 @@ const SyllabusApproval: React.FC = () => {
           toast.error('Please provide feedback for rejection');
           return;
         }
+        console.log('❌ Rejecting change...');
         result = await curriculumChangeRequestService.rejectChange(
           selectedChange.curriculum_id,
           selectedChange.change_id,
@@ -591,15 +600,19 @@ const SyllabusApproval: React.FC = () => {
         );
       }
 
+      console.log('📋 Change review result:', result);
+
       if (result.success) {
-        toast.success(
-          changeReviewAction === 'approve' 
-            ? 'Change approved and applied successfully!' 
-            : 'Change rejected with feedback'
-        );
+        const successMessage = changeReviewAction === 'approve' 
+          ? 'Change approved and applied successfully!' 
+          : 'Change rejected with feedback';
+        
+        toast.success(successMessage);
         setShowChangeReviewModal(false);
         setSelectedChange(null);
         setChangeReviewNotes('');
+        
+        console.log('🔄 Refreshing data after change review...');
         
         // Comprehensive refresh after approval/rejection
         await Promise.all([
@@ -622,12 +635,27 @@ const SyllabusApproval: React.FC = () => {
               icon: '✅'
             });
           }, 1000);
+          
+          // Show detailed success information
+          setTimeout(() => {
+            const changeTypeLabel = selectedChange.change_type === 'outcome_add' ? 'Learning outcome added' :
+                                  selectedChange.change_type === 'outcome_edit' ? 'Learning outcome updated' :
+                                  selectedChange.change_type === 'unit_add' ? 'Unit added' :
+                                  selectedChange.change_type === 'unit_edit' ? 'Unit updated' :
+                                  'Change applied';
+            
+            toast.success(`${changeTypeLabel} to ${selectedChange.curriculum_name}`, {
+              duration: 3000,
+              icon: '🎓'
+            });
+          }, 2000);
         }
       } else {
+        console.error('❌ Change review failed:', result.error);
         toast.error(result.error || `Failed to ${changeReviewAction} change`);
       }
     } catch (error) {
-      console.error(`Error ${changeReviewAction}ing change:`, error);
+      console.error(`💥 Error ${changeReviewAction}ing change:`, error);
       toast.error(`Failed to ${changeReviewAction} change`);
     }
   };
@@ -1394,12 +1422,14 @@ const SyllabusApproval: React.FC = () => {
       {/* Change Requests Tab Content */}
       {!loading && activeTab === 'changes' && (
         <div className="space-y-6">
-          {/* Change Requests Header */}
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <ExclamationTriangleIcon className="h-5 w-5 text-amber-600" />
+          {/* Change Requests Header - Placement Readiness Style */}
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl">
+                <ExclamationTriangleIcon className="h-6 w-6 text-white" />
+              </div>
               <div>
-                <h3 className="font-semibold text-amber-900">Pending Change Requests</h3>
+                <h3 className="text-xl font-bold text-amber-900">Pending Change Requests</h3>
                 <p className="text-sm text-amber-700 mt-1">
                   Review changes to published curriculums submitted by college admins
                 </p>
@@ -1409,28 +1439,39 @@ const SyllabusApproval: React.FC = () => {
 
           {/* Loading State for Changes */}
           {loadingChanges && (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
-              <p className="text-gray-600">Loading change requests...</p>
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="relative">
+                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600"></div>
+                  <img
+                    src="/assets/HomePage/RMLogo.webp"
+                    alt="RareMinds Logo"
+                    className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 object-contain"
+                  />
+                </div>
+                <p className="text-gray-600 mt-4 font-medium">Loading change requests...</p>
+              </div>
             </div>
           )}
 
           {/* Empty State for Changes */}
           {!loadingChanges && changeRequests.length === 0 && (
-            <Card className="text-center py-12 shadow-sm border border-gray-200">
-              <CardContent>
-                <BookOpenIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No pending change requests</h3>
-                <p className="text-gray-600">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+              <div className="text-center py-16">
+                <div className="p-4 bg-gray-100 rounded-2xl w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                  <BookOpenIcon className="w-10 h-10 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">No pending change requests</h3>
+                <p className="text-gray-600 max-w-md mx-auto">
                   All change requests have been reviewed or there are no pending changes at this time.
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
-          {/* Change Requests List */}
+          {/* Change Requests Grid - Placement Readiness Style */}
           {!loadingChanges && changeRequests.length > 0 && (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {changeRequests.map((change) => {
                 const typeInfo = getChangeTypeInfo(change.change_type);
                 const changeData = change.change_data || {};
@@ -1441,165 +1482,162 @@ const SyllabusApproval: React.FC = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
+                    className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-blue-300 transition-all duration-200"
                   >
-                    <Card className="hover:shadow-lg transition-all duration-200 border border-gray-200">
-                      <CardContent className="p-6">
-                        <div className="flex flex-col lg:flex-row gap-6">
-                          {/* Change Type Icon */}
-                          <div className="w-full lg:w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 relative">
-                            <div className="w-full h-full flex items-center justify-center text-4xl">
-                              {typeInfo.icon}
-                            </div>
+                    <div className="p-6">
+                      {/* Header with Icon and Type */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl">
+                            <span className="text-2xl">{typeInfo.icon}</span>
                           </div>
-
-                          {/* Change Info */}
-                          <div className="flex-1">
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <div className="flex items-center gap-3 mb-2 flex-wrap">
-                                  <h3 className="text-xl font-bold text-gray-900">{change.curriculum_name}</h3>
-                                  <Badge className={`${typeInfo.color} border`}>
-                                    {typeInfo.label}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-gray-500">{change.college_name}</p>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                              <div>
-                                <p className="text-sm font-medium text-gray-700">Requested By</p>
-                                <p className="text-sm text-gray-600">{change.requester_name}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-gray-700">Request Date</p>
-                                <p className="text-sm text-gray-600">{formatDate(change.change_timestamp)}</p>
-                              </div>
-                            </div>
-
-                            {change.request_message && (
-                              <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                                <p className="text-sm font-medium text-gray-700 mb-1">Reason for Change:</p>
-                                <p className="text-sm text-gray-600">{change.request_message}</p>
-                              </div>
-                            )}
-
-                            {/* Change Details Section */}
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                              <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                                <DocumentTextIcon className="h-4 w-4" />
-                                Change Details
-                              </h4>
-                              
-                              {/* For ADD operations */}
-                              {(change.change_type === 'unit_add' || change.change_type === 'outcome_add') && changeData.data && (
-                                <div className="space-y-2">
-                                  <div className="bg-white rounded p-3 border border-blue-100">
-                                    <p className="text-xs font-medium text-gray-500 mb-2">New {change.change_type === 'unit_add' ? 'Unit' : 'Outcome'}:</p>
-                                    {change.change_type === 'unit_add' && (
-                                      <div className="space-y-1 text-sm">
-                                        <p><span className="font-medium">Name:</span> {changeData.data.name}</p>
-                                        {changeData.data.code && <p><span className="font-medium">Code:</span> {changeData.data.code}</p>}
-                                        {changeData.data.description && <p><span className="font-medium">Description:</span> {changeData.data.description}</p>}
-                                        {changeData.data.credits && <p><span className="font-medium">Credits:</span> {changeData.data.credits}</p>}
-                                      </div>
-                                    )}
-                                    {change.change_type === 'outcome_add' && (
-                                      <div className="space-y-1 text-sm">
-                                        <p><span className="font-medium">Outcome:</span> {changeData.data.outcome_text || changeData.data.outcome}</p>
-                                        {changeData.data.bloom_level && <p><span className="font-medium">Bloom Level:</span> {changeData.data.bloom_level}</p>}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* For EDIT operations */}
-                              {(change.change_type === 'unit_edit' || change.change_type === 'outcome_edit' || change.change_type === 'curriculum_edit') && changeData.before && changeData.after && (
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div className="bg-red-50 rounded p-3 border border-red-200">
-                                    <p className="text-xs font-medium text-red-700 mb-2">Before:</p>
-                                    <div className="space-y-1 text-sm text-gray-700">
-                                      {Object.entries(changeData.before).map(([key, value]) => {
-                                        if (changeData.after[key] !== value && typeof value !== 'object') {
-                                          return (
-                                            <p key={key} className="line-through">
-                                              <span className="font-medium capitalize">{key.replace(/_/g, ' ')}:</span> {String(value)}
-                                            </p>
-                                          );
-                                        }
-                                        return null;
-                                      })}
-                                    </div>
-                                  </div>
-                                  <div className="bg-green-50 rounded p-3 border border-green-200">
-                                    <p className="text-xs font-medium text-green-700 mb-2">After:</p>
-                                    <div className="space-y-1 text-sm text-gray-700">
-                                      {Object.entries(changeData.after).map(([key, value]) => {
-                                        if (changeData.before[key] !== value && typeof value !== 'object') {
-                                          return (
-                                            <p key={key} className="font-medium">
-                                              <span className="capitalize">{key.replace(/_/g, ' ')}:</span> {String(value)}
-                                            </p>
-                                          );
-                                        }
-                                        return null;
-                                      })}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* For DELETE operations */}
-                              {(change.change_type === 'unit_delete' || change.change_type === 'outcome_delete') && changeData.data && (
-                                <div className="space-y-2">
-                                  <div className="bg-red-50 rounded p-3 border border-red-200">
-                                    <p className="text-xs font-medium text-red-700 mb-2">{change.change_type === 'unit_delete' ? 'Unit' : 'Outcome'} to be Deleted:</p>
-                                    {change.change_type === 'unit_delete' && (
-                                      <div className="space-y-1 text-sm text-gray-700">
-                                        <p><span className="font-medium">Name:</span> {changeData.data.name}</p>
-                                        {changeData.data.code && <p><span className="font-medium">Code:</span> {changeData.data.code}</p>}
-                                        {changeData.data.description && <p><span className="font-medium">Description:</span> {changeData.data.description}</p>}
-                                      </div>
-                                    )}
-                                    {change.change_type === 'outcome_delete' && (
-                                      <div className="space-y-1 text-sm text-gray-700">
-                                        <p><span className="font-medium">Outcome:</span> {changeData.data.outcome_text || changeData.data.outcome}</p>
-                                        {changeData.data.bloom_level && <p><span className="font-medium">Bloom Level:</span> {changeData.data.bloom_level}</p>}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                              <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <ClockIcon className="w-4 h-4" />
-                                <span>Submitted {formatDate(change.change_timestamp)}</span>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  onClick={() => handleReviewChange(change, 'approve')}
-                                  className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2"
-                                >
-                                  <CheckIcon className="h-4 w-4 mr-1" />
-                                  Approve
-                                </Button>
-                                <Button
-                                  onClick={() => handleReviewChange(change, 'reject')}
-                                  className="bg-red-600 hover:bg-red-700 text-white text-sm px-4 py-2"
-                                >
-                                  <XMarkIcon className="h-4 w-4 mr-1" />
-                                  Reject
-                                </Button>
-                              </div>
-                            </div>
+                          <div>
+                            <h3 className="font-bold text-gray-900 text-lg line-clamp-1">{change.curriculum_name}</h3>
+                            <p className="text-sm text-gray-600">{change.college_name}</p>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
+                        <Badge className={`${typeInfo.color} border-0 font-semibold px-3 py-1`}>
+                          {typeInfo.label}
+                        </Badge>
+                      </div>
+
+                      {/* Request Details */}
+                      <div className="space-y-3 mb-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 flex items-center gap-2">
+                            <DocumentTextIcon className="h-4 w-4" />
+                            Requested By:
+                          </span>
+                          <span className="font-semibold text-gray-900 text-sm">
+                            {change.requester_name}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 flex items-center gap-2">
+                            <ClockIcon className="h-4 w-4" />
+                            Request Date:
+                          </span>
+                          <span className="text-sm font-medium text-gray-900">
+                            {formatDate(change.change_timestamp)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Reason for Change */}
+                      {change.request_message && (
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4 border border-blue-100">
+                          <p className="text-sm font-semibold text-blue-900 mb-2">Reason for Change:</p>
+                          <p className="text-sm text-blue-800">{change.request_message}</p>
+                        </div>
+                      )}
+
+                      {/* Change Details Section - Compact */}
+                      <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-4 mb-4 border border-gray-100">
+                        <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                          <DocumentTextIcon className="h-4 w-4 text-indigo-600" />
+                          Change Details
+                        </h4>
+                        
+                        {/* For ADD operations */}
+                        {(change.change_type === 'unit_add' || change.change_type === 'outcome_add') && changeData.data && (
+                          <div className="bg-white rounded-lg p-3 border border-gray-200">
+                            <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                              New {change.change_type === 'unit_add' ? 'Unit' : 'Outcome'}
+                            </p>
+                            {change.change_type === 'unit_add' && (
+                              <div className="space-y-1 text-sm">
+                                <p><span className="font-semibold text-gray-700">Name:</span> <span className="text-gray-900">{changeData.data.name}</span></p>
+                                {changeData.data.code && <p><span className="font-semibold text-gray-700">Code:</span> <span className="text-gray-900">{changeData.data.code}</span></p>}
+                                {changeData.data.description && <p><span className="font-semibold text-gray-700">Description:</span> <span className="text-gray-900">{changeData.data.description}</span></p>}
+                                {changeData.data.credits && <p><span className="font-semibold text-gray-700">Credits:</span> <span className="text-gray-900">{changeData.data.credits}</span></p>}
+                              </div>
+                            )}
+                            {change.change_type === 'outcome_add' && (
+                              <div className="space-y-1 text-sm">
+                                <p><span className="font-semibold text-gray-700">Outcome:</span> <span className="text-gray-900">{changeData.data.outcome_text || changeData.data.outcome}</span></p>
+                                {changeData.data.bloom_level && <p><span className="font-semibold text-gray-700">Bloom Level:</span> <span className="text-gray-900">{changeData.data.bloom_level}</span></p>}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* For EDIT operations */}
+                        {(change.change_type === 'unit_edit' || change.change_type === 'outcome_edit' || change.change_type === 'curriculum_edit') && changeData.before && changeData.after && (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-red-50 rounded-lg p-3 border border-red-200">
+                              <p className="text-xs font-semibold text-red-700 mb-2 uppercase tracking-wide">Before</p>
+                              <div className="space-y-1 text-sm text-gray-700">
+                                {Object.entries(changeData.before).map(([key, value]) => {
+                                  if (changeData.after[key] !== value && typeof value !== 'object') {
+                                    return (
+                                      <p key={key} className="line-through">
+                                        <span className="font-semibold capitalize">{key.replace(/_/g, ' ')}:</span> {String(value)}
+                                      </p>
+                                    );
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                            </div>
+                            <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                              <p className="text-xs font-semibold text-green-700 mb-2 uppercase tracking-wide">After</p>
+                              <div className="space-y-1 text-sm text-gray-700">
+                                {Object.entries(changeData.after).map(([key, value]) => {
+                                  if (changeData.before[key] !== value && typeof value !== 'object') {
+                                    return (
+                                      <p key={key} className="font-semibold">
+                                        <span className="capitalize">{key.replace(/_/g, ' ')}:</span> {String(value)}
+                                      </p>
+                                    );
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* For DELETE operations */}
+                        {(change.change_type === 'unit_delete' || change.change_type === 'outcome_delete') && changeData.data && (
+                          <div className="bg-red-50 rounded-lg p-3 border border-red-200">
+                            <p className="text-xs font-semibold text-red-700 mb-2 uppercase tracking-wide">
+                              {change.change_type === 'unit_delete' ? 'Unit' : 'Outcome'} to be Deleted
+                            </p>
+                            {change.change_type === 'unit_delete' && (
+                              <div className="space-y-1 text-sm text-gray-700">
+                                <p><span className="font-semibold">Name:</span> {changeData.data.name}</p>
+                                {changeData.data.code && <p><span className="font-semibold">Code:</span> {changeData.data.code}</p>}
+                                {changeData.data.description && <p><span className="font-semibold">Description:</span> {changeData.data.description}</p>}
+                              </div>
+                            )}
+                            {change.change_type === 'outcome_delete' && (
+                              <div className="space-y-1 text-sm text-gray-700">
+                                <p><span className="font-semibold">Outcome:</span> {changeData.data.outcome_text || changeData.data.outcome}</p>
+                                {changeData.data.bloom_level && <p><span className="font-semibold">Bloom Level:</span> {changeData.data.bloom_level}</p>}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action Buttons - Placement Readiness Style */}
+                      <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                        <button
+                          onClick={() => handleReviewChange(change, 'approve')}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-semibold text-sm"
+                        >
+                          <CheckIcon className="h-4 w-4" />
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleReviewChange(change, 'reject')}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-semibold text-sm"
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                          Reject
+                        </button>
+                      </div>
+                    </div>
                   </motion.div>
                 );
               })}
@@ -1898,7 +1936,7 @@ const SyllabusApproval: React.FC = () => {
         </div>
       )}
 
-      {/* Change Review Modal */}
+      {/* Change Review Modal - Placement Readiness Style */}
       {showChangeReviewModal && selectedChange && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
@@ -1906,43 +1944,80 @@ const SyllabusApproval: React.FC = () => {
               className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
               onClick={() => setShowChangeReviewModal(false)}
             />
-            <div className="relative w-full max-w-lg transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all">
-              <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5">
-                <div className="flex-1">
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    {changeReviewAction === 'approve' ? 'Approve Change Request' : 'Reject Change Request'}
-                  </h2>
-                  <p className="mt-1 text-sm text-gray-500">
-                    {selectedChange.curriculum_name}
-                  </p>
+            <div className="relative w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all">
+              {/* Header with Gradient */}
+              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5 text-white">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-white/20 rounded-xl">
+                        {changeReviewAction === 'approve' ? (
+                          <CheckCircleIcon className="h-6 w-6 text-white" />
+                        ) : (
+                          <XMarkIcon className="h-6 w-6 text-white" />
+                        )}
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold">
+                          {changeReviewAction === 'approve' ? 'Approve Change Request' : 'Reject Change Request'}
+                        </h2>
+                        <p className="text-indigo-100 text-sm mt-1">
+                          {selectedChange.curriculum_name}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowChangeReviewModal(false)}
+                    className="ml-4 rounded-xl p-2 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowChangeReviewModal(false)}
-                  className="ml-4 rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-                >
-                  <XMarkIcon className="h-5 w-5" />
-                </button>
               </div>
 
-              <div className="p-6 space-y-4">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-gray-900 mb-2">Change Details</h3>
-                  <div className="space-y-1 text-sm text-gray-600">
-                    <p><span className="font-medium">Type:</span> {getChangeTypeInfo(selectedChange.change_type).label}</p>
-                    <p><span className="font-medium">College:</span> {selectedChange.college_name}</p>
-                    <p><span className="font-medium">Curriculum:</span> {selectedChange.curriculum_name}</p>
-                    <p><span className="font-medium">Requested by:</span> {selectedChange.requester_name}</p>
-                    {selectedChange.request_message && (
-                      <div className="mt-2 pt-2 border-t border-gray-200">
-                        <p className="font-medium mb-1">Reason:</p>
-                        <p className="text-gray-700">{selectedChange.request_message}</p>
+              <div className="p-6 space-y-6">
+                {/* Change Details Card */}
+                <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-5 border border-gray-200">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <DocumentTextIcon className="h-5 w-5 text-indigo-600" />
+                    Change Details
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-600 font-medium">Change Type</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-2xl">{getChangeTypeInfo(selectedChange.change_type).icon}</span>
+                        <span className="font-semibold text-gray-900">{getChangeTypeInfo(selectedChange.change_type).label}</span>
                       </div>
-                    )}
+                    </div>
+                    <div>
+                      <p className="text-gray-600 font-medium">College</p>
+                      <p className="font-semibold text-gray-900 mt-1">{selectedChange.college_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 font-medium">Curriculum</p>
+                      <p className="font-semibold text-gray-900 mt-1">{selectedChange.curriculum_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 font-medium">Requested By</p>
+                      <p className="font-semibold text-gray-900 mt-1">{selectedChange.requester_name}</p>
+                    </div>
                   </div>
+                  
+                  {selectedChange.request_message && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <p className="text-gray-600 font-medium mb-2">Reason for Change:</p>
+                      <div className="bg-white rounded-lg p-3 border border-gray-200">
+                        <p className="text-gray-800">{selectedChange.request_message}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
+                {/* Feedback Section */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-bold text-gray-900 mb-3">
                     {changeReviewAction === 'approve' ? 'Approval Notes (Optional)' : 'Rejection Feedback (Required)'}
                   </label>
                   <textarea
@@ -1954,20 +2029,32 @@ const SyllabusApproval: React.FC = () => {
                         : 'Please provide specific feedback about why this change is being rejected...'
                     }
                     rows={4}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none"
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none"
                   />
                 </div>
 
+                {/* Action Info Cards */}
                 {changeReviewAction === 'approve' && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <CheckCircleIcon className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="p-2 bg-green-100 rounded-xl">
+                        <CheckCircleIcon className="h-6 w-6 text-green-600" />
+                      </div>
                       <div className="text-sm text-green-800">
-                        <p className="font-medium mb-1">Upon approval:</p>
-                        <ul className="space-y-1 text-xs">
-                          <li>• The change will be applied to the published curriculum</li>
-                          <li>• The college admin will be notified</li>
-                          <li>• The change will be visible to students and faculty</li>
+                        <p className="font-bold mb-2 text-green-900">Upon approval:</p>
+                        <ul className="space-y-2">
+                          <li className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
+                            The change will be applied to the published curriculum
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
+                            The college admin will be notified
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
+                            The change will be visible to students and faculty
+                          </li>
                         </ul>
                       </div>
                     </div>
@@ -1975,35 +2062,50 @@ const SyllabusApproval: React.FC = () => {
                 )}
 
                 {changeReviewAction === 'reject' && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <ExclamationTriangleIcon className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div className="bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-xl p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="p-2 bg-red-100 rounded-xl">
+                        <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
+                      </div>
                       <div className="text-sm text-red-800">
-                        <p className="font-medium mb-1">Upon rejection:</p>
-                        <ul className="space-y-1 text-xs">
-                          <li>• The change request will be discarded</li>
-                          <li>• The college admin will receive your feedback</li>
-                          <li>• The published curriculum remains unchanged</li>
-                          <li>• They can submit a new change request if needed</li>
+                        <p className="font-bold mb-2 text-red-900">Upon rejection:</p>
+                        <ul className="space-y-2">
+                          <li className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 bg-red-600 rounded-full"></div>
+                            The change request will be discarded
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 bg-red-600 rounded-full"></div>
+                            The college admin will receive your feedback
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 bg-red-600 rounded-full"></div>
+                            The published curriculum remains unchanged
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 bg-red-600 rounded-full"></div>
+                            They can submit a new change request if needed
+                          </li>
                         </ul>
                       </div>
                     </div>
                   </div>
                 )}
 
+                {/* Action Buttons */}
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
                   <button
                     onClick={() => setShowChangeReviewModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="px-6 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={confirmChangeReview}
-                    className={`px-6 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                    className={`px-8 py-2.5 text-sm font-bold text-white rounded-xl transition-all duration-200 hover:shadow-lg ${
                       changeReviewAction === 'approve'
-                        ? 'bg-green-600 hover:bg-green-700'
-                        : 'bg-red-600 hover:bg-red-700'
+                        ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
+                        : 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700'
                     }`}
                   >
                     {changeReviewAction === 'approve' ? 'Approve Change' : 'Reject with Feedback'}
