@@ -84,31 +84,3 @@ jobs:
             })
         env:
           PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
-
-  deploy-workers:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    strategy:
-      matrix:
-        worker: [career-api, course-api, payments-api, user-api, storage-api, streak-api, fetch-certificate]
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: |
-          cd cloudflare-workers/${{ matrix.worker }}
-          npm install
-
-      - name: Deploy ${{ matrix.worker }}
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: cloudflare-workers/${{ matrix.worker }}
-          command: deploy
