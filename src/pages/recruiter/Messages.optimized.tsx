@@ -622,7 +622,7 @@ const Messages = () => {
                       </div>
                     </div>
                   ))
-                )
+                )}
                 
                 {/* Typing indicator */}
                 {isAnyoneTyping && (

@@ -320,15 +320,49 @@ export const updateStudentSettings = async (email, updates) => {
         
         // IMPORTANT: When branch_field is updated, also update course_name
         // This ensures consistency between settings page and assessment test page
+        // Also clear program_id to prevent FK override
         if (key === 'branch' && value) {
           columnUpdates.course_name = value;
+          // If manually setting branch (not via program_id dropdown), clear program_id
+          // This prevents the FK relationship from overriding the manual entry
+          // Check if programId is empty, null, or not provided
+          const hasProgramId = updates.programId && updates.programId !== '' && updates.programId !== null;
+          if (!hasProgramId) {
+            columnUpdates.program_id = null;
+            console.log('🔓 Clearing program_id to use manual entry');
+          }
           console.log('📚 Syncing course_name with branch_field:', value);
+        }
+        
+        // IMPORTANT: When program_id is set via dropdown, also update branch_field and course_name
+        // This ensures the program name is stored in all three places for consistency
+        if (key === 'programId' && value) {
+          // We need to fetch the program name from the programs table
+          // This will be done after the loop
+          console.log('📋 Program ID set via dropdown:', value);
         }
       } else if (key === 'otherSocialLinks') {
         columnUpdates.other_social_links = updates[key];
       }
       // Note: notificationSettings and privacySettings are handled separately below
     });
+
+    // If program_id was set, fetch the program name and sync to branch_field and course_name
+    if (columnUpdates.program_id && columnUpdates.program_id !== null) {
+      console.log('🔍 Fetching program name for program_id:', columnUpdates.program_id);
+      const { data: programData, error: programError } = await supabase
+        .from('programs')
+        .select('name, code')
+        .eq('id', columnUpdates.program_id)
+        .single();
+      
+      if (!programError && programData) {
+        const programName = programData.name || programData.code;
+        columnUpdates.branch_field = programName;
+        columnUpdates.course_name = programName;
+        console.log('✅ Synced program name to branch_field and course_name:', programName);
+      }
+    }
 
     // Handle notification and privacy settings in user_settings table
     if ((updates.notificationSettings || updates.privacySettings) && student.user_id) {

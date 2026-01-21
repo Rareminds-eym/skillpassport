@@ -931,7 +931,8 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                  {/* Tags */}
                 {(displayData.classYear || displayData.department || displayData.degree) && (
                   <div className="flex flex-wrap gap-3">
-                  {(displayData.department || displayData.degree) && (
+                  {/* Only show department/degree badge if NOT already shown in College Info section */}
+                  {(displayData.department || displayData.degree) && !realStudentData?.branch_field && (
                     <Badge className="bg-white text-indigo-700 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
                       {displayData.department || displayData.degree}
                     </Badge>

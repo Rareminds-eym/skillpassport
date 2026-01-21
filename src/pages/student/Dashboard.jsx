@@ -362,6 +362,22 @@ const StudentDashboard = () => {
     };
   }, [userEmail, isViewingOthersProfile]);
 
+  // Listen for settings updates and refresh dashboard
+  useEffect(() => {
+    const handleSettingsUpdate = (event) => {
+      if (event.detail?.type === 'profile_updated') {
+        console.log('🔄 Settings updated, refreshing dashboard data...');
+        refresh();
+      }
+    };
+
+    window.addEventListener('student_settings_updated', handleSettingsUpdate);
+    
+    return () => {
+      window.removeEventListener('student_settings_updated', handleSettingsUpdate);
+    };
+  }, [refresh]);
+
   // Direct Supabase test
   useEffect(() => {
     const testSupabaseDirectly = async () => {
@@ -536,16 +552,8 @@ const StudentDashboard = () => {
 
   // Determine institution info from student data (using individual columns)
   const institutionInfo = React.useMemo(() => {
-    // Priority: school_id takes precedence if both exist
-    if (studentData?.school_id && studentData?.school) {
-      return {
-        type: 'School',
-        name: studentData.school.name,
-        code: studentData.school.code,
-        city: studentData.school.city,
-        state: studentData.school.state,
-      };
-    } else if (studentData?.college_id && studentData?.college) {
+    // Priority: college_id takes precedence if both exist (College → School)
+    if (studentData?.college_id && studentData?.college) {
       // College (standalone, not part of university)
       return {
         type: 'College',
@@ -554,17 +562,13 @@ const StudentDashboard = () => {
         city: studentData.college.city,
         state: studentData.college.state,
       };
-    } else if (studentData?.university_college_id && studentData?.universityCollege) {
-      // University college with parent university info
-      const college = studentData.universityCollege;
-      const university = college.universities; // nested university data
+    } else if (studentData?.school_id && studentData?.school) {
       return {
-        type: 'University College',
-        name: college.name,
-        code: college.code,
-        universityName: university?.name,
-        city: university?.district, // Location comes from parent university
-        state: university?.state,
+        type: 'School',
+        name: studentData.school.name,
+        code: studentData.school.code,
+        city: studentData.school.city,
+        state: studentData.school.state,
       };
     } else if (studentData?.university || studentData?.college_school_name) {
       // Fallback to individual columns if no foreign key relationships
@@ -578,11 +582,11 @@ const StudentDashboard = () => {
     }
 
     // Fallback: Show error if ID exists but data is null (broken foreign key)
-    if (studentData?.school_id && !studentData?.school) {
-      console.error('⚠️ School ID exists but school data is null. School may have been deleted.');
+    if (studentData?.college_id && !studentData?.college) {
+      console.error('⚠️ College ID exists but college data is null. College may have been deleted.');
       return {
-        type: 'School',
-        name: 'School Not Found',
+        type: 'College',
+        name: 'College Not Found',
         code: 'N/A',
         city: null,
         state: null,
@@ -590,11 +594,11 @@ const StudentDashboard = () => {
       };
     }
 
-    if (studentData?.college_id && !studentData?.college) {
-      console.error('⚠️ College ID exists but college data is null. College may have been deleted.');
+    if (studentData?.school_id && !studentData?.school) {
+      console.error('⚠️ School ID exists but school data is null. School may have been deleted.');
       return {
-        type: 'College',
-        name: 'College Not Found',
+        type: 'School',
+        name: 'School Not Found',
         code: 'N/A',
         city: null,
         state: null,

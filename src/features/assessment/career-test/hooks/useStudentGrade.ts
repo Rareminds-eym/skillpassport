@@ -78,6 +78,7 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
           university_college_id, 
           program_id, 
           course_name, 
+          branch_field, 
           school_classes:school_class_id(grade, academic_year), 
           program:program_id(name, code)
         `)
@@ -105,7 +106,9 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
         setIsCollegeStudent(isCollege);
 
         // Set program name if available
-        const programName = (student.program as any)?.name || 
+        // Priority: branch_field (from settings) > program.name > program.code > course_name (legacy)
+        const programName = student.branch_field ||
+                           (student.program as any)?.name || 
                            (student.program as any)?.code || 
                            student.course_name;
         if (programName) {

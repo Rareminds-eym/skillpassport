@@ -140,10 +140,9 @@ const AssessmentTest = () => {
     // TEST MODE - Auto-fill answers for development/testing
     const [testMode, setTestMode] = useState(false);
     const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
-    // skillpassport.pages.dev shows all options, localhost and skilldevelopment.rareminds.in filter by grade
-    const shouldShowAllOptions = window.location.hostname === 'skillpassport.pages.dev';
-    const shouldFilterByGrade = window.location.hostname === 'localhost' ||
-        window.location.hostname === 'skilldevelopment.rareminds.in';
+    // Always filter by grade - show only relevant assessment options based on student's grade level
+    const shouldShowAllOptions = false; // Never show all options
+    const shouldFilterByGrade = true; // Always filter by grade on all servers
     const [sectionTimings, setSectionTimings] = useState({}); // Track time spent on each section
 
     // Student grade from database
