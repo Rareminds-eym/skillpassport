@@ -123,7 +123,7 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
     ];
 
     return (
-        <div className="mb-8">
+        <div className="mb-8 relative">
             {/* Main Card - Light Glass */}
             <div className="relative w-full rounded-xl overflow-hidden bg-white backdrop-blur-xl shadow-lg">
                 {/* Subtle gradient overlay */}
